@@ -49,11 +49,11 @@
  *       0xEA000 +----------------------+  |
  *               | Initial TSS          |  |
  *       0xEB000 +----------------------+  |
- *               | Xen Start Info       |  |
+ *               | Boot Params          |  |
  *       0xEC000 +----------------------+  |
- *               | Xen CMD Line         |  |
+ *               | CMD Line             |  |
  *       0xED000 +----------------------+  |
- *               | Xen Console Page     |  |
+ *               | Free                 |  |
  *       0xEE000 +----------------------+  |
  *               | Free                 |  |
  *       0xEF000 +----------------------+  |
@@ -71,8 +71,6 @@
  *       0xF5000 +----------------------+  |
  *               | Free                 |  |
  *      0x100000 +----------------------+ ---
- *               | Unusable             |  | Unusable
- *     0x1000000 +----------------------+ ---
  *               | Linux ELF (Xen PVH)  |  | RAM
  *           XXX +----------------------+  |
  *               | Usable RAM           |  |
@@ -134,9 +132,8 @@ setup_e820_map(void *vm, uint64_t size)
 
     ret |= add_e820_entry(vm, 0x0000000000000000, 0x00000000000E8000, XEN_HVM_MEMMAP_TYPE_RAM);
     ret |= add_e820_entry(vm, 0x00000000000E8000, 0x0000000000100000, XEN_HVM_MEMMAP_TYPE_RESERVED);
-    ret |= add_e820_entry(vm, 0x0000000000100000, 0x0000000001000000, XEN_HVM_MEMMAP_TYPE_UNUSABLE);
-    ret |= add_e820_entry(vm, 0x0000000001000000, 0x001000000 + size, XEN_HVM_MEMMAP_TYPE_RAM);
-    ret |= add_e820_entry(vm, 0x001000000 + size, 0x00000000FEC00000, XEN_HVM_MEMMAP_TYPE_UNUSABLE);
+    ret |= add_e820_entry(vm, 0x0000000000100000, 0x000100000 + size, XEN_HVM_MEMMAP_TYPE_RAM);
+    ret |= add_e820_entry(vm, 0x000100000 + size, 0x00000000FEC00000, XEN_HVM_MEMMAP_TYPE_UNUSABLE);
     ret |= add_e820_entry(vm, 0x00000000FEC00000, 0x00000000FFFFFFFF, XEN_HVM_MEMMAP_TYPE_RESERVED);
     ret |= add_e820_entry(vm, 0x00000000FFFFFFFF, 0xFFFFFFFFFFFFFFFF, XEN_HVM_MEMMAP_TYPE_UNUSABLE);
 
@@ -161,9 +158,8 @@ setup_e820_map(void *vm, uint64_t size)
 #define INITIAL_IDT_GPA     0xE9000
 #define INITIAL_TSS_GPA     0xEA000
 
-#define XEN_START_INFO_PAGE_GPA     0xEB000
-#define XEN_COMMAND_LINE_PAGE_GPA   0xEC000
-#define XEN_CONSOLE_PAGE_GPA        0xED000
+#define BOOT_PARAMS_PAGE_GPA    0xEB000
+#define COMMAND_LINE_PAGE_GPA   0xEC000
 
 #define ACPI_RSDP_GPA       0xF0000
 #define ACPI_XSDT_GPA       0xF1000
@@ -173,7 +169,5 @@ setup_e820_map(void *vm, uint64_t size)
 
 #define LAPIC_GPA           0xFEE00000
 #define IOAPIC_GPA          0xFEC00000
-
-#define START_ADDR          0x1000000
 
 #endif

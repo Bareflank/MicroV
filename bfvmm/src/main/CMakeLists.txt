@@ -41,8 +41,8 @@ else()
 endif()
 
 eapis_add_vmm_executable(
-    hyperkernel_bfvmm
-    LIBRARIES hyperkernel_hve
-    LIBRARIES hyperkernel_domain
+    boxy_bfvmm
+    LIBRARIES boxy_hve
+    LIBRARIES boxy_domain
     SOURCES ${SOURCES}
 )

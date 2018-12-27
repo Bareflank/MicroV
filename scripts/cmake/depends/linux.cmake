@@ -47,9 +47,15 @@ if((ENABLE_BUILD_USERSPACE) AND NOT WIN32)
         linux userspace
         CONFIGURE_COMMAND   make oldconfig
         BUILD_COMMAND       make -j${BUILD_TARGET_CORES}
-        INSTALL_COMMAND     ${CMAKE_COMMAND} -E copy ${DEPENDS_DIR}/linux/${USERSPACE_PREFIX}/build/vmlinux ${PREFIXES_DIR}/vms/
+        INSTALL_COMMAND     ${CMAKE_COMMAND} -E echo "-- skip"
         DEPENDS             linux-source_${USERSPACE_PREFIX}
         UPDATE_COMMAND      ${CMAKE_COMMAND} -E echo "-- checking for updates"
+    )
+
+    add_dependency_step(
+        linux userspace
+        COMMAND ${CMAKE_COMMAND} -E copy ${DEPENDS_DIR}/linux/${USERSPACE_PREFIX}/build/vmlinux ${PREFIXES_DIR}/vms/
+        COMMAND ${CMAKE_COMMAND} -E copy ${DEPENDS_DIR}/linux/${USERSPACE_PREFIX}/build/arch/x86/boot/bzImage ${PREFIXES_DIR}/vms/
     )
 
     add_custom_target(vms DEPENDS linux_${USERSPACE_PREFIX})

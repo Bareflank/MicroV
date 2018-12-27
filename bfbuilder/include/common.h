@@ -25,29 +25,18 @@
 
 #include <bftypes.h>
 #include <bferrorcodes.h>
-#include <bfelf_loader.h>
 #include <bfbuilderinterface.h>
 
-#define HYPERVISOR_NOT_LOADED bfscast(status_t, 0x8000000000000001)
-#define CREATE_FROM_ELF_FAILED bfscast(status_t, 0x8000000000000002)
-#define DESTROY_FAILED bfscast(status_t, 0x8000000000000003)
+/* -------------------------------------------------------------------------- */
+/* Error Codes                                                                */
+/* -------------------------------------------------------------------------- */
 
-struct vm_t {
-    struct bfelf_loader_t bfelf_loader;
-    struct bfelf_binary_t bfelf_binary;
+#define COMMON_NO_HYPERVISOR bfscast(status_t, 0x8000000000000001)
+#define COMMON_CREATE_FROM_ELF_FAILED bfscast(status_t, 0x8000000000000002)
 
-    uint32_t entry;
-    uint64_t domainid;
-
-    void *bios_ram;
-    void *zero_page;
-
-    struct hvm_start_info *xen_start_info;
-    char *xen_cmdl;
-    void *xen_console;
-
-    int used;
-};
+/* -------------------------------------------------------------------------- */
+/* Functions                                                                  */
+/* -------------------------------------------------------------------------- */
 
 /**
  * Create VM from ELF
@@ -57,12 +46,11 @@ struct vm_t {
  * with the contents of the provided ELF file, and then set up the guest's
  * memory map.
  *
- * @param vm the vm_t object associated with the vm
  * @param args the create_from_elf_args arguments needed to create the VM
  * @return BF_SUCCESS on success, negative error code on failure
  */
 int64_t
-common_create_from_elf(struct vm_t *vm, struct create_from_elf_args *args);
+common_create_from_elf(struct create_from_elf_args *args);
 
 /**
  * Destroy VM
@@ -70,10 +58,10 @@ common_create_from_elf(struct vm_t *vm, struct create_from_elf_args *args);
  * This function will destory a VM by telling the hypervisor to remove all
  * internal resources associated with the VM.
  *
- * @param vm the vm_t object associated with the vm
+ * @param domainid the domain to destroy
  * @return BF_SUCCESS on success, negative error code on failure
  */
 int64_t
-common_destroy(struct vm_t *vm);
+common_destroy(uint64_t domainid);
 
 #endif

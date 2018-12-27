@@ -227,6 +227,98 @@ acpi_checksum(void *table, uint32_t len)
     return 0x100U - sum;
 }
 
+
+    // std::strncpy(m_rsdp->signature, "RSD PTR ", sizeof(m_rsdp->signature));
+    // m_rsdp->checksum = 0;
+    // std::strncpy(m_rsdp->oemid, "AIS", sizeof(m_rsdp->oemid));
+    // m_rsdp->revision = 2;
+    // m_rsdp->rsdtphysicaladdress = 0;
+    // m_rsdp->length = sizeof(rsdp_t);
+    // m_rsdp->xsdtphysicaladdress = ACPI_XSDT_GPA;
+    // m_rsdp->extendedchecksum = 0;
+    // std::memset(m_rsdp->reserved, 0, sizeof(m_rsdp->reserved));
+    // m_rsdp->checksum = acpi_checksum(m_rsdp.get(), 20);
+    // m_rsdp->extendedchecksum = acpi_checksum(m_rsdp.get(), m_rsdp->length);
+
+    // std::strncpy(m_xsdt->header.signature, "XSDT", sizeof(m_xsdt->header.signature));
+    // m_xsdt->header.length = sizeof(xsdt_t);
+    // m_xsdt->header.revision = 1;
+    // m_xsdt->header.checksum = 0;
+    // std::strncpy(m_xsdt->header.oemid, OEMID, sizeof(m_xsdt->header.oemid));
+    // std::strncpy(m_xsdt->header.oemtableid, OEMTABLEID, sizeof(m_xsdt->header.oemtableid));
+    // m_xsdt->header.oemrevision = OEMREVISION;
+    // std::strncpy(m_xsdt->header.aslcompilerid, ASLCOMPILERID, sizeof(m_xsdt->header.aslcompilerid));
+    // m_xsdt->header.aslcompilerrevision = ASLCOMPILERREVISION;
+    // m_xsdt->entries[0] = ACPI_MADT_GPA;
+    // m_xsdt->entries[1] = ACPI_FADT_GPA;
+    // m_xsdt->header.checksum = acpi_checksum(m_xsdt.get(), m_xsdt->header.length);
+
+    // std::strncpy(m_madt->header.signature, "APIC", sizeof(m_madt->header.signature));
+    // m_madt->header.length = sizeof(madt_t);
+    // m_madt->header.revision = 4;
+    // m_madt->header.checksum = 0;
+    // std::strncpy(m_madt->header.oemid, OEMID, sizeof(m_madt->header.oemid));
+    // std::strncpy(m_madt->header.oemtableid, OEMTABLEID, sizeof(m_madt->header.oemtableid));
+    // m_madt->header.oemrevision = OEMREVISION;
+    // std::strncpy(m_madt->header.aslcompilerid, ASLCOMPILERID, sizeof(m_madt->header.aslcompilerid));
+    // m_madt->header.aslcompilerrevision = ASLCOMPILERREVISION;
+    // m_madt->address = LAPIC_GPA;
+    // m_madt->flags = 0;
+
+    // m_madt->lapic.header.type = ICS_TYPE_LOCAL_APIC;
+    // m_madt->lapic.header.length = 8;
+    // m_madt->lapic.processorid = 0;      // TODO: This should be generated from the vCPUs
+    // m_madt->lapic.id = 0;               // TODO: This should be generated from the vCPUs
+    // m_madt->lapic.flags = 1;
+
+    // m_madt->ioapic.header.type = ICS_TYPE_IO_APIC;
+    // m_madt->ioapic.header.length = sizeof(ics_ioapic_t);
+    // m_madt->ioapic.id = 0;
+    // m_madt->ioapic.reserved = 0;
+    // m_madt->ioapic.address = IOAPIC_GPA;
+    // m_madt->ioapic.gsi_base = 0;
+
+    // m_madt->header.checksum = acpi_checksum(m_madt.get(), m_madt->header.length);
+
+    // std::strncpy(m_fadt->header.signature, "FACP", sizeof(m_fadt->header.signature));
+    // m_fadt->header.length = sizeof(fadt_t);
+    // m_fadt->header.revision = 6;
+    // m_fadt->header.checksum = 0;
+    // std::strncpy(m_fadt->header.oemid, OEMID, sizeof(m_fadt->header.oemid));
+    // std::strncpy(m_fadt->header.oemtableid, OEMTABLEID, sizeof(m_fadt->header.oemtableid));
+    // m_fadt->header.oemrevision = OEMREVISION;
+    // std::strncpy(m_fadt->header.aslcompilerid, ASLCOMPILERID, sizeof(m_fadt->header.aslcompilerid));
+    // m_fadt->header.aslcompilerrevision = ASLCOMPILERREVISION;
+    // m_fadt->dsdt = 0;
+    // m_fadt->flags = 0x101873U;
+    // m_fadt->minorrevision = 1;
+    // m_fadt->xdsdt = ACPI_DSDT_GPA;
+    // m_fadt->hypervisorid = 0xBFU;
+    // m_fadt->header.checksum = acpi_checksum(m_fadt.get(), m_fadt->header.length);
+
+    // std::strncpy(m_dsdt->header.signature, "DSDT", sizeof(m_dsdt->header.signature));
+    // m_dsdt->header.length = sizeof(dsdt_t);
+    // m_dsdt->header.revision = 6;
+    // m_dsdt->header.checksum = 0;
+    // std::strncpy(m_dsdt->header.oemid, OEMID, sizeof(m_dsdt->header.oemid));
+    // std::strncpy(m_dsdt->header.oemtableid, OEMTABLEID, sizeof(m_dsdt->header.oemtableid));
+    // m_dsdt->header.oemrevision = OEMREVISION;
+    // std::strncpy(m_dsdt->header.aslcompilerid, ASLCOMPILERID, sizeof(m_dsdt->header.aslcompilerid));
+    // m_dsdt->header.aslcompilerrevision = ASLCOMPILERREVISION;
+    // m_dsdt->header.checksum = acpi_checksum(m_dsdt.get(), m_dsdt->header.length);
+
+    // auto rsdp_hpa = g_mm->virtptr_to_physint(m_rsdp.get());
+    // auto xsdt_hpa = g_mm->virtptr_to_physint(m_xsdt.get());
+    // auto madt_hpa = g_mm->virtptr_to_physint(m_madt.get());
+    // auto fadt_hpa = g_mm->virtptr_to_physint(m_fadt.get());
+    // auto dsdt_hpa = g_mm->virtptr_to_physint(m_dsdt.get());
+
+    // m_ept_map.map_4k(ACPI_RSDP_GPA, rsdp_hpa, ept::mmap::attr_type::read_only);
+    // m_ept_map.map_4k(ACPI_XSDT_GPA, xsdt_hpa, ept::mmap::attr_type::read_only);
+    // m_ept_map.map_4k(ACPI_MADT_GPA, madt_hpa, ept::mmap::attr_type::read_only);
+    // m_ept_map.map_4k(ACPI_FADT_GPA, fadt_hpa, ept::mmap::attr_type::read_only);
+    // m_ept_map.map_4k(ACPI_DSDT_GPA, dsdt_hpa, ept::mmap::attr_type::read_only);
+
 #pragma pack(pop)
 
 #endif

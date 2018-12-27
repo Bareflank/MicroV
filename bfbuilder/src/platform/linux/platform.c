@@ -26,9 +26,14 @@
 #include <linux/mm.h>
 #include <linux/vmalloc.h>
 
+DEFINE_MUTEX(g_mutex);
+
 int64_t
 platform_init(void)
-{ return BF_SUCCESS; }
+{
+    mutex_init(&g_mutex);
+    return BF_SUCCESS;
+}
 
 void *
 platform_alloc_rw(uint64_t len)
@@ -91,11 +96,25 @@ platform_memset(void *ptr, char value, uint64_t num)
 }
 
 void *
-platform_memcpy(void *dst, const void *src, uint64_t num)
+platform_memcpy(
+    void *dst, uint64_t dst_size, const void *src, uint64_t src_size, uint64_t num)
 {
-    if (!dst || !src) {
-        return nullptr;
+    if (dst == 0 || src == 0) {
+        return 0;
+    }
+
+    if (num > dst_size || num > src_size) {
+        return 0;
     }
 
     return memcpy(dst, src, num);
 }
+
+void
+platform_acquire_mutex(void)
+{ mutex_lock(&g_mutex); }
+
+void
+platform_release_mutex(void)
+{ mutex_unlock(&g_mutex); }
+

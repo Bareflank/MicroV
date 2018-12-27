@@ -33,70 +33,6 @@
 #include <bfconstants.h>
 #include <bfplatform.h>
 
-#define MAX_VMS 0x1000
-struct vm_t g_vms[MAX_VMS] = {0};
-
-/* -------------------------------------------------------------------------- */
-/* VM Helpers                                                                 */
-/* -------------------------------------------------------------------------- */
-
-DEFINE_MUTEX(g_vm_mutex);
-
-static struct vm_t *
-acquire_vm(void)
-{
-    int64_t i;
-    struct vm_t *vm = 0;
-
-    mutex_lock(&g_vm_mutex);
-
-    for (i = 0; i < MAX_VMS; i++) {
-        vm = &g_vms[i];
-        if (vm->used == 0) {
-            break;
-        }
-    }
-
-    if (i == MAX_VMS) {
-        BFALERT("MAX_VMS reached. No more VMs can be created\n");
-        goto done;
-    }
-
-    platform_memset(vm, 0, sizeof(struct vm_t));
-    vm->used = 1;
-
-done:
-
-    mutex_unlock(&g_vm_mutex);
-    return vm;
-}
-
-static struct vm_t *
-get_vm(domainid_t domainid)
-{
-    int64_t i;
-    struct vm_t *vm = 0;
-
-    mutex_lock(&g_vm_mutex);
-
-    for (i = 0; i < MAX_VMS; i++) {
-        vm = &g_vms[i];
-        if (vm->used == 1 && vm->domainid == domainid) {
-            break;
-        }
-    }
-
-    if (i == MAX_VMS) {
-        BFALERT("MAX_VMS reached. Could not locate VM\n");
-        goto done;
-    }
-
-done:
-
-    mutex_unlock(&g_vm_mutex);
-    return vm;
-}
-
 /* -------------------------------------------------------------------------- */
 /* Misc Device                                                                */
 /* -------------------------------------------------------------------------- */
@@ -124,6 +60,10 @@ ioctl_create_from_elf(struct create_from_elf_args *args)
     void *file = 0;
     void *cmdl = 0;
 
+    if (args == 0) {
+        return BF_IOCTL_FAILURE;
+    }
+
     ret = copy_from_user(
         &kern_args, args, sizeof(struct create_from_elf_args));
     if (ret != 0) {
@@ -131,7 +71,7 @@ ioctl_create_from_elf(struct create_from_elf_args *args)
         return BF_IOCTL_FAILURE;
     }
 
-    if (kern_args.file_size != 0) {
+    if (kern_args.file != 0 && kern_args.file_size != 0) {
         file = platform_alloc_rw(kern_args.file_size);
         if (file == NULL) {
             BFALERT("IOCTL_CREATE_FROM_ELF: failed to allocate memory for file\n");
@@ -148,7 +88,7 @@ ioctl_create_from_elf(struct create_from_elf_args *args)
         kern_args.file = file;
     }
 
-    if (kern_args.cmdl_size != 0) {
+    if (kern_args.cmdl != 0 && kern_args.cmdl_size != 0) {
         cmdl = platform_alloc_rw(kern_args.cmdl_size);
         if (cmdl == NULL) {
             BFALERT("IOCTL_CREATE_FROM_ELF: failed to allocate memory for file\n");
@@ -165,7 +105,7 @@ ioctl_create_from_elf(struct create_from_elf_args *args)
         kern_args.cmdl = cmdl;
     }
 
-    ret = common_create_from_elf(acquire_vm(), &kern_args);
+    ret = common_create_from_elf(&kern_args);
     if (ret != BF_SUCCESS) {
         BFDEBUG("common_create_from_elf failed: %llx\n", ret);
         goto failed;
@@ -178,7 +118,7 @@ ioctl_create_from_elf(struct create_from_elf_args *args)
         args, &kern_args, sizeof(struct create_from_elf_args));
     if (ret != 0) {
         BFALERT("IOCTL_CREATE_FROM_ELF: failed to copy args to userspace\n");
-        common_destroy(get_vm(kern_args.domainid));
+        common_destroy(kern_args.domainid);
         goto failed;
     }
 
@@ -212,7 +152,7 @@ ioctl_destroy(domainid_t *args)
         return BF_IOCTL_FAILURE;
     }
 
-    ret = common_destroy(get_vm(domainid));
+    ret = common_destroy(domainid);
     if (ret != BF_SUCCESS) {
         BFDEBUG("common_destroy failed: %llx\n", ret);
         return BF_IOCTL_FAILURE;
@@ -258,7 +198,7 @@ static struct miscdevice builder_dev = {
 int
 dev_init(void)
 {
-    mutex_init(&g_vm_mutex);
+    platform_init();
 
     if (misc_register(&builder_dev) != 0) {
         BFALERT("misc_register failed\n");

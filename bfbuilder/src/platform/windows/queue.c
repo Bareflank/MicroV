@@ -30,70 +30,6 @@
 #include <bfconstants.h>
 #include <bfplatform.h>
 
-#define MAX_VMS 0x1000
-struct vm_t g_vms[MAX_VMS] = {0};
-
-/* -------------------------------------------------------------------------- */
-/* VM Helpers                                                                 */
-/* -------------------------------------------------------------------------- */
-
-FAST_MUTEX g_vm_mutex;
-
-static struct vm_t *
-acquire_vm(void)
-{
-    int64_t i;
-    struct vm_t *vm = 0;
-
-    ExAcquireFastMutex(&g_vm_mutex);
-
-    for (i = 0; i < MAX_VMS; i++) {
-        vm = &g_vms[i];
-        if (vm->used == 0) {
-            break;
-        }
-    }
-
-    if (i == MAX_VMS) {
-        BFALERT("MAX_VMS reached. No more VMs can be created\n");
-        goto done;
-    }
-
-    platform_memset(vm, 0, sizeof(struct vm_t));
-    vm->used = 1;
-
-done:
-
-    ExReleaseFastMutex(&g_vm_mutex);
-    return vm;
-}
-
-static struct vm_t *
-get_vm(domainid_t domainid)
-{
-    int64_t i;
-    struct vm_t *vm = 0;
-
-    ExAcquireFastMutex(&g_vm_mutex);
-
-    for (i = 0; i < MAX_VMS; i++) {
-        vm = &g_vms[i];
-        if (vm->used == 1 && vm->domainid == domainid) {
-            break;
-        }
-    }
-
-    if (i == MAX_VMS) {
-        BFALERT("MAX_VMS reached. Could not locate VM\n");
-        goto done;
-    }
-
-done:
-
-    ExReleaseFastMutex(&g_vm_mutex);
-    return vm;
-}
-
 /* -------------------------------------------------------------------------- */
 /* Queue Functions                                                            */
 /* -------------------------------------------------------------------------- */
@@ -106,7 +42,9 @@ ioctl_create_from_elf(struct create_from_elf_args *args)
     void *file = 0;
     void *cmdl = 0;
 
-    if (args->file_size != 0) {
+https://github.com/Microsoft/Windows-driver-samples/blob/master/general/ioctl/wdm/sys/sioctl.c
+
+    if (args->file != 0 && args->file_size != 0) {
         file = platform_alloc_rw(args->file_size);
         if (file == NULL) {
             BFALERT("IOCTL_CREATE_FROM_ELF: failed to allocate memory for file\n");
@@ -117,7 +55,7 @@ ioctl_create_from_elf(struct create_from_elf_args *args)
         args->file = file;
     }
 
-    if (args->cmdl_size != 0) {
+    if (args->file != 0 && args->cmdl_size != 0) {
         cmdl = platform_alloc_rw(args->cmdl_size);
         if (cmdl == NULL) {
             BFALERT("IOCTL_CREATE_FROM_ELF: failed to allocate memory for file\n");
@@ -128,7 +66,7 @@ ioctl_create_from_elf(struct create_from_elf_args *args)
         args->cmdl = cmdl;
     }
 
-    ret = common_create_from_elf(acquire_vm(), args);
+    ret = common_create_from_elf(args);
     if (ret != BF_SUCCESS) {
         BFDEBUG("common_create_from_elf failed: %llx\n", ret);
         goto failed;
@@ -163,7 +101,7 @@ ioctl_destroy(domainid_t *args)
 
     platform_memcpy(&domainid, args, sizeof(domainid_t));
 
-    ret = common_destroy(get_vm(domainid));
+    ret = common_destroy(domainid);
     if (ret != BF_SUCCESS) {
         BFDEBUG("common_destroy failed: %llx\n", ret);
         return BF_IOCTL_FAILURE;
@@ -182,7 +120,7 @@ bfbuilderQueueInitialize(
     NTSTATUS status;
     WDF_IO_QUEUE_CONFIG queueConfig;
 
-    ExInitializeFastMutex(&g_vm_mutex);
+    platform_init();
 
     WDF_IO_QUEUE_CONFIG_INIT_DEFAULT_QUEUE(
         &queueConfig,

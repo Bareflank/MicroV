@@ -38,7 +38,7 @@ else()
 endif()
 
 add_shared_library(
-    hyperkernel_hve
+    boxy_hve
     SOURCES ${SOURCES}
     DEFINES SHARED_HYPERKERNEL_HVE
     DEFINES SHARED_EAPIS_HVE
@@ -48,7 +48,7 @@ add_shared_library(
 )
 
 add_static_library(
-    hyperkernel_hve
+    boxy_hve
     SOURCES ${SOURCES}
     DEFINES STATIC_HYPERKERNEL_HVE
     DEFINES STATIC_EAPIS_HVE
