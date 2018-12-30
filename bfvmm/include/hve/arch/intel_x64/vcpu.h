@@ -118,16 +118,6 @@ public:
     // VMCall
     //--------------------------------------------------------------------------
 
-    /// Get VMCall Object
-    ///
-    /// @expects
-    /// @ensures
-    ///
-    /// @return Returns the VMCall handler stored in the apis if VMCall
-    ///     trapping is enabled, otherwise an exception is thrown
-    ///
-    gsl::not_null<vmcall_handler *> vmcall();
-
     /// Add VMCall Handler
     ///
     /// @expects
@@ -286,13 +276,19 @@ public:
 
 private:
 
+    void setup_default_controls();
+    void setup_default_handlers();
+    void setup_default_register_state();
+
+private:
+
     domain *m_domain{};
 
     external_interrupt_handler m_external_interrupt_handler;
     vmcall_handler m_vmcall_handler;
 
-    vmcall_domain_op_handler m_vmcall_domain_op_handler;
     vmcall_run_op_handler m_vmcall_run_op_handler;
+    vmcall_domain_op_handler m_vmcall_domain_op_handler;
     vmcall_vcpu_op_handler m_vmcall_vcpu_op_handler;
 
     bool m_killed{};

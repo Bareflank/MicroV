@@ -22,6 +22,7 @@
 #ifndef VMCALL_RUN_INTEL_X64_HYPERKERNEL_H
 #define VMCALL_RUN_INTEL_X64_HYPERKERNEL_H
 
+#include <bfhypercall.h>
 #include <bfvmm/hve/arch/intel_x64/vcpu.h>
 
 // -----------------------------------------------------------------------------
@@ -70,7 +71,9 @@ private:
 private:
 
     vcpu *m_vcpu;
+
     vcpu *m_child_vcpu;
+    vcpuid_t m_child_vcpuid;
 
 public:
 

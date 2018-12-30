@@ -89,7 +89,7 @@ public:
     /// @param gpa the guest physical address
     /// @param hpa the host physical address
     ///
-    void map_1g_ro(uintptr_t gpa, uintptr_t hpa);
+    void map_1g_r(uintptr_t gpa, uintptr_t hpa);
 
     /// Map 2m GPA to HPA (Read-Only)
     ///
@@ -102,7 +102,7 @@ public:
     /// @param gpa the guest physical address
     /// @param hpa the host physical address
     ///
-    void map_2m_ro(uintptr_t gpa, uintptr_t hpa);
+    void map_2m_r(uintptr_t gpa, uintptr_t hpa);
 
     /// Map 4k GPA to HPA (Read-Only)
     ///
@@ -115,7 +115,7 @@ public:
     /// @param gpa the guest physical address
     /// @param hpa the host physical address
     ///
-    void map_4k_ro(uintptr_t gpa, uintptr_t hpa);
+    void map_4k_r(uintptr_t gpa, uintptr_t hpa);
 
     /// Map 1g GPA to HPA (Read/Wrtie)
     ///
@@ -263,7 +263,7 @@ public:
     ///
     /// Dumps the contents of the active UART to a provided buffer. Either
     /// set_uart or set_pt_uart must be executed for this function to
-    /// succeed
+    /// succeed. Once complete, the UART's internal buffer is cleared.
     ///
     /// @expects
     /// @ensures
@@ -272,6 +272,138 @@ public:
     /// @return the number of bytes transferred to the buffer
     ///
     uint64_t dump_uart(const gsl::span<char> &buffer);
+
+public:
+
+    /// Domain Registers
+    ///
+    /// The domain registers are read/write registers that are used to set
+    /// the initial state of a guest vCPU as it is created. Once a vCPU is
+    /// created it will use its own internal versions of each of these
+    /// registers. Note that dom0 vCPUs do not use these at all.
+    ///
+
+    /// @cond
+
+    VIRTUAL uint64_t rax() const noexcept;
+    VIRTUAL void set_rax(uint64_t val) noexcept;
+    VIRTUAL uint64_t rbx() const noexcept;
+    VIRTUAL void set_rbx(uint64_t val) noexcept;
+    VIRTUAL uint64_t rcx() const noexcept;
+    VIRTUAL void set_rcx(uint64_t val) noexcept;
+    VIRTUAL uint64_t rdx() const noexcept;
+    VIRTUAL void set_rdx(uint64_t val) noexcept;
+    VIRTUAL uint64_t rbp() const noexcept;
+    VIRTUAL void set_rbp(uint64_t val) noexcept;
+    VIRTUAL uint64_t rsi() const noexcept;
+    VIRTUAL void set_rsi(uint64_t val) noexcept;
+    VIRTUAL uint64_t rdi() const noexcept;
+    VIRTUAL void set_rdi(uint64_t val) noexcept;
+    VIRTUAL uint64_t r08() const noexcept;
+    VIRTUAL void set_r08(uint64_t val) noexcept;
+    VIRTUAL uint64_t r09() const noexcept;
+    VIRTUAL void set_r09(uint64_t val) noexcept;
+    VIRTUAL uint64_t r10() const noexcept;
+    VIRTUAL void set_r10(uint64_t val) noexcept;
+    VIRTUAL uint64_t r11() const noexcept;
+    VIRTUAL void set_r11(uint64_t val) noexcept;
+    VIRTUAL uint64_t r12() const noexcept;
+    VIRTUAL void set_r12(uint64_t val) noexcept;
+    VIRTUAL uint64_t r13() const noexcept;
+    VIRTUAL void set_r13(uint64_t val) noexcept;
+    VIRTUAL uint64_t r14() const noexcept;
+    VIRTUAL void set_r14(uint64_t val) noexcept;
+    VIRTUAL uint64_t r15() const noexcept;
+    VIRTUAL void set_r15(uint64_t val) noexcept;
+    VIRTUAL uint64_t rip() const noexcept;
+    VIRTUAL void set_rip(uint64_t val) noexcept;
+    VIRTUAL uint64_t rsp() const noexcept;
+    VIRTUAL void set_rsp(uint64_t val) noexcept;
+    VIRTUAL uint64_t gdt_base() const noexcept;
+    VIRTUAL void set_gdt_base(uint64_t val) noexcept;
+    VIRTUAL uint64_t gdt_limit() const noexcept;
+    VIRTUAL void set_gdt_limit(uint64_t val) noexcept;
+    VIRTUAL uint64_t idt_base() const noexcept;
+    VIRTUAL void set_idt_base(uint64_t val) noexcept;
+    VIRTUAL uint64_t idt_limit() const noexcept;
+    VIRTUAL void set_idt_limit(uint64_t val) noexcept;
+    VIRTUAL uint64_t cr0() const noexcept;
+    VIRTUAL void set_cr0(uint64_t val) noexcept;
+    VIRTUAL uint64_t cr3() const noexcept;
+    VIRTUAL void set_cr3(uint64_t val) noexcept;
+    VIRTUAL uint64_t cr4() const noexcept;
+    VIRTUAL void set_cr4(uint64_t val) noexcept;
+    VIRTUAL uint64_t ia32_efer() const noexcept;
+    VIRTUAL void set_ia32_efer(uint64_t val) noexcept;
+    VIRTUAL uint64_t ia32_pat() const noexcept;
+    VIRTUAL void set_ia32_pat(uint64_t val) noexcept;
+
+    VIRTUAL uint64_t es_selector() const noexcept;
+    VIRTUAL void set_es_selector(uint64_t val) noexcept;
+    VIRTUAL uint64_t es_base() const noexcept;
+    VIRTUAL void set_es_base(uint64_t val) noexcept;
+    VIRTUAL uint64_t es_limit() const noexcept;
+    VIRTUAL void set_es_limit(uint64_t val) noexcept;
+    VIRTUAL uint64_t es_access_rights() const noexcept;
+    VIRTUAL void set_es_access_rights(uint64_t val) noexcept;
+    VIRTUAL uint64_t cs_selector() const noexcept;
+    VIRTUAL void set_cs_selector(uint64_t val) noexcept;
+    VIRTUAL uint64_t cs_base() const noexcept;
+    VIRTUAL void set_cs_base(uint64_t val) noexcept;
+    VIRTUAL uint64_t cs_limit() const noexcept;
+    VIRTUAL void set_cs_limit(uint64_t val) noexcept;
+    VIRTUAL uint64_t cs_access_rights() const noexcept;
+    VIRTUAL void set_cs_access_rights(uint64_t val) noexcept;
+    VIRTUAL uint64_t ss_selector() const noexcept;
+    VIRTUAL void set_ss_selector(uint64_t val) noexcept;
+    VIRTUAL uint64_t ss_base() const noexcept;
+    VIRTUAL void set_ss_base(uint64_t val) noexcept;
+    VIRTUAL uint64_t ss_limit() const noexcept;
+    VIRTUAL void set_ss_limit(uint64_t val) noexcept;
+    VIRTUAL uint64_t ss_access_rights() const noexcept;
+    VIRTUAL void set_ss_access_rights(uint64_t val) noexcept;
+    VIRTUAL uint64_t ds_selector() const noexcept;
+    VIRTUAL void set_ds_selector(uint64_t val) noexcept;
+    VIRTUAL uint64_t ds_base() const noexcept;
+    VIRTUAL void set_ds_base(uint64_t val) noexcept;
+    VIRTUAL uint64_t ds_limit() const noexcept;
+    VIRTUAL void set_ds_limit(uint64_t val) noexcept;
+    VIRTUAL uint64_t ds_access_rights() const noexcept;
+    VIRTUAL void set_ds_access_rights(uint64_t val) noexcept;
+    VIRTUAL uint64_t fs_selector() const noexcept;
+    VIRTUAL void set_fs_selector(uint64_t val) noexcept;
+    VIRTUAL uint64_t fs_base() const noexcept;
+    VIRTUAL void set_fs_base(uint64_t val) noexcept;
+    VIRTUAL uint64_t fs_limit() const noexcept;
+    VIRTUAL void set_fs_limit(uint64_t val) noexcept;
+    VIRTUAL uint64_t fs_access_rights() const noexcept;
+    VIRTUAL void set_fs_access_rights(uint64_t val) noexcept;
+    VIRTUAL uint64_t gs_selector() const noexcept;
+    VIRTUAL void set_gs_selector(uint64_t val) noexcept;
+    VIRTUAL uint64_t gs_base() const noexcept;
+    VIRTUAL void set_gs_base(uint64_t val) noexcept;
+    VIRTUAL uint64_t gs_limit() const noexcept;
+    VIRTUAL void set_gs_limit(uint64_t val) noexcept;
+    VIRTUAL uint64_t gs_access_rights() const noexcept;
+    VIRTUAL void set_gs_access_rights(uint64_t val) noexcept;
+    VIRTUAL uint64_t tr_selector() const noexcept;
+    VIRTUAL void set_tr_selector(uint64_t val) noexcept;
+    VIRTUAL uint64_t tr_base() const noexcept;
+    VIRTUAL void set_tr_base(uint64_t val) noexcept;
+    VIRTUAL uint64_t tr_limit() const noexcept;
+    VIRTUAL void set_tr_limit(uint64_t val) noexcept;
+    VIRTUAL uint64_t tr_access_rights() const noexcept;
+    VIRTUAL void set_tr_access_rights(uint64_t val) noexcept;
+    VIRTUAL uint64_t ldtr_selector() const noexcept;
+    VIRTUAL void set_ldtr_selector(uint64_t val) noexcept;
+    VIRTUAL uint64_t ldtr_base() const noexcept;
+    VIRTUAL void set_ldtr_base(uint64_t val) noexcept;
+    VIRTUAL uint64_t ldtr_limit() const noexcept;
+    VIRTUAL void set_ldtr_limit(uint64_t val) noexcept;
+    VIRTUAL uint64_t ldtr_access_rights() const noexcept;
+    VIRTUAL void set_ldtr_access_rights(uint64_t val) noexcept;
+
+    /// @endcond
 
 public:
 
@@ -299,6 +431,66 @@ private:
     uart m_uart_3E8{0x3E8};
     uart m_uart_2E8{0x2E8};
     std::unique_ptr<uart> m_pt_uart{};
+
+    uint64_t m_rax;
+    uint64_t m_rbx;
+    uint64_t m_rcx;
+    uint64_t m_rdx;
+    uint64_t m_rbp;
+    uint64_t m_rsi;
+    uint64_t m_rdi;
+    uint64_t m_r08;
+    uint64_t m_r09;
+    uint64_t m_r10;
+    uint64_t m_r11;
+    uint64_t m_r12;
+    uint64_t m_r13;
+    uint64_t m_r14;
+    uint64_t m_r15;
+    uint64_t m_rip;
+    uint64_t m_rsp;
+    uint64_t m_gdt_base;
+    uint64_t m_gdt_limit;
+    uint64_t m_idt_base;
+    uint64_t m_idt_limit;
+    uint64_t m_cr0;
+    uint64_t m_cr3;
+    uint64_t m_cr4;
+    uint64_t m_ia32_efer;
+    uint64_t m_ia32_pat;
+
+    uint64_t m_es_selector;
+    uint64_t m_es_base;
+    uint64_t m_es_limit;
+    uint64_t m_es_access_rights;
+    uint64_t m_cs_selector;
+    uint64_t m_cs_base;
+    uint64_t m_cs_limit;
+    uint64_t m_cs_access_rights;
+    uint64_t m_ss_selector;
+    uint64_t m_ss_base;
+    uint64_t m_ss_limit;
+    uint64_t m_ss_access_rights;
+    uint64_t m_ds_selector;
+    uint64_t m_ds_base;
+    uint64_t m_ds_limit;
+    uint64_t m_ds_access_rights;
+    uint64_t m_fs_selector;
+    uint64_t m_fs_base;
+    uint64_t m_fs_limit;
+    uint64_t m_fs_access_rights;
+    uint64_t m_gs_selector;
+    uint64_t m_gs_base;
+    uint64_t m_gs_limit;
+    uint64_t m_gs_access_rights;
+    uint64_t m_tr_selector;
+    uint64_t m_tr_base;
+    uint64_t m_tr_limit;
+    uint64_t m_tr_access_rights;
+    uint64_t m_ldtr_selector;
+    uint64_t m_ldtr_base;
+    uint64_t m_ldtr_limit;
+    uint64_t m_ldtr_access_rights;
 
 public:
 

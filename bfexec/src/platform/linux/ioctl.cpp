@@ -27,10 +27,11 @@ ioctl::ioctl() :
 { }
 
 void
-ioctl::call_ioctl_create_from_elf(create_from_elf_args &args)
+ioctl::call_ioctl_create_vm_from_bzimage(
+    create_vm_from_bzimage_args &args)
 {
     if (auto d = dynamic_cast<ioctl_private *>(m_d.get())) {
-        d->call_ioctl_create_from_elf(args);
+        d->call_ioctl_create_vm_from_bzimage(args);
     }
 }
 

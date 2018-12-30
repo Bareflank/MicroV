@@ -92,16 +92,17 @@ vcpu::vcpu(
     eapis::intel_x64::vcpu{
     id, domain->global_state()
 },
-
     m_domain{domain},
 
     m_external_interrupt_handler{this},
     m_vmcall_handler{this},
 
-    m_vmcall_domain_op_handler{this},
     m_vmcall_run_op_handler{this},
+    m_vmcall_domain_op_handler{this},
     m_vmcall_vcpu_op_handler{this}
 {
+    this->set_eptp(domain->ept());
+
     if (this->is_dom0()) {
         this->write_dom0_guest_state(domain);
     }
@@ -116,123 +117,14 @@ vcpu::vcpu(
 
 void
 vcpu::write_dom0_guest_state(domain *domain)
-{
-    this->set_eptp(domain->ept());
-}
+{ }
 
 void
 vcpu::write_domU_guest_state(domain *domain)
 {
-    this->set_eptp(domain->ept());
-
-    // using namespace ::intel_x64;
-    // using namespace ::intel_x64::vmcs;
-    // using namespace ::intel_x64::cpuid;
-
-    // using namespace ::x64::access_rights;
-    // using namespace ::x64::segment_register;
-
-    // uint64_t cr0 = guest_cr0::get();
-    // cr0 |= cr0::protection_enable::mask;
-    // cr0 |= cr0::monitor_coprocessor::mask;
-    // cr0 |= cr0::extension_type::mask;
-    // cr0 |= cr0::numeric_error::mask;
-    // cr0 |= cr0::write_protect::mask;
-
-    // uint64_t cr4 = guest_cr4::get();
-    // cr4 |= cr4::vmx_enable_bit::mask;
-
-    // guest_cr0::set(cr0);
-    // guest_cr4::set(cr4);
-
-    // vm_entry_controls::ia_32e_mode_guest::disable();
-
-    // unsigned es_index = 3;
-    // unsigned cs_index = 2;
-    // unsigned ss_index = 3;
-    // unsigned ds_index = 3;
-    // unsigned fs_index = 3;
-    // unsigned gs_index = 3;
-    // unsigned tr_index = 4;
-
-    // guest_es_selector::set(es_index << 3);
-    // guest_cs_selector::set(cs_index << 3);
-    // guest_ss_selector::set(ss_index << 3);
-    // guest_ds_selector::set(ds_index << 3);
-    // guest_fs_selector::set(fs_index << 3);
-    // guest_gs_selector::set(gs_index << 3);
-    // guest_tr_selector::set(tr_index << 3);
-
-    // guest_es_limit::set(domain->gdt()->limit(es_index));
-    // guest_cs_limit::set(domain->gdt()->limit(cs_index));
-    // guest_ss_limit::set(domain->gdt()->limit(ss_index));
-    // guest_ds_limit::set(domain->gdt()->limit(ds_index));
-    // guest_fs_limit::set(domain->gdt()->limit(fs_index));
-    // guest_gs_limit::set(domain->gdt()->limit(gs_index));
-    // guest_tr_limit::set(domain->gdt()->limit(tr_index));
-
-    // guest_es_access_rights::set(domain->gdt()->access_rights(es_index));
-    // guest_cs_access_rights::set(domain->gdt()->access_rights(cs_index));
-    // guest_ss_access_rights::set(domain->gdt()->access_rights(ss_index));
-    // guest_ds_access_rights::set(domain->gdt()->access_rights(ds_index));
-    // guest_fs_access_rights::set(domain->gdt()->access_rights(fs_index));
-    // guest_gs_access_rights::set(domain->gdt()->access_rights(gs_index));
-    // guest_tr_access_rights::set(domain->gdt()->access_rights(tr_index));
-
-    // guest_ldtr_access_rights::set(guest_ldtr_access_rights::unusable::mask);
-
-    // guest_es_base::set(domain->gdt()->base(es_index));
-    // guest_cs_base::set(domain->gdt()->base(cs_index));
-    // guest_ss_base::set(domain->gdt()->base(ss_index));
-    // guest_ds_base::set(domain->gdt()->base(ds_index));
-    // guest_fs_base::set(domain->gdt()->base(fs_index));
-    // guest_gs_base::set(domain->gdt()->base(gs_index));
-    // guest_tr_base::set(domain->gdt()->base(tr_index));
-
-    // guest_rflags::set(2);
-    // vmcs_link_pointer::set(0xFFFFFFFFFFFFFFFF);
-
-    // // m_lapic.init();
-    // // m_ioapic.init();
-
-    // using namespace primary_processor_based_vm_execution_controls;
-    // hlt_exiting::enable();
-    // rdpmc_exiting::enable();
-
-    // using namespace secondary_processor_based_vm_execution_controls;
-    // enable_invpcid::disable();
-    // enable_xsaves_xrstors::disable();
-
-    // this->set_rip(domain->entry());
-    // this->set_rbx(XEN_START_INFO_PAGE_GPA);
-
-    // this->add_default_cpuid_handler(
-    //     ::handler_delegate_t::create<cpuid_handler>()
-    // );
-
-    // this->add_default_wrmsr_handler(
-    //     ::handler_delegate_t::create<wrmsr_handler>()
-    // );
-
-    // this->add_default_rdmsr_handler(
-    //     ::handler_delegate_t::create<rdmsr_handler>()
-    // );
-
-    // this->add_default_io_instruction_handler(
-    //     ::handler_delegate_t::create<io_instruction_handler>()
-    // );
-
-    // this->add_default_ept_read_violation_handler(
-    //     ::handler_delegate_t::create<ept_violation_handler>()
-    // );
-
-    // this->add_default_ept_write_violation_handler(
-    //     ::handler_delegate_t::create<ept_violation_handler>()
-    // );
-
-    // this->add_default_ept_execute_violation_handler(
-    //     ::handler_delegate_t::create<ept_violation_handler>()
-    // );
+    this->setup_default_register_state();
+    this->setup_default_controls();
+    this->setup_default_handlers();
 }
 
 //------------------------------------------------------------------------------
@@ -254,10 +146,6 @@ vcpu::domid() const
 //------------------------------------------------------------------------------
 // VMCall
 //------------------------------------------------------------------------------
-
-gsl::not_null<vmcall_handler *>
-vcpu::vmcall()
-{ return &m_vmcall_handler; }
 
 void
 vcpu::add_vmcall_handler(
@@ -354,6 +242,130 @@ vcpu::halt(const std::string &str)
     else {
         ::x64::pm::stop();
     }
+}
+
+//------------------------------------------------------------------------------
+// Setup Functions
+//------------------------------------------------------------------------------
+
+void
+vcpu::setup_default_controls()
+{
+    using namespace vmcs_n;
+    using namespace vm_entry_controls;
+
+    if (guest_ia32_efer::lme::is_disabled()) {
+        ia_32e_mode_guest::disable();
+    }
+
+    using namespace primary_processor_based_vm_execution_controls;
+    hlt_exiting::enable();
+    rdpmc_exiting::enable();
+
+    using namespace secondary_processor_based_vm_execution_controls;
+    enable_invpcid::disable();
+    enable_xsaves_xrstors::disable();
+}
+
+void
+vcpu::setup_default_handlers()
+{
+    this->add_default_cpuid_handler(
+        ::handler_delegate_t::create<cpuid_handler>()
+    );
+
+    this->add_default_wrmsr_handler(
+        ::handler_delegate_t::create<wrmsr_handler>()
+    );
+
+    this->add_default_rdmsr_handler(
+        ::handler_delegate_t::create<rdmsr_handler>()
+    );
+
+    this->add_default_io_instruction_handler(
+        ::handler_delegate_t::create<io_instruction_handler>()
+    );
+
+    this->add_default_ept_read_violation_handler(
+        ::handler_delegate_t::create<ept_violation_handler>()
+    );
+
+    this->add_default_ept_write_violation_handler(
+        ::handler_delegate_t::create<ept_violation_handler>()
+    );
+
+    this->add_default_ept_execute_violation_handler(
+        ::handler_delegate_t::create<ept_violation_handler>()
+    );
+}
+
+void
+vcpu::setup_default_register_state()
+{
+    using namespace vmcs_n;
+
+    this->set_rax(m_domain->rax());
+    this->set_rbx(m_domain->rbx());
+    this->set_rcx(m_domain->rcx());
+    this->set_rdx(m_domain->rdx());
+    this->set_rbp(m_domain->rbp());
+    this->set_rsi(m_domain->rsi());
+    this->set_rdi(m_domain->rdi());
+    this->set_r08(m_domain->r08());
+    this->set_r09(m_domain->r09());
+    this->set_r10(m_domain->r10());
+    this->set_r11(m_domain->r11());
+    this->set_r12(m_domain->r12());
+    this->set_r13(m_domain->r13());
+    this->set_r14(m_domain->r14());
+    this->set_r15(m_domain->r15());
+    this->set_rip(m_domain->rip());
+    this->set_rsp(m_domain->rsp());
+    this->set_gdt_base(m_domain->gdt_base());
+    this->set_gdt_limit(m_domain->gdt_limit());
+    this->set_idt_base(m_domain->idt_base());
+    this->set_idt_limit(m_domain->idt_limit());
+    this->set_cr0(m_domain->cr0());
+    this->set_cr3(m_domain->cr3());
+    this->set_cr4(m_domain->cr4());
+    this->set_ia32_efer(m_domain->ia32_efer());
+    this->set_ia32_pat(m_domain->ia32_pat());
+
+    this->set_es_selector(m_domain->es_selector());
+    this->set_es_base(m_domain->es_base());
+    this->set_es_limit(m_domain->es_limit());
+    this->set_es_access_rights(m_domain->es_access_rights());
+    this->set_cs_selector(m_domain->cs_selector());
+    this->set_cs_base(m_domain->cs_base());
+    this->set_cs_limit(m_domain->cs_limit());
+    this->set_cs_access_rights(m_domain->cs_access_rights());
+    this->set_ss_selector(m_domain->ss_selector());
+    this->set_ss_base(m_domain->ss_base());
+    this->set_ss_limit(m_domain->ss_limit());
+    this->set_ss_access_rights(m_domain->ss_access_rights());
+    this->set_ds_selector(m_domain->ds_selector());
+    this->set_ds_base(m_domain->ds_base());
+    this->set_ds_limit(m_domain->ds_limit());
+    this->set_ds_access_rights(m_domain->ds_access_rights());
+    this->set_fs_selector(m_domain->fs_selector());
+    this->set_fs_base(m_domain->fs_base());
+    this->set_fs_limit(m_domain->fs_limit());
+    this->set_fs_access_rights(m_domain->fs_access_rights());
+    this->set_gs_selector(m_domain->gs_selector());
+    this->set_gs_base(m_domain->gs_base());
+    this->set_gs_limit(m_domain->gs_limit());
+    this->set_gs_access_rights(m_domain->gs_access_rights());
+    this->set_tr_selector(m_domain->tr_selector());
+    this->set_tr_base(m_domain->tr_base());
+    this->set_tr_limit(m_domain->tr_limit());
+    this->set_tr_access_rights(m_domain->tr_access_rights());
+    this->set_ldtr_selector(m_domain->ldtr_selector());
+    this->set_ldtr_base(m_domain->ldtr_base());
+    this->set_ldtr_limit(m_domain->ldtr_limit());
+    this->set_ldtr_access_rights(m_domain->ldtr_access_rights());
+
+    guest_rflags::set(2);
+    vmcs_link_pointer::set(0xFFFFFFFFFFFFFFFF);
 }
 
 }

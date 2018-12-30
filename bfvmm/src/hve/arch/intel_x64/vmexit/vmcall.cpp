@@ -45,7 +45,7 @@ vmcall_handler::vmcall_handler(
 void
 vmcall_handler::add_handler(
     const handler_delegate_t &d)
-{ m_handlers.push_front(d); }
+{ m_handlers.push_back(d); }
 
 // -----------------------------------------------------------------------------
 // Handlers

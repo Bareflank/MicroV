@@ -69,15 +69,15 @@ domain::setup_domU()
 { }
 
 void
-domain::map_1g_ro(uintptr_t gpa, uintptr_t hpa)
+domain::map_1g_r(uintptr_t gpa, uintptr_t hpa)
 { m_ept_map.map_1g(gpa, hpa, ept::mmap::attr_type::read_only); }
 
 void
-domain::map_2m_ro(uintptr_t gpa, uintptr_t hpa)
+domain::map_2m_r(uintptr_t gpa, uintptr_t hpa)
 { m_ept_map.map_2m(gpa, hpa, ept::mmap::attr_type::read_only); }
 
 void
-domain::map_4k_ro(uintptr_t gpa, uintptr_t hpa)
+domain::map_4k_r(uintptr_t gpa, uintptr_t hpa)
 { m_ept_map.map_4k(gpa, hpa, ept::mmap::attr_type::read_only); }
 
 void
@@ -172,5 +172,133 @@ domain::dump_uart(const gsl::span<char> &buffer)
 
     return 0;
 }
+
+#define domain_reg(reg)                                                         \
+    uint64_t                                                                    \
+    domain::reg() const noexcept                                                \
+    { return m_ ## reg; }
+
+#define domain_set_reg(reg)                                                     \
+    void                                                                        \
+    domain::set_ ## reg(uint64_t val) noexcept                                  \
+    { m_ ## reg = val; }
+
+domain_reg(rax);
+domain_set_reg(rax);
+domain_reg(rbx);
+domain_set_reg(rbx);
+domain_reg(rcx);
+domain_set_reg(rcx);
+domain_reg(rdx);
+domain_set_reg(rdx);
+domain_reg(rbp);
+domain_set_reg(rbp);
+domain_reg(rsi);
+domain_set_reg(rsi);
+domain_reg(rdi);
+domain_set_reg(rdi);
+domain_reg(r08);
+domain_set_reg(r08);
+domain_reg(r09);
+domain_set_reg(r09);
+domain_reg(r10);
+domain_set_reg(r10);
+domain_reg(r11);
+domain_set_reg(r11);
+domain_reg(r12);
+domain_set_reg(r12);
+domain_reg(r13);
+domain_set_reg(r13);
+domain_reg(r14);
+domain_set_reg(r14);
+domain_reg(r15);
+domain_set_reg(r15);
+domain_reg(rip);
+domain_set_reg(rip);
+domain_reg(rsp);
+domain_set_reg(rsp);
+domain_reg(gdt_base);
+domain_set_reg(gdt_base);
+domain_reg(gdt_limit);
+domain_set_reg(gdt_limit);
+domain_reg(idt_base);
+domain_set_reg(idt_base);
+domain_reg(idt_limit);
+domain_set_reg(idt_limit);
+domain_reg(cr0);
+domain_set_reg(cr0);
+domain_reg(cr3);
+domain_set_reg(cr3);
+domain_reg(cr4);
+domain_set_reg(cr4);
+domain_reg(ia32_efer);
+domain_set_reg(ia32_efer);
+domain_reg(ia32_pat);
+domain_set_reg(ia32_pat);
+
+domain_reg(es_selector);
+domain_set_reg(es_selector);
+domain_reg(es_base);
+domain_set_reg(es_base);
+domain_reg(es_limit);
+domain_set_reg(es_limit);
+domain_reg(es_access_rights);
+domain_set_reg(es_access_rights);
+domain_reg(cs_selector);
+domain_set_reg(cs_selector);
+domain_reg(cs_base);
+domain_set_reg(cs_base);
+domain_reg(cs_limit);
+domain_set_reg(cs_limit);
+domain_reg(cs_access_rights);
+domain_set_reg(cs_access_rights);
+domain_reg(ss_selector);
+domain_set_reg(ss_selector);
+domain_reg(ss_base);
+domain_set_reg(ss_base);
+domain_reg(ss_limit);
+domain_set_reg(ss_limit);
+domain_reg(ss_access_rights);
+domain_set_reg(ss_access_rights);
+domain_reg(ds_selector);
+domain_set_reg(ds_selector);
+domain_reg(ds_base);
+domain_set_reg(ds_base);
+domain_reg(ds_limit);
+domain_set_reg(ds_limit);
+domain_reg(ds_access_rights);
+domain_set_reg(ds_access_rights);
+domain_reg(fs_selector);
+domain_set_reg(fs_selector);
+domain_reg(fs_base);
+domain_set_reg(fs_base);
+domain_reg(fs_limit);
+domain_set_reg(fs_limit);
+domain_reg(fs_access_rights);
+domain_set_reg(fs_access_rights);
+domain_reg(gs_selector);
+domain_set_reg(gs_selector);
+domain_reg(gs_base);
+domain_set_reg(gs_base);
+domain_reg(gs_limit);
+domain_set_reg(gs_limit);
+domain_reg(gs_access_rights);
+domain_set_reg(gs_access_rights);
+domain_reg(tr_selector);
+domain_set_reg(tr_selector);
+domain_reg(tr_base);
+domain_set_reg(tr_base);
+domain_reg(tr_limit);
+domain_set_reg(tr_limit);
+domain_reg(tr_access_rights);
+domain_set_reg(tr_access_rights);
+domain_reg(ldtr_selector);
+domain_set_reg(ldtr_selector);
+domain_reg(ldtr_base);
+domain_set_reg(ldtr_base);
+domain_reg(ldtr_limit);
+domain_set_reg(ldtr_limit);
+domain_reg(ldtr_access_rights);
+domain_set_reg(ldtr_access_rights);
 
 }

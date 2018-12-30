@@ -36,8 +36,7 @@ parse_args(int argc, char *argv[])
     ("v,verbose", "Enable verbose output")
     ("version", "Print the version")
     ("affinity", "The host CPU to execute the VM on", value<uint64_t>(), "[core #]")
-    ("attach", "Attach to a VM that was already created", value<uint64_t>(), "[domid]")
-    ("elf", "Create a VM from an ELF file and attach to it")
+    ("bzimage", "Create a VM from a bzImage file")
     ("path", "The VM's path", value<std::string>(), "[path]")
     ("size", "The VM's total RAM", value<uint64_t>(), "[bytes]")
     ("init", "The VM's init process", value<std::string>(), "[path]")
@@ -61,12 +60,8 @@ parse_args(int argc, char *argv[])
         verbose = true;
     }
 
-    if (args.count("attach") && args.count("elf")) {
-        throw std::runtime_error("cannot set both 'attach' and 'elf'");
-    }
-
-    if (!args.count("attach") && !args.count("elf")) {
-        throw std::runtime_error("must specify 'elf' or 'attach'");
+    if (!args.count("bzimage")) {
+        throw std::runtime_error("must specify 'bzimage'");
     }
 
     if (args.count("uart") && args.count("pt_uart")) {

@@ -22,24 +22,15 @@
 #ifndef VERBOSE_H
 #define VERBOSE_H
 
-#define create_elf_vm_verbose()                                                                                                             \
+#define create_vm_from_bzimage_verbose()                                                                                                             \
     if (verbose) {                                                                                                                          \
         std::cout << '\n';                                                                                                                  \
-        std::cout << bfcolor_cyan    "Created VM from ELF file:\n" bfcolor_end;                                                             \
+        std::cout << bfcolor_cyan    "Created VM from bzImage file:\n" bfcolor_end;                                                             \
         std::cout << bfcolor_magenta "--------------------------------------------------------------------------------\n" bfcolor_end;      \
         std::cout << "      path" bfcolor_yellow " | " << bfcolor_green << file.path() << bfcolor_end "\n";                                 \
         std::cout << " domain id" bfcolor_yellow " | " << bfcolor_green << ioctl_args.domainid << bfcolor_end "\n";                         \
         std::cout << "  ram size" bfcolor_yellow " | " << bfcolor_green << (size / 0x1000000) << "MB" << bfcolor_end "\n";                  \
         std::cout << "   cmdline" bfcolor_yellow " | " << bfcolor_green << cmdl.data() << bfcolor_end "\n";                                 \
-    }
-
-#define attach_to_vm_verbose()                                                                                                              \
-    if (verbose) {                                                                                                                          \
-        std::cout << '\n';                                                                                                                  \
-        std::cout << bfcolor_cyan    "Attaching to VM:\n" bfcolor_end;                                                                      \
-        std::cout << bfcolor_magenta "--------------------------------------------------------------------------------\n" bfcolor_end;      \
-        std::cout << " domain id" bfcolor_yellow " | " << bfcolor_green << g_domainid << bfcolor_end "\n";                                  \
-        std::cout << '\n';                                                                                                                  \
     }
 
 #define output_vm_uart_verbose()                                                                                                            \

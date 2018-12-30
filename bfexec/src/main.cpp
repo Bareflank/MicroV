@@ -19,6 +19,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+#include <bfack.h>
 #include <bfgsl.h>
 #include <bfdebug.h>
 #include <bfstring.h>
@@ -54,25 +55,25 @@ vcpu_thread(vcpuid_t vcpuid)
 
     while (true) {
         auto ret = __run_op(vcpuid, 0, 0);
-        switch (run_op_ret(ret)) {
+        switch (run_op_ret_op(ret)) {
             case __enum_run_op__hlt:
                 return;
 
             case __enum_run_op__fault:
                 std::cerr << "[0x" << std::hex << vcpuid << std::dec << "] ";
-                std::cerr << "vcpu fault: " << run_op_arg(ret) << '\n';
+                std::cerr << "vcpu fault: " << run_op_ret_arg(ret) << '\n';
                 return;
 
             case __enum_run_op__resume_after_interrupt:
                 continue;
 
             case __enum_run_op__yield:
-                std::this_thread::sleep_for(microseconds(run_op_arg(ret)));
+                std::this_thread::sleep_for(microseconds(run_op_ret_arg(ret)));
                 continue;
 
             default:
                 std::cerr << "[0x" << std::hex << vcpuid << std::dec << "] ";
-                std::cerr << "unknown vcpu ret: " << run_op_ret(ret) << '\n';
+                std::cerr << "unknown vcpu ret: " << run_op_ret_op(ret) << '\n';
                 return;
         }
     }
@@ -145,7 +146,7 @@ attach_to_vm(const args_type &args)
 {
     bfignored(args);
 
-    if (_cpuid_eax(0xBF00) != 0xBF01) {
+    if (bfack() == 0) {
         throw std::runtime_error("hypervisor not running");
     }
 
@@ -157,7 +158,6 @@ attach_to_vm(const args_type &args)
     std::thread t(vcpu_thread, g_vcpuid);
     std::thread u;
 
-    attach_to_vm_verbose();
     output_vm_uart_verbose();
 
     t.join();
@@ -180,9 +180,9 @@ attach_to_vm(const args_type &args)
 // -----------------------------------------------------------------------------
 
 static void
-create_elf_vm(const args_type &args)
+create_vm_from_bzimage(const args_type &args)
 {
-    struct create_from_elf_args ioctl_args {};
+    create_vm_from_bzimage_args ioctl_args {};
 
     if (!args.count("path")) {
         throw cxxopts::OptionException("must specify --path");
@@ -228,8 +228,8 @@ create_elf_vm(const args_type &args)
     ioctl_args.pt_uart = pt_uart;
     ioctl_args.size = size;
 
-    ctl->call_ioctl_create_from_elf(ioctl_args);
-    create_elf_vm_verbose();
+    ctl->call_ioctl_create_vm_from_bzimage(ioctl_args);
+    create_vm_from_bzimage_verbose();
 
     g_domainid = ioctl_args.domainid;
 }
@@ -256,18 +256,10 @@ protected_main(const args_type &args)
         set_affinity(0);
     }
 
-    if (args.count("elf")) {
-        create_elf_vm(args);
-    }
-    else {
-        g_domainid = args["attach"].as<domainid_t>();
-    }
+    create_vm_from_bzimage(args);
 
     auto ___ = gsl::finally([&] {
-        if (args.count("elf"))
-        {
-            ctl->call_ioctl_destroy(g_domainid);
-        }
+        ctl->call_ioctl_destroy(g_domainid);
     });
 
     return attach_to_vm(args);

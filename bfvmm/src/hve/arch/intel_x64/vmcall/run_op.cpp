@@ -41,15 +41,30 @@ bool
 vmcall_run_op_handler::dispatch(
     gsl::not_null<vcpu *> vcpu)
 {
-    if (vcpu->rax() != __enum_run_op) {
+    // Note:
+    //
+    // This code executes a lot. For example, every time an interrupt fires,
+    // control is handed back to the parent vCPU, so when it is time to
+    // execute the guest again, this code has to execute. As a result, the
+    // following should be considered:
+    // - Keep the code in this function to a minimum. Every line in this
+    //   function has been carefully examined to reduce the total overhead of
+    //   executing a guest.
+    // - Do no assume that the parent vCPU is always the same. It is possible
+    //   for the host to change the parent vCPU the next time this is executed.
+    //   If this happens, a VMCS migration must take place.
+    // - This handler should be the first handler to be called. This way, we
+    //   do no end up looping through the vmcall handlers on every interrupt.
+    //
+
+    if (bfopcode(vcpu->rax()) != __enum_run_op) {
         return false;
     }
 
     try {
-        if (m_child_vcpu == nullptr ||
-            m_child_vcpu->id() != vcpu->rbx()
-           ) {
+        if (m_child_vcpuid != vcpu->rbx()) {
             m_child_vcpu = get_vcpu(vcpu->rbx());
+            m_child_vcpuid = vcpu->rbx();
         }
 
         m_child_vcpu->set_parent_vcpu(vcpu);

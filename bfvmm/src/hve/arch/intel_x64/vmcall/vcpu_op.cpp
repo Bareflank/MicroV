@@ -44,7 +44,7 @@ vmcall_vcpu_op_handler::vcpu_op__create_vcpu(
 {
     try {
         vcpu->set_rax(bfvmm::vcpu::generate_vcpuid());
-        g_vcm->create(vcpu->rax(), get_domain(vcpu->rcx()));
+        g_vcm->create(vcpu->rax(), get_domain(vcpu->rbx()));
     }
     catchall({
         vcpu->set_rax(INVALID_VCPUID);
@@ -55,16 +55,8 @@ void
 vmcall_vcpu_op_handler::vcpu_op__kill_vcpu(
     gsl::not_null<vcpu *> vcpu)
 {
-    // TODO:
-    //
-    // We need to store a list of vCPUs in the domain so that we can verify
-    // that the provided domain matches. We should also check to make sure
-    // that the domain creating the vCPU is the same domain killing the
-    // vCPU.
-    //
-
     try {
-        auto child_vcpu = get_vcpu(vcpu->rcx());
+        auto child_vcpu = get_vcpu(vcpu->rbx());
         child_vcpu->kill();
 
         vcpu->set_rax(SUCCESS);
@@ -78,16 +70,8 @@ void
 vmcall_vcpu_op_handler::vcpu_op__destroy_vcpu(
     gsl::not_null<vcpu *> vcpu)
 {
-    // TODO:
-    //
-    // We need to store a list of vCPUs in the domain so that we can verify
-    // that the provided domain matches. We should also check to make sure
-    // that the domain creating the vCPU is the same domain deleting the
-    // vCPU.
-    //
-
     try {
-        g_vcm->destroy(vcpu->rcx(), nullptr);
+        g_vcm->destroy(vcpu->rbx(), nullptr);
         vcpu->set_rax(SUCCESS);
     }
     catchall({
@@ -99,11 +83,11 @@ bool
 vmcall_vcpu_op_handler::dispatch(
     gsl::not_null<vcpu *> vcpu)
 {
-    if (vcpu->rax() != __enum_vcpu_op) {
+    if (bfopcode(vcpu->rax()) != __enum_vcpu_op) {
         return false;
     }
 
-    switch (vcpu->rbx()) {
+    switch (vcpu->rax()) {
         case __enum_vcpu_op__create_vcpu:
             this->vcpu_op__create_vcpu(vcpu);
             return true;

@@ -46,33 +46,36 @@ extern "C" {
 #define BUILDER_DEVICETYPE 0xF00D
 #endif
 
-#define IOCTL_CREATE_FROM_ELF_CMD 0x901
+#define IOCTL_CREATE_VM_FROM_BZIMAGE_CMD 0x901
 #define IOCTL_DESTROY_CMD 0x902
 
 /**
- * @struct create_from_elf_args
+ * @struct create_vm_from_bzimage_args
  *
- * This structure is used to load and ELF file as a guest VM. This is the
+ * This structure is used to create a VM from a Linux bzImage. This is the
  * information the builder needs to create a domain and load its resources
  * prior to execution.
  *
- * @var create_from_elf_args::file
- *     the ELF file to load
- * @var create_from_elf_args::file_size
- *     the length of the ELF file to load
- * @var create_from_elf_args::cmdl
+ * @var create_vm_from_bzimage_args::file
+ *     the bzImage file to load
+ * @var create_vm_from_bzimage_args::file_size
+ *     the length of the bzImage file to load
+ * @var create_vm_from_bzimage_args::cmdl
  *     the command line arguments to pass to the Linux kernel on boot
- * @var create_from_elf_args::cmdl_length
+ * @var create_vm_from_bzimage_args::cmdl_size
  *     the length of the command line arguments
- * @var create_from_elf_args::uart
- *     defaults to 0. If non zero, the hypervisor will be told to pass-through
- *     the provided uart.
- * @var create_from_elf_args::ram_size
+ * @var create_vm_from_bzimage_args::uart
+ *     defaults to 0 (optional). If non zero, the hypervisor will be told to
+ *     emulate the provided uart.
+ * @var create_vm_from_bzimage_args::pt_uart
+ *     defaults to 0 (optional). If non zero, the hypervisor will be told to
+ *     pass-through the provided uart.
+ * @var create_vm_from_bzimage_args::size
  *     the amount of RAM to give to the domain
- * @var create_from_elf_args::domainid
+ * @var create_vm_from_bzimage_args::domainid
  *     (out) the domain ID of the VM that was created
  */
-struct create_from_elf_args {
+struct create_vm_from_bzimage_args {
     const char *file;
     uint64_t file_size;
 
@@ -92,7 +95,7 @@ struct create_from_elf_args {
 
 #ifdef __linux__
 
-#define IOCTL_CREATE_FROM_ELF _IOWR(BUILDER_MAJOR, IOCTL_CREATE_FROM_ELF_CMD, struct create_from_elf_args *)
+#define IOCTL_CREATE_VM_FROM_BZIMAGE _IOWR(BUILDER_MAJOR, IOCTL_CREATE_VM_FROM_BZIMAGE_CMD, struct create_vm_from_bzimage_args *)
 #define IOCTL_DESTROY _IOW(BUILDER_MAJOR, IOCTL_DESTROY_CMD, domainid_t *)
 
 #endif
@@ -108,7 +111,7 @@ struct create_from_elf_args {
 DEFINE_GUID(GUID_DEVINTERFACE_builder,
     0x0156f59a, 0xdf90, 0x4ac6, 0x85, 0x3d, 0xcf, 0xd9, 0x3e, 0x25, 0x65, 0xc2);
 
-#define IOCTL_CREATE_FROM_ELF CTL_CODE(BUILDER_DEVICETYPE, IOCTL_CREATE_FROM_ELF_CMD, METHOD_IN_DIRECT, FILE_READ_DATA | FILE_WRITE_DATA)
+#define IOCTL_CREATE_VM_FROM_BZIMAGE CTL_CODE(BUILDER_DEVICETYPE, IOCTL_CREATE_VM_FROM_BZIMAGE_CMD, METHOD_IN_DIRECT, FILE_READ_DATA | FILE_WRITE_DATA)
 #define IOCTL_DESTROY CTL_CODE(BUILDER_DEVICETYPE, IOCTL_DESTROY_CMD, METHOD_IN_DIRECT, FILE_READ_DATA | FILE_WRITE_DATA)
 
 #endif
