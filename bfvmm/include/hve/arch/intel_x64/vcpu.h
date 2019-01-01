@@ -19,9 +19,10 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#ifndef VCPU_INTEL_X64_HYPERKERNEL_H
-#define VCPU_INTEL_X64_HYPERKERNEL_H
+#ifndef VCPU_INTEL_X64_BOXY_H
+#define VCPU_INTEL_X64_BOXY_H
 
+#include "vmexit/cpuid.h"
 #include "vmexit/external_interrupt.h"
 #include "vmexit/vmcall.h"
 
@@ -34,14 +35,30 @@
 #include <bfvmm/vcpu/vcpu_manager.h>
 #include <eapis/hve/arch/intel_x64/vcpu.h>
 
+// -----------------------------------------------------------------------------
+// Exports
+// -----------------------------------------------------------------------------
+
+#include <bfexports.h>
+
+#ifndef STATIC_BOXY_HVE
+#ifdef SHARED_BOXY_HVE
+#define EXPORT_BOXY_HVE EXPORT_SYM
+#else
+#define EXPORT_BOXY_HVE IMPORT_SYM
+#endif
+#else
+#define EXPORT_BOXY_HVE
+#endif
+
 //------------------------------------------------------------------------------
 // Definition
 //------------------------------------------------------------------------------
 
-namespace hyperkernel::intel_x64
+namespace boxy::intel_x64
 {
 
-class vcpu : public eapis::intel_x64::vcpu
+class EXPORT_BOXY_HVE vcpu : public eapis::intel_x64::vcpu
 {
 public:
 
@@ -284,6 +301,7 @@ private:
 
     domain *m_domain{};
 
+    cpuid_handler m_cpuid_handler;
     external_interrupt_handler m_external_interrupt_handler;
     vmcall_handler m_vmcall_handler;
 
@@ -328,10 +346,10 @@ private:
 ///     and exception.
 ///
 #define get_vcpu(a) \
-    g_vcm->get<hyperkernel::intel_x64::vcpu *>(a, __FILE__ ": invalid hyperkernel vcpuid")
+    g_vcm->get<boxy::intel_x64::vcpu *>(a, __FILE__ ": invalid boxy vcpuid")
 
 #define vcpu_cast(a) \
-    static_cast<hyperkernel::intel_x64::vcpu *>(a.get())
+    static_cast<boxy::intel_x64::vcpu *>(a.get())
 
 inline bfobject world_switch;
 

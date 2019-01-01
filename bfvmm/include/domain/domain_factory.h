@@ -19,8 +19,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#ifndef DOMAIN_FACTORY_H
-#define DOMAIN_FACTORY_H
+#ifndef DOMAIN_FACTORY_BOXY_H
+#define DOMAIN_FACTORY_BOXY_H
 
 #include <memory>
 #include "domain.h"
@@ -31,14 +31,14 @@
 
 #include <bfexports.h>
 
-#ifndef STATIC_DOMAIN
-#ifdef SHARED_DOMAIN
-#define EXPORT_DOMAIN EXPORT_SYM
+#ifndef STATIC_BOXY_DOMAIN
+#ifdef SHARED_BOXY_DOMAIN
+#define EXPORT_BOXY_DOMAIN EXPORT_SYM
 #else
-#define EXPORT_DOMAIN IMPORT_SYM
+#define EXPORT_BOXY_DOMAIN IMPORT_SYM
 #endif
 #else
-#define EXPORT_DOMAIN
+#define EXPORT_BOXY_DOMAIN
 #endif
 
 #ifdef _MSC_VER
@@ -50,12 +50,12 @@
 // Definitions
 // -----------------------------------------------------------------------------
 
-namespace hyperkernel
+namespace boxy
 {
 
 /// Domain Factory
 ///
-class EXPORT_DOMAIN domain_factory
+class EXPORT_BOXY_DOMAIN domain_factory
 {
 public:
 

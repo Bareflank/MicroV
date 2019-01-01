@@ -22,7 +22,7 @@
 #include <hve/arch/intel_x64/vcpu.h>
 #include <hve/arch/intel_x64/vmexit/vmcall.h>
 
-namespace hyperkernel::intel_x64
+namespace boxy::intel_x64
 {
 
 vmcall_handler::vmcall_handler(

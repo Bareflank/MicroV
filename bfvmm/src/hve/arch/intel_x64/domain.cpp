@@ -30,11 +30,11 @@ using namespace eapis::intel_x64;
 // Implementation
 // -----------------------------------------------------------------------------
 
-namespace hyperkernel::intel_x64
+namespace boxy::intel_x64
 {
 
 domain::domain(domainid_type domainid) :
-    hyperkernel::domain{domainid}
+    boxy::domain{domainid}
 {
     if (domainid == 0) {
         this->setup_dom0();

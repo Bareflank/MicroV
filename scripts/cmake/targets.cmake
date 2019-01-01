@@ -20,7 +20,7 @@
 # SOFTWARE.
 
 # ------------------------------------------------------------------------------
-# HKD Driver
+# Driver
 # ------------------------------------------------------------------------------
 
 if(WIN32)
@@ -29,42 +29,42 @@ endif()
 
 file(TO_NATIVE_PATH "${SOURCE_ROOT_DIR}" SOURCE_ROOT_DIR_NATIVE)
 
-add_custom_target_category("Hyperkernel Driver")
+add_custom_target_category("Boxy Driver")
 
 add_custom_target(builder_build
-    COMMAND ${HK_SOURCE_UTIL_DIR}/driver_build.sh ${HK_SOURCE_ROOT_DIR} ${SOURCE_ROOT_DIR_NATIVE}
+    COMMAND ${BOXY_SOURCE_UTIL_DIR}/driver_build.sh ${BOXY_SOURCE_ROOT_DIR} ${SOURCE_ROOT_DIR_NATIVE}
     USES_TERMINAL
 )
 add_custom_target_info(
     TARGET builder_build
-    COMMENT "Build the hyperkernel driver"
+    COMMENT "Build the boxy driver"
 )
 
 add_custom_target(builder_clean
-    COMMAND ${HK_SOURCE_UTIL_DIR}/driver_clean.sh ${HK_SOURCE_ROOT_DIR} ${SOURCE_ROOT_DIR_NATIVE}
+    COMMAND ${BOXY_SOURCE_UTIL_DIR}/driver_clean.sh ${BOXY_SOURCE_ROOT_DIR} ${SOURCE_ROOT_DIR_NATIVE}
     USES_TERMINAL
 )
 add_custom_target_info(
     TARGET builder_clean
-    COMMENT "Clean the hyperkernel driver"
+    COMMENT "Clean the boxy driver"
 )
 
 add_custom_target(builder_load
-    COMMAND ${HK_SOURCE_UTIL_DIR}/driver_load.sh ${HK_SOURCE_ROOT_DIR}  ${SOURCE_ROOT_DIR_NATIVE}
+    COMMAND ${BOXY_SOURCE_UTIL_DIR}/driver_load.sh ${BOXY_SOURCE_ROOT_DIR}  ${SOURCE_ROOT_DIR_NATIVE}
     USES_TERMINAL
 )
 add_custom_target_info(
     TARGET builder_load
-    COMMENT "Load the hyperkernel driver"
+    COMMENT "Load the boxy driver"
 )
 
 add_custom_target(builder_unload
-    COMMAND ${HK_SOURCE_UTIL_DIR}/driver_unload.sh ${HK_SOURCE_ROOT_DIR} ${SOURCE_ROOT_DIR_NATIVE}
+    COMMAND ${BOXY_SOURCE_UTIL_DIR}/driver_unload.sh ${BOXY_SOURCE_ROOT_DIR} ${SOURCE_ROOT_DIR_NATIVE}
     USES_TERMINAL
 )
 add_custom_target_info(
     TARGET builder_unload
-    COMMENT "Unload the hyperkernel driver"
+    COMMENT "Unload the boxy driver"
 )
 
 add_custom_target(

@@ -23,6 +23,7 @@
 #include <common.h>
 #include <bootparam.h>
 
+#include <bfack.h>
 #include <bfdebug.h>
 #include <bfplatform.h>
 #include <bfconstants.h>
@@ -50,8 +51,6 @@ struct vm_t {
     char *cmdline;
 
     uint64_t *gdt;
-    uint64_t *idt;
-    uint64_t *tss;
 
     char *addr;
     uint64_t size;
@@ -130,15 +129,19 @@ done:
 int64_t
 add_e820_entry(void *vm, uint64_t saddr, uint64_t eaddr, uint32_t type)
 {
-    status_t ret = 0;
-    // struct vm_t *_vm = (struct vm_t *)vm;
+    struct vm_t *_vm = (struct vm_t *)vm;
 
-    // ret = __domain_op__add_e820_entry(_vm->domainid, saddr, eaddr - saddr, type);
-    // if (ret != SUCCESS) {
-    //     BFDEBUG("__domain_op__add_e820_entry: failed\n");
-    // }
+    if (_vm->params->e820_entries >= E820_MAX_ENTRIES_ZEROPAGE) {
+        BFDEBUG("add_e820_entry: E820_MAX_ENTRIES_ZEROPAGE reached\n");
+        return FAILURE;
+    }
 
-    return ret;
+    _vm->params->e820_table[_vm->params->e820_entries].addr = saddr;
+    _vm->params->e820_table[_vm->params->e820_entries].size = eaddr - saddr;
+    _vm->params->e820_table[_vm->params->e820_entries].type = type;
+    _vm->params->e820_entries++;
+
+    return SUCCESS;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -146,52 +149,85 @@ add_e820_entry(void *vm, uint64_t saddr, uint64_t eaddr, uint32_t type)
 /* -------------------------------------------------------------------------- */
 
 static status_t
-donate_page(
-    struct vm_t *vm, void *gva, uint64_t domain_gpa, uint64_t type)
+donate_page_r(
+    struct vm_t *vm, void *gva, uint64_t domain_gpa)
 {
-    status_t ret;
+    status_t ret = SUCCESS;
     uint64_t gpa = (uint64_t)platform_virt_to_phys(gva);
 
-    ret = __domain_op__share_page(vm->domainid, gpa, domain_gpa, type);
+    ret = __domain_op__donate_page_r(vm->domainid, gpa, domain_gpa);
     if (ret != SUCCESS) {
-        BFDEBUG("donate_page: __domain_op__donate_gpa failed\n");
+        BFDEBUG("donate_page: __domain_op__donate_page_r failed\n");
+        return ret;
     }
 
-    return ret;
+    return SUCCESS;
+}
+
+static status_t
+donate_page_rw(
+    struct vm_t *vm, void *gva, uint64_t domain_gpa)
+{
+    status_t ret = SUCCESS;
+    uint64_t gpa = (uint64_t)platform_virt_to_phys(gva);
+
+    ret = __domain_op__donate_page_rw(vm->domainid, gpa, domain_gpa);
+    if (ret != SUCCESS) {
+        BFDEBUG("donate_page: __domain_op__donate_page_rw failed\n");
+        return ret;
+    }
+
+    return SUCCESS;
+}
+
+static status_t
+donate_page_rwe(
+    struct vm_t *vm, void *gva, uint64_t domain_gpa)
+{
+    status_t ret = SUCCESS;
+    uint64_t gpa = (uint64_t)platform_virt_to_phys(gva);
+
+    ret = __domain_op__donate_page_rwe(vm->domainid, gpa, domain_gpa);
+    if (ret != SUCCESS) {
+        BFDEBUG("donate_page: __domain_op__donate_page_rwe failed\n");
+        return ret;
+    }
+
+    return SUCCESS;
 }
 
 static status_t
 donate_buffer(
-    struct vm_t *vm, void *gva, uint64_t domain_gpa, uint64_t size, uint64_t type)
+    struct vm_t *vm, void *gva, uint64_t domain_gpa, uint64_t size)
 {
     uint64_t i;
     status_t ret = SUCCESS;
 
     for (i = 0; i < size; i += BAREFLANK_PAGE_SIZE) {
-        ret = donate_page(vm, (char *)gva + i, domain_gpa + i, type);
+        ret = donate_page_rwe(vm, (char *)gva + i, domain_gpa + i);
         if (ret != SUCCESS) {
             return ret;
         }
     }
 
-    return ret;
+    return SUCCESS;
 }
 
 static status_t
 donate_page_to_page_range(
-    struct vm_t *vm, void *gva, uint64_t domain_gpa, uint64_t size, uint64_t type)
+    struct vm_t *vm, void *gva, uint64_t domain_gpa, uint64_t size)
 {
     uint64_t i;
     status_t ret = SUCCESS;
 
     for (i = 0; i < size; i += BAREFLANK_PAGE_SIZE) {
-        ret = donate_page(vm, gva, domain_gpa + i, type);
+        ret = donate_page_r(vm, gva, domain_gpa + i);
         if (ret != SUCCESS) {
             return ret;
         }
     }
 
-    return ret;
+    return SUCCESS;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -208,10 +244,11 @@ setup_uart(
         ret = __domain_op__set_uart(vm->domainid, uart);
         if (ret != SUCCESS) {
             BFDEBUG("donate_page: __domain_op__set_uart failed\n");
+            return ret;
         }
     }
 
-    return ret;
+    return SUCCESS;
 }
 
 static status_t
@@ -224,20 +261,50 @@ setup_pt_uart(
         ret = __domain_op__set_pt_uart(vm->domainid, uart);
         if (ret != SUCCESS) {
             BFDEBUG("donate_page: __domain_op__set_pt_uart failed\n");
+            return ret;
         }
     }
 
-    return ret;
+    return SUCCESS;
 }
 
 /* -------------------------------------------------------------------------- */
 /* GPA Functions                                                              */
 /* -------------------------------------------------------------------------- */
 
+#define HDR_SIZE sizeof(struct setup_header)
+
 static status_t
-setup_boot_params(struct vm_t *vm)
+setup_cmdline(struct vm_t *vm, struct create_vm_from_bzimage_args *args)
 {
-    status_t ret;
+    status_t ret = SUCCESS;
+
+    vm->cmdline = bfalloc_page(char);
+    if (vm->cmdline == 0) {
+        BFDEBUG("setup_cmdline: failed to alloc cmdl page\n");
+        return FAILURE;
+    }
+
+    ret = platform_memcpy(
+        vm->cmdline, BAREFLANK_PAGE_SIZE, args->cmdl, args->cmdl_size, args->cmdl_size);
+    if (ret != SUCCESS) {
+        return ret;
+    }
+
+    ret = donate_page_r(vm, vm->cmdline, COMMAND_LINE_PAGE_GPA);
+    if (ret != SUCCESS) {
+        return ret;
+    }
+
+    vm->params->hdr.cmd_line_ptr = COMMAND_LINE_PAGE_GPA;
+    return SUCCESS;
+}
+
+static status_t
+setup_boot_params(
+    struct vm_t *vm, struct create_vm_from_bzimage_args *args, const struct setup_header *hdr)
+{
+    status_t ret = SUCCESS;
 
     vm->params = bfalloc_page(struct boot_params);
     if (vm->params == 0) {
@@ -245,57 +312,71 @@ setup_boot_params(struct vm_t *vm)
         return FAILURE;
     }
 
-    // vm->xen_start_info->magic = XEN_HVM_START_MAGIC_VALUE;
-    // vm->xen_start_info->version = 0;
-    // vm->xen_start_info->cmdline_paddr = XEN_COMMAND_LINE_PAGE_GPA;
-    // vm->xen_start_info->rsdp_paddr = ACPI_RSDP_GPA;
-
-    ret = donate_page(vm, vm->params, BOOT_PARAMS_PAGE_GPA, MAP_RO);
-    if (ret != BF_SUCCESS) {
-        BFDEBUG("setup_boot_params: donate failed\n");
+    ret = platform_memcpy(&vm->params->hdr, HDR_SIZE, hdr, HDR_SIZE, HDR_SIZE);
+    if (ret != SUCCESS) {
         return ret;
     }
 
-    return ret;
+    ret = donate_page_rw(vm, vm->params, BOOT_PARAMS_PAGE_GPA);
+    if (ret != SUCCESS) {
+        return ret;
+    }
+
+    ret = setup_cmdline(vm, args);
+    if (ret != SUCCESS) {
+        return ret;
+    }
+
+    ret = setup_e820_map(vm, args->size);
+    if (ret != SUCCESS) {
+        return ret;
+    }
+
+    vm->params->hdr.type_of_loader = 0xFF;
+    return SUCCESS;
 }
 
 static status_t
-setup_kernel(struct vm_t *vm, struct create_from_elf_args *args)
+setup_kernel(struct vm_t *vm, struct create_vm_from_bzimage_args *args)
 {
-    // Notes:
-    //
-    // The instructions for how to a 64bit kernel can be found here:
-    // https://www.kernel.org/doc/Documentation/x86/boot.txt
-    //
-    // Some important notes include:
-    // - A bzImage has a setup_header struct located at 0x1f1 from the start
-    //   of the file. The actual beginning of the image appears to be a piece
-    //   of code that tells the user to use a boot-loader and then reboots.
-    // - The setup_header that is inside the bzImage needs to be copied to
-    //   our own boot_params structure which has the same header in it. The
-    //   header in the bzImage already has a bunch of the read-only
-    //   values filled in for us based on how the kernel was compiled. For
-    //   example, this header contains (as the first value) the number of
-    //   512 blocks to the start of the actual kernel in a field called
-    //   setup_sects.
-    // -
-    // - To calculate the start of the kernel that we need to load, you use the
-    //   following:
-    //
-    //   start = (file[0x1f1] + 1) * 512
-    //
-    //   Once you have the start of the kernel, you need to load the kernel
-    //   at the address in code32_start which must be 0x100000 as that is
-    //   what is stated by the "LOADING THE REST OF THE KERNEL" section in
-    //   boot.txt
-    // - After the kernel is loaded to 0x100000, you need to jump to this same
-    //   address + 0x200 which is the start of the 64bit section in the kernel.
-    //   This code will unpack the kernel and put it into the proper place in
-    //   memory.
-    //
+    /**
+     * Notes:
+     *
+     * The instructions for how to load a 32bit kernel can be found here:
+     * https://www.kernel.org/doc/Documentation/x86/boot.txt
+     *
+     * Some important notes include:
+     * - A bzImage has a setup_header struct located at 0x1f1 from the start
+     *   of the file. The actual beginning of the image appears to be a piece
+     *   of code that tells the user to use a boot-loader and then reboots.
+     * - The setup_header that is inside the bzImage needs to be copied to
+     *   our own boot_params structure which has the same header in it. The
+     *   header in the bzImage already has a bunch of the read-only
+     *   values filled in for us based on how the kernel was compiled. For
+     *   example, this header contains (as the first value) the number of
+     *   512 blocks to the start of the actual kernel in a field called
+     *   setup_sects.
+     * -
+     * - To calculate the start of the kernel that we need to load, you use the
+     *   following:
+     *
+     *   start = (file[0x1f1] + 1) * 512
+     *
+     *   Once you have the start of the kernel, you need to load the kernel
+     *   at the address in code32_start which must be 0x100000 as that is
+     *   what is stated by the "LOADING THE REST OF THE KERNEL" section in
+     *   boot.txt
+     * - After the kernel is loaded to 0x100000, you need to jump to this same
+     *   address which is the start of the 32bit section in the kernel which
+     *   can be found here (yes, the 32bit code is in the 64bit file):
+     *   https://github.com/torvalds/linux/blob/master/arch/x86/boot/compressed/head_64.S
+     *
+     *   This code will unpack the kernel and put it into the proper place in
+     *   memory. From there, it will boot the kernel.
+     */
 
-    status_t ret = 0;
-    const struct setup_header *header = (struct setup_header *)(args->file + 0x1f1);
+    status_t ret = SUCCESS;
+    const struct setup_header *hdr = (struct setup_header *)(args->file + 0x1f1);
 
     const void *kernel = 0;
     uint64_t kernel_size = 0;
@@ -315,17 +396,17 @@ setup_kernel(struct vm_t *vm, struct create_from_elf_args *args)
         return FAILURE;
     }
 
-    if (header->header != 0x53726448) {
+    if (hdr->header != 0x53726448) {
         BFDEBUG("setup_kernel: bzImage does not contain magic number\n");
         return FAILURE;
     }
 
-    if (header->version < 0x020d) {
+    if (hdr->version < 0x020d) {
         BFDEBUG("setup_kernel: unsupported bzImage protocol\n");
         return FAILURE;
     }
 
-    if (header->code32_start != 0x100000) {
+    if (hdr->code32_start != 0x100000) {
         BFDEBUG("setup_kernel: unsupported bzImage start location\n");
         return FAILURE;
     }
@@ -338,184 +419,26 @@ setup_kernel(struct vm_t *vm, struct create_from_elf_args *args)
         return FAILURE;
     }
 
-    kernel = args->file + ((header->setup_sects + 1) * 512);
-    kernel_size = args->file_size - ((header->setup_sects + 1) * 512);
+    kernel = args->file + ((hdr->setup_sects + 1) * 512);
+    kernel_size = args->file_size - ((hdr->setup_sects + 1) * 512);
 
-    platform_memcpy(vm->addr, vm->size, kernel, kernel_size, kernel_size);
+    ret = platform_memcpy(vm->addr, vm->size, kernel, kernel_size, kernel_size);
+    if (ret != SUCCESS) {
+        return ret;
+    }
 
-    // 0x000100000
+    ret = donate_buffer(vm, vm->addr, 0x100000, vm->size);
+    if (ret != SUCCESS) {
+        return ret;
+    }
 
-    // ret = donate_buffer(
-    //     vm, vm->addr, START_ADDR, vm->size, MAP_RWE);
-    // if (ret != SUCCESS) {
-    //     return ret;
-    // }
+    ret = setup_boot_params(vm, args, hdr);
+    if (ret != SUCCESS) {
+        return ret;
+    }
 
-    // ret = setup_e820_map(vm, vm->size);
-    // if (ret != SUCCESS) {
-    //     return ret;
-    // }
-
-    return ret;
+    return SUCCESS;
 }
-
-
-
-// static status_t
-// setup_xen_cmdline(struct vm_t *vm, struct create_from_elf_args *args)
-// {
-//     status_t ret;
-
-//     if (args->cmdl_size >= BAREFLANK_PAGE_SIZE) {
-//         BFDEBUG("setup_xen_cmdline: cmdl must be smaller than a page\n");
-//         return FAILURE;
-//     }
-
-//     vm->xen_cmdl = bfalloc_page(char);
-//     if (vm->xen_cmdl == 0) {
-//         BFDEBUG("setup_xen_cmdline: failed to alloc cmdl page\n");
-//         return FAILURE;
-//     }
-
-//     platform_memcpy(vm->xen_cmdl, args->cmdl, args->cmdl_size);
-
-//     ret = donate_page(vm, vm->xen_cmdl, XEN_COMMAND_LINE_PAGE_GPA, MAP_RO);
-//     if (ret != BF_SUCCESS) {
-//         BFDEBUG("setup_xen_cmdline: donate failed\n");
-//         return ret;
-//     }
-
-//     return SUCCESS;
-// }
-
-// static status_t
-// setup_xen_console(struct vm_t *vm)
-// {
-//     status_t ret;
-
-//     vm->xen_console = bfalloc_page(void);
-//     if (vm->xen_console == 0) {
-//         BFDEBUG("setup_xen_console: failed to alloc console page\n");
-//         return FAILURE;
-//     }
-
-//     ret = donate_page(vm, vm->xen_console, XEN_CONSOLE_PAGE_GPA, MAP_RW);
-//     if (ret != BF_SUCCESS) {
-//         BFDEBUG("setup_xen_console: donate failed\n");
-//         return ret;
-//     }
-
-//     return ret;
-// }
-
-    // using namespace ::intel_x64;
-    // using namespace ::intel_x64::vmcs;
-    // using namespace ::intel_x64::cpuid;
-
-    // using namespace ::x64::access_rights;
-    // using namespace ::x64::segment_register;
-
-    // uint64_t cr0 = guest_cr0::get();
-    // cr0 |= cr0::protection_enable::mask;
-    // cr0 |= cr0::monitor_coprocessor::mask;
-    // cr0 |= cr0::extension_type::mask;
-    // cr0 |= cr0::numeric_error::mask;
-    // cr0 |= cr0::write_protect::mask;
-
-    // uint64_t cr4 = guest_cr4::get();
-    // cr4 |= cr4::vmx_enable_bit::mask;
-
-    // guest_cr0::set(cr0);
-    // guest_cr4::set(cr4);
-
-    // vm_entry_controls::ia_32e_mode_guest::disable();
-
-    // unsigned es_index = 3;
-    // unsigned cs_index = 2;
-    // unsigned ss_index = 3;
-    // unsigned ds_index = 3;
-    // unsigned fs_index = 3;
-    // unsigned gs_index = 3;
-    // unsigned tr_index = 4;
-
-    // guest_es_selector::set(es_index << 3);
-    // guest_cs_selector::set(cs_index << 3);
-    // guest_ss_selector::set(ss_index << 3);
-    // guest_ds_selector::set(ds_index << 3);
-    // guest_fs_selector::set(fs_index << 3);
-    // guest_gs_selector::set(gs_index << 3);
-    // guest_tr_selector::set(tr_index << 3);
-
-    // guest_es_limit::set(domain->gdt()->limit(es_index));
-    // guest_cs_limit::set(domain->gdt()->limit(cs_index));
-    // guest_ss_limit::set(domain->gdt()->limit(ss_index));
-    // guest_ds_limit::set(domain->gdt()->limit(ds_index));
-    // guest_fs_limit::set(domain->gdt()->limit(fs_index));
-    // guest_gs_limit::set(domain->gdt()->limit(gs_index));
-    // guest_tr_limit::set(domain->gdt()->limit(tr_index));
-
-    // guest_es_access_rights::set(domain->gdt()->access_rights(es_index));
-    // guest_cs_access_rights::set(domain->gdt()->access_rights(cs_index));
-    // guest_ss_access_rights::set(domain->gdt()->access_rights(ss_index));
-    // guest_ds_access_rights::set(domain->gdt()->access_rights(ds_index));
-    // guest_fs_access_rights::set(domain->gdt()->access_rights(fs_index));
-    // guest_gs_access_rights::set(domain->gdt()->access_rights(gs_index));
-    // guest_tr_access_rights::set(domain->gdt()->access_rights(tr_index));
-
-    // guest_ldtr_access_rights::set(guest_ldtr_access_rights::unusable::mask);
-
-    // guest_es_base::set(domain->gdt()->base(es_index));
-    // guest_cs_base::set(domain->gdt()->base(cs_index));
-    // guest_ss_base::set(domain->gdt()->base(ss_index));
-    // guest_ds_base::set(domain->gdt()->base(ds_index));
-    // guest_fs_base::set(domain->gdt()->base(fs_index));
-    // guest_gs_base::set(domain->gdt()->base(gs_index));
-    // guest_tr_base::set(domain->gdt()->base(tr_index));
-
-    // guest_rflags::set(2);
-    // vmcs_link_pointer::set(0xFFFFFFFFFFFFFFFF);
-
-    // // m_lapic.init();
-    // // m_ioapic.init();
-
-    // using namespace primary_processor_based_vm_execution_controls;
-    // hlt_exiting::enable();
-    // rdpmc_exiting::enable();
-
-    // using namespace secondary_processor_based_vm_execution_controls;
-    // enable_invpcid::disable();
-    // enable_xsaves_xrstors::disable();
-
-    // this->set_rip(domain->entry());
-    // this->set_rbx(XEN_START_INFO_PAGE_GPA);
-
-    // this->add_default_cpuid_handler(
-    //     ::handler_delegate_t::create<cpuid_handler>()
-    // );
-
-    // this->add_default_wrmsr_handler(
-    //     ::handler_delegate_t::create<wrmsr_handler>()
-    // );
-
-    // this->add_default_rdmsr_handler(
-    //     ::handler_delegate_t::create<rdmsr_handler>()
-    // );
-
-    // this->add_default_io_instruction_handler(
-    //     ::handler_delegate_t::create<io_instruction_handler>()
-    // );
-
-    // this->add_default_ept_read_violation_handler(
-    //     ::handler_delegate_t::create<ept_violation_handler>()
-    // );
-
-    // this->add_default_ept_write_violation_handler(
-    //     ::handler_delegate_t::create<ept_violation_handler>()
-    // );
-
-    // this->add_default_ept_execute_violation_handler(
-    //     ::handler_delegate_t::create<ept_violation_handler>()
-    // );
 
 static status_t
 setup_bios_ram(struct vm_t *vm)
@@ -528,19 +451,26 @@ setup_bios_ram(struct vm_t *vm)
         return FAILURE;
     }
 
-    ret = donate_buffer(vm, vm->bios_ram, BIOS_RAM_ADDR, BIOS_RAM_SIZE, MAP_RWE);
-    if (ret != BF_SUCCESS) {
-        BFDEBUG("setup_bios_ram: donate failed\n");
+    ret = donate_buffer(vm, vm->bios_ram, BIOS_RAM_ADDR, BIOS_RAM_SIZE);
+    if (ret != SUCCESS) {
         return ret;
     }
 
-    return ret;
+    return SUCCESS;
 }
 
 static status_t
 setup_reserved_free(struct vm_t *vm)
 {
-    status_t ret;
+    status_t ret = SUCCESS;
+
+    /**
+     * We are not required to map in reserved ranges, only RAM ranges. The
+     * problem is the Linux kernel will attempt to scan these ranges for
+     * BIOS specific data structures like the MP tables, ACPI, etc... For this
+     * reason we map in all of the reserved ranges in the first 1mb of
+     * memory
+     */
 
     vm->zero_page = bfalloc_page(void);
     if (vm->zero_page == 0) {
@@ -549,113 +479,193 @@ setup_reserved_free(struct vm_t *vm)
     }
 
     ret = donate_page_to_page_range(
-        vm, vm->zero_page, RESERVED1_ADRR, RESERVED1_SIZE, MAP_RO);
-    if (ret != BF_SUCCESS) {
-        BFDEBUG("setup_reserved_free: donate failed\n");
+        vm, vm->zero_page, RESERVED1_ADRR, RESERVED1_SIZE);
+    if (ret != SUCCESS) {
         return ret;
     }
 
     ret = donate_page_to_page_range(
-        vm, vm->zero_page, RESERVED2_ADRR, RESERVED2_ADRR, MAP_RO);
-    if (ret != BF_SUCCESS) {
-        BFDEBUG("setup_reserved_free: donate failed\n");
+        vm, vm->zero_page, RESERVED2_ADRR, RESERVED2_SIZE);
+    if (ret != SUCCESS) {
         return ret;
     }
 
-    return ret;
+    return SUCCESS;
 }
 
 /* -------------------------------------------------------------------------- */
 /* Initial Register State                                                     */
 /* -------------------------------------------------------------------------- */
 
-// static status_t
-// setup_entry(struct vm_t *vm)
-// {
-//     status_t ret;
+static void
+set_gdt_entry(
+    uint64_t *descriptor, uint32_t base, uint32_t limit, uint16_t flag)
+{
+    *descriptor = limit & 0x000F0000;
+    *descriptor |= (flag <<  8) & 0x00F0FF00;
+    *descriptor |= (base >> 16) & 0x000000FF;
+    *descriptor |= base & 0xFF000000;
 
-//     ret = __domain_op__set_entry(vm->domainid, vm->entry);
-//     if (ret != SUCCESS) {
-//         BFDEBUG("setup_entry: __domain_op__set_entry failed\n");
-//     }
+    *descriptor <<= 32;
+    *descriptor |= base << 16;
+    *descriptor |= limit & 0x0000FFFF;
+}
 
-//     return ret;
-// }
+static status_t
+setup_32bit_gdt(struct vm_t *vm)
+{
+    status_t ret = SUCCESS;
+
+    vm->gdt = bfalloc_page(void);
+    if (vm->gdt == 0) {
+        BFDEBUG("setup_32bit_gdt: failed to alloc gdt\n");
+        return FAILURE;
+    }
+
+    set_gdt_entry(&vm->gdt[0], 0, 0, 0);
+    set_gdt_entry(&vm->gdt[1], 0, 0, 0);
+    set_gdt_entry(&vm->gdt[2], 0, 0xFFFFFFFF, 0xc09b);
+    set_gdt_entry(&vm->gdt[3], 0, 0xFFFFFFFF, 0xc093);
+
+    ret = donate_page_r(vm, vm->gdt, INITIAL_GDT_GPA);
+    if (ret != SUCCESS) {
+        return ret;
+    }
+
+    return SUCCESS;
+}
+
+static status_t
+setup_32bit_register_state(struct vm_t *vm)
+{
+    /**
+     * Notes:
+     *
+     * The instructions for the initial register state for a 32bit Linux
+     * kernel can be found here
+     * https://www.kernel.org/doc/Documentation/x86/boot.txt
+     */
+
+    status_t ret = SUCCESS;
+
+    ret |= __domain_op__set_rip(vm->domainid, 0x100000);
+    ret |= __domain_op__set_rsi(vm->domainid, BOOT_PARAMS_PAGE_GPA);
+
+    ret |= __domain_op__set_gdt_base(vm->domainid, INITIAL_GDT_GPA);
+    ret |= __domain_op__set_gdt_limit(vm->domainid, 32);
+
+    ret |= __domain_op__set_cr0(vm->domainid, 0x10037);
+    ret |= __domain_op__set_cr3(vm->domainid, 0x0);
+    ret |= __domain_op__set_cr4(vm->domainid, 0x02000);
+
+    ret |= __domain_op__set_es_selector(vm->domainid, 0x18);
+    ret |= __domain_op__set_es_base(vm->domainid, 0x0);
+    ret |= __domain_op__set_es_limit(vm->domainid, 0xFFFFFFFF);
+    ret |= __domain_op__set_es_access_rights(vm->domainid, 0xc093);
+
+    ret |= __domain_op__set_cs_selector(vm->domainid, 0x10);
+    ret |= __domain_op__set_cs_base(vm->domainid, 0x0);
+    ret |= __domain_op__set_cs_limit(vm->domainid, 0xFFFFFFFF);
+    ret |= __domain_op__set_cs_access_rights(vm->domainid, 0xc09b);
+
+    ret |= __domain_op__set_ss_selector(vm->domainid, 0x18);
+    ret |= __domain_op__set_ss_base(vm->domainid, 0x0);
+    ret |= __domain_op__set_ss_limit(vm->domainid, 0xFFFFFFFF);
+    ret |= __domain_op__set_ss_access_rights(vm->domainid, 0xc093);
+
+    ret |= __domain_op__set_ds_selector(vm->domainid, 0x18);
+    ret |= __domain_op__set_ds_base(vm->domainid, 0x0);
+    ret |= __domain_op__set_ds_limit(vm->domainid, 0xFFFFFFFF);
+    ret |= __domain_op__set_ds_access_rights(vm->domainid, 0xc093);
+
+    ret |= __domain_op__set_fs_selector(vm->domainid, 0x0);
+    ret |= __domain_op__set_fs_base(vm->domainid, 0x0);
+    ret |= __domain_op__set_fs_limit(vm->domainid, 0x0);
+    ret |= __domain_op__set_fs_access_rights(vm->domainid, 0x10000);
+
+    ret |= __domain_op__set_gs_selector(vm->domainid, 0x0);
+    ret |= __domain_op__set_gs_base(vm->domainid, 0x0);
+    ret |= __domain_op__set_gs_limit(vm->domainid, 0x0);
+    ret |= __domain_op__set_gs_access_rights(vm->domainid, 0x10000);
+
+    ret |= __domain_op__set_tr_selector(vm->domainid, 0x0);
+    ret |= __domain_op__set_tr_base(vm->domainid, 0x0);
+    ret |= __domain_op__set_tr_limit(vm->domainid, 0x0);
+    ret |= __domain_op__set_tr_access_rights(vm->domainid, 0x008b);
+
+    ret |= __domain_op__set_ldtr_selector(vm->domainid, 0x0);
+    ret |= __domain_op__set_ldtr_base(vm->domainid, 0x0);
+    ret |= __domain_op__set_ldtr_limit(vm->domainid, 0x0);
+    ret |= __domain_op__set_ldtr_access_rights(vm->domainid, 0x10000);
+
+    if (ret != SUCCESS) {
+        BFDEBUG("setup_entry: setup_32bit_register_state failed\n");
+        return FAILURE;
+    }
+
+    ret = setup_32bit_gdt(vm);
+    if (ret != SUCCESS) {
+        return ret;
+    }
+
+    return SUCCESS;
+}
 
 /* -------------------------------------------------------------------------- */
 /* Implementation                                                             */
 /* -------------------------------------------------------------------------- */
 
 int64_t
-common_create_from_elf(
-    struct create_from_elf_args *args)
+common_create_vm_from_bzimage(
+    struct create_vm_from_bzimage_args *args)
 {
     status_t ret;
     struct vm_t *vm = acquire_vm();
 
     args->domainid = INVALID_DOMAINID;
 
-BFDEBUG("line: %d\n", __LINE__);
-    if (_cpuid_eax(0xBF00) != 0xBF01) {
+    if (bfack() == 0) {
         return COMMON_NO_HYPERVISOR;
     }
-
-BFDEBUG("line: %d\n", __LINE__);
 
     vm->domainid = __domain_op__create_domain();
     if (vm->domainid == INVALID_DOMAINID) {
         BFDEBUG("__domain_op__create_domain failed\n");
-        return COMMON_CREATE_FROM_ELF_FAILED;
+        return COMMON_CREATE_VM_FROM_BZIMAGE_FAILED;
     }
 
-BFDEBUG("line: %d\n", __LINE__);
     ret = setup_kernel(vm, args);
     if (ret != SUCCESS) {
         return ret;
     }
 
-    // ret = setup_boot_params(vm);
-    // if (ret != SUCCESS) {
-    //     return ret;
-    // }
+    ret = setup_bios_ram(vm);
+    if (ret != SUCCESS) {
+        return ret;
+    }
 
-    // ret = setup_xen_cmdline(vm, args);
-    // if (ret != SUCCESS) {
-    //     return ret;
-    // }
+    ret = setup_reserved_free(vm);
+    if (ret != SUCCESS) {
+        return ret;
+    }
 
-    // ret = setup_xen_console(vm);
-    // if (ret != SUCCESS) {
-    //     return ret;
-    // }
+    ret = setup_32bit_register_state(vm);
+    if (ret != SUCCESS) {
+        return ret;
+    }
 
-    // ret = setup_bios_ram(vm);
-    // if (ret != SUCCESS) {
-    //     return ret;
-    // }
+    ret = setup_uart(vm, args->uart);
+    if (ret != SUCCESS) {
+        return ret;
+    }
 
-    // ret = setup_reserved_free(vm);
-    // if (ret != SUCCESS) {
-    //     return ret;
-    // }
-
-    // ret = setup_entry(vm);
-    // if (ret != SUCCESS) {
-    //     return ret;
-    // }
-
-    // ret = setup_uart(vm, args->uart);
-    // if (ret != SUCCESS) {
-    //     return ret;
-    // }
-
-    // ret = setup_pt_uart(vm, args->pt_uart);
-    // if (ret != SUCCESS) {
-    //     return ret;
-    // }
+    ret = setup_pt_uart(vm, args->pt_uart);
+    if (ret != SUCCESS) {
+        return ret;
+    }
 
     args->domainid = vm->domainid;
-    return BF_SUCCESS;
+    return SUCCESS;
 }
 
 int64_t
@@ -664,7 +674,7 @@ common_destroy(uint64_t domainid)
     status_t ret;
     struct vm_t *vm = get_vm(domainid);
 
-    if (_cpuid_eax(0xBF00) != 0xBF01) {
+    if (bfack() == 0) {
         return COMMON_NO_HYPERVISOR;
     }
 
@@ -674,15 +684,13 @@ common_destroy(uint64_t domainid)
         return ret;
     }
 
-    platform_free_rw(vm->bios_ram, 0xE8000);
+    platform_free_rw(vm->bios_ram, BIOS_RAM_SIZE);
     platform_free_rw(vm->zero_page, BAREFLANK_PAGE_SIZE);
     platform_free_rw(vm->params, BAREFLANK_PAGE_SIZE);
     platform_free_rw(vm->cmdline, BAREFLANK_PAGE_SIZE);
     platform_free_rw(vm->gdt, BAREFLANK_PAGE_SIZE);
-    platform_free_rw(vm->idt, BAREFLANK_PAGE_SIZE);
-    platform_free_rw(vm->tss, BAREFLANK_PAGE_SIZE);
     platform_free_rw(vm->addr, vm->size);
 
     release_vm(vm);
-    return BF_SUCCESS;
+    return SUCCESS;
 }

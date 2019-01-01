@@ -19,8 +19,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#ifndef DOMAIN_INTEL_X64_HYPERKERNEL_H
-#define DOMAIN_INTEL_X64_HYPERKERNEL_H
+#ifndef DOMAIN_INTEL_X64_BOXY_H
+#define DOMAIN_INTEL_X64_BOXY_H
 
 #include <vector>
 #include <memory>
@@ -37,28 +37,28 @@
 
 #include <bfexports.h>
 
-#ifndef STATIC_HYPERKERNEL_HVE
-#ifdef SHARED_HYPERKERNEL_HVE
-#define EXPORT_HYPERKERNEL_HVE EXPORT_SYM
+#ifndef STATIC_BOXY_HVE
+#ifdef SHARED_BOXY_HVE
+#define EXPORT_BOXY_HVE EXPORT_SYM
 #else
-#define EXPORT_HYPERKERNEL_HVE IMPORT_SYM
+#define EXPORT_BOXY_HVE IMPORT_SYM
 #endif
 #else
-#define EXPORT_HYPERKERNEL_HVE
+#define EXPORT_BOXY_HVE
 #endif
 
 // -----------------------------------------------------------------------------
 // Definitions
 // -----------------------------------------------------------------------------
 
-namespace hyperkernel::intel_x64
+namespace boxy::intel_x64
 {
 
 class vcpu;
 
 /// Domain
 ///
-class EXPORT_HYPERKERNEL_HVE domain : public hyperkernel::domain
+class EXPORT_BOXY_HVE domain : public boxy::domain
 {
 public:
 
@@ -432,65 +432,65 @@ private:
     uart m_uart_2E8{0x2E8};
     std::unique_ptr<uart> m_pt_uart{};
 
-    uint64_t m_rax;
-    uint64_t m_rbx;
-    uint64_t m_rcx;
-    uint64_t m_rdx;
-    uint64_t m_rbp;
-    uint64_t m_rsi;
-    uint64_t m_rdi;
-    uint64_t m_r08;
-    uint64_t m_r09;
-    uint64_t m_r10;
-    uint64_t m_r11;
-    uint64_t m_r12;
-    uint64_t m_r13;
-    uint64_t m_r14;
-    uint64_t m_r15;
-    uint64_t m_rip;
-    uint64_t m_rsp;
-    uint64_t m_gdt_base;
-    uint64_t m_gdt_limit;
-    uint64_t m_idt_base;
-    uint64_t m_idt_limit;
-    uint64_t m_cr0;
-    uint64_t m_cr3;
-    uint64_t m_cr4;
-    uint64_t m_ia32_efer;
-    uint64_t m_ia32_pat;
+    uint64_t m_rax{};
+    uint64_t m_rbx{};
+    uint64_t m_rcx{};
+    uint64_t m_rdx{};
+    uint64_t m_rbp{};
+    uint64_t m_rsi{};
+    uint64_t m_rdi{};
+    uint64_t m_r08{};
+    uint64_t m_r09{};
+    uint64_t m_r10{};
+    uint64_t m_r11{};
+    uint64_t m_r12{};
+    uint64_t m_r13{};
+    uint64_t m_r14{};
+    uint64_t m_r15{};
+    uint64_t m_rip{};
+    uint64_t m_rsp{};
+    uint64_t m_gdt_base{};
+    uint64_t m_gdt_limit{};
+    uint64_t m_idt_base{};
+    uint64_t m_idt_limit{};
+    uint64_t m_cr0{};
+    uint64_t m_cr3{};
+    uint64_t m_cr4{};
+    uint64_t m_ia32_efer{};
+    uint64_t m_ia32_pat{};
 
-    uint64_t m_es_selector;
-    uint64_t m_es_base;
-    uint64_t m_es_limit;
-    uint64_t m_es_access_rights;
-    uint64_t m_cs_selector;
-    uint64_t m_cs_base;
-    uint64_t m_cs_limit;
-    uint64_t m_cs_access_rights;
-    uint64_t m_ss_selector;
-    uint64_t m_ss_base;
-    uint64_t m_ss_limit;
-    uint64_t m_ss_access_rights;
-    uint64_t m_ds_selector;
-    uint64_t m_ds_base;
-    uint64_t m_ds_limit;
-    uint64_t m_ds_access_rights;
-    uint64_t m_fs_selector;
-    uint64_t m_fs_base;
-    uint64_t m_fs_limit;
-    uint64_t m_fs_access_rights;
-    uint64_t m_gs_selector;
-    uint64_t m_gs_base;
-    uint64_t m_gs_limit;
-    uint64_t m_gs_access_rights;
-    uint64_t m_tr_selector;
-    uint64_t m_tr_base;
-    uint64_t m_tr_limit;
-    uint64_t m_tr_access_rights;
-    uint64_t m_ldtr_selector;
-    uint64_t m_ldtr_base;
-    uint64_t m_ldtr_limit;
-    uint64_t m_ldtr_access_rights;
+    uint64_t m_es_selector{};
+    uint64_t m_es_base{};
+    uint64_t m_es_limit{};
+    uint64_t m_es_access_rights{};
+    uint64_t m_cs_selector{};
+    uint64_t m_cs_base{};
+    uint64_t m_cs_limit{};
+    uint64_t m_cs_access_rights{};
+    uint64_t m_ss_selector{};
+    uint64_t m_ss_base{};
+    uint64_t m_ss_limit{};
+    uint64_t m_ss_access_rights{};
+    uint64_t m_ds_selector{};
+    uint64_t m_ds_base{};
+    uint64_t m_ds_limit{};
+    uint64_t m_ds_access_rights{};
+    uint64_t m_fs_selector{};
+    uint64_t m_fs_base{};
+    uint64_t m_fs_limit{};
+    uint64_t m_fs_access_rights{};
+    uint64_t m_gs_selector{};
+    uint64_t m_gs_base{};
+    uint64_t m_gs_limit{};
+    uint64_t m_gs_access_rights{};
+    uint64_t m_tr_selector{};
+    uint64_t m_tr_base{};
+    uint64_t m_tr_limit{};
+    uint64_t m_tr_access_rights{};
+    uint64_t m_ldtr_selector{};
+    uint64_t m_ldtr_base{};
+    uint64_t m_ldtr_limit{};
+    uint64_t m_ldtr_access_rights{};
 
 public:
 
@@ -518,6 +518,6 @@ public:
 ///     and exception.
 ///
 #define get_domain(a) \
-    g_dm->get<hyperkernel::intel_x64::domain *>(a, "invalid domainid: " __FILE__)
+    g_dm->get<boxy::intel_x64::domain *>(a, "invalid domainid: " __FILE__)
 
 #endif

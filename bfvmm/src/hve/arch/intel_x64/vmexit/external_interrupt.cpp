@@ -22,7 +22,7 @@
 #include <hve/arch/intel_x64/vcpu.h>
 #include <hve/arch/intel_x64/vmexit/external_interrupt.h>
 
-namespace hyperkernel::intel_x64
+namespace boxy::intel_x64
 {
 
 external_interrupt_handler::external_interrupt_handler(

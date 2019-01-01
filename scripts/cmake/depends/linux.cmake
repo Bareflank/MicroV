@@ -40,7 +40,7 @@ if((ENABLE_BUILD_USERSPACE) AND NOT WIN32)
         COMMAND ${CMAKE_COMMAND} -E make_directory ${PREFIXES_DIR}/vms/
         COMMAND ${CMAKE_COMMAND} -E make_directory ${DEPENDS_DIR}/linux/${USERSPACE_PREFIX}/build
         COMMAND ${CMAKE_COMMAND} -E copy_directory ${CACHE_DIR}/linux/ ${DEPENDS_DIR}/linux/${USERSPACE_PREFIX}/build
-        COMMAND ${CMAKE_COMMAND} -E copy ${HK_SOURCE_ROOT_DIR}/bflinux/config ${DEPENDS_DIR}/linux/${USERSPACE_PREFIX}/build/.config
+        COMMAND ${CMAKE_COMMAND} -E copy ${BOXY_SOURCE_ROOT_DIR}/bflinux/config ${DEPENDS_DIR}/linux/${USERSPACE_PREFIX}/build/.config
     )
 
     add_dependency(

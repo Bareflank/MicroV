@@ -20,7 +20,7 @@
 # SOFTWARE.
 
 cmake_minimum_required(VERSION 3.6)
-project(hyperkernel C CXX)
+project(boxy C CXX)
 
 include(${SOURCE_CMAKE_DIR}/project.cmake)
 init_project(
@@ -36,4 +36,4 @@ add_subdirectory(hve)
 # Install
 # -----------------------------------------------------------------------------
 
-install(DIRECTORY ../include/ DESTINATION include/hyperkernel)
+install(DIRECTORY ../include/ DESTINATION include/boxy)

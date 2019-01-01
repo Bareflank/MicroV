@@ -29,13 +29,13 @@ include(${CMAKE_CURRENT_LIST_DIR}/scripts/cmake/config/default.cmake)
 # Targets
 # ------------------------------------------------------------------------------
 
-include(${HK_SOURCE_CMAKE_DIR}/targets.cmake)
+include(${BOXY_SOURCE_CMAKE_DIR}/targets.cmake)
 
 # ------------------------------------------------------------------------------
 # General Dependencies
 # ------------------------------------------------------------------------------
 
-include_dependency(HK_SOURCE_DEPENDS_DIR linux)
+include_dependency(BOXY_SOURCE_DEPENDS_DIR linux)
 
 # ------------------------------------------------------------------------------
 # VMM
@@ -43,13 +43,13 @@ include_dependency(HK_SOURCE_DEPENDS_DIR linux)
 
 if(ENABLE_BUILD_VMM)
     eapis_vmm_extension(
-        hyperkernel_bfvmm
+        boxy_bfvmm
         SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}/bfvmm/src
     )
 
     eapis_vmm_extension(
-        hyperkernel_bfvmm_main
-        DEPENDS hyperkernel_bfvmm
+        boxy_bfvmm_main
+        DEPENDS boxy_bfvmm
         SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}/bfvmm/src/main
     )
 endif()

@@ -82,7 +82,7 @@ ept_violation_handler(
 // Implementation
 //------------------------------------------------------------------------------
 
-namespace hyperkernel::intel_x64
+namespace boxy::intel_x64
 {
 
 vcpu::vcpu(
@@ -94,6 +94,7 @@ vcpu::vcpu(
 },
     m_domain{domain},
 
+    m_cpuid_handler{this},
     m_external_interrupt_handler{this},
     m_vmcall_handler{this},
 
@@ -271,31 +272,31 @@ void
 vcpu::setup_default_handlers()
 {
     this->add_default_cpuid_handler(
-        ::handler_delegate_t::create<cpuid_handler>()
+        ::handler_delegate_t::create<::cpuid_handler>()
     );
 
     this->add_default_wrmsr_handler(
-        ::handler_delegate_t::create<wrmsr_handler>()
+        ::handler_delegate_t::create<::wrmsr_handler>()
     );
 
     this->add_default_rdmsr_handler(
-        ::handler_delegate_t::create<rdmsr_handler>()
+        ::handler_delegate_t::create<::rdmsr_handler>()
     );
 
     this->add_default_io_instruction_handler(
-        ::handler_delegate_t::create<io_instruction_handler>()
+        ::handler_delegate_t::create<::io_instruction_handler>()
     );
 
     this->add_default_ept_read_violation_handler(
-        ::handler_delegate_t::create<ept_violation_handler>()
+        ::handler_delegate_t::create<::ept_violation_handler>()
     );
 
     this->add_default_ept_write_violation_handler(
-        ::handler_delegate_t::create<ept_violation_handler>()
+        ::handler_delegate_t::create<::ept_violation_handler>()
     );
 
     this->add_default_ept_execute_violation_handler(
-        ::handler_delegate_t::create<ept_violation_handler>()
+        ::handler_delegate_t::create<::ept_violation_handler>()
     );
 }
 

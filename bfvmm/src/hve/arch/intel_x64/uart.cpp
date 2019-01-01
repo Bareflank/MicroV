@@ -41,7 +41,7 @@
     vcpu->emulate_io_instruction(                                                                   \
             a, make_delegate(io_instruction_handler, b), make_delegate(io_instruction_handler, c))
 
-namespace hyperkernel::intel_x64
+namespace boxy::intel_x64
 {
 
 uart::uart(port_type port) :

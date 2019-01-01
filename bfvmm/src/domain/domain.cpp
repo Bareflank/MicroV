@@ -22,7 +22,7 @@
 #include <bfdebug.h>
 #include <domain/domain.h>
 
-namespace hyperkernel
+namespace boxy
 {
 
 domain::domain(domainid_type domainid) :

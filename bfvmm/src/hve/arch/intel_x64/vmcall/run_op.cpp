@@ -22,7 +22,7 @@
 #include <hve/arch/intel_x64/vcpu.h>
 #include <hve/arch/intel_x64/vmcall/run_op.h>
 
-namespace hyperkernel::intel_x64
+namespace boxy::intel_x64
 {
 
 vmcall_run_op_handler::vmcall_run_op_handler(

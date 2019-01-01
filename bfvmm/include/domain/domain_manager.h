@@ -19,8 +19,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#ifndef DOMAIN_MANAGER_H
-#define DOMAIN_MANAGER_H
+#ifndef DOMAIN_MANAGER_BOXY_H
+#define DOMAIN_MANAGER_BOXY_H
 
 #include <bfmanager.h>
 
@@ -38,8 +38,8 @@
 ///
 #define g_dm                                                                    \
     bfmanager<                                                                  \
-    hyperkernel::domain,                                                    \
-    hyperkernel::domain_factory,                                            \
-    hyperkernel::domain::domainid_type>::instance()
+    boxy::domain,                                                               \
+    boxy::domain_factory,                                                       \
+    boxy::domain::domainid_type>::instance()
 
 #endif

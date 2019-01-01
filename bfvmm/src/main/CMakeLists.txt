@@ -20,7 +20,7 @@
 # SOFTWARE.
 
 cmake_minimum_required(VERSION 3.6)
-project(hyperkernel_bfvmm_main C CXX)
+project(boxy_bfvmm_main C CXX)
 
 include(${SOURCE_CMAKE_DIR}/project.cmake)
 init_project(

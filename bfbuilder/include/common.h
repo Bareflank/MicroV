@@ -32,25 +32,25 @@
 /* -------------------------------------------------------------------------- */
 
 #define COMMON_NO_HYPERVISOR bfscast(status_t, 0x8000000000000001)
-#define COMMON_CREATE_FROM_ELF_FAILED bfscast(status_t, 0x8000000000000002)
+#define COMMON_CREATE_VM_FROM_BZIMAGE_FAILED bfscast(status_t, 0x8000000000000002)
 
 /* -------------------------------------------------------------------------- */
 /* Functions                                                                  */
 /* -------------------------------------------------------------------------- */
 
 /**
- * Create VM from ELF
+ * Create VM from bzImage
  *
- * The following function builds a guest VM based on a provided ELF file.
+ * The following function builds a guest VM based on a provided bzImage.
  * To accomplish this, the following function will allocate RAM, load RAM
- * with the contents of the provided ELF file, and then set up the guest's
+ * with the contents of the provided file, and then set up the guest's
  * memory map.
  *
- * @param args the create_from_elf_args arguments needed to create the VM
- * @return BF_SUCCESS on success, negative error code on failure
+ * @param args the create_vm_from_bzimage_args arguments needed to create the VM
+ * @return SUCCESS on success, negative error code on failure
  */
 int64_t
-common_create_from_elf(struct create_from_elf_args *args);
+common_create_vm_from_bzimage(struct create_vm_from_bzimage_args *args);
 
 /**
  * Destroy VM
@@ -59,7 +59,7 @@ common_create_from_elf(struct create_from_elf_args *args);
  * internal resources associated with the VM.
  *
  * @param domainid the domain to destroy
- * @return BF_SUCCESS on success, negative error code on failure
+ * @return SUCCESS on success, negative error code on failure
  */
 int64_t
 common_destroy(uint64_t domainid);

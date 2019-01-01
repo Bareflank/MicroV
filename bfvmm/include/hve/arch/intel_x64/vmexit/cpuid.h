@@ -19,11 +19,11 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#ifndef VMCALL_RUN_INTEL_X64_BOXY_H
-#define VMCALL_RUN_INTEL_X64_BOXY_H
+#ifndef VMEXIT_CPUID_INTEL_X64_BOXY_H
+#define VMEXIT_CPUID_INTEL_X64_BOXY_H
 
-#include <bfhypercall.h>
 #include <bfvmm/hve/arch/intel_x64/vcpu.h>
+#include <eapis/hve/arch/intel_x64/vmexit/cpuid.h>
 
 // -----------------------------------------------------------------------------
 // Exports
@@ -50,11 +50,18 @@ namespace boxy::intel_x64
 
 class vcpu;
 
-class EXPORT_BOXY_HVE vmcall_run_op_handler
+class EXPORT_BOXY_HVE cpuid_handler
 {
 public:
 
-    vmcall_run_op_handler(
+    /// Constructor
+    ///
+    /// @expects
+    /// @ensures
+    ///
+    /// @param vcpu the vcpu object for this handler
+    ///
+    cpuid_handler(
         gsl::not_null<vcpu *> vcpu);
 
     /// Destructor
@@ -62,28 +69,30 @@ public:
     /// @expects
     /// @ensures
     ///
-    ~vmcall_run_op_handler() = default;
-
-private:
-
-    bool dispatch(gsl::not_null<vcpu *> vcpu);
-
-private:
-
-    vcpu *m_vcpu;
-
-    vcpu *m_child_vcpu;
-    vcpuid_t m_child_vcpuid;
+    ~cpuid_handler() = default;
 
 public:
 
     /// @cond
 
-    vmcall_run_op_handler(vmcall_run_op_handler &&) = default;
-    vmcall_run_op_handler &operator=(vmcall_run_op_handler &&) = default;
+    bool handle_pass_through(
+        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::cpuid_handler::info_t &info);
 
-    vmcall_run_op_handler(const vmcall_run_op_handler &) = delete;
-    vmcall_run_op_handler &operator=(const vmcall_run_op_handler &) = delete;
+    /// @endcond
+
+private:
+
+    vcpu *m_vcpu;
+
+public:
+
+    /// @cond
+
+    cpuid_handler(cpuid_handler &&) = default;
+    cpuid_handler &operator=(cpuid_handler &&) = default;
+
+    cpuid_handler(const cpuid_handler &) = delete;
+    cpuid_handler &operator=(const cpuid_handler &) = delete;
 
     /// @endcond
 };

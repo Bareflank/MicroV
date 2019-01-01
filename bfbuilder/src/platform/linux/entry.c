@@ -52,10 +52,10 @@ dev_release(struct inode *inode, struct file *file)
 }
 
 static long
-ioctl_create_from_elf(struct create_from_elf_args *args)
+ioctl_create_vm_from_bzimage(struct create_vm_from_bzimage_args *args)
 {
     int64_t ret;
-    struct create_from_elf_args kern_args;
+    struct create_vm_from_bzimage_args kern_args;
 
     void *file = 0;
     void *cmdl = 0;
@@ -65,23 +65,23 @@ ioctl_create_from_elf(struct create_from_elf_args *args)
     }
 
     ret = copy_from_user(
-        &kern_args, args, sizeof(struct create_from_elf_args));
+        &kern_args, args, sizeof(struct create_vm_from_bzimage_args));
     if (ret != 0) {
-        BFALERT("IOCTL_CREATE_FROM_ELF: failed to copy args from userspace\n");
+        BFALERT("IOCTL_CREATE_VM_FROM_BZIMAGE: failed to copy args from userspace\n");
         return BF_IOCTL_FAILURE;
     }
 
     if (kern_args.file != 0 && kern_args.file_size != 0) {
         file = platform_alloc_rw(kern_args.file_size);
         if (file == NULL) {
-            BFALERT("IOCTL_CREATE_FROM_ELF: failed to allocate memory for file\n");
+            BFALERT("IOCTL_CREATE_VM_FROM_BZIMAGE: failed to allocate memory for file\n");
             goto failed;
         }
 
         ret = copy_from_user(
             file, kern_args.file, kern_args.file_size);
         if (ret != 0) {
-            BFALERT("IOCTL_CREATE_FROM_ELF: failed to copy file from userspace\n");
+            BFALERT("IOCTL_CREATE_VM_FROM_BZIMAGE: failed to copy file from userspace\n");
             goto failed;
         }
 
@@ -91,23 +91,23 @@ ioctl_create_from_elf(struct create_from_elf_args *args)
     if (kern_args.cmdl != 0 && kern_args.cmdl_size != 0) {
         cmdl = platform_alloc_rw(kern_args.cmdl_size);
         if (cmdl == NULL) {
-            BFALERT("IOCTL_CREATE_FROM_ELF: failed to allocate memory for file\n");
+            BFALERT("IOCTL_CREATE_VM_FROM_BZIMAGE: failed to allocate memory for file\n");
             goto failed;
         }
 
         ret = copy_from_user(
             cmdl, kern_args.cmdl, kern_args.cmdl_size);
         if (ret != 0) {
-            BFALERT("IOCTL_CREATE_FROM_ELF: failed to copy cmdl from userspace\n");
+            BFALERT("IOCTL_CREATE_VM_FROM_BZIMAGE: failed to copy cmdl from userspace\n");
             goto failed;
         }
 
         kern_args.cmdl = cmdl;
     }
 
-    ret = common_create_from_elf(&kern_args);
+    ret = common_create_vm_from_bzimage(&kern_args);
     if (ret != BF_SUCCESS) {
-        BFDEBUG("common_create_from_elf failed: %llx\n", ret);
+        BFDEBUG("common_create_vm_from_bzimage failed: %llx\n", ret);
         goto failed;
     }
 
@@ -115,9 +115,9 @@ ioctl_create_from_elf(struct create_from_elf_args *args)
     kern_args.cmdl = 0;
 
     ret = copy_to_user(
-        args, &kern_args, sizeof(struct create_from_elf_args));
+        args, &kern_args, sizeof(struct create_vm_from_bzimage_args));
     if (ret != 0) {
-        BFALERT("IOCTL_CREATE_FROM_ELF: failed to copy args to userspace\n");
+        BFALERT("IOCTL_CREATE_VM_FROM_BZIMAGE: failed to copy args to userspace\n");
         common_destroy(kern_args.domainid);
         goto failed;
     }
@@ -125,7 +125,7 @@ ioctl_create_from_elf(struct create_from_elf_args *args)
     platform_free_rw(file, kern_args.file_size);
     platform_free_rw(cmdl, kern_args.cmdl_size);
 
-    BFDEBUG("IOCTL_CREATE_FROM_ELF: succeeded\n");
+    BFDEBUG("IOCTL_CREATE_VM_FROM_BZIMAGE: succeeded\n");
     return BF_IOCTL_SUCCESS;
 
 failed:
@@ -136,7 +136,7 @@ failed:
     platform_free_rw(file, kern_args.file_size);
     platform_free_rw(cmdl, kern_args.cmdl_size);
 
-    BFALERT("IOCTL_CREATE_FROM_ELF: failed\n");
+    BFALERT("IOCTL_CREATE_VM_FROM_BZIMAGE: failed\n");
     return BF_IOCTL_FAILURE;
 }
 
@@ -167,8 +167,8 @@ dev_unlocked_ioctl(
     struct file *file, unsigned int cmd, unsigned long arg)
 {
     switch (cmd) {
-        case IOCTL_CREATE_FROM_ELF_CMD:
-            return ioctl_create_from_elf((struct create_from_elf_args *)arg);
+        case IOCTL_CREATE_VM_FROM_BZIMAGE_CMD:
+            return ioctl_create_vm_from_bzimage((struct create_vm_from_bzimage_args *)arg);
 
         case IOCTL_DESTROY_CMD:
             return ioctl_destroy((domainid_t *)arg);

@@ -19,8 +19,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#ifndef VMCALL_VCPU_INTEL_X64_HYPERKERNEL_H
-#define VMCALL_VCPU_INTEL_X64_HYPERKERNEL_H
+#ifndef VMCALL_VCPU_INTEL_X64_BOXY_H
+#define VMCALL_VCPU_INTEL_X64_BOXY_H
 
 #include <bfvmm/hve/arch/intel_x64/vcpu.h>
 
@@ -30,26 +30,26 @@
 
 #include <bfexports.h>
 
-#ifndef STATIC_HYPERKERNEL_HVE
-#ifdef SHARED_HYPERKERNEL_HVE
-#define EXPORT_HYPERKERNEL_HVE EXPORT_SYM
+#ifndef STATIC_BOXY_HVE
+#ifdef SHARED_BOXY_HVE
+#define EXPORT_BOXY_HVE EXPORT_SYM
 #else
-#define EXPORT_HYPERKERNEL_HVE IMPORT_SYM
+#define EXPORT_BOXY_HVE IMPORT_SYM
 #endif
 #else
-#define EXPORT_HYPERKERNEL_HVE
+#define EXPORT_BOXY_HVE
 #endif
 
 // -----------------------------------------------------------------------------
 // Definitions
 // -----------------------------------------------------------------------------
 
-namespace hyperkernel::intel_x64
+namespace boxy::intel_x64
 {
 
 class vcpu;
 
-class EXPORT_HYPERKERNEL_HVE vmcall_vcpu_op_handler
+class EXPORT_BOXY_HVE vmcall_vcpu_op_handler
 {
 public:
 

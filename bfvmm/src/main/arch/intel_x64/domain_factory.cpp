@@ -22,14 +22,14 @@
 #include <domain/domain_factory.h>
 #include <hve/arch/intel_x64/domain.h>
 
-namespace hyperkernel
+namespace boxy
 {
 
 std::unique_ptr<domain>
 domain_factory::make(domain::domainid_type domainid, bfobject *obj)
 {
     bfignored(obj);
-    return std::make_unique<hyperkernel::intel_x64::domain>(domainid);
+    return std::make_unique<boxy::intel_x64::domain>(domainid);
 }
 
 }

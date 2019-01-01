@@ -376,9 +376,9 @@ __domain_op__donate_page_rwe(
     __domain_op__ ## reg(domainid_t domainid)                                   \
     {                                                                           \
         return _vmcall(                                                         \
-            __enum_domain_op,                                                   \
             __enum_domain_op__## reg,                                           \
             domainid,                                                           \
+            0,                                                                  \
             0                                                                   \
         );                                                                      \
     }
@@ -388,10 +388,10 @@ __domain_op__donate_page_rwe(
     __domain_op__set_ ## reg(domainid_t domainid, uint64_t val)                 \
     {                                                                           \
         status_t ret = _vmcall(                                                 \
-            __enum_domain_op,                                                   \
             __enum_domain_op__set_ ## reg,                                      \
             domainid,                                                           \
-            val                                                                 \
+            val,                                                                \
+            0                                                                   \
         );                                                                      \
                                                                                 \
         return ret == 0 ? SUCCESS : FAILURE;                                    \

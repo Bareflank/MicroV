@@ -19,8 +19,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#ifndef DOMAIN_HYPERKERNEL_H
-#define DOMAIN_HYPERKERNEL_H
+#ifndef DOMAIN_BOXY_H
+#define DOMAIN_BOXY_H
 
 #include <bftypes.h>
 #include <bfobject.h>
@@ -32,26 +32,26 @@
 
 #include <bfexports.h>
 
-#ifndef STATIC_HYPERKERNEL_DOMAIN
-#ifdef SHARED_HYPERKERNEL_DOMAIN
-#define EXPORT_HYPERKERNEL_DOMAIN EXPORT_SYM
+#ifndef STATIC_BOXY_DOMAIN
+#ifdef SHARED_BOXY_DOMAIN
+#define EXPORT_BOXY_DOMAIN EXPORT_SYM
 #else
-#define EXPORT_HYPERKERNEL_DOMAIN IMPORT_SYM
+#define EXPORT_BOXY_DOMAIN IMPORT_SYM
 #endif
 #else
-#define EXPORT_HYPERKERNEL_DOMAIN
+#define EXPORT_BOXY_DOMAIN
 #endif
 
 // -----------------------------------------------------------------------------
 // Definitions
 // -----------------------------------------------------------------------------
 
-namespace hyperkernel
+namespace boxy
 {
 
 /// Domain
 ///
-class EXPORT_HYPERKERNEL_DOMAIN domain : public bfobject
+class EXPORT_BOXY_DOMAIN domain : public bfobject
 {
 public:
 

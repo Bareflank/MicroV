@@ -23,7 +23,7 @@
 #include <hve/arch/intel_x64/domain.h>
 #include <hve/arch/intel_x64/vmcall/domain_op.h>
 
-namespace hyperkernel::intel_x64
+namespace boxy::intel_x64
 {
 
 vmcall_domain_op_handler::vmcall_domain_op_handler(
@@ -56,12 +56,12 @@ vmcall_domain_op_handler::domain_op__destroy_domain(
     gsl::not_null<vcpu *> vcpu)
 {
     try {
-        if (vcpu->rcx() == self) {
+        if (vcpu->rbx() == self || vcpu->rbx() == vcpu->domid()) {
             throw std::runtime_error(
                 "domain_op__destroy_domain: self not supported");
         }
 
-        g_dm->destroy(vcpu->rcx(), nullptr);
+        g_dm->destroy(vcpu->rbx(), nullptr);
         vcpu->set_rax(SUCCESS);
     }
     catchall({
@@ -74,13 +74,13 @@ vmcall_domain_op_handler::domain_op__set_uart(
     gsl::not_null<vcpu *> vcpu)
 {
     try {
-        if (vcpu->rcx() == self) {
+        if (vcpu->rbx() == self || vcpu->rbx() == vcpu->domid()) {
             throw std::runtime_error(
                 "domain_op__set_uart: self not supported");
         }
 
-        get_domain(vcpu->rcx())->set_uart(
-            gsl::narrow_cast<uart::port_type>(vcpu->rdx())
+        get_domain(vcpu->rbx())->set_uart(
+            gsl::narrow_cast<uart::port_type>(vcpu->rcx())
         );
 
         vcpu->set_rax(SUCCESS);
@@ -95,13 +95,13 @@ vmcall_domain_op_handler::domain_op__set_pt_uart(
     gsl::not_null<vcpu *> vcpu)
 {
     try {
-        if (vcpu->rcx() == self) {
+        if (vcpu->rbx() == self || vcpu->rbx() == vcpu->domid()) {
             throw std::runtime_error(
                 "domain_op__set_pt_uart: self not supported");
         }
 
-        get_domain(vcpu->rcx())->set_pt_uart(
-            gsl::narrow_cast<uart::port_type>(vcpu->rdx())
+        get_domain(vcpu->rbx())->set_pt_uart(
+            gsl::narrow_cast<uart::port_type>(vcpu->rcx())
         );
 
         vcpu->set_rax(SUCCESS);
@@ -117,10 +117,10 @@ vmcall_domain_op_handler::domain_op__dump_uart(
 {
     try {
         auto buffer =
-            vcpu->map_gva_4k<char>(vcpu->rdx(), UART_MAX_BUFFER);
+            vcpu->map_gva_4k<char>(vcpu->rcx(), UART_MAX_BUFFER);
 
         auto bytes_transferred =
-            get_domain(vcpu->rcx())->dump_uart(
+            get_domain(vcpu->rbx())->dump_uart(
                 gsl::span(buffer.get(), UART_MAX_BUFFER)
             );
 
@@ -285,7 +285,7 @@ vmcall_domain_op_handler::domain_op__donate_page_rwe(
         gsl::not_null<vcpu *> vcpu)                                             \
     {                                                                           \
         try {                                                                   \
-            vcpu->set_rax(get_domain(vcpu->rcx())->reg());                      \
+            vcpu->set_rax(get_domain(vcpu->rbx())->reg());                      \
         }                                                                       \
         catchall({                                                              \
             vcpu->set_rax(FAILURE);                                             \
@@ -298,7 +298,7 @@ vmcall_domain_op_handler::domain_op__donate_page_rwe(
         gsl::not_null<vcpu *> vcpu)                                             \
     {                                                                           \
         try {                                                                   \
-            get_domain(vcpu->rcx())->set_ ## reg(vcpu->rdx());                  \
+            get_domain(vcpu->rbx())->set_ ## reg(vcpu->rcx());                  \
             vcpu->set_rax(SUCCESS);                                             \
         }                                                                       \
         catchall({                                                              \
@@ -433,11 +433,11 @@ bool
 vmcall_domain_op_handler::dispatch(
     gsl::not_null<vcpu *> vcpu)
 {
-    if (vcpu->rax() != __enum_domain_op) {
+    if (bfopcode(vcpu->rax()) != __enum_domain_op) {
         return false;
     }
 
-    switch (vcpu->rbx()) {
+    switch (vcpu->rax()) {
         dispatch_case(create_domain)
         dispatch_case(destroy_domain)
 

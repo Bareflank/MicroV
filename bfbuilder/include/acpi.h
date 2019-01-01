@@ -20,8 +20,8 @@
  * SOFTWARE.
  */
 
-#ifndef ACPI_INTEL_X64_HYPERKERNEL_H
-#define ACPI_INTEL_X64_HYPERKERNEL_H
+#ifndef ACPI_INTEL_X64_BOXY_H
+#define ACPI_INTEL_X64_BOXY_H
 
 #include <cstdint>
 #include <bfgsl.h>

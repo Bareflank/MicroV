@@ -21,6 +21,7 @@
 
 if(${BUILD_TARGET_ARCH} STREQUAL "x86_64")
     list(APPEND SOURCES
+        arch/intel_x64/vmexit/cpuid.cpp
         arch/intel_x64/vmexit/external_interrupt.cpp
         arch/intel_x64/vmexit/vmcall.cpp
         arch/intel_x64/vmcall/domain_op.cpp
@@ -40,7 +41,7 @@ endif()
 add_shared_library(
     boxy_hve
     SOURCES ${SOURCES}
-    DEFINES SHARED_HYPERKERNEL_HVE
+    DEFINES SHARED_BOXY_HVE
     DEFINES SHARED_EAPIS_HVE
     DEFINES SHARED_HVE
     DEFINES SHARED_MEMORY_MANAGER
@@ -50,7 +51,7 @@ add_shared_library(
 add_static_library(
     boxy_hve
     SOURCES ${SOURCES}
-    DEFINES STATIC_HYPERKERNEL_HVE
+    DEFINES STATIC_BOXY_HVE
     DEFINES STATIC_EAPIS_HVE
     DEFINES STATIC_HVE
     DEFINES STATIC_MEMORY_MANAGER

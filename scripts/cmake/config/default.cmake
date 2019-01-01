@@ -23,54 +23,54 @@
 # Source Tree
 # ------------------------------------------------------------------------------
 
-set(HK_SOURCE_ROOT_DIR ${CMAKE_CURRENT_LIST_DIR}/../../..
+set(BOXY_SOURCE_ROOT_DIR ${CMAKE_CURRENT_LIST_DIR}/../../..
     CACHE INTERNAL
-    "Hyperkernel Source root direfctory"
+    "BOXY Source root direfctory"
 )
 
-set(HK_SOURCE_CMAKE_DIR ${HK_SOURCE_ROOT_DIR}/scripts/cmake
+set(BOXY_SOURCE_CMAKE_DIR ${BOXY_SOURCE_ROOT_DIR}/scripts/cmake
     CACHE INTERNAL
-    "Hyperkernel Cmake directory"
+    "BOXY Cmake directory"
 )
 
-set(HK_SOURCE_CONFIG_DIR ${HK_SOURCE_ROOT_DIR}/scripts/cmake/config
+set(BOXY_SOURCE_CONFIG_DIR ${BOXY_SOURCE_ROOT_DIR}/scripts/cmake/config
     CACHE INTERNAL
-    "Hyperkernel Cmake configurations directory"
+    "BOXY Cmake configurations directory"
 )
 
-set(HK_SOURCE_DEPENDS_DIR ${HK_SOURCE_ROOT_DIR}/scripts/cmake/depends
+set(BOXY_SOURCE_DEPENDS_DIR ${BOXY_SOURCE_ROOT_DIR}/scripts/cmake/depends
     CACHE INTERNAL
-    "Hyperkernel Cmake dependencies directory"
+    "BOXY Cmake dependencies directory"
 )
 
-set(HK_SOURCE_UTIL_DIR ${HK_SOURCE_ROOT_DIR}/scripts/util
+set(BOXY_SOURCE_UTIL_DIR ${BOXY_SOURCE_ROOT_DIR}/scripts/util
     CACHE INTERNAL
-    "Hyperkernel Utility directory"
+    "BOXY Utility directory"
 )
 
-set(HK_SOURCE_BFDRIVER_DIR ${HK_SOURCE_ROOT_DIR}/bfdriver
+set(BOXY_SOURCE_BFDRIVER_DIR ${BOXY_SOURCE_ROOT_DIR}/bfdriver
     CACHE INTERNAL
-    "Hyperkernel bfdriver source dir"
+    "BOXY bfdriver source dir"
 )
 
-set(HK_SOURCE_BFEXEC_DIR ${HK_SOURCE_ROOT_DIR}/bfexec
+set(BOXY_SOURCE_BFEXEC_DIR ${BOXY_SOURCE_ROOT_DIR}/bfexec
     CACHE INTERNAL
-    "Hyperkernel bfexec source dir"
+    "BOXY bfexec source dir"
 )
 
-set(HK_SOURCE_BFLINUX_DIR ${HK_SOURCE_ROOT_DIR}/bflinux
+set(BOXY_SOURCE_BFLINUX_DIR ${BOXY_SOURCE_ROOT_DIR}/bflinux
     CACHE INTERNAL
-    "Hyperkernel bflinux source dir"
+    "BOXY bflinux source dir"
 )
 
-set(HK_SOURCE_BFSDK_DIR ${HK_SOURCE_ROOT_DIR}/bfsdk
+set(BOXY_SOURCE_BFSDK_DIR ${BOXY_SOURCE_ROOT_DIR}/bfsdk
     CACHE INTERNAL
-    "Hyperkernel bfsdk source dir"
+    "BOXY bfsdk source dir"
 )
 
-set(HK_SOURCE_BFVMM_DIR ${HK_SOURCE_ROOT_DIR}/bfvmm
+set(BOXY_SOURCE_BFVMM_DIR ${BOXY_SOURCE_ROOT_DIR}/bfvmm
     CACHE INTERNAL
-    "Hyperkernel bfvmm source dir"
+    "BOXY bfvmm source dir"
 )
 
 # ------------------------------------------------------------------------------

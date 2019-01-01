@@ -19,30 +19,47 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#include <bfvmm/vcpu/vcpu_factory.h>
 #include <hve/arch/intel_x64/vcpu.h>
+#include <hve/arch/intel_x64/vmexit/cpuid.h>
 
-namespace bfvmm
+#define PASS_THROUGH_CPUID(a)                                                   \
+    vcpu->add_cpuid_handler(                                                    \
+        a, eapis::intel_x64::cpuid_handler::handler_delegate_t::create<cpuid_handler, &cpuid_handler::handle_pass_through>(this) \
+    );
+
+// -----------------------------------------------------------------------------
+// Implementation
+// -----------------------------------------------------------------------------
+
+namespace boxy::intel_x64
 {
 
-std::unique_ptr<vcpu>
-vcpu_factory::make(vcpuid::type vcpuid, bfobject *obj)
+cpuid_handler::cpuid_handler(
+    gsl::not_null<vcpu *> vcpu
+) :
+    m_vcpu{vcpu}
 {
-    using namespace boxy::intel_x64;
-    static domain dom0{0};
+    using namespace vmcs_n;
 
-    if (vcpuid::is_host_vm_vcpu(vcpuid)) {
-        return
-            std::make_unique<boxy::intel_x64::vcpu>(
-                vcpuid, dynamic_cast<domain *>(&dom0)
-            );
+    if (vcpuid::is_host_vm_vcpu(vcpu->id())) {
+        return;
     }
-    else {
-        return
-            std::make_unique<boxy::intel_x64::vcpu>(
-                vcpuid, dynamic_cast<domain *>(obj)
-            );
-    }
+
+    PASS_THROUGH_CPUID(0x00000000);
+}
+
+// -----------------------------------------------------------------------------
+// Handlers
+// -----------------------------------------------------------------------------
+
+bool
+cpuid_handler::handle_pass_through(
+    gsl::not_null<vcpu_t *> vcpu, eapis::intel_x64::cpuid_handler::info_t &info)
+{
+    bfignored(vcpu);
+    bfignored(info);
+
+    return true;
 }
 
 }
