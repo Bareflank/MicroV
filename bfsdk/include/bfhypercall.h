@@ -72,10 +72,10 @@ uint64_t _vmcall(uint64_t r1, uint64_t r2, uint64_t r3, uint64_t r4) NOEXCEPT;
 // Run Operations
 // -----------------------------------------------------------------------------
 
-#define __enum_run_op__hlt 0xBF01000000000001
-#define __enum_run_op__fault 0xBF01000000000002
-#define __enum_run_op__resume_after_interrupt 0xBF01000000000003
-#define __enum_run_op__yield 0xBF01000000000004
+#define __enum_run_op__hlt 1
+#define __enum_run_op__fault 2
+#define __enum_run_op__resume_after_interrupt 3
+#define __enum_run_op__yield 4
 
 #define run_op_ret_op(a) ((0x000000000000000FULL & a) >> 0)
 #define run_op_ret_arg(a) ((0xFFFFFFFFFFFFFFF0ULL & a) >> 4)

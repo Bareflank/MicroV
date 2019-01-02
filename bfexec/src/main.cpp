@@ -196,6 +196,10 @@ create_vm_from_bzimage(const args_type &args)
         size = args["size"].as<uint64_t>();
     }
 
+    if (size < 0x2000000) {
+        size = 0x2000000;
+    }
+
     uint64_t uart = 0;
     if (args.count("uart")) {
         uart = args["uart"].as<uint64_t>();

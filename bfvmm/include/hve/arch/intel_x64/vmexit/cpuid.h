@@ -78,6 +78,14 @@ public:
     bool handle_pass_through(
         gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::cpuid_handler::info_t &info);
 
+    bool handle_0x80000000(
+        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::cpuid_handler::info_t &info);
+    bool handle_0x80000001(
+        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::cpuid_handler::info_t &info);
+
+    bool handle_0x400000BF(
+        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::cpuid_handler::info_t &info);
+
     /// @endcond
 
 private:

@@ -176,9 +176,6 @@ private:
     bool reg7_out_handler(
         gsl::not_null<vcpu_t *> vcpu, eapis::intel_x64::io_instruction_handler::info_t &info);
 
-    bool cpuid_in_handler(
-        gsl::not_null<vcpu_t *> vcpu, eapis::intel_x64::cpuid_handler::info_t &info);
-
     bool dlab() const
     { return m_line_control_register & 0x80; }
 

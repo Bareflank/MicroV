@@ -33,10 +33,6 @@
 #define make_delegate(a,b)                                                                          \
     eapis::intel_x64::a::handler_delegate_t::create<uart, &uart::b>(this)
 
-#define EMULATE_CPUID(a,b)                                                                          \
-    vcpu->emulate_cpuid(                                                                          \
-            a, make_delegate(cpuid_handler, b))
-
 #define EMULATE_IO_INSTRUCTION(a,b,c)                                                               \
     vcpu->emulate_io_instruction(                                                                   \
             a, make_delegate(io_instruction_handler, b), make_delegate(io_instruction_handler, c))
@@ -65,8 +61,6 @@ uart::enable(gsl::not_null<vcpu *> vcpu)
     EMULATE_IO_INSTRUCTION(m_port + 5, reg5_in_handler, reg5_out_handler);
     EMULATE_IO_INSTRUCTION(m_port + 6, reg6_in_handler, reg6_out_handler);
     EMULATE_IO_INSTRUCTION(m_port + 7, reg7_in_handler, reg7_out_handler);
-
-    EMULATE_CPUID(0xBF00, cpuid_in_handler);
 }
 
 void
@@ -86,8 +80,6 @@ uart::disable(gsl::not_null<vcpu *> vcpu)
     EMULATE_IO_INSTRUCTION(m_port + 5, io_zero_handler, io_ignore_handler);
     EMULATE_IO_INSTRUCTION(m_port + 6, io_zero_handler, io_ignore_handler);
     EMULATE_IO_INSTRUCTION(m_port + 7, io_zero_handler, io_ignore_handler);
-
-    EMULATE_CPUID(0xBF00, cpuid_in_handler);
 }
 
 void
@@ -107,8 +99,6 @@ uart::pass_through(gsl::not_null<vcpu *> vcpu)
     vcpu->pass_through_io_accesses(m_port + 5);
     vcpu->pass_through_io_accesses(m_port + 6);
     vcpu->pass_through_io_accesses(m_port + 7);
-
-    EMULATE_CPUID(0xBF00, cpuid_in_handler);
 }
 
 uint64_t
@@ -345,21 +335,6 @@ uart::reg7_out_handler(
     bfignored(info);
 
     bfalert_info(1, "uart: reg7 write not supported");
-    return true;
-}
-
-#define MSG "Hello World"
-
-bool
-uart::cpuid_in_handler(
-    gsl::not_null<vcpu_t *> vcpu, eapis::intel_x64::cpuid_handler::info_t &info)
-{
-    bfignored(info);
-    std::lock_guard lock(m_mutex);
-
-    this->write(MSG "\n");
-    bfdebug_nhex(0, MSG, vcpu->rax());
-
     return true;
 }
 

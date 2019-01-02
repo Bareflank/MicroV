@@ -89,6 +89,19 @@ vmcall_handler::handle(gsl::not_null<vcpu_t *> vcpu)
 
     vcpu->advance();
 
+    // REMOVE ME
+    if (vcpu->rax() == 42) {
+        write_str(std::string(1, static_cast<char>(vcpu->rcx())));
+        return true;
+    }
+
+    if (vcpu->rax() == 43) {
+        write_str(std::to_string(vcpu->rcx()));
+        write_str("\n");
+        return true;
+    }
+    // REMOVE ME
+
     try {
         for (const auto &d : m_handlers) {
             if (d(m_vcpu)) {
