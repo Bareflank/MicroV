@@ -113,7 +113,6 @@ setup_e820_map(void *vm, uint64_t size)
     ret |= add_e820_entry(vm, 0x0000000000000000, 0x00000000000E8000, E820_TYPE_RAM);
     ret |= add_e820_entry(vm, 0x00000000000E8000, 0x0000000000100000, E820_TYPE_RESERVED);
     ret |= add_e820_entry(vm, 0x0000000000100000, 0x000100000 + size, E820_TYPE_RAM);
-    ret |= add_e820_entry(vm, 0x000100000 + size, 0x00000000FEC00000, E820_TYPE_UNUSABLE);
     ret |= add_e820_entry(vm, 0x00000000FEC00000, 0x00000000FFFFFFFF, E820_TYPE_RESERVED);
     ret |= add_e820_entry(vm, 0x00000000FFFFFFFF, 0xFFFFFFFFFFFFFFFF, E820_TYPE_UNUSABLE);
 
@@ -143,5 +142,7 @@ setup_e820_map(void *vm, uint64_t size)
 #define ACPI_MADT_GPA           0xF2000
 #define ACPI_FADT_GPA           0xF3000
 #define ACPI_DSDT_GPA           0xF4000
+
+#define XAPIC_GPA               0xFEE00000
 
 #endif

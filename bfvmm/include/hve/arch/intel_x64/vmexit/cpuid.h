@@ -77,6 +77,8 @@ public:
 
     bool handle_0x00000000(
         gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::cpuid_handler::info_t &info);
+    bool handle_0x00000001(
+        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::cpuid_handler::info_t &info);
     bool handle_0x00000006(
         gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::cpuid_handler::info_t &info);
     bool handle_0x00000007(
@@ -98,6 +100,9 @@ public:
     bool handle_0x80000007(
         gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::cpuid_handler::info_t &info);
     bool handle_0x80000008(
+        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::cpuid_handler::info_t &info);
+
+    bool handle_0x40000000(
         gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::cpuid_handler::info_t &info);
 
     /// @endcond

@@ -56,6 +56,7 @@ cpuid_handler::cpuid_handler(
     //
 
     EMULATE_CPUID(0x00000000, handle_0x00000000);
+    EMULATE_CPUID(0x00000001, handle_0x00000001);
     EMULATE_CPUID(0x00000006, handle_0x00000006);
     EMULATE_CPUID(0x00000007, handle_0x00000007);
     EMULATE_CPUID(0x0000000D, handle_0x0000000D);
@@ -67,6 +68,8 @@ cpuid_handler::cpuid_handler(
     EMULATE_CPUID(0x80000001, handle_0x80000001);
     EMULATE_CPUID(0x80000007, handle_0x80000007);
     EMULATE_CPUID(0x80000008, handle_0x80000008);
+
+    EMULATE_CPUID(0x40000000, handle_0x40000000);
 }
 
 // -----------------------------------------------------------------------------
@@ -79,6 +82,25 @@ cpuid_handler::handle_0x00000000(
 {
     bfignored(vcpu);
     bfignored(info);
+
+    return true;
+}
+
+bool
+cpuid_handler::handle_0x00000001(
+    gsl::not_null<vcpu_t *> vcpu, eapis::intel_x64::cpuid_handler::info_t &info)
+{
+    bfignored(vcpu);
+
+    info.rcx &= 0x21FC3203;
+    info.rdx &= 0x1FCBEBFB;
+
+    // Note:
+    //
+    // The following tells Linux that it is in a VM.
+    //
+
+    info.rcx |= 0x80000000;
 
     return true;
 }
@@ -102,38 +124,6 @@ cpuid_handler::handle_0x00000007(
     gsl::not_null<vcpu_t *> vcpu, eapis::intel_x64::cpuid_handler::info_t &info)
 {
     bfignored(vcpu);
-
-    // Diables the following features:
-    //
-    // EBX:
-    // - TSC_ADJUST         no plans to support
-    // - SGX                no plans to support
-    // - AVX2               need to properly emulate XSAVE/XRESTORE
-    // - INVPCID            ??? Might be able to support, not sure
-    // - RTM                no plans to support
-    // - RDT-M              no plans to support
-    // - MPX                no plans to support
-    // - RDT-A              no plans to support
-    // - AVX512F            need to properly emulate XSAVE/XRESTORE
-    // - AVX512DQ           need to properly emulate XSAVE/XRESTORE
-    // - AVX512_IFMA        need to properly emulate XSAVE/XRESTORE
-    // - Processor Trace    no plans to support
-    // - AVX512PF           need to properly emulate XSAVE/XRESTORE
-    // - AVX512ER           need to properly emulate XSAVE/XRESTORE
-    // - AVX512CD           need to properly emulate XSAVE/XRESTORE
-    // - SHA                need to properly emulate XSAVE/XRESTORE
-    // - AVX512BW           need to properly emulate XSAVE/XRESTORE
-    // - AVX512VL           need to properly emulate XSAVE/XRESTORE
-    //
-    // ECX:
-    // - PREFETCHWT1        no plans to support
-    // - AVX512_VBMI        need to properly emulate XSAVE/XRESTORE
-    // - UMIP               ??? Might be able to support, not sure
-    // - PKU                ??? Might be able to support, not sure
-    // - OSPKE              ??? Might be able to support, not sure
-    // - MAWAU              no plans to support
-    // - TSC_AUX            ??? Might be able to support, not sure
-    // - SGX_LC             no plans to support
 
     if (info.rcx != 0) {
         info.rax = 0;
@@ -267,6 +257,20 @@ cpuid_handler::handle_0x80000008(
     bfignored(vcpu);
 
     info.rax &= 0xFFFF;
+    info.rbx = 0;
+    info.rcx = 0;
+    info.rdx = 0;
+
+    return true;
+}
+
+bool
+cpuid_handler::handle_0x40000000(
+    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::cpuid_handler::info_t &info)
+{
+    bfignored(vcpu);
+
+    info.rax &= 0xBFBFBFBF;
     info.rbx = 0;
     info.rcx = 0;
     info.rdx = 0;

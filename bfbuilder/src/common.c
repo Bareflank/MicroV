@@ -20,8 +20,10 @@
  * SOFTWARE.
  */
 
+#include <uapi/asm/bootparam.h>
+
+#include <acpi.h>
 #include <common.h>
-#include <bootparam.h>
 
 #include <bfack.h>
 #include <bfdebug.h>
@@ -54,6 +56,12 @@ struct vm_t {
 
     char *addr;
     uint64_t size;
+
+    struct rsdp_t *rsdp;
+    struct xsdt_t *xsdt;
+    struct madt_t *madt;
+    struct fadt_t *fadt;
+    struct dsdt_t *dsdt;
 
     int used;
 };
@@ -281,7 +289,7 @@ setup_cmdline(struct vm_t *vm, struct create_vm_from_bzimage_args *args)
 
     vm->cmdline = bfalloc_page(char);
     if (vm->cmdline == 0) {
-        BFDEBUG("setup_cmdline: failed to alloc cmdl page\n");
+        BFDEBUG("setup_cmdline: failed to alloc cmdline page\n");
         return FAILURE;
     }
 
@@ -297,6 +305,75 @@ setup_cmdline(struct vm_t *vm, struct create_vm_from_bzimage_args *args)
     }
 
     vm->params->hdr.cmd_line_ptr = COMMAND_LINE_PAGE_GPA;
+    return SUCCESS;
+}
+
+static status_t
+setup_acpi(struct vm_t *vm)
+{
+    status_t ret = SUCCESS;
+
+    vm->rsdp = bfalloc_page(struct rsdp_t);
+    if (vm->rsdp == 0) {
+        BFDEBUG("setup_acpi: failed to alloc rsdp page\n");
+        return FAILURE;
+    }
+
+    vm->xsdt = bfalloc_page(struct xsdt_t);
+    if (vm->xsdt == 0) {
+        BFDEBUG("setup_acpi: failed to alloc xsdt page\n");
+        return FAILURE;
+    }
+
+    vm->madt = bfalloc_page(struct madt_t);
+    if (vm->madt == 0) {
+        BFDEBUG("setup_acpi: failed to alloc madt page\n");
+        return FAILURE;
+    }
+
+    vm->fadt = bfalloc_page(struct fadt_t);
+    if (vm->fadt == 0) {
+        BFDEBUG("setup_acpi: failed to alloc fadt page\n");
+        return FAILURE;
+    }
+
+    vm->dsdt = bfalloc_page(struct dsdt_t);
+    if (vm->dsdt == 0) {
+        BFDEBUG("setup_acpi: failed to alloc dsdt page\n");
+        return FAILURE;
+    }
+
+    ret = donate_page_r(vm, vm->rsdp, ACPI_RSDP_GPA);
+    if (ret != SUCCESS) {
+        return ret;
+    }
+
+    ret = donate_page_r(vm, vm->xsdt, ACPI_XSDT_GPA);
+    if (ret != SUCCESS) {
+        return ret;
+    }
+
+    ret = donate_page_r(vm, vm->madt, ACPI_MADT_GPA);
+    if (ret != SUCCESS) {
+        return ret;
+    }
+
+    ret = donate_page_r(vm, vm->fadt, ACPI_FADT_GPA);
+    if (ret != SUCCESS) {
+        return ret;
+    }
+
+    ret = donate_page_r(vm, vm->dsdt, ACPI_DSDT_GPA);
+    if (ret != SUCCESS) {
+        return ret;
+    }
+
+    setup_rsdp(vm->rsdp);
+    setup_xsdt(vm->xsdt);
+    setup_madt(vm->madt);
+    setup_fadt(vm->fadt);
+    setup_dsdt(vm->dsdt);
+
     return SUCCESS;
 }
 
@@ -323,6 +400,11 @@ setup_boot_params(
     }
 
     ret = setup_cmdline(vm, args);
+    if (ret != SUCCESS) {
+        return ret;
+    }
+
+    ret = setup_acpi(vm);
     if (ret != SUCCESS) {
         return ret;
     }
@@ -485,7 +567,7 @@ setup_reserved_free(struct vm_t *vm)
     }
 
     ret = donate_page_to_page_range(
-        vm, vm->zero_page, 0xF0000, 0x10000);
+        vm, vm->zero_page, RESERVED2_ADRR, RESERVED2_SIZE);
     if (ret != SUCCESS) {
         return ret;
     }
@@ -689,6 +771,11 @@ common_destroy(uint64_t domainid)
     platform_free_rw(vm->params, BAREFLANK_PAGE_SIZE);
     platform_free_rw(vm->cmdline, BAREFLANK_PAGE_SIZE);
     platform_free_rw(vm->gdt, BAREFLANK_PAGE_SIZE);
+    platform_free_rw(vm->rsdp, BAREFLANK_PAGE_SIZE);
+    platform_free_rw(vm->xsdt, BAREFLANK_PAGE_SIZE);
+    platform_free_rw(vm->madt, BAREFLANK_PAGE_SIZE);
+    platform_free_rw(vm->fadt, BAREFLANK_PAGE_SIZE);
+    platform_free_rw(vm->dsdt, BAREFLANK_PAGE_SIZE);
     platform_free_rw(vm->addr, vm->size);
 
     release_vm(vm);

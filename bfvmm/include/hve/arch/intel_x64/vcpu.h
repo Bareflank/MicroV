@@ -22,8 +22,12 @@
 #ifndef VCPU_INTEL_X64_BOXY_H
 #define VCPU_INTEL_X64_BOXY_H
 
+#include "apic/x2apic.h"
+#include "pci/pci_configuration_space.h"
+
 #include "vmexit/cpuid.h"
 #include "vmexit/external_interrupt.h"
+#include "vmexit/io_instruction.h"
 #include "vmexit/msr.h"
 #include "vmexit/vmcall.h"
 
@@ -256,29 +260,6 @@ public:
     VIRTUAL bool is_killed() const;
 
     //--------------------------------------------------------------------------
-    // LAPIC
-    //--------------------------------------------------------------------------
-
-    /// LAPIC ID
-    ///
-    /// The APIC ID and the vCPU ID do not need to agree, and on some systems
-    /// they don't. This provides that level of flexibility by returning the
-    /// APIC's ID
-    ///
-    /// @return APIC ID
-    ///
-    // VIRTUAL uint32_t lapicid() const;
-
-    /// LAPIC Base
-    ///
-    /// This function returns the APIC base for this APIC as a GPA. The HPA is
-    /// maintained internally to this class and is not accessible.
-    ///
-    /// @return APIC base GPA
-    ///
-    // VIRTUAL uint64_t lapic_base() const;
-
-    //--------------------------------------------------------------------------
     // Fault
     //--------------------------------------------------------------------------
 
@@ -304,12 +285,17 @@ private:
 
     cpuid_handler m_cpuid_handler;
     external_interrupt_handler m_external_interrupt_handler;
+    io_instruction_handler m_io_instruction_handler;
     msr_handler m_msr_handler;
     vmcall_handler m_vmcall_handler;
 
     vmcall_run_op_handler m_vmcall_run_op_handler;
     vmcall_domain_op_handler m_vmcall_domain_op_handler;
     vmcall_vcpu_op_handler m_vmcall_vcpu_op_handler;
+
+    x2apic_handler m_x2apic_handler;
+    pci_configuration_space_handler m_pci_configuration_space_handler;
+
 
     bool m_killed{};
     vcpu *m_parent_vcpu{};

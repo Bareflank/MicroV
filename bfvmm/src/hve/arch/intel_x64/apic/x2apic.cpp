@@ -23,10 +23,10 @@
 #include <hve/arch/intel_x64/vmexit/msr.h>
 
 #define make_rdmsr_delegate(a)                                                  \
-    eapis::intel_x64::rdmsr_handler::handler_delegate_t::create<msr_handler, &msr_handler::a>(this)
+    eapis::intel_x64::rdmsr_handler::handler_delegate_t::create<x2apic_handler, &x2apic_handler::a>(this)
 
 #define make_wrmsr_delegate(a)                                                  \
-    eapis::intel_x64::wrmsr_handler::handler_delegate_t::create<msr_handler, &msr_handler::a>(this)
+    eapis::intel_x64::wrmsr_handler::handler_delegate_t::create<x2apic_handler, &x2apic_handler::a>(this)
 
 #define EMULATE_MSR(a,b,c)                                                      \
     m_vcpu->emulate_rdmsr(                                                      \
@@ -43,7 +43,7 @@
 namespace boxy::intel_x64
 {
 
-msr_handler::msr_handler(
+x2apic_handler::x2apic_handler(
     gsl::not_null<vcpu *> vcpu
 ) :
     m_vcpu{vcpu}
@@ -54,7 +54,9 @@ msr_handler::msr_handler(
         return;
     }
 
-    EMULATE_MSR(0x000001A0, handle_rdmsr_0x000001A0, handle_wrmsr_0x000001A0);
+    EMULATE_MSR(0x0000001B, handle_rdmsr_0x0000001B, handle_wrmsr_0x0000001B);
+    EMULATE_MSR(0x00000802, handle_rdmsr_0x00000802, handle_wrmsr_0x00000802);
+    EMULATE_MSR(0x00000803, handle_rdmsr_0x00000803, handle_wrmsr_0x00000803);
 }
 
 // -----------------------------------------------------------------------------
@@ -62,28 +64,65 @@ msr_handler::msr_handler(
 // -----------------------------------------------------------------------------
 
 bool
-msr_handler::handle_rdmsr_0x000001A0(
+x2apic_handler::handle_rdmsr_0x0000001B(
     gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info)
 {
     bfignored(vcpu);
 
-    info.val =
-        emulate_rdmsr(
-            gsl::narrow_cast<::x64::msrs::field_type>(vcpu->rcx())
-        );
-
-    info.val &= 0x1801;
+    info.val = m_0x0000001B & 0xFFFFFFFF;
     return true;
 }
 
 bool
-msr_handler::handle_wrmsr_0x000001A0(
+x2apic_handler::handle_wrmsr_0x0000001B(
+    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info)
+{
+    if ((info.val & 0xFFF) != 0xD00) {
+        vcpu->halt("Disabling x2APIC is not supported");
+    }
+
+    m_0x0000001B = info.val & 0xFFFFFFFF;
+    return true;
+}
+
+bool
+x2apic_handler::handle_rdmsr_0x00000802(
+    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info)
+{
+    bfignored(vcpu);
+
+    info.val = 0;
+    return true;
+}
+
+bool
+x2apic_handler::handle_wrmsr_0x00000802(
     gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info)
 {
     bfignored(info);
 
-    vcpu->halt("wrmsr to 0x1A0 is not supported");
-    return false;
+    vcpu->halt("writing to APIC ID not supported");
+    return true;
+}
+
+bool
+x2apic_handler::handle_rdmsr_0x00000803(
+    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info)
+{
+    bfignored(vcpu);
+
+    info.val = 0x00040010U;
+    return true;
+}
+
+bool
+x2apic_handler::handle_wrmsr_0x00000803(
+    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info)
+{
+    bfignored(info);
+
+    vcpu->halt("writing to APIC VERSION not supported");
+    return true;
 }
 
 }

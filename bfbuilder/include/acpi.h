@@ -23,8 +23,8 @@
 #ifndef ACPI_INTEL_X64_BOXY_H
 #define ACPI_INTEL_X64_BOXY_H
 
-#include <cstdint>
-#include <bfgsl.h>
+#include <bftypes.h>
+#include <bfgpalayout.h>
 
 #pragma pack(push, 1)
 
@@ -38,7 +38,7 @@
 // ACPI Header
 // -----------------------------------------------------------------------------
 
-typedef struct {
+struct acpi_header_t {
     char                    signature[4];               ///< ASCII table signature
     uint32_t                length;                     ///< Length of table in bytes, including this header
     uint8_t                 revision;                   ///< ACPI Specification minor version number
@@ -48,34 +48,34 @@ typedef struct {
     uint32_t                oemrevision;                ///< OEM revision number
     char                    aslcompilerid[4];           ///< ASCII ASL compiler vendor ID
     uint32_t                aslcompilerrevision;        ///< ASL compiler version
-} __attribute__((packed)) acpi_header_t;
+} __attribute__((packed));
 
 // -----------------------------------------------------------------------------
 // ACPI Subtable Header
 // -----------------------------------------------------------------------------
 
-typedef struct {
+struct acpi_subtable_header_t {
     uint8_t                 type;                       ///< Table type
     uint8_t                 length;                     ///< Length of table in bytes, including this header
-} __attribute__((packed)) acpi_subtable_header_t;
+} __attribute__((packed));
 
 // -----------------------------------------------------------------------------
-// GAS - Generic Address Structure v2
+// GAS - Generic Address Structure
 // -----------------------------------------------------------------------------
 
-typedef struct {
+struct acpi_generic_address_t {
     uint8_t                 SpaceId;                    ///< Address space where struct or register exists
     uint8_t                 BitWidth;                   ///< Size in bits of given register
     uint8_t                 BitOffset;                  ///< Bit offset within the register
     uint8_t                 AccessWidth;                ///< Minimum Access size (ACPI 3.0)
     uint64_t                Address;                    ///< 64-bit address of struct or register
-} __attribute__((packed)) acpi_generic_address_t;
+} __attribute__((packed));
 
 // -----------------------------------------------------------------------------
-// RSDP - Root System Description Pointer v2
+// RSDP - Root System Description Pointer
 // -----------------------------------------------------------------------------
 
-typedef struct {
+struct rsdp_t {
     char                    signature[8];               ///< ACPI signature, contains "RSD PTR "
     uint8_t                 checksum;                   ///< ACPI 1.0 checksum
     char                    oemid[6];                   ///< OEM identification
@@ -85,19 +85,19 @@ typedef struct {
     uint64_t                xsdtphysicaladdress;        ///< 64-bit physical address of the XSDT (ACPI 2.0+)
     uint8_t                 extendedchecksum;           ///< Checksum of entire table (ACPI 2.0+)
     uint8_t                 reserved[3];                ///< Reserved, must be zero
-} __attribute__((packed)) rsdp_t;
+} __attribute__((packed));
 
 // -----------------------------------------------------------------------------
-// XSDT - Extended Root System Description Tables v1
+// XSDT - Extended Root System Description Tables
 // -----------------------------------------------------------------------------
 
-typedef struct {
-    acpi_header_t           header;                     ///< Common ACPI table header
+struct xsdt_t {
+    struct acpi_header_t    header;                     ///< Common ACPI table header
     uint64_t                entries[2];                 ///< Array of pointers to ACPI tables
-} __attribute__((packed)) xsdt_t;
+} __attribute__((packed));
 
 // -----------------------------------------------------------------------------
-// MADT - Multiple APIC Description Table v3
+// MADT - Multiple APIC Description Table
 // -----------------------------------------------------------------------------
 
 enum ics_type_t {
@@ -120,204 +120,284 @@ enum ics_type_t {
     ICS_TYPE_RESERVED                 = 16
 };
 
-typedef struct {
-    acpi_subtable_header_t  header;
-    uint8_t                 processorid;
-    uint8_t                 id;
-    uint32_t                flags;
-} __attribute__((packed)) ics_lapic_t;
+struct ics_lapic_t {
+    struct acpi_subtable_header_t   header;
+    uint8_t                         processorid;
+    uint8_t                         id;
+    uint32_t                        flags;
+} __attribute__((packed));
 
-typedef struct {
-    acpi_subtable_header_t  header;
-    uint8_t                 id;
-    uint8_t                 reserved;
-    uint32_t                address;
-    uint32_t                gsi_base;
-} __attribute__((packed)) ics_ioapic_t;
-
-typedef struct {
-    acpi_header_t           header;                 ///< Common ACPI table header
-    uint32_t                address;                ///< Physical address of local APIC
-    uint32_t                flags;                  ///< MADT flags (0 == No PIC)
-    ics_lapic_t             lapic;                  ///< Local APIC ICS
-    ics_ioapic_t            ioapic;                 ///< IOAPIC ICS
-} __attribute__((packed)) madt_t;
+struct madt_t {
+    struct acpi_header_t            header;                 ///< Common ACPI table header
+    uint32_t                        address;                ///< Physical address of local APIC
+    uint32_t                        flags;                  ///< MADT flags (0 == No PIC)
+    struct ics_lapic_t              lapic;                  ///< Local APIC ICS
+} __attribute__((packed));
 
 // -----------------------------------------------------------------------------
-// FADT
+// FADT - Fixed ACPI Description Table
 // -----------------------------------------------------------------------------
 
-typedef struct {
-    acpi_header_t           header;                 ///< Common ACPI table header
-    uint32_t                facs;                   ///< 32-bit physical address of FACS
-    uint32_t                dsdt;                   ///< 32-bit physical address of DSDT
-    uint8_t                 model;                  ///< System Interrupt Model (ACPI 1.0) - not used in ACPI 2.0+
-    uint8_t                 preferredprofile;       ///< Conveys preferred power management profile to OSPM.
-    uint16_t                sciinterrupt;           ///< System vector of SCI interrupt
-    uint32_t                smicommand;             ///< 32-bit Port address of SMI command port
-    uint8_t                 acpienable;             ///< Value to write to SMI_CMD to enable ACPI
-    uint8_t                 acpidisable;            ///< Value to write to SMI_CMD to disable ACPI
-    uint8_t                 s4biosrequest;          ///< Value to write to SMI_CMD to enter S4BIOS state
-    uint8_t                 pstatecontrol;          ///< Processor performance state control*/
-    uint32_t                pm1aeventblock;         ///< 32-bit port address of Power Mgt 1a Event Reg Blk
-    uint32_t                pm1beventblock;         ///< 32-bit port address of Power Mgt 1b Event Reg Blk
-    uint32_t                pm1acontrolblock;       ///< 32-bit port address of Power Mgt 1a Control Reg Blk
-    uint32_t                pm1bcontrolblock;       ///< 32-bit port address of Power Mgt 1b Control Reg Blk
-    uint32_t                pm2controlblock;        ///< 32-bit port address of Power Mgt 2 Control Reg Blk
-    uint32_t                pmtimerblock;           ///< 32-bit port address of Power Mgt Timer Ctrl Reg Blk
-    uint32_t                gpe0block;              ///< 32-bit port address of General Purpose Event 0 Reg Blk
-    uint32_t                gpe1block;              ///< 32-bit port address of General Purpose Event 1 Reg Blk
-    uint8_t                 pm1eventlength;         ///< Byte Length of ports at Pm1xEventBlock
-    uint8_t                 pm1controllength;       ///< Byte Length of ports at Pm1xControlBlock
-    uint8_t                 pm2controllength;       ///< Byte Length of ports at Pm2ControlBlock
-    uint8_t                 pmtimerlength;          ///< Byte Length of ports at PmTimerBlock
-    uint8_t                 gpe0blocklength;        ///< Byte Length of ports at Gpe0Block
-    uint8_t                 gpe1blocklength;        ///< Byte Length of ports at Gpe1Block
-    uint8_t                 gpe1base;               ///< Offset in GPE number space where GPE1 events start
-    uint8_t                 cstcontrol;             ///< Support for the _CST object and C-States change notification
-    uint16_t                c2latency;              ///< Worst case HW latency to enter/exit C2 state
-    uint16_t                c3latency;              ///< Worst case HW latency to enter/exit C3 state
-    uint16_t                flushsize;              ///< Processor memory cache line width, in bytes
-    uint16_t                flushstride;            ///< Number of flush strides that need to be read
-    uint8_t                 dutyoffset;             ///< Processor duty cycle index in processor P_CNT reg
-    uint8_t                 dutywidth;              ///< Processor duty cycle value bit width in P_CNT register
-    uint8_t                 dayalarm;               ///< Index to day-of-month alarm in RTC CMOS RAM
-    uint8_t                 monthalarm;             ///< Index to month-of-year alarm in RTC CMOS RAM
-    uint8_t                 century;                ///< Index to century in RTC CMOS RAM
-    uint16_t                bootflags;              ///< IA-PC Boot Architecture Flags (see below for individual flags)
-    uint8_t                 reserved;               ///< Reserved, must be zero
-    uint32_t                flags;                  ///< Miscellaneous flag bits (see below for individual flags)
-    acpi_generic_address_t  resetregister;          ///< 64-bit address of the Reset register
-    uint8_t                 resetvalue;             ///< Value to write to the ResetRegister port to reset the system
-    uint16_t                armbootflags;           ///< ARM-Specific Boot Flags (see below for individual flags) (ACPI 5.1)
-    uint8_t                 minorrevision;          ///< FADT Minor Revision (ACPI 5.1)
-    uint64_t                xfacs;                  ///< 64-bit physical address of FACS
-    uint64_t                xdsdt;                  ///< 64-bit physical address of DSDT
-    acpi_generic_address_t  xpm1aeventblock;        ///< 64-bit Extended Power Mgt 1a Event Reg Blk address
-    acpi_generic_address_t  xpm1beventblock;        ///< 64-bit Extended Power Mgt 1b Event Reg Blk address
-    acpi_generic_address_t  xpm1acontrolblock;      ///< 64-bit Extended Power Mgt 1a Control Reg Blk address
-    acpi_generic_address_t  xpm1bcontrolblock;      ///< 64-bit Extended Power Mgt 1b Control Reg Blk address
-    acpi_generic_address_t  xpm2controlblock;       ///< 64-bit Extended Power Mgt 2 Control Reg Blk address
-    acpi_generic_address_t  xpmtimerblock;          ///< 64-bit Extended Power Mgt Timer Ctrl Reg Blk address
-    acpi_generic_address_t  xgpe0block;             ///< 64-bit Extended General Purpose Event 0 Reg Blk address
-    acpi_generic_address_t  xgpe1block;             ///< 64-bit Extended General Purpose Event 1 Reg Blk address
-    acpi_generic_address_t  sleepcontrol;           ///< 64-bit Sleep Control register (ACPI 5.0)
-    acpi_generic_address_t  sleepstatus;            ///< 64-bit Sleep Status register (ACPI 5.0)
-    uint64_t                hypervisorid;           ///< Hypervisor Vendor ID (ACPI 6.0)
-} __attribute__((packed)) fadt_t;
+struct fadt_t {
+    struct acpi_header_t            header;                 ///< Common ACPI table header
+    uint32_t                        facs;                   ///< 32-bit physical address of FACS
+    uint32_t                        dsdt;                   ///< 32-bit physical address of DSDT
+    uint8_t                         model;                  ///< System Interrupt Model (ACPI 1.0) - not used in ACPI 2.0+
+    uint8_t                         preferredprofile;       ///< Conveys preferred power management profile to OSPM.
+    uint16_t                        sciinterrupt;           ///< System vector of SCI interrupt
+    uint32_t                        smicommand;             ///< 32-bit Port address of SMI command port
+    uint8_t                         acpienable;             ///< Value to write to SMI_CMD to enable ACPI
+    uint8_t                         acpidisable;            ///< Value to write to SMI_CMD to disable ACPI
+    uint8_t                         s4biosrequest;          ///< Value to write to SMI_CMD to enter S4BIOS state
+    uint8_t                         pstatecontrol;          ///< Processor performance state control*/
+    uint32_t                        pm1aeventblock;         ///< 32-bit port address of Power Mgt 1a Event Reg Blk
+    uint32_t                        pm1beventblock;         ///< 32-bit port address of Power Mgt 1b Event Reg Blk
+    uint32_t                        pm1acontrolblock;       ///< 32-bit port address of Power Mgt 1a Control Reg Blk
+    uint32_t                        pm1bcontrolblock;       ///< 32-bit port address of Power Mgt 1b Control Reg Blk
+    uint32_t                        pm2controlblock;        ///< 32-bit port address of Power Mgt 2 Control Reg Blk
+    uint32_t                        pmtimerblock;           ///< 32-bit port address of Power Mgt Timer Ctrl Reg Blk
+    uint32_t                        gpe0block;              ///< 32-bit port address of General Purpose Event 0 Reg Blk
+    uint32_t                        gpe1block;              ///< 32-bit port address of General Purpose Event 1 Reg Blk
+    uint8_t                         pm1eventlength;         ///< Byte Length of ports at Pm1xEventBlock
+    uint8_t                         pm1controllength;       ///< Byte Length of ports at Pm1xControlBlock
+    uint8_t                         pm2controllength;       ///< Byte Length of ports at Pm2ControlBlock
+    uint8_t                         pmtimerlength;          ///< Byte Length of ports at PmTimerBlock
+    uint8_t                         gpe0blocklength;        ///< Byte Length of ports at Gpe0Block
+    uint8_t                         gpe1blocklength;        ///< Byte Length of ports at Gpe1Block
+    uint8_t                         gpe1base;               ///< Offset in GPE number space where GPE1 events start
+    uint8_t                         cstcontrol;             ///< Support for the _CST object and C-States change notification
+    uint16_t                        c2latency;              ///< Worst case HW latency to enter/exit C2 state
+    uint16_t                        c3latency;              ///< Worst case HW latency to enter/exit C3 state
+    uint16_t                        flushsize;              ///< Processor memory cache line width, in bytes
+    uint16_t                        flushstride;            ///< Number of flush strides that need to be read
+    uint8_t                         dutyoffset;             ///< Processor duty cycle index in processor P_CNT reg
+    uint8_t                         dutywidth;              ///< Processor duty cycle value bit width in P_CNT register
+    uint8_t                         dayalarm;               ///< Index to day-of-month alarm in RTC CMOS RAM
+    uint8_t                         monthalarm;             ///< Index to month-of-year alarm in RTC CMOS RAM
+    uint8_t                         century;                ///< Index to century in RTC CMOS RAM
+    uint16_t                        bootflags;              ///< IA-PC Boot Architecture Flags (see below for individual flags)
+    uint8_t                         reserved;               ///< Reserved, must be zero
+    uint32_t                        flags;                  ///< Miscellaneous flag bits (see below for individual flags)
+    struct acpi_generic_address_t   resetregister;          ///< 64-bit address of the Reset register
+    uint8_t                         resetvalue;             ///< Value to write to the ResetRegister port to reset the system
+    uint16_t                        armbootflags;           ///< ARM-Specific Boot Flags (see below for individual flags) (ACPI 5.1)
+    uint8_t                         minorrevision;          ///< FADT Minor Revision (ACPI 5.1)
+    uint64_t                        xfacs;                  ///< 64-bit physical address of FACS
+    uint64_t                        xdsdt;                  ///< 64-bit physical address of DSDT
+    struct acpi_generic_address_t   xpm1aeventblock;        ///< 64-bit Extended Power Mgt 1a Event Reg Blk address
+    struct acpi_generic_address_t   xpm1beventblock;        ///< 64-bit Extended Power Mgt 1b Event Reg Blk address
+    struct acpi_generic_address_t   xpm1acontrolblock;      ///< 64-bit Extended Power Mgt 1a Control Reg Blk address
+    struct acpi_generic_address_t   xpm1bcontrolblock;      ///< 64-bit Extended Power Mgt 1b Control Reg Blk address
+    struct acpi_generic_address_t   xpm2controlblock;       ///< 64-bit Extended Power Mgt 2 Control Reg Blk address
+    struct acpi_generic_address_t   xpmtimerblock;          ///< 64-bit Extended Power Mgt Timer Ctrl Reg Blk address
+    struct acpi_generic_address_t   xgpe0block;             ///< 64-bit Extended General Purpose Event 0 Reg Blk address
+    struct acpi_generic_address_t   xgpe1block;             ///< 64-bit Extended General Purpose Event 1 Reg Blk address
+    struct acpi_generic_address_t   sleepcontrol;           ///< 64-bit Sleep Control register (ACPI 5.0)
+    struct acpi_generic_address_t   sleepstatus;            ///< 64-bit Sleep Status register (ACPI 5.0)
+    uint64_t                        hypervisorid;           ///< Hypervisor Vendor ID (ACPI 6.0)
+} __attribute__((packed));
 
-typedef struct {
-    acpi_header_t header;
-} __attribute__((packed)) dsdt_t;
+// -----------------------------------------------------------------------------
+// DSDT - Differentiated System Description Table
+// -----------------------------------------------------------------------------
+
+struct dsdt_t {
+    struct acpi_header_t    header;                         ///< Common ACPI table header
+} __attribute__((packed));
 
 // -----------------------------------------------------------------------------
 // ACPI Checksum
 // -----------------------------------------------------------------------------
 
-inline uint8_t
+static inline uint8_t
 acpi_checksum(void *table, uint32_t len)
 {
+    int i;
     uint8_t sum = 0;
-    auto view = gsl::span(static_cast<uint8_t *>(table), len);
 
-    for (const auto &byte : view) {
-        sum += byte;
+    for (i = 0; i < len; i++) {
+        sum += ((uint8_t *)table)[i];
     }
 
     return 0x100U - sum;
 }
 
+// -----------------------------------------------------------------------------
+// Setup Functions
+// -----------------------------------------------------------------------------
 
-    // std::strncpy(m_rsdp->signature, "RSD PTR ", sizeof(m_rsdp->signature));
-    // m_rsdp->checksum = 0;
-    // std::strncpy(m_rsdp->oemid, "AIS", sizeof(m_rsdp->oemid));
-    // m_rsdp->revision = 2;
-    // m_rsdp->rsdtphysicaladdress = 0;
-    // m_rsdp->length = sizeof(rsdp_t);
-    // m_rsdp->xsdtphysicaladdress = ACPI_XSDT_GPA;
-    // m_rsdp->extendedchecksum = 0;
-    // std::memset(m_rsdp->reserved, 0, sizeof(m_rsdp->reserved));
-    // m_rsdp->checksum = acpi_checksum(m_rsdp.get(), 20);
-    // m_rsdp->extendedchecksum = acpi_checksum(m_rsdp.get(), m_rsdp->length);
+static inline void
+setup_rsdp(struct rsdp_t *rsdp)
+{
+    static struct rsdp_t s_rsdp = {
+        .signature = {'R', 'S', 'D', ' ', 'P', 'T', 'R', ' '},
+        .checksum = 0,
+        .oemid = {'A', 'I', 'S', ' ', ' ', ' '},
+        .revision = 2,
+        .rsdtphysicaladdress = 0,
+        .length = sizeof(struct rsdp_t),
+        .xsdtphysicaladdress = ACPI_XSDT_GPA,
+        .extendedchecksum = 0,
+        .reserved = {0, 0, 0}
+    };
 
-    // std::strncpy(m_xsdt->header.signature, "XSDT", sizeof(m_xsdt->header.signature));
-    // m_xsdt->header.length = sizeof(xsdt_t);
-    // m_xsdt->header.revision = 1;
-    // m_xsdt->header.checksum = 0;
-    // std::strncpy(m_xsdt->header.oemid, OEMID, sizeof(m_xsdt->header.oemid));
-    // std::strncpy(m_xsdt->header.oemtableid, OEMTABLEID, sizeof(m_xsdt->header.oemtableid));
-    // m_xsdt->header.oemrevision = OEMREVISION;
-    // std::strncpy(m_xsdt->header.aslcompilerid, ASLCOMPILERID, sizeof(m_xsdt->header.aslcompilerid));
-    // m_xsdt->header.aslcompilerrevision = ASLCOMPILERREVISION;
-    // m_xsdt->entries[0] = ACPI_MADT_GPA;
-    // m_xsdt->entries[1] = ACPI_FADT_GPA;
-    // m_xsdt->header.checksum = acpi_checksum(m_xsdt.get(), m_xsdt->header.length);
+    *rsdp = s_rsdp;
 
-    // std::strncpy(m_madt->header.signature, "APIC", sizeof(m_madt->header.signature));
-    // m_madt->header.length = sizeof(madt_t);
-    // m_madt->header.revision = 4;
-    // m_madt->header.checksum = 0;
-    // std::strncpy(m_madt->header.oemid, OEMID, sizeof(m_madt->header.oemid));
-    // std::strncpy(m_madt->header.oemtableid, OEMTABLEID, sizeof(m_madt->header.oemtableid));
-    // m_madt->header.oemrevision = OEMREVISION;
-    // std::strncpy(m_madt->header.aslcompilerid, ASLCOMPILERID, sizeof(m_madt->header.aslcompilerid));
-    // m_madt->header.aslcompilerrevision = ASLCOMPILERREVISION;
-    // m_madt->address = LAPIC_GPA;
-    // m_madt->flags = 0;
+    rsdp->checksum = acpi_checksum(rsdp, 20);
+    rsdp->extendedchecksum = acpi_checksum(rsdp, rsdp->length);
+}
 
-    // m_madt->lapic.header.type = ICS_TYPE_LOCAL_APIC;
-    // m_madt->lapic.header.length = 8;
-    // m_madt->lapic.processorid = 0;      // TODO: This should be generated from the vCPUs
-    // m_madt->lapic.id = 0;               // TODO: This should be generated from the vCPUs
-    // m_madt->lapic.flags = 1;
+static inline void
+setup_xsdt(struct xsdt_t *xsdt)
+{
+    static struct xsdt_t s_xsdt = {
+        .header = {
+            .signature = {'X', 'S', 'D', 'T'},
+            .length = sizeof(struct xsdt_t),
+            .revision = 1,
+            .checksum = 0,
+            .oemid = {'A', 'I', 'S', ' ', ' ', ' '},
+            .oemtableid = {'n', 'o', 'n', 'e', ' ', ' ', ' ', ' '},
+            .oemrevision = 1,
+            .aslcompilerid = {'n', 'o', 'n', 'e'},
+            .aslcompilerrevision = 1
+        },
+        .entries = {ACPI_MADT_GPA, ACPI_FADT_GPA}
+    };
 
-    // m_madt->ioapic.header.type = ICS_TYPE_IO_APIC;
-    // m_madt->ioapic.header.length = sizeof(ics_ioapic_t);
-    // m_madt->ioapic.id = 0;
-    // m_madt->ioapic.reserved = 0;
-    // m_madt->ioapic.address = IOAPIC_GPA;
-    // m_madt->ioapic.gsi_base = 0;
+    *xsdt = s_xsdt;
+    xsdt->header.checksum = acpi_checksum(xsdt, xsdt->header.length);
+}
 
-    // m_madt->header.checksum = acpi_checksum(m_madt.get(), m_madt->header.length);
+static inline void
+setup_madt(struct madt_t *madt)
+{
+    static struct madt_t s_madt = {
+        .header = {
+            .signature = {'A', 'P', 'I', 'C'},
+            .length = sizeof(struct madt_t),
+            .revision = 4,
+            .checksum = 0,
+            .oemid = {'A', 'I', 'S', ' ', ' ', ' '},
+            .oemtableid = {'n', 'o', 'n', 'e', ' ', ' ', ' ', ' '},
+            .oemrevision = 1,
+            .aslcompilerid = {'n', 'o', 'n', 'e'},
+            .aslcompilerrevision = 1
+        },
+        .address = XAPIC_GPA,
+        .flags = 0,
+        .lapic = {
+            .header = {
+                .type = ICS_TYPE_LOCAL_APIC,
+                .length = 8
+            },
+            .processorid = 0,
+            .id = 0,
+            .flags = 1
+        }
+    };
 
-    // std::strncpy(m_fadt->header.signature, "FACP", sizeof(m_fadt->header.signature));
-    // m_fadt->header.length = sizeof(fadt_t);
-    // m_fadt->header.revision = 6;
-    // m_fadt->header.checksum = 0;
-    // std::strncpy(m_fadt->header.oemid, OEMID, sizeof(m_fadt->header.oemid));
-    // std::strncpy(m_fadt->header.oemtableid, OEMTABLEID, sizeof(m_fadt->header.oemtableid));
-    // m_fadt->header.oemrevision = OEMREVISION;
-    // std::strncpy(m_fadt->header.aslcompilerid, ASLCOMPILERID, sizeof(m_fadt->header.aslcompilerid));
-    // m_fadt->header.aslcompilerrevision = ASLCOMPILERREVISION;
-    // m_fadt->dsdt = 0;
-    // m_fadt->flags = 0x101873U;
-    // m_fadt->minorrevision = 1;
-    // m_fadt->xdsdt = ACPI_DSDT_GPA;
-    // m_fadt->hypervisorid = 0xBFU;
-    // m_fadt->header.checksum = acpi_checksum(m_fadt.get(), m_fadt->header.length);
+    *madt = s_madt;
+    madt->header.checksum = acpi_checksum(madt, madt->header.length);
+}
 
-    // std::strncpy(m_dsdt->header.signature, "DSDT", sizeof(m_dsdt->header.signature));
-    // m_dsdt->header.length = sizeof(dsdt_t);
-    // m_dsdt->header.revision = 6;
-    // m_dsdt->header.checksum = 0;
-    // std::strncpy(m_dsdt->header.oemid, OEMID, sizeof(m_dsdt->header.oemid));
-    // std::strncpy(m_dsdt->header.oemtableid, OEMTABLEID, sizeof(m_dsdt->header.oemtableid));
-    // m_dsdt->header.oemrevision = OEMREVISION;
-    // std::strncpy(m_dsdt->header.aslcompilerid, ASLCOMPILERID, sizeof(m_dsdt->header.aslcompilerid));
-    // m_dsdt->header.aslcompilerrevision = ASLCOMPILERREVISION;
-    // m_dsdt->header.checksum = acpi_checksum(m_dsdt.get(), m_dsdt->header.length);
+static inline void
+setup_fadt(struct fadt_t *fadt)
+{
+    static struct fadt_t s_fadt = {
+        .header = {
+            .signature = {'F', 'A', 'C', 'P'},
+            .length = sizeof(struct fadt_t),
+            .revision = 6,
+            .checksum = 0,
+            .oemid = {'A', 'I', 'S', ' ', ' ', ' '},
+            .oemtableid = {'n', 'o', 'n', 'e', ' ', ' ', ' ', ' '},
+            .oemrevision = 1,
+            .aslcompilerid = {'n', 'o', 'n', 'e'},
+            .aslcompilerrevision = 1
+        },
+        .facs = 0,
+        .dsdt = ACPI_DSDT_GPA,
+        .model = 0,
+        .preferredprofile = 0,
+        .sciinterrupt = 0,
+        .smicommand = 0,
+        .acpienable = 0,
+        .acpidisable = 0,
+        .s4biosrequest = 0,
+        .pstatecontrol = 0,
+        .pm1aeventblock = 0,
+        .pm1beventblock = 0,
+        .pm1acontrolblock = 0,
+        .pm1bcontrolblock = 0,
+        .pm2controlblock = 0,
+        .pmtimerblock = 0,
+        .gpe0block = 0,
+        .gpe1block = 0,
+        .pm1eventlength = 0,
+        .pm1controllength = 0,
+        .pm2controllength = 0,
+        .pmtimerlength = 0,
+        .gpe0blocklength = 0,
+        .gpe1blocklength = 0,
+        .gpe1base = 0,
+        .cstcontrol = 0,
+        .c2latency = 0,
+        .c3latency = 0,
+        .flushsize = 0,
+        .flushstride = 0,
+        .dutyoffset = 0,
+        .dutywidth = 0,
+        .dayalarm = 0,
+        .monthalarm = 0,
+        .century = 0,
+        .bootflags = 0,
+        .reserved = 0,
+        .flags = 0x101873U,
+        .resetregister = {0, 0, 0, 0, 0},
+        .resetvalue = 0,
+        .armbootflags = 0,
+        .minorrevision = 1,
+        .xfacs = 0,
+        .xdsdt = 0,
+        .xpm1aeventblock = {0, 0, 0, 0, 0},
+        .xpm1beventblock = {0, 0, 0, 0, 0},
+        .xpm1acontrolblock = {0, 0, 0, 0, 0},
+        .xpm1bcontrolblock = {0, 0, 0, 0, 0},
+        .xpm2controlblock = {0, 0, 0, 0, 0},
+        .xpmtimerblock = {0, 0, 0, 0, 0},
+        .xgpe0block = {0, 0, 0, 0, 0},
+        .xgpe1block = {0, 0, 0, 0, 0},
+        .sleepcontrol = {0, 0, 0, 0, 0},
+        .sleepstatus = {0, 0, 0, 0, 0},
+        .hypervisorid = 0xBF,
 
-    // auto rsdp_hpa = g_mm->virtptr_to_physint(m_rsdp.get());
-    // auto xsdt_hpa = g_mm->virtptr_to_physint(m_xsdt.get());
-    // auto madt_hpa = g_mm->virtptr_to_physint(m_madt.get());
-    // auto fadt_hpa = g_mm->virtptr_to_physint(m_fadt.get());
-    // auto dsdt_hpa = g_mm->virtptr_to_physint(m_dsdt.get());
+    };
 
-    // m_ept_map.map_4k(ACPI_RSDP_GPA, rsdp_hpa, ept::mmap::attr_type::read_only);
-    // m_ept_map.map_4k(ACPI_XSDT_GPA, xsdt_hpa, ept::mmap::attr_type::read_only);
-    // m_ept_map.map_4k(ACPI_MADT_GPA, madt_hpa, ept::mmap::attr_type::read_only);
-    // m_ept_map.map_4k(ACPI_FADT_GPA, fadt_hpa, ept::mmap::attr_type::read_only);
-    // m_ept_map.map_4k(ACPI_DSDT_GPA, dsdt_hpa, ept::mmap::attr_type::read_only);
+    *fadt = s_fadt;
+    fadt->header.checksum = acpi_checksum(fadt, fadt->header.length);
+}
+
+static inline void
+setup_dsdt(struct dsdt_t *dsdt)
+{
+    static struct dsdt_t s_dsdt = {
+        .header = {
+            .signature = {'D', 'S', 'D', 'T'},
+            .length = sizeof(struct dsdt_t),
+            .revision = 2,
+            .checksum = 0,
+            .oemid = {'A', 'I', 'S', ' ', ' ', ' '},
+            .oemtableid = {'n', 'o', 'n', 'e', ' ', ' ', ' ', ' '},
+            .oemrevision = 1,
+            .aslcompilerid = {'n', 'o', 'n', 'e'},
+            .aslcompilerrevision = 1
+        }
+    };
+
+    *dsdt = s_dsdt;
+    dsdt->header.checksum = acpi_checksum(dsdt, dsdt->header.length);
+}
 
 #pragma pack(pop)
 

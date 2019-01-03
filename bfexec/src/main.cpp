@@ -96,6 +96,9 @@ uart_thread()
         std::cout.write(buffer.data(), gsl::narrow_cast<int>(size));
         std::this_thread::sleep_for(milliseconds(100));
     }
+
+    auto size = __domain_op__dump_uart(g_domainid, buffer.data());
+    std::cout.write(buffer.data(), gsl::narrow_cast<int>(size));
 }
 
 // -----------------------------------------------------------------------------

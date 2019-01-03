@@ -19,8 +19,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#ifndef VMEXIT_MSR_INTEL_X64_BOXY_H
-#define VMEXIT_MSR_INTEL_X64_BOXY_H
+#ifndef APIC_X2APIC_INTEL_X64_BOXY_H
+#define APIC_X2APIC_INTEL_X64_BOXY_H
 
 #include <bfvmm/hve/arch/intel_x64/vcpu.h>
 #include <eapis/hve/arch/intel_x64/vmexit/rdmsr.h>
@@ -51,7 +51,7 @@ namespace boxy::intel_x64
 
 class vcpu;
 
-class EXPORT_BOXY_HVE msr_handler
+class EXPORT_BOXY_HVE x2apic_handler
 {
 public:
 
@@ -62,7 +62,7 @@ public:
     ///
     /// @param vcpu the vcpu object for this handler
     ///
-    msr_handler(
+    x2apic_handler(
         gsl::not_null<vcpu *> vcpu);
 
     /// Destructor
@@ -70,15 +70,24 @@ public:
     /// @expects
     /// @ensures
     ///
-    ~msr_handler() = default;
+    ~x2apic_handler() = default;
 
 public:
 
     /// @cond
 
-    bool handle_rdmsr_0x000001A0(
+    bool handle_rdmsr_0x0000001B(
         gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info);
-    bool handle_wrmsr_0x000001A0(
+    bool handle_wrmsr_0x0000001B(
+        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info);
+
+    bool handle_rdmsr_0x00000802(
+        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info);
+    bool handle_wrmsr_0x00000802(
+        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info);
+    bool handle_rdmsr_0x00000803(
+        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info);
+    bool handle_wrmsr_0x00000803(
         gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info);
 
     /// @endcond
@@ -87,15 +96,17 @@ private:
 
     vcpu *m_vcpu;
 
+    uint64_t m_0x0000001B{0xFEE00D00};
+
 public:
 
     /// @cond
 
-    msr_handler(msr_handler &&) = default;
-    msr_handler &operator=(msr_handler &&) = default;
+    x2apic_handler(x2apic_handler &&) = default;
+    x2apic_handler &operator=(x2apic_handler &&) = default;
 
-    msr_handler(const msr_handler &) = delete;
-    msr_handler &operator=(const msr_handler &) = delete;
+    x2apic_handler(const x2apic_handler &) = delete;
+    x2apic_handler &operator=(const x2apic_handler &) = delete;
 
     /// @endcond
 };

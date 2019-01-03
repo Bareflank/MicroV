@@ -96,12 +96,16 @@ vcpu::vcpu(
 
     m_cpuid_handler{this},
     m_external_interrupt_handler{this},
+    m_io_instruction_handler{this},
     m_msr_handler{this},
     m_vmcall_handler{this},
 
     m_vmcall_run_op_handler{this},
     m_vmcall_domain_op_handler{this},
-    m_vmcall_vcpu_op_handler{this}
+    m_vmcall_vcpu_op_handler{this},
+
+    m_x2apic_handler{this},
+    m_pci_configuration_space_handler{this}
 {
     this->set_eptp(domain->ept());
 
@@ -223,19 +227,6 @@ vcpu::is_killed() const
 void
 vcpu::kill()
 { m_killed = true; }
-
-
-//------------------------------------------------------------------------------
-// APIC
-//------------------------------------------------------------------------------
-
-// uint32_t
-// vcpu::lapicid() const
-// { return m_lapic.id(); }
-
-// uint64_t
-// vcpu::lapic_base() const
-// { return m_lapic.base(); }
 
 //------------------------------------------------------------------------------
 // Fault

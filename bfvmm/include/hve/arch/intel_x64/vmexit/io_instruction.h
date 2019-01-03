@@ -19,12 +19,11 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#ifndef VMEXIT_MSR_INTEL_X64_BOXY_H
-#define VMEXIT_MSR_INTEL_X64_BOXY_H
+#ifndef VMEXIT_IO_INSTRUCTION_INTEL_X64_BOXY_H
+#define VMEXIT_IO_INSTRUCTION_INTEL_X64_BOXY_H
 
 #include <bfvmm/hve/arch/intel_x64/vcpu.h>
-#include <eapis/hve/arch/intel_x64/vmexit/rdmsr.h>
-#include <eapis/hve/arch/intel_x64/vmexit/wrmsr.h>
+#include <eapis/hve/arch/intel_x64/vmexit/io_instruction.h>
 
 // -----------------------------------------------------------------------------
 // Exports
@@ -51,7 +50,7 @@ namespace boxy::intel_x64
 
 class vcpu;
 
-class EXPORT_BOXY_HVE msr_handler
+class EXPORT_BOXY_HVE io_instruction_handler
 {
 public:
 
@@ -62,7 +61,7 @@ public:
     ///
     /// @param vcpu the vcpu object for this handler
     ///
-    msr_handler(
+    io_instruction_handler(
         gsl::not_null<vcpu *> vcpu);
 
     /// Destructor
@@ -70,16 +69,11 @@ public:
     /// @expects
     /// @ensures
     ///
-    ~msr_handler() = default;
+    ~io_instruction_handler() = default;
 
 public:
 
     /// @cond
-
-    bool handle_rdmsr_0x000001A0(
-        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info);
-    bool handle_wrmsr_0x000001A0(
-        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info);
 
     /// @endcond
 
@@ -91,11 +85,11 @@ public:
 
     /// @cond
 
-    msr_handler(msr_handler &&) = default;
-    msr_handler &operator=(msr_handler &&) = default;
+    io_instruction_handler(io_instruction_handler &&) = default;
+    io_instruction_handler &operator=(io_instruction_handler &&) = default;
 
-    msr_handler(const msr_handler &) = delete;
-    msr_handler &operator=(const msr_handler &) = delete;
+    io_instruction_handler(const io_instruction_handler &) = delete;
+    io_instruction_handler &operator=(const io_instruction_handler &) = delete;
 
     /// @endcond
 };
