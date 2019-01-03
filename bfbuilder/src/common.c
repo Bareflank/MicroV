@@ -485,7 +485,7 @@ setup_reserved_free(struct vm_t *vm)
     }
 
     ret = donate_page_to_page_range(
-        vm, vm->zero_page, RESERVED2_ADRR, RESERVED2_SIZE);
+        vm, vm->zero_page, 0xF0000, 0x10000);
     if (ret != SUCCESS) {
         return ret;
     }

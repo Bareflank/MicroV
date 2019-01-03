@@ -22,14 +22,12 @@
 #include <hve/arch/intel_x64/vcpu.h>
 #include <hve/arch/intel_x64/vmexit/cpuid.h>
 
-#define PASS_THROUGH_CPUID(a)                                                   \
-    vcpu->add_cpuid_handler(                                                    \
-        a, eapis::intel_x64::cpuid_handler::handler_delegate_t::create<cpuid_handler, &cpuid_handler::handle_pass_through>(this) \
-    );
+#define make_delegate(a)                                                        \
+    eapis::intel_x64::cpuid_handler::handler_delegate_t::create<cpuid_handler, &cpuid_handler::a>(this)
 
-#define EMULATE_CPUID(a, b)                                                     \
-    vcpu->emulate_cpuid(                                                        \
-        a, eapis::intel_x64::cpuid_handler::handler_delegate_t::create<cpuid_handler, &cpuid_handler::b>(this) \
+#define EMULATE_CPUID(a,b)                                                      \
+    m_vcpu->add_cpuid_handler(                                                  \
+        a, make_delegate(b)                                                     \
     );
 
 // -----------------------------------------------------------------------------
@@ -50,11 +48,25 @@ cpuid_handler::cpuid_handler(
         return;
     }
 
-    PASS_THROUGH_CPUID(0x00000000);
+    // Note:
+    //
+    // Every leaf that is supported is handled here. All reserved bits must
+    // be set to 0. Otherwise a new feature could be enabled that we are not
+    // aware of in the future.
+    //
 
+    EMULATE_CPUID(0x00000000, handle_0x00000000);
+    EMULATE_CPUID(0x00000006, handle_0x00000006);
+    EMULATE_CPUID(0x00000007, handle_0x00000007);
+    EMULATE_CPUID(0x0000000D, handle_0x0000000D);
+    EMULATE_CPUID(0x0000000F, handle_0x0000000F);
+    EMULATE_CPUID(0x00000010, handle_0x00000010);
+    EMULATE_CPUID(0x00000015, handle_0x00000015);
+    EMULATE_CPUID(0x00000016, handle_0x00000016);
     EMULATE_CPUID(0x80000000, handle_0x80000000);
     EMULATE_CPUID(0x80000001, handle_0x80000001);
-    EMULATE_CPUID(0x400000BF, handle_0x400000BF);
+    EMULATE_CPUID(0x80000007, handle_0x80000007);
+    EMULATE_CPUID(0x80000008, handle_0x80000008);
 }
 
 // -----------------------------------------------------------------------------
@@ -62,11 +74,144 @@ cpuid_handler::cpuid_handler(
 // -----------------------------------------------------------------------------
 
 bool
-cpuid_handler::handle_pass_through(
+cpuid_handler::handle_0x00000000(
     gsl::not_null<vcpu_t *> vcpu, eapis::intel_x64::cpuid_handler::info_t &info)
 {
     bfignored(vcpu);
     bfignored(info);
+
+    return true;
+}
+
+bool
+cpuid_handler::handle_0x00000006(
+    gsl::not_null<vcpu_t *> vcpu, eapis::intel_x64::cpuid_handler::info_t &info)
+{
+    bfignored(vcpu);
+
+    info.rax = 0;
+    info.rbx = 0;
+    info.rcx = 0;
+    info.rdx = 0;
+
+    return true;
+}
+
+bool
+cpuid_handler::handle_0x00000007(
+    gsl::not_null<vcpu_t *> vcpu, eapis::intel_x64::cpuid_handler::info_t &info)
+{
+    bfignored(vcpu);
+
+    // Diables the following features:
+    //
+    // EBX:
+    // - TSC_ADJUST         no plans to support
+    // - SGX                no plans to support
+    // - AVX2               need to properly emulate XSAVE/XRESTORE
+    // - INVPCID            ??? Might be able to support, not sure
+    // - RTM                no plans to support
+    // - RDT-M              no plans to support
+    // - MPX                no plans to support
+    // - RDT-A              no plans to support
+    // - AVX512F            need to properly emulate XSAVE/XRESTORE
+    // - AVX512DQ           need to properly emulate XSAVE/XRESTORE
+    // - AVX512_IFMA        need to properly emulate XSAVE/XRESTORE
+    // - Processor Trace    no plans to support
+    // - AVX512PF           need to properly emulate XSAVE/XRESTORE
+    // - AVX512ER           need to properly emulate XSAVE/XRESTORE
+    // - AVX512CD           need to properly emulate XSAVE/XRESTORE
+    // - SHA                need to properly emulate XSAVE/XRESTORE
+    // - AVX512BW           need to properly emulate XSAVE/XRESTORE
+    // - AVX512VL           need to properly emulate XSAVE/XRESTORE
+    //
+    // ECX:
+    // - PREFETCHWT1        no plans to support
+    // - AVX512_VBMI        need to properly emulate XSAVE/XRESTORE
+    // - UMIP               ??? Might be able to support, not sure
+    // - PKU                ??? Might be able to support, not sure
+    // - OSPKE              ??? Might be able to support, not sure
+    // - MAWAU              no plans to support
+    // - TSC_AUX            ??? Might be able to support, not sure
+    // - SGX_LC             no plans to support
+
+    if (info.rcx != 0) {
+        info.rax = 0;
+        info.rbx = 0;
+        info.rcx = 0;
+        info.rdx = 0;
+    }
+
+    info.rax = 0;
+    info.rbx &= 0x19C23D9;
+    info.rcx = 0;
+    info.rdx = 0;
+
+    return true;
+}
+
+bool
+cpuid_handler::handle_0x0000000D(
+    gsl::not_null<vcpu_t *> vcpu, eapis::intel_x64::cpuid_handler::info_t &info)
+{
+    bfignored(vcpu);
+
+    info.rax = 0;
+    info.rbx = 0;
+    info.rcx = 0;
+    info.rdx = 0;
+
+    return true;
+}
+
+bool
+cpuid_handler::handle_0x0000000F(
+    gsl::not_null<vcpu_t *> vcpu, eapis::intel_x64::cpuid_handler::info_t &info)
+{
+    bfignored(vcpu);
+
+    info.rax = 0;
+    info.rbx = 0;
+    info.rcx = 0;
+    info.rdx = 0;
+
+    return true;
+}
+
+bool
+cpuid_handler::handle_0x00000010(
+    gsl::not_null<vcpu_t *> vcpu, eapis::intel_x64::cpuid_handler::info_t &info)
+{
+    bfignored(vcpu);
+
+    info.rax = 0;
+    info.rbx = 0;
+    info.rcx = 0;
+    info.rdx = 0;
+
+    return true;
+}
+
+bool
+cpuid_handler::handle_0x00000015(
+    gsl::not_null<vcpu_t *> vcpu, eapis::intel_x64::cpuid_handler::info_t &info)
+{
+    bfignored(vcpu);
+
+    info.rdx = 0;
+    return true;
+}
+
+bool
+cpuid_handler::handle_0x00000016(
+    gsl::not_null<vcpu_t *> vcpu, eapis::intel_x64::cpuid_handler::info_t &info)
+{
+    bfignored(vcpu);
+
+    info.rax &= 0xFFFF;
+    info.rbx &= 0xFFFF;
+    info.rcx &= 0xFFFF;
+    info.rdx = 0;
 
     return true;
 }
@@ -77,19 +222,6 @@ cpuid_handler::handle_0x80000000(
 {
     bfignored(vcpu);
 
-    auto [rax, rbx, rcx, rdx] =
-        ::x64::cpuid::get(
-            gsl::narrow_cast<::x64::cpuid::field_type>(vcpu->rax()),
-            gsl::narrow_cast<::x64::cpuid::field_type>(vcpu->rbx()),
-            gsl::narrow_cast<::x64::cpuid::field_type>(vcpu->rcx()),
-            gsl::narrow_cast<::x64::cpuid::field_type>(vcpu->rdx())
-        );
-
-    bfignored(rbx);
-    bfignored(rcx);
-    bfignored(rdx);
-
-    info.rax = rax;
     info.rbx = 0;
     info.rcx = 0;
     info.rdx = 0;
@@ -103,29 +235,42 @@ cpuid_handler::handle_0x80000001(
 {
     bfignored(vcpu);
 
-    auto [rax, rbx, rcx, rdx] =
-        ::x64::cpuid::get(
-            gsl::narrow_cast<::x64::cpuid::field_type>(vcpu->rax()),
-            gsl::narrow_cast<::x64::cpuid::field_type>(vcpu->rbx()),
-            gsl::narrow_cast<::x64::cpuid::field_type>(vcpu->rcx()),
-            gsl::narrow_cast<::x64::cpuid::field_type>(vcpu->rdx())
-        );
-
-    info.rax = rax;
-    info.rbx = 0x0;
-    info.rcx = rcx & 0x121U;
-    info.rdx = rdx & 0x2C100800U;
+    info.rbx = 0;
+    info.rcx &= 0x121;
+    info.rdx &= 0x2C100800;
 
     return true;
 }
 
 bool
-cpuid_handler::handle_0x400000BF(
+cpuid_handler::handle_0x80000007(
     gsl::not_null<vcpu_t *> vcpu, eapis::intel_x64::cpuid_handler::info_t &info)
 {
-    bfdebug_ndec(0, "debug", vcpu->rcx());
+    bfignored(vcpu);
 
-    info.ignore_write = true;
+    if ((info.rdx & 0x100) == 0) {
+        bfalert_info(0, "Non-Invariant TSC not supported!!!");
+    }
+
+    info.rax = 0;
+    info.rbx = 0;
+    info.rcx = 0;
+    info.rdx &= 0x100;
+
+    return true;
+}
+
+bool
+cpuid_handler::handle_0x80000008(
+    gsl::not_null<vcpu_t *> vcpu, eapis::intel_x64::cpuid_handler::info_t &info)
+{
+    bfignored(vcpu);
+
+    info.rax &= 0xFFFF;
+    info.rbx = 0;
+    info.rcx = 0;
+    info.rdx = 0;
+
     return true;
 }
 

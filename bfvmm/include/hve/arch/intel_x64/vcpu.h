@@ -24,6 +24,7 @@
 
 #include "vmexit/cpuid.h"
 #include "vmexit/external_interrupt.h"
+#include "vmexit/msr.h"
 #include "vmexit/vmcall.h"
 
 #include "vmcall/domain_op.h"
@@ -303,6 +304,7 @@ private:
 
     cpuid_handler m_cpuid_handler;
     external_interrupt_handler m_external_interrupt_handler;
+    msr_handler m_msr_handler;
     vmcall_handler m_vmcall_handler;
 
     vmcall_run_op_handler m_vmcall_run_op_handler;

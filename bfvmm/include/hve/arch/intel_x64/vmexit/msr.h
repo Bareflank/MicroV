@@ -19,11 +19,12 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#ifndef VMEXIT_CPUID_INTEL_X64_BOXY_H
-#define VMEXIT_CPUID_INTEL_X64_BOXY_H
+#ifndef VMEXIT_MSR_INTEL_X64_BOXY_H
+#define VMEXIT_MSR_INTEL_X64_BOXY_H
 
 #include <bfvmm/hve/arch/intel_x64/vcpu.h>
-#include <eapis/hve/arch/intel_x64/vmexit/cpuid.h>
+#include <eapis/hve/arch/intel_x64/vmexit/rdmsr.h>
+#include <eapis/hve/arch/intel_x64/vmexit/wrmsr.h>
 
 // -----------------------------------------------------------------------------
 // Exports
@@ -50,7 +51,7 @@ namespace boxy::intel_x64
 
 class vcpu;
 
-class EXPORT_BOXY_HVE cpuid_handler
+class EXPORT_BOXY_HVE msr_handler
 {
 public:
 
@@ -61,7 +62,7 @@ public:
     ///
     /// @param vcpu the vcpu object for this handler
     ///
-    cpuid_handler(
+    msr_handler(
         gsl::not_null<vcpu *> vcpu);
 
     /// Destructor
@@ -69,36 +70,21 @@ public:
     /// @expects
     /// @ensures
     ///
-    ~cpuid_handler() = default;
+    ~msr_handler() = default;
 
 public:
 
     /// @cond
 
-    bool handle_0x00000000(
-        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::cpuid_handler::info_t &info);
-    bool handle_0x00000006(
-        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::cpuid_handler::info_t &info);
-    bool handle_0x00000007(
-        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::cpuid_handler::info_t &info);
-    bool handle_0x0000000D(
-        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::cpuid_handler::info_t &info);
-    bool handle_0x0000000F(
-        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::cpuid_handler::info_t &info);
-    bool handle_0x00000010(
-        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::cpuid_handler::info_t &info);
-    bool handle_0x00000015(
-        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::cpuid_handler::info_t &info);
-    bool handle_0x00000016(
-        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::cpuid_handler::info_t &info);
-    bool handle_0x80000000(
-        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::cpuid_handler::info_t &info);
-    bool handle_0x80000001(
-        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::cpuid_handler::info_t &info);
-    bool handle_0x80000007(
-        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::cpuid_handler::info_t &info);
-    bool handle_0x80000008(
-        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::cpuid_handler::info_t &info);
+    bool handle_rdmsr_zero(
+        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info);
+    bool handle_wrmsr_ignore(
+        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info);
+
+    bool handle_rdmsr_0x000001A0(
+        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info);
+    bool handle_wrmsr_0x000001A0(
+        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info);
 
     /// @endcond
 
@@ -110,11 +96,11 @@ public:
 
     /// @cond
 
-    cpuid_handler(cpuid_handler &&) = default;
-    cpuid_handler &operator=(cpuid_handler &&) = default;
+    msr_handler(msr_handler &&) = default;
+    msr_handler &operator=(msr_handler &&) = default;
 
-    cpuid_handler(const cpuid_handler &) = delete;
-    cpuid_handler &operator=(const cpuid_handler &) = delete;
+    msr_handler(const msr_handler &) = delete;
+    msr_handler &operator=(const msr_handler &) = delete;
 
     /// @endcond
 };
