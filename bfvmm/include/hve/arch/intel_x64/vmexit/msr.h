@@ -26,6 +26,8 @@
 #include <eapis/hve/arch/intel_x64/vmexit/rdmsr.h>
 #include <eapis/hve/arch/intel_x64/vmexit/wrmsr.h>
 
+#include <unordered_map>
+
 // -----------------------------------------------------------------------------
 // Exports
 // -----------------------------------------------------------------------------
@@ -76,9 +78,44 @@ public:
 
     /// @cond
 
+    void isolate_msr(uint32_t msr);
+
+    void isolate_msr__on_run(
+        bfobject *obj);
+    bool isolate_msr__on_exit(
+        gsl::not_null<vcpu_t *> vcpu);
+    bool isolate_msr__on_write(
+        gsl::not_null<vcpu_t *> vcpu, eapis::intel_x64::wrmsr_handler::info_t &info);
+
+    /// @endcond
+
+public:
+
+    /// @cond
+
+    bool handle_rdmsr_0x00000034(
+        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info);
+    bool handle_wrmsr_0x00000034(
+        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info);
+    bool handle_rdmsr_0x000000CE(
+        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info);
+    bool handle_wrmsr_0x000000CE(
+        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info);
+    bool handle_rdmsr_0x00000140(
+        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info);
+    bool handle_wrmsr_0x00000140(
+        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info);
     bool handle_rdmsr_0x000001A0(
         gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info);
     bool handle_wrmsr_0x000001A0(
+        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info);
+    bool handle_rdmsr_0x00000606(
+        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info);
+    bool handle_wrmsr_0x00000606(
+        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info);
+    bool handle_rdmsr_0x0000064E(
+        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info);
+    bool handle_wrmsr_0x0000064E(
         gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info);
 
     /// @endcond
@@ -86,6 +123,8 @@ public:
 private:
 
     vcpu *m_vcpu;
+
+    std::unordered_map<uint32_t, uint64_t> m_msrs;
 
 public:
 

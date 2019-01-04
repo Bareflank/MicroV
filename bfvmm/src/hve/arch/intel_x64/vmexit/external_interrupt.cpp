@@ -32,12 +32,14 @@ external_interrupt_handler::external_interrupt_handler(
 {
     using namespace vmcs_n;
 
-    if (vcpuid::is_guest_vm_vcpu(vcpu->id())) {
-        m_vcpu->add_external_interrupt_handler(
-            eapis::intel_x64::external_interrupt_handler::handler_delegate_t::create <
-            external_interrupt_handler, &external_interrupt_handler::handle > (this)
-        );
+    if (vcpu->is_dom0()) {
+        return;
     }
+
+    m_vcpu->add_external_interrupt_handler(
+        eapis::intel_x64::external_interrupt_handler::handler_delegate_t::create <
+        external_interrupt_handler, &external_interrupt_handler::handle > (this)
+    );
 }
 
 // -----------------------------------------------------------------------------

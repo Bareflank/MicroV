@@ -132,18 +132,6 @@ vcpu::write_domU_guest_state(domain *domain)
     this->setup_default_controls();
     this->setup_default_handlers();
 
-    this->trap_on_all_io_instruction_accesses();
-    this->trap_on_all_rdmsr_accesses();
-    this->trap_on_all_wrmsr_accesses();
-
-    this->pass_through_msr_access(::x64::msrs::ia32_pat::addr);
-    this->pass_through_msr_access(::intel_x64::msrs::ia32_efer::addr);
-    this->pass_through_msr_access(::intel_x64::msrs::ia32_fs_base::addr);
-    this->pass_through_msr_access(::intel_x64::msrs::ia32_gs_base::addr);
-    this->pass_through_msr_access(::intel_x64::msrs::ia32_sysenter_cs::addr);
-    this->pass_through_msr_access(::intel_x64::msrs::ia32_sysenter_eip::addr);
-    this->pass_through_msr_access(::intel_x64::msrs::ia32_sysenter_esp::addr);
-
     domain->setup_vcpu_uarts(this);
 }
 

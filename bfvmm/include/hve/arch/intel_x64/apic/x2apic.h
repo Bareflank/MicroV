@@ -80,6 +80,14 @@ public:
         gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info);
     bool handle_wrmsr_0x0000001B(
         gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info);
+    bool handle_rdmsr_0x000006E0(
+        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info);
+    bool handle_wrmsr_0x000006E0(
+        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info);
+    bool handle_rdmsr_0xC0000103(
+        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info);
+    bool handle_wrmsr_0xC0000103(
+        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info);
 
     bool handle_rdmsr_0x00000802(
         gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info);
@@ -89,6 +97,105 @@ public:
         gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info);
     bool handle_wrmsr_0x00000803(
         gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info);
+    bool handle_rdmsr_0x00000808(
+        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info);
+    bool handle_wrmsr_0x00000808(
+        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info);
+    bool handle_rdmsr_0x0000080F(
+        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info);
+    bool handle_wrmsr_0x0000080F(
+        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info);
+    bool handle_rdmsr_0x00000828(
+        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info);
+    bool handle_wrmsr_0x00000828(
+        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info);
+
+    bool handle_rdmsr_0x00000810(
+        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info);
+    bool handle_wrmsr_0x00000810(
+        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info);
+    bool handle_rdmsr_0x00000811(
+        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info);
+    bool handle_wrmsr_0x00000811(
+        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info);
+    bool handle_rdmsr_0x00000812(
+        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info);
+    bool handle_wrmsr_0x00000812(
+        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info);
+    bool handle_rdmsr_0x00000813(
+        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info);
+    bool handle_wrmsr_0x00000813(
+        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info);
+    bool handle_rdmsr_0x00000814(
+        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info);
+    bool handle_wrmsr_0x00000814(
+        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info);
+    bool handle_rdmsr_0x00000815(
+        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info);
+    bool handle_wrmsr_0x00000815(
+        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info);
+    bool handle_rdmsr_0x00000816(
+        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info);
+    bool handle_wrmsr_0x00000816(
+        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info);
+    bool handle_rdmsr_0x00000817(
+        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info);
+    bool handle_wrmsr_0x00000817(
+        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info);
+
+    bool handle_rdmsr_0x00000820(
+        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info);
+    bool handle_wrmsr_0x00000820(
+        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info);
+    bool handle_rdmsr_0x00000821(
+        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info);
+    bool handle_wrmsr_0x00000821(
+        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info);
+    bool handle_rdmsr_0x00000822(
+        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info);
+    bool handle_wrmsr_0x00000822(
+        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info);
+    bool handle_rdmsr_0x00000823(
+        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info);
+    bool handle_wrmsr_0x00000823(
+        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info);
+    bool handle_rdmsr_0x00000824(
+        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info);
+    bool handle_wrmsr_0x00000824(
+        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info);
+    bool handle_rdmsr_0x00000825(
+        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info);
+    bool handle_wrmsr_0x00000825(
+        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info);
+    bool handle_rdmsr_0x00000826(
+        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info);
+    bool handle_wrmsr_0x00000826(
+        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info);
+    bool handle_rdmsr_0x00000827(
+        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info);
+    bool handle_wrmsr_0x00000827(
+        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info);
+
+    bool handle_rdmsr_0x00000832(
+        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info);
+    bool handle_wrmsr_0x00000832(
+        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info);
+    bool handle_rdmsr_0x00000835(
+        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info);
+    bool handle_wrmsr_0x00000835(
+        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info);
+    bool handle_rdmsr_0x00000836(
+        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info);
+    bool handle_wrmsr_0x00000836(
+        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info);
+    bool handle_rdmsr_0x00000837(
+        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info);
+    bool handle_wrmsr_0x00000837(
+        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info);
+    bool handle_rdmsr_0x00000838(
+        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info);
+    bool handle_wrmsr_0x00000838(
+        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info);
 
     /// @endcond
 
@@ -97,6 +204,36 @@ private:
     vcpu *m_vcpu;
 
     uint64_t m_0x0000001B{0xFEE00D00};
+    uint64_t m_0x000006E0{0};
+    uint64_t m_0xC0000103{0};
+
+    uint64_t m_0x00000808{0};
+    uint64_t m_0x0000080F{0};
+    uint64_t m_0x00000828{0};
+
+    uint64_t m_0x00000810{0};
+    uint64_t m_0x00000811{0};
+    uint64_t m_0x00000812{0};
+    uint64_t m_0x00000813{0};
+    uint64_t m_0x00000814{0};
+    uint64_t m_0x00000815{0};
+    uint64_t m_0x00000816{0};
+    uint64_t m_0x00000817{0};
+
+    uint64_t m_0x00000820{0};
+    uint64_t m_0x00000821{0};
+    uint64_t m_0x00000822{0};
+    uint64_t m_0x00000823{0};
+    uint64_t m_0x00000824{0};
+    uint64_t m_0x00000825{0};
+    uint64_t m_0x00000826{0};
+    uint64_t m_0x00000827{0};
+
+    uint64_t m_0x00000832{1U << 16U};
+    uint64_t m_0x00000835{1U << 16U};
+    uint64_t m_0x00000836{1U << 16U};
+    uint64_t m_0x00000837{1U << 16U};
+    uint64_t m_0x00000838{0};
 
 public:
 

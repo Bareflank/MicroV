@@ -55,12 +55,42 @@ x2apic_handler::x2apic_handler(
     }
 
     EMULATE_MSR(0x0000001B, handle_rdmsr_0x0000001B, handle_wrmsr_0x0000001B);
+    EMULATE_MSR(0x000006E0, handle_rdmsr_0x000006E0, handle_wrmsr_0x000006E0);
+    EMULATE_MSR(0xC0000103, handle_rdmsr_0xC0000103, handle_wrmsr_0xC0000103);
+
     EMULATE_MSR(0x00000802, handle_rdmsr_0x00000802, handle_wrmsr_0x00000802);
     EMULATE_MSR(0x00000803, handle_rdmsr_0x00000803, handle_wrmsr_0x00000803);
+    EMULATE_MSR(0x00000808, handle_rdmsr_0x00000808, handle_wrmsr_0x00000808);
+    EMULATE_MSR(0x0000080F, handle_rdmsr_0x0000080F, handle_wrmsr_0x0000080F);
+    EMULATE_MSR(0x00000828, handle_rdmsr_0x00000828, handle_wrmsr_0x00000828);
+
+    EMULATE_MSR(0x00000810, handle_rdmsr_0x00000810, handle_wrmsr_0x00000810);
+    EMULATE_MSR(0x00000811, handle_rdmsr_0x00000811, handle_wrmsr_0x00000811);
+    EMULATE_MSR(0x00000812, handle_rdmsr_0x00000812, handle_wrmsr_0x00000812);
+    EMULATE_MSR(0x00000813, handle_rdmsr_0x00000813, handle_wrmsr_0x00000813);
+    EMULATE_MSR(0x00000814, handle_rdmsr_0x00000814, handle_wrmsr_0x00000814);
+    EMULATE_MSR(0x00000815, handle_rdmsr_0x00000815, handle_wrmsr_0x00000815);
+    EMULATE_MSR(0x00000816, handle_rdmsr_0x00000816, handle_wrmsr_0x00000816);
+    EMULATE_MSR(0x00000817, handle_rdmsr_0x00000817, handle_wrmsr_0x00000817);
+
+    EMULATE_MSR(0x00000820, handle_rdmsr_0x00000820, handle_wrmsr_0x00000820);
+    EMULATE_MSR(0x00000821, handle_rdmsr_0x00000821, handle_wrmsr_0x00000821);
+    EMULATE_MSR(0x00000822, handle_rdmsr_0x00000822, handle_wrmsr_0x00000822);
+    EMULATE_MSR(0x00000823, handle_rdmsr_0x00000823, handle_wrmsr_0x00000823);
+    EMULATE_MSR(0x00000824, handle_rdmsr_0x00000824, handle_wrmsr_0x00000824);
+    EMULATE_MSR(0x00000825, handle_rdmsr_0x00000825, handle_wrmsr_0x00000825);
+    EMULATE_MSR(0x00000826, handle_rdmsr_0x00000826, handle_wrmsr_0x00000826);
+    EMULATE_MSR(0x00000827, handle_rdmsr_0x00000827, handle_wrmsr_0x00000827);
+
+    EMULATE_MSR(0x00000832, handle_rdmsr_0x00000832, handle_wrmsr_0x00000832);
+    EMULATE_MSR(0x00000835, handle_rdmsr_0x00000835, handle_wrmsr_0x00000835);
+    EMULATE_MSR(0x00000836, handle_rdmsr_0x00000836, handle_wrmsr_0x00000836);
+    EMULATE_MSR(0x00000837, handle_rdmsr_0x00000837, handle_wrmsr_0x00000837);
+    EMULATE_MSR(0x00000838, handle_rdmsr_0x00000838, handle_wrmsr_0x00000838);
 }
 
 // -----------------------------------------------------------------------------
-// Handlers
+// General MSRs
 // -----------------------------------------------------------------------------
 
 bool
@@ -84,6 +114,54 @@ x2apic_handler::handle_wrmsr_0x0000001B(
     m_0x0000001B = info.val & 0xFFFFFFFF;
     return true;
 }
+
+bool
+x2apic_handler::handle_rdmsr_0x000006E0(
+    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info)
+{
+    bfignored(vcpu);
+
+    info.val = m_0x000006E0 & 0xFFFFFFFF;
+    return true;
+}
+
+bool
+x2apic_handler::handle_wrmsr_0x000006E0(
+    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info)
+{
+    bfignored(vcpu);
+
+    bfalert_nhex(0, "unimplemented write to TSC Deadline", info.val);
+
+    m_0x000006E0 = info.val & 0xFFFFFFFF;
+    return true;
+}
+
+bool
+x2apic_handler::handle_rdmsr_0xC0000103(
+    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info)
+{
+    bfignored(vcpu);
+
+    info.val = m_0xC0000103 & 0xFFFFFFFF;
+    return true;
+}
+
+bool
+x2apic_handler::handle_wrmsr_0xC0000103(
+    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info)
+{
+    bfignored(vcpu);
+
+    bfalert_nhex(0, "unimplemented write to TSC AUX", info.val);
+
+    m_0xC0000103 = info.val & 0xFFFFFFFF;
+    return true;
+}
+
+// -----------------------------------------------------------------------------
+// General Purpose Registers
+// -----------------------------------------------------------------------------
 
 bool
 x2apic_handler::handle_rdmsr_0x00000802(
@@ -122,6 +200,510 @@ x2apic_handler::handle_wrmsr_0x00000803(
     bfignored(info);
 
     vcpu->halt("writing to APIC VERSION not supported");
+    return true;
+}
+
+bool
+x2apic_handler::handle_rdmsr_0x00000808(
+    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info)
+{
+    bfignored(vcpu);
+
+    info.val = m_0x00000808 & 0xFFFFFFFF;
+    return true;
+}
+
+bool
+x2apic_handler::handle_wrmsr_0x00000808(
+    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info)
+{
+    bfignored(vcpu);
+
+    bfalert_nhex(0, "unimplemented write to TPR", info.val);
+
+    m_0x00000808 = info.val & 0xFFFFFFFF;
+    return true;
+}
+
+bool
+x2apic_handler::handle_rdmsr_0x0000080F(
+    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info)
+{
+    bfignored(vcpu);
+
+    info.val = m_0x0000080F & 0xFFFFFFFF;
+    return true;
+}
+
+bool
+x2apic_handler::handle_wrmsr_0x0000080F(
+    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info)
+{
+    bfignored(vcpu);
+
+    bfalert_nhex(0, "unimplemented write to SVR", info.val);
+
+    m_0x0000080F = info.val & 0xFFFFFFFF;
+    return true;
+}
+
+bool
+x2apic_handler::handle_rdmsr_0x00000828(
+    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info)
+{
+    bfignored(vcpu);
+
+    info.val = m_0x00000828 & 0xFFFFFFFF;
+    return true;
+}
+
+bool
+x2apic_handler::handle_wrmsr_0x00000828(
+    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info)
+{
+    bfignored(vcpu);
+
+    m_0x00000828 = info.val & 0xFFFFFFFF;
+    return true;
+}
+
+// -----------------------------------------------------------------------------
+// ISR
+// -----------------------------------------------------------------------------
+
+bool
+x2apic_handler::handle_rdmsr_0x00000810(
+    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info)
+{
+    bfignored(vcpu);
+
+    info.val = m_0x00000810 & 0xFFFFFFFF;
+    return true;
+}
+
+bool
+x2apic_handler::handle_wrmsr_0x00000810(
+    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info)
+{
+    bfignored(info);
+
+    vcpu->halt("writing to an IRR is unsupported");
+    return true;
+}
+
+bool
+x2apic_handler::handle_rdmsr_0x00000811(
+    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info)
+{
+    bfignored(vcpu);
+
+    info.val = m_0x00000811 & 0xFFFFFFFF;
+    return true;
+}
+
+bool
+x2apic_handler::handle_wrmsr_0x00000811(
+    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info)
+{
+    bfignored(info);
+
+    vcpu->halt("writing to an IRR is unsupported");
+    return true;
+}
+
+bool
+x2apic_handler::handle_rdmsr_0x00000812(
+    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info)
+{
+    bfignored(vcpu);
+
+    info.val = m_0x00000812 & 0xFFFFFFFF;
+    return true;
+}
+
+bool
+x2apic_handler::handle_wrmsr_0x00000812(
+    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info)
+{
+    bfignored(info);
+
+    vcpu->halt("writing to an IRR is unsupported");
+    return true;
+}
+
+bool
+x2apic_handler::handle_rdmsr_0x00000813(
+    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info)
+{
+    bfignored(vcpu);
+
+    info.val = m_0x00000813 & 0xFFFFFFFF;
+    return true;
+}
+
+bool
+x2apic_handler::handle_wrmsr_0x00000813(
+    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info)
+{
+    bfignored(info);
+
+    vcpu->halt("writing to an IRR is unsupported");
+    return true;
+}
+
+bool
+x2apic_handler::handle_rdmsr_0x00000814(
+    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info)
+{
+    bfignored(vcpu);
+
+    info.val = m_0x00000814 & 0xFFFFFFFF;
+    return true;
+}
+
+bool
+x2apic_handler::handle_wrmsr_0x00000814(
+    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info)
+{
+    bfignored(info);
+
+    vcpu->halt("writing to an IRR is unsupported");
+    return true;
+}
+
+bool
+x2apic_handler::handle_rdmsr_0x00000815(
+    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info)
+{
+    bfignored(vcpu);
+
+    info.val = m_0x00000815 & 0xFFFFFFFF;
+    return true;
+}
+
+bool
+x2apic_handler::handle_wrmsr_0x00000815(
+    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info)
+{
+    bfignored(info);
+
+    vcpu->halt("writing to an IRR is unsupported");
+    return true;
+}
+
+bool
+x2apic_handler::handle_rdmsr_0x00000816(
+    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info)
+{
+    bfignored(vcpu);
+
+    info.val = m_0x00000816 & 0xFFFFFFFF;
+    return true;
+}
+
+bool
+x2apic_handler::handle_wrmsr_0x00000816(
+    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info)
+{
+    bfignored(info);
+
+    vcpu->halt("writing to an IRR is unsupported");
+    return true;
+}
+
+bool
+x2apic_handler::handle_rdmsr_0x00000817(
+    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info)
+{
+    bfignored(vcpu);
+
+    info.val = m_0x00000817 & 0xFFFFFFFF;
+    return true;
+}
+
+bool
+x2apic_handler::handle_wrmsr_0x00000817(
+    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info)
+{
+    bfignored(info);
+
+    vcpu->halt("writing to an IRR is unsupported");
+    return true;
+}
+
+// -----------------------------------------------------------------------------
+// IRR
+// -----------------------------------------------------------------------------
+
+bool
+x2apic_handler::handle_rdmsr_0x00000820(
+    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info)
+{
+    bfignored(vcpu);
+
+    info.val = m_0x00000820 & 0xFFFFFFFF;
+    return true;
+}
+
+bool
+x2apic_handler::handle_wrmsr_0x00000820(
+    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info)
+{
+    bfignored(info);
+
+    vcpu->halt("writing to an IRR is unsupported");
+    return true;
+}
+
+bool
+x2apic_handler::handle_rdmsr_0x00000821(
+    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info)
+{
+    bfignored(vcpu);
+
+    info.val = m_0x00000821 & 0xFFFFFFFF;
+    return true;
+}
+
+bool
+x2apic_handler::handle_wrmsr_0x00000821(
+    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info)
+{
+    bfignored(info);
+
+    vcpu->halt("writing to an IRR is unsupported");
+    return true;
+}
+
+bool
+x2apic_handler::handle_rdmsr_0x00000822(
+    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info)
+{
+    bfignored(vcpu);
+
+    info.val = m_0x00000822 & 0xFFFFFFFF;
+    return true;
+}
+
+bool
+x2apic_handler::handle_wrmsr_0x00000822(
+    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info)
+{
+    bfignored(info);
+
+    vcpu->halt("writing to an IRR is unsupported");
+    return true;
+}
+
+bool
+x2apic_handler::handle_rdmsr_0x00000823(
+    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info)
+{
+    bfignored(vcpu);
+
+    info.val = m_0x00000823 & 0xFFFFFFFF;
+    return true;
+}
+
+bool
+x2apic_handler::handle_wrmsr_0x00000823(
+    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info)
+{
+    bfignored(info);
+
+    vcpu->halt("writing to an IRR is unsupported");
+    return true;
+}
+
+bool
+x2apic_handler::handle_rdmsr_0x00000824(
+    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info)
+{
+    bfignored(vcpu);
+
+    info.val = m_0x00000824 & 0xFFFFFFFF;
+    return true;
+}
+
+bool
+x2apic_handler::handle_wrmsr_0x00000824(
+    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info)
+{
+    bfignored(info);
+
+    vcpu->halt("writing to an IRR is unsupported");
+    return true;
+}
+
+bool
+x2apic_handler::handle_rdmsr_0x00000825(
+    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info)
+{
+    bfignored(vcpu);
+
+    info.val = m_0x00000825 & 0xFFFFFFFF;
+    return true;
+}
+
+bool
+x2apic_handler::handle_wrmsr_0x00000825(
+    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info)
+{
+    bfignored(info);
+
+    vcpu->halt("writing to an IRR is unsupported");
+    return true;
+}
+
+bool
+x2apic_handler::handle_rdmsr_0x00000826(
+    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info)
+{
+    bfignored(vcpu);
+
+    info.val = m_0x00000826 & 0xFFFFFFFF;
+    return true;
+}
+
+bool
+x2apic_handler::handle_wrmsr_0x00000826(
+    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info)
+{
+    bfignored(info);
+
+    vcpu->halt("writing to an IRR is unsupported");
+    return true;
+}
+
+bool
+x2apic_handler::handle_rdmsr_0x00000827(
+    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info)
+{
+    bfignored(vcpu);
+
+    info.val = m_0x00000827 & 0xFFFFFFFF;
+    return true;
+}
+
+bool
+x2apic_handler::handle_wrmsr_0x00000827(
+    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info)
+{
+    bfignored(info);
+
+    vcpu->halt("writing to an IRR is unsupported");
+    return true;
+}
+
+// -----------------------------------------------------------------------------
+// LVT
+// -----------------------------------------------------------------------------
+
+bool
+x2apic_handler::handle_rdmsr_0x00000832(
+    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info)
+{
+    bfignored(vcpu);
+
+    info.val = m_0x00000832 & 0xFFFFFFFF;
+    return true;
+}
+
+bool
+x2apic_handler::handle_wrmsr_0x00000832(
+    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info)
+{
+    bfignored(vcpu);
+
+    bfalert_nhex(0, "unimplemented write to LVT Timer", info.val);
+
+    m_0x00000832 = info.val & 0xFFFFFFFF;
+    return true;
+}
+
+bool
+x2apic_handler::handle_rdmsr_0x00000835(
+    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info)
+{
+    bfignored(vcpu);
+
+    info.val = m_0x00000835 & 0xFFFFFFFF;
+    return true;
+}
+
+bool
+x2apic_handler::handle_wrmsr_0x00000835(
+    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info)
+{
+    bfignored(vcpu);
+
+    bfalert_nhex(0, "unimplemented write to LINT0", info.val);
+
+    m_0x00000835 = info.val & 0xFFFFFFFF;
+    return true;
+}
+
+bool
+x2apic_handler::handle_rdmsr_0x00000836(
+    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info)
+{
+    bfignored(vcpu);
+
+    info.val = m_0x00000836 & 0xFFFFFFFF;
+    return true;
+}
+
+bool
+x2apic_handler::handle_wrmsr_0x00000836(
+    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info)
+{
+    bfignored(vcpu);
+
+    bfalert_nhex(0, "unimplemented write to LINT1", info.val);
+
+    m_0x00000836 = info.val & 0xFFFFFFFF;
+    return true;
+}
+
+bool
+x2apic_handler::handle_rdmsr_0x00000837(
+    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info)
+{
+    bfignored(vcpu);
+
+    info.val = m_0x00000837 & 0xFFFFFFFF;
+    return true;
+}
+
+bool
+x2apic_handler::handle_wrmsr_0x00000837(
+    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info)
+{
+    bfignored(vcpu);
+
+    m_0x00000837 = info.val & 0xFFFFFFFF;
+    return true;
+}
+
+bool
+x2apic_handler::handle_rdmsr_0x00000838(
+    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info)
+{
+    bfignored(vcpu);
+
+    info.val = m_0x00000838 & 0xFFFFFFFF;
+    return true;
+}
+
+bool
+x2apic_handler::handle_wrmsr_0x00000838(
+    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info)
+{
+    bfignored(vcpu);
+
+    bfalert_nhex(0, "unimplemented write to LVT Initial Count", info.val);
+
+    m_0x00000838 = info.val & 0xFFFFFFFF;
     return true;
 }
 

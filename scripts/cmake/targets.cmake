@@ -80,8 +80,8 @@ add_custom_target_info(
     COMMENT "Unload, clean, build, and load the Bareflank driver"
 )
 
-# add_dependencies(driver_build builder_build)
-# add_dependencies(driver_clean builder_clean)
-# add_dependencies(driver_load builder_load)
-# add_dependencies(driver_unload builder_unload)
-# add_dependencies(driver_quick builder_quick)
+add_dependencies(driver_build builder_build)
+add_dependencies(driver_clean builder_clean)
+add_dependencies(driver_load builder_load)
+add_dependencies(driver_unload builder_unload)
+add_dependencies(driver_quick builder_quick)

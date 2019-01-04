@@ -49,19 +49,17 @@ pci_configuration_space_handler::pci_configuration_space_handler(
     }
 
     EMULATE_IO_INSTRUCTION(0x0CF8, handle_in_0x0CF8, handle_out_0x0CF8);
+    EMULATE_IO_INSTRUCTION(0x0CFA, handle_in_0x0CFA, handle_out_0x0CFA);
+    EMULATE_IO_INSTRUCTION(0x0CFB, handle_in_0x0CFB, handle_out_0x0CFB);
     EMULATE_IO_INSTRUCTION(0x0CFC, handle_in_0x0CFC, handle_out_0x0CFC);
+    EMULATE_IO_INSTRUCTION(0x0CFD, handle_in_0x0CFD, handle_out_0x0CFD);
     EMULATE_IO_INSTRUCTION(0x0CFE, handle_in_0x0CFE, handle_out_0x0CFE);
+    EMULATE_IO_INSTRUCTION(0x0CFF, handle_in_0x0CFF, handle_out_0x0CFF);
 }
 
 // -----------------------------------------------------------------------------
 // Handlers
 // -----------------------------------------------------------------------------
-
-// Note:
-//
-// Ports 0xCF8, 0xCFC, 0xCFE will be removed once we have a proper PCI bus class.
-// These are just here temporarily.
-//
 
 bool
 pci_configuration_space_handler::handle_in_0x0CF8(
@@ -75,6 +73,45 @@ pci_configuration_space_handler::handle_in_0x0CF8(
 
 bool
 pci_configuration_space_handler::handle_out_0x0CF8(
+    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::io_instruction_handler::info_t &info)
+{
+    bfignored(vcpu);
+    bfignored(info);
+
+    return true;
+}
+
+bool
+pci_configuration_space_handler::handle_in_0x0CFA(
+    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::io_instruction_handler::info_t &info)
+{
+    bfignored(vcpu);
+
+    info.val = 0xFFFFFFFF;
+    return true;
+}
+
+bool
+pci_configuration_space_handler::handle_out_0x0CFA(
+    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::io_instruction_handler::info_t &info)
+{
+    bfignored(vcpu);
+    bfignored(info);
+
+    return true;
+}
+bool
+pci_configuration_space_handler::handle_in_0x0CFB(
+    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::io_instruction_handler::info_t &info)
+{
+    bfignored(vcpu);
+
+    info.val = 0xFFFFFFFF;
+    return true;
+}
+
+bool
+pci_configuration_space_handler::handle_out_0x0CFB(
     gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::io_instruction_handler::info_t &info)
 {
     bfignored(vcpu);
@@ -104,6 +141,26 @@ pci_configuration_space_handler::handle_out_0x0CFC(
 }
 
 bool
+pci_configuration_space_handler::handle_in_0x0CFD(
+    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::io_instruction_handler::info_t &info)
+{
+    bfignored(vcpu);
+
+    info.val = 0xFFFFFFFF;
+    return true;
+}
+
+bool
+pci_configuration_space_handler::handle_out_0x0CFD(
+    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::io_instruction_handler::info_t &info)
+{
+    bfignored(vcpu);
+    bfignored(info);
+
+    return true;
+}
+
+bool
 pci_configuration_space_handler::handle_in_0x0CFE(
     gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::io_instruction_handler::info_t &info)
 {
@@ -115,6 +172,26 @@ pci_configuration_space_handler::handle_in_0x0CFE(
 
 bool
 pci_configuration_space_handler::handle_out_0x0CFE(
+    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::io_instruction_handler::info_t &info)
+{
+    bfignored(vcpu);
+    bfignored(info);
+
+    return true;
+}
+
+bool
+pci_configuration_space_handler::handle_in_0x0CFF(
+    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::io_instruction_handler::info_t &info)
+{
+    bfignored(vcpu);
+
+    info.val = 0xFFFFFFFF;
+    return true;
+}
+
+bool
+pci_configuration_space_handler::handle_out_0x0CFF(
     gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::io_instruction_handler::info_t &info)
 {
     bfignored(vcpu);

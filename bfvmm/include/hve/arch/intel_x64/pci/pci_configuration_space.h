@@ -79,13 +79,29 @@ public:
         gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::io_instruction_handler::info_t &info);
     bool handle_out_0x0CF8(
         gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::io_instruction_handler::info_t &info);
+    bool handle_in_0x0CFA(
+        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::io_instruction_handler::info_t &info);
+    bool handle_out_0x0CFA(
+        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::io_instruction_handler::info_t &info);
+    bool handle_in_0x0CFB(
+        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::io_instruction_handler::info_t &info);
+    bool handle_out_0x0CFB(
+        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::io_instruction_handler::info_t &info);
     bool handle_in_0x0CFC(
         gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::io_instruction_handler::info_t &info);
     bool handle_out_0x0CFC(
         gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::io_instruction_handler::info_t &info);
+    bool handle_in_0x0CFD(
+        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::io_instruction_handler::info_t &info);
+    bool handle_out_0x0CFD(
+        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::io_instruction_handler::info_t &info);
     bool handle_in_0x0CFE(
         gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::io_instruction_handler::info_t &info);
     bool handle_out_0x0CFE(
+        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::io_instruction_handler::info_t &info);
+    bool handle_in_0x0CFF(
+        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::io_instruction_handler::info_t &info);
+    bool handle_out_0x0CFF(
         gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::io_instruction_handler::info_t &info);
 
     /// @endcond

@@ -44,13 +44,107 @@ io_instruction_handler::io_instruction_handler(
 {
     using namespace vmcs_n;
 
-    if (vcpuid::is_host_vm_vcpu(vcpu->id())) {
+    if (vcpu->is_dom0()) {
         return;
     }
+
+    vcpu->trap_on_all_io_instruction_accesses();
+
+    EMULATE_IO_INSTRUCTION(0x0070, handle_in_0x0070, handle_out_0x0070);
+    EMULATE_IO_INSTRUCTION(0x0071, handle_in_0x0071, handle_out_0x0071);
+    EMULATE_IO_INSTRUCTION(0x04D0, handle_in_0x04D0, handle_out_0x04D0);
+    EMULATE_IO_INSTRUCTION(0x04D1, handle_in_0x04D1, handle_out_0x04D1);
 }
 
 // -----------------------------------------------------------------------------
 // Handlers
 // -----------------------------------------------------------------------------
+
+bool
+io_instruction_handler::handle_in_0x0070(
+    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::io_instruction_handler::info_t &info)
+{
+    bfignored(info);
+
+    vcpu->halt("reading from port 0x70 not supported");
+    return true;
+}
+
+bool
+io_instruction_handler::handle_out_0x0070(
+    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::io_instruction_handler::info_t &info)
+{
+    bfignored(vcpu);
+    bfignored(info);
+
+    // TODO:
+    //
+    // When a write to this port occurs, the guest is attempting to either enable
+    // or disable NMIs. We need to modify the base hypervisor so that we can swallow
+    // an NMI if it occurs and NMIs are disabled.
+    //
+
+    return true;
+}
+
+bool
+io_instruction_handler::handle_in_0x0071(
+    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::io_instruction_handler::info_t &info)
+{
+    bfignored(vcpu);
+
+    info.val = 0;
+    return true;
+}
+
+bool
+io_instruction_handler::handle_out_0x0071(
+    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::io_instruction_handler::info_t &info)
+{
+    bfignored(vcpu);
+    bfignored(info);
+
+    return true;
+}
+
+bool
+io_instruction_handler::handle_in_0x04D0(
+    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::io_instruction_handler::info_t &info)
+{
+    bfignored(vcpu);
+
+    info.val = 0;
+    return true;
+}
+
+bool
+io_instruction_handler::handle_out_0x04D0(
+    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::io_instruction_handler::info_t &info)
+{
+    bfignored(vcpu);
+    bfignored(info);
+
+    return true;
+}
+
+bool
+io_instruction_handler::handle_in_0x04D1(
+    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::io_instruction_handler::info_t &info)
+{
+    bfignored(vcpu);
+
+    info.val = 0;
+    return true;
+}
+
+bool
+io_instruction_handler::handle_out_0x04D1(
+    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::io_instruction_handler::info_t &info)
+{
+    bfignored(vcpu);
+    bfignored(info);
+
+    return true;
+}
 
 }
