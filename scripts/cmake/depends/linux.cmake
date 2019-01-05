@@ -19,43 +19,86 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+# README
+#
+# By default, the build system will download a Boxy release version of the Linux
+# kernel (specifically the current, stable release). For most users, this is
+# enough and no action is required for this default functionalilty.
+#
+# If you are a developer fixing a bug with Linux, or adding additional
+# functionality to the Linux kernel, you can use your own, custom Linux kernel
+# by setting the LINUX_DIR variable in your config, or on the command line
+# when configuring CMake. This will redirect the build system to use your Linux
+# kernel.
+#
+# All changes upstreamed to the Boxy version of the Linux kernel will be
+# roled into the main release once the boxy master branches are stable. From
+# there, upstreaming to the main Linux kernel can be done.
+#
+
 if((ENABLE_BUILD_USERSPACE) AND NOT WIN32)
     message(STATUS "Including dependency: linux")
 
-    download_dependency(
-        linux-source
-        URL         ${LINUX_URL}
-        URL_MD5     ${LINUX_URL_MD5}
-    )
+    if(NOT DEFINED LINUX_DIR)
+        set(LINUX_BUILD_DIR ${DEPENDS_DIR}/linux/${USERSPACE_PREFIX}/build)
+
+        download_dependency(
+            linux-source
+            URL         ${LINUX_URL}
+            URL_MD5     ${LINUX_URL_MD5}
+        )
+
+        add_dependency(
+            linux-source userspace
+            CONFIGURE_COMMAND   ${CMAKE_COMMAND} -E echo "-- skip"
+            BUILD_COMMAND       ${CMAKE_COMMAND} -E echo "-- skip"
+            INSTALL_COMMAND     ${CMAKE_COMMAND} -E echo "-- skip"
+            DOWNLOAD_COMMAND    ${CMAKE_COMMAND} -E echo "-- skip"
+        )
+
+        add_dependency_step(
+            linux-source userspace
+            COMMAND ${CMAKE_COMMAND} -E make_directory ${LINUX_BUILD_DIR}
+            COMMAND ${CMAKE_COMMAND} -E copy_directory ${CACHE_DIR}/linux-source/ ${LINUX_BUILD_DIR}
+            COMMAND ${CMAKE_COMMAND} -E copy ${BOXY_SOURCE_ROOT_DIR}/bflinux/config ${LINUX_BUILD_DIR}/.config
+            COMMAND ${CMAKE_COMMAND} -E chdir ${LINUX_BUILD_DIR} make oldconfig
+            COMMAND ${CMAKE_COMMAND} -E make_directory ${PREFIXES_DIR}/vms/
+        )
+    else()
+        set(LINUX_BUILD_DIR ${LINUX_DIR})
+
+        add_dependency(
+            linux-source userspace
+            CONFIGURE_COMMAND   ${CMAKE_COMMAND} -E echo "-- skip"
+            BUILD_COMMAND       ${CMAKE_COMMAND} -E echo "-- skip"
+            INSTALL_COMMAND     ${CMAKE_COMMAND} -E echo "-- skip"
+            DOWNLOAD_COMMAND    ${CMAKE_COMMAND} -E echo "-- skip"
+        )
+
+        add_dependency_step(
+            linux-source userspace
+            COMMAND ${CMAKE_COMMAND} -E copy ${BOXY_SOURCE_ROOT_DIR}/bflinux/config ${LINUX_BUILD_DIR}/.config
+            COMMAND ${CMAKE_COMMAND} -E chdir ${LINUX_BUILD_DIR} make oldconfig
+            COMMAND ${CMAKE_COMMAND} -E make_directory ${PREFIXES_DIR}/vms/
+        )
+
+        message("--     linux directory: ${LINUX_DIR}")
+    endif()
 
     add_dependency(
-        linux-source userspace
+        linux userspace
         CONFIGURE_COMMAND   ${CMAKE_COMMAND} -E echo "-- skip"
         BUILD_COMMAND       ${CMAKE_COMMAND} -E echo "-- skip"
         INSTALL_COMMAND     ${CMAKE_COMMAND} -E echo "-- skip"
-    )
-
-    add_dependency_step(
-        linux-source userspace
-        COMMAND ${CMAKE_COMMAND} -E make_directory ${PREFIXES_DIR}/vms/
-        COMMAND ${CMAKE_COMMAND} -E make_directory ${DEPENDS_DIR}/linux/${USERSPACE_PREFIX}/build
-        COMMAND ${CMAKE_COMMAND} -E copy_directory ${CACHE_DIR}/linux/ ${DEPENDS_DIR}/linux/${USERSPACE_PREFIX}/build
-        COMMAND ${CMAKE_COMMAND} -E copy ${BOXY_SOURCE_ROOT_DIR}/bflinux/config ${DEPENDS_DIR}/linux/${USERSPACE_PREFIX}/build/.config
-    )
-
-    add_dependency(
-        linux userspace
-        CONFIGURE_COMMAND   make oldconfig
-        BUILD_COMMAND       make -j${BUILD_TARGET_CORES}
-        INSTALL_COMMAND     ${CMAKE_COMMAND} -E echo "-- skip"
-        DEPENDS             linux-source_${USERSPACE_PREFIX}
+        DOWNLOAD_COMMAND    ${CMAKE_COMMAND} -E echo "-- skip"
         UPDATE_COMMAND      ${CMAKE_COMMAND} -E echo "-- checking for updates"
+        DEPENDS             linux-source_${USERSPACE_PREFIX}
     )
 
     add_dependency_step(
         linux userspace
-        COMMAND ${CMAKE_COMMAND} -E copy ${DEPENDS_DIR}/linux/${USERSPACE_PREFIX}/build/vmlinux ${PREFIXES_DIR}/vms/
-        COMMAND ${CMAKE_COMMAND} -E copy ${DEPENDS_DIR}/linux/${USERSPACE_PREFIX}/build/arch/x86/boot/bzImage ${PREFIXES_DIR}/vms/
+        COMMAND ${CMAKE_COMMAND} -E chdir ${LINUX_BUILD_DIR} make -j${BUILD_TARGET_CORES}
+        COMMAND ${CMAKE_COMMAND} -E copy ${LINUX_BUILD_DIR}/arch/x86/boot/bzImage ${PREFIXES_DIR}/vms/
     )
 
     add_custom_target(vms DEPENDS linux_${USERSPACE_PREFIX})
