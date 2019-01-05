@@ -166,7 +166,6 @@ attach_to_vm(const args_type &args)
     t.join();
 
     if (verbose) {
-        \
         g_process_uart = false;
         u.join();
     }
@@ -191,10 +190,15 @@ create_vm_from_bzimage(const args_type &args)
         throw cxxopts::OptionException("must specify --path");
     }
 
-    bfn::cmdl cmdl;
-    bfn::file file(args["path"].as<std::string>());
+    if (!args.count("initrd")) {
+        throw cxxopts::OptionException("must specify --initrd");
+    }
 
-    uint64_t size = file.size() * 2;
+    bfn::cmdl cmdl;
+    bfn::file bzimage(args["path"].as<std::string>());
+    bfn::file initrd(args["initrd"].as<std::string>());
+
+    uint64_t size = bzimage.size() * 2;
     if (args.count("size")) {
         size = args["size"].as<uint64_t>();
     }
@@ -207,7 +211,7 @@ create_vm_from_bzimage(const args_type &args)
     if (args.count("uart")) {
         uart = args["uart"].as<uint64_t>();
         cmdl.add(
-            "console=uart,io," + bfn::to_string(uart, 16) + ",115200n8,keep earlyprintk=serial,uart0,115200n8"
+            "console=uart,io," + bfn::to_string(uart, 16) + ",115200n8"
         );
     }
 
@@ -219,16 +223,14 @@ create_vm_from_bzimage(const args_type &args)
         );
     }
 
-    if (args.count("init")) {
-        cmdl.add("init=" + args["init"].as<std::string>());
-    }
-
     if (args.count("cmdline")) {
         cmdl.add(args["cmdline"].as<std::string>());
     }
 
-    ioctl_args.file = file.data();
-    ioctl_args.file_size = file.size();
+    ioctl_args.bzimage = bzimage.data();
+    ioctl_args.bzimage_size = bzimage.size();
+    ioctl_args.initrd = initrd.data();
+    ioctl_args.initrd_size = initrd.size();
     ioctl_args.cmdl = cmdl.data();
     ioctl_args.cmdl_size = cmdl.size();
     ioctl_args.uart = uart;

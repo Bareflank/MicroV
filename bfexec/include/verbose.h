@@ -27,7 +27,8 @@
         std::cout << '\n';                                                                                                                  \
         std::cout << bfcolor_cyan    "Created VM from bzImage file:\n" bfcolor_end;                                                             \
         std::cout << bfcolor_magenta "--------------------------------------------------------------------------------\n" bfcolor_end;      \
-        std::cout << "      path" bfcolor_yellow " | " << bfcolor_green << file.path() << bfcolor_end "\n";                                 \
+        std::cout << "    kernel" bfcolor_yellow " | " << bfcolor_green << bzimage.path() << bfcolor_end "\n";                                 \
+        std::cout << "    initrd" bfcolor_yellow " | " << bfcolor_green << initrd.path() << bfcolor_end "\n";                                 \
         std::cout << " domain id" bfcolor_yellow " | " << bfcolor_green << ioctl_args.domainid << bfcolor_end "\n";                         \
         std::cout << "  ram size" bfcolor_yellow " | " << bfcolor_green << (size / 0x100000) << "MB" << bfcolor_end "\n";                  \
         std::cout << "   cmdline" bfcolor_yellow " | " << bfcolor_green << cmdl.data() << bfcolor_end "\n";                                 \

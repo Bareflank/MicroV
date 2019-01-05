@@ -56,10 +56,14 @@ extern "C" {
  * information the builder needs to create a domain and load its resources
  * prior to execution.
  *
- * @var create_vm_from_bzimage_args::file
- *     the bzImage file to load
- * @var create_vm_from_bzimage_args::file_size
- *     the length of the bzImage file to load
+ * @var create_vm_from_bzimage_args::bzimage
+ *     the bzImage to load
+ * @var create_vm_from_bzimage_args::bzimage_size
+ *     the length of the bzImage to load
+ * @var create_vm_from_bzimage_args::initrd
+ *     the initrd to load
+ * @var create_vm_from_bzimage_args::initrd_size
+ *     the length of the initrd to load
  * @var create_vm_from_bzimage_args::cmdl
  *     the command line arguments to pass to the Linux kernel on boot
  * @var create_vm_from_bzimage_args::cmdl_size
@@ -76,8 +80,11 @@ extern "C" {
  *     (out) the domain ID of the VM that was created
  */
 struct create_vm_from_bzimage_args {
-    const char *file;
-    uint64_t file_size;
+    const char *bzimage;
+    uint64_t bzimage_size;
+
+    const char *initrd;
+    uint64_t initrd_size;
 
     const char *cmdl;
     uint64_t cmdl_size;

@@ -97,7 +97,7 @@ if((ENABLE_BUILD_USERSPACE) AND NOT WIN32)
 
     add_dependency_step(
         linux userspace
-        COMMAND ${CMAKE_COMMAND} -E chdir ${LINUX_BUILD_DIR} make -j${BUILD_TARGET_CORES}
+        COMMAND ${CMAKE_COMMAND} -E chdir ${LINUX_BUILD_DIR} make ARCH=x86_64 -j${BUILD_TARGET_CORES}
         COMMAND ${CMAKE_COMMAND} -E copy ${LINUX_BUILD_DIR}/arch/x86/boot/bzImage ${PREFIXES_DIR}/vms/
     )
 

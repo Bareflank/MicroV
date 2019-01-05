@@ -57,7 +57,8 @@ ioctl_create_vm_from_bzimage(struct create_vm_from_bzimage_args *args)
     int64_t ret;
     struct create_vm_from_bzimage_args kern_args;
 
-    void *file = 0;
+    void *bzimage = 0;
+    void *initrd = 0;
     void *cmdl = 0;
 
     if (args == 0) {
@@ -71,21 +72,38 @@ ioctl_create_vm_from_bzimage(struct create_vm_from_bzimage_args *args)
         return BF_IOCTL_FAILURE;
     }
 
-    if (kern_args.file != 0 && kern_args.file_size != 0) {
-        file = platform_alloc_rw(kern_args.file_size);
-        if (file == NULL) {
-            BFALERT("IOCTL_CREATE_VM_FROM_BZIMAGE: failed to allocate memory for file\n");
+    if (kern_args.bzimage != 0 && kern_args.bzimage_size != 0) {
+        bzimage = platform_alloc_rw(kern_args.bzimage_size);
+        if (bzimage == NULL) {
+            BFALERT("IOCTL_CREATE_VM_FROM_BZIMAGE: failed to allocate memory for bzimage\n");
             goto failed;
         }
 
         ret = copy_from_user(
-            file, kern_args.file, kern_args.file_size);
+            bzimage, kern_args.bzimage, kern_args.bzimage_size);
         if (ret != 0) {
-            BFALERT("IOCTL_CREATE_VM_FROM_BZIMAGE: failed to copy file from userspace\n");
+            BFALERT("IOCTL_CREATE_VM_FROM_BZIMAGE: failed to copy bzimage from userspace\n");
             goto failed;
         }
 
-        kern_args.file = file;
+        kern_args.bzimage = bzimage;
+    }
+
+    if (kern_args.initrd != 0 && kern_args.initrd_size != 0) {
+        initrd = platform_alloc_rw(kern_args.initrd_size);
+        if (initrd == NULL) {
+            BFALERT("IOCTL_CREATE_VM_FROM_BZIMAGE: failed to allocate memory for initrd\n");
+            goto failed;
+        }
+
+        ret = copy_from_user(
+            initrd, kern_args.initrd, kern_args.initrd_size);
+        if (ret != 0) {
+            BFALERT("IOCTL_CREATE_VM_FROM_BZIMAGE: failed to copy initrd from userspace\n");
+            goto failed;
+        }
+
+        kern_args.initrd = initrd;
     }
 
     if (kern_args.cmdl != 0 && kern_args.cmdl_size != 0) {
@@ -111,7 +129,8 @@ ioctl_create_vm_from_bzimage(struct create_vm_from_bzimage_args *args)
         goto failed;
     }
 
-    kern_args.file = 0;
+    kern_args.bzimage = 0;
+    kern_args.initrd = 0;
     kern_args.cmdl = 0;
 
     ret = copy_to_user(
@@ -122,7 +141,8 @@ ioctl_create_vm_from_bzimage(struct create_vm_from_bzimage_args *args)
         goto failed;
     }
 
-    platform_free_rw(file, kern_args.file_size);
+    platform_free_rw(bzimage, kern_args.bzimage_size);
+    platform_free_rw(initrd, kern_args.initrd_size);
     platform_free_rw(cmdl, kern_args.cmdl_size);
 
     BFDEBUG("IOCTL_CREATE_VM_FROM_BZIMAGE: succeeded\n");
@@ -130,10 +150,12 @@ ioctl_create_vm_from_bzimage(struct create_vm_from_bzimage_args *args)
 
 failed:
 
-    kern_args.file = 0;
+    kern_args.bzimage = 0;
+    kern_args.initrd = 0;
     kern_args.cmdl = 0;
 
-    platform_free_rw(file, kern_args.file_size);
+    platform_free_rw(bzimage, kern_args.bzimage_size);
+    platform_free_rw(initrd, kern_args.initrd_size);
     platform_free_rw(cmdl, kern_args.cmdl_size);
 
     BFALERT("IOCTL_CREATE_VM_FROM_BZIMAGE: failed\n");

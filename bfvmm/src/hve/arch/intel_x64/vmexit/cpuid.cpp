@@ -61,9 +61,10 @@ cpuid_handler::cpuid_handler(
     EMULATE_CPUID(0x00000004, handle_0x00000004);
     EMULATE_CPUID(0x00000006, handle_0x00000006);
     EMULATE_CPUID(0x00000007, handle_0x00000007);
+    EMULATE_CPUID(0x0000000A, handle_0x0000000A);
+    EMULATE_CPUID(0x0000000B, handle_0x0000000B);
     EMULATE_CPUID(0x0000000D, handle_0x0000000D);
     EMULATE_CPUID(0x0000000F, handle_0x0000000F);
-    EMULATE_CPUID(0x0000000A, handle_0x0000000A);
     EMULATE_CPUID(0x00000010, handle_0x00000010);
     EMULATE_CPUID(0x00000015, handle_0x00000015);
     EMULATE_CPUID(0x00000016, handle_0x00000016);
@@ -170,6 +171,34 @@ cpuid_handler::handle_0x00000007(
 }
 
 bool
+cpuid_handler::handle_0x0000000A(
+    gsl::not_null<vcpu_t *> vcpu, eapis::intel_x64::cpuid_handler::info_t &info)
+{
+    bfignored(vcpu);
+
+    info.rax = 0;
+    info.rbx = 0x7F;
+    info.rcx = 0;
+    info.rdx = 0;
+
+    return true;
+}
+
+bool
+cpuid_handler::handle_0x0000000B(
+    gsl::not_null<vcpu_t *> vcpu, eapis::intel_x64::cpuid_handler::info_t &info)
+{
+    bfignored(vcpu);
+
+    info.rax = 0;
+    info.rbx = 0;
+    info.rcx = 0;
+    info.rdx = 0;
+
+    return true;
+}
+
+bool
 cpuid_handler::handle_0x0000000D(
     gsl::not_null<vcpu_t *> vcpu, eapis::intel_x64::cpuid_handler::info_t &info)
 {
@@ -191,20 +220,6 @@ cpuid_handler::handle_0x0000000F(
 
     info.rax = 0;
     info.rbx = 0;
-    info.rcx = 0;
-    info.rdx = 0;
-
-    return true;
-}
-
-bool
-cpuid_handler::handle_0x0000000A(
-    gsl::not_null<vcpu_t *> vcpu, eapis::intel_x64::cpuid_handler::info_t &info)
-{
-    bfignored(vcpu);
-
-    info.rax = 0;
-    info.rbx = 0x7F;
     info.rcx = 0;
     info.rdx = 0;
 

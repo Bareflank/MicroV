@@ -39,7 +39,7 @@ parse_args(int argc, char *argv[])
     ("bzimage", "Create a VM from a bzImage file")
     ("path", "The VM's path", value<std::string>(), "[path]")
     ("size", "The VM's total RAM", value<uint64_t>(), "[bytes]")
-    ("init", "The VM's init process", value<std::string>(), "[path]")
+    ("initrd", "The VM's initrd path", value<std::string>(), "[path]")
     ("cmdline", "Additional Linux command line arguments", value<std::string>(), "[text]")
     ("uart", "Give the VM an emulated UART", value<uint64_t>(), "[port #]")
     ("pt_uart", "Pass-through a UART to VM", value<uint64_t>(), "[port #]");

@@ -458,12 +458,13 @@ setup_kernel(struct vm_t *vm, struct create_vm_from_bzimage_args *args)
      */
 
     status_t ret = SUCCESS;
-    const struct setup_header *hdr = (struct setup_header *)(args->file + 0x1f1);
+    const struct setup_header *hdr = (struct setup_header *)(args->bzimage + 0x1f1);
 
     const void *kernel = 0;
     uint64_t kernel_size = 0;
+    uint64_t kernel_offset = 0;
 
-    if (args->file == 0) {
+    if (args->bzimage == 0) {
         BFDEBUG("setup_kernel: bzImage is null\n");
         return FAILURE;
     }
@@ -473,8 +474,8 @@ setup_kernel(struct vm_t *vm, struct create_vm_from_bzimage_args *args)
         return FAILURE;
     }
 
-    if (args->file_size > args->size) {
-        BFDEBUG("setup_kernel: requested RAM is smaller than bzImage\n");
+    if (args->bzimage_size + args->initrd_size > args->size) {
+        BFDEBUG("setup_kernel: requested RAM is too small\n");
         return FAILURE;
     }
 
@@ -501,10 +502,29 @@ setup_kernel(struct vm_t *vm, struct create_vm_from_bzimage_args *args)
         return FAILURE;
     }
 
-    kernel = args->file + ((hdr->setup_sects + 1) * 512);
-    kernel_size = args->file_size - ((hdr->setup_sects + 1) * 512);
+    kernel_offset = ((hdr->setup_sects + 1) * 512);
 
-    ret = platform_memcpy(vm->addr, vm->size, kernel, kernel_size, kernel_size);
+    if (kernel_offset > args->bzimage_size) {
+        BFDEBUG("setup_kernel: corrupt setup_sects\n");
+        return FAILURE;
+    }
+
+    kernel = args->bzimage + kernel_offset;
+    kernel_size = args->bzimage_size - kernel_offset;
+
+    ret = platform_memcpy(
+        vm->addr, vm->size, kernel, kernel_size, kernel_size);
+    if (ret != SUCCESS) {
+        return ret;
+    }
+
+    if ((kernel_size &= 0xFFF) != 0) {
+        kernel_size += 0x1000;
+        kernel_size &= ~(0xFFF);
+    }
+
+    ret = platform_memcpy(
+        vm->addr + kernel_size, vm->size - kernel_size, args->initrd, args->initrd_size, args->initrd_size);
     if (ret != SUCCESS) {
         return ret;
     }
@@ -518,6 +538,9 @@ setup_kernel(struct vm_t *vm, struct create_vm_from_bzimage_args *args)
     if (ret != SUCCESS) {
         return ret;
     }
+
+    vm->params->hdr.ramdisk_image = 0x100000 + kernel_size;
+    vm->params->hdr.ramdisk_size = args->initrd_size;
 
     return SUCCESS;
 }

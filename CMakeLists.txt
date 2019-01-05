@@ -64,3 +64,13 @@ userspace_extension(
     DEPENDS bfintrinsics
     DEPENDS cxxopts
 )
+
+# ------------------------------------------------------------------------------
+# bflinux
+# ------------------------------------------------------------------------------
+
+userspace_extension(
+    bflinux
+    SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}/bflinux
+    DEPENDS bfintrinsics
+)
