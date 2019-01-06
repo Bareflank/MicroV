@@ -99,6 +99,7 @@ vcpu::vcpu(
     m_io_instruction_handler{this},
     m_msr_handler{this},
     m_vmcall_handler{this},
+    m_yield_handler{this},
 
     m_vmcall_run_op_handler{this},
     m_vmcall_domain_op_handler{this},
@@ -238,6 +239,14 @@ vcpu::halt(const std::string &str)
         ::x64::pm::stop();
     }
 }
+
+//------------------------------------------------------------------------------
+// APIC
+//------------------------------------------------------------------------------
+
+uint8_t
+vcpu::apic_timer_vector()
+{ return m_x2apic_handler.timer_vector(); }
 
 //------------------------------------------------------------------------------
 // Setup Functions

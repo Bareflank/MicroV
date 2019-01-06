@@ -36,6 +36,12 @@
         a, make_wrmsr_delegate(c)                                               \
     );
 
+
+
+
+
+#include <iostream>
+
 // -----------------------------------------------------------------------------
 // Implementation
 // -----------------------------------------------------------------------------
@@ -55,12 +61,11 @@ x2apic_handler::x2apic_handler(
     }
 
     EMULATE_MSR(0x0000001B, handle_rdmsr_0x0000001B, handle_wrmsr_0x0000001B);
-    EMULATE_MSR(0x000006E0, handle_rdmsr_0x000006E0, handle_wrmsr_0x000006E0);
-    EMULATE_MSR(0xC0000103, handle_rdmsr_0xC0000103, handle_wrmsr_0xC0000103);
 
     EMULATE_MSR(0x00000802, handle_rdmsr_0x00000802, handle_wrmsr_0x00000802);
     EMULATE_MSR(0x00000803, handle_rdmsr_0x00000803, handle_wrmsr_0x00000803);
     EMULATE_MSR(0x00000808, handle_rdmsr_0x00000808, handle_wrmsr_0x00000808);
+    EMULATE_MSR(0x0000080B, handle_rdmsr_0x0000080B, handle_wrmsr_0x0000080B);
     EMULATE_MSR(0x0000080F, handle_rdmsr_0x0000080F, handle_wrmsr_0x0000080F);
     EMULATE_MSR(0x00000828, handle_rdmsr_0x00000828, handle_wrmsr_0x00000828);
 
@@ -89,6 +94,18 @@ x2apic_handler::x2apic_handler(
     EMULATE_MSR(0x00000838, handle_rdmsr_0x00000838, handle_wrmsr_0x00000838);
 }
 
+uint8_t
+x2apic_handler::timer_vector() const noexcept
+{
+    using namespace ::intel_x64::msrs::ia32_x2apic_lvt_timer;
+
+    if (timer_mode::get(m_0x00000832) != timer_mode::tsc_deadline) {
+        m_vcpu->halt("non-TSC deadline timer unsupported");
+    }
+
+    return gsl::narrow_cast<uint8_t>(vector::get(m_0x00000832));
+}
+
 // -----------------------------------------------------------------------------
 // General MSRs
 // -----------------------------------------------------------------------------
@@ -112,50 +129,6 @@ x2apic_handler::handle_wrmsr_0x0000001B(
     }
 
     m_0x0000001B = info.val & 0xFFFFFFFF;
-    return true;
-}
-
-bool
-x2apic_handler::handle_rdmsr_0x000006E0(
-    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info)
-{
-    bfignored(vcpu);
-
-    info.val = m_0x000006E0 & 0xFFFFFFFF;
-    return true;
-}
-
-bool
-x2apic_handler::handle_wrmsr_0x000006E0(
-    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info)
-{
-    bfignored(vcpu);
-
-    bfalert_nhex(0, "unimplemented write to TSC Deadline", info.val);
-
-    m_0x000006E0 = info.val & 0xFFFFFFFF;
-    return true;
-}
-
-bool
-x2apic_handler::handle_rdmsr_0xC0000103(
-    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info)
-{
-    bfignored(vcpu);
-
-    info.val = m_0xC0000103 & 0xFFFFFFFF;
-    return true;
-}
-
-bool
-x2apic_handler::handle_wrmsr_0xC0000103(
-    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info)
-{
-    bfignored(vcpu);
-
-    bfalert_nhex(0, "unimplemented write to TSC AUX", info.val);
-
-    m_0xC0000103 = info.val & 0xFFFFFFFF;
     return true;
 }
 
@@ -209,7 +182,7 @@ x2apic_handler::handle_rdmsr_0x00000808(
 {
     bfignored(vcpu);
 
-    info.val = m_0x00000808 & 0xFFFFFFFF;
+    info.val = 0;
     return true;
 }
 
@@ -217,11 +190,30 @@ bool
 x2apic_handler::handle_wrmsr_0x00000808(
     gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info)
 {
+    if (info.val != 0) {
+        vcpu->halt("non-zero TPR not supported");
+    }
+
+    return true;
+}
+
+bool
+x2apic_handler::handle_rdmsr_0x0000080B(
+    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info)
+{
+    bfignored(info);
+
+    vcpu->halt("reading the APIC EOI is not supported");
+    return true;
+}
+
+bool
+x2apic_handler::handle_wrmsr_0x0000080B(
+    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info)
+{
     bfignored(vcpu);
+    bfignored(info);
 
-    bfalert_nhex(0, "unimplemented write to TPR", info.val);
-
-    m_0x00000808 = info.val & 0xFFFFFFFF;
     return true;
 }
 
@@ -240,8 +232,6 @@ x2apic_handler::handle_wrmsr_0x0000080F(
     gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info)
 {
     bfignored(vcpu);
-
-    bfalert_nhex(0, "unimplemented write to SVR", info.val);
 
     m_0x0000080F = info.val & 0xFFFFFFFF;
     return true;
@@ -615,8 +605,6 @@ x2apic_handler::handle_wrmsr_0x00000832(
 {
     bfignored(vcpu);
 
-    bfalert_nhex(0, "unimplemented write to LVT Timer", info.val);
-
     m_0x00000832 = info.val & 0xFFFFFFFF;
     return true;
 }
@@ -691,7 +679,7 @@ x2apic_handler::handle_rdmsr_0x00000838(
 {
     bfignored(vcpu);
 
-    info.val = m_0x00000838 & 0xFFFFFFFF;
+    info.val = 0;
     return true;
 }
 
@@ -699,11 +687,10 @@ bool
 x2apic_handler::handle_wrmsr_0x00000838(
     gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info)
 {
-    bfignored(vcpu);
+    if (info.val != 0) {
+        vcpu->halt("non-zero LVT initial count not supported");
+    }
 
-    bfalert_nhex(0, "unimplemented write to LVT Initial Count", info.val);
-
-    m_0x00000838 = info.val & 0xFFFFFFFF;
     return true;
 }
 

@@ -65,6 +65,7 @@ uint64_t _vmcall(uint64_t r1, uint64_t r2, uint64_t r3, uint64_t r4) NOEXCEPT;
 #define __enum_run_op 1
 #define __enum_domain_op 2
 #define __enum_vcpu_op 3
+#define __enum_uart_op 4
 
 #define bfopcode(a) ((a & 0x00FF000000000000) >> 48)
 
@@ -85,6 +86,38 @@ __run_op(vcpuid_t vcpuid, uint64_t arg1, uint64_t arg2)
 {
     return _vmcall(
         0xBF01000000000000, vcpuid, arg1, arg2
+    );
+}
+
+// -----------------------------------------------------------------------------
+// Uart Operations
+// -----------------------------------------------------------------------------
+
+#define __enum_uart_op__char 1
+#define __enum_uart_op__nhex 2
+#define __enum_uart_op__ndec 3
+
+static inline vcpuid_t
+__uart_char_op(uint16_t port, uint64_t c)
+{
+    return _vmcall(
+        0xBF04000000000000, __enum_uart_op__char, port, c
+    );
+}
+
+static inline vcpuid_t
+__uart_nhex_op(uint16_t port, uint64_t val)
+{
+    return _vmcall(
+        0xBF04000000000000, __enum_uart_op__nhex, port, val
+    );
+}
+
+static inline vcpuid_t
+__uart_ndec_op(uint16_t port, uint64_t val)
+{
+    return _vmcall(
+        0xBF04000000000000, __enum_uart_op__ndec, port, val
     );
 }
 

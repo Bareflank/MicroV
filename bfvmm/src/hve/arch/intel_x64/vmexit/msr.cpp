@@ -92,6 +92,7 @@ msr_handler::msr_handler(
     EMULATE_MSR(0x000001A0, handle_rdmsr_0x000001A0, handle_wrmsr_0x000001A0);
     EMULATE_MSR(0x00000606, handle_rdmsr_0x00000606, handle_wrmsr_0x00000606);
     EMULATE_MSR(0x0000064E, handle_rdmsr_0x0000064E, handle_wrmsr_0x0000064E);
+    EMULATE_MSR(0xC0000103, handle_rdmsr_0xC0000103, handle_wrmsr_0xC0000103);
 }
 
 // -----------------------------------------------------------------------------
@@ -252,7 +253,7 @@ msr_handler::handle_rdmsr_0x00000140(
 {
     bfignored(vcpu);
 
-    m_vcpu->inject_general_protection_fault();
+    m_vcpu->inject_exception(13, 0);
     info.ignore_write = true;
     info.ignore_advance = true;
 
@@ -300,7 +301,7 @@ msr_handler::handle_rdmsr_0x00000606(
 {
     bfignored(vcpu);
 
-    m_vcpu->inject_general_protection_fault();
+    m_vcpu->inject_exception(13, 0);
     info.ignore_write = true;
     info.ignore_advance = true;
 
@@ -334,6 +335,26 @@ msr_handler::handle_wrmsr_0x0000064E(
     bfignored(info);
 
     vcpu->halt("wrmsr to 0x64E is not supported");
+    return true;
+}
+
+bool
+msr_handler::handle_rdmsr_0xC0000103(
+    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info)
+{
+    bfignored(vcpu);
+
+    info.val = m_0xC0000103 & 0xFFFFFFFF;
+    return true;
+}
+
+bool
+msr_handler::handle_wrmsr_0xC0000103(
+    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info)
+{
+    bfignored(vcpu);
+
+    m_0xC0000103 = info.val & 0xFFFFFFFF;
     return true;
 }
 

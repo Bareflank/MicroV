@@ -19,14 +19,12 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#ifndef VMEXIT_MSR_INTEL_X64_BOXY_H
-#define VMEXIT_MSR_INTEL_X64_BOXY_H
+#ifndef VMEXIT_YIELD_INTEL_X64_BOXY_H
+#define VMEXIT_YIELD_INTEL_X64_BOXY_H
 
 #include <bfvmm/hve/arch/intel_x64/vcpu.h>
 #include <eapis/hve/arch/intel_x64/vmexit/rdmsr.h>
 #include <eapis/hve/arch/intel_x64/vmexit/wrmsr.h>
-
-#include <unordered_map>
 
 // -----------------------------------------------------------------------------
 // Exports
@@ -53,7 +51,7 @@ namespace boxy::intel_x64
 
 class vcpu;
 
-class EXPORT_BOXY_HVE msr_handler
+class EXPORT_BOXY_HVE yield_handler
 {
 public:
 
@@ -64,7 +62,7 @@ public:
     ///
     /// @param vcpu the vcpu object for this handler
     ///
-    msr_handler(
+    yield_handler(
         gsl::not_null<vcpu *> vcpu);
 
     /// Destructor
@@ -72,54 +70,18 @@ public:
     /// @expects
     /// @ensures
     ///
-    ~msr_handler() = default;
+    ~yield_handler() = default;
 
 public:
 
     /// @cond
 
-    void isolate_msr(uint32_t msr);
+    bool handle_hlt(gsl::not_null<vcpu_t *> vcpu);
+    bool handle_preemption(gsl::not_null<vcpu_t *> vcpu);
 
-    void isolate_msr__on_run(
-        bfobject *obj);
-    bool isolate_msr__on_exit(
-        gsl::not_null<vcpu_t *> vcpu);
-    bool isolate_msr__on_write(
-        gsl::not_null<vcpu_t *> vcpu, eapis::intel_x64::wrmsr_handler::info_t &info);
-
-    /// @endcond
-
-public:
-
-    /// @cond
-
-    bool handle_rdmsr_0x00000034(
+    bool handle_rdmsr_0x000006E0(
         gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info);
-    bool handle_wrmsr_0x00000034(
-        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info);
-    bool handle_rdmsr_0x000000CE(
-        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info);
-    bool handle_wrmsr_0x000000CE(
-        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info);
-    bool handle_rdmsr_0x00000140(
-        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info);
-    bool handle_wrmsr_0x00000140(
-        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info);
-    bool handle_rdmsr_0x000001A0(
-        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info);
-    bool handle_wrmsr_0x000001A0(
-        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info);
-    bool handle_rdmsr_0x00000606(
-        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info);
-    bool handle_wrmsr_0x00000606(
-        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info);
-    bool handle_rdmsr_0x0000064E(
-        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info);
-    bool handle_wrmsr_0x0000064E(
-        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info);
-    bool handle_rdmsr_0xC0000103(
-        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info);
-    bool handle_wrmsr_0xC0000103(
+    bool handle_wrmsr_0x000006E0(
         gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info);
 
     /// @endcond
@@ -128,18 +90,18 @@ private:
 
     vcpu *m_vcpu;
 
-    uint64_t m_0xC0000103{0};
-    std::unordered_map<uint32_t, uint64_t> m_msrs;
+    uint64_t m_tsc_freq;
+    uint64_t m_pet_shift;
 
 public:
 
     /// @cond
 
-    msr_handler(msr_handler &&) = default;
-    msr_handler &operator=(msr_handler &&) = default;
+    yield_handler(yield_handler &&) = default;
+    yield_handler &operator=(yield_handler &&) = default;
 
-    msr_handler(const msr_handler &) = delete;
-    msr_handler &operator=(const msr_handler &) = delete;
+    yield_handler(const yield_handler &) = delete;
+    yield_handler &operator=(const yield_handler &) = delete;
 
     /// @endcond
 };

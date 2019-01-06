@@ -182,6 +182,8 @@ private:
     void write(const char c);
     void write(const char *str);
 
+    bool vmcall_dispatch(gsl::not_null<vcpu *> vcpu);
+
 private:
 
     port_type m_port{};

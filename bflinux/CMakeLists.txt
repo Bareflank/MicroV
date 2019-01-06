@@ -26,7 +26,7 @@ include(${SOURCE_CMAKE_DIR}/project.cmake)
 init_project()
 
 list(APPEND SOURCES
-    init.c
+    init.cpp
 )
 
 set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")

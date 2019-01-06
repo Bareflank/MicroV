@@ -72,6 +72,15 @@ public:
     ///
     ~x2apic_handler() = default;
 
+    /// Timer Vector
+    ///
+    /// @expects
+    /// @ensures
+    ///
+    /// @return returns the vector number associated with the APIC timer
+    ///
+    uint8_t timer_vector() const noexcept;
+
 public:
 
     /// @cond
@@ -79,14 +88,6 @@ public:
     bool handle_rdmsr_0x0000001B(
         gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info);
     bool handle_wrmsr_0x0000001B(
-        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info);
-    bool handle_rdmsr_0x000006E0(
-        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info);
-    bool handle_wrmsr_0x000006E0(
-        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info);
-    bool handle_rdmsr_0xC0000103(
-        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info);
-    bool handle_wrmsr_0xC0000103(
         gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info);
 
     bool handle_rdmsr_0x00000802(
@@ -100,6 +101,10 @@ public:
     bool handle_rdmsr_0x00000808(
         gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info);
     bool handle_wrmsr_0x00000808(
+        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info);
+    bool handle_rdmsr_0x0000080B(
+        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info);
+    bool handle_wrmsr_0x0000080B(
         gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info);
     bool handle_rdmsr_0x0000080F(
         gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info);
@@ -204,10 +209,7 @@ private:
     vcpu *m_vcpu;
 
     uint64_t m_0x0000001B{0xFEE00D00};
-    uint64_t m_0x000006E0{0};
-    uint64_t m_0xC0000103{0};
 
-    uint64_t m_0x00000808{0};
     uint64_t m_0x0000080F{0};
     uint64_t m_0x00000828{0};
 
@@ -233,7 +235,6 @@ private:
     uint64_t m_0x00000835{1U << 16U};
     uint64_t m_0x00000836{1U << 16U};
     uint64_t m_0x00000837{1U << 16U};
-    uint64_t m_0x00000838{0};
 
 public:
 

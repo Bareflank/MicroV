@@ -30,6 +30,7 @@
 #include "vmexit/io_instruction.h"
 #include "vmexit/msr.h"
 #include "vmexit/vmcall.h"
+#include "vmexit/yield.h"
 
 #include "vmcall/domain_op.h"
 #include "vmcall/run_op.h"
@@ -273,6 +274,19 @@ public:
     ///
     void halt(const std::string &str = {}) override;
 
+    //--------------------------------------------------------------------------
+    // APIC
+    //--------------------------------------------------------------------------
+
+    /// APIC Timer Vector
+    ///
+    /// @expects
+    /// @ensures
+    ///
+    /// @return returns the vector number associated with the APIC timer
+    ///
+    uint8_t apic_timer_vector();
+
 private:
 
     void setup_default_controls();
@@ -288,6 +302,7 @@ private:
     io_instruction_handler m_io_instruction_handler;
     msr_handler m_msr_handler;
     vmcall_handler m_vmcall_handler;
+    yield_handler m_yield_handler;
 
     vmcall_run_op_handler m_vmcall_run_op_handler;
     vmcall_domain_op_handler m_vmcall_domain_op_handler;

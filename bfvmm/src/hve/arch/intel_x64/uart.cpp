@@ -61,6 +61,10 @@ uart::enable(gsl::not_null<vcpu *> vcpu)
     EMULATE_IO_INSTRUCTION(m_port + 5, reg5_in_handler, reg5_out_handler);
     EMULATE_IO_INSTRUCTION(m_port + 6, reg6_in_handler, reg6_out_handler);
     EMULATE_IO_INSTRUCTION(m_port + 7, reg7_in_handler, reg7_out_handler);
+
+    vcpu->add_vmcall_handler(
+        vmcall_handler_delegate(uart, vmcall_dispatch)
+    );
 }
 
 void
@@ -352,6 +356,38 @@ uart::write(const char *str)
     for (auto i = 0U; i < strlen(str); i++) {
         this->write(str[i]);
     }
+}
+
+bool
+uart::vmcall_dispatch(
+    gsl::not_null<vcpu *> vcpu)
+{
+    if (bfopcode(vcpu->rax()) != __enum_uart_op) {
+        return false;
+    }
+
+    if (vcpu->rcx() != m_port) {
+        return false;
+    }
+
+    switch (vcpu->rbx()) {
+        case __enum_uart_op__char:
+            this->write(gsl::narrow_cast<char>(vcpu->rdx()));
+            break;
+
+        case __enum_uart_op__nhex:
+            this->write(bfn::to_string(vcpu->rdx(), 16).c_str());
+            break;
+
+        case __enum_uart_op__ndec:
+            this->write(bfn::to_string(vcpu->rdx(), 10).c_str());
+            break;
+
+        default:
+            vcpu->halt("unknown uart op");
+    };
+
+    return true;
 }
 
 }
