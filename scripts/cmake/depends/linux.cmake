@@ -36,7 +36,7 @@
 # there, upstreaming to the main Linux kernel can be done.
 #
 
-if((ENABLE_BUILD_USERSPACE) AND NOT WIN32)
+if((ENABLE_BUILD_USERSPACE) AND NOT WIN32 AND NOT CYGWIN)
     message(STATUS "Including dependency: linux")
 
     if(NOT DEFINED LINUX_DIR)
