@@ -66,6 +66,7 @@ x2apic_handler::x2apic_handler(
     EMULATE_MSR(0x00000803, handle_rdmsr_0x00000803, handle_wrmsr_0x00000803);
     EMULATE_MSR(0x00000808, handle_rdmsr_0x00000808, handle_wrmsr_0x00000808);
     EMULATE_MSR(0x0000080B, handle_rdmsr_0x0000080B, handle_wrmsr_0x0000080B);
+    EMULATE_MSR(0x0000080D, handle_rdmsr_0x0000080D, handle_wrmsr_0x0000080D);
     EMULATE_MSR(0x0000080F, handle_rdmsr_0x0000080F, handle_wrmsr_0x0000080F);
     EMULATE_MSR(0x00000828, handle_rdmsr_0x00000828, handle_wrmsr_0x00000828);
 
@@ -214,6 +215,28 @@ x2apic_handler::handle_wrmsr_0x0000080B(
     bfignored(vcpu);
     bfignored(info);
 
+    return true;
+}
+
+bool
+x2apic_handler::handle_rdmsr_0x0000080D(
+    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info)
+{
+    bfignored(vcpu);
+
+    bfalert_info(0, "unimplemented read from LDR");
+
+    info.val = 0;
+    return true;
+}
+
+bool
+x2apic_handler::handle_wrmsr_0x0000080D(
+    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info)
+{
+    bfignored(info);
+
+    vcpu->halt("writing to APIC LDR not supported");
     return true;
 }
 

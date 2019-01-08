@@ -84,6 +84,10 @@ uart::disable(gsl::not_null<vcpu *> vcpu)
     EMULATE_IO_INSTRUCTION(m_port + 5, io_zero_handler, io_ignore_handler);
     EMULATE_IO_INSTRUCTION(m_port + 6, io_zero_handler, io_ignore_handler);
     EMULATE_IO_INSTRUCTION(m_port + 7, io_zero_handler, io_ignore_handler);
+
+    vcpu->add_vmcall_handler(
+        vmcall_handler_delegate(uart, vmcall_dispatch)
+    );
 }
 
 void
@@ -103,6 +107,10 @@ uart::pass_through(gsl::not_null<vcpu *> vcpu)
     vcpu->pass_through_io_accesses(m_port + 5);
     vcpu->pass_through_io_accesses(m_port + 6);
     vcpu->pass_through_io_accesses(m_port + 7);
+
+    vcpu->add_vmcall_handler(
+        vmcall_handler_delegate(uart, vmcall_dispatch)
+    );
 }
 
 uint64_t

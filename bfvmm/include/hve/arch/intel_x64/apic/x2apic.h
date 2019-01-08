@@ -106,6 +106,10 @@ public:
         gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info);
     bool handle_wrmsr_0x0000080B(
         gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info);
+    bool handle_rdmsr_0x0000080D(
+        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info);
+    bool handle_wrmsr_0x0000080D(
+        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info);
     bool handle_rdmsr_0x0000080F(
         gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info);
     bool handle_wrmsr_0x0000080F(

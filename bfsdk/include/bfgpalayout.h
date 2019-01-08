@@ -68,12 +68,10 @@ enum e820_type {
  *           XXX +----------------------+  |
  *               | Usable RAM           |  |
  *    0xXXXXXXXX +----------------------+ ---
- *               | Unusable             |  | Unusable
+ *               |                      |  |
  *    0xFEC00000 +----------------------+ ---
  *               | Free                 |  | Reserved
  *    0xFFFFFFFF +----------------------+ ---
- *               | Unusable             |  | Unusable
- *           ... +----------------------+ ---
  *
  * All RAM addresses must have backing memory, and must be mapped as RWE as this
  * is memory that the kernel could attempt to use. Reserved memory can be
@@ -114,7 +112,6 @@ setup_e820_map(void *vm, uint64_t size)
     ret |= add_e820_entry(vm, 0x00000000000E8000, 0x0000000000100000, E820_TYPE_RESERVED);
     ret |= add_e820_entry(vm, 0x0000000000100000, 0x000100000 + size, E820_TYPE_RAM);
     ret |= add_e820_entry(vm, 0x00000000FEC00000, 0x00000000FFFFFFFF, E820_TYPE_RESERVED);
-    ret |= add_e820_entry(vm, 0x00000000FFFFFFFF, 0xFFFFFFFFFFFFFFFF, E820_TYPE_UNUSABLE);
 
     if (ret != SUCCESS) {
         BFALERT("setup_e820_map: add_e820_entry failed to add E820 entries\n");
