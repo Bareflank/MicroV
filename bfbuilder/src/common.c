@@ -20,7 +20,7 @@
  * SOFTWARE.
  */
 
-#include <uapi/asm/bootparam.h>
+#include <bootparams.h>
 
 #include <acpi.h>
 #include <common.h>
@@ -518,7 +518,7 @@ setup_kernel(struct vm_t *vm, struct create_vm_from_bzimage_args *args)
         return ret;
     }
 
-    if ((kernel_size &= 0xFFF) != 0) {
+    if ((kernel_size & 0xFFF) != 0) {
         kernel_size += 0x1000;
         kernel_size &= ~(0xFFF);
     }
