@@ -136,8 +136,11 @@ void
 setup_kill_signal_handler(void)
 {
     signal(SIGINT, sig_handler);
-    signal(SIGQUIT, sig_handler);
     signal(SIGTERM, sig_handler);
+
+#ifdef SIGQUIT
+    signal(SIGQUIT, sig_handler);
+#endif
 }
 
 // -----------------------------------------------------------------------------

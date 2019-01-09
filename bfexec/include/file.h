@@ -23,12 +23,8 @@
 #define FILE_H
 
 #include <string>
-
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <sys/mman.h>
-#include <fcntl.h>
-#include <unistd.h>
+#include <vector>
+#include <fstream>
 
 namespace bfn
 {
@@ -41,34 +37,21 @@ class file
 public:
 
     file(const std::string &filename) :
-        m_path{filename}
-    {
-        fd = open(m_path.c_str(), O_RDONLY);
-        if (fd == -1) {
-            throw std::runtime_error("failed to open file");
-        }
-
-        fstat(fd, &m_statbuf);
-
-        m_addr = mmap(NULL, size(), PROT_READ, MAP_SHARED, fd, 0);
-        if (m_addr == MAP_FAILED) {
-            throw std::runtime_error("failed to map file");
-        }
-    }
+        m_path{filename},
+        m_file{filename, std::ios::in | std::ios::binary},
+        m_data{std::istreambuf_iterator<char>(m_file), std::istreambuf_iterator<char>()}
+    { }
 
     ~file()
-    {
-        munmap(m_addr, size());
-        close(fd);
-    }
+    { }
 
     pointer
     data() const noexcept
-    { return static_cast<pointer>(m_addr); }
+    { return m_data.data(); }
 
     size_type
     size() const noexcept
-    { return m_statbuf.st_size; }
+    { return m_data.size(); }
 
     const std::string &
     path() const noexcept
@@ -76,10 +59,9 @@ public:
 
 private:
 
-    int fd;
-    void *m_addr;
     std::string m_path;
-    struct stat m_statbuf;
+    std::fstream m_file;
+    std::vector<char> m_data;
 };
 
 }

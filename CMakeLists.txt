@@ -69,8 +69,10 @@ userspace_extension(
 # bflinux
 # ------------------------------------------------------------------------------
 
-userspace_extension(
-    bflinux
-    SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}/bflinux
-    DEPENDS bfintrinsics
-)
+if(NOT WIN32 AND NOT CYGWIN)
+    userspace_extension(
+        bflinux
+        SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}/bflinux
+        DEPENDS bfintrinsics
+    )
+endif()

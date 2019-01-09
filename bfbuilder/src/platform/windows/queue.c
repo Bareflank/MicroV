@@ -179,12 +179,6 @@ ioctl_destroy(domainid_t *args)
     int64_t ret;
     domainid_t domainid = *args;
 
-    ret = copy_from_user(&domainid, args, sizeof(domainid_t));
-    if (ret != 0) {
-        BFALERT("IOCTL_DESTROY: failed to copy args from userspace\n");
-        return BF_IOCTL_FAILURE;
-    }
-
     ret = common_destroy(domainid);
     if (ret != BF_SUCCESS) {
         BFDEBUG("common_destroy failed: %llx\n", ret);
