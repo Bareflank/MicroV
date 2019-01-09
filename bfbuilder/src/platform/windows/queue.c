@@ -23,7 +23,7 @@
 #include <driver.h>
 
 #include <common.h>
-#include <bfbfbuilderinterface.h>
+#include <bfbuilderinterface.h>
 
 #include <bfdebug.h>
 #include <bftypes.h>
@@ -31,65 +31,145 @@
 #include <bfplatform.h>
 
 /* -------------------------------------------------------------------------- */
+/* Helper Functions                                                            */
+/* -------------------------------------------------------------------------- */
+
+int64_t
+copy_from_user(void *dst, const void*src, uint64_t num)
+{
+    PMDL mdl = NULL;
+    PVOID buffer = NULL;
+
+    try {
+        ProbeForRead((void *)src, num, sizeof(UCHAR));
+    }
+    except(EXCEPTION_EXECUTE_HANDLER) {
+        BFALERT("ProbeForRead failed\n");
+        return -1;
+    }
+
+    mdl = IoAllocateMdl((void *)src, (ULONG)num, FALSE, TRUE, NULL);
+    if (!mdl) {
+        BFALERT("IoAllocateMdl failed\n");
+        return -1;
+    }
+
+    try {
+        MmProbeAndLockPages(mdl, UserMode, IoReadAccess);
+    }
+    except(EXCEPTION_EXECUTE_HANDLER) {
+        BFALERT("MmProbeAndLockPages failed\n");
+        IoFreeMdl(mdl);
+        return -1;
+    }
+
+    buffer = MmGetSystemAddressForMdlSafe(mdl, NormalPagePriority | MdlMappingNoExecute);
+    if (!buffer) {
+        BFALERT("MmGetSystemAddressForMdlSafe failed\n");
+        MmUnlockPages(mdl);
+        IoFreeMdl(mdl);
+        return -1;
+    }
+
+    RtlCopyMemory(dst, buffer, num);
+
+    MmUnlockPages(mdl);
+    IoFreeMdl(mdl);
+
+    return 0;
+}
+
+// https://github.com/Microsoft/Windows-driver-samples/blob/master/general/ioctl/wdm/sys/sioctl.c
+
+/* -------------------------------------------------------------------------- */
 /* Queue Functions                                                            */
 /* -------------------------------------------------------------------------- */
 
 static long
-ioctl_create_from_elf(struct create_from_elf_args *args)
+ioctl_create_vm_from_bzimage(struct create_vm_from_bzimage_args *args)
 {
     int64_t ret;
 
-    void *file = 0;
+    void *bzimage = 0;
+    void *initrd = 0;
     void *cmdl = 0;
 
-https://github.com/Microsoft/Windows-driver-samples/blob/master/general/ioctl/wdm/sys/sioctl.c
-
-    if (args->file != 0 && args->file_size != 0) {
-        file = platform_alloc_rw(args->file_size);
-        if (file == NULL) {
-            BFALERT("IOCTL_CREATE_FROM_ELF: failed to allocate memory for file\n");
+    if (args->bzimage != 0 && args->bzimage_size != 0) {
+        bzimage = platform_alloc_rw(args->bzimage_size);
+        if (bzimage == NULL) {
+            BFALERT("IOCTL_CREATE_VM_FROM_BZIMAGE: failed to allocate memory for bzimage\n");
             goto failed;
         }
 
-        platform_memcpy(file, args->file, args->file_size);
-        args->file = file;
+        ret = copy_from_user(bzimage, args->bzimage, args->bzimage_size);
+        if (ret != 0) {
+            BFALERT("IOCTL_CREATE_VM_FROM_BZIMAGE: failed to copy bzimage from userspace\n");
+            goto failed;
+        }
+
+        args->bzimage = bzimage;
     }
 
-    if (args->file != 0 && args->cmdl_size != 0) {
-        cmdl = platform_alloc_rw(args->cmdl_size);
-        if (cmdl == NULL) {
-            BFALERT("IOCTL_CREATE_FROM_ELF: failed to allocate memory for file\n");
+    if (args->initrd != 0 && args->initrd_size != 0) {
+        initrd = platform_alloc_rw(args->initrd_size);
+        if (initrd == NULL) {
+            BFALERT("IOCTL_CREATE_VM_FROM_BZIMAGE: failed to allocate memory for initrd\n");
             goto failed;
         }
 
-        platform_memcpy(cmdl, args->cmdl, args->cmdl_size);
+        ret = copy_from_user(initrd, args->initrd, args->initrd_size);
+        if (ret != 0) {
+            BFALERT("IOCTL_CREATE_VM_FROM_BZIMAGE: failed to copy initrd from userspace\n");
+            goto failed;
+        }
+
+        args->initrd = initrd;
+    }
+
+    if (args->cmdl != 0 && args->cmdl_size != 0) {
+        cmdl = platform_alloc_rw(args->cmdl_size);
+        if (cmdl == NULL) {
+            BFALERT("IOCTL_CREATE_VM_FROM_BZIMAGE: failed to allocate memory for file\n");
+            goto failed;
+        }
+
+        ret = copy_from_user(cmdl, args->cmdl, args->cmdl_size);
+        if (ret != 0) {
+            BFALERT("IOCTL_CREATE_VM_FROM_BZIMAGE: failed to copy cmdl from userspace\n");
+            goto failed;
+        }
+
         args->cmdl = cmdl;
     }
 
-    ret = common_create_from_elf(args);
+    ret = common_create_vm_from_bzimage(args);
     if (ret != BF_SUCCESS) {
-        BFDEBUG("common_create_from_elf failed: %llx\n", ret);
+        BFDEBUG("common_create_vm_from_bzimage failed: %llx\n", ret);
         goto failed;
     }
 
-    args->file = 0;
+    args->bzimage = 0;
+    args->initrd = 0;
     args->cmdl = 0;
 
-    platform_free_rw(file, args->file_size);
+    platform_free_rw(bzimage, args->bzimage_size);
+    platform_free_rw(initrd, args->initrd_size);
     platform_free_rw(cmdl, args->cmdl_size);
 
-    BFDEBUG("IOCTL_CREATE_FROM_ELF: succeeded\n");
+    BFDEBUG("IOCTL_CREATE_VM_FROM_BZIMAGE: succeeded\n");
     return BF_IOCTL_SUCCESS;
 
 failed:
 
-    args->file = 0;
+    args->bzimage = 0;
+    args->initrd = 0;
     args->cmdl = 0;
 
-    platform_free_rw(file, args->file_size);
+    platform_free_rw(bzimage, args->bzimage_size);
+    platform_free_rw(initrd, args->initrd_size);
     platform_free_rw(cmdl, args->cmdl_size);
 
-    BFALERT("IOCTL_CREATE_FROM_ELF: failed\n");
+    BFALERT("IOCTL_CREATE_VM_FROM_BZIMAGE: failed\n");
     return BF_IOCTL_FAILURE;
 }
 
@@ -97,9 +177,13 @@ static long
 ioctl_destroy(domainid_t *args)
 {
     int64_t ret;
-    domainid_t domainid;
+    domainid_t domainid = *args;
 
-    platform_memcpy(&domainid, args, sizeof(domainid_t));
+    ret = copy_from_user(&domainid, args, sizeof(domainid_t));
+    if (ret != 0) {
+        BFALERT("IOCTL_DESTROY: failed to copy args from userspace\n");
+        return BF_IOCTL_FAILURE;
+    }
 
     ret = common_destroy(domainid);
     if (ret != BF_SUCCESS) {
@@ -175,9 +259,9 @@ bfbuilderEvtIoDeviceControl(
     }
 
     switch (IoControlCode) {
-        case IOCTL_CREATE_FROM_ELF_CMD:
-            ret = ioctl_create_from_elf((struct create_from_elf_args *)in);
-            platform_memcpy(out, in, out_size);
+        case IOCTL_CREATE_VM_FROM_BZIMAGE_CMD:
+            ret = ioctl_create_vm_from_bzimage((struct create_vm_from_bzimage_args *)in);
+            RtlCopyMemory(out, in, out_size);
             break;
 
         case IOCTL_DESTROY_CMD:

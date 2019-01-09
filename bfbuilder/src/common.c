@@ -509,6 +509,12 @@ setup_kernel(struct vm_t *vm, struct create_vm_from_bzimage_args *args)
         return FAILURE;
     }
 
+    // TODO
+    //
+    // We need to clean up this implementation with a lot more checks
+    // to ensure that no overflows or underflows are possible
+    //
+
     kernel = args->bzimage + kernel_offset;
     kernel_size = args->bzimage_size - kernel_offset;
 
@@ -539,8 +545,14 @@ setup_kernel(struct vm_t *vm, struct create_vm_from_bzimage_args *args)
         return ret;
     }
 
-    vm->params->hdr.ramdisk_image = 0x100000 + kernel_size;
-    vm->params->hdr.ramdisk_size = args->initrd_size;
+    // TODO
+    //
+    // Check initrd size and location to ensure they are in the 32bit
+    // boundary
+    //
+
+    vm->params->hdr.ramdisk_image = (uint32_t)(0x100000 + kernel_size);
+    vm->params->hdr.ramdisk_size = (uint32_t)(args->initrd_size);
 
     return SUCCESS;
 }

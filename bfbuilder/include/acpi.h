@@ -210,7 +210,7 @@ struct dsdt_t {
 // -----------------------------------------------------------------------------
 
 static inline uint8_t
-acpi_checksum(void *table, uint32_t len)
+acpi_checksum(void *table, int len)
 {
     int i;
     uint8_t sum = 0;
@@ -219,7 +219,7 @@ acpi_checksum(void *table, uint32_t len)
         sum += ((uint8_t *)table)[i];
     }
 
-    return 0x100U - sum;
+    return (uint8_t)(0x100U - sum);
 }
 
 // -----------------------------------------------------------------------------

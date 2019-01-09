@@ -38,7 +38,7 @@ bfbuilderCreateDevice(
         return status;
     }
 
-    status = WdfDeviceCreateDeviceInterface(device, &GUID_DEVINTERFACE_bfbuilder, NULL);
+    status = WdfDeviceCreateDeviceInterface(device, &GUID_DEVINTERFACE_builder, NULL);
     if (!NT_SUCCESS(status)) {
         return status;
     }

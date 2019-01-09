@@ -79,8 +79,7 @@ ioctl_create_vm_from_bzimage(struct create_vm_from_bzimage_args *args)
             goto failed;
         }
 
-        ret = copy_from_user(
-            bzimage, kern_args.bzimage, kern_args.bzimage_size);
+        ret = copy_from_user(bzimage, kern_args.bzimage, kern_args.bzimage_size);
         if (ret != 0) {
             BFALERT("IOCTL_CREATE_VM_FROM_BZIMAGE: failed to copy bzimage from userspace\n");
             goto failed;
@@ -96,8 +95,7 @@ ioctl_create_vm_from_bzimage(struct create_vm_from_bzimage_args *args)
             goto failed;
         }
 
-        ret = copy_from_user(
-            initrd, kern_args.initrd, kern_args.initrd_size);
+        ret = copy_from_user(initrd, kern_args.initrd, kern_args.initrd_size);
         if (ret != 0) {
             BFALERT("IOCTL_CREATE_VM_FROM_BZIMAGE: failed to copy initrd from userspace\n");
             goto failed;
@@ -113,8 +111,7 @@ ioctl_create_vm_from_bzimage(struct create_vm_from_bzimage_args *args)
             goto failed;
         }
 
-        ret = copy_from_user(
-            cmdl, kern_args.cmdl, kern_args.cmdl_size);
+        ret = copy_from_user(cmdl, kern_args.cmdl, kern_args.cmdl_size);
         if (ret != 0) {
             BFALERT("IOCTL_CREATE_VM_FROM_BZIMAGE: failed to copy cmdl from userspace\n");
             goto failed;

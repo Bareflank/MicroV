@@ -43,11 +43,7 @@ tags
 *.order
 *.cache.mk
 
-bfdriver/builder/src/platform/windows/.vs/
-bfdriver/builder/src/platform/windows/bareflank.VC.db
-bfdriver/builder/src/platform/windows/x64/
+bfbuilder/src/platform/windows/.vs/
+bfbuilder/src/platform/windows/bfbuilder.VC.db
+bfbuilder/src/platform/windows/x64/
 
-bfdriver/builder/src/platform/efi/*.efi
-bfdriver/builder/src/platform/efi/src/*.o
-bfdriver/builder/src/platform/efi/src/gnuefi/*.o
-bfdriver/builder/src/platform/efi/module/*
