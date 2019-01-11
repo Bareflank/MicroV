@@ -48,3 +48,4 @@ bfbuilder/src/platform/windows/bfbuilder.VC.db
 bfbuilder/src/platform/windows/x64/
 
 bfinstallers/windows/Input
+bfinstallers/windows/Output
