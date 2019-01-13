@@ -80,7 +80,7 @@ somewhere by supporting the following use cases on Windows and Linux hosts:
   support in version 1 are web servers. Specifically providing the ability to 
   execute several, headless webservers simultaniously on a single machine. 
   
-There are several other use cases that we could like to support with Boxy in 
+There are several other use cases that we would like to support with Boxy in 
 future versions like full Windows guest support, Containerization, and 
 of course Cloud Computing, but for now the above use cases are our primary focus
 until version 1 is complete. 
@@ -91,7 +91,7 @@ until version 1 is complete.
     - [X] (N) MIT license change
     - [ ] (C++) Removal of shared library support (Rian Quinn)
     - [ ] (C++) Merge EAPIs with Base hypervisor (Jared Wright)
-    - [ ] (N) Re-brand (Rian Quinn)
+    - [X] (N) Re-brand (Rian Quinn)
 
 - Extended APIs
     - [ ] (C++) Complete microcode update logic
