@@ -31,7 +31,7 @@
 //--------------------------------------------------------------------------
 
 #define make_delegate(a,b)                                                                          \
-    eapis::intel_x64::a::handler_delegate_t::create<uart, &uart::b>(this)
+    bfvmm::intel_x64::a::handler_delegate_t::create<uart, &uart::b>(this)
 
 #define EMULATE_IO_INSTRUCTION(a,b,c)                                                               \
     vcpu->emulate_io_instruction(                                                                   \
@@ -129,7 +129,7 @@ uart::dump(const gsl::span<char> &buffer)
 
 bool
 uart::io_zero_handler(
-    gsl::not_null<vcpu_t *> vcpu, eapis::intel_x64::io_instruction_handler::info_t &info)
+    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::io_instruction_handler::info_t &info)
 {
     bfignored(vcpu);
 
@@ -139,7 +139,7 @@ uart::io_zero_handler(
 
 bool
 uart::io_ignore_handler(
-    gsl::not_null<vcpu_t *> vcpu, eapis::intel_x64::io_instruction_handler::info_t &info)
+    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::io_instruction_handler::info_t &info)
 {
     bfignored(vcpu);
     bfignored(info);
@@ -149,7 +149,7 @@ uart::io_ignore_handler(
 
 bool
 uart::reg0_in_handler(
-    gsl::not_null<vcpu_t *> vcpu, eapis::intel_x64::io_instruction_handler::info_t &info)
+    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::io_instruction_handler::info_t &info)
 {
     bfignored(vcpu);
     std::lock_guard lock(m_mutex);
@@ -166,7 +166,7 @@ uart::reg0_in_handler(
 
 bool
 uart::reg1_in_handler(
-    gsl::not_null<vcpu_t *> vcpu, eapis::intel_x64::io_instruction_handler::info_t &info)
+    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::io_instruction_handler::info_t &info)
 {
     bfignored(vcpu);
     std::lock_guard lock(m_mutex);
@@ -183,7 +183,7 @@ uart::reg1_in_handler(
 
 bool
 uart::reg2_in_handler(
-    gsl::not_null<vcpu_t *> vcpu, eapis::intel_x64::io_instruction_handler::info_t &info)
+    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::io_instruction_handler::info_t &info)
 {
     bfignored(vcpu);
 
@@ -195,7 +195,7 @@ uart::reg2_in_handler(
 
 bool
 uart::reg3_in_handler(
-    gsl::not_null<vcpu_t *> vcpu, eapis::intel_x64::io_instruction_handler::info_t &info)
+    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::io_instruction_handler::info_t &info)
 {
     bfignored(vcpu);
     std::lock_guard lock(m_mutex);
@@ -206,7 +206,7 @@ uart::reg3_in_handler(
 
 bool
 uart::reg4_in_handler(
-    gsl::not_null<vcpu_t *> vcpu, eapis::intel_x64::io_instruction_handler::info_t &info)
+    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::io_instruction_handler::info_t &info)
 {
     bfignored(vcpu);
 
@@ -218,7 +218,7 @@ uart::reg4_in_handler(
 
 bool
 uart::reg5_in_handler(
-    gsl::not_null<vcpu_t *> vcpu, eapis::intel_x64::io_instruction_handler::info_t &info)
+    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::io_instruction_handler::info_t &info)
 {
     bfignored(vcpu);
 
@@ -228,7 +228,7 @@ uart::reg5_in_handler(
 
 bool
 uart::reg6_in_handler(
-    gsl::not_null<vcpu_t *> vcpu, eapis::intel_x64::io_instruction_handler::info_t &info)
+    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::io_instruction_handler::info_t &info)
 {
     bfignored(vcpu);
 
@@ -240,7 +240,7 @@ uart::reg6_in_handler(
 
 bool
 uart::reg7_in_handler(
-    gsl::not_null<vcpu_t *> vcpu, eapis::intel_x64::io_instruction_handler::info_t &info)
+    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::io_instruction_handler::info_t &info)
 {
     bfignored(vcpu);
 
@@ -252,7 +252,7 @@ uart::reg7_in_handler(
 
 bool
 uart::reg0_out_handler(
-    gsl::not_null<vcpu_t *> vcpu, eapis::intel_x64::io_instruction_handler::info_t &info)
+    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::io_instruction_handler::info_t &info)
 {
     bfignored(vcpu);
     std::lock_guard lock(m_mutex);
@@ -269,7 +269,7 @@ uart::reg0_out_handler(
 
 bool
 uart::reg1_out_handler(
-    gsl::not_null<vcpu_t *> vcpu, eapis::intel_x64::io_instruction_handler::info_t &info)
+    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::io_instruction_handler::info_t &info)
 {
     bfignored(vcpu);
     std::lock_guard lock(m_mutex);
@@ -288,7 +288,7 @@ uart::reg1_out_handler(
 
 bool
 uart::reg2_out_handler(
-    gsl::not_null<vcpu_t *> vcpu, eapis::intel_x64::io_instruction_handler::info_t &info)
+    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::io_instruction_handler::info_t &info)
 {
     bfignored(vcpu);
     bfignored(info);
@@ -298,7 +298,7 @@ uart::reg2_out_handler(
 
 bool
 uart::reg3_out_handler(
-    gsl::not_null<vcpu_t *> vcpu, eapis::intel_x64::io_instruction_handler::info_t &info)
+    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::io_instruction_handler::info_t &info)
 {
     bfignored(vcpu);
     std::lock_guard lock(m_mutex);
@@ -309,7 +309,7 @@ uart::reg3_out_handler(
 
 bool
 uart::reg4_out_handler(
-    gsl::not_null<vcpu_t *> vcpu, eapis::intel_x64::io_instruction_handler::info_t &info)
+    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::io_instruction_handler::info_t &info)
 {
     bfignored(vcpu);
     bfignored(info);
@@ -319,7 +319,7 @@ uart::reg4_out_handler(
 
 bool
 uart::reg5_out_handler(
-    gsl::not_null<vcpu_t *> vcpu, eapis::intel_x64::io_instruction_handler::info_t &info)
+    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::io_instruction_handler::info_t &info)
 {
     bfignored(vcpu);
     bfignored(info);
@@ -330,7 +330,7 @@ uart::reg5_out_handler(
 
 bool
 uart::reg6_out_handler(
-    gsl::not_null<vcpu_t *> vcpu, eapis::intel_x64::io_instruction_handler::info_t &info)
+    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::io_instruction_handler::info_t &info)
 {
     bfignored(vcpu);
     bfignored(info);
@@ -341,7 +341,7 @@ uart::reg6_out_handler(
 
 bool
 uart::reg7_out_handler(
-    gsl::not_null<vcpu_t *> vcpu, eapis::intel_x64::io_instruction_handler::info_t &info)
+    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::io_instruction_handler::info_t &info)
 {
     bfignored(vcpu);
     bfignored(info);

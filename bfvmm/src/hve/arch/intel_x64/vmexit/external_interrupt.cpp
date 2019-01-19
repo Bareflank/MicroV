@@ -37,7 +37,7 @@ external_interrupt_handler::external_interrupt_handler(
     }
 
     m_vcpu->add_external_interrupt_handler(
-        eapis::intel_x64::external_interrupt_handler::handler_delegate_t::create <
+        bfvmm::intel_x64::external_interrupt_handler::handler_delegate_t::create <
         external_interrupt_handler, &external_interrupt_handler::handle > (this)
     );
 }
@@ -49,7 +49,7 @@ external_interrupt_handler::external_interrupt_handler(
 bool
 external_interrupt_handler::handle(
     gsl::not_null<vcpu_t *> vcpu,
-    eapis::intel_x64::external_interrupt_handler::info_t &info)
+    bfvmm::intel_x64::external_interrupt_handler::info_t &info)
 {
     bfignored(vcpu);
     auto parent_vcpu = m_vcpu->parent_vcpu();

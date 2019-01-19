@@ -39,7 +39,7 @@
 #include "domain.h"
 
 #include <bfvmm/vcpu/vcpu_manager.h>
-#include <eapis/hve/arch/intel_x64/vcpu.h>
+#include <bfvmm/hve/arch/intel_x64/vcpu.h>
 
 // -----------------------------------------------------------------------------
 // Exports
@@ -64,7 +64,7 @@
 namespace boxy::intel_x64
 {
 
-class EXPORT_BOXY_HVE vcpu : public eapis::intel_x64::vcpu
+class EXPORT_BOXY_HVE vcpu : public bfvmm::intel_x64::vcpu
 {
 public:
 

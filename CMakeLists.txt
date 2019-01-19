@@ -42,12 +42,12 @@ include_dependency(BOXY_SOURCE_DEPENDS_DIR linux)
 # ------------------------------------------------------------------------------
 
 if(ENABLE_BUILD_VMM)
-    eapis_vmm_extension(
+    vmm_extension(
         boxy_bfvmm
         SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}/bfvmm/src
     )
 
-    eapis_vmm_extension(
+    vmm_extension(
         boxy_bfvmm_main
         DEPENDS boxy_bfvmm
         SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}/bfvmm/src/main

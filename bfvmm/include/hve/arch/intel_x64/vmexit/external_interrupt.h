@@ -23,7 +23,7 @@
 #define VMEXIT_EXTERNAL_INTERRUPT_INTEL_X64_BOXY_H
 
 #include <bfvmm/hve/arch/intel_x64/vcpu.h>
-#include <eapis/hve/arch/intel_x64/vmexit/external_interrupt.h>
+#include <bfvmm/hve/arch/intel_x64/vmexit/external_interrupt.h>
 
 // -----------------------------------------------------------------------------
 // Exports
@@ -77,7 +77,7 @@ public:
 
     bool handle(
         gsl::not_null<vcpu_t *> vcpu,
-        ::eapis::intel_x64::external_interrupt_handler::info_t &info);
+        bfvmm::intel_x64::external_interrupt_handler::info_t &info);
 
     /// @endcond
 

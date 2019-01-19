@@ -40,7 +40,7 @@ else()
     message(FATAL_ERROR "Unsupported archiecture")
 endif()
 
-eapis_add_vmm_executable(
+add_vmm_executable(
     boxy_bfvmm
     LIBRARIES boxy_hve
     LIBRARIES boxy_domain

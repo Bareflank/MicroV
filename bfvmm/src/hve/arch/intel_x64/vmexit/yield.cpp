@@ -23,10 +23,10 @@
 #include <hve/arch/intel_x64/vmexit/yield.h>
 
 #define make_rdmsr_delegate(a)                                                  \
-    eapis::intel_x64::rdmsr_handler::handler_delegate_t::create<yield_handler, &yield_handler::a>(this)
+    bfvmm::intel_x64::rdmsr_handler::handler_delegate_t::create<yield_handler, &yield_handler::a>(this)
 
 #define make_wrmsr_delegate(a)                                                  \
-    eapis::intel_x64::wrmsr_handler::handler_delegate_t::create<yield_handler, &yield_handler::a>(this)
+    bfvmm::intel_x64::wrmsr_handler::handler_delegate_t::create<yield_handler, &yield_handler::a>(this)
 
 #define EMULATE_MSR(a,b,c)                                                      \
     m_vcpu->emulate_rdmsr(                                                      \
@@ -170,7 +170,7 @@ yield_handler::handle_preemption(gsl::not_null<vcpu_t *> vcpu)
 
 bool
 yield_handler::handle_rdmsr_0x000006E0(
-    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info)
+    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info)
 {
     bfignored(info);
 
@@ -180,7 +180,7 @@ yield_handler::handle_rdmsr_0x000006E0(
 
 bool
 yield_handler::handle_wrmsr_0x000006E0(
-    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info)
+    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info)
 {
     bfignored(vcpu);
 
