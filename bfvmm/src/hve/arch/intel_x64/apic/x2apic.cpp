@@ -23,10 +23,10 @@
 #include <hve/arch/intel_x64/vmexit/msr.h>
 
 #define make_rdmsr_delegate(a)                                                  \
-    eapis::intel_x64::rdmsr_handler::handler_delegate_t::create<x2apic_handler, &x2apic_handler::a>(this)
+    bfvmm::intel_x64::rdmsr_handler::handler_delegate_t::create<x2apic_handler, &x2apic_handler::a>(this)
 
 #define make_wrmsr_delegate(a)                                                  \
-    eapis::intel_x64::wrmsr_handler::handler_delegate_t::create<x2apic_handler, &x2apic_handler::a>(this)
+    bfvmm::intel_x64::wrmsr_handler::handler_delegate_t::create<x2apic_handler, &x2apic_handler::a>(this)
 
 #define EMULATE_MSR(a,b,c)                                                      \
     m_vcpu->emulate_rdmsr(                                                      \
@@ -113,7 +113,7 @@ x2apic_handler::timer_vector() const noexcept
 
 bool
 x2apic_handler::handle_rdmsr_0x0000001B(
-    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info)
+    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info)
 {
     bfignored(vcpu);
 
@@ -123,7 +123,7 @@ x2apic_handler::handle_rdmsr_0x0000001B(
 
 bool
 x2apic_handler::handle_wrmsr_0x0000001B(
-    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info)
+    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info)
 {
     if ((info.val & 0xFFF) != 0xD00) {
         vcpu->halt("Disabling x2APIC is not supported");
@@ -139,7 +139,7 @@ x2apic_handler::handle_wrmsr_0x0000001B(
 
 bool
 x2apic_handler::handle_rdmsr_0x00000802(
-    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info)
+    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info)
 {
     bfignored(vcpu);
 
@@ -149,7 +149,7 @@ x2apic_handler::handle_rdmsr_0x00000802(
 
 bool
 x2apic_handler::handle_wrmsr_0x00000802(
-    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info)
+    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info)
 {
     bfignored(info);
 
@@ -159,7 +159,7 @@ x2apic_handler::handle_wrmsr_0x00000802(
 
 bool
 x2apic_handler::handle_rdmsr_0x00000803(
-    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info)
+    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info)
 {
     bfignored(vcpu);
 
@@ -169,7 +169,7 @@ x2apic_handler::handle_rdmsr_0x00000803(
 
 bool
 x2apic_handler::handle_wrmsr_0x00000803(
-    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info)
+    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info)
 {
     bfignored(info);
 
@@ -179,7 +179,7 @@ x2apic_handler::handle_wrmsr_0x00000803(
 
 bool
 x2apic_handler::handle_rdmsr_0x00000808(
-    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info)
+    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info)
 {
     bfignored(vcpu);
 
@@ -189,7 +189,7 @@ x2apic_handler::handle_rdmsr_0x00000808(
 
 bool
 x2apic_handler::handle_wrmsr_0x00000808(
-    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info)
+    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info)
 {
     if (info.val != 0) {
         vcpu->halt("non-zero TPR not supported");
@@ -200,7 +200,7 @@ x2apic_handler::handle_wrmsr_0x00000808(
 
 bool
 x2apic_handler::handle_rdmsr_0x0000080B(
-    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info)
+    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info)
 {
     bfignored(info);
 
@@ -210,7 +210,7 @@ x2apic_handler::handle_rdmsr_0x0000080B(
 
 bool
 x2apic_handler::handle_wrmsr_0x0000080B(
-    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info)
+    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info)
 {
     bfignored(vcpu);
     bfignored(info);
@@ -220,7 +220,7 @@ x2apic_handler::handle_wrmsr_0x0000080B(
 
 bool
 x2apic_handler::handle_rdmsr_0x0000080D(
-    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info)
+    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info)
 {
     bfignored(vcpu);
 
@@ -232,7 +232,7 @@ x2apic_handler::handle_rdmsr_0x0000080D(
 
 bool
 x2apic_handler::handle_wrmsr_0x0000080D(
-    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info)
+    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info)
 {
     bfignored(info);
 
@@ -242,7 +242,7 @@ x2apic_handler::handle_wrmsr_0x0000080D(
 
 bool
 x2apic_handler::handle_rdmsr_0x0000080F(
-    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info)
+    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info)
 {
     bfignored(vcpu);
 
@@ -252,7 +252,7 @@ x2apic_handler::handle_rdmsr_0x0000080F(
 
 bool
 x2apic_handler::handle_wrmsr_0x0000080F(
-    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info)
+    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info)
 {
     bfignored(vcpu);
 
@@ -262,7 +262,7 @@ x2apic_handler::handle_wrmsr_0x0000080F(
 
 bool
 x2apic_handler::handle_rdmsr_0x00000828(
-    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info)
+    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info)
 {
     bfignored(vcpu);
 
@@ -272,7 +272,7 @@ x2apic_handler::handle_rdmsr_0x00000828(
 
 bool
 x2apic_handler::handle_wrmsr_0x00000828(
-    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info)
+    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info)
 {
     bfignored(vcpu);
 
@@ -286,7 +286,7 @@ x2apic_handler::handle_wrmsr_0x00000828(
 
 bool
 x2apic_handler::handle_rdmsr_0x00000810(
-    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info)
+    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info)
 {
     bfignored(vcpu);
 
@@ -296,7 +296,7 @@ x2apic_handler::handle_rdmsr_0x00000810(
 
 bool
 x2apic_handler::handle_wrmsr_0x00000810(
-    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info)
+    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info)
 {
     bfignored(info);
 
@@ -306,7 +306,7 @@ x2apic_handler::handle_wrmsr_0x00000810(
 
 bool
 x2apic_handler::handle_rdmsr_0x00000811(
-    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info)
+    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info)
 {
     bfignored(vcpu);
 
@@ -316,7 +316,7 @@ x2apic_handler::handle_rdmsr_0x00000811(
 
 bool
 x2apic_handler::handle_wrmsr_0x00000811(
-    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info)
+    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info)
 {
     bfignored(info);
 
@@ -326,7 +326,7 @@ x2apic_handler::handle_wrmsr_0x00000811(
 
 bool
 x2apic_handler::handle_rdmsr_0x00000812(
-    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info)
+    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info)
 {
     bfignored(vcpu);
 
@@ -336,7 +336,7 @@ x2apic_handler::handle_rdmsr_0x00000812(
 
 bool
 x2apic_handler::handle_wrmsr_0x00000812(
-    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info)
+    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info)
 {
     bfignored(info);
 
@@ -346,7 +346,7 @@ x2apic_handler::handle_wrmsr_0x00000812(
 
 bool
 x2apic_handler::handle_rdmsr_0x00000813(
-    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info)
+    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info)
 {
     bfignored(vcpu);
 
@@ -356,7 +356,7 @@ x2apic_handler::handle_rdmsr_0x00000813(
 
 bool
 x2apic_handler::handle_wrmsr_0x00000813(
-    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info)
+    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info)
 {
     bfignored(info);
 
@@ -366,7 +366,7 @@ x2apic_handler::handle_wrmsr_0x00000813(
 
 bool
 x2apic_handler::handle_rdmsr_0x00000814(
-    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info)
+    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info)
 {
     bfignored(vcpu);
 
@@ -376,7 +376,7 @@ x2apic_handler::handle_rdmsr_0x00000814(
 
 bool
 x2apic_handler::handle_wrmsr_0x00000814(
-    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info)
+    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info)
 {
     bfignored(info);
 
@@ -386,7 +386,7 @@ x2apic_handler::handle_wrmsr_0x00000814(
 
 bool
 x2apic_handler::handle_rdmsr_0x00000815(
-    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info)
+    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info)
 {
     bfignored(vcpu);
 
@@ -396,7 +396,7 @@ x2apic_handler::handle_rdmsr_0x00000815(
 
 bool
 x2apic_handler::handle_wrmsr_0x00000815(
-    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info)
+    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info)
 {
     bfignored(info);
 
@@ -406,7 +406,7 @@ x2apic_handler::handle_wrmsr_0x00000815(
 
 bool
 x2apic_handler::handle_rdmsr_0x00000816(
-    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info)
+    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info)
 {
     bfignored(vcpu);
 
@@ -416,7 +416,7 @@ x2apic_handler::handle_rdmsr_0x00000816(
 
 bool
 x2apic_handler::handle_wrmsr_0x00000816(
-    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info)
+    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info)
 {
     bfignored(info);
 
@@ -426,7 +426,7 @@ x2apic_handler::handle_wrmsr_0x00000816(
 
 bool
 x2apic_handler::handle_rdmsr_0x00000817(
-    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info)
+    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info)
 {
     bfignored(vcpu);
 
@@ -436,7 +436,7 @@ x2apic_handler::handle_rdmsr_0x00000817(
 
 bool
 x2apic_handler::handle_wrmsr_0x00000817(
-    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info)
+    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info)
 {
     bfignored(info);
 
@@ -450,7 +450,7 @@ x2apic_handler::handle_wrmsr_0x00000817(
 
 bool
 x2apic_handler::handle_rdmsr_0x00000820(
-    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info)
+    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info)
 {
     bfignored(vcpu);
 
@@ -460,7 +460,7 @@ x2apic_handler::handle_rdmsr_0x00000820(
 
 bool
 x2apic_handler::handle_wrmsr_0x00000820(
-    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info)
+    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info)
 {
     bfignored(info);
 
@@ -470,7 +470,7 @@ x2apic_handler::handle_wrmsr_0x00000820(
 
 bool
 x2apic_handler::handle_rdmsr_0x00000821(
-    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info)
+    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info)
 {
     bfignored(vcpu);
 
@@ -480,7 +480,7 @@ x2apic_handler::handle_rdmsr_0x00000821(
 
 bool
 x2apic_handler::handle_wrmsr_0x00000821(
-    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info)
+    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info)
 {
     bfignored(info);
 
@@ -490,7 +490,7 @@ x2apic_handler::handle_wrmsr_0x00000821(
 
 bool
 x2apic_handler::handle_rdmsr_0x00000822(
-    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info)
+    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info)
 {
     bfignored(vcpu);
 
@@ -500,7 +500,7 @@ x2apic_handler::handle_rdmsr_0x00000822(
 
 bool
 x2apic_handler::handle_wrmsr_0x00000822(
-    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info)
+    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info)
 {
     bfignored(info);
 
@@ -510,7 +510,7 @@ x2apic_handler::handle_wrmsr_0x00000822(
 
 bool
 x2apic_handler::handle_rdmsr_0x00000823(
-    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info)
+    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info)
 {
     bfignored(vcpu);
 
@@ -520,7 +520,7 @@ x2apic_handler::handle_rdmsr_0x00000823(
 
 bool
 x2apic_handler::handle_wrmsr_0x00000823(
-    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info)
+    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info)
 {
     bfignored(info);
 
@@ -530,7 +530,7 @@ x2apic_handler::handle_wrmsr_0x00000823(
 
 bool
 x2apic_handler::handle_rdmsr_0x00000824(
-    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info)
+    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info)
 {
     bfignored(vcpu);
 
@@ -540,7 +540,7 @@ x2apic_handler::handle_rdmsr_0x00000824(
 
 bool
 x2apic_handler::handle_wrmsr_0x00000824(
-    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info)
+    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info)
 {
     bfignored(info);
 
@@ -550,7 +550,7 @@ x2apic_handler::handle_wrmsr_0x00000824(
 
 bool
 x2apic_handler::handle_rdmsr_0x00000825(
-    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info)
+    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info)
 {
     bfignored(vcpu);
 
@@ -560,7 +560,7 @@ x2apic_handler::handle_rdmsr_0x00000825(
 
 bool
 x2apic_handler::handle_wrmsr_0x00000825(
-    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info)
+    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info)
 {
     bfignored(info);
 
@@ -570,7 +570,7 @@ x2apic_handler::handle_wrmsr_0x00000825(
 
 bool
 x2apic_handler::handle_rdmsr_0x00000826(
-    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info)
+    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info)
 {
     bfignored(vcpu);
 
@@ -580,7 +580,7 @@ x2apic_handler::handle_rdmsr_0x00000826(
 
 bool
 x2apic_handler::handle_wrmsr_0x00000826(
-    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info)
+    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info)
 {
     bfignored(info);
 
@@ -590,7 +590,7 @@ x2apic_handler::handle_wrmsr_0x00000826(
 
 bool
 x2apic_handler::handle_rdmsr_0x00000827(
-    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info)
+    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info)
 {
     bfignored(vcpu);
 
@@ -600,7 +600,7 @@ x2apic_handler::handle_rdmsr_0x00000827(
 
 bool
 x2apic_handler::handle_wrmsr_0x00000827(
-    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info)
+    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info)
 {
     bfignored(info);
 
@@ -614,7 +614,7 @@ x2apic_handler::handle_wrmsr_0x00000827(
 
 bool
 x2apic_handler::handle_rdmsr_0x00000832(
-    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info)
+    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info)
 {
     bfignored(vcpu);
 
@@ -624,7 +624,7 @@ x2apic_handler::handle_rdmsr_0x00000832(
 
 bool
 x2apic_handler::handle_wrmsr_0x00000832(
-    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info)
+    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info)
 {
     bfignored(vcpu);
 
@@ -634,7 +634,7 @@ x2apic_handler::handle_wrmsr_0x00000832(
 
 bool
 x2apic_handler::handle_rdmsr_0x00000835(
-    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info)
+    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info)
 {
     bfignored(vcpu);
 
@@ -644,7 +644,7 @@ x2apic_handler::handle_rdmsr_0x00000835(
 
 bool
 x2apic_handler::handle_wrmsr_0x00000835(
-    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info)
+    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info)
 {
     bfignored(vcpu);
 
@@ -656,7 +656,7 @@ x2apic_handler::handle_wrmsr_0x00000835(
 
 bool
 x2apic_handler::handle_rdmsr_0x00000836(
-    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info)
+    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info)
 {
     bfignored(vcpu);
 
@@ -666,7 +666,7 @@ x2apic_handler::handle_rdmsr_0x00000836(
 
 bool
 x2apic_handler::handle_wrmsr_0x00000836(
-    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info)
+    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info)
 {
     bfignored(vcpu);
 
@@ -678,7 +678,7 @@ x2apic_handler::handle_wrmsr_0x00000836(
 
 bool
 x2apic_handler::handle_rdmsr_0x00000837(
-    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info)
+    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info)
 {
     bfignored(vcpu);
 
@@ -688,7 +688,7 @@ x2apic_handler::handle_rdmsr_0x00000837(
 
 bool
 x2apic_handler::handle_wrmsr_0x00000837(
-    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info)
+    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info)
 {
     bfignored(vcpu);
 
@@ -698,7 +698,7 @@ x2apic_handler::handle_wrmsr_0x00000837(
 
 bool
 x2apic_handler::handle_rdmsr_0x00000838(
-    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info)
+    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info)
 {
     bfignored(vcpu);
 
@@ -708,7 +708,7 @@ x2apic_handler::handle_rdmsr_0x00000838(
 
 bool
 x2apic_handler::handle_wrmsr_0x00000838(
-    gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info)
+    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info)
 {
     if (info.val != 0) {
         vcpu->halt("non-zero LVT initial count not supported");

@@ -89,7 +89,7 @@ vcpu::vcpu(
     vcpuid::type id,
     gsl::not_null<domain *> domain
 ) :
-    eapis::intel_x64::vcpu{
+    bfvmm::intel_x64::vcpu{
     id, domain->global_state()
 },
     m_domain{domain},

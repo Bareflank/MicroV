@@ -23,8 +23,8 @@
 #define VMEXIT_MSR_INTEL_X64_BOXY_H
 
 #include <bfvmm/hve/arch/intel_x64/vcpu.h>
-#include <eapis/hve/arch/intel_x64/vmexit/rdmsr.h>
-#include <eapis/hve/arch/intel_x64/vmexit/wrmsr.h>
+#include <bfvmm/hve/arch/intel_x64/vmexit/rdmsr.h>
+#include <bfvmm/hve/arch/intel_x64/vmexit/wrmsr.h>
 
 #include <unordered_map>
 
@@ -85,7 +85,7 @@ public:
     bool isolate_msr__on_exit(
         gsl::not_null<vcpu_t *> vcpu);
     bool isolate_msr__on_write(
-        gsl::not_null<vcpu_t *> vcpu, eapis::intel_x64::wrmsr_handler::info_t &info);
+        gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info);
 
     /// @endcond
 
@@ -94,33 +94,33 @@ public:
     /// @cond
 
     bool handle_rdmsr_0x00000034(
-        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info);
+        gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info);
     bool handle_wrmsr_0x00000034(
-        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info);
+        gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info);
     bool handle_rdmsr_0x000000CE(
-        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info);
+        gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info);
     bool handle_wrmsr_0x000000CE(
-        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info);
+        gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info);
     bool handle_rdmsr_0x00000140(
-        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info);
+        gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info);
     bool handle_wrmsr_0x00000140(
-        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info);
+        gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info);
     bool handle_rdmsr_0x000001A0(
-        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info);
+        gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info);
     bool handle_wrmsr_0x000001A0(
-        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info);
+        gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info);
     bool handle_rdmsr_0x00000606(
-        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info);
+        gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info);
     bool handle_wrmsr_0x00000606(
-        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info);
+        gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info);
     bool handle_rdmsr_0x0000064E(
-        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info);
+        gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info);
     bool handle_wrmsr_0x0000064E(
-        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info);
+        gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info);
     bool handle_rdmsr_0xC0000103(
-        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::rdmsr_handler::info_t &info);
+        gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info);
     bool handle_wrmsr_0xC0000103(
-        gsl::not_null<vcpu_t *> vcpu, ::eapis::intel_x64::wrmsr_handler::info_t &info);
+        gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info);
 
     /// @endcond
 

@@ -24,7 +24,7 @@
 
 #include <hve/arch/intel_x64/domain.h>
 
-using namespace eapis::intel_x64;
+using namespace bfvmm::intel_x64;
 
 // -----------------------------------------------------------------------------
 // Implementation

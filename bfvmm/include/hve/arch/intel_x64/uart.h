@@ -29,9 +29,9 @@
 #include <array>
 #include <mutex>
 
-#include <eapis/hve/arch/intel_x64/vcpu.h>
-#include <eapis/hve/arch/intel_x64/vmexit/cpuid.h>
-#include <eapis/hve/arch/intel_x64/vmexit/io_instruction.h>
+#include <bfvmm/hve/arch/intel_x64/vcpu.h>
+#include <bfvmm/hve/arch/intel_x64/vmexit/cpuid.h>
+#include <bfvmm/hve/arch/intel_x64/vmexit/io_instruction.h>
 
 // -----------------------------------------------------------------------------
 // Exports
@@ -138,43 +138,43 @@ public:
 private:
 
     bool io_zero_handler(
-        gsl::not_null<vcpu_t *> vcpu, eapis::intel_x64::io_instruction_handler::info_t &info);
+        gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::io_instruction_handler::info_t &info);
     bool io_ignore_handler(
-        gsl::not_null<vcpu_t *> vcpu, eapis::intel_x64::io_instruction_handler::info_t &info);
+        gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::io_instruction_handler::info_t &info);
 
     bool reg0_in_handler(
-        gsl::not_null<vcpu_t *> vcpu, eapis::intel_x64::io_instruction_handler::info_t &info);
+        gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::io_instruction_handler::info_t &info);
     bool reg1_in_handler(
-        gsl::not_null<vcpu_t *> vcpu, eapis::intel_x64::io_instruction_handler::info_t &info);
+        gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::io_instruction_handler::info_t &info);
     bool reg2_in_handler(
-        gsl::not_null<vcpu_t *> vcpu, eapis::intel_x64::io_instruction_handler::info_t &info);
+        gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::io_instruction_handler::info_t &info);
     bool reg3_in_handler(
-        gsl::not_null<vcpu_t *> vcpu, eapis::intel_x64::io_instruction_handler::info_t &info);
+        gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::io_instruction_handler::info_t &info);
     bool reg4_in_handler(
-        gsl::not_null<vcpu_t *> vcpu, eapis::intel_x64::io_instruction_handler::info_t &info);
+        gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::io_instruction_handler::info_t &info);
     bool reg5_in_handler(
-        gsl::not_null<vcpu_t *> vcpu, eapis::intel_x64::io_instruction_handler::info_t &info);
+        gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::io_instruction_handler::info_t &info);
     bool reg6_in_handler(
-        gsl::not_null<vcpu_t *> vcpu, eapis::intel_x64::io_instruction_handler::info_t &info);
+        gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::io_instruction_handler::info_t &info);
     bool reg7_in_handler(
-        gsl::not_null<vcpu_t *> vcpu, eapis::intel_x64::io_instruction_handler::info_t &info);
+        gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::io_instruction_handler::info_t &info);
 
     bool reg0_out_handler(
-        gsl::not_null<vcpu_t *> vcpu, eapis::intel_x64::io_instruction_handler::info_t &info);
+        gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::io_instruction_handler::info_t &info);
     bool reg1_out_handler(
-        gsl::not_null<vcpu_t *> vcpu, eapis::intel_x64::io_instruction_handler::info_t &info);
+        gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::io_instruction_handler::info_t &info);
     bool reg2_out_handler(
-        gsl::not_null<vcpu_t *> vcpu, eapis::intel_x64::io_instruction_handler::info_t &info);
+        gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::io_instruction_handler::info_t &info);
     bool reg3_out_handler(
-        gsl::not_null<vcpu_t *> vcpu, eapis::intel_x64::io_instruction_handler::info_t &info);
+        gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::io_instruction_handler::info_t &info);
     bool reg4_out_handler(
-        gsl::not_null<vcpu_t *> vcpu, eapis::intel_x64::io_instruction_handler::info_t &info);
+        gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::io_instruction_handler::info_t &info);
     bool reg5_out_handler(
-        gsl::not_null<vcpu_t *> vcpu, eapis::intel_x64::io_instruction_handler::info_t &info);
+        gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::io_instruction_handler::info_t &info);
     bool reg6_out_handler(
-        gsl::not_null<vcpu_t *> vcpu, eapis::intel_x64::io_instruction_handler::info_t &info);
+        gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::io_instruction_handler::info_t &info);
     bool reg7_out_handler(
-        gsl::not_null<vcpu_t *> vcpu, eapis::intel_x64::io_instruction_handler::info_t &info);
+        gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::io_instruction_handler::info_t &info);
 
     bool dlab() const
     { return m_line_control_register & 0x80; }

@@ -29,7 +29,7 @@
 #include "../../../domain/domain.h"
 #include "../../../domain/domain_manager.h"
 
-#include <eapis/hve/arch/intel_x64/vcpu.h>
+#include <bfvmm/hve/arch/intel_x64/vcpu.h>
 
 // -----------------------------------------------------------------------------
 // Exports
@@ -407,10 +407,10 @@ public:
 
 public:
 
-    eapis::intel_x64::ept::mmap &ept()
+    bfvmm::intel_x64::ept::mmap &ept()
     { return m_ept_map; }
 
-    gsl::not_null<eapis::intel_x64::vcpu_global_state_t *>
+    gsl::not_null<bfvmm::intel_x64::vcpu_global_state_t *>
     global_state()
     { return &m_vcpu_global_state; }
 
@@ -421,8 +421,8 @@ private:
 
 private:
 
-    eapis::intel_x64::ept::mmap m_ept_map;
-    eapis::intel_x64::vcpu_global_state_t m_vcpu_global_state;
+    bfvmm::intel_x64::ept::mmap m_ept_map;
+    bfvmm::intel_x64::vcpu_global_state_t m_vcpu_global_state;
 
     uart::port_type m_uart_port{};
     uart::port_type m_pt_uart_port{};
