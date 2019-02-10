@@ -283,7 +283,7 @@ setup_pt_uart(
 #define HDR_SIZE sizeof(struct setup_header)
 
 static status_t
-setup_cmdline(struct vm_t *vm, struct create_vm_from_bzimage_args *args)
+setup_cmdline(struct vm_t *vm, struct create_vm_args *args)
 {
     status_t ret = SUCCESS;
 
@@ -379,7 +379,7 @@ setup_acpi(struct vm_t *vm)
 
 static status_t
 setup_boot_params(
-    struct vm_t *vm, struct create_vm_from_bzimage_args *args, const struct setup_header *hdr)
+    struct vm_t *vm, struct create_vm_args *args, const struct setup_header *hdr)
 {
     status_t ret = SUCCESS;
 
@@ -419,7 +419,7 @@ setup_boot_params(
 }
 
 static status_t
-setup_kernel(struct vm_t *vm, struct create_vm_from_bzimage_args *args)
+setup_kernel(struct vm_t *vm, struct create_vm_args *args)
 {
     /**
      * Notes:
@@ -735,8 +735,8 @@ setup_32bit_register_state(struct vm_t *vm)
 /* -------------------------------------------------------------------------- */
 
 int64_t
-common_create_vm_from_bzimage(
-    struct create_vm_from_bzimage_args *args)
+common_create_vm(
+    struct create_vm_args *args)
 {
     status_t ret;
     struct vm_t *vm = acquire_vm();

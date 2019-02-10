@@ -52,10 +52,10 @@ dev_release(struct inode *inode, struct file *file)
 }
 
 static long
-ioctl_create_vm_from_bzimage(struct create_vm_from_bzimage_args *args)
+ioctl_create_vm(struct create_vm_args *args)
 {
     int64_t ret;
-    struct create_vm_from_bzimage_args kern_args;
+    struct create_vm_args kern_args;
 
     void *bzimage = 0;
     void *initrd = 0;
@@ -66,7 +66,7 @@ ioctl_create_vm_from_bzimage(struct create_vm_from_bzimage_args *args)
     }
 
     ret = copy_from_user(
-        &kern_args, args, sizeof(struct create_vm_from_bzimage_args));
+        &kern_args, args, sizeof(struct create_vm_args));
     if (ret != 0) {
         BFALERT("IOCTL_CREATE_VM_FROM_BZIMAGE: failed to copy args from userspace\n");
         return BF_IOCTL_FAILURE;
@@ -120,9 +120,9 @@ ioctl_create_vm_from_bzimage(struct create_vm_from_bzimage_args *args)
         kern_args.cmdl = cmdl;
     }
 
-    ret = common_create_vm_from_bzimage(&kern_args);
+    ret = common_create_vm(&kern_args);
     if (ret != BF_SUCCESS) {
-        BFDEBUG("common_create_vm_from_bzimage failed: %llx\n", ret);
+        BFDEBUG("common_create_vm failed: %llx\n", ret);
         goto failed;
     }
 
@@ -131,7 +131,7 @@ ioctl_create_vm_from_bzimage(struct create_vm_from_bzimage_args *args)
     kern_args.cmdl = 0;
 
     ret = copy_to_user(
-        args, &kern_args, sizeof(struct create_vm_from_bzimage_args));
+        args, &kern_args, sizeof(struct create_vm_args));
     if (ret != 0) {
         BFALERT("IOCTL_CREATE_VM_FROM_BZIMAGE: failed to copy args to userspace\n");
         common_destroy(kern_args.domainid);
@@ -186,10 +186,10 @@ dev_unlocked_ioctl(
     struct file *file, unsigned int cmd, unsigned long arg)
 {
     switch (cmd) {
-        case IOCTL_CREATE_VM_FROM_BZIMAGE:
-            return ioctl_create_vm_from_bzimage((struct create_vm_from_bzimage_args *)arg);
+        case IOCTL_CREATE_VM_FROM_BZIMAGE_CMD:
+            return ioctl_create_vm((struct create_vm_args *)arg);
 
-        case IOCTL_DESTROY:
+        case IOCTL_DESTROY_CMD:
             return ioctl_destroy((domainid_t *)arg);
 
         default:

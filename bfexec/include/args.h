@@ -24,7 +24,7 @@
 using args_type = cxxopts::ParseResult;
 
 inline bool verbose = false;
-inline cxxopts::Options options("bfexec", "execute's a virtual machine");
+inline cxxopts::Options options("bfexec", "execute a virtual machine");
 
 inline args_type
 parse_args(int argc, char *argv[])
@@ -34,15 +34,13 @@ parse_args(int argc, char *argv[])
     options.add_options()
     ("h,help", "Print this help menu")
     ("v,verbose", "Enable verbose output")
-    ("version", "Print the version")
     ("affinity", "The host CPU to execute the VM on", value<uint64_t>(), "[core #]")
-    ("bzimage", "Create a VM from a bzImage file")
-    ("path", "The VM's path", value<std::string>(), "[path]")
-    ("size", "The VM's total RAM", value<uint64_t>(), "[bytes]")
-    ("initrd", "The VM's initrd path", value<std::string>(), "[path]")
+    ("kernel", "The VM's kernel", value<std::string>(), "[path]")
+    ("initrd", "The VM's initrd", value<std::string>(), "[path]")
+    ("ram", "The VM's total RAM", value<uint64_t>(), "[MB]")
     ("cmdline", "Additional Linux command line arguments", value<std::string>(), "[text]")
     ("uart", "Give the VM an emulated UART", value<uint64_t>(), "[port #]")
-    ("pt_uart", "Pass-through a UART to VM", value<uint64_t>(), "[port #]");
+    ("pt_uart", "Pass-through a host UART to the VM", value<uint64_t>(), "[port #]");
 
     auto args = options.parse(argc, argv);
 
@@ -51,17 +49,12 @@ parse_args(int argc, char *argv[])
         exit(EXIT_SUCCESS);
     }
 
-    if (args.count("version")) {
-        std::cout << "version: N/A" << '\n';
-        exit(EXIT_SUCCESS);
-    }
-
     if (args.count("verbose")) {
         verbose = true;
     }
 
-    if (!args.count("bzimage")) {
-        throw std::runtime_error("must specify 'bzimage'");
+    if (!args.count("kernel")) {
+        throw std::runtime_error("must specify 'kernel'");
     }
 
     if (args.count("uart") && args.count("pt_uart")) {

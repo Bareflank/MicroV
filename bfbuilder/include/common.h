@@ -41,16 +41,15 @@
 /**
  * Create VM from bzImage
  *
- * The following function builds a guest VM based on a provided bzImage.
- * To accomplish this, the following function will allocate RAM, load RAM
- * with the contents of the provided file, and then set up the guest's
- * memory map.
+ * The following function builds a guest VM.  To accomplish this, the following
+ * function will allocate RAM, load RAM with the contents of the provided file,
+ * and then set up the guest's memory map.
  *
- * @param args the create_vm_from_bzimage_args arguments needed to create the VM
+ * @param args the arguments needed to create the VM
  * @return SUCCESS on success, negative error code on failure
  */
 int64_t
-common_create_vm_from_bzimage(struct create_vm_from_bzimage_args *args);
+common_create_vm(struct create_vm_args *args);
 
 /**
  * Destroy VM

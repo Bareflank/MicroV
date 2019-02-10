@@ -86,7 +86,7 @@ copy_from_user(void *dst, const void*src, uint64_t num)
 /* -------------------------------------------------------------------------- */
 
 static long
-ioctl_create_vm_from_bzimage(struct create_vm_from_bzimage_args *args)
+ioctl_create_vm(struct create_vm_args *args)
 {
     int64_t ret;
 
@@ -142,9 +142,9 @@ ioctl_create_vm_from_bzimage(struct create_vm_from_bzimage_args *args)
         args->cmdl = cmdl;
     }
 
-    ret = common_create_vm_from_bzimage(args);
+    ret = common_create_vm(args);
     if (ret != BF_SUCCESS) {
-        BFDEBUG("common_create_vm_from_bzimage failed: %llx\n", ret);
+        BFDEBUG("common_create_vm failed: %llx\n", ret);
         goto failed;
     }
 
@@ -253,12 +253,12 @@ bfbuilderEvtIoDeviceControl(
     }
 
     switch (IoControlCode) {
-        case IOCTL_CREATE_VM_FROM_BZIMAGE:
-            ret = ioctl_create_vm_from_bzimage((struct create_vm_from_bzimage_args *)in);
+        case IOCTL_CREATE_VM_FROM_BZIMAGE_CMD:
+            ret = ioctl_create_vm((struct create_vm_args *)in);
             RtlCopyMemory(out, in, out_size);
             break;
 
-        case IOCTL_DESTROY:
+        case IOCTL_DESTROY_CMD:
             ret = ioctl_destroy((domainid_t *)in);
             break;
 

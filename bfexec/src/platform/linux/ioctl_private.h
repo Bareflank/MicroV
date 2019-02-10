@@ -31,7 +31,7 @@ public:
     ioctl_private();
     ~ioctl_private() override;
 
-    void call_ioctl_create_vm_from_bzimage(create_vm_from_bzimage_args &args);
+    void call_ioctl_create_vm(create_vm_args &args);
     void call_ioctl_destroy(domainid_t domainid) noexcept;
 
 private:

@@ -50,38 +50,49 @@ extern "C" {
 #define IOCTL_DESTROY_CMD 0x902
 
 /**
- * @struct create_vm_from_bzimage_args
+ * Virtual machine types
+ */
+enum {
+    VM_LINUX_BZIMAGE,
+    VM_LINUX_VMLINUX
+};
+
+/**
+ * @struct create_vm_args
  *
- * This structure is used to create a VM from a Linux bzImage. This is the
- * information the builder needs to create a domain and load its resources
- * prior to execution.
+ * This structure is used to create a VM from a Linux image. The image may
+ * either be a bzImage or vmlinux. This is the information the builder needs to
+ * create a domain and load its resources prior to execution.
  *
- * @var create_vm_from_bzimage_args::bzimage
- *     the bzImage to load
- * @var create_vm_from_bzimage_args::bzimage_size
- *     the length of the bzImage to load
- * @var create_vm_from_bzimage_args::initrd
+ * @var img
+ *     the image to load
+ * @var type
+ *     the type of of the image
+ * @var initrd
  *     the initrd to load
- * @var create_vm_from_bzimage_args::initrd_size
+ * @var initrd_size
  *     the length of the initrd to load
- * @var create_vm_from_bzimage_args::cmdl
+ * @var cmdl
  *     the command line arguments to pass to the Linux kernel on boot
- * @var create_vm_from_bzimage_args::cmdl_size
+ * @var cmdl_size
  *     the length of the command line arguments
- * @var create_vm_from_bzimage_args::uart
+ * @var uart
  *     defaults to 0 (optional). If non zero, the hypervisor will be told to
  *     emulate the provided uart.
- * @var create_vm_from_bzimage_args::pt_uart
+ * @var pt_uart
  *     defaults to 0 (optional). If non zero, the hypervisor will be told to
  *     pass-through the provided uart.
- * @var create_vm_from_bzimage_args::size
- *     the amount of RAM to give to the domain
- * @var create_vm_from_bzimage_args::domainid
+ * @var ram
+ *     the amount of RAM to give to the domain (in MB)
+ * @var domainid
  *     (out) the domain ID of the VM that was created
  */
-struct create_vm_from_bzimage_args {
-    const char *bzimage;
-    uint64_t bzimage_size;
+
+struct create_vm_args {
+    uint64_t type;
+
+    const char *kernel;
+    uint64_t kernel_size;
 
     const char *initrd;
     uint64_t initrd_size;
@@ -92,7 +103,7 @@ struct create_vm_from_bzimage_args {
     uint64_t uart;
     uint64_t pt_uart;
 
-    uint64_t size;
+    uint64_t ram;
     uint64_t domainid;
 };
 
@@ -102,7 +113,7 @@ struct create_vm_from_bzimage_args {
 
 #ifdef __linux__
 
-#define IOCTL_CREATE_VM_FROM_BZIMAGE _IOWR(BUILDER_MAJOR, IOCTL_CREATE_VM_FROM_BZIMAGE_CMD, struct create_vm_from_bzimage_args *)
+#define IOCTL_CREATE_VM_FROM_BZIMAGE _IOWR(BUILDER_MAJOR, IOCTL_CREATE_VM_FROM_BZIMAGE_CMD, struct create_vm_args *)
 #define IOCTL_DESTROY _IOW(BUILDER_MAJOR, IOCTL_DESTROY_CMD, domainid_t *)
 
 #endif

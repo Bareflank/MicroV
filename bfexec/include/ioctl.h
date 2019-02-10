@@ -80,16 +80,16 @@ public:
     ///
     ~ioctl() = default;
 
-    /// Create VM from bzImage
+    /// Create VM
     ///
-    /// Creates a virtual machine given a Linux bzImage.
+    /// Creates a virtual machine
     ///
     /// @expects none
     /// @ensures none
     ///
     /// @param args the args needed to create the VM
     ///
-    void call_ioctl_create_vm_from_bzimage(create_vm_from_bzimage_args &args);
+    void call_ioctl_create_vm(create_vm_args &args);
 
     /// Destroy VM
     ///

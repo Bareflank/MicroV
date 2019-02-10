@@ -22,26 +22,26 @@
 #ifndef VERBOSE_H
 #define VERBOSE_H
 
-#define create_vm_from_bzimage_verbose()                                                                                                             \
-    if (verbose) {                                                                                                                          \
-        std::cout << '\n';                                                                                                                  \
-        std::cout << bfcolor_cyan    "Created VM from bzImage file:\n" bfcolor_end;                                                             \
-        std::cout << bfcolor_magenta "--------------------------------------------------------------------------------\n" bfcolor_end;      \
-        std::cout << "    kernel" bfcolor_yellow " | " << bfcolor_green << bzimage.path() << bfcolor_end "\n";                                 \
-        std::cout << "    initrd" bfcolor_yellow " | " << bfcolor_green << initrd.path() << bfcolor_end "\n";                                 \
-        std::cout << " domain id" bfcolor_yellow " | " << bfcolor_green << ioctl_args.domainid << bfcolor_end "\n";                         \
-        std::cout << "  ram size" bfcolor_yellow " | " << bfcolor_green << (size / 0x100000) << "MB" << bfcolor_end "\n";                  \
-        std::cout << "   cmdline" bfcolor_yellow " | " << bfcolor_green << cmdl.data() << bfcolor_end "\n";                                 \
-    }
-
-#define output_vm_uart_verbose()                                                                                                            \
-    if (verbose) {                                                                                                                          \
-        std::cout << '\n';                                                                                                                  \
-        std::cout << bfcolor_cyan    "Output from VM's UART:\n" bfcolor_end;                                                                \
-        std::cout << bfcolor_magenta "--------------------------------------------------------------------------------\n" bfcolor_end;      \
-        std::cout << '\n';                                                                                                                  \
-        \
-        u = std::thread(uart_thread);                                                                                                       \
-    }
+//#define dump_vm_create_verbose()                                                                                                             \
+//    if (verbose) {                                                                                                                          \
+//        std::cout << '\n';                                                                                                                  \
+//        std::cout << bfcolor_cyan    "Created VM from bzImage file:\n" bfcolor_end;                                                             \
+//        std::cout << bfcolor_magenta "--------------------------------------------------------------------------------\n" bfcolor_end;      \
+//        std::cout << "    kernel" bfcolor_yellow " | " << bfcolor_green << bzimage.path() << bfcolor_end "\n";                                 \
+//        std::cout << "    initrd" bfcolor_yellow " | " << bfcolor_green << initrd.path() << bfcolor_end "\n";                                 \
+//        std::cout << " domain id" bfcolor_yellow " | " << bfcolor_green << ioctl_args.domainid << bfcolor_end "\n";                         \
+//        std::cout << "  ram size" bfcolor_yellow " | " << bfcolor_green << (size / 0x100000) << "MB" << bfcolor_end "\n";                  \
+//        std::cout << "   cmdline" bfcolor_yellow " | " << bfcolor_green << cmdl.data() << bfcolor_end "\n";                                 \
+//    }
+//
+//#define output_vm_uart_verbose()                                                                                                            \
+//    if (verbose) {                                                                                                                          \
+//        std::cout << '\n';                                                                                                                  \
+//        std::cout << bfcolor_cyan    "Output from VM's UART:\n" bfcolor_end;                                                                \
+//        std::cout << bfcolor_magenta "--------------------------------------------------------------------------------\n" bfcolor_end;      \
+//        std::cout << '\n';                                                                                                                  \
+//        \
+//        u = std::thread(uart_thread);                                                                                                       \
+//    }
 
 #endif

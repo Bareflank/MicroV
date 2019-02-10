@@ -164,7 +164,7 @@ attach_to_vm(const args_type &args)
     std::thread t(vcpu_thread, g_vcpuid);
     std::thread u;
 
-    output_vm_uart_verbose();
+//    output_vm_uart_verbose();
 
     t.join();
 
@@ -185,29 +185,21 @@ attach_to_vm(const args_type &args)
 // -----------------------------------------------------------------------------
 
 static void
-create_vm_from_bzimage(const args_type &args)
+create_vm(const args_type &args)
 {
-    create_vm_from_bzimage_args ioctl_args {};
-
-    if (!args.count("path")) {
-        throw cxxopts::OptionException("must specify --path");
-    }
-
-    if (!args.count("initrd")) {
-        throw cxxopts::OptionException("must specify --initrd");
-    }
+    create_vm_args ioctl_args {};
 
     bfn::cmdl cmdl;
-    bfn::file bzimage(args["path"].as<std::string>());
+    bfn::file kernel(args["kernel"].as<std::string>());
     bfn::file initrd(args["initrd"].as<std::string>());
 
-    uint64_t size = bzimage.size() * 2;
-    if (args.count("size")) {
-        size = args["size"].as<uint64_t>();
+    uint64_t ram = kernel.size() * 2;
+    if (args.count("ram")) {
+        ram = args["ram"].as<uint64_t>();
     }
 
-    if (size < 0x2000000) {
-        size = 0x2000000;
+    if (ram < 0x2000000) {
+        ram = 0x2000000;
     }
 
     uint64_t uart = 0;
@@ -230,18 +222,18 @@ create_vm_from_bzimage(const args_type &args)
         cmdl.add(args["cmdline"].as<std::string>());
     }
 
-    ioctl_args.bzimage = bzimage.data();
-    ioctl_args.bzimage_size = bzimage.size();
+    ioctl_args.kernel = kernel.data();
+    ioctl_args.kernel_size = kernel.size();
     ioctl_args.initrd = initrd.data();
     ioctl_args.initrd_size = initrd.size();
     ioctl_args.cmdl = cmdl.data();
     ioctl_args.cmdl_size = cmdl.size();
     ioctl_args.uart = uart;
     ioctl_args.pt_uart = pt_uart;
-    ioctl_args.size = size;
+    ioctl_args.ram = ram;
 
-    ctl->call_ioctl_create_vm_from_bzimage(ioctl_args);
-    create_vm_from_bzimage_verbose();
+    ctl->call_ioctl_create_vm(ioctl_args);
+//    create_vm_from_bzimage_verbose();
 
     g_domainid = ioctl_args.domainid;
 }
@@ -268,7 +260,7 @@ protected_main(const args_type &args)
         set_affinity(0);
     }
 
-    create_vm_from_bzimage(args);
+    create_vm(args);
 
     auto ___ = gsl::finally([&] {
         ctl->call_ioctl_destroy(g_domainid);
