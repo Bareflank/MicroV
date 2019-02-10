@@ -186,7 +186,7 @@ attach_to_vm(const args_type &args)
 // -----------------------------------------------------------------------------
 
 static uint64_t
-parse_vm_type(const char *data, uint64_t size)
+vm_file_type(const char *data, uint64_t size)
 {
     /**
      * We support ELF (vmlinux) or bzImage. The latter
@@ -197,16 +197,27 @@ parse_vm_type(const char *data, uint64_t size)
 
     const char elf_magic[4] = { 0x7F, 'E', 'L', 'F'};
     if (std::memcmp(data, elf_magic, 4) == 0) {
-        return VM_TYPE_VMLINUX;
+        return VM_FILE_VMLINUX;
     }
 
     const struct setup_header *hdr = (struct setup_header *)(data + 0x1f1);
     if (hdr->header == 0x53726448) {
-        return VM_TYPE_BZIMAGE;
+        return VM_FILE_BZIMAGE;
     }
 
     throw std::invalid_argument("Unknown vm type");
 }
+
+static uint64_t
+vm_exec_mode(uint64_t file_type)
+{
+    switch (file_type) {
+        case VM_FILE_VMLINUX: return VM_MODE_XENPVH;
+        case VM_FILE_BZIMAGE: return VM_MODE_NATIVE;
+        default: throw std::invalid_argument("Unknown VM file type");
+    }
+}
+
 
 static void
 create_vm(const args_type &args)
@@ -246,7 +257,8 @@ create_vm(const args_type &args)
         cmdl.add(args["cmdline"].as<std::string>());
     }
 
-    ioctl_args.type = parse_vm_type(kernel.data(), kernel.size());
+    ioctl_args.file_type = vm_file_type(kernel.data(), kernel.size());
+    ioctl_args.exec_mode = vm_exec_mode(ioctl_args.file_type);
     ioctl_args.kernel = kernel.data();
     ioctl_args.kernel_size = kernel.size();
     ioctl_args.initrd = initrd.data();

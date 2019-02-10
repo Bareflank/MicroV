@@ -31,6 +31,7 @@
 #include <bfconstants.h>
 #include <bfgpalayout.h>
 #include <bfhypercall.h>
+#include <bfelf_loader.h>
 
 #define bfalloc_page(a) \
     (a *)platform_memset(platform_alloc_rwe(BAREFLANK_PAGE_SIZE), 0, BAREFLANK_PAGE_SIZE);
@@ -64,6 +65,19 @@ struct vm_t {
     struct dsdt_t *dsdt;
 
     int used;
+
+    /**
+     * Currently, building a "PVH guest" and "building a VM with type
+     * VM_TYPE_VMLINUX" are equivalent statements.  The variables below are
+     * used to build this guest type.
+     */
+
+    uint32_t pvh_entry;
+    char *pvh_cmdline;
+    char *pvh_console;
+    struct hvm_start_info *pvh_start_info;
+    struct bfelf_loader_t elf_ldr;
+    struct bfelf_binary_t elf_bin;
 };
 
 static struct vm_t g_vms[MAX_VMS] = {0};
@@ -409,7 +423,7 @@ setup_boot_params(
         return ret;
     }
 
-    ret = setup_e820_map(vm, args->size);
+    ret = setup_e820_map(vm, args->ram);
     if (ret != SUCCESS) {
         return ret;
     }
@@ -419,7 +433,7 @@ setup_boot_params(
 }
 
 static status_t
-setup_kernel(struct vm_t *vm, struct create_vm_args *args)
+setup_bzimage(struct vm_t *vm, struct create_vm_args *args)
 {
     /**
      * Notes:
@@ -465,47 +479,47 @@ setup_kernel(struct vm_t *vm, struct create_vm_args *args)
     uint64_t kernel_offset = 0;
 
     if (args->bzimage == 0) {
-        BFDEBUG("setup_kernel: bzImage is null\n");
+        BFDEBUG("setup_bzimage: bzImage is null\n");
         return FAILURE;
     }
 
-    if (args->size == 0) {
-        BFDEBUG("setup_kernel: bzImage has 0 size\n");
+    if (args->ram == 0) {
+        BFDEBUG("setup_bzimage: bzImage has 0 size\n");
         return FAILURE;
     }
 
-    if (args->bzimage_size + args->initrd_size > args->size) {
-        BFDEBUG("setup_kernel: requested RAM is too small\n");
+    if (args->bzimage_size + args->initrd_size > args->ram) {
+        BFDEBUG("setup_bzimage: requested RAM is too small\n");
         return FAILURE;
     }
 
     if (hdr->header != 0x53726448) {
-        BFDEBUG("setup_kernel: bzImage does not contain magic number\n");
+        BFDEBUG("setup_bzimage: bzImage does not contain magic number\n");
         return FAILURE;
     }
 
     if (hdr->version < 0x020d) {
-        BFDEBUG("setup_kernel: unsupported bzImage protocol\n");
+        BFDEBUG("setup_bzimage: unsupported bzImage protocol\n");
         return FAILURE;
     }
 
     if (hdr->code32_start != 0x100000) {
-        BFDEBUG("setup_kernel: unsupported bzImage start location\n");
+        BFDEBUG("setup_bzimage: unsupported bzImage start location\n");
         return FAILURE;
     }
 
-    vm->size = args->size;
+    vm->size = args->ram;
     vm->addr = bfalloc_buffer(char, vm->size);
 
     if (vm->addr == 0) {
-        BFDEBUG("setup_kernel: failed to alloc ram\n");
+        BFDEBUG("setup_bzimage: failed to alloc ram\n");
         return FAILURE;
     }
 
     kernel_offset = ((hdr->setup_sects + 1) * 512);
 
     if (kernel_offset > args->bzimage_size) {
-        BFDEBUG("setup_kernel: corrupt setup_sects\n");
+        BFDEBUG("setup_bzimage: corrupt setup_sects\n");
         return FAILURE;
     }
 
@@ -555,6 +569,30 @@ setup_kernel(struct vm_t *vm, struct create_vm_args *args)
     vm->params->hdr.ramdisk_size = (uint32_t)(args->initrd_size);
 
     return SUCCESS;
+}
+
+static status_t
+setup_vmlinux(struct vm_t *vm, struct create_vm_args *args)
+{
+    status_t ret;
+
+    vm->elf_bin.file = args->kernel;
+    vm->elf_bin.file_size = args->kernel_size;
+    vm->elf_bin.exec = 0;
+    vm->elf_bin.exec_size = args->ram;
+    vm->elf_bin.start_addr = (void *)START_ADDR;
+
+    ret = bfelf_load(&vm->bfelf_binary, 1, 0, 0, &vm->bfelf_loader);
+    if (ret != BF_SUCCESS) {
+        return ret;
+    }
+
+    ret = donate_buffer(vm, vm->elf_bin.exec, START_ADDR, args->ram, MAP_RWE);
+    if (ret != SUCCESS) {
+        return ret;
+    }
+
+    return ret;
 }
 
 static status_t
@@ -753,7 +791,7 @@ common_create_vm(
         return COMMON_CREATE_VM_FROM_BZIMAGE_FAILED;
     }
 
-    ret = setup_kernel(vm, args);
+    ret = setup_bzimage(vm, args);
     if (ret != SUCCESS) {
         return ret;
     }

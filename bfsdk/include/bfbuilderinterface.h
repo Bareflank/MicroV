@@ -50,11 +50,19 @@ extern "C" {
 #define IOCTL_DESTROY_CMD 0x902
 
 /**
- * VM types
+ * VM file types
  */
-enum {
-    VM_TYPE_BZIMAGE,
-    VM_TYPE_VMLINUX
+enum vm_file {
+    VM_FILE_BZIMAGE,
+    VM_FILE_VMLINUX
+};
+
+/**
+ * VM execution modes
+ */
+enum vm_mode {
+    VM_MODE_NATIVE,
+    VM_MODE_XENPVH
 };
 
 /**
@@ -64,14 +72,18 @@ enum {
  * either be a bzImage or vmlinux. This is the information the builder needs to
  * create a domain and load its resources prior to execution.
  *
- * @var img
- *     the image to load
- * @var type
- *     the type of of the image
+ * @var file_type
+ *     the file type of the VM's image
+ * @var exec_mode
+ *     the execution mode of the VM
+ * @var kernel
+ *     the address of the kernel binary
+ * @var kernel_size
+ *     the size of the kernel binary
  * @var initrd
  *     the initrd to load
  * @var initrd_size
- *     the length of the initrd to load
+ *     the size of the initrd to load
  * @var cmdl
  *     the command line arguments to pass to the Linux kernel on boot
  * @var cmdl_size
@@ -89,7 +101,8 @@ enum {
  */
 
 struct create_vm_args {
-    uint64_t type;
+    uint32_t file_type;
+    uint32_t exec_mode;
 
     const char *kernel;
     uint64_t kernel_size;
