@@ -50,11 +50,11 @@ extern "C" {
 #define IOCTL_DESTROY_CMD 0x902
 
 /**
- * Virtual machine types
+ * VM types
  */
 enum {
-    VM_LINUX_BZIMAGE,
-    VM_LINUX_VMLINUX
+    VM_TYPE_BZIMAGE,
+    VM_TYPE_VMLINUX
 };
 
 /**

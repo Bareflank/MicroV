@@ -36,6 +36,7 @@ target_include_directories(bfexec PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/../bfsdk/include>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/../bfvmm/include>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/../bfbuilder/include>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/src/platform/${OS}>
 )
 target_sources(bfexec PRIVATE

@@ -38,6 +38,7 @@
 #include <file.h>
 #include <ioctl.h>
 #include <verbose.h>
+#include <bootparams.h>
 
 vcpuid_t g_vcpuid;
 domainid_t g_domainid;
@@ -181,8 +182,31 @@ attach_to_vm(const args_type &args)
 }
 
 // -----------------------------------------------------------------------------
-// Create VM
+// VM creation
 // -----------------------------------------------------------------------------
+
+static uint64_t
+parse_vm_type(const char *data, uint64_t size)
+{
+    /**
+     * We support ELF (vmlinux) or bzImage. The latter
+     * is identified by parsing some fields in the
+     * setup_header, so we make sure size is big enough.
+     */
+    expects(size > 0x1f1 + sizeof(struct setup_header));
+
+    const char elf_magic[4] = { 0x7F, 'E', 'L', 'F'};
+    if (std::memcmp(data, elf_magic, 4) == 0) {
+        return VM_TYPE_VMLINUX;
+    }
+
+    const struct setup_header *hdr = (struct setup_header *)(data + 0x1f1);
+    if (hdr->header == 0x53726448) {
+        return VM_TYPE_BZIMAGE;
+    }
+
+    throw std::invalid_argument("Unknown vm type");
+}
 
 static void
 create_vm(const args_type &args)
@@ -222,6 +246,7 @@ create_vm(const args_type &args)
         cmdl.add(args["cmdline"].as<std::string>());
     }
 
+    ioctl_args.type = parse_vm_type(kernel.data(), kernel.size());
     ioctl_args.kernel = kernel.data();
     ioctl_args.kernel_size = kernel.size();
     ioctl_args.initrd = initrd.data();
