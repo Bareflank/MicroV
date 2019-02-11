@@ -90,36 +90,36 @@ ioctl_create_vm(struct create_vm_args *args)
 {
     int64_t ret;
 
-    void *bzimage = 0;
+    void *image = 0;
     void *initrd = 0;
     void *cmdl = 0;
 
-    if (args->bzimage != 0 && args->bzimage_size != 0) {
-        bzimage = platform_alloc_rw(args->bzimage_size);
-        if (bzimage == NULL) {
-            BFALERT("IOCTL_CREATE_VM_FROM_BZIMAGE: failed to allocate memory for bzimage\n");
+    if (args->image != 0 && args->image_size != 0) {
+        image = platform_alloc_rw(args->image_size);
+        if (image == NULL) {
+            BFALERT("IOCTL_CREATE_VM: failed to allocate memory for image\n");
             goto failed;
         }
 
-        ret = copy_from_user(bzimage, args->bzimage, args->bzimage_size);
+        ret = copy_from_user(image, args->image, args->image_size);
         if (ret != 0) {
-            BFALERT("IOCTL_CREATE_VM_FROM_BZIMAGE: failed to copy bzimage from userspace\n");
+            BFALERT("IOCTL_CREATE_VM: failed to copy image from userspace\n");
             goto failed;
         }
 
-        args->bzimage = bzimage;
+        args->image = image;
     }
 
     if (args->initrd != 0 && args->initrd_size != 0) {
         initrd = platform_alloc_rw(args->initrd_size);
         if (initrd == NULL) {
-            BFALERT("IOCTL_CREATE_VM_FROM_BZIMAGE: failed to allocate memory for initrd\n");
+            BFALERT("IOCTL_CREATE_VM: failed to allocate memory for initrd\n");
             goto failed;
         }
 
         ret = copy_from_user(initrd, args->initrd, args->initrd_size);
         if (ret != 0) {
-            BFALERT("IOCTL_CREATE_VM_FROM_BZIMAGE: failed to copy initrd from userspace\n");
+            BFALERT("IOCTL_CREATE_VM: failed to copy initrd from userspace\n");
             goto failed;
         }
 
@@ -129,13 +129,13 @@ ioctl_create_vm(struct create_vm_args *args)
     if (args->cmdl != 0 && args->cmdl_size != 0) {
         cmdl = platform_alloc_rw(args->cmdl_size);
         if (cmdl == NULL) {
-            BFALERT("IOCTL_CREATE_VM_FROM_BZIMAGE: failed to allocate memory for file\n");
+            BFALERT("IOCTL_CREATE_VM: failed to allocate memory for cmdl\n");
             goto failed;
         }
 
         ret = copy_from_user(cmdl, args->cmdl, args->cmdl_size);
         if (ret != 0) {
-            BFALERT("IOCTL_CREATE_VM_FROM_BZIMAGE: failed to copy cmdl from userspace\n");
+            BFALERT("IOCTL_CREATE_VM: failed to copy cmdl from userspace\n");
             goto failed;
         }
 
@@ -148,28 +148,28 @@ ioctl_create_vm(struct create_vm_args *args)
         goto failed;
     }
 
-    args->bzimage = 0;
+    args->image = 0;
     args->initrd = 0;
     args->cmdl = 0;
 
-    platform_free_rw(bzimage, args->bzimage_size);
+    platform_free_rw(image, args->image_size);
     platform_free_rw(initrd, args->initrd_size);
     platform_free_rw(cmdl, args->cmdl_size);
 
-    BFDEBUG("IOCTL_CREATE_VM_FROM_BZIMAGE: succeeded\n");
+    BFDEBUG("IOCTL_CREATE_VM: succeeded\n");
     return BF_IOCTL_SUCCESS;
 
 failed:
 
-    args->bzimage = 0;
+    args->image = 0;
     args->initrd = 0;
     args->cmdl = 0;
 
-    platform_free_rw(bzimage, args->bzimage_size);
+    platform_free_rw(image, args->image_size);
     platform_free_rw(initrd, args->initrd_size);
     platform_free_rw(cmdl, args->cmdl_size);
 
-    BFALERT("IOCTL_CREATE_VM_FROM_BZIMAGE: failed\n");
+    BFALERT("IOCTL_CREATE_VM: failed\n");
     return BF_IOCTL_FAILURE;
 }
 
@@ -253,7 +253,7 @@ bfbuilderEvtIoDeviceControl(
     }
 
     switch (IoControlCode) {
-        case IOCTL_CREATE_VM_FROM_BZIMAGE_CMD:
+        case IOCTL_CREATE_VM_CMD:
             ret = ioctl_create_vm((struct create_vm_args *)in);
             RtlCopyMemory(out, in, out_size);
             break;

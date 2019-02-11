@@ -124,8 +124,8 @@ ioctl_private::~ioctl_private()
 void
 ioctl_private::call_ioctl_create_vm(create_vm_args &args)
 {
-    if (bfm_read_write_ioctl(fd, IOCTL_CREATE_VM_FROM_BZIMAGE_CMD, &args, sizeof(create_vm_args)) < 0) {
-        throw std::runtime_error("ioctl failed: IOCTL_CREATE_VM_FROM_BZIMAGE_CMD");
+    if (bfm_read_write_ioctl(fd, IOCTL_CREATE_VM_CMD, &args, sizeof(create_vm_args)) < 0) {
+        throw std::runtime_error("ioctl failed: IOCTL_CREATE_VM_CMD");
     }
 }
 
