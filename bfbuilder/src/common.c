@@ -33,6 +33,9 @@
 #include <bfhypercall.h>
 #include <bfelf_loader.h>
 
+#include <xen.h>
+#include <arch-x86/hvm/start_info.h>
+
 #define bfalloc_page(a) \
     (a *)platform_memset(platform_alloc_rwe(BAREFLANK_PAGE_SIZE), 0, BAREFLANK_PAGE_SIZE);
 #define bfalloc_buffer(a,b) \
@@ -45,6 +48,8 @@
 #define MAX_VMS 0x1000
 
 struct vm_t {
+    uint32_t file_type;
+    uint32_t exec_mode;
     uint64_t domainid;
 
     void *bios_ram;
@@ -57,6 +62,8 @@ struct vm_t {
 
     char *addr;
     uint64_t size;
+    uint32_t load_gpa;
+    uint32_t entry_gpa;
 
     struct rsdp_t *rsdp;
     struct xsdt_t *xsdt;
@@ -67,15 +74,14 @@ struct vm_t {
     int used;
 
     /**
-     * Currently, building a "PVH guest" and "building a VM with type
-     * VM_TYPE_VMLINUX" are equivalent statements.  The variables below are
-     * used to build this guest type.
+     * Currently, every VM with VM_EXEC_XENPVH is assumed to have
+     * VM_FILE_VMLINUX file type. The variables below are used to
+     * build this guest type.
      */
 
-    uint32_t pvh_entry;
-    char *pvh_cmdline;
     char *pvh_console;
     struct hvm_start_info *pvh_start_info;
+    struct hvm_modlist_entry *pvh_modlist;
     struct bfelf_loader_t elf_ldr;
     struct bfelf_binary_t elf_bin;
 };
@@ -318,10 +324,10 @@ setup_cmdline(struct vm_t *vm, struct create_vm_args *args)
         return ret;
     }
 
-    vm->params->hdr.cmd_line_ptr = COMMAND_LINE_PAGE_GPA;
     return SUCCESS;
 }
 
+//TODO: MCFG
 static status_t
 setup_acpi(struct vm_t *vm)
 {
@@ -392,6 +398,57 @@ setup_acpi(struct vm_t *vm)
 }
 
 static status_t
+parse_pvh_entry(struct vm_t *vm, uint32_t *entry)
+{
+    uint64_t i;
+    const uint32_t *hay;
+    const struct bfelf_shdr *shdr;
+
+    const uint32_t needle[5] = {
+        0x4U, 0x8U, 0x12U, 0x006e6558U, 0x0
+    };
+
+    shdr = vm->elf_bin.ef.notes;
+    if (!shdr) {
+        BFDEBUG("parse_pvh_entry: no notes section\n");
+        return FAILURE;
+    }
+
+    hay = (uint32_t *)(vm->elf_bin.file + shdr->sh_offset);
+
+    for (i = 0; i < shdr->sh_size - sizeof(needle); i++) {
+        if (hay[i + 0] == needle[0] &&
+            hay[i + 1] == needle[1] &&
+            hay[i + 2] == needle[2] &&
+            hay[i + 3] == needle[3]
+        ) {
+            *entry = hay[i + 4];
+            return SUCCESS;
+        }
+    }
+
+    return FAILURE;
+}
+
+static status_t
+setup_entry_point(struct vm_t *vm)
+{
+    switch (vm->exec_mode) {
+    case VM_EXEC_NATIVE:
+        vm->entry_gpa = NATIVE_LOAD_GPA;
+        return SUCCESS;
+
+    case VM_EXEC_XENPVH:
+        return parse_pvh_entry(vm, &vm->entry_gpa);
+
+    default:
+        break;
+    }
+
+    return FAILURE;
+}
+
+static status_t
 setup_boot_params(
     struct vm_t *vm, struct create_vm_args *args, const struct setup_header *hdr)
 {
@@ -423,7 +480,7 @@ setup_boot_params(
         return ret;
     }
 
-    ret = setup_e820_map(vm, args->ram);
+    ret = setup_e820_map(vm, args->ram, vm->load_gpa);
     if (ret != SUCCESS) {
         return ret;
     }
@@ -472,26 +529,11 @@ setup_bzimage(struct vm_t *vm, struct create_vm_args *args)
      */
 
     status_t ret = SUCCESS;
-    const struct setup_header *hdr = (struct setup_header *)(args->bzimage + 0x1f1);
+    const struct setup_header *hdr = (struct setup_header *)(args->image + 0x1f1);
 
     const void *kernel = 0;
     uint64_t kernel_size = 0;
     uint64_t kernel_offset = 0;
-
-    if (args->bzimage == 0) {
-        BFDEBUG("setup_bzimage: bzImage is null\n");
-        return FAILURE;
-    }
-
-    if (args->ram == 0) {
-        BFDEBUG("setup_bzimage: bzImage has 0 size\n");
-        return FAILURE;
-    }
-
-    if (args->bzimage_size + args->initrd_size > args->ram) {
-        BFDEBUG("setup_bzimage: requested RAM is too small\n");
-        return FAILURE;
-    }
 
     if (hdr->header != 0x53726448) {
         BFDEBUG("setup_bzimage: bzImage does not contain magic number\n");
@@ -503,10 +545,21 @@ setup_bzimage(struct vm_t *vm, struct create_vm_args *args)
         return FAILURE;
     }
 
-    if (hdr->code32_start != 0x100000) {
+    if (hdr->code32_start != NATIVE_LOAD_GPA) {
         BFDEBUG("setup_bzimage: unsupported bzImage start location\n");
         return FAILURE;
     }
+
+    kernel_offset = ((hdr->setup_sects + 1) * 512);
+
+    if (kernel_offset > args->image_size) {
+        BFDEBUG("setup_bzimage: corrupt setup_sects\n");
+        return FAILURE;
+    }
+
+    vm->load_gpa = NATIVE_LOAD_GPA;
+    vm->file_type = VM_FILE_BZIMAGE;
+    vm->exec_mode = VM_EXEC_NATIVE;
 
     vm->size = args->ram;
     vm->addr = bfalloc_buffer(char, vm->size);
@@ -516,21 +569,14 @@ setup_bzimage(struct vm_t *vm, struct create_vm_args *args)
         return FAILURE;
     }
 
-    kernel_offset = ((hdr->setup_sects + 1) * 512);
-
-    if (kernel_offset > args->bzimage_size) {
-        BFDEBUG("setup_bzimage: corrupt setup_sects\n");
-        return FAILURE;
-    }
-
     // TODO
     //
     // We need to clean up this implementation with a lot more checks
     // to ensure that no overflows or underflows are possible
     //
 
-    kernel = args->bzimage + kernel_offset;
-    kernel_size = args->bzimage_size - kernel_offset;
+    kernel = args->image + kernel_offset;
+    kernel_size = args->image_size - kernel_offset;
 
     ret = platform_memcpy(
         vm->addr, vm->size, kernel, kernel_size, kernel_size);
@@ -549,7 +595,12 @@ setup_bzimage(struct vm_t *vm, struct create_vm_args *args)
         return ret;
     }
 
-    ret = donate_buffer(vm, vm->addr, 0x100000, vm->size);
+    ret = donate_buffer(vm, vm->addr, NATIVE_LOAD_GPA, vm->size);
+    if (ret != SUCCESS) {
+        return ret;
+    }
+
+    ret = setup_entry_point(vm);
     if (ret != SUCCESS) {
         return ret;
     }
@@ -565,10 +616,91 @@ setup_bzimage(struct vm_t *vm, struct create_vm_args *args)
     // boundary
     //
 
-    vm->params->hdr.ramdisk_image = (uint32_t)(0x100000 + kernel_size);
+    vm->params->hdr.ramdisk_image = (uint32_t)(NATIVE_LOAD_GPA + kernel_size);
     vm->params->hdr.ramdisk_size = (uint32_t)(args->initrd_size);
 
     return SUCCESS;
+}
+
+static status_t
+setup_pvh_modlist(struct vm_t *vm, struct create_vm_args *args)
+{
+    status_t ret;
+    struct hvm_modlist_entry *initrd;
+
+    vm->pvh_modlist = bfalloc_page(struct hvm_modlist_entry);
+    if (vm->pvh_modlist == 0) {
+        BFDEBUG("setup_pvh_modlist: failed to alloc page\n");
+        return FAILURE;
+    }
+
+    initrd = vm->pvh_modlist;
+    initrd->paddr = vm->load_gpa + vm->elf_bin.ef.total_memsz;
+    initrd->size = args->initrd_size;
+    initrd->cmdline_paddr = COMMAND_LINE_PAGE_GPA;
+
+    vm->pvh_start_info->nr_modules = 1;
+    vm->pvh_start_info->modlist_paddr = PVH_MODLIST_GPA;
+
+    ret = donate_page_r(vm, vm->pvh_modlist, PVH_MODLIST_GPA);
+    if (ret != BF_SUCCESS) {
+        BFDEBUG("setup_pvh_modlist: donate failed\n");
+        return ret;
+    }
+
+    return SUCCESS;
+}
+
+static status_t
+setup_pvh_start_info(struct vm_t *vm, struct create_vm_args *args)
+{
+    status_t ret;
+
+    vm->pvh_start_info = bfalloc_page(struct hvm_start_info);
+    if (vm->pvh_start_info == 0) {
+        BFDEBUG("setup_pvh_start_info: failed to alloc page\n");
+        return FAILURE;
+    }
+
+    vm->pvh_start_info->magic = XEN_HVM_START_MAGIC_VALUE;
+    vm->pvh_start_info->version = 1;
+    vm->pvh_start_info->cmdline_paddr = COMMAND_LINE_PAGE_GPA;
+    vm->pvh_start_info->rsdp_paddr = ACPI_RSDP_GPA;
+    // TODO SIF flags like LOCAL_STORE
+
+    ret = setup_pvh_modlist(vm, args);
+    if (ret != SUCCESS) {
+        return ret;
+    }
+
+    ret = donate_page_r(vm, vm->pvh_start_info, PVH_START_INFO_GPA);
+    if (ret != BF_SUCCESS) {
+        BFDEBUG("setup_pvh_start_info: donate failed\n");
+        return ret;
+    }
+
+
+    return ret;
+}
+
+static status_t
+setup_pvh_console(struct vm_t *vm)
+{
+    status_t ret;
+
+    vm->pvh_console = bfalloc_page(void);
+    if (vm->pvh_console == 0) {
+        BFDEBUG("setup_pvh_console: failed to alloc console page\n");
+        return FAILURE;
+    }
+
+    ret = donate_page_rw(vm, vm->pvh_console, PVH_CONSOLE_GPA);
+    if (ret != BF_SUCCESS) {
+        BFDEBUG("setup_pvh_console: donate failed\n");
+        return ret;
+    }
+
+    return ret;
 }
 
 static status_t
@@ -576,23 +708,84 @@ setup_vmlinux(struct vm_t *vm, struct create_vm_args *args)
 {
     status_t ret;
 
-    vm->elf_bin.file = args->kernel;
-    vm->elf_bin.file_size = args->kernel_size;
+    vm->load_gpa = PVH_LOAD_GPA;
+    vm->file_type = VM_FILE_VMLINUX;
+    vm->exec_mode = VM_EXEC_XENPVH;
+
+    vm->elf_bin.file = args->image;
+    vm->elf_bin.file_size = args->image_size;
     vm->elf_bin.exec = 0;
     vm->elf_bin.exec_size = args->ram;
-    vm->elf_bin.start_addr = (void *)START_ADDR;
+    vm->elf_bin.start_addr = (char *)(uintptr_t)vm->load_gpa;
 
-    ret = bfelf_load(&vm->bfelf_binary, 1, 0, 0, &vm->bfelf_loader);
+    // Copy the kernel ELF image into elf_bin.exec
+    //
+    ret = bfelf_load(&vm->elf_bin, 1, 0, 0, &vm->elf_ldr);
     if (ret != BF_SUCCESS) {
         return ret;
     }
 
-    ret = donate_buffer(vm, vm->elf_bin.exec, START_ADDR, args->ram, MAP_RWE);
-    if (ret != SUCCESS) {
-        return ret;
-    }
+    // Copy the initrd next to the kernel
+    //
+    ret = platform_memcpy(vm->elf_bin.exec + vm->elf_bin.ef.total_memsz,
+                          vm->size - vm->elf_bin.ef.total_memsz,
+                          args->initrd,
+                          args->initrd_size,
+                          args->initrd_size);
+
+    ret |= setup_acpi(vm);
+    ret |= setup_cmdline(vm, args);
+    ret |= setup_e820_map(vm, vm->size, vm->load_gpa);
+    ret |= setup_entry_point(vm);
+
+    ret |= setup_pvh_console(vm);
+    ret |= setup_pvh_start_info(vm, args);
+
+    ret |= donate_buffer(vm,
+                         vm->elf_bin.exec,
+                         vm->load_gpa,
+                         args->ram);
 
     return ret;
+}
+
+static status_t
+setup_kernel(struct vm_t *vm, struct create_vm_args *args)
+{
+    if (args->image == 0) {
+        BFDEBUG("setup_kernel: VM image is NULL\n");
+        return FAILURE;
+    }
+
+    if (args->ram == 0) {
+        BFDEBUG("setup_kernel: VM ram is 0\n");
+        return FAILURE;
+    }
+
+    if (args->ram < args->image_size + args->initrd_size) {
+        BFDEBUG("setup_kernel: VM ram too small\n");
+        return FAILURE;
+    }
+
+    switch (args->exec_mode) {
+    case VM_EXEC_NATIVE:
+        if (args->file_type != VM_FILE_BZIMAGE) {
+            break;
+        }
+        return setup_bzimage(vm, args);
+
+    case VM_EXEC_XENPVH:
+        if (args->file_type != VM_FILE_VMLINUX) {
+            break;
+        }
+        return setup_vmlinux(vm, args);
+
+    default:
+        break;
+    }
+
+    platform_free_rw(vm->addr, vm->size);
+    return FAILURE;
 }
 
 static status_t
@@ -634,13 +827,23 @@ setup_reserved_free(struct vm_t *vm)
     }
 
     ret = donate_page_to_page_range(
-        vm, vm->zero_page, RESERVED1_ADRR, RESERVED1_SIZE);
+        vm, vm->zero_page, RESERVED1_ADDR, RESERVED1_SIZE);
     if (ret != SUCCESS) {
         return ret;
     }
 
+    /**
+     * The start address differs depending on the VM's exec mode. We
+     * use this value to compute the size of the second reserved range.
+     */
+
+    if (vm->load_gpa <= RESERVED2_ADDR) {
+        BFDEBUG("setup_reserved_free: invalid load addr\n");
+        return FAILURE;
+    }
+
     ret = donate_page_to_page_range(
-        vm, vm->zero_page, RESERVED2_ADRR, RESERVED2_SIZE);
+        vm, vm->zero_page, RESERVED2_ADDR, vm->load_gpa - RESERVED2_ADDR);
     if (ret != SUCCESS) {
         return ret;
     }
@@ -703,7 +906,7 @@ setup_32bit_register_state(struct vm_t *vm)
 
     status_t ret = SUCCESS;
 
-    ret |= __domain_op__set_rip(vm->domainid, 0x100000);
+    ret |= __domain_op__set_rip(vm->domainid, vm->entry_gpa);
     ret |= __domain_op__set_rsi(vm->domainid, BOOT_PARAMS_PAGE_GPA);
 
     ret |= __domain_op__set_gdt_base(vm->domainid, INITIAL_GDT_GPA);
@@ -791,7 +994,7 @@ common_create_vm(
         return COMMON_CREATE_VM_FROM_BZIMAGE_FAILED;
     }
 
-    ret = setup_bzimage(vm, args);
+    ret = setup_kernel(vm, args);
     if (ret != SUCCESS) {
         return ret;
     }
@@ -851,7 +1054,8 @@ common_destroy(uint64_t domainid)
     platform_free_rw(vm->madt, BAREFLANK_PAGE_SIZE);
     platform_free_rw(vm->fadt, BAREFLANK_PAGE_SIZE);
     platform_free_rw(vm->dsdt, BAREFLANK_PAGE_SIZE);
-    platform_free_rw(vm->addr, vm->size);
+    // TODO free for pvh
+    //platform_free_rw(vm->addr, vm->size);
 
     release_vm(vm);
     return SUCCESS;

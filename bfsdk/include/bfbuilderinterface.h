@@ -46,13 +46,13 @@ extern "C" {
 #define BUILDER_DEVICETYPE 0xF00D
 #endif
 
-#define IOCTL_CREATE_VM_FROM_BZIMAGE_CMD 0x901
+#define IOCTL_CREATE_VM_CMD 0x901
 #define IOCTL_DESTROY_CMD 0x902
 
 /**
  * VM file types
  */
-enum vm_file {
+enum vm_file_type {
     VM_FILE_BZIMAGE,
     VM_FILE_VMLINUX
 };
@@ -60,9 +60,9 @@ enum vm_file {
 /**
  * VM execution modes
  */
-enum vm_mode {
-    VM_MODE_NATIVE,
-    VM_MODE_XENPVH
+enum vm_exec_mode {
+    VM_EXEC_NATIVE,
+    VM_EXEC_XENPVH
 };
 
 /**
@@ -73,12 +73,12 @@ enum vm_mode {
  * create a domain and load its resources prior to execution.
  *
  * @var file_type
- *     the file type of the VM's image
+ *     the file type of the VM's binary image
  * @var exec_mode
  *     the execution mode of the VM
- * @var kernel
- *     the address of the kernel binary
- * @var kernel_size
+ * @var image
+ *     the address of the kernel binary. Supported formats are vmlinux and bzImage
+ * @var image_size
  *     the size of the kernel binary
  * @var initrd
  *     the initrd to load
@@ -104,8 +104,8 @@ struct create_vm_args {
     uint32_t file_type;
     uint32_t exec_mode;
 
-    const char *kernel;
-    uint64_t kernel_size;
+    const char *image;
+    uint64_t image_size;
 
     const char *initrd;
     uint64_t initrd_size;
@@ -126,7 +126,7 @@ struct create_vm_args {
 
 #ifdef __linux__
 
-#define IOCTL_CREATE_VM_FROM_BZIMAGE _IOWR(BUILDER_MAJOR, IOCTL_CREATE_VM_FROM_BZIMAGE_CMD, struct create_vm_args *)
+#define IOCTL_CREATE_VM _IOWR(BUILDER_MAJOR, IOCTL_CREATE_VM_CMD, struct create_vm_args *)
 #define IOCTL_DESTROY _IOW(BUILDER_MAJOR, IOCTL_DESTROY_CMD, domainid_t *)
 
 #endif
@@ -142,7 +142,7 @@ struct create_vm_args {
 DEFINE_GUID(GUID_DEVINTERFACE_builder,
     0x0156f59a, 0xdf90, 0x4ac6, 0x85, 0x3d, 0xcf, 0xd9, 0x3e, 0x25, 0x65, 0xc2);
 
-#define IOCTL_CREATE_VM_FROM_BZIMAGE CTL_CODE(BUILDER_DEVICETYPE, IOCTL_CREATE_VM_FROM_BZIMAGE_CMD, METHOD_IN_DIRECT, FILE_READ_DATA | FILE_WRITE_DATA)
+#define IOCTL_CREATE_VM CTL_CODE(BUILDER_DEVICETYPE, IOCTL_CREATE_VM_CMD, METHOD_IN_DIRECT, FILE_READ_DATA | FILE_WRITE_DATA)
 #define IOCTL_DESTROY CTL_CODE(BUILDER_DEVICETYPE, IOCTL_DESTROY_CMD, METHOD_IN_DIRECT, FILE_READ_DATA | FILE_WRITE_DATA)
 
 #endif

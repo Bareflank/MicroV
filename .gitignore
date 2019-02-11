@@ -32,6 +32,7 @@ doxygen_warnings.txt
 tags
 *.swp
 
+*.o.*
 *.o.cmd
 *.ko.cmd
 *.mod.o.cmd

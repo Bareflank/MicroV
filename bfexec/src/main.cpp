@@ -205,19 +205,18 @@ vm_file_type(const char *data, uint64_t size)
         return VM_FILE_BZIMAGE;
     }
 
-    throw std::invalid_argument("Unknown vm type");
+    throw std::invalid_argument("Unknown VM file type");
 }
 
 static uint64_t
 vm_exec_mode(uint64_t file_type)
 {
     switch (file_type) {
-        case VM_FILE_VMLINUX: return VM_MODE_XENPVH;
-        case VM_FILE_BZIMAGE: return VM_MODE_NATIVE;
-        default: throw std::invalid_argument("Unknown VM file type");
+        case VM_FILE_VMLINUX: return VM_EXEC_XENPVH;
+        case VM_FILE_BZIMAGE: return VM_EXEC_NATIVE;
+        default: throw std::invalid_argument("Unknown VM exec mode");
     }
 }
-
 
 static void
 create_vm(const args_type &args)
@@ -259,8 +258,8 @@ create_vm(const args_type &args)
 
     ioctl_args.file_type = vm_file_type(kernel.data(), kernel.size());
     ioctl_args.exec_mode = vm_exec_mode(ioctl_args.file_type);
-    ioctl_args.kernel = kernel.data();
-    ioctl_args.kernel_size = kernel.size();
+    ioctl_args.image = kernel.data();
+    ioctl_args.image_size = kernel.size();
     ioctl_args.initrd = initrd.data();
     ioctl_args.initrd_size = initrd.size();
     ioctl_args.cmdl = cmdl.data();
