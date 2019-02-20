@@ -207,6 +207,30 @@ public:
 
 public:
 
+    /// Set exec mode
+    ///
+    /// @expects
+    /// @ensures
+    ///
+    /// Set the execution mode of the domain.
+    /// One of VM_EXEC_NATIVE or VM_EXEC_XENPVH.
+    ///
+    /// @param mode the mode this domain is running with
+    ///
+    void set_exec_mode(uint64_t mode) noexcept;
+
+    /// Exec mode
+    ///
+    /// @expects
+    /// @ensures
+    ///
+    /// Get the execution mode of the domain.
+    /// One of VM_EXEC_NATIVE or VM_EXEC_XENPVH.
+    ///
+    /// @return the mode this domain is running with
+    ///
+    uint64_t exec_mode() noexcept;
+
     /// Set UART
     ///
     /// If set, enables the use of an emulated UART that will be created
@@ -387,6 +411,8 @@ public:
     VIRTUAL uint64_t ldtr_access_rights() const noexcept;
     VIRTUAL void set_ldtr_access_rights(uint64_t val) noexcept;
 
+    void process_donated_page(uintptr_t gpa, uintptr_t hpa);
+
     /// @endcond
 
 public:
@@ -475,6 +501,9 @@ private:
     uint64_t m_ldtr_base{};
     uint64_t m_ldtr_limit{};
     uint64_t m_ldtr_access_rights{};
+
+    uint64_t m_did{};
+    uint64_t m_exec_mode{};
 
 public:
 

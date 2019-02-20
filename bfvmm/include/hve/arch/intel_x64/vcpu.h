@@ -297,7 +297,6 @@ private:
     x2apic_handler m_x2apic_handler;
     pci_configuration_space_handler m_pci_configuration_space_handler;
 
-
     bool m_killed{};
     vcpu *m_parent_vcpu{};
 };

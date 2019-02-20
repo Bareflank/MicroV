@@ -827,8 +827,17 @@ setup_reserved_free(struct vm_t *vm)
         return FAILURE;
     }
 
-    ret = donate_page_to_page_range(
-        vm, vm->zero_page, RESERVED1_ADDR, RESERVED1_SIZE);
+    addr = RESERVED1_ADDR;
+    size = RESERVED1_SIZE;
+
+    if (vm->exec_mode == VM_EXEC_XENPVH) {
+        addr += PVH_PAGES_SIZE;
+        size -= PVH_PAGES_SIZE; // increase by number of bytes for PVH pages
+    }
+
+    BFDEBUG("rsvd1 range: [%llx,%llx)\n", addr, addr + size);
+
+    ret = donate_page_to_page_range(vm, vm->zero_page, addr, size);
     if (ret != SUCCESS) {
         return ret;
     }
@@ -845,6 +854,7 @@ setup_reserved_free(struct vm_t *vm)
 
     ret = donate_page_to_page_range(
         vm, vm->zero_page, RESERVED2_ADDR, vm->load_gpa - RESERVED2_ADDR);
+    BFDEBUG("rsvd2 range: [%llx,%llx)\n", RESERVED2_ADDR, RESERVED2_ADDR + vm->load_gpa - RESERVED2_ADDR);
     if (ret != SUCCESS) {
         return ret;
     }
@@ -994,6 +1004,8 @@ common_create_vm(
         BFDEBUG("__domain_op__create_domain failed\n");
         return COMMON_CREATE_VM_FROM_BZIMAGE_FAILED;
     }
+
+    __domain_op__set_exec_mode(vm->domainid, args->exec_mode);
 
     ret = setup_kernel(vm, args);
     if (ret != SUCCESS) {

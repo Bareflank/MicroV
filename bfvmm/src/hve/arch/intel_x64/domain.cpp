@@ -21,6 +21,7 @@
 
 #include <bfdebug.h>
 #include <bfgpalayout.h>
+#include <bfbuilderinterface.h>
 
 #include <hve/arch/intel_x64/domain.h>
 
@@ -58,6 +59,7 @@ domain::setup_dom0()
     //   so we should assume that 1 gig page support is required. Once again,
     //   legacy support is not a focus of this project
     //
+    bfdebug_nhex(0, "setup_dom0:", m_did);
 
     ept::identity_map(
         m_ept_map, MAX_PHYS_ADDR
@@ -66,7 +68,33 @@ domain::setup_dom0()
 
 void
 domain::setup_domU()
-{ }
+{
+    bfdebug_nhex(0, "setup_domU:", m_did);
+}
+
+void
+domain::process_donated_page(uintptr_t gpa, uintptr_t hpa)
+{
+//    if (m_did == 0) {
+//        return;
+//    }
+//
+//    switch (m_exec_mode) {
+//    case VM_EXEC_NATIVE:
+//        return;
+//
+//    case VM_EXEC_XENPVH:
+//        if (gpa != XAPIC_GPA) {
+//            return;
+//        }
+//        this->set_xapic_hpa(hpa);
+//        return;
+//
+//    default:
+//        bferror_nhex(0, "process_donated_page: invalid mode:", m_exec_mode);
+//        throw std::runtime_error("invalid exec mode");
+//    }
+}
 
 void
 domain::map_1g_r(uintptr_t gpa, uintptr_t hpa)
@@ -111,6 +139,14 @@ domain::unmap(uintptr_t gpa)
 void
 domain::release(uintptr_t gpa)
 { m_ept_map.release(gpa); }
+
+void
+domain::set_exec_mode(uint64_t mode) noexcept
+{ m_exec_mode = mode; }
+
+uint64_t
+domain::exec_mode() noexcept
+{ return m_exec_mode; }
 
 void
 domain::set_uart(uart::port_type uart) noexcept
