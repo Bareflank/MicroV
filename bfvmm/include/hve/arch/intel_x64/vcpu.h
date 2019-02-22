@@ -29,6 +29,7 @@
 #include "vmexit/external_interrupt.h"
 #include "vmexit/io_instruction.h"
 #include "vmexit/msr.h"
+#include "vmexit/mtrr.h"
 #include "vmexit/vmcall.h"
 #include "vmexit/yield.h"
 
@@ -301,6 +302,7 @@ private:
     external_interrupt_handler m_external_interrupt_handler;
     io_instruction_handler m_io_instruction_handler;
     msr_handler m_msr_handler;
+    mtrr_handler m_mtrr_handler;
     vmcall_handler m_vmcall_handler;
     yield_handler m_yield_handler;
 

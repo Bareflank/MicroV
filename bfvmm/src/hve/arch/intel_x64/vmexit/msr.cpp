@@ -29,17 +29,11 @@
     bfvmm::intel_x64::wrmsr_handler::handler_delegate_t::create<msr_handler, &msr_handler::a>(this)
 
 #define ADD_WRMSR_HANDLER(a,b)                                                  \
-    m_vcpu->add_wrmsr_handler(                                                  \
-        a, make_wrmsr_delegate(b)                                               \
-    );
+    m_vcpu->add_wrmsr_handler(a, make_wrmsr_delegate(b));
 
 #define EMULATE_MSR(a,b,c)                                                      \
-    m_vcpu->emulate_rdmsr(                                                      \
-        a, make_rdmsr_delegate(b)                                               \
-    );                                                                          \
-    m_vcpu->emulate_wrmsr(                                                      \
-        a, make_wrmsr_delegate(c)                                               \
-    );
+    m_vcpu->emulate_rdmsr(a, make_rdmsr_delegate(b));                           \
+    m_vcpu->emulate_wrmsr(a, make_wrmsr_delegate(c));
 
 // -----------------------------------------------------------------------------
 // Implementation
@@ -56,7 +50,7 @@ msr_handler::msr_handler(
     using namespace vmcs_n;
 
     vcpu->add_run_delegate(
-        bfvmm::vcpu::run_delegate_t::create<msr_handler, &msr_handler::isolate_msr__on_run>(this)
+        run_delegate_t::create<msr_handler, &msr_handler::isolate_msr__on_run>(this)
     );
 
     vcpu->add_exit_handler(
@@ -170,7 +164,7 @@ msr_handler::isolate_msr__on_run(bfobject *obj)
 
 bool
 msr_handler::isolate_msr__on_exit(
-    gsl::not_null<vcpu_t *> vcpu)
+    vcpu_t *vcpu)
 {
     bfignored(vcpu);
 
@@ -191,7 +185,7 @@ msr_handler::isolate_msr__on_exit(
 
 bool
 msr_handler::isolate_msr__on_write(
-    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info)
+    vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info)
 {
     bfignored(vcpu);
 
@@ -205,7 +199,7 @@ msr_handler::isolate_msr__on_write(
 
 bool
 msr_handler::handle_rdmsr_0x00000034(
-    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info)
+    vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info)
 {
     bfignored(vcpu);
 
@@ -215,7 +209,7 @@ msr_handler::handle_rdmsr_0x00000034(
 
 bool
 msr_handler::handle_wrmsr_0x00000034(
-    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info)
+    vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info)
 {
     bfignored(info);
 
@@ -224,7 +218,7 @@ msr_handler::handle_wrmsr_0x00000034(
 }
 bool
 msr_handler::handle_rdmsr_0x000000CE(
-    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info)
+    vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info)
 {
     bfignored(vcpu);
 
@@ -239,7 +233,7 @@ msr_handler::handle_rdmsr_0x000000CE(
 
 bool
 msr_handler::handle_wrmsr_0x000000CE(
-    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info)
+    vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info)
 {
     bfignored(info);
 
@@ -249,7 +243,7 @@ msr_handler::handle_wrmsr_0x000000CE(
 
 bool
 msr_handler::handle_rdmsr_0x00000140(
-    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info)
+    vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info)
 {
     bfignored(vcpu);
 
@@ -262,7 +256,7 @@ msr_handler::handle_rdmsr_0x00000140(
 
 bool
 msr_handler::handle_wrmsr_0x00000140(
-    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info)
+    vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info)
 {
     bfignored(info);
 
@@ -272,7 +266,7 @@ msr_handler::handle_wrmsr_0x00000140(
 
 bool
 msr_handler::handle_rdmsr_0x000001A0(
-    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info)
+    vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info)
 {
     bfignored(vcpu);
 
@@ -287,7 +281,7 @@ msr_handler::handle_rdmsr_0x000001A0(
 
 bool
 msr_handler::handle_wrmsr_0x000001A0(
-    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info)
+    vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info)
 {
     bfignored(info);
 
@@ -297,7 +291,7 @@ msr_handler::handle_wrmsr_0x000001A0(
 
 bool
 msr_handler::handle_rdmsr_0x00000606(
-    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info)
+    vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info)
 {
     bfignored(vcpu);
 
@@ -310,7 +304,7 @@ msr_handler::handle_rdmsr_0x00000606(
 
 bool
 msr_handler::handle_wrmsr_0x00000606(
-    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info)
+    vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info)
 {
     bfignored(info);
 
@@ -320,7 +314,7 @@ msr_handler::handle_wrmsr_0x00000606(
 
 bool
 msr_handler::handle_rdmsr_0x0000064E(
-    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info)
+    vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info)
 {
     bfignored(vcpu);
 
@@ -330,7 +324,7 @@ msr_handler::handle_rdmsr_0x0000064E(
 
 bool
 msr_handler::handle_wrmsr_0x0000064E(
-    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info)
+    vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info)
 {
     bfignored(info);
 
@@ -340,7 +334,7 @@ msr_handler::handle_wrmsr_0x0000064E(
 
 bool
 msr_handler::handle_rdmsr_0xC0000103(
-    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info)
+    vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info)
 {
     bfignored(vcpu);
 
@@ -350,7 +344,7 @@ msr_handler::handle_rdmsr_0xC0000103(
 
 bool
 msr_handler::handle_wrmsr_0xC0000103(
-    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info)
+    vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info)
 {
     bfignored(vcpu);
 

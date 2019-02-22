@@ -27,6 +27,7 @@ if(${BUILD_TARGET_ARCH} STREQUAL "x86_64")
         arch/intel_x64/vmexit/external_interrupt.cpp
         arch/intel_x64/vmexit/io_instruction.cpp
         arch/intel_x64/vmexit/msr.cpp
+        arch/intel_x64/vmexit/mtrr.cpp
         arch/intel_x64/vmexit/vmcall.cpp
         arch/intel_x64/vmexit/yield.cpp
         arch/intel_x64/vmcall/domain_op.cpp

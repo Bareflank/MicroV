@@ -29,18 +29,7 @@
 //------------------------------------------------------------------------------
 
 static bool
-cpuid_handler(
-    gsl::not_null<vcpu_t *> vcpu)
-{
-    vcpu->halt("cpuid_handler executed. unsupported!!!");
-
-    // Unreachable
-    return true;
-}
-
-static bool
-rdmsr_handler(
-    gsl::not_null<vcpu_t *> vcpu)
+rdmsr_handler(vcpu_t *vcpu)
 {
     vcpu->halt("rdmsr_handler executed. unsupported!!!");
 
@@ -49,8 +38,7 @@ rdmsr_handler(
 }
 
 static bool
-wrmsr_handler(
-    gsl::not_null<vcpu_t *> vcpu)
+wrmsr_handler(vcpu_t *vcpu)
 {
     vcpu->halt("wrmsr_handler executed. unsupported!!!");
 
@@ -59,8 +47,7 @@ wrmsr_handler(
 }
 
 static bool
-io_instruction_handler(
-    gsl::not_null<vcpu_t *> vcpu)
+io_instruction_handler(vcpu_t *vcpu)
 {
     vcpu->halt("io_instruction_handler executed. unsupported!!!");
 
@@ -69,8 +56,7 @@ io_instruction_handler(
 }
 
 static bool
-ept_violation_handler(
-    gsl::not_null<vcpu_t *> vcpu)
+ept_violation_handler(vcpu_t *vcpu)
 {
     vcpu->halt("ept_violation_handler executed. unsupported!!!");
 
@@ -89,15 +75,14 @@ vcpu::vcpu(
     vcpuid::type id,
     gsl::not_null<domain *> domain
 ) :
-    bfvmm::intel_x64::vcpu{
-    id, domain->global_state()
-},
+    bfvmm::intel_x64::vcpu{id, domain->global_state()},
     m_domain{domain},
 
     m_cpuid_handler{this},
     m_external_interrupt_handler{this},
     m_io_instruction_handler{this},
     m_msr_handler{this},
+    m_mtrr_handler{this},
     m_vmcall_handler{this},
     m_yield_handler{this},
 
@@ -276,10 +261,6 @@ vcpu::setup_default_controls()
 void
 vcpu::setup_default_handlers()
 {
-    this->add_default_cpuid_handler(
-        ::handler_delegate_t::create<::cpuid_handler>()
-    );
-
     this->add_default_wrmsr_handler(
         ::handler_delegate_t::create<::wrmsr_handler>()
     );

@@ -76,21 +76,21 @@ public:
     /// @cond
 
     bool handle_in_0x0070(
-        gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::io_instruction_handler::info_t &info);
+        vcpu_t *vcpu, bfvmm::intel_x64::io_instruction_handler::info_t &info);
     bool handle_out_0x0070(
-        gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::io_instruction_handler::info_t &info);
+        vcpu_t *vcpu, bfvmm::intel_x64::io_instruction_handler::info_t &info);
     bool handle_in_0x0071(
-        gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::io_instruction_handler::info_t &info);
+        vcpu_t *vcpu, bfvmm::intel_x64::io_instruction_handler::info_t &info);
     bool handle_out_0x0071(
-        gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::io_instruction_handler::info_t &info);
+        vcpu_t *vcpu, bfvmm::intel_x64::io_instruction_handler::info_t &info);
     bool handle_in_0x04D0(
-        gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::io_instruction_handler::info_t &info);
+        vcpu_t *vcpu, bfvmm::intel_x64::io_instruction_handler::info_t &info);
     bool handle_out_0x04D0(
-        gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::io_instruction_handler::info_t &info);
+        vcpu_t *vcpu, bfvmm::intel_x64::io_instruction_handler::info_t &info);
     bool handle_in_0x04D1(
-        gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::io_instruction_handler::info_t &info);
+        vcpu_t *vcpu, bfvmm::intel_x64::io_instruction_handler::info_t &info);
     bool handle_out_0x04D1(
-        gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::io_instruction_handler::info_t &info);
+        vcpu_t *vcpu, bfvmm::intel_x64::io_instruction_handler::info_t &info);
 
     /// @endcond
 

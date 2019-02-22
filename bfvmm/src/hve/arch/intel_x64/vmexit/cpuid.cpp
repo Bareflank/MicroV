@@ -23,12 +23,10 @@
 #include <hve/arch/intel_x64/vmexit/cpuid.h>
 
 #define make_delegate(a)                                                        \
-    bfvmm::intel_x64::cpuid_handler::handler_delegate_t::create<cpuid_handler, &cpuid_handler::a>(this)
+    handler_delegate_t::create<cpuid_handler, &cpuid_handler::a>(this)
 
 #define EMULATE_CPUID(a,b)                                                      \
-    m_vcpu->add_cpuid_handler(                                                  \
-        a, make_delegate(b)                                                     \
-    );
+    m_vcpu->add_cpuid_emulator(a, make_delegate(b));
 
 // -----------------------------------------------------------------------------
 // Implementation
@@ -47,6 +45,8 @@ cpuid_handler::cpuid_handler(
     if (vcpu->is_dom0()) {
         return;
     }
+
+    vcpu->enable_cpuid_whitelisting();
 
     // Note:
     //
@@ -84,286 +84,236 @@ cpuid_handler::cpuid_handler(
 // -----------------------------------------------------------------------------
 
 bool
-cpuid_handler::handle_0x00000000(
-    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::cpuid_handler::info_t &info)
+cpuid_handler::handle_0x00000000(vcpu_t *vcpu)
 {
-    bfignored(vcpu);
-    bfignored(info);
-
-    return true;
+    vcpu->execute_cpuid();
+    return vcpu->advance();
 }
 
 bool
-cpuid_handler::handle_0x00000001(
-    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::cpuid_handler::info_t &info)
+cpuid_handler::handle_0x00000001(vcpu_t *vcpu)
 {
-    bfignored(vcpu);
+    vcpu->execute_cpuid();
 
-    info.rcx &= 0x21FC3203;
-    info.rdx &= 0x1FCBEBFB;
+    vcpu->set_rcx(vcpu->rcx() & 0x21FC3203);
+    vcpu->set_rdx(vcpu->rdx() & 0x1FCBFBFB);
 
     // Note:
     //
     // The following tells Linux that it is in a VM.
     //
 
-    info.rcx |= 0x80000000;
+    vcpu->set_rcx(vcpu->rcx() | 0x80000000);
 
-    return true;
+    return vcpu->advance();
 }
 
 bool
-cpuid_handler::handle_0x00000002(
-    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::cpuid_handler::info_t &info)
+cpuid_handler::handle_0x00000002(vcpu_t *vcpu)
 {
-    bfignored(vcpu);
-    bfignored(info);
-
-    return true;
+    vcpu->execute_cpuid();
+    return vcpu->advance();
 }
 
 bool
-cpuid_handler::handle_0x00000004(
-    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::cpuid_handler::info_t &info)
+cpuid_handler::handle_0x00000004(vcpu_t *vcpu)
 {
-    bfignored(vcpu);
+    vcpu->execute_cpuid();
 
-    info.rax &= 0x3FF;
-    info.rax |= 0x4004000;
-    info.rdx &= 0x7;
+    vcpu->set_rax(vcpu->rax() & 0x000003FF);
+    vcpu->set_rax(vcpu->rax() | 0x04004000);
+    vcpu->set_rdx(vcpu->rdx() & 0x00000007);
 
-    return true;
+    return vcpu->advance();
 }
 
 bool
-cpuid_handler::handle_0x00000006(
-    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::cpuid_handler::info_t &info)
+cpuid_handler::handle_0x00000006(vcpu_t *vcpu)
 {
-    bfignored(vcpu);
+    vcpu->set_rax(0);
+    vcpu->set_rbx(0);
+    vcpu->set_rcx(0);
+    vcpu->set_rdx(0);
 
-    info.rax = 0;
-    info.rbx = 0;
-    info.rcx = 0;
-    info.rdx = 0;
-
-    return true;
+    return vcpu->advance();
 }
 
 bool
-cpuid_handler::handle_0x00000007(
-    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::cpuid_handler::info_t &info)
+cpuid_handler::handle_0x00000007(vcpu_t *vcpu)
 {
-    bfignored(vcpu);
-
-    if (info.rcx != 0) {
-        info.rax = 0;
-        info.rbx = 0;
-        info.rcx = 0;
-        info.rdx = 0;
+    if (vcpu->gr2() != 0) {
+        return vcpu->advance();
     }
 
-    info.rax = 0;
-    info.rbx &= 0x19C23D9;
-    info.rcx = 0;
-    info.rdx = 0;
+    vcpu->execute_cpuid();
 
-    return true;
+    vcpu->set_rax(0);
+    vcpu->set_rbx(vcpu->rbx() & 0x019C23D9);
+    vcpu->set_rcx(0);
+    vcpu->set_rdx(0);
+
+    return vcpu->advance();
 }
 
 bool
-cpuid_handler::handle_0x0000000A(
-    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::cpuid_handler::info_t &info)
+cpuid_handler::handle_0x0000000A(vcpu_t *vcpu)
 {
-    bfignored(vcpu);
+    vcpu->execute_cpuid();
 
-    info.rax = 0;
-    info.rbx = 0x7F;
-    info.rcx = 0;
-    info.rdx = 0;
+    vcpu->set_rax(0);
+    vcpu->set_rbx(vcpu->rbx() & 0x0000007F);
+    vcpu->set_rcx(0);
+    vcpu->set_rdx(0);
 
-    return true;
+    return vcpu->advance();
 }
 
 bool
-cpuid_handler::handle_0x0000000B(
-    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::cpuid_handler::info_t &info)
+cpuid_handler::handle_0x0000000B(vcpu_t *vcpu)
 {
-    bfignored(vcpu);
+    vcpu->set_rax(0);
+    vcpu->set_rbx(0);
+    vcpu->set_rcx(0);
+    vcpu->set_rdx(0);
 
-    info.rax = 0;
-    info.rbx = 0;
-    info.rcx = 0;
-    info.rdx = 0;
-
-    return true;
+    return vcpu->advance();
 }
 
 bool
-cpuid_handler::handle_0x0000000D(
-    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::cpuid_handler::info_t &info)
+cpuid_handler::handle_0x0000000D(vcpu_t *vcpu)
 {
-    bfignored(vcpu);
+    vcpu->set_rax(0);
+    vcpu->set_rbx(0);
+    vcpu->set_rcx(0);
+    vcpu->set_rdx(0);
 
-    info.rax = 0;
-    info.rbx = 0;
-    info.rcx = 0;
-    info.rdx = 0;
-
-    return true;
+    return vcpu->advance();
 }
 
 bool
-cpuid_handler::handle_0x0000000F(
-    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::cpuid_handler::info_t &info)
+cpuid_handler::handle_0x0000000F(vcpu_t *vcpu)
 {
-    bfignored(vcpu);
+    vcpu->set_rax(0);
+    vcpu->set_rbx(0);
+    vcpu->set_rcx(0);
+    vcpu->set_rdx(0);
 
-    info.rax = 0;
-    info.rbx = 0;
-    info.rcx = 0;
-    info.rdx = 0;
-
-    return true;
+    return vcpu->advance();
 }
 
 bool
-cpuid_handler::handle_0x00000010(
-    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::cpuid_handler::info_t &info)
+cpuid_handler::handle_0x00000010(vcpu_t *vcpu)
 {
-    bfignored(vcpu);
+    vcpu->set_rax(0);
+    vcpu->set_rbx(0);
+    vcpu->set_rcx(0);
+    vcpu->set_rdx(0);
 
-    info.rax = 0;
-    info.rbx = 0;
-    info.rcx = 0;
-    info.rdx = 0;
-
-    return true;
+    return vcpu->advance();
 }
 
 bool
-cpuid_handler::handle_0x00000015(
-    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::cpuid_handler::info_t &info)
+cpuid_handler::handle_0x00000015(vcpu_t *vcpu)
 {
-    bfignored(vcpu);
+    vcpu->execute_cpuid();
 
-    info.rdx = 0;
-    return true;
+    vcpu->set_rdx(0);
+    return vcpu->advance();
 }
 
 bool
-cpuid_handler::handle_0x00000016(
-    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::cpuid_handler::info_t &info)
+cpuid_handler::handle_0x00000016(vcpu_t *vcpu)
 {
-    bfignored(vcpu);
+    vcpu->execute_cpuid();
 
-    info.rax &= 0xFFFF;
-    info.rbx &= 0xFFFF;
-    info.rcx &= 0xFFFF;
-    info.rdx = 0;
+    vcpu->set_rax(vcpu->rax() & 0x0000FFFF);
+    vcpu->set_rbx(vcpu->rbx() & 0x0000FFFF);
+    vcpu->set_rcx(vcpu->rcx() & 0x0000FFFF);
+    vcpu->set_rdx(0);
 
-    return true;
+    return vcpu->advance();
 }
 
 bool
-cpuid_handler::handle_0x80000000(
-    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::cpuid_handler::info_t &info)
+cpuid_handler::handle_0x80000000(vcpu_t *vcpu)
 {
-    bfignored(vcpu);
+    vcpu->execute_cpuid();
 
-    info.rbx = 0;
-    info.rcx = 0;
-    info.rdx = 0;
+    vcpu->set_rbx(0);
+    vcpu->set_rcx(0);
+    vcpu->set_rdx(0);
 
-    return true;
+    return vcpu->advance();
 }
 
 bool
-cpuid_handler::handle_0x80000001(
-    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::cpuid_handler::info_t &info)
+cpuid_handler::handle_0x80000001(vcpu_t *vcpu)
 {
-    bfignored(vcpu);
+    vcpu->execute_cpuid();
 
-    info.rbx = 0;
-    info.rcx &= 0x121;
-    info.rdx &= 0x2C100800;
+    vcpu->set_rbx(0);
+    vcpu->set_rcx(vcpu->rcx() & 0x00000121);
+    vcpu->set_rdx(vcpu->rdx() & 0x2C100800);
 
-    return true;
+    return vcpu->advance();
 }
 
 bool
-cpuid_handler::handle_0x80000002(
-    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::cpuid_handler::info_t &info)
+cpuid_handler::handle_0x80000002(vcpu_t *vcpu)
 {
-    bfignored(vcpu);
-    bfignored(info);
-
-    return true;
+    vcpu->execute_cpuid();
+    return vcpu->advance();
 }
 
 bool
-cpuid_handler::handle_0x80000003(
-    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::cpuid_handler::info_t &info)
+cpuid_handler::handle_0x80000003(vcpu_t *vcpu)
 {
-    bfignored(vcpu);
-    bfignored(info);
-
-    return true;
+    vcpu->execute_cpuid();
+    return vcpu->advance();
 }
 
 bool
-cpuid_handler::handle_0x80000004(
-    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::cpuid_handler::info_t &info)
+cpuid_handler::handle_0x80000004(vcpu_t *vcpu)
 {
-    bfignored(vcpu);
-    bfignored(info);
-
-    return true;
+    vcpu->execute_cpuid();
+    return vcpu->advance();
 }
 
 bool
-cpuid_handler::handle_0x80000007(
-    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::cpuid_handler::info_t &info)
+cpuid_handler::handle_0x80000007(vcpu_t *vcpu)
 {
-    bfignored(vcpu);
+    vcpu->execute_cpuid();
 
-    if ((info.rdx & 0x100) == 0) {
+    if ((vcpu->rdx() & 0x100) == 0) {
         bfalert_info(0, "Non-Invariant TSC not supported!!!");
     }
 
-    info.rax = 0;
-    info.rbx = 0;
-    info.rcx = 0;
-    info.rdx &= 0x100;
+    vcpu->set_rax(0);
+    vcpu->set_rbx(0);
+    vcpu->set_rcx(0);
+    vcpu->set_rdx(vcpu->rdx() & 0x00000100);
 
-    return true;
+    return vcpu->advance();
 }
 
 bool
-cpuid_handler::handle_0x80000008(
-    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::cpuid_handler::info_t &info)
+cpuid_handler::handle_0x80000008(vcpu_t *vcpu)
 {
-    bfignored(vcpu);
+    vcpu->execute_cpuid();
 
-    info.rax &= 0xFFFF;
-    info.rbx = 0;
-    info.rcx = 0;
-    info.rdx = 0;
+    vcpu->set_rax(vcpu->rax() & 0x0000FFFF);
+    vcpu->set_rbx(0);
+    vcpu->set_rcx(0);
+    vcpu->set_rdx(0);
 
-    return true;
+    return vcpu->advance();
 }
 
 bool
-cpuid_handler::handle_0x40000000(
-    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::cpuid_handler::info_t &info)
+cpuid_handler::handle_0x40000000(vcpu_t *vcpu)
 {
-    bfignored(vcpu);
-
-    info.rax &= 0xBFBFBFBF;
-    info.rbx = 0;
-    info.rcx = 0;
-    info.rdx = 0;
-
-    return true;
+    vcpu->set_rax(0xBFBFBFBF);
+    return vcpu->advance();
 }
 
 }

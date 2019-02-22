@@ -25,15 +25,15 @@
 
 int main(void)
 {
-	time_t rawtime;
+    time_t rawtime;
 
-	if (freopen("/dev/ttyprintk", "w", stdout) == 0) {
-		while(1);
-	}
+    if (freopen("/dev/ttyprintk", "w", stdout) == 0) {
+        while (1);
+    }
 
-	while(1) {
-		time(&rawtime);
-		printf("hello from init: %s", ctime(&rawtime));
-		sleep(1);
-	}
+    while (1) {
+        time(&rawtime);
+        printf("hello from init: %s", ctime(&rawtime));
+        sleep(1);
+    }
 }

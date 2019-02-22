@@ -38,8 +38,7 @@ vmcall_run_op_handler::vmcall_run_op_handler(
 }
 
 bool
-vmcall_run_op_handler::dispatch(
-    gsl::not_null<vcpu *> vcpu)
+vmcall_run_op_handler::dispatch(vcpu *vcpu)
 {
     // Note:
     //

@@ -39,8 +39,7 @@ vmcall_domain_op_handler::vmcall_domain_op_handler(
 }
 
 void
-vmcall_domain_op_handler::domain_op__create_domain(
-    gsl::not_null<vcpu *> vcpu)
+vmcall_domain_op_handler::domain_op__create_domain(vcpu *vcpu)
 {
     try {
         vcpu->set_rax(domain::generate_domainid());
@@ -52,8 +51,7 @@ vmcall_domain_op_handler::domain_op__create_domain(
 }
 
 void
-vmcall_domain_op_handler::domain_op__destroy_domain(
-    gsl::not_null<vcpu *> vcpu)
+vmcall_domain_op_handler::domain_op__destroy_domain(vcpu *vcpu)
 {
     try {
         if (vcpu->rbx() == self || vcpu->rbx() == vcpu->domid()) {
@@ -70,8 +68,7 @@ vmcall_domain_op_handler::domain_op__destroy_domain(
 }
 
 void
-vmcall_domain_op_handler::domain_op__set_uart(
-    gsl::not_null<vcpu *> vcpu)
+vmcall_domain_op_handler::domain_op__set_uart(vcpu *vcpu)
 {
     try {
         if (vcpu->rbx() == self || vcpu->rbx() == vcpu->domid()) {
@@ -91,8 +88,7 @@ vmcall_domain_op_handler::domain_op__set_uart(
 }
 
 void
-vmcall_domain_op_handler::domain_op__set_pt_uart(
-    gsl::not_null<vcpu *> vcpu)
+vmcall_domain_op_handler::domain_op__set_pt_uart(vcpu *vcpu)
 {
     try {
         if (vcpu->rbx() == self || vcpu->rbx() == vcpu->domid()) {
@@ -112,8 +108,7 @@ vmcall_domain_op_handler::domain_op__set_pt_uart(
 }
 
 void
-vmcall_domain_op_handler::domain_op__dump_uart(
-    gsl::not_null<vcpu *> vcpu)
+vmcall_domain_op_handler::domain_op__dump_uart(vcpu *vcpu)
 {
     try {
         auto buffer =
@@ -132,8 +127,7 @@ vmcall_domain_op_handler::domain_op__dump_uart(
 }
 
 void
-vmcall_domain_op_handler::domain_op__share_page_r(
-    gsl::not_null<vcpu *> vcpu)
+vmcall_domain_op_handler::domain_op__share_page_r(vcpu *vcpu)
 {
     try {
         if (vcpu->rbx() == self || vcpu->rbx() == vcpu->domid()) {
@@ -153,8 +147,7 @@ vmcall_domain_op_handler::domain_op__share_page_r(
 }
 
 void
-vmcall_domain_op_handler::domain_op__share_page_rw(
-    gsl::not_null<vcpu *> vcpu)
+vmcall_domain_op_handler::domain_op__share_page_rw(vcpu *vcpu)
 {
     try {
         if (vcpu->rbx() == self || vcpu->rbx() == vcpu->domid()) {
@@ -174,8 +167,7 @@ vmcall_domain_op_handler::domain_op__share_page_rw(
 }
 
 void
-vmcall_domain_op_handler::domain_op__share_page_rwe(
-    gsl::not_null<vcpu *> vcpu)
+vmcall_domain_op_handler::domain_op__share_page_rwe(vcpu *vcpu)
 {
     try {
         if (vcpu->rbx() == self || vcpu->rbx() == vcpu->domid()) {
@@ -195,8 +187,7 @@ vmcall_domain_op_handler::domain_op__share_page_rwe(
 }
 
 void
-vmcall_domain_op_handler::domain_op__donate_page_r(
-    gsl::not_null<vcpu *> vcpu)
+vmcall_domain_op_handler::domain_op__donate_page_r(vcpu *vcpu)
 {
     // TODO:
     //
@@ -223,8 +214,7 @@ vmcall_domain_op_handler::domain_op__donate_page_r(
 }
 
 void
-vmcall_domain_op_handler::domain_op__donate_page_rw(
-    gsl::not_null<vcpu *> vcpu)
+vmcall_domain_op_handler::domain_op__donate_page_rw(vcpu *vcpu)
 {
     // TODO:
     //
@@ -251,8 +241,7 @@ vmcall_domain_op_handler::domain_op__donate_page_rw(
 }
 
 void
-vmcall_domain_op_handler::domain_op__donate_page_rwe(
-    gsl::not_null<vcpu *> vcpu)
+vmcall_domain_op_handler::domain_op__donate_page_rwe(vcpu *vcpu)
 {
     // TODO:
     //
@@ -281,8 +270,7 @@ vmcall_domain_op_handler::domain_op__donate_page_rwe(
 
 #define domain_op__reg(reg)                                                     \
     void                                                                        \
-    vmcall_domain_op_handler::domain_op__ ## reg(                               \
-        gsl::not_null<vcpu *> vcpu)                                             \
+    vmcall_domain_op_handler::domain_op__ ## reg(vcpu *vcpu)                    \
     {                                                                           \
         try {                                                                   \
             vcpu->set_rax(get_domain(vcpu->rbx())->reg());                      \
@@ -294,8 +282,7 @@ vmcall_domain_op_handler::domain_op__donate_page_rwe(
 
 #define domain_op__set_reg(reg)                                                 \
     void                                                                        \
-    vmcall_domain_op_handler::domain_op__set_ ## reg(                           \
-        gsl::not_null<vcpu *> vcpu)                                             \
+    vmcall_domain_op_handler::domain_op__set_ ## reg(vcpu *vcpu)                \
     {                                                                           \
         try {                                                                   \
             get_domain(vcpu->rbx())->set_ ## reg(vcpu->rcx());                  \
@@ -426,149 +413,148 @@ domain_op__set_reg(ldtr_access_rights);
 
 #define dispatch_case(name)                                                     \
     case __enum_domain_op__ ## name:                                            \
-        this->domain_op__ ## name(vcpu);                                        \
-        return true;
+    this->domain_op__ ## name(vcpu);                                        \
+    return true;
 
 bool
-vmcall_domain_op_handler::dispatch(
-    gsl::not_null<vcpu *> vcpu)
+vmcall_domain_op_handler::dispatch(vcpu *vcpu)
 {
     if (bfopcode(vcpu->rax()) != __enum_domain_op) {
         return false;
     }
 
     switch (vcpu->rax()) {
-        dispatch_case(create_domain)
-        dispatch_case(destroy_domain)
+            dispatch_case(create_domain)
+            dispatch_case(destroy_domain)
 
-        dispatch_case(set_uart)
-        dispatch_case(set_pt_uart)
-        dispatch_case(dump_uart)
+            dispatch_case(set_uart)
+            dispatch_case(set_pt_uart)
+            dispatch_case(dump_uart)
 
-        dispatch_case(share_page_r)
-        dispatch_case(share_page_rw)
-        dispatch_case(share_page_rwe)
-        dispatch_case(donate_page_r)
-        dispatch_case(donate_page_rw)
-        dispatch_case(donate_page_rwe)
+            dispatch_case(share_page_r)
+            dispatch_case(share_page_rw)
+            dispatch_case(share_page_rwe)
+            dispatch_case(donate_page_r)
+            dispatch_case(donate_page_rw)
+            dispatch_case(donate_page_rwe)
 
-        dispatch_case(rax);
-        dispatch_case(set_rax);
-        dispatch_case(rbx);
-        dispatch_case(set_rbx);
-        dispatch_case(rcx);
-        dispatch_case(set_rcx);
-        dispatch_case(rdx);
-        dispatch_case(set_rdx);
-        dispatch_case(rbp);
-        dispatch_case(set_rbp);
-        dispatch_case(rsi);
-        dispatch_case(set_rsi);
-        dispatch_case(rdi);
-        dispatch_case(set_rdi);
-        dispatch_case(r08);
-        dispatch_case(set_r08);
-        dispatch_case(r09);
-        dispatch_case(set_r09);
-        dispatch_case(r10);
-        dispatch_case(set_r10);
-        dispatch_case(r11);
-        dispatch_case(set_r11);
-        dispatch_case(r12);
-        dispatch_case(set_r12);
-        dispatch_case(r13);
-        dispatch_case(set_r13);
-        dispatch_case(r14);
-        dispatch_case(set_r14);
-        dispatch_case(r15);
-        dispatch_case(set_r15);
-        dispatch_case(rip);
-        dispatch_case(set_rip);
-        dispatch_case(rsp);
-        dispatch_case(set_rsp);
-        dispatch_case(gdt_base);
-        dispatch_case(set_gdt_base);
-        dispatch_case(gdt_limit);
-        dispatch_case(set_gdt_limit);
-        dispatch_case(idt_base);
-        dispatch_case(set_idt_base);
-        dispatch_case(idt_limit);
-        dispatch_case(set_idt_limit);
-        dispatch_case(cr0);
-        dispatch_case(set_cr0);
-        dispatch_case(cr3);
-        dispatch_case(set_cr3);
-        dispatch_case(cr4);
-        dispatch_case(set_cr4);
-        dispatch_case(ia32_efer);
-        dispatch_case(set_ia32_efer);
-        dispatch_case(ia32_pat);
-        dispatch_case(set_ia32_pat);
+            dispatch_case(rax);
+            dispatch_case(set_rax);
+            dispatch_case(rbx);
+            dispatch_case(set_rbx);
+            dispatch_case(rcx);
+            dispatch_case(set_rcx);
+            dispatch_case(rdx);
+            dispatch_case(set_rdx);
+            dispatch_case(rbp);
+            dispatch_case(set_rbp);
+            dispatch_case(rsi);
+            dispatch_case(set_rsi);
+            dispatch_case(rdi);
+            dispatch_case(set_rdi);
+            dispatch_case(r08);
+            dispatch_case(set_r08);
+            dispatch_case(r09);
+            dispatch_case(set_r09);
+            dispatch_case(r10);
+            dispatch_case(set_r10);
+            dispatch_case(r11);
+            dispatch_case(set_r11);
+            dispatch_case(r12);
+            dispatch_case(set_r12);
+            dispatch_case(r13);
+            dispatch_case(set_r13);
+            dispatch_case(r14);
+            dispatch_case(set_r14);
+            dispatch_case(r15);
+            dispatch_case(set_r15);
+            dispatch_case(rip);
+            dispatch_case(set_rip);
+            dispatch_case(rsp);
+            dispatch_case(set_rsp);
+            dispatch_case(gdt_base);
+            dispatch_case(set_gdt_base);
+            dispatch_case(gdt_limit);
+            dispatch_case(set_gdt_limit);
+            dispatch_case(idt_base);
+            dispatch_case(set_idt_base);
+            dispatch_case(idt_limit);
+            dispatch_case(set_idt_limit);
+            dispatch_case(cr0);
+            dispatch_case(set_cr0);
+            dispatch_case(cr3);
+            dispatch_case(set_cr3);
+            dispatch_case(cr4);
+            dispatch_case(set_cr4);
+            dispatch_case(ia32_efer);
+            dispatch_case(set_ia32_efer);
+            dispatch_case(ia32_pat);
+            dispatch_case(set_ia32_pat);
 
-        dispatch_case(es_selector);
-        dispatch_case(set_es_selector);
-        dispatch_case(es_base);
-        dispatch_case(set_es_base);
-        dispatch_case(es_limit);
-        dispatch_case(set_es_limit);
-        dispatch_case(es_access_rights);
-        dispatch_case(set_es_access_rights);
-        dispatch_case(cs_selector);
-        dispatch_case(set_cs_selector);
-        dispatch_case(cs_base);
-        dispatch_case(set_cs_base);
-        dispatch_case(cs_limit);
-        dispatch_case(set_cs_limit);
-        dispatch_case(cs_access_rights);
-        dispatch_case(set_cs_access_rights);
-        dispatch_case(ss_selector);
-        dispatch_case(set_ss_selector);
-        dispatch_case(ss_base);
-        dispatch_case(set_ss_base);
-        dispatch_case(ss_limit);
-        dispatch_case(set_ss_limit);
-        dispatch_case(ss_access_rights);
-        dispatch_case(set_ss_access_rights);
-        dispatch_case(ds_selector);
-        dispatch_case(set_ds_selector);
-        dispatch_case(ds_base);
-        dispatch_case(set_ds_base);
-        dispatch_case(ds_limit);
-        dispatch_case(set_ds_limit);
-        dispatch_case(ds_access_rights);
-        dispatch_case(set_ds_access_rights);
-        dispatch_case(fs_selector);
-        dispatch_case(set_fs_selector);
-        dispatch_case(fs_base);
-        dispatch_case(set_fs_base);
-        dispatch_case(fs_limit);
-        dispatch_case(set_fs_limit);
-        dispatch_case(fs_access_rights);
-        dispatch_case(set_fs_access_rights);
-        dispatch_case(gs_selector);
-        dispatch_case(set_gs_selector);
-        dispatch_case(gs_base);
-        dispatch_case(set_gs_base);
-        dispatch_case(gs_limit);
-        dispatch_case(set_gs_limit);
-        dispatch_case(gs_access_rights);
-        dispatch_case(set_gs_access_rights);
-        dispatch_case(tr_selector);
-        dispatch_case(set_tr_selector);
-        dispatch_case(tr_base);
-        dispatch_case(set_tr_base);
-        dispatch_case(tr_limit);
-        dispatch_case(set_tr_limit);
-        dispatch_case(tr_access_rights);
-        dispatch_case(set_tr_access_rights);
-        dispatch_case(ldtr_selector);
-        dispatch_case(set_ldtr_selector);
-        dispatch_case(ldtr_base);
-        dispatch_case(set_ldtr_base);
-        dispatch_case(ldtr_limit);
-        dispatch_case(set_ldtr_limit);
-        dispatch_case(ldtr_access_rights);
-        dispatch_case(set_ldtr_access_rights);
+            dispatch_case(es_selector);
+            dispatch_case(set_es_selector);
+            dispatch_case(es_base);
+            dispatch_case(set_es_base);
+            dispatch_case(es_limit);
+            dispatch_case(set_es_limit);
+            dispatch_case(es_access_rights);
+            dispatch_case(set_es_access_rights);
+            dispatch_case(cs_selector);
+            dispatch_case(set_cs_selector);
+            dispatch_case(cs_base);
+            dispatch_case(set_cs_base);
+            dispatch_case(cs_limit);
+            dispatch_case(set_cs_limit);
+            dispatch_case(cs_access_rights);
+            dispatch_case(set_cs_access_rights);
+            dispatch_case(ss_selector);
+            dispatch_case(set_ss_selector);
+            dispatch_case(ss_base);
+            dispatch_case(set_ss_base);
+            dispatch_case(ss_limit);
+            dispatch_case(set_ss_limit);
+            dispatch_case(ss_access_rights);
+            dispatch_case(set_ss_access_rights);
+            dispatch_case(ds_selector);
+            dispatch_case(set_ds_selector);
+            dispatch_case(ds_base);
+            dispatch_case(set_ds_base);
+            dispatch_case(ds_limit);
+            dispatch_case(set_ds_limit);
+            dispatch_case(ds_access_rights);
+            dispatch_case(set_ds_access_rights);
+            dispatch_case(fs_selector);
+            dispatch_case(set_fs_selector);
+            dispatch_case(fs_base);
+            dispatch_case(set_fs_base);
+            dispatch_case(fs_limit);
+            dispatch_case(set_fs_limit);
+            dispatch_case(fs_access_rights);
+            dispatch_case(set_fs_access_rights);
+            dispatch_case(gs_selector);
+            dispatch_case(set_gs_selector);
+            dispatch_case(gs_base);
+            dispatch_case(set_gs_base);
+            dispatch_case(gs_limit);
+            dispatch_case(set_gs_limit);
+            dispatch_case(gs_access_rights);
+            dispatch_case(set_gs_access_rights);
+            dispatch_case(tr_selector);
+            dispatch_case(set_tr_selector);
+            dispatch_case(tr_base);
+            dispatch_case(set_tr_base);
+            dispatch_case(tr_limit);
+            dispatch_case(set_tr_limit);
+            dispatch_case(tr_access_rights);
+            dispatch_case(set_tr_access_rights);
+            dispatch_case(ldtr_selector);
+            dispatch_case(set_ldtr_selector);
+            dispatch_case(ldtr_base);
+            dispatch_case(set_ldtr_base);
+            dispatch_case(ldtr_limit);
+            dispatch_case(set_ldtr_limit);
+            dispatch_case(ldtr_access_rights);
+            dispatch_case(set_ldtr_access_rights);
 
         default:
             break;
