@@ -19,45 +19,29 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-cmake_minimum_required(VERSION 3.6)
+cmake_minimum_required(VERSION 3.13)
 project(bfexec C CXX)
 
-include(${SOURCE_CMAKE_DIR}/project.cmake)
-init_project(
-    INCLUDES ${CMAKE_CURRENT_LIST_DIR}/../../bfvmm/include
-    INCLUDES ${CMAKE_CURRENT_LIST_DIR}/../../bfsdk/include
-    INCLUDES ${CMAKE_CURRENT_LIST_DIR}/../include
+init_project(bfexec BINARY)
+
+string(TOLOWER ${BUILD_TARGET_OS} OS)
+
+target_link_libraries(bfexec PUBLIC
+    userspace::bfroot
+    userspace::bfintrinsics
+    $<$<BOOL:${UNIX}>:pthread>
+    $<$<OR:$<BOOL:${CYGWIN}>,$<BOOL:${WIN32}>>:setupapi>
+)
+target_include_directories(bfexec PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/../bfsdk/include>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/../bfvmm/include>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/src/platform/${OS}>
+)
+target_sources(bfexec PRIVATE
+    src/main.cpp
+    src/platform/${OS}/ioctl.cpp
+    src/platform/${OS}/ioctl_private.cpp
 )
 
-if(BUILD_TARGET_OS STREQUAL "Linux")
-    list(APPEND SOURCES
-        platform/linux/ioctl.cpp
-        platform/linux/ioctl_private.cpp
-    )
-    include_directories(platform/linux/)
-elseif(BUILD_TARGET_OS STREQUAL "Windows")
-    list(APPEND SOURCES
-        platform/windows/ioctl.cpp
-        platform/windows/ioctl_private.cpp
-    )
-    include_directories(platform/windows/)
-else()
-    message(FATAL_ERROR "Unsupported OS: ${BUILD_TARGET_OS}")
-endif()
-
-list(APPEND SOURCES
-    main.cpp
-)
-
-add_executable(bfexec ${SOURCES})
-target_link_static_libraries(bfexec bfintrinsics)
-
-if(CYGWIN OR WIN32)
-    target_link_libraries(bfexec setupapi)
-endif()
-
-if(UNIX)
-    target_link_libraries(bfexec pthread)
-endif()
-
-install(TARGETS bfexec DESTINATION bin)
+fini_project()

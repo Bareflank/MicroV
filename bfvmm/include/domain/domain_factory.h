@@ -26,27 +26,6 @@
 #include "domain.h"
 
 // -----------------------------------------------------------------------------
-// Exports
-// -----------------------------------------------------------------------------
-
-#include <bfexports.h>
-
-#ifndef STATIC_BOXY_DOMAIN
-#ifdef SHARED_BOXY_DOMAIN
-#define EXPORT_BOXY_DOMAIN EXPORT_SYM
-#else
-#define EXPORT_BOXY_DOMAIN IMPORT_SYM
-#endif
-#else
-#define EXPORT_BOXY_DOMAIN
-#endif
-
-#ifdef _MSC_VER
-#pragma warning(push)
-#pragma warning(disable : 4251)
-#endif
-
-// -----------------------------------------------------------------------------
 // Definitions
 // -----------------------------------------------------------------------------
 
@@ -55,7 +34,7 @@ namespace boxy
 
 /// Domain Factory
 ///
-class EXPORT_BOXY_DOMAIN domain_factory
+class domain_factory
 {
 public:
 
@@ -99,9 +78,5 @@ public:
 };
 
 }
-
-#ifdef _MSC_VER
-#pragma warning(pop)
-#endif
 
 #endif

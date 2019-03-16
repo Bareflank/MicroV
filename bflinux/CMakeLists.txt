@@ -19,23 +19,16 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-cmake_minimum_required(VERSION 3.6)
+cmake_minimum_required(VERSION 3.13)
 project(bflinux C CXX)
 
-include(${SOURCE_CMAKE_DIR}/project.cmake)
-init_project()
+init_project(bflinux INTERFACE)
 
-list(APPEND SOURCES
-    init.cpp
-)
+target_link_libraries(bflinux INTERFACE userspace::bfintrinsics)
 
-set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
-set(BUILD_SHARED_LIBRARIES OFF)
-set(CMAKE_EXE_LINKER_FLAGS "-static")
-
-add_executable(init ${SOURCES})
-target_link_static_libraries(init bfintrinsics)
-
+add_executable(init init.cpp)
+target_link_options(init PRIVATE -static)
+target_link_libraries(init PRIVATE bflinux)
 add_custom_command(
     TARGET init POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E make_directory ${PREFIXES_DIR}/initrd/
@@ -45,4 +38,6 @@ add_custom_command(
     VERBATIM
 )
 
-install(TARGETS init DESTINATION bin)
+install(TARGETS init DESTINATION bin EXPORT bflinux-userspace-targets)
+
+fini_project()

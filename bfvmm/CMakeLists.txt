@@ -20,20 +20,37 @@
 # SOFTWARE.
 
 cmake_minimum_required(VERSION 3.13)
-project(boxy C CXX)
+project(boxy_bfvmm C CXX)
 
-include(${SOURCE_CMAKE_DIR}/project.cmake)
-init_project(
-    INCLUDES ${PROJECT_SOURCE_DIR}/../include
-    INCLUDES ${PROJECT_SOURCE_DIR}/../../include
-    INCLUDES ${PROJECT_SOURCE_DIR}/../../bfsdk/include
-)
+init_project(boxy_bfvmm INTERFACE)
 
-add_subdirectory(domain)
-add_subdirectory(hve)
+# -----------------------------------------------------------------------------
+# Generator expressions
+# -----------------------------------------------------------------------------
+
+set(X64 $<STREQUAL:${BUILD_TARGET_ARCH},x86_64>)
+set(BUILD $<BOOL:$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}>>)
+set(BUILD_INCLUDE $<AND:$<COMPILE_LANGUAGE:CXX>,${BUILD}>)
+
+# -----------------------------------------------------------------------------
+# VMM
+# -----------------------------------------------------------------------------
+
+add_subdirectory(src/domain)
+add_subdirectory(src/hve)
+
+add_executable(boxy_vmm)
+target_sources(boxy_vmm PRIVATE $<${X64}:src/main/arch/intel_x64/vcpu_factory.cpp>)
+target_sources(boxy_vmm PRIVATE $<${X64}:src/main/arch/intel_x64/domain_factory.cpp>)
+
+target_link_libraries(boxy_bfvmm INTERFACE boxy_domain boxy_hve)
+target_link_libraries(boxy_vmm PRIVATE boxy_bfvmm)
 
 # -----------------------------------------------------------------------------
 # Install
 # -----------------------------------------------------------------------------
 
-install(DIRECTORY ../include/ DESTINATION include/boxy)
+install(DIRECTORY include/ DESTINATION include/boxy)
+install(TARGETS boxy_vmm DESTINATION bin EXPORT boxy-vmm-targets)
+
+fini_project()

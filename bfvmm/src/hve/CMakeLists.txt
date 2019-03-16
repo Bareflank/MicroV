@@ -19,47 +19,29 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-if(${BUILD_TARGET_ARCH} STREQUAL "x86_64")
-    list(APPEND SOURCES
-        arch/intel_x64/apic/x2apic.cpp
-        arch/intel_x64/pci/pci_configuration_space.cpp
-        arch/intel_x64/vmexit/cpuid.cpp
-        arch/intel_x64/vmexit/external_interrupt.cpp
-        arch/intel_x64/vmexit/io_instruction.cpp
-        arch/intel_x64/vmexit/msr.cpp
-        arch/intel_x64/vmexit/mtrr.cpp
-        arch/intel_x64/vmexit/vmcall.cpp
-        arch/intel_x64/vmexit/yield.cpp
-        arch/intel_x64/vmcall/domain_op.cpp
-        arch/intel_x64/vmcall/run_op.cpp
-        arch/intel_x64/vmcall/vcpu_op.cpp
-        arch/intel_x64/domain.cpp
-        arch/intel_x64/uart.cpp
-        arch/intel_x64/vcpu.cpp
-    )
+add_library(boxy_hve)
 
-elseif(${BUILD_TARGET_ARCH} STREQUAL "aarch64")
-    message(WARNING "Unimplemented")
-else()
-    message(FATAL_ERROR "Unsupported architecture")
-endif()
-
-add_shared_library(
-    boxy_hve
-    SOURCES ${SOURCES}
-    DEFINES SHARED_BOXY_HVE
-    DEFINES SHARED_EAPIS_HVE
-    DEFINES SHARED_HVE
-    DEFINES SHARED_MEMORY_MANAGER
-    DEFINES SHARED_INTRINSICS
+target_link_libraries(boxy_hve PUBLIC vmm::bfvmm boxy_domain)
+target_include_directories(boxy_hve PUBLIC
+    $<${BUILD_INCLUDE}:${PROJECT_SOURCE_DIR}/include>
+    $<${BUILD_INCLUDE}:${PROJECT_SOURCE_DIR}/../bfsdk/include>
+)
+target_sources(boxy_hve PRIVATE
+    $<${X64}:arch/intel_x64/apic/x2apic.cpp>
+    $<${X64}:arch/intel_x64/pci/pci_configuration_space.cpp>
+    $<${X64}:arch/intel_x64/vmexit/cpuid.cpp>
+    $<${X64}:arch/intel_x64/vmexit/external_interrupt.cpp>
+    $<${X64}:arch/intel_x64/vmexit/io_instruction.cpp>
+    $<${X64}:arch/intel_x64/vmexit/msr.cpp>
+    $<${X64}:arch/intel_x64/vmexit/mtrr.cpp>
+    $<${X64}:arch/intel_x64/vmexit/vmcall.cpp>
+    $<${X64}:arch/intel_x64/vmexit/yield.cpp>
+    $<${X64}:arch/intel_x64/vmcall/domain_op.cpp>
+    $<${X64}:arch/intel_x64/vmcall/run_op.cpp>
+    $<${X64}:arch/intel_x64/vmcall/vcpu_op.cpp>
+    $<${X64}:arch/intel_x64/domain.cpp>
+    $<${X64}:arch/intel_x64/uart.cpp>
+    $<${X64}:arch/intel_x64/vcpu.cpp>
 )
 
-add_static_library(
-    boxy_hve
-    SOURCES ${SOURCES}
-    DEFINES STATIC_BOXY_HVE
-    DEFINES STATIC_EAPIS_HVE
-    DEFINES STATIC_HVE
-    DEFINES STATIC_MEMORY_MANAGER
-    DEFINES STATIC_INTRINSICS
-)
+install(TARGETS boxy_hve DESTINATION lib EXPORT boxy_bfvmm-vmm-targets)

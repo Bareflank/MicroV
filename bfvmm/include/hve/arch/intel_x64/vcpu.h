@@ -42,22 +42,6 @@
 #include <bfvmm/vcpu/vcpu_manager.h>
 #include <bfvmm/hve/arch/intel_x64/vcpu.h>
 
-// -----------------------------------------------------------------------------
-// Exports
-// -----------------------------------------------------------------------------
-
-#include <bfexports.h>
-
-#ifndef STATIC_BOXY_HVE
-#ifdef SHARED_BOXY_HVE
-#define EXPORT_BOXY_HVE EXPORT_SYM
-#else
-#define EXPORT_BOXY_HVE IMPORT_SYM
-#endif
-#else
-#define EXPORT_BOXY_HVE
-#endif
-
 //------------------------------------------------------------------------------
 // Definition
 //------------------------------------------------------------------------------
@@ -65,7 +49,7 @@
 namespace boxy::intel_x64
 {
 
-class EXPORT_BOXY_HVE vcpu : public bfvmm::intel_x64::vcpu
+class vcpu : public bfvmm::intel_x64::vcpu
 {
 public:
 
