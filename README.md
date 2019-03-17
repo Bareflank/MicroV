@@ -90,7 +90,7 @@ until version 1 is complete.
 - Bareflank
     - [X] (N) MIT license change
     - [ ] (C++) Removal of shared library support (Rian Quinn)
-    - [ ] (C++) Merge EAPIs with Base hypervisor (Jared Wright)
+    - [X] (C++) Merge EAPIs with Base hypervisor (Jared Wright)
     - [X] (N) Re-brand (Rian Quinn)
 
 - Extended APIs
@@ -104,9 +104,6 @@ until version 1 is complete.
     - [X] (C++) emulated x2APIC
 
 - PV Interface
-    - [ ] (C++) emulated PCI Configuration Space
-    - [ ] (C++) emulated PCI Brdige
-    - [ ] (C++) emulated PCI Device Base
     - [ ] (C) PV console front
     - [ ] (C++) PV console back
     - [ ] (C) PV block front (Rian Quinn)
