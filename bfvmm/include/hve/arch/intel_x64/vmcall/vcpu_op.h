@@ -65,11 +65,11 @@ public:
 
 private:
 
-    void vcpu_op__create_vcpu(gsl::not_null<vcpu *> vcpu);
-    void vcpu_op__kill_vcpu(gsl::not_null<vcpu *> vcpu);
-    void vcpu_op__destroy_vcpu(gsl::not_null<vcpu *> vcpu);
+    void vcpu_op__create_vcpu(vcpu *vcpu);
+    void vcpu_op__kill_vcpu(vcpu *vcpu);
+    void vcpu_op__destroy_vcpu(vcpu *vcpu);
 
-    bool dispatch(gsl::not_null<vcpu *> vcpu);
+    bool dispatch(vcpu *vcpu);
 
 private:
 

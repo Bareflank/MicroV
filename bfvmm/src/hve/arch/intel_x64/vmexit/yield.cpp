@@ -30,11 +30,11 @@
 
 #define EMULATE_MSR(a,b,c)                                                      \
     m_vcpu->emulate_rdmsr(                                                      \
-        a, make_rdmsr_delegate(b)                                               \
-    );                                                                          \
+            a, make_rdmsr_delegate(b)                                               \
+                         );                                                                          \
     m_vcpu->emulate_wrmsr(                                                      \
-        a, make_wrmsr_delegate(c)                                               \
-    );
+            a, make_wrmsr_delegate(c)                                               \
+                         );
 
 // -----------------------------------------------------------------------------
 // Implementation
@@ -88,9 +88,13 @@ yield_handler::yield_handler(
 // -----------------------------------------------------------------------------
 
 bool
-yield_handler::handle_hlt(gsl::not_null<vcpu_t *> vcpu)
+yield_handler::handle_hlt(vcpu_t *vcpu)
 {
     bfignored(vcpu);
+
+    if (vmcs_n::guest_rflags::interrupt_enable_flag::is_disabled()) {
+        return false;
+    }
 
     // Notes:
     //
@@ -156,7 +160,7 @@ yield_handler::handle_hlt(gsl::not_null<vcpu_t *> vcpu)
 }
 
 bool
-yield_handler::handle_preemption(gsl::not_null<vcpu_t *> vcpu)
+yield_handler::handle_preemption(vcpu_t *vcpu)
 {
     bfignored(vcpu);
 
@@ -170,7 +174,7 @@ yield_handler::handle_preemption(gsl::not_null<vcpu_t *> vcpu)
 
 bool
 yield_handler::handle_rdmsr_0x000006E0(
-    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info)
+    vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info)
 {
     bfignored(info);
 
@@ -180,7 +184,7 @@ yield_handler::handle_rdmsr_0x000006E0(
 
 bool
 yield_handler::handle_wrmsr_0x000006E0(
-    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info)
+    vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info)
 {
     bfignored(vcpu);
 

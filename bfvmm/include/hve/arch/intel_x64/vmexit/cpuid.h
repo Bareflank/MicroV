@@ -75,49 +75,28 @@ public:
 
     /// @cond
 
-    bool handle_0x00000000(
-        gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::cpuid_handler::info_t &info);
-    bool handle_0x00000001(
-        gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::cpuid_handler::info_t &info);
-    bool handle_0x00000002(
-        gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::cpuid_handler::info_t &info);
-    bool handle_0x00000004(
-        gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::cpuid_handler::info_t &info);
-    bool handle_0x00000006(
-        gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::cpuid_handler::info_t &info);
-    bool handle_0x00000007(
-        gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::cpuid_handler::info_t &info);
-    bool handle_0x0000000A(
-        gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::cpuid_handler::info_t &info);
-    bool handle_0x0000000B(
-        gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::cpuid_handler::info_t &info);
-    bool handle_0x0000000D(
-        gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::cpuid_handler::info_t &info);
-    bool handle_0x0000000F(
-        gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::cpuid_handler::info_t &info);
-    bool handle_0x00000010(
-        gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::cpuid_handler::info_t &info);
-    bool handle_0x00000015(
-        gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::cpuid_handler::info_t &info);
-    bool handle_0x00000016(
-        gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::cpuid_handler::info_t &info);
-    bool handle_0x80000000(
-        gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::cpuid_handler::info_t &info);
-    bool handle_0x80000001(
-        gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::cpuid_handler::info_t &info);
-    bool handle_0x80000002(
-        gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::cpuid_handler::info_t &info);
-    bool handle_0x80000003(
-        gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::cpuid_handler::info_t &info);
-    bool handle_0x80000004(
-        gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::cpuid_handler::info_t &info);
-    bool handle_0x80000007(
-        gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::cpuid_handler::info_t &info);
-    bool handle_0x80000008(
-        gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::cpuid_handler::info_t &info);
+    bool handle_0x00000000(vcpu_t *vcpu);
+    bool handle_0x00000001(vcpu_t *vcpu);
+    bool handle_0x00000002(vcpu_t *vcpu);
+    bool handle_0x00000004(vcpu_t *vcpu);
+    bool handle_0x00000006(vcpu_t *vcpu);
+    bool handle_0x00000007(vcpu_t *vcpu);
+    bool handle_0x0000000A(vcpu_t *vcpu);
+    bool handle_0x0000000B(vcpu_t *vcpu);
+    bool handle_0x0000000D(vcpu_t *vcpu);
+    bool handle_0x0000000F(vcpu_t *vcpu);
+    bool handle_0x00000010(vcpu_t *vcpu);
+    bool handle_0x00000015(vcpu_t *vcpu);
+    bool handle_0x00000016(vcpu_t *vcpu);
+    bool handle_0x80000000(vcpu_t *vcpu);
+    bool handle_0x80000001(vcpu_t *vcpu);
+    bool handle_0x80000002(vcpu_t *vcpu);
+    bool handle_0x80000003(vcpu_t *vcpu);
+    bool handle_0x80000004(vcpu_t *vcpu);
+    bool handle_0x80000007(vcpu_t *vcpu);
+    bool handle_0x80000008(vcpu_t *vcpu);
 
-    bool handle_0x40000000(
-        gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::cpuid_handler::info_t &info);
+    bool handle_0x40000000(vcpu_t *vcpu);
 
     /// @endcond
 

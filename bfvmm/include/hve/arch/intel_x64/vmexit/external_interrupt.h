@@ -76,8 +76,7 @@ public:
     /// @cond
 
     bool handle(
-        gsl::not_null<vcpu_t *> vcpu,
-        bfvmm::intel_x64::external_interrupt_handler::info_t &info);
+        vcpu_t *vcpu, bfvmm::intel_x64::external_interrupt_handler::info_t &info);
 
     /// @endcond
 

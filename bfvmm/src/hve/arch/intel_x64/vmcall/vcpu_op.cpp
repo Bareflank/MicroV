@@ -39,8 +39,7 @@ vmcall_vcpu_op_handler::vmcall_vcpu_op_handler(
 }
 
 void
-vmcall_vcpu_op_handler::vcpu_op__create_vcpu(
-    gsl::not_null<vcpu *> vcpu)
+vmcall_vcpu_op_handler::vcpu_op__create_vcpu(vcpu *vcpu)
 {
     try {
         vcpu->set_rax(bfvmm::vcpu::generate_vcpuid());
@@ -52,8 +51,7 @@ vmcall_vcpu_op_handler::vcpu_op__create_vcpu(
 }
 
 void
-vmcall_vcpu_op_handler::vcpu_op__kill_vcpu(
-    gsl::not_null<vcpu *> vcpu)
+vmcall_vcpu_op_handler::vcpu_op__kill_vcpu(vcpu *vcpu)
 {
     try {
         auto child_vcpu = get_vcpu(vcpu->rbx());
@@ -67,8 +65,7 @@ vmcall_vcpu_op_handler::vcpu_op__kill_vcpu(
 }
 
 void
-vmcall_vcpu_op_handler::vcpu_op__destroy_vcpu(
-    gsl::not_null<vcpu *> vcpu)
+vmcall_vcpu_op_handler::vcpu_op__destroy_vcpu(vcpu *vcpu)
 {
     try {
         g_vcm->destroy(vcpu->rbx(), nullptr);
@@ -80,8 +77,7 @@ vmcall_vcpu_op_handler::vcpu_op__destroy_vcpu(
 }
 
 bool
-vmcall_vcpu_op_handler::dispatch(
-    gsl::not_null<vcpu *> vcpu)
+vmcall_vcpu_op_handler::dispatch(vcpu *vcpu)
 {
     if (bfopcode(vcpu->rax()) != __enum_vcpu_op) {
         return false;

@@ -66,7 +66,7 @@ public:
 
 private:
 
-    bool dispatch(gsl::not_null<vcpu *> vcpu);
+    bool dispatch(vcpu *vcpu);
 
 private:
 

@@ -715,6 +715,8 @@ setup_32bit_register_state(struct vm_t *vm)
     ret |= __domain_op__set_ldtr_limit(vm->domainid, 0x0);
     ret |= __domain_op__set_ldtr_access_rights(vm->domainid, 0x10000);
 
+    ret |= __domain_op__set_ia32_pat(vm->domainid, 0x0606060606060606);
+
     if (ret != SUCCESS) {
         BFDEBUG("setup_entry: setup_32bit_register_state failed\n");
         return FAILURE;

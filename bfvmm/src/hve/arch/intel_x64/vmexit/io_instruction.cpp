@@ -27,8 +27,8 @@
 
 #define EMULATE_IO_INSTRUCTION(a,b,c)                                           \
     m_vcpu->emulate_io_instruction(                                             \
-        a, make_io_instruction_delegate(b), make_io_instruction_delegate(c)     \
-    );                                                                          \
+            a, make_io_instruction_delegate(b), make_io_instruction_delegate(c)     \
+                                  );                                                                          \
 
 // -----------------------------------------------------------------------------
 // Implementation
@@ -62,7 +62,7 @@ io_instruction_handler::io_instruction_handler(
 
 bool
 io_instruction_handler::handle_in_0x0070(
-    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::io_instruction_handler::info_t &info)
+    vcpu_t *vcpu, bfvmm::intel_x64::io_instruction_handler::info_t &info)
 {
     bfignored(info);
 
@@ -72,7 +72,7 @@ io_instruction_handler::handle_in_0x0070(
 
 bool
 io_instruction_handler::handle_out_0x0070(
-    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::io_instruction_handler::info_t &info)
+    vcpu_t *vcpu, bfvmm::intel_x64::io_instruction_handler::info_t &info)
 {
     bfignored(vcpu);
     bfignored(info);
@@ -89,7 +89,7 @@ io_instruction_handler::handle_out_0x0070(
 
 bool
 io_instruction_handler::handle_in_0x0071(
-    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::io_instruction_handler::info_t &info)
+    vcpu_t *vcpu, bfvmm::intel_x64::io_instruction_handler::info_t &info)
 {
     bfignored(vcpu);
 
@@ -99,7 +99,7 @@ io_instruction_handler::handle_in_0x0071(
 
 bool
 io_instruction_handler::handle_out_0x0071(
-    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::io_instruction_handler::info_t &info)
+    vcpu_t *vcpu, bfvmm::intel_x64::io_instruction_handler::info_t &info)
 {
     bfignored(vcpu);
     bfignored(info);
@@ -109,7 +109,7 @@ io_instruction_handler::handle_out_0x0071(
 
 bool
 io_instruction_handler::handle_in_0x04D0(
-    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::io_instruction_handler::info_t &info)
+    vcpu_t *vcpu, bfvmm::intel_x64::io_instruction_handler::info_t &info)
 {
     bfignored(vcpu);
 
@@ -119,7 +119,7 @@ io_instruction_handler::handle_in_0x04D0(
 
 bool
 io_instruction_handler::handle_out_0x04D0(
-    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::io_instruction_handler::info_t &info)
+    vcpu_t *vcpu, bfvmm::intel_x64::io_instruction_handler::info_t &info)
 {
     bfignored(vcpu);
     bfignored(info);
@@ -129,7 +129,7 @@ io_instruction_handler::handle_out_0x04D0(
 
 bool
 io_instruction_handler::handle_in_0x04D1(
-    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::io_instruction_handler::info_t &info)
+    vcpu_t *vcpu, bfvmm::intel_x64::io_instruction_handler::info_t &info)
 {
     bfignored(vcpu);
 
@@ -139,7 +139,7 @@ io_instruction_handler::handle_in_0x04D1(
 
 bool
 io_instruction_handler::handle_out_0x04D1(
-    gsl::not_null<vcpu_t *> vcpu, bfvmm::intel_x64::io_instruction_handler::info_t &info)
+    vcpu_t *vcpu, bfvmm::intel_x64::io_instruction_handler::info_t &info)
 {
     bfignored(vcpu);
     bfignored(info);

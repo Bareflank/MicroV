@@ -48,8 +48,7 @@ external_interrupt_handler::external_interrupt_handler(
 
 bool
 external_interrupt_handler::handle(
-    gsl::not_null<vcpu_t *> vcpu,
-    bfvmm::intel_x64::external_interrupt_handler::info_t &info)
+    vcpu_t *vcpu, bfvmm::intel_x64::external_interrupt_handler::info_t &info)
 {
     bfignored(vcpu);
     auto parent_vcpu = m_vcpu->parent_vcpu();

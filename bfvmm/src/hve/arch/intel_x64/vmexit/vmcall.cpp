@@ -81,7 +81,7 @@ vmcall_error(gsl::not_null<vcpu *> vcpu, const std::string &str)
 }
 
 bool
-vmcall_handler::handle(gsl::not_null<vcpu_t *> vcpu)
+vmcall_handler::handle(vcpu_t *vcpu)
 {
     auto ___ = gsl::finally([&] {
         vcpu->load();
