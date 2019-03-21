@@ -90,13 +90,13 @@ until version 1 is complete.
 - Bareflank
     - [X] (N) MIT license change
     - [ ] (C++) Removal of shared library support (Rian Quinn)
-    - [X] (C++) Merge EAPIs with Base hypervisor (Jared Wright)
-    - [X] (N) Re-brand (Rian Quinn)
+    - [X] (C++) Merge EAPIs with Base hypervisor
+    - [X] (N) Re-brand
 
 - Extended APIs
     - [ ] (C++) Complete microcode update logic
-    - [ ] (C) Windows sleep support
-    - [ ] (C) Linux sleep support
+    - [x] (C) Windows sleep support
+    - [x] (C) Linux sleep support
     - [ ] (C) EFI sleep support
 
 - Linux Guest Support
