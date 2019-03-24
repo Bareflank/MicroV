@@ -70,15 +70,15 @@ void
 ioctl_private::call_ioctl_create_vm_from_bzimage(
     create_vm_from_bzimage_args &args)
 {
-    if (bfm_write_ioctl(fd, IOCTL_CREATE_VM_FROM_BZIMAGE_CMD, &args) < 0) {
-        throw std::runtime_error("ioctl failed: IOCTL_CREATE_VM_FROM_BZIMAGE_CMD");
+    if (bfm_write_ioctl(fd, IOCTL_CREATE_VM_FROM_BZIMAGE, &args) < 0) {
+        throw std::runtime_error("ioctl failed: IOCTL_CREATE_VM_FROM_BZIMAGE");
     }
 }
 
 void
 ioctl_private::call_ioctl_destroy(domainid_t domainid) noexcept
 {
-    if (bfm_write_ioctl(fd, IOCTL_DESTROY_CMD, &domainid) < 0) {
-        std::cerr << "[ERROR] ioctl failed: IOCTL_DESTROY_CMD\n";
+    if (bfm_write_ioctl(fd, IOCTL_DESTROY, &domainid) < 0) {
+        std::cerr << "[ERROR] ioctl failed: IOCTL_DESTROY\n";
     }
 }

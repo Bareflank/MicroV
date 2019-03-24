@@ -253,12 +253,12 @@ bfbuilderEvtIoDeviceControl(
     }
 
     switch (IoControlCode) {
-        case IOCTL_CREATE_VM_FROM_BZIMAGE_CMD:
+        case IOCTL_CREATE_VM_FROM_BZIMAGE:
             ret = ioctl_create_vm_from_bzimage((struct create_vm_from_bzimage_args *)in);
             RtlCopyMemory(out, in, out_size);
             break;
 
-        case IOCTL_DESTROY_CMD:
+        case IOCTL_DESTROY:
             ret = ioctl_destroy((domainid_t *)in);
             break;
 
