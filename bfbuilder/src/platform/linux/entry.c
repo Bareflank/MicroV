@@ -186,10 +186,10 @@ dev_unlocked_ioctl(
     struct file *file, unsigned int cmd, unsigned long arg)
 {
     switch (cmd) {
-        case IOCTL_CREATE_VM_FROM_BZIMAGE_CMD:
+        case IOCTL_CREATE_VM_FROM_BZIMAGE:
             return ioctl_create_vm_from_bzimage((struct create_vm_from_bzimage_args *)arg);
 
-        case IOCTL_DESTROY_CMD:
+        case IOCTL_DESTROY:
             return ioctl_destroy((domainid_t *)arg);
 
         default:
