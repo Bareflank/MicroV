@@ -1,3 +1,4 @@
+#!/bin/bash -e
 #
 # Copyright (C) 2019 Assured Information Security, Inc.
 #
@@ -19,45 +20,34 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-cmake_minimum_required(VERSION 3.6)
-project(bfexec C CXX)
+# Check for files trying to be commited with +x that shouldn't be
+#
+index=$(git diff-index --cached --diff-filter=d 'HEAD~1')
+while read index;
+do
+    if [[ ! -z $(echo $index | grep ':100644 100755') ||
+          ! -z $(echo $index | grep ':000000 100755') ]]
+    then
+        path=$(echo $index | awk '{print $NF}')
+        name=$(basename -- $path)
+        extn="${name##*.}"
 
-include(${SOURCE_CMAKE_DIR}/project.cmake)
-init_project(
-    INCLUDES ${CMAKE_CURRENT_LIST_DIR}/../../bfvmm/include
-    INCLUDES ${CMAKE_CURRENT_LIST_DIR}/../../bfsdk/include
-    INCLUDES ${CMAKE_CURRENT_LIST_DIR}/../include
-)
+        case $extn in
+        sh|bat|py|iss|exe) # Add more "recognized" executable file extensions here as needed
+            ;;
+        *)
+            bad="$bad $path"
+            ;;
+        esac
+    fi
+done <<< "$index"
 
-if(BUILD_TARGET_OS STREQUAL "Linux")
-    list(APPEND SOURCES
-        platform/linux/ioctl.cpp
-        platform/linux/ioctl_private.cpp
-    )
-    include_directories(platform/linux/)
-elseif(BUILD_TARGET_OS STREQUAL "Windows")
-    list(APPEND SOURCES
-        platform/windows/ioctl.cpp
-        platform/windows/ioctl_private.cpp
-    )
-    include_directories(platform/windows/)
-else()
-    message(FATAL_ERROR "Unsupported OS: ${BUILD_TARGET_OS}")
-endif()
+if [[ ! -z $bad ]]; then
+    for f in $bad
+    do
+        echo -e "\e[1;91mchk_perms.sh failed\e[0m: file shouldn't be executable: $f"
+    done
+    exit 1
+fi
 
-list(APPEND SOURCES
-    main.cpp
-)
-
-add_executable(bfexec ${SOURCES})
-target_link_static_libraries(bfexec bfintrinsics)
-
-if(CYGWIN OR WIN32)
-    target_link_libraries(bfexec setupapi)
-endif()
-
-if(UNIX)
-    target_link_libraries(bfexec pthread)
-endif()
-
-install(TARGETS bfexec DESTINATION bin)
+exit 0
