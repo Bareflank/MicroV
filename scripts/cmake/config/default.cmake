@@ -86,3 +86,14 @@ set(LINUX_URL_MD5 "481f81505b4f73349e501f70c15a4946"
     CACHE INTERNAL FORCE
     "Linux URL MD5 hash"
 )
+
+# ------------------------------------------------------------------------------
+# Boxy guest
+# ------------------------------------------------------------------------------
+
+add_config(
+    CONFIG_NAME ENABLE_BUILD_GUEST
+    CONFIG_TYPE BOOL
+    DEFAULT_VAL ON
+    DESCRIPTION "Build a minimal Linux guest along with the VMM"
+)
