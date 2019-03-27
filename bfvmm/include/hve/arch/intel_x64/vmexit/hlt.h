@@ -19,11 +19,10 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#ifndef VMEXIT_IO_INSTRUCTION_INTEL_X64_BOXY_H
-#define VMEXIT_IO_INSTRUCTION_INTEL_X64_BOXY_H
+#ifndef VMEXIT_HLT_INTEL_X64_BOXY_H
+#define VMEXIT_HLT_INTEL_X64_BOXY_H
 
 #include <bfvmm/hve/arch/intel_x64/vcpu.h>
-#include <bfvmm/hve/arch/intel_x64/vmexit/io_instruction.h>
 
 // -----------------------------------------------------------------------------
 // Definitions
@@ -33,8 +32,9 @@ namespace boxy::intel_x64
 {
 
 class vcpu;
+using handler_delegate_t = delegate<bool(vcpu *)>;
 
-class io_instruction_handler
+class hlt_handler
 {
 public:
 
@@ -45,7 +45,7 @@ public:
     ///
     /// @param vcpu the vcpu object for this handler
     ///
-    io_instruction_handler(
+    hlt_handler(
         gsl::not_null<vcpu *> vcpu);
 
     /// Destructor
@@ -53,17 +53,52 @@ public:
     /// @expects
     /// @ensures
     ///
-    ~io_instruction_handler() = default;
+    ~hlt_handler() = default;
+
+public:
+
+    /// Add Hlt Handler
+    ///
+    /// @expects
+    /// @ensures
+    ///
+    /// @param d the handler to call when an exit occurs
+    ///
+    void add_hlt_handler(const handler_delegate_t &d);
+
+    /// Add Yield Handler
+    ///
+    /// @expects
+    /// @ensures
+    ///
+    /// @param d the handler to call when an exit occurs
+    ///
+    void add_yield_handler(const handler_delegate_t &d);
 
 public:
 
     /// @cond
 
-    io_instruction_handler(io_instruction_handler &&) = default;
-    io_instruction_handler &operator=(io_instruction_handler &&) = default;
+    bool handle(vcpu_t *vcpu);
 
-    io_instruction_handler(const io_instruction_handler &) = delete;
-    io_instruction_handler &operator=(const io_instruction_handler &) = delete;
+    /// @endcond
+
+private:
+
+    vcpu *m_vcpu;
+
+    std::list<handler_delegate_t> m_hlt_handlers;
+    std::list<handler_delegate_t> m_yield_handlers;
+
+public:
+
+    /// @cond
+
+    hlt_handler(hlt_handler &&) = default;
+    hlt_handler &operator=(hlt_handler &&) = default;
+
+    hlt_handler(const hlt_handler &) = delete;
+    hlt_handler &operator=(const hlt_handler &) = delete;
 
     /// @endcond
 };

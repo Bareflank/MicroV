@@ -58,11 +58,10 @@ public:
     /// @ensures none
     ///
     /// @param domainid the domainid for the domain to create
-    /// @param obj object passed to the domain
     /// @return returns a pointer to a newly created vCPU.
     ///
     virtual std::unique_ptr<domain> make(
-        domain::domainid_type domainid, bfobject *obj = nullptr);
+        domain::domainid_type domainid, void *data);
 
 public:
 

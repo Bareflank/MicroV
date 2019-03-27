@@ -64,10 +64,8 @@ public:
 
     void isolate_msr(uint32_t msr);
 
-    void isolate_msr__on_run(
-        bfobject *obj);
-    bool isolate_msr__on_exit(
-        vcpu_t *vcpu);
+    void isolate_msr__on_world_switch(vcpu_t *vcpu);
+    bool isolate_msr__on_exit(vcpu_t *vcpu);
     bool isolate_msr__on_write(
         vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info);
 
@@ -81,10 +79,6 @@ public:
         vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info);
     bool handle_wrmsr_0x00000034(
         vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info);
-    bool handle_rdmsr_0x000000CE(
-        vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info);
-    bool handle_wrmsr_0x000000CE(
-        vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info);
     bool handle_rdmsr_0x00000140(
         vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info);
     bool handle_wrmsr_0x00000140(
@@ -93,17 +87,9 @@ public:
         vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info);
     bool handle_wrmsr_0x000001A0(
         vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info);
-    bool handle_rdmsr_0x00000606(
-        vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info);
-    bool handle_wrmsr_0x00000606(
-        vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info);
     bool handle_rdmsr_0x0000064E(
         vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info);
     bool handle_wrmsr_0x0000064E(
-        vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info);
-    bool handle_rdmsr_0xC0000103(
-        vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info);
-    bool handle_wrmsr_0xC0000103(
         vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info);
 
     /// @endcond

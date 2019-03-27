@@ -39,17 +39,11 @@
 
 static int
 dev_open(struct inode *inode, struct file *file)
-{
-    BFDEBUG("dev_open succeeded\n");
-    return 0;
-}
+{ return 0; }
 
 static int
 dev_release(struct inode *inode, struct file *file)
-{
-    BFDEBUG("dev_release succeeded\n");
-    return 0;
-}
+{ return 0; }
 
 static long
 ioctl_create_vm_from_bzimage(struct create_vm_from_bzimage_args *args)
@@ -142,7 +136,6 @@ ioctl_create_vm_from_bzimage(struct create_vm_from_bzimage_args *args)
     platform_free_rw(initrd, kern_args.initrd_size);
     platform_free_rw(cmdl, kern_args.cmdl_size);
 
-    BFDEBUG("IOCTL_CREATE_VM_FROM_BZIMAGE: succeeded\n");
     return BF_IOCTL_SUCCESS;
 
 failed:
@@ -155,7 +148,6 @@ failed:
     platform_free_rw(initrd, kern_args.initrd_size);
     platform_free_rw(cmdl, kern_args.cmdl_size);
 
-    BFALERT("IOCTL_CREATE_VM_FROM_BZIMAGE: failed\n");
     return BF_IOCTL_FAILURE;
 }
 
@@ -177,7 +169,6 @@ ioctl_destroy(domainid_t *args)
         return BF_IOCTL_FAILURE;
     }
 
-    BFDEBUG("IOCTL_DESTROY: succeeded\n");
     return BF_IOCTL_SUCCESS;
 }
 
@@ -224,7 +215,6 @@ dev_init(void)
         return -EPERM;
     }
 
-    BFDEBUG("dev_init succeeded\n");
     return 0;
 }
 
@@ -232,8 +222,6 @@ void
 dev_exit(void)
 {
     misc_deregister(&builder_dev);
-
-    BFDEBUG("dev_exit succeeded\n");
     return;
 }
 

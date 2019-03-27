@@ -19,12 +19,11 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#ifndef VMEXIT_MTRR_INTEL_X64_BOXY_H
-#define VMEXIT_MTRR_INTEL_X64_BOXY_H
+#ifndef VIRT_VIRQ_INTEL_X64_BOXY_H
+#define VIRT_VIRQ_INTEL_X64_BOXY_H
 
 #include <bfvmm/hve/arch/intel_x64/vcpu.h>
-#include <bfvmm/hve/arch/intel_x64/vmexit/rdmsr.h>
-#include <bfvmm/hve/arch/intel_x64/vmexit/wrmsr.h>
+#include <bfvmm/hve/arch/intel_x64/interrupt_queue.h>
 
 // -----------------------------------------------------------------------------
 // Definitions
@@ -35,7 +34,7 @@ namespace boxy::intel_x64
 
 class vcpu;
 
-class mtrr_handler
+class virq_handler
 {
 public:
 
@@ -46,7 +45,7 @@ public:
     ///
     /// @param vcpu the vcpu object for this handler
     ///
-    mtrr_handler(
+    virq_handler(
         gsl::not_null<vcpu *> vcpu);
 
     /// Destructor
@@ -54,45 +53,63 @@ public:
     /// @expects
     /// @ensures
     ///
-    ~mtrr_handler() = default;
+    ~virq_handler() = default;
+
+public:
+
+    /// Queue vIRQ
+    ///
+    /// Queues a virtual IRQ to be delivered to a guest VM. Note that this
+    /// will actually queue the Hypervisor Callback Vector IRQ into the
+    /// guest, and then the guest has to VMCall to this class to get the
+    /// vIRQ vector. Also note that all vIRQs are essentially vMSIs so once
+    /// the vIRQ is dequeued, it is gone.
+    ///
+    /// @expects
+    /// @ensures
+    ///
+    void queue_virtual_interrupt(uint64_t vector);
+
+    /// Inject vIRQ
+    ///
+    /// Injects a virtual IRQ to be delivered to a guest VM. Note that this
+    /// will actually inject the Hypervisor Callback Vector IRQ into the
+    /// guest, and then the guest has to VMCall to this class to get the
+    /// vIRQ vector. Also note that all vIRQs are essentially vMSIs so once
+    /// the vIRQ is dequeued, it is gone.
+    ///
+    /// @expects
+    /// @ensures
+    ///
+    void inject_virtual_interrupt(uint64_t vector);
 
 public:
 
     /// @cond
 
-    bool handle_rdmsr_0x000000FE(
-        vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info);
-    bool handle_wrmsr_0x000000FE(
-        vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info);
-    bool handle_rdmsr_0x00000200(
-        vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info);
-    bool handle_wrmsr_0x00000200(
-        vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info);
-    bool handle_rdmsr_0x00000201(
-        vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info);
-    bool handle_wrmsr_0x00000201(
-        vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info);
-    bool handle_rdmsr_0x000002FF(
-        vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info);
-    bool handle_wrmsr_0x000002FF(
-        vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info);
+    void virq_op__set_hypervisor_callback_vector(vcpu *vcpu);
+    void virq_op__get_next_virq(vcpu *vcpu);
+
+    bool dispatch(vcpu *vcpu);
 
     /// @endcond
 
 private:
 
     vcpu *m_vcpu;
-    uint64_t m_mtrr_def_type{0xC00};
+
+    uint64_t m_hypervisor_callback_vector{};
+    bfvmm::intel_x64::interrupt_queue m_interrupt_queue;
 
 public:
 
     /// @cond
 
-    mtrr_handler(mtrr_handler &&) = default;
-    mtrr_handler &operator=(mtrr_handler &&) = default;
+    virq_handler(virq_handler &&) = default;
+    virq_handler &operator=(virq_handler &&) = default;
 
-    mtrr_handler(const mtrr_handler &) = delete;
-    mtrr_handler &operator=(const mtrr_handler &) = delete;
+    virq_handler(const virq_handler &) = delete;
+    virq_handler &operator=(const virq_handler &) = delete;
 
     /// @endcond
 };

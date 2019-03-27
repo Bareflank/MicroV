@@ -19,12 +19,10 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#ifndef VMEXIT_YIELD_INTEL_X64_BOXY_H
-#define VMEXIT_YIELD_INTEL_X64_BOXY_H
+#ifndef VMEXIT_PREEMPTION_TIMER_INTEL_X64_BOXY_H
+#define VMEXIT_PREEMPTION_TIMER_INTEL_X64_BOXY_H
 
 #include <bfvmm/hve/arch/intel_x64/vcpu.h>
-#include <bfvmm/hve/arch/intel_x64/vmexit/rdmsr.h>
-#include <bfvmm/hve/arch/intel_x64/vmexit/wrmsr.h>
 
 // -----------------------------------------------------------------------------
 // Definitions
@@ -34,8 +32,9 @@ namespace boxy::intel_x64
 {
 
 class vcpu;
+using handler_delegate_t = delegate<bool(vcpu *)>;
 
-class yield_handler
+class preemption_timer_handler
 {
 public:
 
@@ -46,7 +45,7 @@ public:
     ///
     /// @param vcpu the vcpu object for this handler
     ///
-    yield_handler(
+    preemption_timer_handler(
         gsl::not_null<vcpu *> vcpu);
 
     /// Destructor
@@ -54,38 +53,41 @@ public:
     /// @expects
     /// @ensures
     ///
-    ~yield_handler() = default;
+    ~preemption_timer_handler() = default;
+
+public:
+
+    /// Add Handler
+    ///
+    /// @expects
+    /// @ensures
+    ///
+    /// @param d the handler to call when an exit occurs
+    ///
+    void add_handler(const handler_delegate_t &d);
 
 public:
 
     /// @cond
 
-    bool handle_hlt(vcpu_t *vcpu);
-    bool handle_preemption(vcpu_t *vcpu);
-
-    bool handle_rdmsr_0x000006E0(
-        vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info);
-    bool handle_wrmsr_0x000006E0(
-        vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info);
+    bool handle(vcpu_t *vcpu);
 
     /// @endcond
 
 private:
 
     vcpu *m_vcpu;
-
-    uint64_t m_tsc_freq;
-    uint64_t m_pet_shift;
+    std::list<handler_delegate_t> m_handlers;
 
 public:
 
     /// @cond
 
-    yield_handler(yield_handler &&) = default;
-    yield_handler &operator=(yield_handler &&) = default;
+    preemption_timer_handler(preemption_timer_handler &&) = default;
+    preemption_timer_handler &operator=(preemption_timer_handler &&) = default;
 
-    yield_handler(const yield_handler &) = delete;
-    yield_handler &operator=(const yield_handler &) = delete;
+    preemption_timer_handler(const preemption_timer_handler &) = delete;
+    preemption_timer_handler &operator=(const preemption_timer_handler &) = delete;
 
     /// @endcond
 };

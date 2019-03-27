@@ -20,7 +20,7 @@
 // SOFTWARE.
 
 #include <hve/arch/intel_x64/vcpu.h>
-#include <hve/arch/intel_x64/vmexit/io_instruction.h>
+#include <hve/arch/intel_x64/vmexit/preemption_timer.h>
 
 // -----------------------------------------------------------------------------
 // Implementation
@@ -29,14 +29,48 @@
 namespace boxy::intel_x64
 {
 
-io_instruction_handler::io_instruction_handler(
-    gsl::not_null<vcpu *> vcpu)
+preemption_timer_handler::preemption_timer_handler(
+    gsl::not_null<vcpu *> vcpu
+) :
+    m_vcpu{vcpu}
 {
+    using namespace vmcs_n;
+
     if (vcpu->is_dom0()) {
         return;
     }
 
-    vcpu->trap_on_all_io_instruction_accesses();
+    vcpu->add_exit_handler_for_reason(
+        exit_reason::basic_exit_reason::preemption_timer_expired,
+        {&preemption_timer_handler::handle, this}
+    );
+}
+
+// -----------------------------------------------------------------------------
+// Add Handler / Enablers
+// -----------------------------------------------------------------------------
+
+void
+preemption_timer_handler::add_handler(
+    const handler_delegate_t &d)
+{ m_handlers.push_back(d); }
+
+// -----------------------------------------------------------------------------
+// Handlers
+// -----------------------------------------------------------------------------
+
+bool
+preemption_timer_handler::handle(vcpu_t *vcpu)
+{
+    bfignored(vcpu);
+
+    for (const auto &d : m_handlers) {
+        if (d(m_vcpu)) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 }

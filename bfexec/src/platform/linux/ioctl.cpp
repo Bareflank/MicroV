@@ -30,15 +30,20 @@ void
 ioctl::call_ioctl_create_vm_from_bzimage(
     create_vm_from_bzimage_args &args)
 {
-    if (auto d = dynamic_cast<ioctl_private *>(m_d.get())) {
-        d->call_ioctl_create_vm_from_bzimage(args);
-    }
+    auto d = static_cast<ioctl_private *>(m_d.get());
+    d->call_ioctl_create_vm_from_bzimage(args);
 }
 
 void
 ioctl::call_ioctl_destroy(domainid_t domainid) noexcept
 {
-    if (auto d = dynamic_cast<ioctl_private *>(m_d.get())) {
-        d->call_ioctl_destroy(domainid);
-    }
+    auto d = static_cast<ioctl_private *>(m_d.get());
+    d->call_ioctl_destroy(domainid);
+}
+
+uint64_t
+ioctl::call_ioctl_vmcall(uint64_t r1, uint64_t r2, uint64_t r3, uint64_t r4)
+{
+    auto d = static_cast<ioctl_private *>(m_d.get());
+    return d->call_ioctl_vmcall(r1, r2, r3, r4);
 }

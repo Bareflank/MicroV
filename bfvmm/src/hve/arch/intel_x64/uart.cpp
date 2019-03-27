@@ -58,7 +58,9 @@ uart::enable(gsl::not_null<vcpu *> vcpu)
     EMULATE_IO_INSTRUCTION(m_port + 6, reg6_in_handler, reg6_out_handler);
     EMULATE_IO_INSTRUCTION(m_port + 7, reg7_in_handler, reg7_out_handler);
 
-    vcpu->add_vmcall_handler({&uart::vmcall_dispatch, this});
+    // vcpu->add_vmcall_handler(
+    //     vmcall_handler_delegate(uart, vmcall_dispatch)
+    // );
 }
 
 void
@@ -79,7 +81,9 @@ uart::disable(gsl::not_null<vcpu *> vcpu)
     EMULATE_IO_INSTRUCTION(m_port + 6, io_zero_handler, io_ignore_handler);
     EMULATE_IO_INSTRUCTION(m_port + 7, io_zero_handler, io_ignore_handler);
 
-    vcpu->add_vmcall_handler({&uart::vmcall_dispatch, this});
+    // vcpu->add_vmcall_handler(
+    //     vmcall_handler_delegate(uart, vmcall_dispatch)
+    // );
 }
 
 void
@@ -100,7 +104,9 @@ uart::pass_through(gsl::not_null<vcpu *> vcpu)
     vcpu->pass_through_io_accesses(m_port + 6);
     vcpu->pass_through_io_accesses(m_port + 7);
 
-    vcpu->add_vmcall_handler({&uart::vmcall_dispatch, this});
+    // vcpu->add_vmcall_handler(
+    //     vmcall_handler_delegate(uart, vmcall_dispatch)
+    // );
 }
 
 uint64_t
@@ -359,7 +365,7 @@ uart::write(const char *str)
 bool
 uart::vmcall_dispatch(vcpu *vcpu)
 {
-    if (bfopcode(vcpu->rax()) != __enum_uart_op) {
+    if (bfopcode(vcpu->rax()) != hypercall_enum_uart_op) {
         return false;
     }
 
@@ -368,15 +374,15 @@ uart::vmcall_dispatch(vcpu *vcpu)
     }
 
     switch (vcpu->rbx()) {
-        case __enum_uart_op__char:
+        case hypercall_enum_uart_op__char:
             this->write(gsl::narrow_cast<char>(vcpu->rdx()));
             break;
 
-        case __enum_uart_op__nhex:
+        case hypercall_enum_uart_op__nhex:
             this->write(bfn::to_string(vcpu->rdx(), 16).c_str());
             break;
 
-        case __enum_uart_op__ndec:
+        case hypercall_enum_uart_op__ndec:
             this->write(bfn::to_string(vcpu->rdx(), 10).c_str());
             break;
 

@@ -33,11 +33,16 @@ namespace boxy::intel_x64
 
 class vcpu;
 
-class vmcall_domain_op_handler
+class domain_op_handler
 {
 public:
 
-    vmcall_domain_op_handler(
+    /// Constructor
+    ///
+    /// @expects
+    /// @ensures
+    ///
+    domain_op_handler(
         gsl::not_null<vcpu *> vcpu);
 
     /// Destructor
@@ -45,7 +50,7 @@ public:
     /// @expects
     /// @ensures
     ///
-    ~vmcall_domain_op_handler() = default;
+    ~domain_op_handler() = default;
 
 private:
 
@@ -191,11 +196,11 @@ public:
 
     /// @cond
 
-    vmcall_domain_op_handler(vmcall_domain_op_handler &&) = default;
-    vmcall_domain_op_handler &operator=(vmcall_domain_op_handler &&) = default;
+    domain_op_handler(domain_op_handler &&) = default;
+    domain_op_handler &operator=(domain_op_handler &&) = default;
 
-    vmcall_domain_op_handler(const vmcall_domain_op_handler &) = delete;
-    vmcall_domain_op_handler &operator=(const vmcall_domain_op_handler &) = delete;
+    domain_op_handler(const domain_op_handler &) = delete;
+    domain_op_handler &operator=(const domain_op_handler &) = delete;
 
     /// @endcond
 };

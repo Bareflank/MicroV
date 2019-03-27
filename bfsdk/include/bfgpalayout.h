@@ -51,18 +51,6 @@ enum e820_type {
  *               | Initial GDT          |  |
  *       0xEB000 +----------------------+  |
  *               | Free                 |  |
- *       0xF0000 +----------------------+  |
- *               | RSDP                 |  |
- *       0xF1000 +----------------------+  |
- *               | XSDT                 |  |
- *       0xF2000 +----------------------+  |
- *               | MADT                 |  |
- *       0xF3000 +----------------------+  |
- *               | FADT                 |  |
- *       0xF4000 +----------------------+  |
- *               | DSDT                 |  |
- *       0xF5000 +----------------------+  |
- *               | Free                 |  |
  *      0x100000 +----------------------+ ---
  *               | Linux                |  | RAM
  *           XXX +----------------------+  |
@@ -80,7 +68,7 @@ enum e820_type {
  */
 
 int64_t
-add_e820_entry(void *vm, uint64_t saddr, uint64_t eaddr, uint32_t type);
+add_e820_entry(void *ptr, uint64_t saddr, uint64_t eaddr, uint32_t type);
 
 /**
  * Setup E820 Map
@@ -124,22 +112,8 @@ setup_e820_map(void *vm, uint64_t size)
 #define BIOS_RAM_ADDR           0x0
 #define BIOS_RAM_SIZE           0xE8000
 
-#define RESERVED1_ADRR          0xEB000
-#define RESERVED1_SIZE          (0xF0000 - 0xEB000)
-
-#define RESERVED2_ADRR          0xF5000
-#define RESERVED2_SIZE          (0x100000 - 0xF5000)
-
 #define BOOT_PARAMS_PAGE_GPA    0xE8000
 #define COMMAND_LINE_PAGE_GPA   0xE9000
 #define INITIAL_GDT_GPA         0xEA000
-
-#define ACPI_RSDP_GPA           0xF0000
-#define ACPI_XSDT_GPA           0xF1000
-#define ACPI_MADT_GPA           0xF2000
-#define ACPI_FADT_GPA           0xF3000
-#define ACPI_DSDT_GPA           0xF4000
-
-#define XAPIC_GPA               0xFEE00000
 
 #endif

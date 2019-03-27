@@ -19,8 +19,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#ifndef APIC_X2APIC_INTEL_X64_BOXY_H
-#define APIC_X2APIC_INTEL_X64_BOXY_H
+#ifndef EMULATION_X2APIC_INTEL_X64_BOXY_H
+#define EMULATION_X2APIC_INTEL_X64_BOXY_H
 
 #include <bfvmm/hve/arch/intel_x64/vcpu.h>
 #include <bfvmm/hve/arch/intel_x64/vmexit/rdmsr.h>
@@ -56,15 +56,6 @@ public:
     ///
     ~x2apic_handler() = default;
 
-    /// Timer Vector
-    ///
-    /// @expects
-    /// @ensures
-    ///
-    /// @return returns the vector number associated with the APIC timer
-    ///
-    uint8_t timer_vector() const noexcept;
-
 public:
 
     /// @cond
@@ -85,14 +76,6 @@ public:
     bool handle_rdmsr_0x00000808(
         vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info);
     bool handle_wrmsr_0x00000808(
-        vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info);
-    bool handle_rdmsr_0x0000080B(
-        vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info);
-    bool handle_wrmsr_0x0000080B(
-        vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info);
-    bool handle_rdmsr_0x0000080D(
-        vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info);
-    bool handle_wrmsr_0x0000080D(
         vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info);
     bool handle_rdmsr_0x0000080F(
         vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info);
@@ -169,10 +152,6 @@ public:
     bool handle_wrmsr_0x00000827(
         vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info);
 
-    bool handle_rdmsr_0x00000832(
-        vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info);
-    bool handle_wrmsr_0x00000832(
-        vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info);
     bool handle_rdmsr_0x00000835(
         vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info);
     bool handle_wrmsr_0x00000835(
@@ -184,10 +163,6 @@ public:
     bool handle_rdmsr_0x00000837(
         vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info);
     bool handle_wrmsr_0x00000837(
-        vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info);
-    bool handle_rdmsr_0x00000838(
-        vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info);
-    bool handle_wrmsr_0x00000838(
         vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info);
 
     /// @endcond
@@ -219,7 +194,6 @@ private:
     uint64_t m_0x00000826{0};
     uint64_t m_0x00000827{0};
 
-    uint64_t m_0x00000832{1U << 16U};
     uint64_t m_0x00000835{1U << 16U};
     uint64_t m_0x00000836{1U << 16U};
     uint64_t m_0x00000837{1U << 16U};

@@ -40,6 +40,12 @@ if((ENABLE_BUILD_USERSPACE) AND NOT WIN32 AND NOT CYGWIN)
     message(STATUS "Including dependency: linux")
 
     if(NOT DEFINED LINUX_DIR)
+        if(EXISTS ${CMAKE_SOURCE_DIR}/../linux/)
+            set(LINUX_DIR PATH ${CMAKE_SOURCE_DIR}/../linux/)
+        endif()
+    endif()
+
+    if(NOT DEFINED LINUX_DIR)
         set(LINUX_BUILD_DIR ${DEPENDS_DIR}/linux/${USERSPACE_PREFIX}/build)
 
         download_dependency(

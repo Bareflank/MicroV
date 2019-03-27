@@ -19,11 +19,12 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#ifndef VMEXIT_CPUID_INTEL_X64_BOXY_H
-#define VMEXIT_CPUID_INTEL_X64_BOXY_H
+#ifndef EMULATION_MTRR_INTEL_X64_BOXY_H
+#define EMULATION_MTRR_INTEL_X64_BOXY_H
 
 #include <bfvmm/hve/arch/intel_x64/vcpu.h>
-#include <bfvmm/hve/arch/intel_x64/vmexit/cpuid.h>
+#include <bfvmm/hve/arch/intel_x64/vmexit/rdmsr.h>
+#include <bfvmm/hve/arch/intel_x64/vmexit/wrmsr.h>
 
 // -----------------------------------------------------------------------------
 // Definitions
@@ -34,7 +35,7 @@ namespace boxy::intel_x64
 
 class vcpu;
 
-class cpuid_handler
+class mtrr_handler
 {
 public:
 
@@ -45,7 +46,7 @@ public:
     ///
     /// @param vcpu the vcpu object for this handler
     ///
-    cpuid_handler(
+    mtrr_handler(
         gsl::not_null<vcpu *> vcpu);
 
     /// Destructor
@@ -53,50 +54,45 @@ public:
     /// @expects
     /// @ensures
     ///
-    ~cpuid_handler() = default;
+    ~mtrr_handler() = default;
 
 public:
 
     /// @cond
 
-    bool handle_0x00000000(vcpu_t *vcpu);
-    bool handle_0x00000001(vcpu_t *vcpu);
-    bool handle_0x00000002(vcpu_t *vcpu);
-    bool handle_0x00000004(vcpu_t *vcpu);
-    bool handle_0x00000006(vcpu_t *vcpu);
-    bool handle_0x00000007(vcpu_t *vcpu);
-    bool handle_0x0000000A(vcpu_t *vcpu);
-    bool handle_0x0000000B(vcpu_t *vcpu);
-    bool handle_0x0000000D(vcpu_t *vcpu);
-    bool handle_0x0000000F(vcpu_t *vcpu);
-    bool handle_0x00000010(vcpu_t *vcpu);
-    bool handle_0x00000015(vcpu_t *vcpu);
-    bool handle_0x00000016(vcpu_t *vcpu);
-    bool handle_0x80000000(vcpu_t *vcpu);
-    bool handle_0x80000001(vcpu_t *vcpu);
-    bool handle_0x80000002(vcpu_t *vcpu);
-    bool handle_0x80000003(vcpu_t *vcpu);
-    bool handle_0x80000004(vcpu_t *vcpu);
-    bool handle_0x80000007(vcpu_t *vcpu);
-    bool handle_0x80000008(vcpu_t *vcpu);
-
-    bool handle_0x40000000(vcpu_t *vcpu);
+    bool handle_rdmsr_0x000000FE(
+        vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info);
+    bool handle_wrmsr_0x000000FE(
+        vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info);
+    bool handle_rdmsr_0x00000200(
+        vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info);
+    bool handle_wrmsr_0x00000200(
+        vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info);
+    bool handle_rdmsr_0x00000201(
+        vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info);
+    bool handle_wrmsr_0x00000201(
+        vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info);
+    bool handle_rdmsr_0x000002FF(
+        vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info);
+    bool handle_wrmsr_0x000002FF(
+        vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info);
 
     /// @endcond
 
 private:
 
     vcpu *m_vcpu;
+    uint64_t m_mtrr_def_type{0xC00};
 
 public:
 
     /// @cond
 
-    cpuid_handler(cpuid_handler &&) = default;
-    cpuid_handler &operator=(cpuid_handler &&) = default;
+    mtrr_handler(mtrr_handler &&) = default;
+    mtrr_handler &operator=(mtrr_handler &&) = default;
 
-    cpuid_handler(const cpuid_handler &) = delete;
-    cpuid_handler &operator=(const cpuid_handler &) = delete;
+    mtrr_handler(const mtrr_handler &) = delete;
+    mtrr_handler &operator=(const mtrr_handler &) = delete;
 
     /// @endcond
 };

@@ -23,7 +23,6 @@
 #define DOMAIN_BOXY_H
 
 #include <bftypes.h>
-#include <bfobject.h>
 #include <bfhypercall.h>
 
 // -----------------------------------------------------------------------------
@@ -35,7 +34,7 @@ namespace boxy
 
 /// Domain
 ///
-class domain : public bfobject
+class domain
 {
 public:
 
@@ -65,7 +64,7 @@ public:
     /// @param obj object that can be passed around as needed
     ///     by extensions of Bareflank
     ///
-    VIRTUAL void run(bfobject *obj = nullptr);
+    VIRTUAL void run();
 
     /// Halt
     ///
@@ -75,7 +74,7 @@ public:
     /// @param obj object that can be passed around as needed
     ///     by extensions of Bareflank
     ///
-    VIRTUAL void hlt(bfobject *obj = nullptr);
+    VIRTUAL void hlt();
 
     /// Init vCPU
     ///
@@ -85,7 +84,7 @@ public:
     /// @param obj object that can be passed around as needed
     ///     by extensions of Bareflank
     ///
-    VIRTUAL void init(bfobject *obj = nullptr);
+    VIRTUAL void init();
 
     /// Fini vCPU
     ///
@@ -95,7 +94,7 @@ public:
     /// @param obj object that can be passed around as needed
     ///     by extensions of Bareflank
     ///
-    VIRTUAL void fini(bfobject *obj = nullptr);
+    VIRTUAL void fini();
 
     /// Get ID
     ///

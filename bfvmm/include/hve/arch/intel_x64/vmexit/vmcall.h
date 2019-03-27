@@ -32,17 +32,11 @@ namespace boxy::intel_x64
 {
 
 class vcpu;
+using handler_delegate_t = delegate<bool(vcpu *)>;
 
 class vmcall_handler
 {
 public:
-
-    /// Handler delegate type
-    ///
-    /// The type of delegate clients must use when registering
-    /// handlers
-    ///
-    using handler_delegate_t = delegate<bool(vcpu *)>;
 
     /// Constructor
     ///

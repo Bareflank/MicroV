@@ -25,18 +25,20 @@
 namespace boxy::intel_x64
 {
 
-vmcall_run_op_handler::vmcall_run_op_handler(
+run_op_handler::run_op_handler(
     gsl::not_null<vcpu *> vcpu
 ) :
     m_vcpu{vcpu}
 {
-    using namespace vmcs_n;
+    if (vcpu->is_domU()) {
+        return;
+    }
 
-    vcpu->add_vmcall_handler({&vmcall_run_op_handler::dispatch, this});
+    vcpu->add_vmcall_handler({&run_op_handler::dispatch, this});
 }
 
 bool
-vmcall_run_op_handler::dispatch(vcpu *vcpu)
+run_op_handler::dispatch(vcpu *vcpu)
 {
     // Note:
     //
@@ -52,9 +54,8 @@ vmcall_run_op_handler::dispatch(vcpu *vcpu)
     //   If this happens, a VMCS migration must take place.
     // - This handler should be the first handler to be called. This way, we
     //   do no end up looping through the vmcall handlers on every interrupt.
-    //
 
-    if (bfopcode(vcpu->rax()) != __enum_run_op) {
+    if (bfopcode(vcpu->rax()) != hypercall_enum_run_op) {
         return false;
     }
 
@@ -68,13 +69,21 @@ vmcall_run_op_handler::dispatch(vcpu *vcpu)
 
         if (m_child_vcpu->is_alive()) {
             m_child_vcpu->load();
-            m_child_vcpu->run(&world_switch);
+
+            try {
+                m_child_vcpu->prepare_for_world_switch();
+                m_child_vcpu->run();
+            }
+            catch (...) {
+                vcpu->prepare_for_world_switch();
+                throw;
+            }
         }
 
-        vcpu->set_rax(__enum_run_op__hlt);
+        vcpu->set_rax(hypercall_enum_run_op__hlt);
     }
     catchall({
-        vcpu->set_rax(__enum_run_op__fault);
+        vcpu->set_rax(hypercall_enum_run_op__fault);
     })
 
     return true;

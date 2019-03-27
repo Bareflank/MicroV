@@ -19,6 +19,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+#include <set>
 #include <intrinsics.h>
 
 #include <bfgpalayout.h>
@@ -71,6 +72,12 @@ ept_violation_handler(vcpu_t *vcpu)
 namespace boxy::intel_x64
 {
 
+// TODO:
+//
+// Remove this and use the bfmanager's foreach and check for domU.
+//
+std::set<vcpu *> g_domU_vcpus{};
+
 vcpu::vcpu(
     vcpuid::type id,
     gsl::not_null<domain *> domain
@@ -78,20 +85,23 @@ vcpu::vcpu(
     bfvmm::intel_x64::vcpu{id, domain->global_state()},
     m_domain{domain},
 
-    m_cpuid_handler{this},
     m_external_interrupt_handler{this},
+    m_hlt_handler{this},
     m_io_instruction_handler{this},
     m_msr_handler{this},
-    m_mtrr_handler{this},
+    m_preemption_timer_handler{this},
     m_vmcall_handler{this},
-    m_yield_handler{this},
 
-    m_vmcall_run_op_handler{this},
-    m_vmcall_domain_op_handler{this},
-    m_vmcall_vcpu_op_handler{this},
+    m_run_op_handler{this},
+    m_domain_op_handler{this},
+    m_vcpu_op_handler{this},
 
+    m_cpuid_handler{this},
+    m_mtrr_handler{this},
     m_x2apic_handler{this},
-    m_pci_configuration_space_handler{this}
+
+    m_vclock_handler{this},
+    m_virq_handler{this}
 {
     this->set_eptp(domain->ept());
 
@@ -99,26 +109,19 @@ vcpu::vcpu(
         this->write_dom0_guest_state(domain);
     }
     else {
+        g_domU_vcpus.insert(this);
         this->write_domU_guest_state(domain);
     }
 }
 
-//------------------------------------------------------------------------------
-// Setup
-//------------------------------------------------------------------------------
-
-void
-vcpu::write_dom0_guest_state(domain *domain)
-{ }
-
-void
-vcpu::write_domU_guest_state(domain *domain)
+vcpu::~vcpu()
 {
-    this->setup_default_register_state();
-    this->setup_default_controls();
-    this->setup_default_handlers();
-
-    domain->setup_vcpu_uarts(this);
+    if (this->is_bootstrap_vcpu()) {
+        for (const auto &vcpu : g_domU_vcpus) {
+            vcpu->clear();
+            vcpu->reset_host_wallclock();
+        }
+    }
 }
 
 //------------------------------------------------------------------------------
@@ -126,15 +129,15 @@ vcpu::write_domU_guest_state(domain *domain)
 //------------------------------------------------------------------------------
 
 bool
-vcpu::is_dom0() const
+vcpu::is_dom0() const noexcept
 { return m_domain->id() == 0; }
 
 bool
-vcpu::is_domU() const
+vcpu::is_domU() const noexcept
 { return m_domain->id() != 0; }
 
 domain::domainid_type
-vcpu::domid() const
+vcpu::domid() const noexcept
 { return m_domain->id(); }
 
 //------------------------------------------------------------------------------
@@ -142,9 +145,28 @@ vcpu::domid() const
 //------------------------------------------------------------------------------
 
 void
-vcpu::add_vmcall_handler(
-    const vmcall_handler::handler_delegate_t &d)
+vcpu::add_vmcall_handler(const handler_delegate_t &d)
 { m_vmcall_handler.add_handler(std::move(d)); }
+
+//------------------------------------------------------------------------------
+// Hlt
+//------------------------------------------------------------------------------
+
+void
+vcpu::add_hlt_handler(const handler_delegate_t &d)
+{ m_hlt_handler.add_hlt_handler(d); }
+
+void
+vcpu::add_yield_handler(const handler_delegate_t &d)
+{ m_hlt_handler.add_yield_handler(d); }
+
+//------------------------------------------------------------------------------
+// Preemption Timer
+//------------------------------------------------------------------------------
+
+void
+vcpu::add_preemption_timer_handler(const handler_delegate_t &d)
+{ m_preemption_timer_handler.add_handler(d); }
 
 //------------------------------------------------------------------------------
 // Parent vCPU
@@ -155,52 +177,92 @@ vcpu::set_parent_vcpu(gsl::not_null<vcpu *> vcpu)
 { m_parent_vcpu = vcpu; }
 
 vcpu *
-vcpu::parent_vcpu() const
+vcpu::parent_vcpu() const noexcept
 { return m_parent_vcpu; }
 
 void
-vcpu::return_hlt()
-{
-    this->set_rax(__enum_run_op__hlt);
-    this->run(&world_switch);
-}
+vcpu::prepare_for_world_switch()
+{ m_msr_handler.isolate_msr__on_world_switch(this); }
 
 void
 vcpu::return_fault(uint64_t error)
 {
-    this->set_rax((error << 4) | __enum_run_op__fault);
-    this->run(&world_switch);
+    this->set_rax((error << 4) | hypercall_enum_run_op__fault);
+    this->prepare_for_world_switch();
+    this->run();
 }
 
 void
-vcpu::return_resume_after_interrupt()
+vcpu::return_continue()
 {
-    this->set_rax(__enum_run_op__resume_after_interrupt);
-    this->run(&world_switch);
+    this->set_rax(hypercall_enum_run_op__continue);
+    this->prepare_for_world_switch();
+    this->run();
 }
 
 void
-vcpu::return_yield(uint64_t usec)
+vcpu::return_yield(uint64_t nsec)
 {
-    this->set_rax((usec << 4) | __enum_run_op__yield);
-    this->run(&world_switch);
+    this->set_rax((nsec << 4) | hypercall_enum_run_op__yield);
+    this->prepare_for_world_switch();
+    this->run();
+}
+
+void
+vcpu::return_set_wallclock()
+{
+    this->set_rax(hypercall_enum_run_op__set_wallclock);
+    this->prepare_for_world_switch();
+    this->run();
 }
 
 //------------------------------------------------------------------------------
 // Control
 //------------------------------------------------------------------------------
 
+void
+vcpu::kill() noexcept
+{ m_killed = true; }
+
 bool
-vcpu::is_alive() const
+vcpu::is_alive() const noexcept
 { return !m_killed; }
 
 bool
-vcpu::is_killed() const
+vcpu::is_killed() const noexcept
 { return m_killed; }
 
+//------------------------------------------------------------------------------
+// Virtual IRQs
+//------------------------------------------------------------------------------
+
 void
-vcpu::kill()
-{ m_killed = true; }
+vcpu::queue_virtual_interrupt(uint64_t vector)
+{ m_virq_handler.queue_virtual_interrupt(vector); }
+
+void
+vcpu::inject_virtual_interrupt(uint64_t vector)
+{ m_virq_handler.inject_virtual_interrupt(vector); }
+
+//------------------------------------------------------------------------------
+// Virtual Clock
+//------------------------------------------------------------------------------
+
+void
+vcpu::set_host_wallclock_rtc(uint64_t sec, uint64_t nsec) noexcept
+{ m_vclock_handler.set_host_wallclock_rtc(sec, nsec); }
+
+void
+vcpu::set_host_wallclock_tsc(uint64_t val) noexcept
+{ m_vclock_handler.set_host_wallclock_tsc(val); }
+
+void
+vcpu::reset_host_wallclock(void) noexcept
+{ m_vclock_handler.reset_host_wallclock(); }
+
+std::pair<struct timespec, uint64_t>
+vcpu::get_host_wallclock() const
+{ return m_vclock_handler.get_host_wallclock(); }
 
 //------------------------------------------------------------------------------
 // Fault
@@ -217,8 +279,14 @@ vcpu::halt(const std::string &str)
         bferror_info(0, "child vcpu being killed");
         bferror_lnbr(0);
 
-        parent_vcpu->load();
-        parent_vcpu->return_fault();
+        try {
+            parent_vcpu->load();
+            parent_vcpu->return_fault();
+        }
+        catch (...) {
+            bferror_info(0, "attempt to kill child failed!!!");
+            ::x64::pm::stop();
+        }
     }
     else {
         ::x64::pm::stop();
@@ -226,47 +294,21 @@ vcpu::halt(const std::string &str)
 }
 
 //------------------------------------------------------------------------------
-// APIC
-//------------------------------------------------------------------------------
-
-uint8_t
-vcpu::apic_timer_vector()
-{ return m_x2apic_handler.timer_vector(); }
-
-//------------------------------------------------------------------------------
 // Setup Functions
 //------------------------------------------------------------------------------
 
 void
-vcpu::setup_default_controls()
-{
-    using namespace vmcs_n;
-    using namespace vm_entry_controls;
-
-    if (guest_ia32_efer::lme::is_disabled()) {
-        ia_32e_mode_guest::disable();
-    }
-
-    using namespace primary_processor_based_vm_execution_controls;
-    hlt_exiting::enable();
-    mwait_exiting::enable();
-    rdpmc_exiting::enable();
-    monitor_exiting::enable();
-
-    using namespace secondary_processor_based_vm_execution_controls;
-    enable_invpcid::disable();
-    enable_xsaves_xrstors::disable();
-}
+vcpu::write_dom0_guest_state(domain *domain)
+{ bfignored(domain); }
 
 void
-vcpu::setup_default_handlers()
+vcpu::write_domU_guest_state(domain *domain)
 {
-    this->add_default_wrmsr_handler(::wrmsr_handler);
-    this->add_default_rdmsr_handler(::rdmsr_handler);
-    this->add_default_io_instruction_handler(::io_instruction_handler);
-    this->add_default_ept_read_violation_handler(::ept_violation_handler);
-    this->add_default_ept_write_violation_handler(::ept_violation_handler);
-    this->add_default_ept_execute_violation_handler(::ept_violation_handler);
+    this->setup_default_register_state();
+    this->setup_default_controls();
+    this->setup_default_handlers();
+
+    domain->setup_vcpu_uarts(this);
 }
 
 void
@@ -336,6 +378,39 @@ vcpu::setup_default_register_state()
 
     guest_rflags::set(2);
     vmcs_link_pointer::set(0xFFFFFFFFFFFFFFFF);
+}
+
+void
+vcpu::setup_default_controls()
+{
+    using namespace vmcs_n;
+    using namespace vm_entry_controls;
+
+    if (guest_ia32_efer::lme::is_disabled()) {
+        ia_32e_mode_guest::disable();
+    }
+
+    using namespace primary_processor_based_vm_execution_controls;
+    hlt_exiting::enable();
+    mwait_exiting::enable();
+    rdpmc_exiting::enable();
+    monitor_exiting::enable();
+    use_tsc_offsetting::enable();
+
+    using namespace secondary_processor_based_vm_execution_controls;
+    enable_invpcid::disable();
+    enable_xsaves_xrstors::disable();
+}
+
+void
+vcpu::setup_default_handlers()
+{
+    this->add_default_wrmsr_handler(::wrmsr_handler);
+    this->add_default_rdmsr_handler(::rdmsr_handler);
+    this->add_default_io_instruction_handler(::io_instruction_handler);
+    this->add_default_ept_read_violation_handler(::ept_violation_handler);
+    this->add_default_ept_write_violation_handler(::ept_violation_handler);
+    this->add_default_ept_execute_violation_handler(::ept_violation_handler);
 }
 
 }

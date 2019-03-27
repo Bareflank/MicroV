@@ -21,8 +21,6 @@
  */
 
 #include <bootparams.h>
-
-#include <acpi.h>
 #include <common.h>
 
 #include <bfack.h>
@@ -47,7 +45,6 @@ struct vm_t {
     uint64_t domainid;
 
     void *bios_ram;
-    void *zero_page;
 
     struct boot_params *params;
     char *cmdline;
@@ -56,12 +53,6 @@ struct vm_t {
 
     char *addr;
     uint64_t size;
-
-    struct rsdp_t *rsdp;
-    struct xsdt_t *xsdt;
-    struct madt_t *madt;
-    struct fadt_t *fadt;
-    struct dsdt_t *dsdt;
 
     int used;
 };
@@ -135,19 +126,19 @@ done:
 /* -------------------------------------------------------------------------- */
 
 int64_t
-add_e820_entry(void *vm, uint64_t saddr, uint64_t eaddr, uint32_t type)
+add_e820_entry(void *ptr, uint64_t saddr, uint64_t eaddr, uint32_t type)
 {
-    struct vm_t *_vm = (struct vm_t *)vm;
+    struct vm_t *vm = (struct vm_t *)ptr;
 
-    if (_vm->params->e820_entries >= E820_MAX_ENTRIES_ZEROPAGE) {
+    if (vm->params->e820_entries >= E820_MAX_ENTRIES_ZEROPAGE) {
         BFDEBUG("add_e820_entry: E820_MAX_ENTRIES_ZEROPAGE reached\n");
         return FAILURE;
     }
 
-    _vm->params->e820_table[_vm->params->e820_entries].addr = saddr;
-    _vm->params->e820_table[_vm->params->e820_entries].size = eaddr - saddr;
-    _vm->params->e820_table[_vm->params->e820_entries].type = type;
-    _vm->params->e820_entries++;
+    vm->params->e820_table[vm->params->e820_entries].addr = saddr;
+    vm->params->e820_table[vm->params->e820_entries].size = eaddr - saddr;
+    vm->params->e820_table[vm->params->e820_entries].type = type;
+    vm->params->e820_entries++;
 
     return SUCCESS;
 }
@@ -163,9 +154,9 @@ donate_page_r(
     status_t ret = SUCCESS;
     uint64_t gpa = (uint64_t)platform_virt_to_phys(gva);
 
-    ret = __domain_op__donate_page_r(vm->domainid, gpa, domain_gpa);
+    ret = hypercall_domain_op__donate_page_r(vm->domainid, gpa, domain_gpa);
     if (ret != SUCCESS) {
-        BFDEBUG("donate_page: __domain_op__donate_page_r failed\n");
+        BFDEBUG("donate_page: hypercall_domain_op__donate_page_r failed\n");
         return ret;
     }
 
@@ -179,9 +170,9 @@ donate_page_rw(
     status_t ret = SUCCESS;
     uint64_t gpa = (uint64_t)platform_virt_to_phys(gva);
 
-    ret = __domain_op__donate_page_rw(vm->domainid, gpa, domain_gpa);
+    ret = hypercall_domain_op__donate_page_rw(vm->domainid, gpa, domain_gpa);
     if (ret != SUCCESS) {
-        BFDEBUG("donate_page: __domain_op__donate_page_rw failed\n");
+        BFDEBUG("donate_page: hypercall_domain_op__donate_page_rw failed\n");
         return ret;
     }
 
@@ -195,9 +186,9 @@ donate_page_rwe(
     status_t ret = SUCCESS;
     uint64_t gpa = (uint64_t)platform_virt_to_phys(gva);
 
-    ret = __domain_op__donate_page_rwe(vm->domainid, gpa, domain_gpa);
+    ret = hypercall_domain_op__donate_page_rwe(vm->domainid, gpa, domain_gpa);
     if (ret != SUCCESS) {
-        BFDEBUG("donate_page: __domain_op__donate_page_rwe failed\n");
+        BFDEBUG("donate_page: hypercall_domain_op__donate_page_rwe failed\n");
         return ret;
     }
 
@@ -221,23 +212,6 @@ donate_buffer(
     return SUCCESS;
 }
 
-static status_t
-donate_page_to_page_range(
-    struct vm_t *vm, void *gva, uint64_t domain_gpa, uint64_t size)
-{
-    uint64_t i;
-    status_t ret = SUCCESS;
-
-    for (i = 0; i < size; i += BAREFLANK_PAGE_SIZE) {
-        ret = donate_page_r(vm, gva, domain_gpa + i);
-        if (ret != SUCCESS) {
-            return ret;
-        }
-    }
-
-    return SUCCESS;
-}
-
 /* -------------------------------------------------------------------------- */
 /* UART                                                                       */
 /* -------------------------------------------------------------------------- */
@@ -249,9 +223,9 @@ setup_uart(
     status_t ret = SUCCESS;
 
     if (uart != 0) {
-        ret = __domain_op__set_uart(vm->domainid, uart);
+        ret = hypercall_domain_op__set_uart(vm->domainid, uart);
         if (ret != SUCCESS) {
-            BFDEBUG("donate_page: __domain_op__set_uart failed\n");
+            BFDEBUG("donate_page: hypercall_domain_op__set_uart failed\n");
             return ret;
         }
     }
@@ -266,9 +240,9 @@ setup_pt_uart(
     status_t ret = SUCCESS;
 
     if (uart != 0) {
-        ret = __domain_op__set_pt_uart(vm->domainid, uart);
+        ret = hypercall_domain_op__set_pt_uart(vm->domainid, uart);
         if (ret != SUCCESS) {
-            BFDEBUG("donate_page: __domain_op__set_pt_uart failed\n");
+            BFDEBUG("donate_page: hypercall_domain_op__set_pt_uart failed\n");
             return ret;
         }
     }
@@ -309,75 +283,6 @@ setup_cmdline(struct vm_t *vm, struct create_vm_from_bzimage_args *args)
 }
 
 static status_t
-setup_acpi(struct vm_t *vm)
-{
-    status_t ret = SUCCESS;
-
-    vm->rsdp = bfalloc_page(struct rsdp_t);
-    if (vm->rsdp == 0) {
-        BFDEBUG("setup_acpi: failed to alloc rsdp page\n");
-        return FAILURE;
-    }
-
-    vm->xsdt = bfalloc_page(struct xsdt_t);
-    if (vm->xsdt == 0) {
-        BFDEBUG("setup_acpi: failed to alloc xsdt page\n");
-        return FAILURE;
-    }
-
-    vm->madt = bfalloc_page(struct madt_t);
-    if (vm->madt == 0) {
-        BFDEBUG("setup_acpi: failed to alloc madt page\n");
-        return FAILURE;
-    }
-
-    vm->fadt = bfalloc_page(struct fadt_t);
-    if (vm->fadt == 0) {
-        BFDEBUG("setup_acpi: failed to alloc fadt page\n");
-        return FAILURE;
-    }
-
-    vm->dsdt = bfalloc_page(struct dsdt_t);
-    if (vm->dsdt == 0) {
-        BFDEBUG("setup_acpi: failed to alloc dsdt page\n");
-        return FAILURE;
-    }
-
-    ret = donate_page_r(vm, vm->rsdp, ACPI_RSDP_GPA);
-    if (ret != SUCCESS) {
-        return ret;
-    }
-
-    ret = donate_page_r(vm, vm->xsdt, ACPI_XSDT_GPA);
-    if (ret != SUCCESS) {
-        return ret;
-    }
-
-    ret = donate_page_r(vm, vm->madt, ACPI_MADT_GPA);
-    if (ret != SUCCESS) {
-        return ret;
-    }
-
-    ret = donate_page_r(vm, vm->fadt, ACPI_FADT_GPA);
-    if (ret != SUCCESS) {
-        return ret;
-    }
-
-    ret = donate_page_r(vm, vm->dsdt, ACPI_DSDT_GPA);
-    if (ret != SUCCESS) {
-        return ret;
-    }
-
-    setup_rsdp(vm->rsdp);
-    setup_xsdt(vm->xsdt);
-    setup_madt(vm->madt);
-    setup_fadt(vm->fadt);
-    setup_dsdt(vm->dsdt);
-
-    return SUCCESS;
-}
-
-static status_t
 setup_boot_params(
     struct vm_t *vm, struct create_vm_from_bzimage_args *args, const struct setup_header *hdr)
 {
@@ -400,11 +305,6 @@ setup_boot_params(
     }
 
     ret = setup_cmdline(vm, args);
-    if (ret != SUCCESS) {
-        return ret;
-    }
-
-    ret = setup_acpi(vm);
     if (ret != SUCCESS) {
         return ret;
     }
@@ -576,40 +476,6 @@ setup_bios_ram(struct vm_t *vm)
     return SUCCESS;
 }
 
-static status_t
-setup_reserved_free(struct vm_t *vm)
-{
-    status_t ret = SUCCESS;
-
-    /**
-     * We are not required to map in reserved ranges, only RAM ranges. The
-     * problem is the Linux kernel will attempt to scan these ranges for
-     * BIOS specific data structures like the MP tables, ACPI, etc... For this
-     * reason we map in all of the reserved ranges in the first 1mb of
-     * memory
-     */
-
-    vm->zero_page = bfalloc_page(void);
-    if (vm->zero_page == 0) {
-        BFDEBUG("setup_reserved_free: failed to alloc zero page\n");
-        return FAILURE;
-    }
-
-    ret = donate_page_to_page_range(
-        vm, vm->zero_page, RESERVED1_ADRR, RESERVED1_SIZE);
-    if (ret != SUCCESS) {
-        return ret;
-    }
-
-    ret = donate_page_to_page_range(
-        vm, vm->zero_page, RESERVED2_ADRR, RESERVED2_SIZE);
-    if (ret != SUCCESS) {
-        return ret;
-    }
-
-    return SUCCESS;
-}
-
 /* -------------------------------------------------------------------------- */
 /* Initial Register State                                                     */
 /* -------------------------------------------------------------------------- */
@@ -665,57 +531,57 @@ setup_32bit_register_state(struct vm_t *vm)
 
     status_t ret = SUCCESS;
 
-    ret |= __domain_op__set_rip(vm->domainid, 0x100000);
-    ret |= __domain_op__set_rsi(vm->domainid, BOOT_PARAMS_PAGE_GPA);
+    ret |= hypercall_domain_op__set_rip(vm->domainid, 0x100000);
+    ret |= hypercall_domain_op__set_rsi(vm->domainid, BOOT_PARAMS_PAGE_GPA);
 
-    ret |= __domain_op__set_gdt_base(vm->domainid, INITIAL_GDT_GPA);
-    ret |= __domain_op__set_gdt_limit(vm->domainid, 32);
+    ret |= hypercall_domain_op__set_gdt_base(vm->domainid, INITIAL_GDT_GPA);
+    ret |= hypercall_domain_op__set_gdt_limit(vm->domainid, 32);
 
-    ret |= __domain_op__set_cr0(vm->domainid, 0x10037);
-    ret |= __domain_op__set_cr3(vm->domainid, 0x0);
-    ret |= __domain_op__set_cr4(vm->domainid, 0x02000);
+    ret |= hypercall_domain_op__set_cr0(vm->domainid, 0x10037);
+    ret |= hypercall_domain_op__set_cr3(vm->domainid, 0x0);
+    ret |= hypercall_domain_op__set_cr4(vm->domainid, 0x02000);
 
-    ret |= __domain_op__set_es_selector(vm->domainid, 0x18);
-    ret |= __domain_op__set_es_base(vm->domainid, 0x0);
-    ret |= __domain_op__set_es_limit(vm->domainid, 0xFFFFFFFF);
-    ret |= __domain_op__set_es_access_rights(vm->domainid, 0xc093);
+    ret |= hypercall_domain_op__set_es_selector(vm->domainid, 0x18);
+    ret |= hypercall_domain_op__set_es_base(vm->domainid, 0x0);
+    ret |= hypercall_domain_op__set_es_limit(vm->domainid, 0xFFFFFFFF);
+    ret |= hypercall_domain_op__set_es_access_rights(vm->domainid, 0xc093);
 
-    ret |= __domain_op__set_cs_selector(vm->domainid, 0x10);
-    ret |= __domain_op__set_cs_base(vm->domainid, 0x0);
-    ret |= __domain_op__set_cs_limit(vm->domainid, 0xFFFFFFFF);
-    ret |= __domain_op__set_cs_access_rights(vm->domainid, 0xc09b);
+    ret |= hypercall_domain_op__set_cs_selector(vm->domainid, 0x10);
+    ret |= hypercall_domain_op__set_cs_base(vm->domainid, 0x0);
+    ret |= hypercall_domain_op__set_cs_limit(vm->domainid, 0xFFFFFFFF);
+    ret |= hypercall_domain_op__set_cs_access_rights(vm->domainid, 0xc09b);
 
-    ret |= __domain_op__set_ss_selector(vm->domainid, 0x18);
-    ret |= __domain_op__set_ss_base(vm->domainid, 0x0);
-    ret |= __domain_op__set_ss_limit(vm->domainid, 0xFFFFFFFF);
-    ret |= __domain_op__set_ss_access_rights(vm->domainid, 0xc093);
+    ret |= hypercall_domain_op__set_ss_selector(vm->domainid, 0x18);
+    ret |= hypercall_domain_op__set_ss_base(vm->domainid, 0x0);
+    ret |= hypercall_domain_op__set_ss_limit(vm->domainid, 0xFFFFFFFF);
+    ret |= hypercall_domain_op__set_ss_access_rights(vm->domainid, 0xc093);
 
-    ret |= __domain_op__set_ds_selector(vm->domainid, 0x18);
-    ret |= __domain_op__set_ds_base(vm->domainid, 0x0);
-    ret |= __domain_op__set_ds_limit(vm->domainid, 0xFFFFFFFF);
-    ret |= __domain_op__set_ds_access_rights(vm->domainid, 0xc093);
+    ret |= hypercall_domain_op__set_ds_selector(vm->domainid, 0x18);
+    ret |= hypercall_domain_op__set_ds_base(vm->domainid, 0x0);
+    ret |= hypercall_domain_op__set_ds_limit(vm->domainid, 0xFFFFFFFF);
+    ret |= hypercall_domain_op__set_ds_access_rights(vm->domainid, 0xc093);
 
-    ret |= __domain_op__set_fs_selector(vm->domainid, 0x0);
-    ret |= __domain_op__set_fs_base(vm->domainid, 0x0);
-    ret |= __domain_op__set_fs_limit(vm->domainid, 0x0);
-    ret |= __domain_op__set_fs_access_rights(vm->domainid, 0x10000);
+    ret |= hypercall_domain_op__set_fs_selector(vm->domainid, 0x0);
+    ret |= hypercall_domain_op__set_fs_base(vm->domainid, 0x0);
+    ret |= hypercall_domain_op__set_fs_limit(vm->domainid, 0x0);
+    ret |= hypercall_domain_op__set_fs_access_rights(vm->domainid, 0x10000);
 
-    ret |= __domain_op__set_gs_selector(vm->domainid, 0x0);
-    ret |= __domain_op__set_gs_base(vm->domainid, 0x0);
-    ret |= __domain_op__set_gs_limit(vm->domainid, 0x0);
-    ret |= __domain_op__set_gs_access_rights(vm->domainid, 0x10000);
+    ret |= hypercall_domain_op__set_gs_selector(vm->domainid, 0x0);
+    ret |= hypercall_domain_op__set_gs_base(vm->domainid, 0x0);
+    ret |= hypercall_domain_op__set_gs_limit(vm->domainid, 0x0);
+    ret |= hypercall_domain_op__set_gs_access_rights(vm->domainid, 0x10000);
 
-    ret |= __domain_op__set_tr_selector(vm->domainid, 0x0);
-    ret |= __domain_op__set_tr_base(vm->domainid, 0x0);
-    ret |= __domain_op__set_tr_limit(vm->domainid, 0x0);
-    ret |= __domain_op__set_tr_access_rights(vm->domainid, 0x008b);
+    ret |= hypercall_domain_op__set_tr_selector(vm->domainid, 0x0);
+    ret |= hypercall_domain_op__set_tr_base(vm->domainid, 0x0);
+    ret |= hypercall_domain_op__set_tr_limit(vm->domainid, 0x0);
+    ret |= hypercall_domain_op__set_tr_access_rights(vm->domainid, 0x008b);
 
-    ret |= __domain_op__set_ldtr_selector(vm->domainid, 0x0);
-    ret |= __domain_op__set_ldtr_base(vm->domainid, 0x0);
-    ret |= __domain_op__set_ldtr_limit(vm->domainid, 0x0);
-    ret |= __domain_op__set_ldtr_access_rights(vm->domainid, 0x10000);
+    ret |= hypercall_domain_op__set_ldtr_selector(vm->domainid, 0x0);
+    ret |= hypercall_domain_op__set_ldtr_base(vm->domainid, 0x0);
+    ret |= hypercall_domain_op__set_ldtr_limit(vm->domainid, 0x0);
+    ret |= hypercall_domain_op__set_ldtr_access_rights(vm->domainid, 0x10000);
 
-    ret |= __domain_op__set_ia32_pat(vm->domainid, 0x0606060606060606);
+    ret |= hypercall_domain_op__set_ia32_pat(vm->domainid, 0x0606060606060606);
 
     if (ret != SUCCESS) {
         BFDEBUG("setup_entry: setup_32bit_register_state failed\n");
@@ -747,7 +613,7 @@ common_create_vm_from_bzimage(
         return COMMON_NO_HYPERVISOR;
     }
 
-    vm->domainid = __domain_op__create_domain();
+    vm->domainid = hypercall_domain_op__create_domain();
     if (vm->domainid == INVALID_DOMAINID) {
         BFDEBUG("__domain_op__create_domain failed\n");
         return COMMON_CREATE_VM_FROM_BZIMAGE_FAILED;
@@ -759,11 +625,6 @@ common_create_vm_from_bzimage(
     }
 
     ret = setup_bios_ram(vm);
-    if (ret != SUCCESS) {
-        return ret;
-    }
-
-    ret = setup_reserved_free(vm);
     if (ret != SUCCESS) {
         return ret;
     }
@@ -797,22 +658,16 @@ common_destroy(uint64_t domainid)
         return COMMON_NO_HYPERVISOR;
     }
 
-    ret = __domain_op__destroy_domain(vm->domainid);
+    ret = hypercall_domain_op__destroy_domain(vm->domainid);
     if (ret != SUCCESS) {
         BFDEBUG("__domain_op__destroy_domain failed\n");
         return ret;
     }
 
     platform_free_rw(vm->bios_ram, BIOS_RAM_SIZE);
-    platform_free_rw(vm->zero_page, BAREFLANK_PAGE_SIZE);
     platform_free_rw(vm->params, BAREFLANK_PAGE_SIZE);
     platform_free_rw(vm->cmdline, BAREFLANK_PAGE_SIZE);
     platform_free_rw(vm->gdt, BAREFLANK_PAGE_SIZE);
-    platform_free_rw(vm->rsdp, BAREFLANK_PAGE_SIZE);
-    platform_free_rw(vm->xsdt, BAREFLANK_PAGE_SIZE);
-    platform_free_rw(vm->madt, BAREFLANK_PAGE_SIZE);
-    platform_free_rw(vm->fadt, BAREFLANK_PAGE_SIZE);
-    platform_free_rw(vm->dsdt, BAREFLANK_PAGE_SIZE);
     platform_free_rw(vm->addr, vm->size);
 
     release_vm(vm);

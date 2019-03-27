@@ -32,7 +32,11 @@ target_link_libraries(init PRIVATE bflinux)
 add_custom_command(
     TARGET init POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E make_directory ${PREFIXES_DIR}/initrd/
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${PREFIXES_DIR}/initrd/dev
     COMMAND ${CMAKE_COMMAND} -E make_directory ${PREFIXES_DIR}/initrd/sbin
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${PREFIXES_DIR}/initrd/proc
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${PREFIXES_DIR}/initrd/etc
+    COMMAND ${CMAKE_COMMAND} -E copy /etc/localtime ${PREFIXES_DIR}/initrd/etc/localtime
     COMMAND ${CMAKE_COMMAND} -E copy init ${PREFIXES_DIR}/initrd/sbin/
     COMMAND ${CMAKE_COMMAND} -E chdir ${PREFIXES_DIR}/initrd/ bash ${BOXY_SOURCE_ROOT_DIR}/bflinux/build.sh
     VERBATIM
