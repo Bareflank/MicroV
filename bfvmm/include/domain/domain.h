@@ -27,22 +27,6 @@
 #include <bfhypercall.h>
 
 // -----------------------------------------------------------------------------
-// Exports
-// -----------------------------------------------------------------------------
-
-#include <bfexports.h>
-
-#ifndef STATIC_BOXY_DOMAIN
-#ifdef SHARED_BOXY_DOMAIN
-#define EXPORT_BOXY_DOMAIN EXPORT_SYM
-#else
-#define EXPORT_BOXY_DOMAIN IMPORT_SYM
-#endif
-#else
-#define EXPORT_BOXY_DOMAIN
-#endif
-
-// -----------------------------------------------------------------------------
 // Definitions
 // -----------------------------------------------------------------------------
 
@@ -51,7 +35,7 @@ namespace boxy
 
 /// Domain
 ///
-class EXPORT_BOXY_DOMAIN domain : public bfobject
+class domain : public bfobject
 {
 public:
 

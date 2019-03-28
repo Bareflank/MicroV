@@ -19,22 +19,12 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-list(APPEND SOURCES
-    domain.cpp
+add_library(boxy_domain domain.cpp)
+
+target_link_libraries(boxy_domain PUBLIC vmm::bfvmm)
+target_include_directories(boxy_domain PUBLIC
+    $<${BUILD_INCLUDE}:${PROJECT_SOURCE_DIR}/include>
+    $<${BUILD_INCLUDE}:${PROJECT_SOURCE_DIR}/../bfsdk/include>
 )
 
-add_shared_library(
-    boxy_domain
-    SOURCES ${SOURCES}
-    DEFINES SHARED_BOXY_DOMAIN
-    DEFINES SHARED_MEMORY_MANAGER
-    DEFINES SHARED_INTRINSICS
-)
-
-add_static_library(
-    boxy_domain
-    SOURCES ${SOURCES}
-    DEFINES STATIC_BOXY_DOMAIN
-    DEFINES STATIC_MEMORY_MANAGER
-    DEFINES STATIC_INTRINSICS
-)
+install(TARGETS boxy_domain DESTINATION lib EXPORT boxy_bfvmm-vmm-targets)
