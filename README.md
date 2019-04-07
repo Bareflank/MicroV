@@ -1,6 +1,22 @@
-# Boxy Hypervisor
+<p align="center">
+  <img src="https://github.com/Bareflank/boxy/raw/master/docs/boxy_logo.png" width="300">
+</p>
 
-### Project Goals:
+<br>
+
+[![GitHub version](https://badge.fury.io/gh/bareflank%2Fboxy.svg)](https://badge.fury.io/gh/bareflank%2Fboxy)
+[![Build Status](https://travis-ci.org/Bareflank/boxy.svg?branch=master)](https://travis-ci.org/Bareflank/boxy)
+[![Codacy Badge](https://api.codacy.com/project/badge/Grade/d7cbb095527c43e09e775f58912cd5fd)](https://www.codacy.com/app/rianquinn/boxy?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=Bareflank/boxy&amp;utm_campaign=Badge_Grade)
+[![CII Best Practices](https://bestpractices.coreinfrastructure.org/projects/325/badge)](https://bestpractices.coreinfrastructure.org/projects/325)
+[![Join the chat at https://gitter.im/Bareflank-hypervisor/Lobby](https://badges.gitter.im/Bareflank-hypervisor/Lobby.svg)](https://gitter.im/Bareflank-hypervisor/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+
+## Description
+
+The Boxy Hypervisor is an open source hypervisor led by Assured Information Security, Inc. (AIS), 
+that provides support for custom, lightweight Linux and Unikernel virtual machines on any platform
+including Windows, Linux and UEFI. 
+
+## Project Goals:
 
 - **Intuitive, User-Friendly Interfaces:** Most of the open source hypervisors
   available today are difficult to set up, configure and use. The #1 goal of
@@ -69,63 +85,65 @@ somewhere by supporting the following use cases on Windows and Linux hosts:
   the host while being capable of protecting the Service VM from the host
   (and vice versa). This means that Boxy can be used to do things like execute
   your system's anti-virus in a Service VM instead of directly on the host
-  where malware could potentially turn it off.
+  where malware could potentially turn it off. Another example would be to 
+  leverage Boxy to execute critical software in an isolated environment including 
+  things like automotive, healthcare and critical infrastructure software. 
+  To support this goal, Boxy leverages as much automated testing as possible. 
   
 - **Introspection/Reverse Engineering:** One specific use case for a Service VM
   is introspection and reverse engineering. Specifically, we aim to provide a 
   simple environment for executing LibVMI in a Service VM with the ability to 
   safely introspect and reverse engineer the host OS (both Windows and Linux). 
 
-- **Web Servers:** Another specific use case for a Service VM that we aim to 
-  support in version 1 are web servers. Specifically providing the ability to 
-  execute several, headless webservers simultaniously on a single machine. 
+- **Web Services:** Another specific use case for a Service VM that we aim to 
+  support in version 1 are web services. Specifically providing the ability to 
+  execute several, headless web services simultaniously on a single machine. 
   
 There are several other use cases that we would like to support with Boxy in 
 future versions like full Windows guest support, Containerization, and 
 of course Cloud Computing, but for now the above use cases are our primary focus
 until version 1 is complete. 
 
-### Tasking
+## Virtualization vs Emuulation
 
-- Bareflank
-    - [X] (N) MIT license change
-    - [ ] (C++) Removal of shared library support (Rian Quinn)
-    - [X] (C++) Merge EAPIs with Base hypervisor
-    - [X] (N) Re-brand
+One question that comes up a lot is the difference between virtualization and 
+emulation. In general, there are three ways in which you can talk to a 
+physical piece of hardware.
 
-- Extended APIs
-    - [ ] (C++) Complete microcode update logic
-    - [x] (C) Windows sleep support
-    - [x] (C) Linux sleep support
-    - [ ] (C) EFI sleep support
-
-- Linux Guest Support
-    - [X] (C) bootparam mods
-    - [X] (C++) emulated x2APIC
-
-- PV Interface
-    - [ ] (C) PV console front
-    - [ ] (C++) PV console back
-    - [ ] (C) PV block front (Rian Quinn)
-    - [ ] (C++) PV block back (Rian Quinn)
-    - [ ] (C) PV network front
-    - [ ] (C++) PV network back
-
-- GUI / Cmdline
-    - [ ] (N) Map out all supported configuration options
-    - [ ] (N) Create, configure, delete VMs
-    - [ ] (N) Start, stop VMs
-    - [ ] (N) Terminal interface for each VM
-    - [ ] (N) Windowed view vs Tabbed view
-    - [ ] (N) Construct VM filesystem
-
-- Signing
-    - [ ] (N) Sign Windows drivers
-    - [ ] (N) Sign Linux drivers
-    - [ ] (N) Sign EFI applications
-    - [ ] (N) Get Shim approved by Microsoft
-
-- Branding
-    - [ ] (N) Logo
-    - [ ] (N) Website
-    - [ ] (N) YouTube Tutorials (Rian Quinn)
+- Directly: This is the best way to talk to hardware. In hypervisor environments, 
+  this is usually done using an IOMMU (also called PCI Passthrough). The issue
+  with this approach is that a single VM owns a physical piece of hardware (i.e. 
+  the hardware is not shared). 
+- Emulation: One way to share a physical device is to provide each virtual 
+  machine with an emulated device. Emulation mimics a real, physical device in 
+  software. Access to the emulated device can then be multiplexed onto a 
+  single physical device by the hardware. QEMU is often used to provide this 
+  emulation in existing open source hypervisors. The problem with emulation is 
+  that the hardware devices being emulated often contain interfaces that are 
+  not easy or performant to emulate in software. For example, these interface 
+  might make heavy use of Port IO and Memory Mapped IO, both of which are 
+  slow and prone to error when emulating in software. This type of hardware 
+  also often contains timing constraints in the interface designs that are 
+  even more difficult to ensure in software, especially when interactions 
+  with the emulated software can be preempted by another virtual machine. 
+- Virtualization: Aother way to share a physical device is to create virtual 
+  devices. Virtual devices do not mimic real hardware and instead create a 
+  brand new, software defined virtual device with an interface that is designed 
+  specifically to be performance and reliable in virtual environments.
+  Virtualization should always be used in place of emulation when possible. The 
+  biggest issue with virtualization is most operating systems do not come 
+  pre-packaged with support for virtual devices. Although emaultion is slow and
+  unreliable, most operating systems come pre-packaged with the device drivers 
+  needed to communicate with the device being emulated meaning unmodified versions 
+  of the OS can be used. 
+  
+Our goal with this project is to limit our use of emulation as much as possible. 
+For Linux, this is simple as Linux can be modified to support our virtual devices,
+similar to how Xen and KVM work today. Unlike Xen and more like KVM, we aim to keep 
+our modifications to Linux as self contained as possible while requiring Hardware 
+Virtualization support (i.e. Xen's PVH model). Unlike KVM we wish to ensure things like 
+PCI interfaces and QEMU in general are not required. We also aim to ensure our 
+virtual interfaces support any host operating system including Windows, Linux and 
+UEFI. To accomplish this, our virtual interfaces will only leverage hypercall 
+(e.g. vmcalls on Intel) based APIs with the only exception being some CPUID based 
+emueration logic needed when detecting the present of Boxy. 
