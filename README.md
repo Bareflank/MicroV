@@ -104,7 +104,7 @@ future versions like full Windows guest support, Containerization, and
 of course Cloud Computing, but for now the above use cases are our primary focus
 until version 1 is complete. 
 
-## Virtualization vs Emuulation
+## Virtualization vs Emulation
 
 One question that comes up a lot is the difference between virtualization and 
 emulation. In general, there are three ways in which you can talk to a 
