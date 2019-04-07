@@ -146,4 +146,4 @@ PCI interfaces and QEMU in general are not required. We also aim to ensure our
 virtual interfaces support any host operating system including Windows, Linux and 
 UEFI. To accomplish this, our virtual interfaces will only leverage hypercall 
 (e.g. vmcalls on Intel) based APIs with the only exception being some CPUID based 
-emueration logic needed when detecting the present of Boxy. 
+enumeraton logic needed when detecting the present of Boxy. 
