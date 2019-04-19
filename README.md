@@ -1,7 +1,6 @@
-<p align="center">
-  <img src="https://github.com/Bareflank/boxy/raw/master/docs/boxy_logo.png" width="300">
-</p>
+<img src="https://github.com/Bareflank/boxy/raw/master/docs/boxy_logo.png" alt="boxy-logo" align="right" height="300" />
 
+<br>
 <br>
 
 [![GitHub version](https://badge.fury.io/gh/bareflank%2Fboxy.svg)](https://badge.fury.io/gh/bareflank%2Fboxy)
@@ -15,6 +14,8 @@
 The Boxy Hypervisor is an open source hypervisor led by Assured Information Security, Inc. (AIS), 
 that provides support for custom, lightweight Linux and Unikernel virtual machines on any platform
 including Windows, Linux and UEFI. 
+
+<br>
 
 ## Project Goals:
 
