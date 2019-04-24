@@ -34,7 +34,7 @@ vmcall_handler::vmcall_handler(
 
     vcpu->add_handler(
         exit_reason::basic_exit_reason::vmcall,
-        ::handler_delegate_t::create<vmcall_handler, &vmcall_handler::handle>(this)
+        {&vmcall_handler::handle, this}
     );
 }
 

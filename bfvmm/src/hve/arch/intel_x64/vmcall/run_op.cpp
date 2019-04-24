@@ -32,9 +32,7 @@ vmcall_run_op_handler::vmcall_run_op_handler(
 {
     using namespace vmcs_n;
 
-    vcpu->add_vmcall_handler(
-        vmcall_handler_delegate(vmcall_run_op_handler, dispatch)
-    );
+    vcpu->add_vmcall_handler({&vmcall_run_op_handler::dispatch, this});
 }
 
 bool

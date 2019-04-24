@@ -22,19 +22,9 @@
 #include <hve/arch/intel_x64/vcpu.h>
 #include <hve/arch/intel_x64/vmexit/yield.h>
 
-#define make_rdmsr_delegate(a)                                                  \
-    bfvmm::intel_x64::rdmsr_handler::handler_delegate_t::create<yield_handler, &yield_handler::a>(this)
-
-#define make_wrmsr_delegate(a)                                                  \
-    bfvmm::intel_x64::wrmsr_handler::handler_delegate_t::create<yield_handler, &yield_handler::a>(this)
-
-#define EMULATE_MSR(a,b,c)                                                      \
-    m_vcpu->emulate_rdmsr(                                                      \
-            a, make_rdmsr_delegate(b)                                               \
-                         );                                                                          \
-    m_vcpu->emulate_wrmsr(                                                      \
-            a, make_wrmsr_delegate(c)                                               \
-                         );
+#define EMULATE_MSR(a,r,w)                                                      \
+    m_vcpu->emulate_rdmsr(a, {&yield_handler::r, this});                        \
+    m_vcpu->emulate_wrmsr(a, {&yield_handler::w, this});
 
 // -----------------------------------------------------------------------------
 // Implementation
@@ -72,12 +62,12 @@ yield_handler::yield_handler(
 
     vcpu->add_handler(
         exit_reason::basic_exit_reason::hlt,
-        ::handler_delegate_t::create<yield_handler, &yield_handler::handle_hlt>(this)
+        {&yield_handler::handle_hlt, this}
     );
 
     vcpu->add_handler(
         exit_reason::basic_exit_reason::preemption_timer_expired,
-        ::handler_delegate_t::create<yield_handler, &yield_handler::handle_preemption>(this)
+        {&yield_handler::handle_preemption, this}
     );
 
     EMULATE_MSR(0x000006E0, handle_rdmsr_0x000006E0, handle_wrmsr_0x000006E0);

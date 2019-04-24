@@ -156,8 +156,8 @@ public:
 
     /// @cond
 
-    domain(domain &&) = default;
-    domain &operator=(domain &&) = default;
+    domain(domain &&) = delete;
+    domain &operator=(domain &&) = delete;
 
     domain(const domain &) = delete;
     domain &operator=(const domain &) = delete;

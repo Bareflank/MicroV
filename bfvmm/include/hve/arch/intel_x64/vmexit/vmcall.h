@@ -44,9 +44,6 @@ public:
     ///
     using handler_delegate_t = delegate<bool(vcpu *)>;
 
-#define vmcall_handler_delegate(a,b) \
-    vmcall_handler::handler_delegate_t::create<a, &a::b>(this)
-
     /// Constructor
     ///
     /// @expects

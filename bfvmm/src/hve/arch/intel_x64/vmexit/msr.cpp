@@ -22,18 +22,12 @@
 #include <hve/arch/intel_x64/vcpu.h>
 #include <hve/arch/intel_x64/vmexit/msr.h>
 
-#define make_rdmsr_delegate(a)                                                  \
-    bfvmm::intel_x64::rdmsr_handler::handler_delegate_t::create<msr_handler, &msr_handler::a>(this)
+#define ADD_WRMSR_HANDLER(a,w)                                                 \
+    m_vcpu->add_wrmsr_handler(a, {&msr_handler::w, this});
 
-#define make_wrmsr_delegate(a)                                                  \
-    bfvmm::intel_x64::wrmsr_handler::handler_delegate_t::create<msr_handler, &msr_handler::a>(this)
-
-#define ADD_WRMSR_HANDLER(a,b)                                                  \
-    m_vcpu->add_wrmsr_handler(a, make_wrmsr_delegate(b));
-
-#define EMULATE_MSR(a,b,c)                                                      \
-    m_vcpu->emulate_rdmsr(a, make_rdmsr_delegate(b));                           \
-    m_vcpu->emulate_wrmsr(a, make_wrmsr_delegate(c));
+#define EMULATE_MSR(a,r,w)                                                     \
+    m_vcpu->emulate_rdmsr(a, {&msr_handler::r, this});                         \
+    m_vcpu->emulate_wrmsr(a, {&msr_handler::w, this});
 
 // -----------------------------------------------------------------------------
 // Implementation
@@ -49,13 +43,8 @@ msr_handler::msr_handler(
 {
     using namespace vmcs_n;
 
-    vcpu->add_run_delegate(
-        run_delegate_t::create<msr_handler, &msr_handler::isolate_msr__on_run>(this)
-    );
-
-    vcpu->add_exit_handler(
-        handler_delegate_t::create<msr_handler, &msr_handler::isolate_msr__on_exit>(this)
-    );
+    vcpu->add_run_delegate({&msr_handler::isolate_msr__on_run, this});
+    vcpu->add_exit_handler({&msr_handler::isolate_msr__on_exit, this});
 
     if (vcpu->is_domU()) {
         vcpu->trap_on_all_rdmsr_accesses();
