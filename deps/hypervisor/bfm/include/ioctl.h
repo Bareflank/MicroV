@@ -153,6 +153,12 @@ public:
     ///
     virtual void call_ioctl_dump_vmm(gsl::not_null<drr_pointer> drr, vcpuid_type vcpuid);
 
+    /// Dump Xue
+    ///
+    /// Dump the state of the Xue debugger into dmesg
+    ///
+    virtual void call_ioctl_dump_xue();
+
     /// VMM Status
     ///
     /// Get the status of the VMM

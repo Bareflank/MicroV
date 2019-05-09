@@ -28,6 +28,8 @@
 #include <linux/notifier.h>
 #include <linux/reboot.h>
 #include <linux/suspend.h>
+#include <linux/slab.h>
+#include <asm/io.h>
 
 #include <common.h>
 
@@ -35,6 +37,11 @@
 #include <bftypes.h>
 #include <bfconstants.h>
 #include <bfdriverinterface.h>
+
+#include <xue.h>
+
+struct xue_ops g_xue_ops;
+extern struct xue g_xue;
 
 uint64_t _vmcall(uint64_t r1, uint64_t r2, uint64_t r3, uint64_t r4);
 
@@ -254,6 +261,13 @@ ioctl_dump_vmm(struct debug_ring_resources_t *user_drr)
 }
 
 static long
+ioctl_dump_xue(void)
+{
+    xue_dump(&g_xue);
+    return BF_IOCTL_SUCCESS;
+}
+
+static long
 ioctl_vmm_status(int64_t *status)
 {
     int64_t ret;
@@ -362,6 +376,9 @@ dev_unlocked_ioctl(
 
         case IOCTL_STOP_VMM:
             return ioctl_stop_vmm();
+
+        case IOCTL_DUMP_XUE:
+            return ioctl_dump_xue();
 
         case IOCTL_DUMP_VMM:
             return ioctl_dump_vmm((struct debug_ring_resources_t *)arg);
@@ -509,6 +526,9 @@ dev_init(void)
     g_status = STATUS_STOPPED;
     mutex_init(&g_status_mutex);
 
+    memset(&g_xue_ops, 0, sizeof(g_xue_ops));
+    xue_open(&g_xue, &g_xue_ops, NULL);
+
     return 0;
 
 INIT_FAILURE:
@@ -523,6 +543,8 @@ dev_exit(void)
 
     common_fini();
     g_status = STATUS_STOPPED;
+
+    xue_close(&g_xue);
 
     misc_deregister(&bareflank_dev);
     unregister_pm_notifier(&pm_notifier_block);

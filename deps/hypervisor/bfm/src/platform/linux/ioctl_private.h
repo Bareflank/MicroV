@@ -46,6 +46,7 @@ public:
     virtual void call_ioctl_start_vmm();
     virtual void call_ioctl_stop_vmm();
     virtual void call_ioctl_dump_vmm(gsl::not_null<drr_pointer> drr, vcpuid_type vcpuid);
+    virtual void call_ioctl_dump_xue();
     virtual void call_ioctl_vmm_status(gsl::not_null<status_pointer> status);
 
 private:

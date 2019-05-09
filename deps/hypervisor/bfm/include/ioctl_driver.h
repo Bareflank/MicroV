@@ -95,6 +95,7 @@ private:
     void stop_vmm();
     void quick_vmm();
     void dump_vmm();
+    void dump_xue();
     void vmm_status();
 
     status_type get_status() const;

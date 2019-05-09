@@ -63,6 +63,7 @@ if(${PREFIX} STREQUAL efi)
         $<${BUILD_INCLUDE}:${CMAKE_CURRENT_LIST_DIR}/../bfsdk/include>
         $<${BUILD_INCLUDE}:${CMAKE_CURRENT_LIST_DIR}/../bfelf_loader/include>
         $<${BUILD_INCLUDE}:${CMAKE_BINARY_DIR}>
+        $<${BUILD_INCLUDE}:${XUE_DIR}/include>
     )
     target_sources(bareflank PRIVATE
         src/platform/efi/entry.c

@@ -90,6 +90,7 @@ command_line_parser::parse(const arg_list_type &args)
     if (cmd == "quick") { return parse_quick(filtered_args); }
     if (cmd == "dump") { return parse_dump(filtered_args); }
     if (cmd == "status") { return parse_status(filtered_args); }
+    if (cmd == "dump_xue") { return parse_dump_xue(filtered_args); }
 
     throw std::runtime_error("unknown command: " + cmd);
 }
@@ -157,6 +158,13 @@ command_line_parser::parse_dump(arg_list_type &args)
 {
     bfignored(args);
     m_cmd = command_type::dump;
+}
+
+void
+command_line_parser::parse_dump_xue(arg_list_type &args)
+{
+    bfignored(args);
+    m_cmd = command_type::dump_xue;
 }
 
 void

@@ -150,6 +150,14 @@ ioctl_private::call_ioctl_dump_vmm(gsl::not_null<drr_pointer> drr, vcpuid_type v
 }
 
 void
+ioctl_private::call_ioctl_dump_xue()
+{
+    if (bfm_send_ioctl(fd, IOCTL_DUMP_XUE) < 0) {
+        throw std::runtime_error("ioctl failed: IOCTL_DUMP_XUE");
+    }
+}
+
+void
 ioctl_private::call_ioctl_vmm_status(gsl::not_null<status_pointer> status)
 {
     if (bfm_read_ioctl(fd, IOCTL_VMM_STATUS, status) < 0) {

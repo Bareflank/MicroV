@@ -62,6 +62,9 @@ ioctl_driver::process()
         case command_line_parser::command_type::dump:
             return this->dump_vmm();
 
+        case command_line_parser::command_type::dump_xue:
+            return this->dump_xue();
+
         case command_line_parser::command_type::status:
             return this->vmm_status();
     }
@@ -162,6 +165,12 @@ ioctl_driver::dump_vmm()
     }
 
     std::cout << '\n';
+}
+
+void
+ioctl_driver::dump_xue()
+{
+    m_ioctl->call_ioctl_dump_xue();
 }
 
 void

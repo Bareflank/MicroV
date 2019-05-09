@@ -890,6 +890,14 @@ add_config(
     SKIP_VALIDATION
 )
 
+add_config(
+    CONFIG_NAME XUE_DIR
+    CONFIG_TYPE PATH
+    DEFAULT_VAL $ENV{HOME}/xue
+    DESCRIPTION "Path to xue debugger"
+    SKIP_VALIDATION
+)
+
 # ------------------------------------------------------------------------------
 # Default Flags
 # ------------------------------------------------------------------------------

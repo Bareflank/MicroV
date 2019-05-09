@@ -27,6 +27,7 @@ target_include_directories(bfvmm_entry PUBLIC
     $<${BUILD_INCLUDE}:${PROJECT_ROOT}/include>
     $<${BUILD_INCLUDE}:${PROJECT_ROOT}/../bfintrinsics/include>
     $<${BUILD_INCLUDE}:${PROJECT_ROOT}/../bfsdk/include>
+    $<${BUILD_INCLUDE}:${XUE_DIR}/include>
 )
 
 install(TARGETS bfvmm_entry DESTINATION lib EXPORT bfvmm-vmm-targets)

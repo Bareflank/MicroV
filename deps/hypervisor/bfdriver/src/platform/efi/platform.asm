@@ -31,3 +31,23 @@ _set_ne:
     mov cr0, rax
 
     ret
+
+global _ind
+_ind:
+    xor rax, rax
+    mov rdx, rdi
+    in eax, dx
+    ret
+
+global _outd
+_outd:
+    mov rdx, rdi
+    mov rax, rsi
+    out dx, eax
+    xor rax, rax
+    ret
+
+global _sfence
+_sfence:
+    sfence
+    ret

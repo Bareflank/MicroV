@@ -31,6 +31,13 @@
 #include <bfconstants.h>
 #include <bfdriverinterface.h>
 
+#include <xue.h>
+
+/* must zero prior to xue_open */
+struct xue_ops g_xue_ops;
+struct xue_efi g_xue_efi;
+extern struct xue g_xue;
+
 /* -------------------------------------------------------------------------- */
 /* Global                                                                     */
 /* -------------------------------------------------------------------------- */
@@ -251,6 +258,13 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *systab)
     if (common_init() != BF_SUCCESS) {
         return EFI_ABORTED;
     }
+
+    xue_mset(&g_xue, 0, sizeof(g_xue));
+    xue_mset(&g_xue_ops, 0, sizeof(g_xue_ops));
+    xue_mset(&g_xue_efi, 0, sizeof(g_xue_efi));
+
+    g_xue_efi.img_hand = image;
+    xue_open(&g_xue, &g_xue_ops, &g_xue_efi);
 
     ioctl_add_module((char *)vmm, vmm_len);
     ioctl_load_vmm();

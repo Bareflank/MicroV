@@ -77,6 +77,13 @@ ioctl::call_ioctl_dump_vmm(gsl::not_null<drr_pointer> drr, vcpuid_type vcpuid)
 }
 
 void
+ioctl::call_ioctl_dump_xue()
+{
+    auto d = static_cast<ioctl_private *>(m_d.get());
+    d->call_ioctl_dump_xue();
+}
+
+void
 ioctl::call_ioctl_vmm_status(gsl::not_null<status_pointer> status)
 {
     auto d = static_cast<ioctl_private *>(m_d.get());

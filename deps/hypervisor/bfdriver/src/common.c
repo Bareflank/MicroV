@@ -21,6 +21,7 @@
  */
 
 #include <common.h>
+#include <xue.h>
 
 #include <bftypes.h>
 #include <bfdebug.h>
@@ -33,6 +34,8 @@
 /* -------------------------------------------------------------------------- */
 /* Global                                                                     */
 /* -------------------------------------------------------------------------- */
+
+struct xue g_xue;
 
 int64_t g_num_modules = 0;
 struct bfelf_binary_t g_modules[MAX_NUM_MODULES];
@@ -358,6 +361,11 @@ common_load_vmm(void)
     }
 
     ret = private_add_tss_mdl();
+    if (ret != BF_SUCCESS) {
+        goto failure;
+    }
+
+    ret = platform_call_vmm_on_core(0, BF_REQUEST_INIT_XUE,  (uint64_t)&g_xue, 0);
     if (ret != BF_SUCCESS) {
         goto failure;
     }
