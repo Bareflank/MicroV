@@ -22,13 +22,11 @@
 #include <hve/arch/intel_x64/vcpu.h>
 #include <hve/arch/intel_x64/vmexit/io_instruction.h>
 
-#define make_io_instruction_delegate(a)                                         \
-    bfvmm::intel_x64::io_instruction_handler::handler_delegate_t::create<io_instruction_handler, &io_instruction_handler::a>(this)
-
-#define EMULATE_IO_INSTRUCTION(a,b,c)                                           \
-    m_vcpu->emulate_io_instruction(                                             \
-            a, make_io_instruction_delegate(b), make_io_instruction_delegate(c)     \
-                                  );                                                                          \
+#define EMULATE_IO_INSTRUCTION(a,b,c)                                      \
+    vcpu->emulate_io_instruction(                                          \
+        a,                                                                 \
+        {&io_instruction_handler::b, this},                                \
+        {&io_instruction_handler::c, this})
 
 // -----------------------------------------------------------------------------
 // Implementation

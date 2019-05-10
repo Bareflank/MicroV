@@ -22,15 +22,9 @@
 #include <hve/arch/intel_x64/vcpu.h>
 #include <hve/arch/intel_x64/vmexit/mtrr.h>
 
-#define make_rdmsr_delegate(a)                                                  \
-    bfvmm::intel_x64::rdmsr_handler::handler_delegate_t::create<mtrr_handler, &mtrr_handler::a>(this)
-
-#define make_wrmsr_delegate(a)                                                  \
-    bfvmm::intel_x64::wrmsr_handler::handler_delegate_t::create<mtrr_handler, &mtrr_handler::a>(this)
-
-#define EMULATE_MSR(a,b,c)                                                      \
-    m_vcpu->emulate_rdmsr(a, make_rdmsr_delegate(b));                           \
-    m_vcpu->emulate_wrmsr(a, make_wrmsr_delegate(c));
+#define EMULATE_MSR(a,r,w)                                                      \
+    m_vcpu->emulate_rdmsr(a, {&mtrr_handler::r, this});                         \
+    m_vcpu->emulate_wrmsr(a, {&mtrr_handler::w, this});
 
 // -----------------------------------------------------------------------------
 // Implementation

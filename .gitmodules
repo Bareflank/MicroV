@@ -1,0 +1,3 @@
+[submodule "hypervisor"]
+	path = hypervisor
+	url = https://github.com/bareflank/hypervisor.git

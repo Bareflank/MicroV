@@ -30,12 +30,8 @@
 // Implementation
 //--------------------------------------------------------------------------
 
-#define make_delegate(a,b)                                                                          \
-    bfvmm::intel_x64::a::handler_delegate_t::create<uart, &uart::b>(this)
-
-#define EMULATE_IO_INSTRUCTION(a,b,c)                                                               \
-    vcpu->emulate_io_instruction(                                                                   \
-            a, make_delegate(io_instruction_handler, b), make_delegate(io_instruction_handler, c))
+#define EMULATE_IO_INSTRUCTION(a,b,c)                                      \
+    vcpu->emulate_io_instruction(a, {&uart::b, this}, {&uart::c, this});
 
 namespace boxy::intel_x64
 {
@@ -62,9 +58,7 @@ uart::enable(gsl::not_null<vcpu *> vcpu)
     EMULATE_IO_INSTRUCTION(m_port + 6, reg6_in_handler, reg6_out_handler);
     EMULATE_IO_INSTRUCTION(m_port + 7, reg7_in_handler, reg7_out_handler);
 
-    vcpu->add_vmcall_handler(
-        vmcall_handler_delegate(uart, vmcall_dispatch)
-    );
+    vcpu->add_vmcall_handler({&uart::vmcall_dispatch, this});
 }
 
 void
@@ -85,9 +79,7 @@ uart::disable(gsl::not_null<vcpu *> vcpu)
     EMULATE_IO_INSTRUCTION(m_port + 6, io_zero_handler, io_ignore_handler);
     EMULATE_IO_INSTRUCTION(m_port + 7, io_zero_handler, io_ignore_handler);
 
-    vcpu->add_vmcall_handler(
-        vmcall_handler_delegate(uart, vmcall_dispatch)
-    );
+    vcpu->add_vmcall_handler({&uart::vmcall_dispatch, this});
 }
 
 void
@@ -108,9 +100,7 @@ uart::pass_through(gsl::not_null<vcpu *> vcpu)
     vcpu->pass_through_io_accesses(m_port + 6);
     vcpu->pass_through_io_accesses(m_port + 7);
 
-    vcpu->add_vmcall_handler(
-        vmcall_handler_delegate(uart, vmcall_dispatch)
-    );
+    vcpu->add_vmcall_handler({&uart::vmcall_dispatch, this});
 }
 
 uint64_t

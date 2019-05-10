@@ -261,29 +261,12 @@ vcpu::setup_default_controls()
 void
 vcpu::setup_default_handlers()
 {
-    this->add_default_wrmsr_handler(
-        ::handler_delegate_t::create<::wrmsr_handler>()
-    );
-
-    this->add_default_rdmsr_handler(
-        ::handler_delegate_t::create<::rdmsr_handler>()
-    );
-
-    this->add_default_io_instruction_handler(
-        ::handler_delegate_t::create<::io_instruction_handler>()
-    );
-
-    this->add_default_ept_read_violation_handler(
-        ::handler_delegate_t::create<::ept_violation_handler>()
-    );
-
-    this->add_default_ept_write_violation_handler(
-        ::handler_delegate_t::create<::ept_violation_handler>()
-    );
-
-    this->add_default_ept_execute_violation_handler(
-        ::handler_delegate_t::create<::ept_violation_handler>()
-    );
+    this->add_default_wrmsr_handler(::wrmsr_handler);
+    this->add_default_rdmsr_handler(::rdmsr_handler);
+    this->add_default_io_instruction_handler(::io_instruction_handler);
+    this->add_default_ept_read_violation_handler(::ept_violation_handler);
+    this->add_default_ept_write_violation_handler(::ept_violation_handler);
+    this->add_default_ept_execute_violation_handler(::ept_violation_handler);
 }
 
 void

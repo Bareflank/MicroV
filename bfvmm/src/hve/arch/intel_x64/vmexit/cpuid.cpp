@@ -22,11 +22,8 @@
 #include <hve/arch/intel_x64/vcpu.h>
 #include <hve/arch/intel_x64/vmexit/cpuid.h>
 
-#define make_delegate(a)                                                        \
-    handler_delegate_t::create<cpuid_handler, &cpuid_handler::a>(this)
-
-#define EMULATE_CPUID(a,b)                                                      \
-    m_vcpu->add_cpuid_emulator(a, make_delegate(b));
+#define EMULATE_CPUID(a,b)                                                     \
+    m_vcpu->add_cpuid_emulator(a, {&cpuid_handler::b, this});
 
 // -----------------------------------------------------------------------------
 // Implementation

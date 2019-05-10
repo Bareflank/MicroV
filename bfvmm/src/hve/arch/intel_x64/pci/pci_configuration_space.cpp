@@ -22,13 +22,11 @@
 #include <hve/arch/intel_x64/vcpu.h>
 #include <hve/arch/intel_x64/pci/pci_configuration_space.h>
 
-#define make_io_instruction_delegate(a)                                         \
-    bfvmm::intel_x64::io_instruction_handler::handler_delegate_t::create<pci_configuration_space_handler, &pci_configuration_space_handler::a>(this)
-
-#define EMULATE_IO_INSTRUCTION(a,b,c)                                           \
-    m_vcpu->emulate_io_instruction(                                             \
-            a, make_io_instruction_delegate(b), make_io_instruction_delegate(c)     \
-                                  );                                                                          \
+#define EMULATE_IO_INSTRUCTION(a,b,c)                                      \
+    vcpu->emulate_io_instruction(                                          \
+        a,                                                                 \
+        {&pci_configuration_space_handler::b, this},                       \
+        {&pci_configuration_space_handler::c, this})
 
 // -----------------------------------------------------------------------------
 // Implementation
