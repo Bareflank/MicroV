@@ -19,34 +19,13 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-build/
-cache/
-doc
-doxygen_warnings.txt
-.vagrant
-.astyle_results.txt
-.clang_tidy_results.txt
-.vscode/
-.DS_Store
-._.DS_Store
-tags
-*.swp
+set(CACHE_DIR ${CMAKE_CURRENT_LIST_DIR}/cache)
+file(MAKE_DIRECTORY ${CACHE_DIR})
 
-*.o.cmd
-*.ko.cmd
-*.mod.o.cmd
-*.mod
-*.symvers
-*.o
-*.ko
-*.mod.c
-*.mod.o
-*.order
-*.cache.mk
+set(CMAKE_BUILD_TYPE Release)
+set(ENABLE_COMPILER_WARNINGS ON)
 
-bfbuilder/src/platform/windows/.vs/
-bfbuilder/src/platform/windows/bfbuilder.VC.db
-bfbuilder/src/platform/windows/x64/
-
-bfinstallers/windows/Input
-bfinstallers/windows/Output
+set_bfm_vmm(boxy_vmm)
+list(APPEND EXTENSION
+    ${CMAKE_CURRENT_LIST_DIR}
+)
