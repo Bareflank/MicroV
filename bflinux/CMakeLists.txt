@@ -34,7 +34,7 @@ add_custom_command(
     COMMAND ${CMAKE_COMMAND} -E make_directory ${PREFIXES_DIR}/initrd/
     COMMAND ${CMAKE_COMMAND} -E make_directory ${PREFIXES_DIR}/initrd/sbin
     COMMAND ${CMAKE_COMMAND} -E copy init ${PREFIXES_DIR}/initrd/sbin/
-    COMMAND ${CMAKE_COMMAND} -E chdir ${PREFIXES_DIR}/initrd/ bash ${BOXY_SOURCE_ROOT_DIR}/bflinux/build.sh
+    COMMAND ${CMAKE_COMMAND} -E chdir ${PREFIXES_DIR}/initrd/ bash ${MICROV_SOURCE_ROOT_DIR}/bflinux/build.sh
     VERBATIM
 )
 

@@ -29,7 +29,7 @@
 // Implementation
 // -----------------------------------------------------------------------------
 
-namespace boxy::intel_x64
+namespace microv::intel_x64
 {
 
 cpuid_handler::cpuid_handler(

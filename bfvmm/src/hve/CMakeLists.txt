@@ -19,14 +19,14 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-add_library(boxy_hve)
+add_library(microv_hve)
 
-target_link_libraries(boxy_hve PUBLIC vmm::bfvmm boxy_domain)
-target_include_directories(boxy_hve PUBLIC
+target_link_libraries(microv_hve PUBLIC vmm::bfvmm microv_domain)
+target_include_directories(microv_hve PUBLIC
     $<${BUILD_INCLUDE}:${PROJECT_SOURCE_DIR}/include>
     $<${BUILD_INCLUDE}:${PROJECT_SOURCE_DIR}/../bfsdk/include>
 )
-target_sources(boxy_hve PRIVATE
+target_sources(microv_hve PRIVATE
     $<${X64}:arch/intel_x64/apic/x2apic.cpp>
     $<${X64}:arch/intel_x64/pci/pci_configuration_space.cpp>
     $<${X64}:arch/intel_x64/vmexit/cpuid.cpp>
@@ -44,4 +44,4 @@ target_sources(boxy_hve PRIVATE
     $<${X64}:arch/intel_x64/vcpu.cpp>
 )
 
-install(TARGETS boxy_hve DESTINATION lib EXPORT boxy_bfvmm-vmm-targets)
+install(TARGETS microv_hve DESTINATION lib EXPORT microv_bfvmm-vmm-targets)

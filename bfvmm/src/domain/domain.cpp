@@ -22,7 +22,7 @@
 #include <bfdebug.h>
 #include <domain/domain.h>
 
-namespace boxy
+namespace microv
 {
 
 domain::domain(domainid_type domainid) :

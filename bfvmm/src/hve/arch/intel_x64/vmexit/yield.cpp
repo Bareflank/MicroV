@@ -30,7 +30,7 @@
 // Implementation
 // -----------------------------------------------------------------------------
 
-namespace boxy::intel_x64
+namespace microv::intel_x64
 {
 
 yield_handler::yield_handler(

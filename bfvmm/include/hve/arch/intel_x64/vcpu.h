@@ -19,8 +19,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#ifndef VCPU_INTEL_X64_BOXY_H
-#define VCPU_INTEL_X64_BOXY_H
+#ifndef VCPU_INTEL_X64_MICROV_H
+#define VCPU_INTEL_X64_MICROV_H
 
 #include "apic/x2apic.h"
 #include "pci/pci_configuration_space.h"
@@ -46,7 +46,7 @@
 // Definition
 //------------------------------------------------------------------------------
 
-namespace boxy::intel_x64
+namespace microv::intel_x64
 {
 
 class vcpu : public bfvmm::intel_x64::vcpu
@@ -335,10 +335,10 @@ private:
 ///     and exception.
 ///
 #define get_vcpu(a) \
-    g_vcm->get<boxy::intel_x64::vcpu *>(a, __FILE__ ": invalid boxy vcpuid")
+    g_vcm->get<microv::intel_x64::vcpu *>(a, __FILE__ ": invalid microv vcpuid")
 
 #define vcpu_cast(a) \
-    static_cast<boxy::intel_x64::vcpu *>(a.get())
+    static_cast<microv::intel_x64::vcpu *>(a.get())
 
 inline bfobject world_switch;
 

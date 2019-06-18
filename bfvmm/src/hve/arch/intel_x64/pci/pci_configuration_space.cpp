@@ -32,7 +32,7 @@
 // Implementation
 // -----------------------------------------------------------------------------
 
-namespace boxy::intel_x64
+namespace microv::intel_x64
 {
 
 pci_configuration_space_handler::pci_configuration_space_handler(

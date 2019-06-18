@@ -19,8 +19,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#ifndef DOMAIN_FACTORY_BOXY_H
-#define DOMAIN_FACTORY_BOXY_H
+#ifndef DOMAIN_FACTORY_MICROV_H
+#define DOMAIN_FACTORY_MICROV_H
 
 #include <memory>
 #include "domain.h"
@@ -29,7 +29,7 @@
 // Definitions
 // -----------------------------------------------------------------------------
 
-namespace boxy
+namespace microv
 {
 
 /// Domain Factory

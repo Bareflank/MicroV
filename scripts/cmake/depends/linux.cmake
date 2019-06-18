@@ -21,7 +21,7 @@
 
 # README
 #
-# By default, the build system will download a Boxy release version of the Linux
+# By default, the build system will download a MicroV release version of the Linux
 # kernel (specifically the current, stable release). For most users, this is
 # enough and no action is required for this default functionalilty.
 #
@@ -31,8 +31,8 @@
 # when configuring CMake. This will redirect the build system to use your Linux
 # kernel.
 #
-# All changes upstreamed to the Boxy version of the Linux kernel will be
-# roled into the main release once the boxy master branches are stable. From
+# All changes upstreamed to the MicroV version of the Linux kernel will be
+# roled into the main release once the microv master branches are stable. From
 # there, upstreaming to the main Linux kernel can be done.
 #
 
@@ -60,7 +60,7 @@ if((ENABLE_BUILD_USERSPACE) AND NOT WIN32 AND NOT CYGWIN)
             linux-source userspace
             COMMAND ${CMAKE_COMMAND} -E make_directory ${LINUX_BUILD_DIR}
             COMMAND ${CMAKE_COMMAND} -E copy_directory ${CACHE_DIR}/linux-source/ ${LINUX_BUILD_DIR}
-            COMMAND ${CMAKE_COMMAND} -E copy ${BOXY_SOURCE_ROOT_DIR}/bflinux/config ${LINUX_BUILD_DIR}/.config
+            COMMAND ${CMAKE_COMMAND} -E copy ${MICROV_SOURCE_ROOT_DIR}/bflinux/config ${LINUX_BUILD_DIR}/.config
             COMMAND ${CMAKE_COMMAND} -E chdir ${LINUX_BUILD_DIR} make oldconfig
             COMMAND ${CMAKE_COMMAND} -E make_directory ${PREFIXES_DIR}/vms/
         )
@@ -77,7 +77,7 @@ if((ENABLE_BUILD_USERSPACE) AND NOT WIN32 AND NOT CYGWIN)
 
         add_dependency_step(
             linux-source userspace
-            COMMAND ${CMAKE_COMMAND} -E copy ${BOXY_SOURCE_ROOT_DIR}/bflinux/config ${LINUX_BUILD_DIR}/.config
+            COMMAND ${CMAKE_COMMAND} -E copy ${MICROV_SOURCE_ROOT_DIR}/bflinux/config ${LINUX_BUILD_DIR}/.config
             COMMAND ${CMAKE_COMMAND} -E chdir ${LINUX_BUILD_DIR} make oldconfig
             COMMAND ${CMAKE_COMMAND} -E make_directory ${PREFIXES_DIR}/vms/
         )

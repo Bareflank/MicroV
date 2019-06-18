@@ -32,7 +32,7 @@
 // Implementation
 // -----------------------------------------------------------------------------
 
-namespace boxy::intel_x64
+namespace microv::intel_x64
 {
 
 io_instruction_handler::io_instruction_handler(

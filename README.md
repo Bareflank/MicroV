@@ -1,17 +1,17 @@
-<img src="https://github.com/Bareflank/boxy/raw/master/docs/boxy_logo.png" alt="boxy-logo" align="right" height="300" />
+<img src="https://github.com/Bareflank/microv/raw/master/docs/boxy_logo.png" alt="boxy-logo" align="right" height="300" />
 
 <br>
 <br>
 
-[![GitHub version](https://badge.fury.io/gh/bareflank%2Fboxy.svg)](https://badge.fury.io/gh/bareflank%2Fboxy)
-[![Build Status](https://travis-ci.org/Bareflank/boxy.svg?branch=master)](https://travis-ci.org/Bareflank/boxy)
-[![Codacy Badge](https://api.codacy.com/project/badge/Grade/d7cbb095527c43e09e775f58912cd5fd)](https://www.codacy.com/app/rianquinn/boxy?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=Bareflank/boxy&amp;utm_campaign=Badge_Grade)
+[![GitHub version](https://badge.fury.io/gh/bareflank%2Fmicrov.svg)](https://badge.fury.io/gh/bareflank%2Fboxy)
+[![Build Status](https://travis-ci.org/Bareflank/microv.svg?branch=master)](https://travis-ci.org/Bareflank/boxy)
+[![Codacy Badge](https://api.codacy.com/project/badge/Grade/d7cbb095527c43e09e775f58912cd5fd)](https://www.codacy.com/app/rianquinn/microv?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=Bareflank/boxy&amp;utm_campaign=Badge_Grade)
 [![CII Best Practices](https://bestpractices.coreinfrastructure.org/projects/325/badge)](https://bestpractices.coreinfrastructure.org/projects/325)
 [![Join the chat at https://gitter.im/Bareflank-hypervisor/Lobby](https://badges.gitter.im/Bareflank-hypervisor/Lobby.svg)](https://gitter.im/Bareflank-hypervisor/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 ## Description
 
-The Boxy Hypervisor is an open source hypervisor led by Assured Information Security, Inc. (AIS),
+The MicroV Hypervisor is an open source hypervisor led by Assured Information Security, Inc. (AIS),
 that provides support for custom, lightweight Linux and Unikernel virtual machines on any platform
 including Windows, Linux and UEFI.
 
@@ -29,7 +29,7 @@ including Windows, Linux and UEFI.
   supporting guest virtual machines are mostly limited to Xen, KVM and
   VirtualBox. The first two only support Linux and BSD hosts and while VirtualBox
   expands this support to Windows and macOS, it sacrifices security.
-  Boxy aims to support as many hosts as possible including Windows, Linux,
+  MicroV aims to support as many hosts as possible including Windows, Linux,
   BSD, macOS and any others without sacrificing performance and security.
 - **Disaggregation and Deprivilege:** None of the above mentioned hypervisors
   have a true focus on a reduced Trusted Computing Base (TCB). Xen comes the closest
@@ -41,13 +41,13 @@ including Windows, Linux and UEFI.
   Linux and BSD hosts and therefore are not capable of leveraging some of the
   performance benefits of macOS and Windows such as power management
   (i.e. battery life on mobile devices).
-- **Scheduling:** Although closely related to performance, Boxy leverages a hybrid
+- **Scheduling:** Although closely related to performance, MicroV leverages a hybrid
   design, incorporating the design goals of Xen to provide disaggregation
   and deprivilege while leveraging the scheduling benefits of hypervisor designs
-  like KVM and VirtualBox. Specifically Boxy doesn't include its own scheduler,
+  like KVM and VirtualBox. Specifically MicroV doesn't include its own scheduler,
   relying on the host to schedule each VM along with the rest of the critical
   tasks it must perform. Not only does this reduce the over complexity and size
-  of Boxy, but it allows Boxy to leverage the advanced schedulers already
+  of MicroV, but it allows MicroV to leverage the advanced schedulers already
   present in the host while simultaneously removing the contention between the
   host scheduler and the hypervisor scheduler, often seen in Xen.
 - **Early Boot and Late Launch Support:** Xen, KVM and VirtualBox support early boot
@@ -57,39 +57,39 @@ including Windows, Linux and UEFI.
   in supporting a fully deprivileged host while late launch is easier to set
   up, configure and use. Late launch is also a lot easier on developers,
   preventing the need to reboot each time a line of code changes in the
-  hypervisor itself. Boxy aims to support both early boot and late launch from
+  hypervisor itself. MicroV aims to support both early boot and late launch from
   inception, giving both users and developers as many options as possible.
 - **Robust Testing, CI and CD:** Although Xen, KVM and VirtualBox provide various
-  levels of testing, continuous integration and continuous deployment, Boxy
+  levels of testing, continuous integration and continuous deployment, MicroV
   aims to take this a step further, providing the highest levels of testing
   possible. This will not only improve reliability and security, but also enable
-  the use of Boxy in environments were high levels of testing are required such
+  the use of MicroV in environments were high levels of testing are required such
   as critical infrastructure, medical, automotive and government.
 - **Licensing:** Most of the hypervisors available today in open source leverage
   the GPL license making it difficult to incorporate their technologies in
-  closed source commercial products. Boxy is licensed under MIT. Feel free to use
+  closed source commercial products. MicroV is licensed under MIT. Feel free to use
   it however you wish. All we ask is that if you find and fix something
   wrong with the open source code, that you work with us to upstream the fix.
 
 ### Version 1 Targeted Use-Cases
 
-Boxy is in its early stages of development and as such, it is not, and will not
+MicroV is in its early stages of development and as such, it is not, and will not
 be capable of supporting all of the use cases that existing, more mature
-hypervisors are capable of supporting. Version 1 of Boxy aims to start
+hypervisors are capable of supporting. Version 1 of MicroV aims to start
 somewhere by supporting the following use cases on Windows and Linux hosts:
 
 - **Services VMs:** The most highly requested feature is the ability to execute
   specialized applications in the background using what is called a "Service VM".
   Service VMs are (ideally small) virtual machines that execute a specialized
-  workload alongside the host. The difference with Boxy compared
-  to other hypervisors is that Boxy can be used to execute a Service VM alongside
+  workload alongside the host. The difference with MicroV compared
+  to other hypervisors is that MicroV can be used to execute a Service VM alongside
   the host while being capable of protecting the Service VM from the host
-  (and vice versa). This means that Boxy can be used to do things like execute
+  (and vice versa). This means that MicroV can be used to do things like execute
   your system's anti-virus in a Service VM instead of directly on the host
   where malware could potentially turn it off. Another example would be to
-  leverage Boxy to execute critical software in an isolated environment including
+  leverage MicroV to execute critical software in an isolated environment including
   things like automotive, healthcare and critical infrastructure software.
-  To support this goal, Boxy leverages as much automated testing as possible.
+  To support this goal, MicroV leverages as much automated testing as possible.
 
 - **Introspection/Reverse Engineering:** One specific use case for a Service VM
   is introspection and reverse engineering. Specifically, we aim to provide a
@@ -100,7 +100,7 @@ somewhere by supporting the following use cases on Windows and Linux hosts:
   support in version 1 are web services. Specifically providing the ability to
   execute several, headless web services simultaniously on a single machine.
 
-There are several other use cases that we would like to support with Boxy in
+There are several other use cases that we would like to support with MicroV in
 future versions like full Windows guest support, Containerization, and
 of course Cloud Computing, but for now the above use cases are our primary focus
 until version 1 is complete.
@@ -147,15 +147,15 @@ PCI interfaces and QEMU in general are not required. We also aim to ensure our
 virtual interfaces support any host operating system including Windows, Linux and
 UEFI. To accomplish this, our virtual interfaces will only leverage hypercall
 (e.g. vmcalls on Intel) based APIs with the only exception being some CPUID based
-enumeraton logic needed when detecting the present of Boxy.
+enumeraton logic needed when detecting the present of MicroV.
 
 ## Compilation Instructions
 
 To compile with default settings for your host environment, run the following commands:
 
 ```
-git clone --recursive https://github.com/Bareflank/boxy.git
-mkdir boxy/build; cd boxy/build
+git clone --recursive https://github.com/Bareflank/microv.git
+mkdir microv/build; cd microv/build
 cmake ../hypervisor
 make -j<# cores + 1>
 ```

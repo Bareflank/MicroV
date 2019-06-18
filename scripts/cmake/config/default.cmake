@@ -23,54 +23,54 @@
 # Source Tree
 # ------------------------------------------------------------------------------
 
-set(BOXY_SOURCE_ROOT_DIR ${CMAKE_CURRENT_LIST_DIR}/../../..
+set(MICROV_SOURCE_ROOT_DIR ${CMAKE_CURRENT_LIST_DIR}/../../..
     CACHE INTERNAL
-    "BOXY Source root direfctory"
+    "MICROV Source root direfctory"
 )
 
-set(BOXY_SOURCE_CMAKE_DIR ${BOXY_SOURCE_ROOT_DIR}/scripts/cmake
+set(MICROV_SOURCE_CMAKE_DIR ${MICROV_SOURCE_ROOT_DIR}/scripts/cmake
     CACHE INTERNAL
-    "BOXY Cmake directory"
+    "MICROV Cmake directory"
 )
 
-set(BOXY_SOURCE_CONFIG_DIR ${BOXY_SOURCE_ROOT_DIR}/scripts/cmake/config
+set(MICROV_SOURCE_CONFIG_DIR ${MICROV_SOURCE_ROOT_DIR}/scripts/cmake/config
     CACHE INTERNAL
-    "BOXY Cmake configurations directory"
+    "MICROV Cmake configurations directory"
 )
 
-set(BOXY_SOURCE_DEPENDS_DIR ${BOXY_SOURCE_ROOT_DIR}/scripts/cmake/depends
+set(MICROV_SOURCE_DEPENDS_DIR ${MICROV_SOURCE_ROOT_DIR}/scripts/cmake/depends
     CACHE INTERNAL
-    "BOXY Cmake dependencies directory"
+    "MICROV Cmake dependencies directory"
 )
 
-set(BOXY_SOURCE_UTIL_DIR ${BOXY_SOURCE_ROOT_DIR}/scripts/util
+set(MICROV_SOURCE_UTIL_DIR ${MICROV_SOURCE_ROOT_DIR}/scripts/util
     CACHE INTERNAL
-    "BOXY Utility directory"
+    "MICROV Utility directory"
 )
 
-set(BOXY_SOURCE_BFDRIVER_DIR ${BOXY_SOURCE_ROOT_DIR}/bfdriver
+set(MICROV_SOURCE_BFDRIVER_DIR ${MICROV_SOURCE_ROOT_DIR}/bfdriver
     CACHE INTERNAL
-    "BOXY bfdriver source dir"
+    "MICROV bfdriver source dir"
 )
 
-set(BOXY_SOURCE_BFEXEC_DIR ${BOXY_SOURCE_ROOT_DIR}/bfexec
+set(MICROV_SOURCE_BFEXEC_DIR ${MICROV_SOURCE_ROOT_DIR}/bfexec
     CACHE INTERNAL
-    "BOXY bfexec source dir"
+    "MICROV bfexec source dir"
 )
 
-set(BOXY_SOURCE_BFLINUX_DIR ${BOXY_SOURCE_ROOT_DIR}/bflinux
+set(MICROV_SOURCE_BFLINUX_DIR ${MICROV_SOURCE_ROOT_DIR}/bflinux
     CACHE INTERNAL
-    "BOXY bflinux source dir"
+    "MICROV bflinux source dir"
 )
 
-set(BOXY_SOURCE_BFSDK_DIR ${BOXY_SOURCE_ROOT_DIR}/bfsdk
+set(MICROV_SOURCE_BFSDK_DIR ${MICROV_SOURCE_ROOT_DIR}/bfsdk
     CACHE INTERNAL
-    "BOXY bfsdk source dir"
+    "MICROV bfsdk source dir"
 )
 
-set(BOXY_SOURCE_BFVMM_DIR ${BOXY_SOURCE_ROOT_DIR}/bfvmm
+set(MICROV_SOURCE_BFVMM_DIR ${MICROV_SOURCE_ROOT_DIR}/bfvmm
     CACHE INTERNAL
-    "BOXY bfvmm source dir"
+    "MICROV bfvmm source dir"
 )
 
 # ------------------------------------------------------------------------------
@@ -88,7 +88,7 @@ set(LINUX_URL_MD5 "481f81505b4f73349e501f70c15a4946"
 )
 
 # ------------------------------------------------------------------------------
-# Boxy guest
+# MicroV guest
 # ------------------------------------------------------------------------------
 
 add_config(

@@ -30,11 +30,11 @@ using namespace bfvmm::intel_x64;
 // Implementation
 // -----------------------------------------------------------------------------
 
-namespace boxy::intel_x64
+namespace microv::intel_x64
 {
 
 domain::domain(domainid_type domainid) :
-    boxy::domain{domainid}
+    microv::domain{domainid}
 {
     if (domainid == 0) {
         this->setup_dom0();

@@ -23,7 +23,7 @@
 #include <hve/arch/intel_x64/domain.h>
 #include <hve/arch/intel_x64/vmcall/domain_op.h>
 
-namespace boxy::intel_x64
+namespace microv::intel_x64
 {
 
 vmcall_domain_op_handler::vmcall_domain_op_handler(

@@ -19,8 +19,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#ifndef UART_INTEL_X64_BOXY_H
-#define UART_INTEL_X64_BOXY_H
+#ifndef UART_INTEL_X64_MICROV_H
+#define UART_INTEL_X64_MICROV_H
 
 #include <bfgsl.h>
 #include <bftypes.h>
@@ -37,7 +37,7 @@
 // Definition
 //------------------------------------------------------------------------------
 
-namespace boxy::intel_x64
+namespace microv::intel_x64
 {
 
 class vcpu;

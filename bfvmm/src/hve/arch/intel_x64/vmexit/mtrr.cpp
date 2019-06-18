@@ -30,7 +30,7 @@
 // Implementation
 // -----------------------------------------------------------------------------
 
-namespace boxy::intel_x64
+namespace microv::intel_x64
 {
 
 mtrr_handler::mtrr_handler(

@@ -29,14 +29,14 @@ include(${CMAKE_CURRENT_LIST_DIR}/scripts/cmake/config/default.cmake)
 # Targets
 # ------------------------------------------------------------------------------
 
-include(${BOXY_SOURCE_CMAKE_DIR}/targets.cmake)
+include(${MICROV_SOURCE_CMAKE_DIR}/targets.cmake)
 
 # ------------------------------------------------------------------------------
 # General Dependencies
 # ------------------------------------------------------------------------------
 
 if(ENABLE_BUILD_GUEST)
-    include_dependency(BOXY_SOURCE_DEPENDS_DIR linux)
+    include_dependency(MICROV_SOURCE_DEPENDS_DIR linux)
 endif()
 
 # ------------------------------------------------------------------------------
@@ -45,7 +45,7 @@ endif()
 
 if(ENABLE_BUILD_VMM)
     add_subproject(
-        boxy_bfvmm vmm
+        microv_bfvmm vmm
         DEPENDS bfvmm
         SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}/bfvmm
     )

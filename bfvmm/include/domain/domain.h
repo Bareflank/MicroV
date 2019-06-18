@@ -19,8 +19,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#ifndef DOMAIN_BOXY_H
-#define DOMAIN_BOXY_H
+#ifndef DOMAIN_MICROV_H
+#define DOMAIN_MICROV_H
 
 #include <bftypes.h>
 #include <bfobject.h>
@@ -30,7 +30,7 @@
 // Definitions
 // -----------------------------------------------------------------------------
 
-namespace boxy
+namespace microv
 {
 
 /// Domain

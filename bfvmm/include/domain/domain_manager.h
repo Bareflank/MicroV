@@ -19,8 +19,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#ifndef DOMAIN_MANAGER_BOXY_H
-#define DOMAIN_MANAGER_BOXY_H
+#ifndef DOMAIN_MANAGER_MICROV_H
+#define DOMAIN_MANAGER_MICROV_H
 
 #include <bfmanager.h>
 
@@ -38,8 +38,8 @@
 ///
 #define g_dm                                                                    \
     bfmanager<                                                                  \
-    boxy::domain,                                                               \
-    boxy::domain_factory,                                                       \
-    boxy::domain::domainid_type>::instance()
+    microv::domain,                                                               \
+    microv::domain_factory,                                                       \
+    microv::domain::domainid_type>::instance()
 
 #endif

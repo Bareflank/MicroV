@@ -28,18 +28,18 @@ namespace bfvmm
 std::unique_ptr<vcpu>
 vcpu_factory::make(vcpuid::type vcpuid, bfobject *obj)
 {
-    using namespace boxy::intel_x64;
+    using namespace microv::intel_x64;
     static domain dom0{0};
 
     if (vcpuid::is_host_vm_vcpu(vcpuid)) {
         return
-            std::make_unique<boxy::intel_x64::vcpu>(
+            std::make_unique<microv::intel_x64::vcpu>(
                 vcpuid, dynamic_cast<domain *>(&dom0)
             );
     }
     else {
         return
-            std::make_unique<boxy::intel_x64::vcpu>(
+            std::make_unique<microv::intel_x64::vcpu>(
                 vcpuid, dynamic_cast<domain *>(obj)
             );
     }

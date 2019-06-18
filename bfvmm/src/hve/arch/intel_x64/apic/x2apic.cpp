@@ -32,7 +32,7 @@
 // Implementation
 // -----------------------------------------------------------------------------
 
-namespace boxy::intel_x64
+namespace microv::intel_x64
 {
 
 x2apic_handler::x2apic_handler(

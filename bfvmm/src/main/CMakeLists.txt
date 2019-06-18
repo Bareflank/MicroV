@@ -20,7 +20,7 @@
 # SOFTWARE.
 
 cmake_minimum_required(VERSION 3.13)
-project(boxy_bfvmm_main C CXX)
+project(microv_bfvmm_main C CXX)
 
 include(${SOURCE_CMAKE_DIR}/project.cmake)
 init_project(
@@ -41,8 +41,8 @@ else()
 endif()
 
 add_vmm_executable(
-    boxy_bfvmm
-    LIBRARIES boxy_hve
-    LIBRARIES boxy_domain
+    microv_bfvmm
+    LIBRARIES microv_hve
+    LIBRARIES microv_domain
     SOURCES ${SOURCES}
 )

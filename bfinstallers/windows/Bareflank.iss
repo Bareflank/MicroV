@@ -20,17 +20,17 @@
 ; SOFTWARE.
 
 [Setup]
-AppName=Boxy
+AppName=MicroV
 AppVersion=0.1
-DefaultDirName={pf}\Boxy
-DefaultGroupName=Boxy
-UninstallDisplayIcon={app}\RemoveBoxy.exe
+DefaultDirName={pf}\MicroV
+DefaultGroupName=MicroV
+UninstallDisplayIcon={app}\RemoveMicroV.exe
 Compression=lzma2
 SolidCompression=yes
 ;OutputDir=userdocs:Inno Setup Examples Output
 AlwaysRestart=yes
 ArchitecturesInstallIn64BitMode=x64
-OutputBaseFilename=InstallBoxy
+OutputBaseFilename=InstallMicroV
 SetupIconFile=Francois.ico
 WizardImageFile=Francois.bmp
 WizardSmallImageFile=FrancoisSmall.bmp

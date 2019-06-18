@@ -19,8 +19,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#ifndef DOMAIN_INTEL_X64_BOXY_H
-#define DOMAIN_INTEL_X64_BOXY_H
+#ifndef DOMAIN_INTEL_X64_MICROV_H
+#define DOMAIN_INTEL_X64_MICROV_H
 
 #include <vector>
 #include <memory>
@@ -35,14 +35,14 @@
 // Definitions
 // -----------------------------------------------------------------------------
 
-namespace boxy::intel_x64
+namespace microv::intel_x64
 {
 
 class vcpu;
 
 /// Domain
 ///
-class domain : public boxy::domain
+class domain : public microv::domain
 {
 public:
 
@@ -502,6 +502,6 @@ public:
 ///     and exception.
 ///
 #define get_domain(a) \
-    g_dm->get<boxy::intel_x64::domain *>(a, "invalid domainid: " __FILE__)
+    g_dm->get<microv::intel_x64::domain *>(a, "invalid domainid: " __FILE__)
 
 #endif

@@ -68,7 +68,7 @@ ept_violation_handler(vcpu_t *vcpu)
 // Implementation
 //------------------------------------------------------------------------------
 
-namespace boxy::intel_x64
+namespace microv::intel_x64
 {
 
 vcpu::vcpu(

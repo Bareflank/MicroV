@@ -20,9 +20,9 @@
 # SOFTWARE.
 
 cmake_minimum_required(VERSION 3.13)
-project(boxy_bfvmm C CXX)
+project(microv_bfvmm C CXX)
 
-init_project(boxy_bfvmm INTERFACE)
+init_project(microv_bfvmm INTERFACE)
 
 # -----------------------------------------------------------------------------
 # Generator expressions
@@ -39,18 +39,18 @@ set(BUILD_INCLUDE $<AND:$<COMPILE_LANGUAGE:CXX>,${BUILD}>)
 add_subdirectory(src/domain)
 add_subdirectory(src/hve)
 
-add_executable(boxy_vmm)
-target_sources(boxy_vmm PRIVATE $<${X64}:src/main/arch/intel_x64/vcpu_factory.cpp>)
-target_sources(boxy_vmm PRIVATE $<${X64}:src/main/arch/intel_x64/domain_factory.cpp>)
+add_executable(microv_vmm)
+target_sources(microv_vmm PRIVATE $<${X64}:src/main/arch/intel_x64/vcpu_factory.cpp>)
+target_sources(microv_vmm PRIVATE $<${X64}:src/main/arch/intel_x64/domain_factory.cpp>)
 
-target_link_libraries(boxy_bfvmm INTERFACE boxy_domain boxy_hve)
-target_link_libraries(boxy_vmm PRIVATE boxy_bfvmm)
+target_link_libraries(microv_bfvmm INTERFACE microv_domain microv_hve)
+target_link_libraries(microv_vmm PRIVATE microv_bfvmm)
 
 # -----------------------------------------------------------------------------
 # Install
 # -----------------------------------------------------------------------------
 
-install(DIRECTORY include/ DESTINATION include/boxy)
-install(TARGETS boxy_vmm DESTINATION bin EXPORT boxy-vmm-targets)
+install(DIRECTORY include/ DESTINATION include/microv)
+install(TARGETS microv_vmm DESTINATION bin EXPORT microv-vmm-targets)
 
 fini_project()

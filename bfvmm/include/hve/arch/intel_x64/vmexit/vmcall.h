@@ -19,8 +19,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#ifndef VMEXIT_VMCALL_INTEL_X64_BOXY_H
-#define VMEXIT_VMCALL_INTEL_X64_BOXY_H
+#ifndef VMEXIT_VMCALL_INTEL_X64_MICROV_H
+#define VMEXIT_VMCALL_INTEL_X64_MICROV_H
 
 #include <bfvmm/hve/arch/intel_x64/vcpu.h>
 
@@ -28,7 +28,7 @@
 // Definitions
 // -----------------------------------------------------------------------------
 
-namespace boxy::intel_x64
+namespace microv::intel_x64
 {
 
 class vcpu;

@@ -19,8 +19,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#ifndef VMCALL_RUN_INTEL_X64_BOXY_H
-#define VMCALL_RUN_INTEL_X64_BOXY_H
+#ifndef VMCALL_RUN_INTEL_X64_MICROV_H
+#define VMCALL_RUN_INTEL_X64_MICROV_H
 
 #include <bfhypercall.h>
 #include <bfvmm/hve/arch/intel_x64/vcpu.h>
@@ -29,7 +29,7 @@
 // Definitions
 // -----------------------------------------------------------------------------
 
-namespace boxy::intel_x64
+namespace microv::intel_x64
 {
 
 class vcpu;

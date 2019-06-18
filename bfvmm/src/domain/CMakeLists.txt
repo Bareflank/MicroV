@@ -19,12 +19,12 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-add_library(boxy_domain domain.cpp)
+add_library(microv_domain domain.cpp)
 
-target_link_libraries(boxy_domain PUBLIC vmm::bfvmm)
-target_include_directories(boxy_domain PUBLIC
+target_link_libraries(microv_domain PUBLIC vmm::bfvmm)
+target_include_directories(microv_domain PUBLIC
     $<${BUILD_INCLUDE}:${PROJECT_SOURCE_DIR}/include>
     $<${BUILD_INCLUDE}:${PROJECT_SOURCE_DIR}/../bfsdk/include>
 )
 
-install(TARGETS boxy_domain DESTINATION lib EXPORT boxy_bfvmm-vmm-targets)
+install(TARGETS microv_domain DESTINATION lib EXPORT microv_bfvmm-vmm-targets)

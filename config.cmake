@@ -25,7 +25,7 @@ file(MAKE_DIRECTORY ${CACHE_DIR})
 set(CMAKE_BUILD_TYPE Release)
 set(ENABLE_COMPILER_WARNINGS ON)
 
-set_bfm_vmm(boxy_vmm)
+set_bfm_vmm(microv_vmm)
 list(APPEND EXTENSION
     ${CMAKE_CURRENT_LIST_DIR}
 )

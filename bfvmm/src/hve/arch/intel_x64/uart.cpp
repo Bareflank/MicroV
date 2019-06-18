@@ -33,7 +33,7 @@
 #define EMULATE_IO_INSTRUCTION(a,b,c)                                      \
     vcpu->emulate_io_instruction(a, {&uart::b, this}, {&uart::c, this});
 
-namespace boxy::intel_x64
+namespace microv::intel_x64
 {
 
 uart::uart(port_type port) :
