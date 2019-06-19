@@ -1,0 +1,5 @@
+# sha256 from https://pypi.python.org/pypi/setuptools_scm/json
+sha256 52ab47715fa0fc7d8e6cd15168d1a69ba995feb1505131c3e814eb7087b57358 setuptools_scm-3.2.0.tar.gz
+
+# sha256 locally computed
+sha256 89807acf2309bd285f033404ee78581602f3cd9b819a16ac2f0e5f60ff4a473e LICENSE

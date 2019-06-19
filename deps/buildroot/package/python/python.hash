@@ -1,0 +1,5 @@
+# From https://www.python.org/downloads/release/python-2716/
+md5 30157d85a2c0479c09ea2cbe61f2aaf5 Python-2.7.16.tar.xz
+# Locally calculated
+sha256 f222ef602647eecb6853681156d32de4450a2c39f4de93bd5b20235f2e660ed7  Python-2.7.16.tar.xz
+sha256 a77d71d6be6f9032e6b6e5d2cf6da68f9eeab9036edfbc043633c8979cd5e82c  LICENSE
