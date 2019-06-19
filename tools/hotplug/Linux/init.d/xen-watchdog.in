@@ -1,0 +1,90 @@
+#! /bin/bash
+#
+# xen-watchdog
+#
+# chkconfig: 2345 21 79
+# description: Run domain watchdog daemon
+### BEGIN INIT INFO
+# Provides:          xen-watchdog
+# Required-Start:    $syslog $remote_fs
+# Should-Start:      xend
+# Required-Stop:     $syslog $remote_fs
+# Should-Stop:       xend
+# Default-Start:     2 3 5
+# Default-Stop:      0 1 6
+# Short-Description: Start/stop xen-watchdog
+# Description:       Run domain watchdog daemon.
+### END INIT INFO
+#
+
+. @XEN_SCRIPT_DIR@/hotplugpath.sh
+
+DAEMON=${sbindir}/xenwatchdogd
+base=$(basename $DAEMON)
+
+# Source function library.
+if [ -e  /etc/init.d/functions ] ; then
+    . /etc/init.d/functions
+elif [ -e /lib/lsb/init-functions ] ; then
+    . /lib/lsb/init-functions
+    success () {
+        log_success_msg $*
+    }
+    failure () {
+        log_failure_msg $*
+    }
+else
+    success () {
+        echo $*
+    }
+    failure () {
+        echo $*
+    }
+fi
+
+start() {
+	local r
+	echo -n $"Starting domain watchdog daemon: "
+
+	$DAEMON 30 15
+	r=$?
+	[ "$r" -eq 0 ] && success $"$base startup" || failure $"$base startup"
+	echo
+
+	return $r
+}
+
+stop() {
+	local r
+	echo -n $"Stopping domain watchdog daemon: "
+
+	killall -USR1 $base 2>/dev/null
+	r=$?
+	[ "$r" -eq 0 ] && success $"$base stop" || failure $"$base stop"
+	echo
+
+	return $r
+}
+
+case "$1" in
+  start)
+  	start
+	;;
+  stop)
+	stop
+	;;
+  restart)
+	stop
+	start
+	;;
+  status)
+	;;
+  condrestart)
+	stop
+	start
+	;;
+  *)
+	echo $"Usage: $0 {start|stop|status|restart|condrestart}"
+	exit 1
+esac
+

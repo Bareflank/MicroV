@@ -1,0 +1,5 @@
+#
+# This file is for the declaration of global policy tunables, booleans,
+# and other components not defined within a specific policy module.
+#
+

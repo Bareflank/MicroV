@@ -1,0 +1,104 @@
+#!/bin/bash
+#============================================================================
+# ${XEN_SCRIPT_DIR}/vif-bridge
+#
+# Script for configuring a vif in bridged mode.
+#
+# Usage:
+# vif-bridge (add|remove|online|offline)
+#
+# Environment vars:
+# vif         vif interface name (required).
+# XENBUS_PATH path to this device's details in the XenStore (required).
+#
+# Read from the store:
+# bridge  bridge to add the vif to (optional).  Defaults to searching for the
+#         bridge itself.
+# ip      list of IP networks for the vif, space-separated (optional).
+#
+# up:
+# Enslaves the vif interface to the bridge and adds iptables rules
+# for its ip addresses (if any).
+#
+# down:
+# Removes the vif interface from the bridge and removes the iptables
+# rules for its ip addresses (if any).
+#============================================================================
+
+dir=$(dirname "$0")
+. "$dir/vif-common.sh"
+
+bridge=${bridge:-}
+bridge=$(xenstore_read_default "$XENBUS_PATH/bridge" "$bridge")
+
+if [ -z "$bridge" ]
+then
+  bridge=$(brctl show | awk 'NR==2{print$1}')
+
+  if [ -z "$bridge" ]
+  then
+     fatal "Could not find bridge, and none was specified"
+  fi
+else
+  #
+  # Old style bridge setup with netloop, used to have a bridge name
+  # of xenbrX, enslaving pethX and vif0.X, and then configuring
+  # eth0.
+  #
+  # New style bridge setup does not use netloop, so the bridge name
+  # is ethX and the physical device is enslaved pethX
+  #
+  # So if...
+  #
+  #   - User asks for xenbrX
+  #   - AND xenbrX doesn't exist
+  #   - AND there is a ethX device which is a bridge
+  #
+  # ..then we translate xenbrX to ethX
+  #
+  # This lets old config files work without modification
+  #
+  if [ ! -e "/sys/class/net/$bridge" ] && [ -z "${bridge##xenbr*}" ]
+  then
+     if [ -e "/sys/class/net/eth${bridge#xenbr}/bridge" ]
+     then
+        bridge="eth${bridge#xenbr}"
+     fi
+  fi
+fi
+
+RET=0
+ip link show dev "$bridge" 1>/dev/null 2>&1 || RET=1
+if [ "$RET" -eq 1 ]
+then
+    fatal "Could not find bridge device $bridge"
+fi
+
+case "$command" in
+    online)
+        setup_virtual_bridge_port "$dev"
+        set_mtu "$bridge" "$dev"
+        add_to_bridge "$bridge" "$dev"
+        ;;
+
+    offline)
+        do_without_error brctl delif "$bridge" "$dev"
+        do_without_error ifconfig "$dev" down
+        ;;
+
+    add)
+        setup_virtual_bridge_port "$dev"
+        set_mtu "$bridge" "$dev"
+        add_to_bridge "$bridge" "$dev"
+        ;;
+esac
+
+handle_iptable
+
+call_hooks vif post
+
+log debug "Successful vif-bridge $command for $dev, bridge $bridge."
+if [ "$type_if" = vif -a "$command" = "online" ]
+then
+  success
+fi

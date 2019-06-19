@@ -1,0 +1,63 @@
+Xen crash debugger notes
+------------------------
+
+Xen has a simple gdb stub for doing post-mortem debugging i.e. once
+you've crashed it, you get to poke around and find out why.  There's
+also a special key handler for making it crash, which is handy.
+
+You need to have CRASH_DEBUG=y set when compiling, and you also need
+to enable it on the Xen command line, eg by gdb=com1.
+
+If you need to have a serial port shared between gdb and the console,
+you can use gdb=com1H.  CDB will then set the high bit on every byte
+it sends, and only respond to bytes with the high bit set.  Similarly
+for com2.  If you do this you will need a demultiplexing program on
+the debugging workstation, such as perhaps tools/misc/nsplitd.
+
+The next step depends on your individual setup.  This is how to do it
+if you have a simple null modem connection between the test box and
+the workstation, and aren't using a H/L split console:
+
+  * Set debug=y in Config.mk
+  * Set CRASH_DEBUG=y with `make -C xen menuconfig`
+  * Make the changes in the attached patch, and build.
+  * Arrange to pass gdb=com1 as a hypervisor command line argument
+    (I already have com1=38400,8n1 console=com1,vga sync_console)
+    
+  * Boot the system with minicom (or your favourite terminal program)
+    connected from your workstation via a null modem cable in the
+    usual way.
+  * In minicom, give the escape character (^A by default) three times
+    to talk to Xen (Xen prints `(XEN) *** Serial input -> Xen...').
+  * Press % and observe the messages
+     (XEN) '%' pressed -> trapping into debugger
+     (XEN) GDB connection activated.
+     (XEN) Waiting for GDB to attach...
+  * Disconnect from minicom without allowing minicom to send any
+    modem control sequences.
+  * Start gdb with   gdb /path/to/build/tree/xen/xen-syms  and then
+      (gdb) set remotebaud 38400
+      Remote debugging using /dev/ttyS0
+      0xff124d61 in idle_loop () at domain.c:78
+      78              safe_halt();
+      (gdb)
+
+There is code which was once intended to make it possible to resume
+after entering the debugger.  However this does not presently work; it
+has been nonfunctional for quite some time.
+
+As soon as you reach the debugger, we disable interrupts, the
+watchdog, and every other CPU, so the state of the world shouldn't
+change too much behind your back.
+
+
+Reasons why we might fail to reach the debugger:
+-----------------------------------------------
+
+-- In order to stop the other processors, we need to acquire the SMP
+   call lock.  If you happen to have crashed in the middle of that,
+   you're screwed.
+-- If the page tables are wrong, you're screwed
+-- If the serial port setup is wrong, badness happens
+-- Obviously, the low level processor state can be screwed in any
+   number of wonderful ways

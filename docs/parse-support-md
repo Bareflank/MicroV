@@ -1,0 +1,515 @@
+#!/usr/bin/perl -w
+#
+# Written with reference to pandoc_markdown from Debian jessie
+# We require atx-style headers
+#
+# usage:
+#   pandoc -t json SUPPORT.md >j-unstable
+#   git cat-file blob origin/staging-4.11:SUPPORT.md | pandoc -t json >j-4.11
+#   docs/parse-support-md \
+#            j-unstable https://xenbits/unstable/SUPPORT.html
+#            j-4.11 https://xenbits/4.11/SUPPORT.html
+# or equivalent
+
+use strict;
+use JSON;
+use Tie::IxHash;
+use IO::File;
+use CGI qw(escapeHTML);
+use Data::Dumper;
+use POSIX;
+
+#---------- accumulating input/output ----------
+
+# This combines information from all of the input files.
+
+sub new_sectlist () { { } };
+our $toplevel_sectlist = new_sectlist();
+# an $sectlist is
+#   { }                 nothing seen yet
+#   a tied hashref      something seen
+# (tied $sectlist)    is an object of type Tie::IxHash
+# $sectlist->{KEY} a $sectnode:
+# $sectlist->{KEY}{Status}[VI] = absent or string or markdown content
+# $sectlist->{KEY}{Children} = a further $sectlist
+# $sectlist->{KEY}{Key} = KEY
+# $sectlist->{KEY}{RealSectNode} = us, or our parent
+# $sectlist->{KEY}{RealSectNode}{HasCaveat}[VI] = trueish iff other in a Para
+# $sectlist->{KEY}{RealInSect} = containing real section in @insections, so
+# $sectlist->{KEY}{RealInSect}{HasDescription} = VI for some Emph in Para
+# $sectlist->{KEY}{RealInSect}{Anchor} = value for < id="" > in the pandoc html
+# A $sectnode represents a single section from the original markdown
+# document.  Its subsections are in Children.
+#
+# Also, the input syntax:
+#    Status, something or other: Supported
+# is treated as a $sectnode, is as if it were a subsection -
+# one called `something or other'.  That is not a `real' section.
+#
+# KEY is the Anchor, or derived from the `something or other'.
+# It is used to match up identical features in different versions.
+
+#---------- state for this input file ----------
+
+our $version_index;
+our @version_urls;
+
+our @insections;
+# $insections[]{Key} = string
+# $insections[]{Headline} = markdown content
+# these next are only defined for real sections, not Status elements
+# $insections[]{Anchor} = string
+# $insections[]{HasDescription} VI, likewise
+
+our $had_unknown;
+our $had_feature;
+# adding new variable ?  it must be reset in r_toplevel
+
+#---------- parsing ----------
+
+sub find_current_sectnode () {
+    die unless @insections;
+
+    my $sectnode;
+    my $realinsect;
+    my $realsectnode;
+    foreach my $s (@insections) {
+        my $sectlist = $sectnode
+            ? $sectnode->{Children} : $toplevel_sectlist;
+        my $key = $s->{Key};
+        $realinsect = $s if $s->{Anchor};
+        tie %$sectlist, 'Tie::IxHash' unless tied %$sectlist;
+#print STDERR "FIND_CURRENT_SECTNODE ", Dumper($s);
+        $sectlist->{$key} //=
+            {
+             Children => new_sectlist(),
+             Headline => $s->{Headline},
+             Key => $key,
+             RealInSect => $realinsect,
+             HasCaveat => [],
+            };
+        $sectnode = $sectlist->{$key};
+        $realsectnode = $sectnode if $s->{Anchor};
+        $sectnode->{RealSectNode} = $realsectnode;
+    }
+    die unless $sectnode;
+    return $sectnode;
+}
+
+sub ri_Header {
+    my ($c) = @_;
+    my ($level, $infos, $hl) = @$c;
+#print STDERR 'RI_HEADER ', Dumper($c, \@c);
+    my ($id) = @$infos;
+    die unless $level >= 1;
+    die unless $level-2 <= $#insections;
+    $#insections = $level-2;
+    push @insections,
+        {
+         Key => $id,
+         Anchor => $id,
+         Headline => $hl,
+         HasDescription => undef,
+        };
+#print STDERR Dumper(\@insections);
+    $had_feature = 0;
+}
+
+sub ri_Para {
+    return unless @insections;
+    my $insection = $insections[$#insections];
+#    print DEBUG "ri_Para ",
+#        Dumper($version_index, $had_feature, $insection);
+
+    if ($had_feature) {
+        my $sectnode = find_current_sectnode();
+        $sectnode->{RealSectNode}{HasCaveat}[$version_index] = 1;
+    } else {
+        $insection->{HasDescription} //= $version_index;
+    }
+};
+
+sub parse_feature_entry ($) {
+    my ($value) = @_;
+
+    $had_feature = 1;
+    my $sectnode = find_current_sectnode();
+    $sectnode->{Status}[$version_index] = $value;
+}
+
+sub descr2key ($) {
+    my ($descr) = @_;
+
+    die unless @insections;
+    my $insection = $insections[$#insections];
+
+    my $key = lc $descr;
+    $key =~ y/ /-/;
+    $key =~ y/-0-9A-Za-z//cd;
+    $key = $insection->{Anchor}.'--'.$key;
+    return $key;
+}
+
+sub ri_CodeBlock {
+    my ($c) = @_;
+    my ($infos, $text) = @$c;
+
+    if ($text =~ m{^(?: Functional\ completeness 
+                   | Functional\ stability
+                   | Interface\ stability
+                   | Security\ supported ) \:}x) {
+        # ignore this
+        return;
+    }
+    die "$had_unknown / $text ?" if $had_unknown;
+
+    my $toplevel = $text =~ m{^Xen-Version:};
+
+    foreach my $l (split /\n/, $text) {
+        $l =~ s/\s*$//;
+        next unless $l =~ m/\S/;
+
+        my ($descr, $value) =
+            $toplevel
+            ? $l =~ m{^([A-Z][-A-Z0-9a-z]+)\:\s+(\S.*)$}
+            : $l =~ m{^(?:Status|Supported)(?:\,\s*([^:]+))?\:\s+(\S.*)$}
+            or die ("$text\n^ cannot parse status codeblock line:".
+                    ($toplevel and 'top').
+                    "\n$l\n ?");
+
+        if (length $descr) {
+            push @insections,
+                {
+                 Key => descr2key($descr),
+                 Headline => [{ t => 'Str', c => $descr }],
+                };
+        }
+        parse_feature_entry $value;
+        if (length $descr) {
+            pop @insections;
+        }
+    }
+}
+
+sub ri_DefinitionList {
+    my ($c) = @_;
+    foreach my $defent (@$c) {
+        my ($term, $defns) = @$defent;
+        my $descr =
+            join ' ',
+            map { $_->{c} }
+            grep { $_->{t} eq 'Str' }
+            @$term;
+        push @insections,
+            {
+             Key => descr2key($descr),
+             Headline => $term,
+            };
+        die "multiple definitions in definition list definition"
+            if @$defns > 1;
+        my $defn = $defns->[0];
+        die "multiple paras in definition list definition"
+            if @$defn > 1;
+        my $defnp = $defn->[0];
+        die "only understand plain definition not $defnp->{t} ?"
+            unless $defnp->{t} eq 'Plain';
+        parse_feature_entry $defnp->{c};
+        pop @insections;
+    }
+}
+
+sub process_unknown {
+    my ($c, $e) = @_;
+    $had_unknown = Dumper($e);
+}
+
+sub r_content ($) {
+    my ($i) = @_;
+    foreach my $e (@$i) {
+        my $f = ${*::}{"ri_$e->{t}"};
+        $f //= \&process_unknown;
+        $f->($e->{c}, $e);
+    }
+}
+
+sub r_toplevel ($) {
+    my ($i) = @_;
+
+    die unless defined $version_index;
+
+    @insections = ();
+    $had_unknown = undef;
+    $had_feature = undef;
+
+    foreach my $e (@$i) {
+        next unless ref $e eq 'ARRAY';
+        r_content $e;
+    }
+}
+
+sub read_inputs () {
+    $version_index = 0;
+
+    local $/;
+    undef $/;
+
+    while (my $f = shift @ARGV) {
+        push @version_urls, shift @ARGV;
+        eval {
+            open F, '<', $f or die $!;
+            my $input_toplevel = decode_json <F>;
+            r_toplevel $input_toplevel;
+        };
+        die "$@\nwhile processing input file $f\n" if $@;
+        $version_index++;
+    }
+}
+
+#---------- reprocessing ----------
+
+# variables generated by analyse_reprocess:
+our $maxdepth;
+
+sub pandoc2html_inline ($) {
+    my ($content) = @_;
+
+    my $json_fh = IO::File::new_tmpfile or die $!;
+    my $j = to_json([
+                     { unMeta => { } },
+                     [{ t => 'Para', c => $content }],
+                    ]) or die $!;
+    print $json_fh $j;
+    flush $json_fh or die $!;
+    seek $json_fh,0,0 or die $!;
+
+    my $c = open PD, "-|" // die $!;
+    if (!$c) {
+        open STDIN, "<&", $json_fh;
+        exec qw(pandoc -f json) or die $!;
+    }
+
+    local $/;
+    undef $/;
+    my $html = <PD>;
+    $?=$!=0;
+    if (!close PD) {
+        eval {
+            seek $json_fh,0,0 or die $!;
+            open STDIN, '<&', $json_fh or die $!;
+            system 'json_pp';
+        };
+        die "$j \n $? $!";
+    }
+
+    $html =~ s{^\<p\>}{} or die "$html ?";
+    $html =~ s{\</p\>$}{} or die "$html ?";
+    $html =~ s{\n$}{};
+    return $html;
+}
+
+sub reprocess_sectlist ($$);
+
+sub reprocess_sectnode ($$) {
+    my ($sectnode, $d) = @_;
+
+    $sectnode->{Depth} = $d;
+
+    if ($sectnode->{Status}) {
+        $maxdepth = $d if $d > $maxdepth;
+    }
+
+    if ($sectnode->{Headline}) {
+#            print STDERR Dumper($sectnode);
+        $sectnode->{Headline} =
+            pandoc2html_inline $sectnode->{Headline};
+    }
+
+    reprocess_sectlist $sectnode->{Children}, $d;
+}
+
+sub reprocess_sectlist ($$) {
+    my ($sectlist, $d) = @_;
+    $d++;
+
+    foreach my $sectnode (values %$sectlist) {
+        reprocess_sectnode $sectnode, $d;
+    }
+}
+
+sub count_rows_sectlist ($);
+
+sub count_rows_sectnode ($) {
+    my ($sectnode) = @_;
+    my $rows = 0;
+    $sectnode->{RealInSect}{OwnRows} //= 0;
+    if ($sectnode->{Status}) {
+        $rows++;
+        $sectnode->{RealInSect}{OwnRows}++;
+    }
+    $rows += count_rows_sectlist $sectnode->{Children};
+    $sectnode->{Rows} = $rows;
+    $sectnode->{RealInSect}{Rows} = $rows;
+    return $rows;
+}
+
+# Now we have
+#   $sectnode->{Rows}
+#   $sectnode->{RealInSect}{Rows}
+#   $sectnode->{RealInSect}{OwnRows}
+
+sub count_rows_sectlist ($) {
+    my ($sectlist) = @_;
+    my $rows = 0;
+    foreach my $sectnode (values %$sectlist) {
+        $rows += count_rows_sectnode $sectnode;
+    }
+    return $rows;
+}
+
+# After reprocess_sectlist,
+#    ->{Headline}   is in html
+#    ->{Status}     is (still) string or markdown content
+
+sub analyse_reprocess () {
+    $maxdepth = 0;
+    reprocess_sectlist $toplevel_sectlist, 0;
+}
+
+#---------- output ----------
+
+sub o { print @_ or die $!; }
+
+our @pending_headings;
+
+sub docref_a ($$) {
+    my ($i, $realinsect) = @_;
+    return sprintf '<a href="%s#%s">',
+        $version_urls[$i], $realinsect->{Anchor};
+}
+
+sub write_output_row ($) {
+    my ($sectnode) = @_;
+#    print STDERR 'WOR ', Dumper($d, $sectnode);
+    o('<tr>');
+    my $span = sub {
+        my ($rowcol, $n) = @_;
+        o(sprintf ' %sspan="%d"', $rowcol, $n) if $n != 1;
+    };
+    # This is all a bit tricky because (i) the input is hierarchical
+    # with variable depth, whereas the output has to have a fixed
+    # number of heading columns on the LHS; (ii) the HTML
+    # colspan/rowspan system means that when we are writing out, we
+    # have to not write table elements for table entries which have
+    # already been written with a span instruction that covers what we
+    # would write now.
+    while (my $heading = shift @pending_headings) {
+        o('<th valign="top"');
+        o(sprintf ' id="%s"', $heading->{Key});
+        $span->('row', $heading->{Rows});
+        $span->('col', $maxdepth - $heading->{Depth} + 1)
+            if !%{ $heading->{Children} };
+        o(' align="left">');
+        my $end_a = '';
+        my $desc_i = $heading->{RealInSect}{HasDescription};
+        if (defined $desc_i) {
+            o(docref_a $desc_i, $heading->{RealInSect});
+            $end_a= '</a>';
+        }
+        o($heading->{Headline});
+        o($end_a);
+        o('</th>');
+    }
+    if (%{ $sectnode->{Children} }) {
+        # we suppressed the colspan above, but we do need to make the gap
+        my $n = $maxdepth - $sectnode->{Depth};
+        die 'XX '. Dumper($n, $sectnode) if $n<0;
+        if ($n) {
+            o('<td');
+            $span->('col', $n);
+            o('></td>');
+        }
+    }
+    for (my $i=0; $i<@version_urls; $i++) {
+        my $st = $sectnode->{Status}[$i];
+
+        my $colspan = $sectnode->{RealInSect}{ColSpan}[$i];
+        my $nextcell = '';
+        if (!defined $colspan) { # first row of this RealInSect
+            $colspan= ' colspan="2"';
+            if ($sectnode->{RealSectNode}{HasCaveat}[$i] && $st
+                && $sectnode->{RealInSect}{Anchor}) {
+                my $rows = $sectnode->{RealInSect}{OwnRows};
+                $nextcell = '<td';
+                $nextcell .= sprintf ' rowspan=%d', $rows if $rows>1;
+                $nextcell .= '>';
+                $nextcell .= docref_a $i, $sectnode->{RealInSect};
+                $nextcell .= '[*]</a>';
+                $nextcell .= '</td>';
+                $colspan = '';
+            }
+            $sectnode->{RealInSect}{ColSpan}[$i] = $colspan;
+        }
+
+        $st //= '-';
+        o("\n<td$colspan>");
+        my $end_a = '';
+        if ($sectnode->{Key} eq 'release-support--xen-version') {
+            o(sprintf '<a href="%s">', $version_urls[$i]);
+            $end_a = '</a>';
+        }
+        if (ref $st) {
+            $st = pandoc2html_inline $st;
+        } else {
+            $st = escapeHTML($st);
+        }
+        o($st);
+        o($end_a);
+        o('</td>');
+        o($nextcell);
+    }
+    o("</tr>\n");
+}      
+
+sub write_output_sectlist ($);
+sub write_output_sectlist ($) {
+    my ($sectlist) = @_;
+    foreach my $key (keys %$sectlist) {
+        my $sectnode = $sectlist->{$key};
+        push @pending_headings, $sectnode;
+        write_output_row $sectnode if $sectnode->{Status};
+        write_output_sectlist $sectnode->{Children};
+    }
+}
+
+sub write_output () {
+    o('<table rules="all">');
+    write_output_sectlist $toplevel_sectlist;
+    o('</table>');
+}
+
+#---------- main program ----------
+
+open DEBUG, '>', '/dev/null' or die $!;
+if (@ARGV && $ARGV[0] eq '-D') {
+    shift @ARGV;
+    open DEBUG, '>&2' or die $!;
+}
+
+die unless @ARGV;
+die if $ARGV[0] =~ m/^-/;
+die if @ARGV % 2;
+
+read_inputs();
+
+#use Data::Dumper;
+#print DEBUG Dumper($toplevel_sectlist);
+
+analyse_reprocess();
+# Now Headline is in HTML
+
+count_rows_sectlist($toplevel_sectlist);
+
+#use Data::Dumper;
+print DEBUG Dumper($toplevel_sectlist);
+
+write_output();

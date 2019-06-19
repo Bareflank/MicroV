@@ -1,0 +1,7 @@
+stages:
+  - build
+  - test
+
+include:
+  - 'automation/gitlab-ci/build.yaml'
+  - 'automation/gitlab-ci/test.yaml'

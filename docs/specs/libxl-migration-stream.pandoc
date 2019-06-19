@@ -1,0 +1,319 @@
+% LibXenLight Domain Image Format
+% Andrew Cooper <<andrew.cooper3@citrix.com>>
+  Wen Congyang <<wency@cn.fujitsu.com>>
+  Yang Hongyang <<hongyang.yang@easystack.cn>>
+% Revision 2
+
+Introduction
+============
+
+For the purposes of this document, `xl` is used as a representation of any
+implementer of the `libxl` API.  `xl` should be considered completely
+interchangeable with alternates, such as `libvirt` or `xenopsd-xl`.
+
+Purpose
+-------
+
+The _domain image format_ is the context of a running domain used for
+snapshots of a domain or for transferring domains between hosts during
+migration.
+
+There are a number of problems with the domain image format used in Xen 4.5
+and earlier (the _legacy format_)
+
+* There is no `libxl` context information.  `xl` is required to send certain
+  pieces of `libxl` context itself.
+
+* The contents of the stream is passed directly through `libxl` to `libxc`.
+  The legacy `libxc` format contained some information which belonged at the
+  `libxl` level, resulting in awkward layer violation to return the
+  information back to `libxl`.
+
+* The legacy `libxc` format was inextensible, causing inextensibility in the
+  legacy `libxl` handling.
+
+This design addresses the above points, allowing for a completely
+self-contained, extensible stream with each layer responsible for its own
+appropriate information.
+
+
+Not Yet Included
+----------------
+
+The following features are not yet fully specified and will be
+included in a future draft.
+
+* ARM
+
+
+Overview
+========
+
+The image format consists of a _Header_, followed by 1 or more _Records_.
+Each record consists of a type and length field, followed by any type-specific
+data.
+
+\clearpage
+
+Header
+======
+
+The header identifies the stream as a `libxl` stream, including the version of
+this specification that it complies with.
+
+All fields in this header shall be in _big-endian_ byte order, regardless of
+the setting of the endianness bit.
+
+     0     1     2     3     4     5     6     7 octet
+    +-------------------------------------------------+
+    | ident                                           |
+    +-----------------------+-------------------------+
+    | version               | options                 |
+    +-----------------------+-------------------------+
+
+--------------------------------------------------------------------
+Field       Description
+----------- --------------------------------------------------------
+ident       0x4c6962786c466d74 ("LibxlFmt" in ASCII).
+
+version     0x00000002.  The version of this specification.
+
+options     bit 0: Endianness.    0 = little-endian, 1 = big-endian.
+
+            bit 1: Legacy Format. If set, this stream was created by
+                                  the legacy conversion tool.
+
+            bits 2-31: Reserved.
+--------------------------------------------------------------------
+
+The endianness shall be 0 (little-endian) for images generated on an
+i386, x86_64, or arm host.
+
+\clearpage
+
+
+Record Overview
+===============
+
+A record has a record header, type specific data and a trailing footer.  If
+`length` is not a multiple of 8, the body is padded with zeroes to align the
+end of the record on an 8 octet boundary.
+
+     0     1     2     3     4     5     6     7 octet
+    +-----------------------+-------------------------+
+    | type                  | body_length             |
+    +-----------+-----------+-------------------------+
+    | body...                                         |
+    ...
+    |           | padding (0 to 7 octets)             |
+    +-----------+-------------------------------------+
+
+--------------------------------------------------------------------
+Field        Description
+-----------  -------------------------------------------------------
+type         0x00000000: END
+
+             0x00000001: LIBXC_CONTEXT
+
+             0x00000002: EMULATOR_XENSTORE_DATA
+
+             0x00000003: EMULATOR_CONTEXT
+
+             0x00000004: CHECKPOINT_END
+
+             0x00000005: CHECKPOINT_STATE
+
+             0x00000006 - 0x7FFFFFFF: Reserved for future _mandatory_
+             records.
+
+             0x80000000 - 0xFFFFFFFF: Reserved for future _optional_
+             records.
+
+body_length  Length in octets of the record body.
+
+body         Content of the record.
+
+padding      0 to 7 octets of zeros to pad the whole record to a multiple
+             of 8 octets.
+--------------------------------------------------------------------
+
+\clearpage
+
+Emulator Records
+----------------
+
+Several records are specifically for emulators, and have a common sub header.
+
+     0     1     2     3     4     5     6     7 octet
+    +------------------------+------------------------+
+    | emulator_id            | index                  |
+    +------------------------+------------------------+
+    | record specific data                            |
+    ...
+    +-------------------------------------------------+
+
+--------------------------------------------------------------------
+Field            Description
+------------     ---------------------------------------------------
+emulator_id      0x00000000: Unknown (In the case of a legacy stream)
+
+                 0x00000001: Qemu Traditional
+
+                 0x00000002: Qemu Upstream
+
+                 0x00000003 - 0xFFFFFFFF: Reserved for future emulators.
+
+index            Index of this emulator for the domain.
+--------------------------------------------------------------------
+
+\clearpage
+
+Records
+=======
+
+END
+----
+
+A end record marks the end of the image, and shall be the final record
+in the stream.
+
+     0     1     2     3     4     5     6     7 octet
+    +-------------------------------------------------+
+
+The end record contains no fields; its body_length is 0.
+
+LIBXC_CONTEXT
+-------------
+
+A libxc context record is a marker, indicating that the stream should be
+handed to `xc_domain_restore()`.  `libxc` shall be responsible for reading its
+own image format from the stream.
+
+     0     1     2     3     4     5     6     7 octet
+    +-------------------------------------------------+
+
+The libxc context record contains no fields; its body_length is 0[^1].
+
+
+[^1]: The sending side cannot calculate ahead of time how much data `libxc`
+might write into the stream, especially for live migration where the quantity
+of data is partially proportional to the elapsed time.
+
+EMULATOR_XENSTORE_DATA
+----------------------
+
+A set of xenstore key/value pairs for a specific emulator associated with the
+domain.
+
+     0     1     2     3     4     5     6     7 octet
+    +------------------------+------------------------+
+    | emulator_id            | index                  |
+    +------------------------+------------------------+
+    | xenstore key/value data                         |
+    ...
+    +-------------------------------------------------+
+
+Xenstore key/value data are encoded as a packed sequence of (key, value)
+tuples.  Each (key, value) tuple is a packed pair of NUL terminated octets,
+conforming to xenstore protocol character encoding (keys strictly as
+alphanumeric ASCII and `-/_@`, values expected to be human-readable ASCII).
+
+Keys shall be relative to to the device models xenstore tree for the new
+domain.  At the time of writing, keys are relative to the path
+
+> `/local/domain/$dm_domid/device-model/$domid/`
+
+although this path is free to change moving forward, thus should not be
+assumed.
+
+EMULATOR_CONTEXT
+----------------
+
+A context blob for a specific emulator associated with the domain.
+
+     0     1     2     3     4     5     6     7 octet
+    +------------------------+------------------------+
+    | emulator_id            | index                  |
+    +------------------------+------------------------+
+    | emulator_ctx                                    |
+    ...
+    +-------------------------------------------------+
+
+The *emulator_ctx* is a binary blob interpreted by the emulator identified by
+*emulator_id*.  Its format is unspecified.
+
+CHECKPOINT_END
+--------------
+
+A checkpoint end record marks the end of a checkpoint in the image.
+
+     0     1     2     3     4     5     6     7 octet
+    +-------------------------------------------------+
+
+The end record contains no fields; its body_length is 0.
+
+
+CHECKPOINT_STATE
+----------------
+
+A checkpoint state record contains the control information for checkpoint. It
+is only used by COLO, more detail please reference README.colo.
+
+     0     1     2     3     4     5     6     7 octet
+    +------------------------+------------------------+
+    | control_id             | padding                |
+    +------------------------+------------------------+
+
+--------------------------------------------------------------------
+Field            Description
+------------     ---------------------------------------------------
+control_id       0x00000000: Secondary VM is out of sync, start a new checkpoint
+                 (Primary -> Secondary)
+
+                 0x00000001: Secondary VM is suspended (Secondary -> Primary)
+
+                 0x00000002: Secondary VM is ready (Secondary -> Primary)
+
+                 0x00000003: Secondary VM is resumed (Secondary -> Primary)
+
+--------------------------------------------------------------------
+
+In COLO, Primary is running in below loop:
+
+1. Suspend primary vm
+    a. Suspend primary vm
+    b. Read *CHECKPOINT_SVM_SUSPENDED* sent by secondary
+2. Checkpoint
+3. Resume primary vm
+    a. Read *CHECKPOINT_SVM_READY* from secondary
+    b. Resume primary vm
+    c. Read *CHECKPOINT_SVM_RESUMED* from secondary
+4. Wait a new checkpoint
+    a. Send *CHECKPOINT_NEW* to secondary
+
+While Secondary is running in below loop:
+
+1. Resume secondary vm
+    a. Send *CHECKPOINT_SVM_READY* to primary
+    b. Resume secondary vm
+    c. Send *CHECKPOINT_SVM_RESUMED* to primary
+2. Wait a new checkpoint
+    a. Read *CHECKPOINT_NEW* from primary
+3. Suspend secondary vm
+    a. Suspend secondary vm
+    b. Send *CHECKPOINT_SVM_SUSPENDED* to primary
+4. Checkpoint
+
+Future Extensions
+=================
+
+All changes to this specification should bump the revision number in
+the title block.
+
+All changes to the header require the header version to be increased.
+
+The format may be extended by adding additional record types.
+
+Extending an existing record type must be done by adding a new record
+type.  This allows old images with the old record to still be
+restored.

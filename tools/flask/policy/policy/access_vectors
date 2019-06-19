@@ -1,0 +1,5 @@
+# Locally defined access vectors
+#
+# Define access vectors for the security classes defined in security_classes.
+# Access vectors defined in this file should not be used by the hypervisor.
+#
