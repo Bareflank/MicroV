@@ -1,0 +1,83 @@
+ifdef(`enable_mls',`
+#
+# Define sensitivities 
+#
+# Domination of sensitivities is in increasin
+# numerical order, with s0 being the lowest
+
+gen_sens(mls_num_sens)
+
+#
+# Define the categories
+#
+# Generate declarations
+
+gen_cats(mls_num_cats)
+
+#
+# Each MLS level specifies a sensitivity and zero or more categories which may
+# be associated with that sensitivity.
+#
+# Generate levels from all sensitivities
+# with all categories
+
+gen_levels(mls_num_sens,mls_num_cats)
+
+#
+# Define the MLS policy
+#
+# mlsconstrain class_set perm_set expression ;
+#
+# mlsvalidatetrans class_set expression ;
+#
+# expression : ( expression )
+#	     | not expression
+#	     | expression and expression
+#	     | expression or expression
+#	     | u1 op u2
+#	     | r1 role_mls_op r2
+#	     | t1 op t2
+#	     | l1 role_mls_op l2
+#	     | l1 role_mls_op h2
+#	     | h1 role_mls_op l2
+#	     | h1 role_mls_op h2
+#	     | l1 role_mls_op h1
+#	     | l2 role_mls_op h2
+#	     | u1 op names
+#	     | u2 op names
+#	     | r1 op names
+#	     | r2 op names
+#	     | t1 op names
+#	     | t2 op names
+#	     | u3 op names (NOTE: this is only available for mlsvalidatetrans)
+#	     | r3 op names (NOTE: this is only available for mlsvalidatetrans)
+#	     | t3 op names (NOTE: this is only available for mlsvalidatetrans)
+#
+# op : == | !=
+# role_mls_op : == | != | eq | dom | domby | incomp
+#
+# names : name | { name_list }
+# name_list : name | name_list name
+#
+
+#
+# MLS policy for the domain class
+#
+
+# new domain labels must be dominated by the calling subject clearance
+# and sensitivity level changes require privilege
+mlsconstrain domain transition
+	(( h1 dom h2 ) and (( l1 eq l2 ) or (t1 == mls_priv)));
+
+# all the domain "read" ops
+mlsconstrain domain { getaffinity getdomaininfo getvcpuinfo getvcpucontext getaddrsize getextvcpucontext }
+	((l1 dom l2) or (t1 == mls_priv));
+
+# all the domain "write" ops
+mlsconstrain domain { setvcpucontext pause unpause resume create max_vcpus destroy setaffinity scheduler setdomainmaxmem setdomainhandle setdebugging hypercall settime set_target shutdown setaddrsize trigger setextvcpucontext }
+	((l1 eq l2) or (t1 == mls_priv));
+
+# This is incomplete - similar constraints must be written for all classes
+# and permissions for which MLS enforcement is desired.
+
+') dnl end enable_mls

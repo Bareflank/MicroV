@@ -1,0 +1,33 @@
+Xen Control Tools - Examples
+===================================
+
+This directory contains example scripts and configurations for Xen.
+For many operations you will either be able to use these scripts directly, or
+incorporate code from them into your own scripts.
+
+If you write a useful script and would like to share it, please do
+send it (preferably with a little summary to go in this file) to
+<xen-devel@lists.xenproject.org> so we can add it to this directory.
+
+block               - called by xen-backend.agent to bind/unbind dev
+block-common.sh     - sourced by block, block-*
+block-enbd          - binds/unbinds network block devices
+block-nbd           - binds/unbinds network block devices
+cpupool             - example configuration script for 'xl cpupool-create'
+external-device-migrate - called by xend for migrating external devices
+locking.sh          - locking functions to prevent concurrent access to
+                      critical sections inside script files
+logging.sh          - logging function to log output using syslog
+vif-bridge          - virtual network start/stop script in bridged mode
+vif-common.sh       - sourced by vif-bridge
+vif-nat             - xen virtual network start/stop script in NAT mode
+vif-route           - xen virtual network start/stop script in routed mode
+xen-hotplug-common.sh - sourced by vif-common.sh
+xen-network-common.sh - sourced by vif-common.sh
+xen-script-common.sh  - sourced by xen-hotplug-common.sh
+oxenstored.conf     - configuration file for oxenstored
+xl.conf             - configuration file for xl
+xlexample.hvm       - a configuration script for creating a hvm domain with
+                      'xl create'
+xlexample.pvlinux   - a configuration script for creating a pv domain with
+                      'xl create'

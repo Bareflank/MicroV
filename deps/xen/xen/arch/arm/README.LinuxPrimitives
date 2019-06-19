@@ -1,0 +1,143 @@
+Xen on ARM uses various low level assembly primitives from the Linux
+kernel. This file tracks what files have been imported and when they
+were last updated.
+
+=====================================================================
+arm64:
+=====================================================================
+
+bitops: last sync @ v3.16-rc6 (last commit: 8715466b6027)
+
+linux/arch/arm64/lib/bitops.S           xen/arch/arm/arm64/lib/bitops.S
+linux/arch/arm64/include/asm/bitops.h   xen/include/asm-arm/arm64/bitops.h
+
+---------------------------------------------------------------------
+
+cmpxchg: last sync @ v3.16-rc6 (last commit: e1dfda9ced9b)
+
+linux/arch/arm64/include/asm/cmpxchg.h  xen/include/asm-arm/arm64/cmpxchg.h
+
+---------------------------------------------------------------------
+
+atomics: last sync @ v3.16-rc6 (last commit: 8715466b6027)
+
+linux/arch/arm64/include/asm/atomic.h   xen/include/asm-arm/arm64/atomic.h
+
+The following functions were taken from Linux:
+    atomic_add(), atomic_add_return(), atomic_sub(), atomic_sub_return(),
+    atomic_cmpxchg(), __atomic_add_unless()
+
+---------------------------------------------------------------------
+
+mem*: last sync @ v3.16-rc6 (last commit: d875c9b37240)
+
+linux/arch/arm64/lib/memchr.S           xen/arch/arm/arm64/lib/memchr.S
+linux/arch/arm64/lib/memcmp.S           xen/arch/arm/arm64/lib/memcmp.S
+linux/arch/arm64/lib/memcpy.S           xen/arch/arm/arm64/lib/memcpy.S
+linux/arch/arm64/lib/memmove.S          xen/arch/arm/arm64/lib/memmove.S
+linux/arch/arm64/lib/memset.S           xen/arch/arm/arm64/lib/memset.S
+
+for i in memchr.S memcmp.S memcpy.S memmove.S memset.S ; do
+    diff -u linux/arch/arm64/lib/$i xen/arch/arm/arm64/lib/$i
+done
+
+---------------------------------------------------------------------
+
+str*: last sync @ v3.16-rc6 (last commit: 0a42cb0a6fa6)
+
+linux/arch/arm64/lib/strchr.S           xen/arch/arm/arm64/lib/strchr.S
+linux/arch/arm64/lib/strcmp.S           xen/arch/arm/arm64/lib/strcmp.S
+linux/arch/arm64/lib/strlen.S           xen/arch/arm/arm64/lib/strlen.S
+linux/arch/arm64/lib/strncmp.S          xen/arch/arm/arm64/lib/strncmp.S
+linux/arch/arm64/lib/strnlen.S          xen/arch/arm/arm64/lib/strnlen.S
+linux/arch/arm64/lib/strrchr.S          xen/arch/arm/arm64/lib/strrchr.S
+
+for i in strchr.S strcmp.S strlen.S strncmp.S strnlen.S strrchr.S ; do
+    diff -u linux/arch/arm64/lib/$i xen/arch/arm/arm64/lib/$i
+done
+
+---------------------------------------------------------------------
+
+{clear,copy}_page: last sync @ v3.16-rc6 (last commit: f27bb139c387)
+
+linux/arch/arm64/lib/clear_page.S       xen/arch/arm/arm64/lib/clear_page.S
+linux/arch/arm64/lib/copy_page.S        unused in Xen
+
+=====================================================================
+arm32
+=====================================================================
+
+bitops: last sync @ v3.16-rc6 (last commit: c32ffce0f66e)
+
+linux/arch/arm/lib/bitops.h             xen/arch/arm/arm32/lib/bitops.h
+linux/arch/arm/lib/changebit.S          xen/arch/arm/arm32/lib/changebit.S
+linux/arch/arm/lib/clearbit.S           xen/arch/arm/arm32/lib/clearbit.S
+linux/arch/arm/lib/findbit.S            xen/arch/arm/arm32/lib/findbit.S
+linux/arch/arm/lib/setbit.S             xen/arch/arm/arm32/lib/setbit.S
+linux/arch/arm/lib/testchangebit.S      xen/arch/arm/arm32/lib/testchangebit.S
+linux/arch/arm/lib/testclearbit.S       xen/arch/arm/arm32/lib/testclearbit.S
+linux/arch/arm/lib/testsetbit.S         xen/arch/arm/arm32/lib/testsetbit.S
+
+for i in bitops.h changebit.S clearbit.S findbit.S setbit.S testchangebit.S \
+         testclearbit.S testsetbit.S; do
+    diff -u ../linux/arch/arm/lib/$i xen/arch/arm/arm32/lib/$i;
+done
+
+---------------------------------------------------------------------
+
+cmpxchg: last sync @ v3.16-rc6 (last commit: c32ffce0f66e)
+
+linux/arch/arm/include/asm/cmpxchg.h    xen/include/asm-arm/arm32/cmpxchg.h
+
+---------------------------------------------------------------------
+
+atomics: last sync @ v3.16-rc6 (last commit: 030d0178bdbd)
+
+linux/arch/arm/include/asm/atomic.h     xen/include/asm-arm/arm32/atomic.h
+
+The following functions were taken from Linux:
+    atomic_add(), atomic_add_return(), atomic_sub(), atomic_sub_return(),
+    atomic_cmpxchg(), __atomic_add_unless()
+
+---------------------------------------------------------------------
+
+mem*: last sync @ v3.16-rc6 (last commit: d98b90ea22b0)
+
+linux/arch/arm/lib/copy_template.S      xen/arch/arm/arm32/lib/copy_template.S
+linux/arch/arm/lib/memchr.S             xen/arch/arm/arm32/lib/memchr.S
+linux/arch/arm/lib/memcpy.S             xen/arch/arm/arm32/lib/memcpy.S
+linux/arch/arm/lib/memmove.S            xen/arch/arm/arm32/lib/memmove.S
+linux/arch/arm/lib/memset.S             xen/arch/arm/arm32/lib/memset.S
+linux/arch/arm/lib/memzero.S            xen/arch/arm/arm32/lib/memzero.S
+
+for i in copy_template.S memchr.S memcpy.S memmove.S memset.S \
+         memzero.S ; do
+    diff -u linux/arch/arm/lib/$i xen/arch/arm/arm32/lib/$i
+done
+
+---------------------------------------------------------------------
+
+str*: last sync @ v3.16-rc6 (last commit: d98b90ea22b0)
+
+linux/arch/arm/lib/strchr.S             xen/arch/arm/arm32/lib/strchr.S
+linux/arch/arm/lib/strrchr.S            xen/arch/arm/arm32/lib/strrchr.S
+
+---------------------------------------------------------------------
+
+{clear,copy}_page: last sync: Never
+
+linux/arch/arm/lib/copy_page.S          unused in Xen
+
+clear_page == memset
+
+---------------------------------------------------------------------
+
+libgcc: last sync @ v3.16-rc6 (last commit: 01885bc)
+
+linux/arch/arm/lib/lib1funcs.S          xen/arch/arm/arm32/lib/lib1funcs.S
+linux/arch/arm/lib/lshrdi3.S            xen/arch/arm/arm32/lib/lshrdi3.S
+linux/arch/arm/lib/div64.S              xen/arch/arm/arm32/lib/div64.S
+
+for i in lib1funcs.S lshrdi3.S div64.S ; do
+    diff -u linux/arch/arm/lib/$i xen/arch/arm/arm32/lib/$i
+done

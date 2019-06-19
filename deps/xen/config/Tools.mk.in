@@ -1,0 +1,78 @@
+-include $(XEN_ROOT)/config/Paths.mk
+
+CONFIG_RUMP         := @CONFIG_RUMP@
+ifeq ($(CONFIG_RUMP),y)
+XEN_OS              := NetBSDRump
+endif
+
+# Tools path
+BISON               := @BISON@
+FLEX                := @FLEX@
+PYTHON              := @PYTHON@
+PYTHON_PATH         := @PYTHONPATH@
+PY_NOOPT_CFLAGS     := @PY_NOOPT_CFLAGS@
+PERL                := @PERL@
+BASH                := @BASH@
+XGETTTEXT           := @XGETTEXT@
+AS86                := @AS86@
+LD86                := @LD86@
+BCC                 := @BCC@
+IASL                := @IASL@
+AWK                 := @AWK@
+FETCHER             := @FETCHER@
+
+# Extra folder for libs/includes
+PREPEND_INCLUDES    := @PREPEND_INCLUDES@
+PREPEND_LIB         := @PREPEND_LIB@
+APPEND_INCLUDES     := @APPEND_INCLUDES@
+APPEND_LIB          := @APPEND_LIB@
+
+PTHREAD_CFLAGS      := @PTHREAD_CFLAGS@
+PTHREAD_LDFLAGS     := @PTHREAD_LDFLAGS@
+PTHREAD_LIBS        := @PTHREAD_LIBS@
+
+PTYFUNCS_LIBS       := @PTYFUNCS_LIBS@
+
+LIBNL3_LIBS         := @LIBNL3_LIBS@
+LIBNL3_CFLAGS       := @LIBNL3_CFLAGS@
+XEN_TOOLS_RPATH     := @rpath@
+
+# Download GIT repositories via HTTP or GIT's own protocol?
+# GIT's protocol is faster and more robust, when it works at all (firewalls
+# may block it). We make it the default, but if your GIT repository downloads
+# fail or hang, please pass --enable-githttp to configure.
+GIT_HTTP            ?= @githttp@
+
+# Optional components
+XENSTAT_XENTOP      := @monitors@
+OCAML_TOOLS         := @ocamltools@
+FLASK_POLICY        := @xsmpolicy@
+CONFIG_OVMF         := @ovmf@
+CONFIG_ROMBIOS      := @rombios@
+CONFIG_SEABIOS      := @seabios@
+CONFIG_IPXE         := @ipxe@
+CONFIG_QEMU_TRAD    := @qemu_traditional@
+CONFIG_QEMU_XEN     := @qemu_xen@
+CONFIG_QEMUU_EXTRA_ARGS:= @EXTRA_QEMUU_CONFIGURE_ARGS@
+CONFIG_LIBNL        := @libnl@
+
+CONFIG_SYSTEMD      := @systemd@
+SYSTEMD_CFLAGS      := @SYSTEMD_CFLAGS@
+SYSTEMD_LIBS        := @SYSTEMD_LIBS@
+XEN_SYSTEMD_DIR     := @SYSTEMD_DIR@
+XEN_SYSTEMD_MODULES_LOAD := @SYSTEMD_MODULES_LOAD@
+CONFIG_9PFS         := @ninepfs@
+
+LINUX_BACKEND_MODULES := @LINUX_BACKEND_MODULES@
+
+#System options
+ZLIB                := @zlib@
+CONFIG_LIBICONV     := @libiconv@
+EXTFS_LIBS          := @EXTFS_LIBS@
+CURSES_LIBS         := @CURSES_LIBS@
+TINFO_LIBS          := @TINFO_LIBS@
+ARGP_LDFLAGS        := @argp_ldflags@
+
+FILE_OFFSET_BITS    := @FILE_OFFSET_BITS@
+
+CONFIG_PV_SHIM      := @pvshim@

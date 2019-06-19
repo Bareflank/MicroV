@@ -1,0 +1,24 @@
+# FLASK
+
+#
+# Define the security object classes 
+#
+
+# Classes marked as userspace are classes
+# for userspace object managers
+
+class xen
+class xen2
+class domain
+class domain2
+class hvm
+class mmu
+class resource
+class shadow
+class event
+class grant
+class security
+class version
+class argo
+
+# FLASK

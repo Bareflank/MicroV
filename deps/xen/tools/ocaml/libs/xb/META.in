@@ -1,0 +1,5 @@
+version = "@VERSION@"
+description = "XenBus Interface"
+requires = "unix,xenmmap"
+archive(byte) = "xenbus.cma"
+archive(native) = "xenbus.cmxa"

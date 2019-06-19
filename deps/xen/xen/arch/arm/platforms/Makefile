@@ -1,0 +1,12 @@
+obj-$(CONFIG_ALL32_PLAT) += vexpress.o
+obj-$(CONFIG_ALL32_PLAT) += brcm.o
+obj-$(CONFIG_ALL32_PLAT) += exynos5.o
+obj-$(CONFIG_ALL32_PLAT) += midway.o
+obj-$(CONFIG_ALL32_PLAT) += omap5.o
+obj-$(CONFIG_ALL32_PLAT) += rcar2.o
+obj-$(CONFIG_ALL64_PLAT) += seattle.o
+obj-$(CONFIG_ALL_PLAT)   += sunxi.o
+obj-$(CONFIG_ALL64_PLAT) += thunderx.o
+obj-$(CONFIG_ALL64_PLAT) += xgene-storm.o
+obj-$(CONFIG_MPSOC_PLATFORM)  += xilinx-zynqmp.o
+obj-$(CONFIG_MPSOC_PLATFORM)  += xilinx-zynqmp-eemi.o
