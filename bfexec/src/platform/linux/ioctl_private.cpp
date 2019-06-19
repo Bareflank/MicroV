@@ -70,8 +70,8 @@ void
 ioctl_private::call_ioctl_create_vm(
     create_vm_args &args)
 {
-    if (bfm_write_ioctl(fd, IOCTL_CREATE_VM_CMD, &args) < 0) {
-        throw std::runtime_error("ioctl failed: IOCTL_CREATE_VM_CMD");
+    if (bfm_write_ioctl(fd, IOCTL_CREATE_VM, &args) < 0) {
+        throw std::runtime_error("ioctl failed: IOCTL_CREATE_VM");
     }
 }
 
