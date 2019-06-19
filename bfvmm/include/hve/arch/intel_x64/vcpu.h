@@ -334,11 +334,11 @@ private:
 /// @return returns a pointer to the vCPU being queried or throws
 ///     and exception.
 ///
-#define get_vcpu(a) \
-    g_vcm->get<microv::intel_x64::vcpu *>(a, __FILE__ ": invalid microv vcpuid")
+#define get_vcpu(v) \
+    g_vcm->get<microv::intel_x64::vcpu *>(v, __FILE__ ": invalid microv vcpuid")
 
-#define vcpu_cast(a) \
-    static_cast<microv::intel_x64::vcpu *>(a.get())
+#define vcpu_cast(v) \
+    static_cast<microv::intel_x64::vcpu *>(v)
 
 inline bfobject world_switch;
 

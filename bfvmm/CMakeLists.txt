@@ -46,6 +46,10 @@ target_sources(microv_vmm PRIVATE $<${X64}:src/main/arch/intel_x64/domain_factor
 target_link_libraries(microv_bfvmm INTERFACE microv_domain microv_hve)
 target_link_libraries(microv_vmm PRIVATE microv_bfvmm)
 
+#if(BUILD_XEN)
+    add_subdirectory(src/xen)
+    #endif()
+
 # -----------------------------------------------------------------------------
 # Install
 # -----------------------------------------------------------------------------

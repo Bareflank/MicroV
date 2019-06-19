@@ -44,10 +44,12 @@ template<
 constexpr auto log2()
 {
     for (auto i = 0; i < 64; i++) {
-        if constexpr (((1ULL << i) & n) == n) {
+        if (((1ULL << i) & s) == s) {
             return i;
         }
     }
+
+    return 0;
 }
 
 #endif
