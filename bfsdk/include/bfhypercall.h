@@ -58,6 +58,14 @@ uint64_t _vmcall(uint64_t r1, uint64_t r2, uint64_t r3, uint64_t r4) NOEXCEPT;
 
 #define SELF 0xFFFFFFFFFFFFFFFE
 
+#pragma pack(push, 1)
+struct e820_entry_t {
+    uint64_t addr;
+    uint64_t size;
+    uint32_t type;
+};
+#pragma pack(pop)
+
 // -----------------------------------------------------------------------------
 // Opcodes
 // -----------------------------------------------------------------------------
@@ -132,6 +140,7 @@ __uart_ndec_op(uint16_t port, uint64_t val)
 #define __enum_domain_op__set_pt_uart 0xBF02000000000201
 #define __enum_domain_op__dump_uart 0xBF02000000000202
 #define __enum_domain_op__set_exec_mode 0xBF02000000000203
+#define __enum_domain_op__add_e820_entry 0xBF02000000000204
 
 #define __enum_domain_op__share_page_r 0xBF02000000000300
 #define __enum_domain_op__share_page_rw 0xBF02000000000301
@@ -292,6 +301,24 @@ __domain_op__set_exec_mode(domainid_t foreign_domainid, uint64_t mode)
         foreign_domainid,
         mode,
         0
+    );
+}
+
+/**
+ * Add an e820 entry to the domain. The entry specifies a range
+ * from [base, end) with the given type.
+ */
+static inline status_t
+__domain_op__add_e820_entry(domainid_t foreign_domainid,
+                            uintptr_t base,
+                            uintptr_t end,
+                            uintptr_t type)
+{
+    return _vmcall(
+        __enum_domain_op__add_e820_entry,
+        foreign_domainid,
+        base,
+        end | (type << 56)
     );
 }
 

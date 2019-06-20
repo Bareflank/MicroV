@@ -97,6 +97,13 @@ domain::process_donated_page(uintptr_t gpa, uintptr_t hpa)
 }
 
 void
+domain::add_e820_entry(uintptr_t base, uintptr_t end, uint32_t type)
+{
+    struct e820_entry_t ent = { base, end - base, type};
+    m_e820.push_back(ent);
+}
+
+void
 domain::map_1g_r(uintptr_t gpa, uintptr_t hpa)
 { m_ept_map.map_1g(gpa, hpa, ept::mmap::attr_type::read_only); }
 

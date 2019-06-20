@@ -40,10 +40,7 @@ namespace microv::intel_x64
 
 class vcpu;
 
-/// Domain
-///
-class domain : public microv::domain
-{
+class domain : public microv::domain {
 public:
 
     /// Constructor
@@ -60,7 +57,18 @@ public:
     ///
     ~domain() = default;
 
-public:
+    /// Add E820 Map Entry
+    ///
+    /// Adds an E820 map entry to the list. This is populated by the domain
+    /// builder, which is then provided to the guest on demand through the
+    /// vmcall interface
+    ///
+    /// @expects
+    /// @ensures
+    ///
+    /// @param entry the E820 map entry to add
+    ///
+    void add_e820_entry(uintptr_t base, uintptr_t end, uint32_t type);
 
     /// Map 1g GPA to HPA (Read-Only)
     ///
@@ -205,8 +213,6 @@ public:
     ///
     void release(uintptr_t gpa);
 
-public:
-
     /// Set exec mode
     ///
     /// @expects
@@ -280,8 +286,6 @@ public:
     /// @return the number of bytes transferred to the buffer
     ///
     uint64_t dump_uart(const gsl::span<char> &buffer);
-
-public:
 
     /// Domain Registers
     ///
@@ -415,7 +419,8 @@ public:
 
     /// @endcond
 
-public:
+    std::vector<e820_entry_t> &e820()
+    { return m_e820; }
 
     bfvmm::intel_x64::ept::mmap &ept()
     { return m_ept_map; }
@@ -431,6 +436,7 @@ private:
 
 private:
 
+    std::vector<e820_entry_t> m_e820;
     bfvmm::intel_x64::ept::mmap m_ept_map;
     bfvmm::intel_x64::vcpu_global_state_t m_vcpu_global_state;
 

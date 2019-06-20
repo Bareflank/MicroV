@@ -736,16 +736,27 @@ setup_vmlinux(struct vm_t *vm, struct create_vm_args *args)
 
     ret |= setup_acpi(vm);
     ret |= setup_cmdline(vm, args);
-    ret |= setup_e820_map(vm, vm->size, vm->load_gpa);
     ret |= setup_entry_point(vm);
-
     ret |= setup_pvh_console(vm);
     ret |= setup_pvh_start_info(vm, args);
+
+    __domain_op__add_e820_entry(vm->domainid,
+                                0,
+                                0xE800,
+                                E820_TYPE_RAM);
+    __domain_op__add_e820_entry(vm->domainid,
+                                0xE800,
+                                vm->load_gpa,
+                                E820_TYPE_RESERVED);
+    __domain_op__add_e820_entry(vm->domainid,
+                                vm->load_gpa,
+                                vm->load_gpa + vm->size,
+                                E820_TYPE_RAM);
 
     ret |= donate_buffer(vm,
                          vm->elf_bin.exec,
                          vm->load_gpa,
-                         args->ram);
+                         vm->size);
 
     return ret;
 }

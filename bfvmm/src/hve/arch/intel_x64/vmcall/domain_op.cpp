@@ -83,6 +83,27 @@ vmcall_domain_op_handler::domain_op__set_exec_mode(vcpu *vcpu)
 }
 
 void
+vmcall_domain_op_handler::domain_op__add_e820_entry(vcpu *vcpu)
+{
+    try {
+        if (vcpu->rbx() == self || vcpu->rbx() == vcpu->domid()) {
+            throw std::runtime_error(
+                "domain_op__add_e820_entry: self not supported");
+        }
+
+        const auto base = vcpu->rcx();
+        const auto end = vcpu->rdx() & ~(0xFFULL << 56);
+        const auto type = vcpu->rdx() >> 56;
+
+        get_domain(vcpu->rbx())->add_e820_entry(base, end, type);
+        vcpu->set_rax(SUCCESS);
+    }
+    catchall({
+        vcpu->set_rax(FAILURE);
+    })
+}
+
+void
 vmcall_domain_op_handler::domain_op__set_uart(vcpu *vcpu)
 {
     try {
@@ -446,6 +467,7 @@ vmcall_domain_op_handler::dispatch(vcpu *vcpu)
 
         dispatch_case(set_uart)
         dispatch_case(set_exec_mode)
+        dispatch_case(add_e820_entry)
         dispatch_case(set_pt_uart)
         dispatch_case(dump_uart)
 
