@@ -219,7 +219,7 @@ bool xen_op::handle_xen_version()
             info->submap |= (1 << XENFEAT_gnttab_map_avail_bits);
             info->submap |= (1 << XENFEAT_hvm_callback_vector);
             //info->submap |= (1 << XENFEAT_hvm_safe_pvclock);
-            info->submap |= (1 << XENFEAT_hvm_pirqs);
+            //info->submap |= (1 << XENFEAT_hvm_pirqs);
             info->submap |= (1 << XENFEAT_dom0);
             //info->submap |= (1 << XENFEAT_memory_op_vnode_supported);
             //info->submap |= (1 << XENFEAT_ARM_SMCCC_supported);
