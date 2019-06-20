@@ -42,6 +42,8 @@
 #include <bfvmm/vcpu/vcpu_manager.h>
 #include <bfvmm/hve/arch/intel_x64/vcpu.h>
 
+#include "../../../xen/arch/intel_x64/xen_op.h"
+
 //------------------------------------------------------------------------------
 // Definition
 //------------------------------------------------------------------------------
@@ -299,6 +301,8 @@ private:
 
     bool m_killed{};
     vcpu *m_parent_vcpu{};
+
+    std::unique_ptr<microv::xen::intel_x64::xen_op> m_xen_op;
 };
 
 }

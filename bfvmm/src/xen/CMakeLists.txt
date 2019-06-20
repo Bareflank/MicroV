@@ -22,7 +22,6 @@
 add_library(microv_xen)
 
 target_link_libraries(microv_xen PUBLIC microv_hve microv_domain)
-target_compile_definitions(microv_xen PUBLIC __XEN__ $<${X64}:__x86_64__>)
 target_include_directories(microv_xen PUBLIC
     $<${BUILD_INCLUDE}:${PROJECT_SOURCE_DIR}/include>
     $<${BUILD_INCLUDE}:${PROJECT_SOURCE_DIR}/../bfsdk/include>

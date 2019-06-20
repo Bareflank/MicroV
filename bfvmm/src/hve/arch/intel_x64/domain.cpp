@@ -59,8 +59,6 @@ domain::setup_dom0()
     //   so we should assume that 1 gig page support is required. Once again,
     //   legacy support is not a focus of this project
     //
-    bfdebug_nhex(0, "setup_dom0:", m_did);
-
     ept::identity_map(
         m_ept_map, MAX_PHYS_ADDR
     );
@@ -69,7 +67,6 @@ domain::setup_dom0()
 void
 domain::setup_domU()
 {
-    bfdebug_nhex(0, "setup_domU:", m_did);
 }
 
 void

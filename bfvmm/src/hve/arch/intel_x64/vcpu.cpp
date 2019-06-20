@@ -20,8 +20,8 @@
 // SOFTWARE.
 
 #include <intrinsics.h>
-
 #include <bfgpalayout.h>
+#include <bfbuilderinterface.h>
 #include <hve/arch/intel_x64/vcpu.h>
 
 //------------------------------------------------------------------------------
@@ -119,6 +119,10 @@ vcpu::write_domU_guest_state(domain *domain)
     this->setup_default_handlers();
 
     domain->setup_vcpu_uarts(this);
+
+    if (domain->exec_mode() == VM_EXEC_XENPVH) {
+        m_xen_op = std::make_unique<xen::intel_x64::xen_op>(this, m_domain);
+    }
 }
 
 //------------------------------------------------------------------------------

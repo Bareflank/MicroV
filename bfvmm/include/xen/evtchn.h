@@ -19,8 +19,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#ifndef MICROV_XEN_EVTCHN_H
-#define MICROV_XEN_EVTCHN_H
+#ifndef MICROV_EVTCHN_H
+#define MICROV_EVTCHN_H
 
 #include <public/xen.h>
 #include <public/event_channel.h>

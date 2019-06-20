@@ -22,12 +22,19 @@
 #ifndef MICROV_INTEL_X64_XEN_OP_H
 #define MICROV_INTEL_X64_XEN_OP_H
 
-#include "../../evtchn.h"
-#include "evtchn_op.h"
+#include <memory>
 #include "gnttab_op.h"
+#include "evtchn_op.h"
 
-namespace microv::xen::intel_x64
-{
+namespace microv::intel_x64 {
+    class domain;
+    class vcpu;
+}
+
+namespace microv::xen::intel_x64 {
+
+class evtchn_op;
+class gnttab_op;
 
 class xen_op {
 public:
@@ -39,7 +46,7 @@ public:
     ///
     /// @param vcpu the vcpu of the xen_op
     ///
-    xen_op(microv::intel_x64::vcpu *vcpu);
+    xen_op(microv::intel_x64::vcpu *vcpu, microv::intel_x64::domain *dom);
 
     /// Destructor
     ///
@@ -50,9 +57,10 @@ public:
 
 private:
 
-    microv::intel_x64::vcpu *m_vcpu;
-    std::unique_ptr<evtchn_op> m_evtchn_op;
+    microv::intel_x64::vcpu *m_vcpu{};
+    microv::intel_x64::domain *m_dom{};
     std::unique_ptr<gnttab_op> m_gnttab_op;
+    std::unique_ptr<evtchn_op> m_evtchn_op;
 
 public:
 
@@ -67,4 +75,5 @@ public:
     /// @endcond
 };
 }
+
 #endif

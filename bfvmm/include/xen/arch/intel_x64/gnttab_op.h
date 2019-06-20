@@ -24,10 +24,12 @@
 
 #include <bfmath.h>
 #include <bfvmm/memory_manager/memory_manager.h>
-#include <hve/arch/intel_x64/vcpu.h>
+
 #include <public/xen.h>
 #include <public/grant_table.h>
 #include <public/memory.h>
+
+namespace microv::intel_x64 { class vcpu; }
 
 namespace microv::xen::intel_x64 {
 
@@ -89,5 +91,4 @@ public:
     /// @endcond
 };
 }
-
 #endif

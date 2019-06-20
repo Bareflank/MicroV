@@ -39,8 +39,8 @@ evtchn_op::init_control(gsl::not_null<evtchn_init_control_t *> ctl)
     expects(ctl->offset <= (0x1000 - sizeof(evtchn_fifo_control_block_t)));
     expects((ctl->offset & 0x7) == 0);
 
-    this->setup_control_block(ctl->control_gfn, ctl->offset);
-    this->setup_ports();
+//    this->setup_control_block(ctl->control_gfn, ctl->offset);
+//    this->setup_ports();
 
     ctl->link_bits = EVTCHN_FIFO_LINK_BITS;
 }

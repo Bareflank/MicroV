@@ -19,16 +19,18 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#include <hve/arch/intel_x64/vcpu.h>
+#include <xen/arch/intel_x64/xen_op.h>
 #include <xen/arch/intel_x64/evtchn_op.h>
 #include <xen/arch/intel_x64/gnttab_op.h>
-#include <xen/arch/intel_x64/xen_op.h>
+#include <hve/arch/intel_x64/domain.h>
+#include <hve/arch/intel_x64/vcpu.h>
 
 namespace microv::xen::intel_x64
 {
 
-xen_op::xen_op(microv::intel_x64::vcpu *vcpu) :
+xen_op::xen_op(microv::intel_x64::vcpu *vcpu, microv::intel_x64::domain *dom) :
     m_vcpu{vcpu},
+    m_dom{dom},
     m_evtchn_op{std::make_unique<evtchn_op>(vcpu)},
     m_gnttab_op{std::make_unique<gnttab_op>(vcpu)}
 {

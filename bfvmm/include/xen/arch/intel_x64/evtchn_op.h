@@ -27,8 +27,7 @@
 #include <bfvmm/hve/arch/x64/unmapper.h>
 #include "../../evtchn.h"
 
-namespace microv::xen::intel_x64
-{
+namespace microv::xen::intel_x64 {
 
 class evtchn_op {
 public:

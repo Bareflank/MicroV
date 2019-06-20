@@ -882,6 +882,14 @@ add_config(
     ADVANCED
 )
 
+add_config(
+    CONFIG_NAME BUILD_XEN
+    CONFIG_TYPE BOOL
+    DEFAULT_VAL OFF
+    DESCRIPTION "Build xen vmm components"
+    SKIP_VALIDATION
+)
+
 # ------------------------------------------------------------------------------
 # Default Flags
 # ------------------------------------------------------------------------------
