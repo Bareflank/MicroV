@@ -324,11 +324,13 @@ setup_cmdline(struct vm_t *vm, struct create_vm_args *args)
         return ret;
     }
 
-    vm->params->hdr.cmd_line_ptr = COMMAND_LINE_PAGE_GPA;
+    if (vm->exec_mode == VM_EXEC_NATIVE) {
+        vm->params->hdr.cmd_line_ptr = COMMAND_LINE_PAGE_GPA;
+    }
+
     return SUCCESS;
 }
 
-//TODO: MCFG
 static status_t
 setup_acpi(struct vm_t *vm)
 {
@@ -726,6 +728,9 @@ setup_vmlinux(struct vm_t *vm, struct create_vm_args *args)
         return ret;
     }
 
+    vm->size = args->ram;
+    vm->addr = vm->elf_bin.exec;
+
     // Copy the initrd next to the kernel
     //
     ret = platform_memcpy(vm->elf_bin.exec + vm->elf_bin.ef.total_memsz,
@@ -823,6 +828,18 @@ static status_t
 setup_reserved_free(struct vm_t *vm)
 {
     status_t ret = SUCCESS;
+    uint64_t addr = 0;
+    uint64_t size = 0;
+
+    /**
+     * The start address differs depending on the VM's exec mode. We
+     * use this value to compute the size of the second reserved range.
+     */
+
+    if (vm->load_gpa <= RESERVED2_ADDR) {
+        BFDEBUG("setup_reserved_free: invalid load_gpa\n");
+        return FAILURE;
+    }
 
     /**
      * We are not required to map in reserved ranges, only RAM ranges. The
@@ -841,36 +858,26 @@ setup_reserved_free(struct vm_t *vm)
     addr = RESERVED1_ADDR;
     size = RESERVED1_SIZE;
 
-    if (vm->exec_mode == VM_EXEC_XENPVH) {
-        addr += PVH_PAGES_SIZE;
-        size -= PVH_PAGES_SIZE; // increase by number of bytes for PVH pages
-    }
+    switch (vm->exec_mode) {
+    case VM_EXEC_NATIVE:
+        ret |= donate_page_to_page_range(vm, vm->zero_page, addr, size);
+        break;
 
-    BFDEBUG("rsvd1 range: [%llx,%llx)\n", addr, addr + size);
+    case VM_EXEC_XENPVH:
+        ret |= donate_page_r(vm, vm->zero_page, BOOT_PARAMS_PAGE_GPA);
+        ret |= donate_page_r(vm, vm->zero_page, INITIAL_GDT_GPA);
+        ret |= donate_page_to_page_range(vm, vm->zero_page, 0xEE000, 2 * 4096);
+        break;
 
-    ret = donate_page_to_page_range(vm, vm->zero_page, addr, size);
-    if (ret != SUCCESS) {
-        return ret;
-    }
-
-    /**
-     * The start address differs depending on the VM's exec mode. We
-     * use this value to compute the size of the second reserved range.
-     */
-
-    if (vm->load_gpa <= RESERVED2_ADDR) {
-        BFDEBUG("setup_reserved_free: invalid load addr\n");
+    default:
         return FAILURE;
     }
 
-    ret = donate_page_to_page_range(
-        vm, vm->zero_page, RESERVED2_ADDR, vm->load_gpa - RESERVED2_ADDR);
-    BFDEBUG("rsvd2 range: [%llx,%llx)\n", RESERVED2_ADDR, RESERVED2_ADDR + vm->load_gpa - RESERVED2_ADDR);
-    if (ret != SUCCESS) {
-        return ret;
-    }
+    addr = RESERVED2_ADDR;
+    size = vm->load_gpa - RESERVED2_ADDR;
+    ret |= donate_page_to_page_range(vm, vm->zero_page, addr, size);
 
-    return SUCCESS;
+    return ret;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -916,7 +923,7 @@ setup_32bit_gdt(struct vm_t *vm)
 }
 
 static status_t
-setup_32bit_register_state(struct vm_t *vm)
+native_setup_32bit_register_state(struct vm_t *vm)
 {
     /**
      * Notes:
@@ -991,6 +998,75 @@ setup_32bit_register_state(struct vm_t *vm)
     }
 
     return SUCCESS;
+}
+
+static status_t
+xenpvh_setup_register_state(struct vm_t *vm)
+{
+    status_t ret = SUCCESS;
+
+    ret |= __domain_op__set_rip(vm->domainid, vm->entry_gpa);
+    ret |= __domain_op__set_rbx(vm->domainid, PVH_START_INFO_GPA);
+
+    ret |= __domain_op__set_cr3(vm->domainid, 0x0);
+    ret |= __domain_op__set_cr0(vm->domainid, 0x10037);
+    ret |= __domain_op__set_cr4(vm->domainid, 0x02000);
+
+    // PVH code segment
+    ret |= __domain_op__set_cs_base(vm->domainid, 0x0);
+    ret |= __domain_op__set_cs_limit(vm->domainid, 0xFFFFFFFF);
+    ret |= __domain_op__set_cs_access_rights(vm->domainid, 0xc09b);
+
+    // PVH data segments
+    ret |= __domain_op__set_ds_base(vm->domainid, 0x0);
+    ret |= __domain_op__set_ds_limit(vm->domainid, 0xFFFFFFFF);
+    ret |= __domain_op__set_ds_access_rights(vm->domainid, 0xc093);
+
+    ret |= __domain_op__set_es_base(vm->domainid, 0x0);
+    ret |= __domain_op__set_es_limit(vm->domainid, 0xFFFFFFFF);
+    ret |= __domain_op__set_es_access_rights(vm->domainid, 0xc093);
+
+    // Needed for VM-entry, not PVH
+    ret |= __domain_op__set_ss_base(vm->domainid, 0x0);
+    ret |= __domain_op__set_ss_limit(vm->domainid, 0xFFFFFFFF);
+    ret |= __domain_op__set_ss_access_rights(vm->domainid, 0xc093);
+
+    ret |= __domain_op__set_fs_base(vm->domainid, 0x0);
+    ret |= __domain_op__set_fs_limit(vm->domainid, 0x0);
+    ret |= __domain_op__set_fs_access_rights(vm->domainid, 0x10000);
+
+    ret |= __domain_op__set_gs_base(vm->domainid, 0x0);
+    ret |= __domain_op__set_gs_limit(vm->domainid, 0x0);
+    ret |= __domain_op__set_gs_access_rights(vm->domainid, 0x10000);
+
+    ret |= __domain_op__set_ldtr_base(vm->domainid, 0x0);
+    ret |= __domain_op__set_ldtr_limit(vm->domainid, 0x0);
+    ret |= __domain_op__set_ldtr_access_rights(vm->domainid, 0x10000);
+
+    // PVH task register
+    ret |= __domain_op__set_tr_selector(vm->domainid, 0x0);
+    ret |= __domain_op__set_tr_base(vm->domainid, 0x0);
+    ret |= __domain_op__set_tr_limit(vm->domainid, 0x67);
+    ret |= __domain_op__set_tr_access_rights(vm->domainid, 0x008b);
+
+    // PAT
+    ret |= __domain_op__set_ia32_pat(vm->domainid, 0x0606060606060606);
+
+    return ret;
+}
+
+static status_t
+setup_32bit_register_state(struct vm_t *vm)
+{
+    if (vm->exec_mode == VM_EXEC_NATIVE) {
+        return native_setup_32bit_register_state(vm);
+    }
+
+    if (vm->exec_mode == VM_EXEC_XENPVH) {
+        return xenpvh_setup_register_state(vm);
+    }
+
+    return FAILURE;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -1078,8 +1154,9 @@ common_destroy(uint64_t domainid)
     platform_free_rw(vm->madt, BAREFLANK_PAGE_SIZE);
     platform_free_rw(vm->fadt, BAREFLANK_PAGE_SIZE);
     platform_free_rw(vm->dsdt, BAREFLANK_PAGE_SIZE);
-    // TODO free for pvh
-    //platform_free_rw(vm->addr, vm->size);
+    platform_free_rw(vm->addr, vm->size);
+
+    // TODO free PVH specific stuff
 
     release_vm(vm);
     return SUCCESS;

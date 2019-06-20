@@ -82,28 +82,27 @@ enum e820_type {
 #define BIOS_RAM_ADDR           0x0
 #define BIOS_RAM_SIZE           0xE8000
 
-#define RESERVED1_ADDR          0xEE000
-#define RESERVED1_SIZE          (0xF0000 - 0xEE000)
-
-#define RESERVED2_ADDR          0xF5000
+#define RESERVED1_ADDR          0xEB000
+#define RESERVED1_SIZE          (0xF0000 - 0xEB000)
 
 #define BOOT_PARAMS_PAGE_GPA    0xE8000
 #define COMMAND_LINE_PAGE_GPA   0xE9000
 #define INITIAL_GDT_GPA         0xEA000
+#define PVH_START_INFO_GPA      0xEB000
+#define PVH_CONSOLE_GPA         0xEC000
+#define PVH_MODLIST_GPA         0xED000
 
 #define ACPI_RSDP_GPA           0xF0000
 #define ACPI_XSDT_GPA           0xF1000
 #define ACPI_MADT_GPA           0xF2000
 #define ACPI_FADT_GPA           0xF3000
 #define ACPI_DSDT_GPA           0xF4000
+#define ACPI_MCFG_GPA           0xF5000
+#define RESERVED2_ADDR          0xF6000
 
-#define XAPIC_GPA               0xFEE00000
 #define NATIVE_LOAD_GPA         0x100000
-
 #define PVH_LOAD_GPA            0x1000000
-#define PVH_START_INFO_GPA      0xEB000
-#define PVH_CONSOLE_GPA         0xEC000
-#define PVH_MODLIST_GPA         0xED000
+#define XAPIC_GPA               0xFEE00000
 
 int64_t
 add_e820_entry(void *vm, uint64_t saddr, uint64_t eaddr, uint32_t type);
@@ -129,6 +128,10 @@ static inline int64_t
 setup_e820_map(void *vm, uint64_t size, uint32_t load_addr)
 {
     status_t ret = 0;
+
+    // Round up to the next 4K page
+    size &= ~0xFFFULL;
+    size += 0x1000ULL;
 
     if (size >= 0xFDC00000) {
         BFALERT("setup_e820_map: unsupported amount of RAM\n");

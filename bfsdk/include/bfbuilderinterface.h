@@ -53,16 +53,16 @@ extern "C" {
  * VM file types
  */
 enum vm_file_type {
-    VM_FILE_BZIMAGE,
-    VM_FILE_VMLINUX
+    VM_FILE_BZIMAGE = 0,
+    VM_FILE_VMLINUX = 1
 };
 
 /**
  * VM execution modes
  */
 enum vm_exec_mode {
-    VM_EXEC_NATIVE,
-    VM_EXEC_XENPVH
+    VM_EXEC_NATIVE = 0,
+    VM_EXEC_XENPVH = 1
 };
 
 /**
