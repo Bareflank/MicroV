@@ -165,7 +165,7 @@ attach_to_vm(const args_type &args)
     std::thread t(vcpu_thread, g_vcpuid);
     std::thread u;
 
-//    output_vm_uart_verbose();
+    output_vm_uart_verbose();
 
     t.join();
 
@@ -190,7 +190,7 @@ vm_file_type(const char *data, uint64_t size)
 {
     /**
      * We support ELF (vmlinux) or bzImage. The latter
-     * is identified by parsing some fields in the
+     * is identified by parsing the magic field in the
      * setup_header, so we make sure size is big enough.
      */
     expects(size > 0x1f1 + sizeof(struct setup_header));
@@ -269,7 +269,7 @@ create_vm(const args_type &args)
     ioctl_args.ram = ram;
 
     ctl->call_ioctl_create_vm(ioctl_args);
-//    create_vm_from_bzimage_verbose();
+    dump_vm_create_verbose();
 
     g_domainid = ioctl_args.domainid;
 }

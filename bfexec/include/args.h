@@ -19,6 +19,9 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+#ifndef BFEXEC_ARGS_H
+#define BFEXEC_ARGS_H
+
 #include "cxxopts.hpp"
 
 using args_type = cxxopts::ParseResult;
@@ -37,7 +40,7 @@ parse_args(int argc, char *argv[])
     ("affinity", "The host CPU to execute the VM on", value<uint64_t>(), "[core #]")
     ("kernel", "The VM's kernel", value<std::string>(), "[path]")
     ("initrd", "The VM's initrd", value<std::string>(), "[path]")
-    ("ram", "The VM's total RAM", value<uint64_t>(), "[MB]")
+    ("ram", "The VM's total RAM", value<uint64_t>(), "[bytes]")
     ("cmdline", "Additional Linux command line arguments", value<std::string>(), "[text]")
     ("uart", "Give the VM an emulated UART", value<uint64_t>(), "[port #]")
     ("pt_uart", "Pass-through a host UART to the VM", value<uint64_t>(), "[port #]");
@@ -57,6 +60,10 @@ parse_args(int argc, char *argv[])
         throw std::runtime_error("must specify 'kernel'");
     }
 
+    if (!args.count("initrd")) {
+        throw std::runtime_error("must specify 'initrd'");
+    }
+
     if (args.count("uart") && args.count("pt_uart")) {
         throw std::runtime_error("must specify 'uart' or 'pt_uart'");
     }
@@ -64,4 +71,4 @@ parse_args(int argc, char *argv[])
     return args;
 }
 
-
+#endif
