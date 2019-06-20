@@ -23,8 +23,7 @@
 #include <hve/arch/intel_x64/vcpu.h>
 #include <xen/arch/intel_x64/evtchn_op.h>
 
-namespace microv::xen::intel_x64
-{
+namespace microv::xen::intel_x64 {
 
 evtchn_op::evtchn_op(microv::intel_x64::vcpu *vcpu) : m_vcpu{vcpu}
 {
@@ -33,14 +32,14 @@ evtchn_op::evtchn_op(microv::intel_x64::vcpu *vcpu) : m_vcpu{vcpu}
 }
 
 void
-evtchn_op::init_control(gsl::not_null<evtchn_init_control_t *> ctl)
+evtchn_op::init_control(evtchn_init_control_t *ctl)
 {
     //expects(ctl->vcpu == m_vcpu->lapicid());
     expects(ctl->offset <= (0x1000 - sizeof(evtchn_fifo_control_block_t)));
     expects((ctl->offset & 0x7) == 0);
 
-//    this->setup_control_block(ctl->control_gfn, ctl->offset);
-//    this->setup_ports();
+    this->setup_control_block(ctl->control_gfn, ctl->offset);
+    this->setup_ports();
 
     ctl->link_bits = EVTCHN_FIFO_LINK_BITS;
 }
@@ -56,7 +55,7 @@ evtchn_op::set_callback_via(uint64_t via)
     //
     m_cb_via = via;
 }
-//
+
 //void
 //evtchn_op::expand_array(gsl::not_null<evtchn_expand_array_t *> arr)
 //{ this->make_word_page(arr); }
@@ -91,15 +90,14 @@ evtchn_op::set_callback_via(uint64_t via)
 //    bfdebug_nhex(0, "bound store:", port);
 //    return port;
 //}
-//
-//evtchn_op::port_t
-//evtchn_op::bind_console()
-//{
-//    auto port = this->bind(evtchn::state_reserved);
-//    bfdebug_nhex(0, "bound console:", port);
-//    return port;
-//}
-//
+
+evtchn_op::port_t evtchn_op::bind_console()
+{
+    auto port = this->bind(evtchn::state_reserved);
+    bfdebug_nhex(0, "evtchn: bound console:", port);
+    return port;
+}
+
 //void
 //evtchn_op::bind_ipi(gsl::not_null<evtchn_bind_ipi_t *> arg)
 //{
@@ -138,50 +136,49 @@ evtchn_op::set_callback_via(uint64_t via)
 //    chan->set_vcpuid(arg->vcpu);
 //    chan->set_prev_vcpuid(prev);
 //}
-//
-//// =============================================================================
-//// Initialization
-//// =============================================================================
-//
-//void
-//evtchn_op::setup_control_block(uint64_t gfn, uint32_t offset)
-//{
-//    const auto gpa = gfn << ::x64::pt::page_shift;
-//    m_ctl_blk_ump = m_vcpu->map_gpa_4k<uint8_t>(gpa);
-//
-//    uint8_t *base = m_ctl_blk_ump.get() + offset;
-//    m_ctl_blk = reinterpret_cast<evtchn_fifo_control_block_t *>(base);
-//
-//    for (auto i = 0U; i <= EVTCHN_FIFO_PRIORITY_MIN; i++) {
-//        m_queues[i].priority = gsl::narrow_cast<uint8_t>(i);
-//        m_queues[i].head = &m_ctl_blk->head[i];
-//    }
-//}
-//
-//void
-//evtchn_op::setup_ports()
-//{
-//    expects(m_event_words.size() == 0);
-//    expects(m_event_chans.size() == 0);
-//    expects(m_allocated_words == 0);
-//    expects(m_allocated_chans == 0);
-//
-//    this->make_chan_page(null_port);
-//    this->port_to_chan(null_port)->set_state(evtchn::state_reserved);
-//}
-//
-//evtchn_op::port_t
-//evtchn_op::bind(evtchn::state_t state)
-//{
-//    const auto port = this->make_new_port();
-//    auto chan = this->port_to_chan(port);
-//
-//    chan->set_port(port);
-//    chan->set_state(state);
-//
-//    return port;
-//}
-//
+
+// =============================================================================
+// Initialization
+// =============================================================================
+
+void
+evtchn_op::setup_control_block(uint64_t gfn, uint32_t offset)
+{
+    const auto gpa = gfn << ::x64::pt::page_shift;
+    m_ctl_blk_ump = m_vcpu->map_gpa_4k<uint8_t>(gpa);
+
+    uint8_t *base = m_ctl_blk_ump.get() + offset;
+    m_ctl_blk = reinterpret_cast<evtchn_fifo_control_block_t *>(base);
+
+    for (auto i = 0U; i <= EVTCHN_FIFO_PRIORITY_MIN; i++) {
+        m_queues[i].priority = gsl::narrow_cast<uint8_t>(i);
+        m_queues[i].head = &m_ctl_blk->head[i];
+    }
+}
+
+void
+evtchn_op::setup_ports()
+{
+    expects(m_event_words.size() == 0);
+    expects(m_event_chans.size() == 0);
+    expects(m_allocated_words == 0);
+    expects(m_allocated_chans == 0);
+
+    this->make_chan_page(null_port);
+    this->port_to_chan(null_port)->state = evtchn::state_reserved;
+}
+
+evtchn_op::port_t evtchn_op::bind(evtchn::state_t state)
+{
+    const auto port = this->make_new_port();
+    auto chan = this->port_to_chan(port);
+
+    chan->port = port;
+    chan->state = state;
+
+    return port;
+}
+
 //bool
 //evtchn_op::set_link(word_t *word, event_word_t *val, port_t link)
 //{
@@ -243,118 +240,112 @@ evtchn_op::set_callback_via(uint64_t via)
 //    ::intel_x64::barrier::wmb();
 //    m_vcpu->queue_external_interrupt(m_cb_via);
 //}
+
+// Ports
 //
-//// Ports
-////
-//// A port is an address to two things: a chan_t and a word_t
-//// Ports use a two-level addressing scheme.
-////
+// A port is an address to two things: a chan_t and a word_t
+// Ports use a two-level addressing scheme.
 //
-//evtchn_op::port_t
-//evtchn_op::make_new_port()
-//{
-//    for (port_t p = m_port_end; p < max_channels; p++) {
-//        if (this->make_port(p) == -EBUSY) {
-//            continue;
-//        }
+
+evtchn_op::port_t evtchn_op::make_new_port()
+{
+    for (port_t p = m_port_end; p < max_channels; p++) {
+        if (this->make_port(p) == -EBUSY) {
+            continue;
+        }
+
+        m_port_end = p + 1U;
+        return p;
+    }
+
+    return null_port;
+}
+
+evtchn_op::chan_t *evtchn_op::port_to_chan(port_t port) const
+{
+    const auto size = m_event_chans.size();
+    const auto page = (port & chan_page_mask) >> chan_page_shift;
+
+    if (page >= size) {
+        return nullptr;
+    }
+
+    auto chan = m_event_chans[page].get();
+    return &chan[port & chan_mask];
+}
+
+// Note:
 //
-//        m_port_end = p + 1U;
-//        return p;
-//    }
+// Word arrays are shared between the guest and host. The guest adds a new
+// word array with the EVTCHNOP_expand_array hypercall, so it is possible
+// that a given port doesn't map to an existing event word.
 //
-//    return null_port;
-//}
-//
-//evtchn_op::chan_t *
-//evtchn_op::port_to_chan(port_t port) const
-//{
-//    const auto size = m_event_chans.size();
-//    const auto page = (port & chan_page_mask) >> chan_page_shift;
-//
-//    if (page >= size) {
-//        return nullptr;
-//    }
-//
-//    auto chan = m_event_chans[page].get();
-//    return &chan[port & chan_mask];
-//}
-//
-//// Note:
-////
-//// Word arrays are shared between the guest and host. The guest adds a new
-//// word array with the EVTCHNOP_expand_array hypercall, so it is possible
-//// that a given port doesn't map to an existing event word.
-////
-//evtchn_op::word_t *
-//evtchn_op::port_to_word(port_t port) const
-//{
-//    const auto size = m_event_words.size();
-//    const auto page = (port & word_page_mask) >> word_page_shift;
-//
-//    if (page >= size) {
-//        return nullptr;
-//    }
-//
-//    auto word = m_event_words[page].get();
-//    return &word[port & word_mask];
-//}
-//
-//int
-//evtchn_op::make_port(port_t port)
-//{
-//    if (port >= max_channels) {
-//        throw std::invalid_argument("make_port: port out of range" +
-//                                    std::to_string(port));
-//    }
-//
-//    if (const auto chan = this->port_to_chan(port); chan) {
-//        if (chan->state() != evtchn::state_free) {
-//            return -EBUSY;
-//        }
-//
-//        auto word = this->port_to_word(port);
-//        if (word && this->word_is_busy(word)) {
-//            return -EBUSY;
-//        }
-//        return 0;
-//    }
-//
-//    this->make_chan_page(port);
-//    return 0;
-//}
-//
-//void
-//evtchn_op::make_chan_page(port_t port)
-//{
-//    const auto indx = (port & chan_page_mask) >> chan_page_shift;
-//    const auto size = m_event_chans.size();
-//    const auto cpty = m_event_chans.capacity();
-//
-//    expects(size == indx);
-//    expects(size < cpty);
-//
-//    auto page = make_page<chan_t>();
-//
-//    for (auto i = 0U; i < chans_per_page; i++) {
-//        auto chan = &page.get()[i];
-//
-//        chan->set_state(evtchn::state_free);
-//        chan->set_priority(EVTCHN_FIFO_PRIORITY_DEFAULT);
-//        chan->set_prev_priority(EVTCHN_FIFO_PRIORITY_DEFAULT);
-//
-//        //TODO: Need to use ID the guest
-//        // passes in to bind_virq
-//        chan->set_vcpuid(0);
-//
-//        chan->set_prev_vcpuid(0);
-//        chan->set_port(port + i);
-//        chan->clear_pending();
-//    }
-//
-//    m_event_chans.push_back(std::move(page));
-//    m_allocated_chans += chans_per_page;
-//}
-//
+evtchn_op::word_t *evtchn_op::port_to_word(port_t port) const
+{
+    const auto size = m_event_words.size();
+    const auto page = (port & word_page_mask) >> word_page_shift;
+
+    if (page >= size) {
+        return nullptr;
+    }
+
+    auto word = m_event_words[page].get();
+    return &word[port & word_mask];
+}
+
+int evtchn_op::make_port(port_t port)
+{
+    if (port >= max_channels) {
+        throw std::invalid_argument("make_port: port out of range" +
+                                    std::to_string(port));
+    }
+
+    if (const auto chan = this->port_to_chan(port); chan) {
+        if (chan->state != evtchn::state_free) {
+            return -EBUSY;
+        }
+
+        auto word = this->port_to_word(port);
+        if (word && this->word_is_busy(word)) {
+            return -EBUSY;
+        }
+        return 0;
+    }
+
+    this->make_chan_page(port);
+    return 0;
+}
+
+void evtchn_op::make_chan_page(port_t port)
+{
+    const auto indx = (port & chan_page_mask) >> chan_page_shift;
+    const auto size = m_event_chans.size();
+    const auto cpty = m_event_chans.capacity();
+
+    expects(size == indx);
+    expects(size < cpty);
+
+    auto page = make_page<chan_t>();
+
+    for (auto i = 0U; i < chans_per_page; i++) {
+        auto chan = &page.get()[i];
+
+        chan->state = evtchn::state_free;
+        chan->priority = EVTCHN_FIFO_PRIORITY_DEFAULT;
+        chan->prev_priority = EVTCHN_FIFO_PRIORITY_DEFAULT;
+
+        //TODO: Need to use ID the guest
+        // passes in to bind_virq
+        chan->vcpuid = 0;
+        chan->prev_vcpuid = 0;
+        chan->port = port + i;
+        chan->is_pending = false;
+    }
+
+    m_event_chans.push_back(std::move(page));
+    m_allocated_chans += chans_per_page;
+}
+
 //void
 //evtchn_op::make_word_page(gsl::not_null<evtchn_expand_array_t *> expand)
 //{
@@ -381,12 +372,12 @@ evtchn_op::set_callback_via(uint64_t via)
 //{
 //    return is_bit_set(word->load(), EVTCHN_FIFO_LINKED);
 //}
-//
-//bool evtchn_op::word_is_busy(word_t *word) const
-//{
-//    return is_bit_set(word->load(), EVTCHN_FIFO_BUSY);
-//}
-//
+
+bool evtchn_op::word_is_busy(word_t *word) const
+{
+    return is_bit_set(word->load(), EVTCHN_FIFO_BUSY);
+}
+
 //void evtchn_op::word_set_pending(word_t *word)
 //{
 //    word->fetch_or(1U << EVTCHN_FIFO_PENDING);

@@ -26,6 +26,10 @@
 #include "gnttab_op.h"
 #include "evtchn_op.h"
 
+namespace bfvmm::intel_x64 {
+    class vcpu;
+}
+
 namespace microv::intel_x64 {
     class domain;
     class vcpu;
@@ -57,10 +61,18 @@ public:
 
 private:
 
+    bool handle_hypercall(microv::intel_x64::vcpu *vcpu);
+    bool handle_memory_op();
+    bool handle_xen_version();
+    bool handle_hvm_op();
+    bool handle_event_channel_op();
+
     microv::intel_x64::vcpu *m_vcpu{};
     microv::intel_x64::domain *m_dom{};
     std::unique_ptr<gnttab_op> m_gnttab_op;
     std::unique_ptr<evtchn_op> m_evtchn_op;
+    bfvmm::x64::unique_map<struct shared_info> m_shinfo{};
+    bfvmm::x64::unique_map<uint8_t> m_console{};
 
 public:
 

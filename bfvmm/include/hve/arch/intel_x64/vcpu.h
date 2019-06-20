@@ -124,6 +124,15 @@ public:
     ///
     domain::domainid_type domid() const;
 
+    /// Domain pointer
+    ///
+    /// @expects
+    /// @ensures
+    ///
+    /// @return the vCPU's domain
+    ///
+    domain *dom() { return m_domain; }
+
     //--------------------------------------------------------------------------
     // VMCall
     //--------------------------------------------------------------------------

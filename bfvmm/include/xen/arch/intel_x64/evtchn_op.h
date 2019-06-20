@@ -70,7 +70,7 @@ public:
 
     /// Init control
     ///
-    void init_control(gsl::not_null<evtchn_init_control_t *> ctl);
+    void init_control(evtchn_init_control_t *ctl);
 
     /// Set callback via
     ///
