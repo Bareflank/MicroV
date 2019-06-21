@@ -277,14 +277,24 @@ bool xen_op::handle_hvm_op()
             switch (arg->index) {
             case HVM_PARAM_CONSOLE_EVTCHN:
                 arg->value = m_evtchn_op->bind_console();
-                m_vcpu->set_rax(0);
                 break;
             case HVM_PARAM_CONSOLE_PFN:
                 m_console = m_vcpu->map_gpa_4k<uint8_t>(PVH_CONSOLE_GPA);
                 arg->value = PVH_CONSOLE_GPA >> 12;
                 break;
+            case HVM_PARAM_STORE_EVTCHN:
+                arg->value = m_evtchn_op->bind_store();
+                m_vcpu->set_rax(-ENOSYS);
+                return true;
+                break;
+            case HVM_PARAM_STORE_PFN:
+                m_store = m_vcpu->map_gpa_4k<uint8_t>(PVH_STORE_GPA);
+                arg->value = PVH_STORE_GPA >> 12;
+                m_vcpu->set_rax(-ENOSYS);
+                return true;
+                break;
             default:
-                bfalert_info(0, "Unsupported HVM get_param");
+                bfalert_nhex(0, "Unsupported HVM get_param:", arg->index);
                 return false;
             }
 

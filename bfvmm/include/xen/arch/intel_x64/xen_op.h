@@ -73,6 +73,7 @@ private:
     std::unique_ptr<evtchn_op> m_evtchn_op;
     bfvmm::x64::unique_map<struct shared_info> m_shinfo{};
     bfvmm::x64::unique_map<uint8_t> m_console{};
+    bfvmm::x64::unique_map<uint8_t> m_store{};
 
 public:
 

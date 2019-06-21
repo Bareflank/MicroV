@@ -82,14 +82,13 @@ evtchn_op::set_callback_via(uint64_t via)
 ////    bfdebug_nhex(0, "send port", arg->port);
 //    this->set_pending(this->port_to_chan(arg->port));
 //}
-//
-//evtchn_op::port_t
-//evtchn_op::bind_store()
-//{
-//    auto port = this->bind(evtchn::state_reserved);
-//    bfdebug_nhex(0, "bound store:", port);
-//    return port;
-//}
+
+evtchn_op::port_t evtchn_op::bind_store()
+{
+    auto port = this->bind(evtchn::state_reserved);
+    bfdebug_nhex(0, "bound store:", port);
+    return port;
+}
 
 evtchn_op::port_t evtchn_op::bind_console()
 {

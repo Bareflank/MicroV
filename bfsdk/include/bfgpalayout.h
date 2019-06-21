@@ -91,6 +91,7 @@ enum e820_type {
 #define PVH_START_INFO_GPA      0xEB000
 #define PVH_CONSOLE_GPA         0xEC000
 #define PVH_MODLIST_GPA         0xED000
+#define PVH_STORE_GPA           0xEE000
 
 #define ACPI_RSDP_GPA           0xF0000
 #define ACPI_XSDT_GPA           0xF1000

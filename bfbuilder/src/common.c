@@ -80,6 +80,7 @@ struct vm_t {
      */
 
     char *pvh_console;
+    char *pvh_store;
     struct hvm_start_info *pvh_start_info;
     struct hvm_modlist_entry *pvh_modlist;
     struct bfelf_loader_t elf_ldr;
@@ -707,6 +708,26 @@ setup_pvh_console(struct vm_t *vm)
 }
 
 static status_t
+setup_pvh_store(struct vm_t *vm)
+{
+    status_t ret;
+
+    vm->pvh_store = bfalloc_page(void);
+    if (vm->pvh_store == 0) {
+        BFDEBUG("setup_pvh_store: failed to alloc store page\n");
+        return FAILURE;
+    }
+
+    ret = donate_page_rw(vm, vm->pvh_store, PVH_STORE_GPA);
+    if (ret != BF_SUCCESS) {
+        BFDEBUG("setup_pvh_store: donate failed\n");
+        return ret;
+    }
+
+    return ret;
+}
+
+static status_t
 setup_vmlinux(struct vm_t *vm, struct create_vm_args *args)
 {
     status_t ret;
@@ -743,6 +764,7 @@ setup_vmlinux(struct vm_t *vm, struct create_vm_args *args)
     ret |= setup_cmdline(vm, args);
     ret |= setup_entry_point(vm);
     ret |= setup_pvh_console(vm);
+    ret |= setup_pvh_store(vm);
     ret |= setup_pvh_start_info(vm, args);
 
     __domain_op__add_e820_entry(vm->domainid,
@@ -866,7 +888,7 @@ setup_reserved_free(struct vm_t *vm)
     case VM_EXEC_XENPVH:
         ret |= donate_page_r(vm, vm->zero_page, BOOT_PARAMS_PAGE_GPA);
         ret |= donate_page_r(vm, vm->zero_page, INITIAL_GDT_GPA);
-        ret |= donate_page_to_page_range(vm, vm->zero_page, 0xEE000, 2 * 4096);
+        ret |= donate_page_to_page_range(vm, vm->zero_page, 0xEF000, 4096);
         break;
 
     default:
