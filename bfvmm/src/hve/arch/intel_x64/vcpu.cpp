@@ -121,6 +121,8 @@ vcpu::write_domU_guest_state(domain *domain)
     domain->setup_vcpu_uarts(this);
 
     if (domain->exec_mode() == VM_EXEC_XENPVH) {
+        using namespace vmcs_n::secondary_processor_based_vm_execution_controls;
+        enable_rdtscp::enable();
         m_xen_op = std::make_unique<xen::intel_x64::xen_op>(this, m_domain);
     }
 }
