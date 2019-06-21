@@ -128,6 +128,8 @@ bool xen_op::handle_hypercall(microv_vcpu *vcpu)
         return this->handle_hvm_op();
     case __HYPERVISOR_event_channel_op:
         return this->handle_event_channel_op();
+    case __HYPERVISOR_grant_table_op:
+        return this->handle_grant_table_op();
     default:
         return false;
     }
@@ -183,12 +185,40 @@ bool xen_op::handle_memory_op()
                 m_shinfo = m_vcpu->map_gpa_4k<shared_info>(xatp->gpfn << 12);
                 m_vcpu->set_rax(0);
                 return true;
+            case XENMAPSPACE_grant_table:
+                m_gnttab_op->mapspace_grant_table(xatp.get());
+                m_vcpu->set_rax(0);
+                return true;
             default:
                 return false;
             }
 
         } catchall({
             ;
+        })
+    case XENMEM_decrease_reservation:
+        try {
+            auto arg = m_vcpu->map_arg<xen_memory_reservation_t>(m_vcpu->rsi());
+
+            expects(arg->domid == DOMID_SELF);
+            expects(arg->extent_order == 0);
+
+            auto gva = arg->extent_start.p;
+            auto len = arg->nr_extents * sizeof(xen_pfn_t);
+            auto map = m_vcpu->map_gva_4k<xen_pfn_t>(gva, len);
+            auto gfn = map.get();
+
+            for (auto i = 0U; i < arg->nr_extents; i++) {
+                auto dom = m_vcpu->dom();
+                auto gpa = (gfn[i] << 12);
+                dom->unmap(gpa);
+                dom->release(gpa);
+            }
+
+            m_vcpu->set_rax(arg->nr_extents);
+            return true;
+        } catchall({
+            m_vcpu->set_rax(FAILURE);
         })
     default:
         break;
@@ -321,6 +351,44 @@ bool xen_op::handle_event_channel_op()
             m_vcpu->set_rax(0);
             return true;
         }
+    case EVTCHNOP_expand_array:
+        try {
+            auto arg = m_vcpu->map_arg<evtchn_expand_array_t>(m_vcpu->rsi());
+            m_evtchn_op->expand_array(arg.get());
+            m_vcpu->set_rax(0);
+            return true;
+        } catchall({
+            ;
+        })
+//    case EVTCHNOP_send:
+    default:
+        ;
+    }
+
+    return false;
+}
+
+bool xen_op::handle_grant_table_op()
+{
+    switch (m_vcpu->rdi()) {
+    case GNTTABOP_query_size:
+        try {
+            auto arg = m_vcpu->map_arg<gnttab_query_size_t>(m_vcpu->rsi());
+            m_gnttab_op->query_size(arg.get());
+            m_vcpu->set_rax(0);
+            return true;
+        } catchall({
+            ;
+        })
+    case GNTTABOP_set_version:
+        try {
+            auto arg = m_vcpu->map_arg<gnttab_set_version_t>(m_vcpu->rsi());
+            m_gnttab_op->set_version(arg.get());
+            m_vcpu->set_rax(SUCCESS);
+            return true;
+        } catchall ({
+            ;
+        })
     default:
         return false;
     }

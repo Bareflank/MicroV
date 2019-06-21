@@ -57,15 +57,15 @@ public:
 
     /// Query size
     ///
-    void query_size(gsl::not_null<gnttab_query_size_t *> arg);
+    void query_size(gnttab_query_size_t *arg);
 
     /// Set version
     ///
-    void set_version(gsl::not_null<gnttab_set_version_t *> arg);
+    void set_version(gnttab_set_version_t *arg);
 
     /// Map grant table
     ///
-    void mapspace_grant_table(gsl::not_null<xen_add_to_physmap_t *> arg);
+    void mapspace_grant_table(xen_add_to_physmap_t *arg);
 
 private:
 

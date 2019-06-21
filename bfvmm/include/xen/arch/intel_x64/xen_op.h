@@ -66,6 +66,7 @@ private:
     bool handle_xen_version();
     bool handle_hvm_op();
     bool handle_event_channel_op();
+    bool handle_grant_table_op();
 
     microv::intel_x64::vcpu *m_vcpu{};
     microv::intel_x64::domain *m_dom{};

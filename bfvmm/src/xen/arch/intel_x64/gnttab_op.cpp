@@ -35,7 +35,7 @@ gnttab_op::gnttab_op(microv::intel_x64::vcpu *vcpu) :
 }
 
 void
-gnttab_op::query_size(gsl::not_null<gnttab_query_size_t *> arg)
+gnttab_op::query_size(gnttab_query_size_t *arg)
 {
     arg->nr_frames = gsl::narrow_cast<uint32_t>(m_shared_gnttab.size());
     arg->max_nr_frames = max_nr_frames;
@@ -43,13 +43,13 @@ gnttab_op::query_size(gsl::not_null<gnttab_query_size_t *> arg)
 }
 
 void
-gnttab_op::set_version(gsl::not_null<gnttab_set_version_t *> arg)
+gnttab_op::set_version(gnttab_set_version_t *arg)
 {
     arg->version = m_version;
 }
 
 void
-gnttab_op::mapspace_grant_table(gsl::not_null<xen_add_to_physmap_t *> arg)
+gnttab_op::mapspace_grant_table(xen_add_to_physmap_t *arg)
 {
     expects((arg->idx & XENMAPIDX_grant_table_status) == 0);
 
