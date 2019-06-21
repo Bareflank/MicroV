@@ -56,10 +56,9 @@ evtchn_op::set_callback_via(uint64_t via)
     m_cb_via = via;
 }
 
-//void
-//evtchn_op::expand_array(gsl::not_null<evtchn_expand_array_t *> arr)
-//{ this->make_word_page(arr); }
-//
+void evtchn_op::expand_array(evtchn_expand_array_t *arr)
+{ this->make_word_page(arr); }
+
 //void
 //evtchn_op::alloc_unbound(gsl::not_null<evtchn_alloc_unbound_t *> arg)
 //{
@@ -345,18 +344,17 @@ void evtchn_op::make_chan_page(port_t port)
     m_allocated_chans += chans_per_page;
 }
 
-//void
-//evtchn_op::make_word_page(gsl::not_null<evtchn_expand_array_t *> expand)
-//{
-//    expects(m_event_words.size() < m_event_words.capacity());
-//
-//    auto addr = expand->array_gfn << ::x64::pt::page_shift;
-//    auto page = m_vcpu->map_gpa_4k<word_t>(addr);
-//
-//    m_event_words.push_back(std::move(page));
-//    m_allocated_words += words_per_page;
-//}
-//
+void evtchn_op::make_word_page(evtchn_expand_array_t *expand)
+{
+    expects(m_event_words.size() < m_event_words.capacity());
+
+    auto addr = expand->array_gfn << 12;
+    auto page = m_vcpu->map_gpa_4k<word_t>(addr);
+
+    m_event_words.push_back(std::move(page));
+    m_allocated_words += words_per_page;
+}
+
 //bool evtchn_op::word_is_pending(word_t *word) const
 //{
 //    return is_bit_set(word->load(), EVTCHN_FIFO_PENDING);

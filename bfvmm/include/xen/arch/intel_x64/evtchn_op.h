@@ -80,7 +80,7 @@ public:
 
     /// Expand array
     ///
-    void expand_array(gsl::not_null<evtchn_expand_array_t *> arr);
+    void expand_array(evtchn_expand_array_t *arr);
 
     /// Alloc unbound
     ///
@@ -150,7 +150,7 @@ private:
     void setup_control_block(uint64_t gfn, uint32_t offset);
 
     void make_chan_page(port_t port);
-    void make_word_page(gsl::not_null<evtchn_expand_array_t *> expand);
+    void make_word_page(evtchn_expand_array_t *expand);
 
     // Links
     //
