@@ -44,6 +44,39 @@ static constexpr auto hcall_page_msr = 0xC0000500;
 static constexpr auto xen_leaf_base = 0x40000100;
 static constexpr auto xen_leaf(int i) { return xen_leaf_base + i; }
 
+static bool handle_exception(base_vcpu *vcpu)
+{
+    namespace int_info = vmcs_n::vm_exit_interruption_information;
+
+    auto info = int_info::get();
+    auto type = int_info::interruption_type::get(info);
+
+    if (type == int_info::interruption_type::non_maskable_interrupt) {
+        return false;
+    }
+
+    auto vec = int_info::vector::get(info);
+    bfdebug_info(0, "Guest exception");
+    bfdebug_subnhex(0, "vector", vec);
+    bfdebug_subnhex(0, "rip", vcpu->rip());
+
+    vmcs_n::guest_cr0::dump(0);
+    vmcs_n::guest_cr4::dump(0);
+
+    auto rip = vcpu->map_gva_4k<uint8_t>(vcpu->rip(), 32);
+    auto buf = rip.get();
+
+    printf("        - bytes: ");
+    for (auto i = 0; i < 32; i++) {
+        printf("%02x", buf[i]);
+    }
+    printf("\n");
+
+    vmcs_n::exception_bitmap::set(0);
+
+    return true;
+}
+
 static bool xen_leaf0(base_vcpu *vcpu)
 {
     vcpu->set_rax(xen_leaf(5));
@@ -406,6 +439,7 @@ xen_op::xen_op(microv::intel_x64::vcpu *vcpu, microv::intel_x64::domain *dom) :
     vcpu->add_vmcall_handler({&xen_op::handle_hypercall, this});
     vcpu->add_cpuid_emulator(xen_leaf(1), {xen_leaf1});
     vcpu->add_cpuid_emulator(xen_leaf(4), {xen_leaf4});
+    vcpu->add_handler(0, handle_exception);
 }
 
 }
