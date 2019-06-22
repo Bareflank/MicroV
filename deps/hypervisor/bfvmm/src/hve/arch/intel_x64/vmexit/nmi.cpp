@@ -76,13 +76,21 @@ nmi_handler::disable_exiting()
 bool
 nmi_handler::handle(vcpu *vcpu)
 {
-    for (const auto &d : m_handlers) {
-        if (d(vcpu)) {
-            break;
+    namespace int_info = vmcs_n::vm_exit_interruption_information;
+
+    auto info = int_info::get();
+    auto type = int_info::interruption_type::get(info);
+
+    if (type == int_info::interruption_type::non_maskable_interrupt) {
+        for (const auto &d : m_handlers) {
+            if (d(vcpu)) {
+                break;
+            }
         }
+        return true;
     }
 
-    return true;
+    return false;
 }
 
 }
