@@ -23,6 +23,7 @@
 #include <bfgpalayout.h>
 #include <bfbuilderinterface.h>
 #include <hve/arch/intel_x64/vcpu.h>
+#include <hve/arch/intel_x64/xsave.h>
 
 //------------------------------------------------------------------------------
 // Fault Handlers
@@ -71,6 +72,21 @@ ept_violation_handler(vcpu_t *vcpu)
 namespace microv::intel_x64
 {
 
+bool vcpu::handle_hello(bfvmm::intel_x64::vcpu *vcpu)
+{
+    /// Say Hi
+    ///
+    /// If the vCPU is a host vCPU and not a guest vCPU, we should say hi
+    /// so that the user of Bareflank has a simple, reliable way to know
+    /// that the hypervisor is running.
+    ///
+
+//    this->m_xsave = std::make_unique<intel_x64::xsave>(this);
+
+    bfdebug_info(0, "host os is" bfcolor_green " now " bfcolor_end "in a vm");
+    return vcpu->advance();
+}
+
 vcpu::vcpu(
     vcpuid::type id,
     gsl::not_null<domain *> domain
@@ -91,7 +107,9 @@ vcpu::vcpu(
     m_vmcall_vcpu_op_handler{this},
 
     m_x2apic_handler{this},
-    m_pci_configuration_space_handler{this}
+    m_pci_configuration_space_handler{this},
+//    m_host_xsave{std::make_unique<microv::intel_x64::xsave>(this)}
+    m_guest_xsave{std::make_unique<microv::intel_x64::xsave>(this)}
 {
     this->set_eptp(domain->ept());
 
@@ -101,6 +119,8 @@ vcpu::vcpu(
     else {
         this->write_domU_guest_state(domain);
     }
+
+    this->add_cpuid_emulator(0x4BF00011, {&vcpu::handle_hello, this});
 }
 
 //------------------------------------------------------------------------------

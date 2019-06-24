@@ -24,64 +24,51 @@ default rel
 
 section .text
 
-; For more information about how these functions work, please see the
-; following reference:
-;
-; https://github.com/Bareflank/hypervisor/issues/213
-;
-; Note: If the constants.h file changes, or the thread_context structure
-;       changes, this code might also have to change as well.
-
-global _thread_context_xsave:function
-_thread_context_xsave:
-
-    mov rdx, 0x8000
-    sub rdx, 0x1
-
-    mov rax, rsp
-    mov rcx, rdx
-    not rcx
-    and rax, rcx
-
-    add rax, rdx
-
-    sub rax, 16
-
-    mov rax, [rax]
+global _xgetbv
+_xgetbv:
+    mov rcx, rdi
+    xgetbv
+    shl rdx, 32
+    or rax, rdx
     ret
 
-global _thread_context_tlsptr:function
-_thread_context_tlsptr:
-
-    mov rdx, 0x8000
-    sub rdx, 0x1
-
-    mov rax, rsp
-    mov rcx, rdx
-    not rcx
-    and rax, rcx
-
-    add rax, rdx
-
-    sub rax, 24
-
-    mov rax, [rax]
+global _xsetbv
+_xsetbv:
+    mov rax, rsi
+    mov rdx, rsi
+    shr rdx, 32
+    mov rcx, rdi
+    xsetbv
     ret
 
-global _thread_context_cpuid:function
-_thread_context_cpuid:
+global _xsave
+_xsave:
+    mov rax, rsi
+    mov rdx, rsi
+    shr rdx, 32
+    xsave [rdi]
+    ret
 
-    mov rdx, 0x8000
-    sub rdx, 0x1
+global _xsaves
+_xsaves:
+    mov rax, rsi
+    mov rdx, rsi
+    shr rdx, 32
+    xsaves [rdi]
+    ret
 
-    mov rax, rsp
-    mov rcx, rdx
-    not rcx
-    and rax, rcx
+global _xrstor
+_xrstor:
+    mov rax, rsi
+    mov rdx, rsi
+    shr rdx, 32
+    xrstor [rdi]
+    ret
 
-    add rax, rdx
-
-    sub rax, 32
-
-    mov rax, [rax]
+global _xrstors
+_xrstors:
+    mov rax, rsi
+    mov rdx, rsi
+    shr rdx, 32
+    xrstors [rdi]
     ret

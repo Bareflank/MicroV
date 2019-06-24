@@ -194,6 +194,12 @@ void platform_acquire_mutex(void);
  */
 void platform_release_mutex(void);
 
+/**
+ * CPUID
+ *
+ * Invoke cpuid with leaf in eax, subleaf in ecx
+ */
+void platform_cpuid(uint32_t *eax, uint32_t *ebx, uint32_t *ecx, uint32_t *edx);
 
 #ifdef __cplusplus
 }

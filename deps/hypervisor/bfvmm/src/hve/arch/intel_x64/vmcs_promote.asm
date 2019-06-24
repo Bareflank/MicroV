@@ -273,15 +273,6 @@ vmcs_promote:
 
     mov rdi, r15
 
-    movdqa xmm7,   [rdi + 0x1A0]
-    movdqa xmm6,   [rdi + 0x180]
-    movdqa xmm5,   [rdi + 0x160]
-    movdqa xmm4,   [rdi + 0x140]
-    movdqa xmm3,   [rdi + 0x120]
-    movdqa xmm2,   [rdi + 0x100]
-    movdqa xmm1,   [rdi + 0x0E0]
-    movdqa xmm0,   [rdi + 0x0C0]
-
     mov rsp,       [rdi + 0x080]
     mov rax,       [rdi + 0x078]
     push rax

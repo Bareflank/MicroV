@@ -198,7 +198,7 @@ load_start_vm(EFI_HANDLE ParentImage)
             continue;
         }
 
-        FilePath = FileDevicePath(FileSystemHandles[i], L"\\EFI\\BOOT\\bootx64.efi");
+        FilePath = FileDevicePath(FileSystemHandles[i], L"\\EFI\\shellx64_v2.efi");
 
         status =
             gBS->LoadImage(

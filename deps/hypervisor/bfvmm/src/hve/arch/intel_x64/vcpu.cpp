@@ -166,6 +166,8 @@ vcpu::vcpu(
     m_state.exit_handler_ptr =
         reinterpret_cast<uintptr_t>(&m_exit_handler);
 
+    m_state.xsave_ptr = reinterpret_cast<uintptr_t>(thread_context_xsave());
+
     // Note:
     //
     // Up to this point, no modifications to the VMCS have been made. The only

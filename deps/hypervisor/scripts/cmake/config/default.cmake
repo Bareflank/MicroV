@@ -435,7 +435,7 @@ set(CMAKE_BUILD_TYPE "Release"
     "Defines the build type"
 )
 
-set(CMAKE_VERBOSE_MAKEFILE OFF
+set(CMAKE_VERBOSE_MAKEFILE ON
     CACHE INTERNAL
     "Enables verbose output"
 )

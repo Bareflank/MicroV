@@ -20,23 +20,56 @@
  * SOFTWARE.
  */
 
-.code64
-.intel_syntax noprefix
+/**
+ * @file bfxsave.h
+ */
 
-.globl  _vmcall
-.type   _vmcall, @function
-_vmcall:
-    push rbx
+#ifndef BFXSAVE
+#define BFXSAVE
 
-    mov r9, rdx
-    mov r8, rcx
+#include <bftypes.h>
+#include <bfconstants.h>
 
-    mov rax, rdi
-    mov rbx, rsi
-    mov rcx, r9
-    mov rdx, r8
+#pragma pack(push, 1)
 
-    vmcall
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-    pop rbx
-    ret
+#define XSAVE_LEGACY_MASK 0x3ULL
+#define XSAVE_AVX_MASK (0x4ULL | XSAVE_LEGACY_MASK)
+#define XSAVE_AVX512_MASK ((0x7ULL << 5) | XSAVE_AVX_MASK)
+
+#if defined(BFVMM_AVX512)
+#define XSAVE_BUILD_XCR0 XSAVE_AVX512_MASK
+#elif defined(BFVMM_AVX)
+#define XSAVE_BUILD_XCR0 XSAVE_AVX_MASK
+#else
+#define XSAVE_BUILD_XCR0 XSAVE_LEGACY_MASK
+#endif
+
+/**
+ * struct xsave_info
+ *
+ * Contains information for managing threads' XSAVE state
+ */
+struct xsave_info {
+    uint8_t *host_area;   /* 0x00 */
+    uint8_t *guest_area;  /* 0x08 */
+    uint64_t host_xcr0;   /* 0x10 */
+    uint64_t guest_xcr0;  /* 0x18 */
+    uint64_t host_size;   /* 0x20 */
+    uint64_t guest_size;  /* 0x28 */
+    uint64_t pcpuid;      /* 0x30 */
+    uint64_t vcpuid;      /* 0x38 */
+    uint64_t ready;       /* 0x40 */
+    uint64_t cpuid_xcr0;  /* 0x48 */
+};
+
+#ifdef __cplusplus
+}
+#endif
+
+#pragma pack(pop)
+
+#endif

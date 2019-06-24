@@ -22,8 +22,13 @@
 bits 64
 default rel
 
+%define IA32_XSS_MSR 0xDA0
 %define VMCS_GUEST_RSP 0x0000681C
 %define VMCS_GUEST_RIP 0x0000681E
+
+extern _read_msr
+extern _xgetbv
+extern _xrstors
 
 global vmcs_resume:function
 
@@ -48,15 +53,34 @@ vmcs_resume:
     mov rsi, VMCS_GUEST_RIP
     vmwrite rsi, [rdi + 0x078]
 
-    movdqa xmm7,  [rdi + 0x1A0]
-    movdqa xmm6,  [rdi + 0x180]
-    movdqa xmm5,  [rdi + 0x160]
-    movdqa xmm4,  [rdi + 0x140]
-    movdqa xmm3,  [rdi + 0x120]
-    movdqa xmm2,  [rdi + 0x100]
-    movdqa xmm1,  [rdi + 0x0E0]
-    movdqa xmm0,  [rdi + 0x0C0]
+    ; Load xsave_info address
+    mov r12, [rdi + 0x0A8]
+    push r12
 
+    mov rax, [r12 + 0x00] ; host_area
+    mov rbx, [r12 + 0x08] ; guest_area
+    cmp rax, rbx
+    je restore_gprs
+
+    ; Store current state to the host area
+    mov rax, [r12 + 0x10]
+    mov rdx, [r12 + 0x10]
+    shr rdx, 32
+    xor rcx, rcx
+    xsetbv
+    mov rcx, [r12 + 0x00]
+    xsave [rcx]
+
+    ; Load state from the guest area
+    mov rax, [r12 + 0x18]
+    mov rdx, [r12 + 0x18]
+    shr rdx, 32
+    xor rcx, rcx
+    xsetbv
+    mov rcx, [r12 + 0x08]
+    xrstor [rcx]
+
+restore_gprs:
     mov r15, [rdi + 0x070]
     mov r14, [rdi + 0x068]
     mov r13, [rdi + 0x060]
@@ -80,6 +104,29 @@ vmcs_resume:
 ; happens, we return so that we can throw an exception and tell the user that
 ; something really bad happened.
 
+    pop r12
+    mov rax, [r12 + 0x00] ; host_area
+    mov rbx, [r12 + 0x08] ; guest_area
+    cmp rax, rbx
+    je pop_gprs
+
+    ; Store state to the guest area
+    mov rax, [r12 + 0x18]
+    mov rdx, [r12 + 0x18]
+    shr rdx, 32
+    mov rcx, [r12 + 0x08]
+    xsave [rcx]
+
+    ; Load state from the host area
+    mov rax, [r12 + 0x10]
+    mov rdx, [r12 + 0x10]
+    shr rdx, 32
+    xor rcx, rcx
+    xsetbv
+    mov rcx, [r12 + 0x00]
+    xrstor [rcx]
+
+pop_gprs:
     pop rbp
     pop r15
     pop r14

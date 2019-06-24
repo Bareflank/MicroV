@@ -45,6 +45,7 @@ target_sources(bfintrinsics PRIVATE
     $<${X64}:src/arch/intel_x64/drs.asm>
     $<${X64}:src/arch/intel_x64/pause.asm>
     $<${X64}:src/arch/intel_x64/vmx.asm>
+    $<${X64}:src/arch/intel_x64/xsave.asm>
 )
 
 if(PREFIX STREQUAL vmm)

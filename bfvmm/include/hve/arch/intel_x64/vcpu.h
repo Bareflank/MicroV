@@ -38,6 +38,7 @@
 #include "vmcall/vcpu_op.h"
 
 #include "domain.h"
+#include "xsave.h"
 
 #include <bfvmm/vcpu/vcpu_manager.h>
 #include <bfvmm/hve/arch/intel_x64/vcpu.h>
@@ -283,6 +284,8 @@ public:
     ///
     uint8_t apic_timer_vector();
 
+    bool handle_hello(bfvmm::intel_x64::vcpu *vcpu);
+
 private:
 
     void setup_default_controls();
@@ -312,6 +315,7 @@ private:
     vcpu *m_parent_vcpu{};
 
     std::unique_ptr<microv::xen::intel_x64::xen_op> m_xen_op;
+    std::unique_ptr<microv::intel_x64::xsave> m_guest_xsave;
 };
 
 }
