@@ -40,6 +40,8 @@
 
 #include <xue.h>
 
+extern int g_uefi_boot;
+
 struct xue_ops g_xue_ops;
 extern struct xue g_xue;
 
@@ -176,6 +178,8 @@ static long
 ioctl_load_vmm(void)
 {
     int64_t ret;
+
+    g_uefi_boot = 0;
 
     ret = common_load_vmm();
     if (ret != BF_SUCCESS) {

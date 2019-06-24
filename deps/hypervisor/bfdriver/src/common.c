@@ -35,6 +35,8 @@
 /* Global                                                                     */
 /* -------------------------------------------------------------------------- */
 
+int g_uefi_boot = 0;
+
 struct xue g_xue;
 
 int64_t g_num_modules = 0;
@@ -351,6 +353,11 @@ common_load_vmm(void)
     }
 
     ret = platform_call_vmm_on_core(0, BF_REQUEST_SET_RSDP,  (uint64_t)g_rsdp, 0);
+    if (ret != BF_SUCCESS) {
+        goto failure;
+    }
+
+    ret = platform_call_vmm_on_core(0, BF_REQUEST_UEFI_BOOT,  (uint64_t)g_uefi_boot, 0);
     if (ret != BF_SUCCESS) {
         goto failure;
     }

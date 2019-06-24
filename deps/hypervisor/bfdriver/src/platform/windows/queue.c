@@ -26,6 +26,7 @@
 /* Status                                                                     */
 /* -------------------------------------------------------------------------- */
 
+extern int g_uefi_boot;
 int g_status = 0;
 FAST_MUTEX g_status_mutex;
 
@@ -115,6 +116,8 @@ static long
 ioctl_load_vmm(void)
 {
     int64_t ret;
+
+    g_uefi_boot = 0;
 
     ret = common_load_vmm();
     if (ret != BF_SUCCESS) {

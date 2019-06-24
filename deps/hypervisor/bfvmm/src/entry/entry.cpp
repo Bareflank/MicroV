@@ -159,6 +159,13 @@ private_set_rsdp(uintptr_t rsdp) noexcept
 }
 
 extern "C" int64_t
+private_uefi_boot(bool uefi_boot) noexcept
+{
+    g_uefi_boot = uefi_boot;
+    return ENTRY_SUCCESS;
+}
+
+extern "C" int64_t
 private_init_vmm(uint64_t arg) noexcept
 {
     return guard_exceptions(ENTRY_ERROR_VMM_START_FAILED, [&]() {
@@ -230,6 +237,9 @@ bfmain(uintptr_t request, uintptr_t arg1, uintptr_t arg2, uintptr_t arg3)
 
         case BF_REQUEST_INIT_XUE:
             return private_init_xue((struct xue *)arg1);
+
+        case BF_REQUEST_UEFI_BOOT:
+            return private_uefi_boot((bool)arg1);
 
         default:
             break;
