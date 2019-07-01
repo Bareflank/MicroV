@@ -25,6 +25,9 @@
 #include <debug/debug_ring/debug_ring.h>
 #include <debug/serial/serial_ns16550a.h>
 #include <debug/serial/serial_pl011.h>
+#include <xue.h>
+
+extern struct xue g_xue;
 
 #include <mutex>
 std::mutex g_write_mutex;
@@ -47,8 +50,9 @@ write_str(const std::string &str)
         std::lock_guard<std::mutex> guard(g_write_mutex);
 
         g_debug_ring()->write(str);
+        xue_write(&g_xue, (const char *)str.data(), str.size());
 
-        for (const auto &c : str) {
+        for (const auto c : str) {
             bfvmm::DEFAULT_COM_DRIVER::instance()->write(c);
         }
     }

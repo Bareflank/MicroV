@@ -61,6 +61,7 @@ extern "C" {
 #define IOCTL_VMM_STATUS_CMD 0x808
 #define IOCTL_SET_VCPUID_CMD 0x80A
 #define IOCTL_VMCALL_CMD 0x810
+#define IOCTL_DUMP_XUE_CMD 0x811
 
 /**
  * @struct ioctl_vmcall_args_t
@@ -99,6 +100,7 @@ struct ioctl_vmcall_args_t {
 #define IOCTL_VMM_STATUS _IOR(BAREFLANK_MAJOR, IOCTL_VMM_STATUS_CMD, int64_t *)
 #define IOCTL_SET_VCPUID _IOW(BAREFLANK_MAJOR, IOCTL_SET_VCPUID_CMD, uint64_t *)
 #define IOCTL_VMCALL _IOWR(BAREFLANK_MAJOR, IOCTL_VMCALL_CMD, struct ioctl_vmcall_args_t *)
+#define IOCTL_DUMP_XUE _IO(BAREFLANK_MAJOR, IOCTL_DUMP_XUE_CMD)
 
 #endif
 

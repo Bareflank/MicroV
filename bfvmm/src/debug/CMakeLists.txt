@@ -26,6 +26,7 @@ target_include_directories(bfvmm_debug PUBLIC
     $<${BUILD_INCLUDE}:${PROJECT_ROOT}/include>
     $<${BUILD_INCLUDE}:${PROJECT_ROOT}/../bfintrinsics/include>
     $<${BUILD_INCLUDE}:${PROJECT_ROOT}/../bfsdk/include>
+    $<${BUILD_INCLUDE}:${XUE_DIR}/include>
 )
 target_sources(bfvmm_debug PRIVATE
     debug_ring/debug_ring.cpp

@@ -36,7 +36,8 @@ enum class command_line_parser_command {
     stop = 5,
     quick = 6,
     dump = 7,
-    status = 8
+    status = 8,
+    dump_xue = 9
 };
 
 #ifdef _MSC_VER
@@ -137,6 +138,7 @@ private:
     void parse_quick(arg_list_type &args);
     void parse_dump(arg_list_type &args);
     void parse_status(arg_list_type &args);
+    void parse_dump_xue(arg_list_type &args);
 
 private:
 

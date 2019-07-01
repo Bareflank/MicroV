@@ -135,6 +135,16 @@ if(NOT WIN32 AND ENABLE_BUILD_VMM AND ENABLE_BUILD_USERSPACE)
     add_custom_target_category("Bareflank Manager")
 
     add_custom_target(
+        dump_xue
+        COMMAND ${SUDO} ${USERSPACE_PREFIX_PATH}/bin/bfm dump_xue
+        USES_TERMINAL
+    )
+    add_custom_target_info(
+        TARGET dump_xue
+        COMMENT "Dump xue debugger state"
+    )
+
+    add_custom_target(
         quick
         COMMAND ${SUDO} ${USERSPACE_PREFIX_PATH}/bin/bfm load ${BFM_VMM_BIN_PATH}/${BFM_VMM}
         COMMAND ${SUDO} ${USERSPACE_PREFIX_PATH}/bin/bfm start
