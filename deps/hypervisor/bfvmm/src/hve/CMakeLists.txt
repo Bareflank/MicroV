@@ -26,6 +26,7 @@ target_include_directories(bfvmm_hve PUBLIC
     $<${BUILD_INCLUDE}:${PROJECT_ROOT}/include>
     $<${BUILD_INCLUDE}:${PROJECT_ROOT}/../bfintrinsics/include>
     $<${BUILD_INCLUDE}:${PROJECT_ROOT}/../bfsdk/include>
+    $<${BUILD_INCLUDE}:${XUE_DIR}/include>
 )
 target_sources(bfvmm_hve PRIVATE
     $<${X64}:arch/x64/unmapper.cpp>

@@ -70,6 +70,11 @@ struct xue_ops g_xue_ops{};
 extern "C" int64_t
 private_init_xue(struct xue *xue) noexcept
 {
+    g_xue.sysid = xue->sysid;
+    if (xue->sysid == xue_sysid_windows) {
+        return ENTRY_SUCCESS;
+    }
+
     using attr_t = bfvmm::x64::cr3::mmap::attr_type;
     using mem_t = bfvmm::x64::cr3::mmap::memory_type;
 

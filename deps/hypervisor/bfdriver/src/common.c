@@ -38,6 +38,7 @@
 int g_uefi_boot = 0;
 
 struct xue g_xue;
+struct xue_ops g_xue_ops;
 
 int64_t g_num_modules = 0;
 struct bfelf_binary_t g_modules[MAX_NUM_MODULES];
@@ -372,6 +373,14 @@ common_load_vmm(void)
         goto failure;
     }
 
+    platform_memset(&g_xue, 0, sizeof(g_xue));
+    platform_memset(&g_xue_ops, 0, sizeof(g_xue_ops));
+
+    g_xue.sysid = XUE_SYSID;
+    if (g_xue.sysid != xue_sysid_windows) {
+        xue_open(&g_xue, &g_xue_ops, NULL);
+    }
+
     ret = platform_call_vmm_on_core(0, BF_REQUEST_INIT_XUE,  (uint64_t)&g_xue, 0);
     if (ret != BF_SUCCESS) {
         goto failure;
@@ -402,6 +411,10 @@ common_unload_vmm(void)
             goto unloaded;
         default:
             break;
+    }
+
+    if (g_xue.sysid != xue_sysid_windows) {
+        xue_close(&g_xue);
     }
 
     ret = platform_call_vmm_on_core(0, BF_REQUEST_FINI, 0, 0);

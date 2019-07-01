@@ -28,14 +28,10 @@
 #include <hve/arch/intel_x64/vcpu.h>
 #include <xue.h>
 
-extern struct xue g_xue;
-
-//void vcpu_init_root(vcpu_t *vcpu)
-//{
-//}
-
 #include <mutex>
 std::mutex g_write_mutex;
+
+extern struct xue g_xue;
 
 extern "C" void
 unlock_write(void)

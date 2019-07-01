@@ -41,9 +41,8 @@
 #include <xue.h>
 
 extern int g_uefi_boot;
-
-struct xue_ops g_xue_ops;
 extern struct xue g_xue;
+extern struct xue_ops g_xue_ops;
 
 uint64_t _vmcall(uint64_t r1, uint64_t r2, uint64_t r3, uint64_t r4);
 
@@ -530,9 +529,6 @@ dev_init(void)
     g_status = STATUS_STOPPED;
     mutex_init(&g_status_mutex);
 
-    memset(&g_xue_ops, 0, sizeof(g_xue_ops));
-    xue_open(&g_xue, &g_xue_ops, NULL);
-
     return 0;
 
 INIT_FAILURE:
@@ -547,8 +543,6 @@ dev_exit(void)
 
     common_fini();
     g_status = STATUS_STOPPED;
-
-    xue_close(&g_xue);
 
     misc_deregister(&bareflank_dev);
     unregister_pm_notifier(&pm_notifier_block);

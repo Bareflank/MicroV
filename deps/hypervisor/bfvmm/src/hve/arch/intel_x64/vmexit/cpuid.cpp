@@ -21,6 +21,10 @@
 
 #include <bfexports.h>
 #include <hve/arch/intel_x64/vcpu.h>
+#include <xue.h>
+
+extern struct xue g_xue;
+extern struct xue_ops g_xue_ops;
 
 void
 WEAK_SYM vcpu_init_root(vcpu_t *vcpu)
@@ -74,6 +78,10 @@ handle_cpuid_0x4BF00010(vcpu *vcpu)
     /// initalized using the VMM's CR3, and not the hosts.
     ///
 
+    if (vcpu->id() == 0 && g_xue.sysid == xue_sysid_windows) {
+        xue_open(&g_xue, &g_xue_ops, NULL);
+    }
+
     vcpu_init_root(vcpu);
     return vcpu->advance();
 }
@@ -117,6 +125,11 @@ handle_cpuid_0x4BF00021(vcpu *vcpu)
     ///
 
     bfdebug_info(0, "host os is" bfcolor_red " not " bfcolor_end "in a vm");
+
+    if (vcpu->id() == 0 && g_xue.sysid == xue_sysid_windows) {
+        xue_close(&g_xue);
+    }
+
     vcpu->promote();
 
     throw std::runtime_error("unreachable exception");

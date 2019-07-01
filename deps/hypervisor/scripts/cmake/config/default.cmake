@@ -370,6 +370,14 @@ add_config(
     SKIP_VALIDATION
 )
 
+add_config(
+    CONFIG_NAME XUE_DIR
+    CONFIG_TYPE PATH
+    DEFAULT_VAL $ENV{HOME}/xue
+    DESCRIPTION "Xue source"
+    SKIP_VALIDATION
+)
+
 # ------------------------------------------------------------------------------
 # Non-configurable directories
 # ------------------------------------------------------------------------------
