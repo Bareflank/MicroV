@@ -573,6 +573,20 @@ add_config(
     DESCRIPTION "Build efi boot-time loader components"
 )
 
+add_config(
+    CONFIG_NAME ENABLE_VMM_AVX
+    CONFIG_TYPE BOOL
+    DEFAULT_VAL OFF
+    DESCRIPTION "Build VMM components with AVX"
+)
+
+add_config(
+    CONFIG_NAME ENABLE_VMM_AVX512
+    CONFIG_TYPE BOOL
+    DEFAULT_VAL OFF
+    DESCRIPTION "Build VMM components with AVX512"
+)
+
 # ------------------------------------------------------------------------------
 # EFI Configs
 # ------------------------------------------------------------------------------
@@ -905,19 +919,6 @@ add_config(
     DESCRIPTION "Path to xue debugger"
     SKIP_VALIDATION
 )
-
-# ------------------------------------------------------------------------------
-# Default Flags
-# ------------------------------------------------------------------------------
-
-include(scripts/cmake/flags/asan_flags.cmake)
-include(scripts/cmake/flags/codecov_flags.cmake)
-include(scripts/cmake/flags/efi_flags.cmake)
-include(scripts/cmake/flags/test_flags.cmake)
-include(scripts/cmake/flags/usan_flags.cmake)
-include(scripts/cmake/flags/userspace_flags.cmake)
-include(scripts/cmake/flags/vmm_flags.cmake)
-include(scripts/cmake/flags/warning_flags.cmake)
 
 # ------------------------------------------------------------------------------
 # set_bfm_vmm

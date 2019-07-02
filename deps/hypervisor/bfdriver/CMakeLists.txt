@@ -35,6 +35,18 @@ set(BUILD $<BOOL:$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}>>)
 set(BUILD_INCLUDE $<AND:$<OR:${C},${CXX}>,${BUILD}>)
 set(BUILD_INCLUDE_CXX $<AND:${CXX},${BUILD}>)
 
+if(DEFINED ENABLE_VMM_AVX)
+    set(BFVMM_XSAVE BFVMM_AVX)
+elseif(DEFINED ENABLE_VMM_AVX512)
+    set(BFVMM_XSAVE BFVMM_AVX512)
+endif()
+
+configure_file(
+    src/platform/linux/Makefile.in
+    ${PROJECT_SOURCE_DIR}/src/platform/linux/Makefile
+    @ONLY
+)
+
 # ------------------------------------------------------------------------------
 # EFI
 # ------------------------------------------------------------------------------

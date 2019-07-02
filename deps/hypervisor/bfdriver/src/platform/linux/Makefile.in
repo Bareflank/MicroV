@@ -31,10 +31,11 @@ ifneq ($(KERNELRELEASE),)
 
 	EXTRA_CFLAGS += -DKERNEL
 	EXTRA_CFLAGS += -DLINUX_KERNEL
+	EXTRA_CFLAGS += -D@BFVMM_XSAVE@
 	EXTRA_CFLAGS += -I$(src)/../../../include/
 	EXTRA_CFLAGS += -I$(src)/../../../../bfsdk/include/
 	EXTRA_CFLAGS += -I$(src)/../../../../bfelf_loader/include/
-	EXTRA_CFLAGS += -I/home/dev/xue/include/
+	EXTRA_CFLAGS += -I@XUE_DIR@/include/
 
 else
 	BUILDSYSTEM_DIR:=/lib/modules/$(shell uname -r)/build

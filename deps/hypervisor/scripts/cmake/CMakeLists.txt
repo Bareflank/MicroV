@@ -29,6 +29,8 @@ init_project(bfroot INTERFACE)
 # ------------------------------------------------------------------------------
 
 set(X64 $<STREQUAL:${BUILD_TARGET_ARCH},x86_64>)
+set(AVX $<BOOL:${ENABLE_VMM_AVX}>)
+set(AVX512 $<BOOL:${ENABLE_VMM_AVX512}>)
 
 set(C $<COMPILE_LANGUAGE:C>)
 set(CXX $<COMPILE_LANGUAGE:CXX>)
@@ -54,7 +56,8 @@ set(USR $<STREQUAL:${PREFIX},userspace>)
 # VMM
 set(VMM_CXX $<AND:${VMM},${CXX}>)
 set(VMM_C_CXX $<AND:${VMM},${C_CXX}>)
-set(VMM_C_CXX_CLANG $<AND:${VMM_C_CXX},${CLANG}>)
+set(VMM_C_CXX_AVX $<AND:${VMM_C_CXX},${AVX}>)
+set(VMM_C_CXX_AVX512 $<AND:${VMM_C_CXX},${AVX512}>)
 
 # EFI
 set(EFI_C $<AND:${EFI},${C}>)
@@ -116,6 +119,8 @@ target_compile_options(bfroot INTERFACE
     $<${VMM_C_CXX}:-U__STRICT_ANSI__>
     $<${VMM_C_CXX}:-U__USER_LABEL_PREFIX__>
     $<${VMM_C_CXX}:-D__USER_LABEL_PREFIX__=>
+    $<${VMM_C_CXX_AVX}:-mavx -mavx2>
+    $<${VMM_C_CXX_AVX512}:-mavx512f -mavx2 -mavx>
     $<${VMM_CXX}:-x c++>
 )
 target_compile_definitions(bfroot INTERFACE
@@ -130,6 +135,8 @@ target_compile_definitions(bfroot INTERFACE
     $<${VMM_C_CXX}:_UNIX98_THREAD_MUTEX_ATTRIBUTES>
     $<${VMM_C_CXX}:__SINGLE_THREAD__>
     $<${VMM_C_CXX}:__ELF__>
+    $<${VMM_C_CXX_AVX}:BFVMM_AVX>
+    $<${VMM_C_CXX_AVX512}:BFVMM_AVX512>
 )
 target_include_directories(bfroot SYSTEM INTERFACE
     $<INSTALL_INTERFACE:$<${VMM_C_CXX}:${VMM_PREFIX_PATH}/include/c++/v1>>

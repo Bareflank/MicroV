@@ -45,9 +45,10 @@ tags
 *.order
 *.cache.mk
 
+deps/hypervisor/bfdriver/src/platform/linux/Makefile
+
 bfbuilder/src/platform/windows/.vs/
 bfbuilder/src/platform/windows/bfbuilder.VC.db
 bfbuilder/src/platform/windows/x64/
-
 bfinstallers/windows/Input
 bfinstallers/windows/Output
