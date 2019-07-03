@@ -21,6 +21,8 @@
 
 #include <intrinsics.h>
 #include <bfgpalayout.h>
+#include <bfxsave.h>
+#include <bfthreadcontext.h>
 #include <bfbuilderinterface.h>
 #include <hve/arch/intel_x64/vcpu.h>
 #include <hve/arch/intel_x64/xsave.h>
@@ -74,17 +76,27 @@ namespace microv::intel_x64
 
 bool vcpu::handle_hello(bfvmm::intel_x64::vcpu *vcpu)
 {
-    /// Say Hi
-    ///
-    /// If the vCPU is a host vCPU and not a guest vCPU, we should say hi
-    /// so that the user of Bareflank has a simple, reliable way to know
-    /// that the hypervisor is running.
-    ///
-
-//    this->m_xsave = std::make_unique<intel_x64::xsave>(this);
+    // TODO: xue_open for windows
 
     bfdebug_info(0, "host os is" bfcolor_green " now " bfcolor_end "in a vm");
     return vcpu->advance();
+}
+
+/*
+ * Disable Intel MPX. GCC 9 dropped support for MPX, and Linux is
+ * in the process of dropping support as well. Windows doesn't use MPX at all.
+ * Leaving this on triggers a bug when booting Linux from EFI when the xsave
+ * features are used in the VMM.
+ */
+static bool handle_cpuid_disable_mpx(bfvmm::intel_x64::vcpu *vcpu)
+{
+    constexpr auto mpx_bit = 1UL << 14;
+
+    if (vcpu->rcx() == 0) {
+        vcpu->set_rbx(vcpu->rbx() & ~mpx_bit);
+    }
+
+    return false;
 }
 
 vcpu::vcpu(
@@ -107,9 +119,9 @@ vcpu::vcpu(
     m_vmcall_vcpu_op_handler{this},
 
     m_x2apic_handler{this},
-    m_pci_configuration_space_handler{this},
+    m_pci_configuration_space_handler{this}
 //    m_host_xsave{std::make_unique<microv::intel_x64::xsave>(this)}
-    m_guest_xsave{std::make_unique<microv::intel_x64::xsave>(this)}
+//    m_guest_xsave{std::make_unique<microv::intel_x64::xsave>(this)}
 {
     this->set_eptp(domain->ept());
 
@@ -120,6 +132,7 @@ vcpu::vcpu(
         this->write_domU_guest_state(domain);
     }
 
+    this->add_cpuid_handler(0x7, {handle_cpuid_disable_mpx});
     this->add_cpuid_emulator(0x4BF00011, {&vcpu::handle_hello, this});
 }
 
