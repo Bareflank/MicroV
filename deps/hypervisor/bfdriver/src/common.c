@@ -523,17 +523,12 @@ common_load_vmm(void)
         goto failure;
     }
 
+    platform_memset(&g_xue, 0, sizeof(g_xue));
+    platform_memset(&g_xue_ops, 0, sizeof(g_xue_ops));
     g_xue.sysid = XUE_SYSID;
 
-    if (g_xue.sysid != xue_sysid_linux) {
-        platform_memset(&g_xue, 0, sizeof(g_xue));
-        platform_memset(&g_xue_ops, 0, sizeof(g_xue_ops));
-        g_xue.sysid = XUE_SYSID;
-        if (g_xue.sysid != xue_sysid_windows) {
-            xue_open(&g_xue, &g_xue_ops, NULL);
-        }
-    } else {
-        xue_start(&g_xue);
+    if (g_xue.sysid != xue_sysid_windows) {
+        xue_open(&g_xue, &g_xue_ops, NULL);
     }
 
     ret = platform_call_vmm_on_core(0, BF_REQUEST_INIT_XUE,  (uint64_t)&g_xue, 0);
