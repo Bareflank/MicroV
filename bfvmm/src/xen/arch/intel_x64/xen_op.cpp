@@ -30,6 +30,7 @@
 #include <public/arch-x86/cpuid.h>
 #include <public/errno.h>
 #include <public/memory.h>
+#include <public/platform.h>
 #include <public/version.h>
 #include <public/hvm/hvm_op.h>
 #include <public/hvm/params.h>
@@ -37,6 +38,9 @@
 using base_vcpu = bfvmm::intel_x64::vcpu;
 using microv_vcpu = microv::intel_x64::vcpu;
 using wrmsr_handler = bfvmm::intel_x64::wrmsr_handler;
+
+#define XEN_MAJOR 4UL
+#define XEN_MINOR 13UL
 
 namespace microv::xen::intel_x64 {
 
@@ -163,6 +167,28 @@ bool xen_op::handle_hypercall(microv_vcpu *vcpu)
         return this->handle_event_channel_op();
     case __HYPERVISOR_grant_table_op:
         return this->handle_grant_table_op();
+    case __HYPERVISOR_platform_op:
+        return this->handle_platform_op();
+    case __HYPERVISOR_console_io:
+        return this->handle_console_io();
+    default:
+        return false;
+    }
+}
+
+bool xen_op::handle_console_io()
+{
+    expects(m_dom->initdom());
+
+    uint64_t len = m_vcpu->rsi();
+    auto buf = m_vcpu->map_gva_4k<char>(m_vcpu->rdx(), len);
+
+    switch (m_vcpu->rdi()) {
+    case CONSOLEIO_read:
+        bfdebug_nhex(0, "CONSOLEIO_read: len:", len);
+        m_vcpu->set_rax(0);
+        //get_domain(m_dom->id)->dump_uart(gsl::span(buf.get(), len));
+        return true;
     default:
         return false;
     }
@@ -229,6 +255,7 @@ bool xen_op::handle_memory_op()
         } catchall({
             ;
         })
+        break;
     case XENMEM_decrease_reservation:
         try {
             auto arg = m_vcpu->map_arg<xen_memory_reservation_t>(m_vcpu->rsi());
@@ -263,6 +290,9 @@ bool xen_op::handle_memory_op()
 bool xen_op::handle_xen_version()
 {
     switch (m_vcpu->rdi()) {
+    case XENVER_version:
+        m_vcpu->set_rax((XEN_MAJOR << 16) | XEN_MINOR);
+        return true;
     case XENVER_get_features:
         try {
             auto info = m_vcpu->map_arg<xen_feature_info_t>(m_vcpu->rsi());
@@ -332,40 +362,40 @@ bool xen_op::handle_hvm_op()
                 return false;
             }
         } catchall({
-            ;
+            return false;
         })
-    case HVMOP_get_param:
-        try {
-            auto arg = m_vcpu->map_arg<xen_hvm_param_t>(m_vcpu->rsi());
-            switch (arg->index) {
-            case HVM_PARAM_CONSOLE_EVTCHN:
-                arg->value = m_evtchn_op->bind_console();
-                break;
-            case HVM_PARAM_CONSOLE_PFN:
-                m_console = m_vcpu->map_gpa_4k<uint8_t>(PVH_CONSOLE_GPA);
-                arg->value = PVH_CONSOLE_GPA >> 12;
-                break;
-            case HVM_PARAM_STORE_EVTCHN:
-                arg->value = m_evtchn_op->bind_store();
-                m_vcpu->set_rax(-ENOSYS);
-                return true;
-                break;
-            case HVM_PARAM_STORE_PFN:
-                m_store = m_vcpu->map_gpa_4k<uint8_t>(PVH_STORE_GPA);
-                arg->value = PVH_STORE_GPA >> 12;
-                m_vcpu->set_rax(-ENOSYS);
-                return true;
-                break;
-            default:
-                bfalert_nhex(0, "Unsupported HVM get_param:", arg->index);
-                return false;
-            }
+    //case HVMOP_get_param:
+    //    try {
+    //        auto arg = m_vcpu->map_arg<xen_hvm_param_t>(m_vcpu->rsi());
+    //        switch (arg->index) {
+    //        case HVM_PARAM_CONSOLE_EVTCHN:
+    //            arg->value = m_evtchn_op->bind_console();
+    //            break;
+    //        case HVM_PARAM_CONSOLE_PFN:
+    //            m_console = m_vcpu->map_gpa_4k<uint8_t>(PVH_CONSOLE_GPA);
+    //            arg->value = PVH_CONSOLE_GPA >> 12;
+    //            break;
+    //        case HVM_PARAM_STORE_EVTCHN:
+    //            arg->value = m_evtchn_op->bind_store();
+    //            m_vcpu->set_rax(-ENOSYS);
+    //            return true;
+    //            break;
+    //        case HVM_PARAM_STORE_PFN:
+    //            m_store = m_vcpu->map_gpa_4k<uint8_t>(PVH_STORE_GPA);
+    //            arg->value = PVH_STORE_GPA >> 12;
+    //            m_vcpu->set_rax(-ENOSYS);
+    //            return true;
+    //            break;
+    //        default:
+    //            bfalert_nhex(0, "Unsupported HVM get_param:", arg->index);
+    //            return false;
+    //        }
 
-            m_vcpu->set_rax(0);
-            return true;
-        } catchall({
-            return true;
-        })
+    //        m_vcpu->set_rax(0);
+    //        return true;
+    //    } catchall({
+    //        return false;
+    //    })
     case HVMOP_pagetable_dying:
         m_vcpu->set_rax(0);
         return true;
@@ -439,11 +469,31 @@ bool xen_op::handle_grant_table_op()
     }
 }
 
+bool xen_op::handle_platform_op()
+{
+    expects(m_dom->initdom());
+    auto xpf = m_vcpu->map_arg<xen_platform_op_t>(m_vcpu->rdi());
+
+    switch (xpf->cmd) {
+    case XENPF_get_cpuinfo:
+    {
+        struct xenpf_pcpuinfo info = xpf->u.pcpu_info;
+        m_vcpu->set_rax(m_platform_op->get_cpuinfo(&info));
+        return true;
+    }
+    default:
+        ;
+    }
+
+    return false;
+}
+
 xen_op::xen_op(microv::intel_x64::vcpu *vcpu, microv::intel_x64::domain *dom) :
     m_vcpu{vcpu},
     m_dom{dom},
     m_evtchn_op{std::make_unique<evtchn_op>(vcpu)},
-    m_gnttab_op{std::make_unique<gnttab_op>(vcpu)}
+    m_gnttab_op{std::make_unique<gnttab_op>(vcpu)},
+    m_platform_op{std::make_unique<platform_op>(vcpu)}
 {
     vcpu->add_cpuid_emulator(xen_leaf(0), {xen_leaf0});
     vcpu->add_cpuid_emulator(xen_leaf(2), {xen_leaf2});

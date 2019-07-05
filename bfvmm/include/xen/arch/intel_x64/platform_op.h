@@ -19,29 +19,17 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#ifndef MICROV_INTEL_X64_XEN_OP_H
-#define MICROV_INTEL_X64_XEN_OP_H
+#ifndef MICROV_INTEL_X64_PLATFORM_OP_H
+#define MICROV_INTEL_X64_PLATFORM_OP_H
 
-#include <memory>
-#include "gnttab_op.h"
-#include "evtchn_op.h"
-#include "platform_op.h"
+#include <public/xen.h>
+#include <public/platform.h>
 
-namespace bfvmm::intel_x64 {
-    class vcpu;
-}
-
-namespace microv::intel_x64 {
-    class domain;
-    class vcpu;
-}
+namespace microv::intel_x64 { class vcpu; }
 
 namespace microv::xen::intel_x64 {
 
-class evtchn_op;
-class gnttab_op;
-
-class xen_op {
+class platform_op {
 public:
 
     /// Constructor
@@ -49,51 +37,33 @@ public:
     /// @expects
     /// @ensures
     ///
-    /// @param vcpu the vcpu of the xen_op
+    /// @param vcpu the vcpu of the platform_op
     ///
-    xen_op(microv::intel_x64::vcpu *vcpu, microv::intel_x64::domain *dom);
+    platform_op(microv::intel_x64::vcpu *vcpu);
 
     /// Destructor
     ///
     /// @expects
     /// @ensures
     ///
-    ~xen_op() = default;
+    ~platform_op() = default;
+
+    int get_cpuinfo(struct xenpf_pcpuinfo *info);
 
 private:
-
-    bool handle_hypercall(microv::intel_x64::vcpu *vcpu);
-    bool handle_memory_op();
-    bool handle_xen_version();
-    bool handle_hvm_op();
-    bool handle_event_channel_op();
-    bool handle_grant_table_op();
-    bool handle_platform_op();
-    bool handle_console_io();
-
     microv::intel_x64::vcpu *m_vcpu{};
-    microv::intel_x64::domain *m_dom{};
-
-    std::unique_ptr<gnttab_op> m_gnttab_op;
-    std::unique_ptr<evtchn_op> m_evtchn_op;
-    std::unique_ptr<platform_op> m_platform_op;
-
-    bfvmm::x64::unique_map<struct shared_info> m_shinfo{};
-    bfvmm::x64::unique_map<uint8_t> m_console{};
-    bfvmm::x64::unique_map<uint8_t> m_store{};
 
 public:
 
     /// @cond
 
-    xen_op(xen_op &&) = default;
-    xen_op &operator=(xen_op &&) = default;
+    platform_op(platform_op &&) = default;
+    platform_op &operator=(platform_op &&) = default;
 
-    xen_op(const xen_op &) = delete;
-    xen_op &operator=(const xen_op &) = delete;
+    platform_op(const platform_op &) = delete;
+    platform_op &operator=(const platform_op &) = delete;
 
     /// @endcond
 };
 }
-
 #endif
