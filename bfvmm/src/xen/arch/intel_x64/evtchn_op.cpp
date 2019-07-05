@@ -22,6 +22,7 @@
 #include <bfvmm/memory_manager/memory_manager.h>
 #include <hve/arch/intel_x64/vcpu.h>
 #include <xen/arch/intel_x64/evtchn_op.h>
+#include <xen/virq.h>
 
 namespace microv::xen::intel_x64 {
 
@@ -31,8 +32,7 @@ evtchn_op::evtchn_op(microv::intel_x64::vcpu *vcpu) : m_vcpu{vcpu}
     m_event_chans.reserve(max_chan_pages);
 }
 
-void
-evtchn_op::init_control(evtchn_init_control_t *ctl)
+void evtchn_op::init_control(evtchn_init_control_t *ctl)
 {
     //expects(ctl->vcpu == m_vcpu->lapicid());
     expects(ctl->offset <= (0x1000 - sizeof(evtchn_fifo_control_block_t)));
@@ -44,8 +44,7 @@ evtchn_op::init_control(evtchn_init_control_t *ctl)
     ctl->link_bits = EVTCHN_FIFO_LINK_BITS;
 }
 
-void
-evtchn_op::set_callback_via(uint64_t via)
+void evtchn_op::set_callback_via(uint64_t via)
 {
     //expects(m_xen_op->shared_info());
 
@@ -59,22 +58,24 @@ evtchn_op::set_callback_via(uint64_t via)
 void evtchn_op::expand_array(evtchn_expand_array_t *arr)
 { this->make_word_page(arr); }
 
-//void
-//evtchn_op::alloc_unbound(gsl::not_null<evtchn_alloc_unbound_t *> arg)
-//{
-//    expects(arg->dom == DOMID_SELF);
-//    expects(arg->remote_dom == DOMID_SELF);
-//
-//    auto port = this->make_new_port();
-//    auto chan = this->port_to_chan(port);
-//
-//    chan->set_port(port);
-//    chan->set_state(evtchn::state_unbound);
-//
-//    arg->port = port;
-////    bfdebug_nhex(0, "alloc unbound", port);
-//}
-//
+void evtchn_op::alloc_unbound(evtchn_alloc_unbound_t *arg)
+{
+    expects(arg->dom == DOMID_SELF);
+    expects(arg->remote_dom == DOMID_SELF);
+
+    auto port = this->make_new_port();
+    auto chan = this->port_to_chan(port);
+
+    chan->port = port;
+    chan->state = evtchn::state_unbound;
+
+    arg->port = port;
+
+    //bfdebug_nhex(0, "alloc unbound", port);
+    //bfdebug_subnhex(0, "dom", arg->dom);
+    //bfdebug_subnhex(0, "remote_dom", arg->remote_dom);
+}
+
 //void
 //evtchn_op::send(gsl::not_null<evtchn_send_t *> arg)
 //{
@@ -105,21 +106,22 @@ evtchn_op::port_t evtchn_op::bind_console()
 //    arg->port = port;
 //    bfdebug_nhex(0, "bound ipi:", port);
 //}
-//
-//void
-//evtchn_op::bind_virq(gsl::not_null<evtchn_bind_virq_t *> arg)
-//{
-//    expects(arg->vcpu == 0);
-//
-//    const auto port = this->bind(evtchn::state_virq);
-//    auto chan = this->port_to_chan(port);
-//
-//    bfdebug_nhex(0, "bound virq:", arg->virq);
-//
-//    chan->set_virq(arg->virq);
-//    arg->port = port;
-//}
-//
+
+void evtchn_op::bind_virq(evtchn_bind_virq_t *arg)
+{
+    expects(arg->vcpu == m_vcpu->id());
+    expects(arg->virq < virq_info.size());
+
+    const auto port = this->bind(evtchn::state_virq);
+    auto chan = this->port_to_chan(port);
+
+    bfdebug_nhex(0, "bound virq:", arg->virq);
+    bfdebug_subtext(0, "name:", virq_info[arg->virq].name);
+
+    chan->data.virq = arg->virq;
+    arg->port = port;
+}
+
 //void
 //evtchn_op::bind_vcpu(gsl::not_null<evtchn_bind_vcpu_t *> arg)
 //{

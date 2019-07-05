@@ -378,21 +378,33 @@ bool xen_op::handle_event_channel_op()
 {
     switch (m_vcpu->rdi()) {
     case EVTCHNOP_init_control:
-        {
-            auto ctl = m_vcpu->map_arg<evtchn_init_control_t>(m_vcpu->rsi());
-            m_evtchn_op->init_control(ctl.get());
-            m_vcpu->set_rax(0);
-            return true;
-        }
+    {
+        auto ctl = m_vcpu->map_arg<evtchn_init_control_t>(m_vcpu->rsi());
+        m_evtchn_op->init_control(ctl.get());
+        m_vcpu->set_rax(0);
+        return true;
+    }
+    case EVTCHNOP_alloc_unbound:
+    {
+        auto eau = m_vcpu->map_arg<evtchn_alloc_unbound_t>(m_vcpu->rsi());
+        m_evtchn_op->alloc_unbound(eau.get());
+        m_vcpu->set_rax(0);
+        return true;
+    }
     case EVTCHNOP_expand_array:
-        try {
-            auto arg = m_vcpu->map_arg<evtchn_expand_array_t>(m_vcpu->rsi());
-            m_evtchn_op->expand_array(arg.get());
-            m_vcpu->set_rax(0);
-            return true;
-        } catchall({
-            ;
-        })
+    {
+        auto arg = m_vcpu->map_arg<evtchn_expand_array_t>(m_vcpu->rsi());
+        m_evtchn_op->expand_array(arg.get());
+        m_vcpu->set_rax(0);
+        return true;
+    }
+    case EVTCHNOP_bind_virq:
+    {
+        auto arg = m_vcpu->map_arg<evtchn_bind_virq_t>(m_vcpu->rsi());
+        m_evtchn_op->bind_virq(arg.get());
+        m_vcpu->set_rax(0);
+        return true;
+    }
 //    case EVTCHNOP_send:
     default:
         ;

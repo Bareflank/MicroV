@@ -78,17 +78,17 @@ public:
     ///
     void set_callback_via(uint64_t via);
 
+    /// Alloc unbound
+    ///
+    void alloc_unbound(evtchn_alloc_unbound_t *unbound);
+
     /// Expand array
     ///
     void expand_array(evtchn_expand_array_t *arr);
 
-    /// Alloc unbound
-    ///
-    void alloc_unbound(gsl::not_null<evtchn_alloc_unbound_t *> arg);
-
     /// Send
     ///
-    void send(gsl::not_null<evtchn_send_t *> arg);
+    void send(evtchn_send_t *arg);
 
     /// Bind IPI
     ///
@@ -96,7 +96,7 @@ public:
 
     /// Bind VIRQ
     ///
-    void bind_virq(gsl::not_null<evtchn_bind_virq_t *> arg);
+    void bind_virq(evtchn_bind_virq_t *arg);
 
     /// Bind VCPU
     ///

@@ -19,48 +19,48 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#ifndef MICROV_XEN_EVTCHN_H
-#define MICROV_XEN_EVTCHN_H
+#ifndef MICROV_XEN_VIRQ_H
+#define MICROV_XEN_VIRQ_H
 
+#include <array>
 #include <public/xen.h>
-#include <public/event_channel.h>
-#include <bfhypercall.h>
 
 namespace microv::xen {
 
-struct evtchn {
-    enum state : uint8_t {
-        state_free,
-        state_reserved,
-        state_unbound,
-        state_interdomain,
-        state_pirq,
-        state_virq,
-        state_ipi
-    };
-
-    using state_t = enum state;
-
-    union {
-        uint32_t virq;
-        // TODO:
-        // unbound-specific data
-        // interdomain-specific data
-        // pirq-specific data
-    } data;
-
-    bool is_pending{};
-    enum state state{state_free};
-
-    uint8_t priority{EVTCHN_FIFO_PRIORITY_DEFAULT};
-    uint8_t prev_priority{EVTCHN_FIFO_PRIORITY_DEFAULT};
-
-    vcpuid_t vcpuid{};
-    vcpuid_t prev_vcpuid{};
-
-    evtchn_port_t port{};
-    /// TODO mutable std::mutex mutex{};
+struct virq {
+    const char *name;
+    bool used;
+    bool dom0;
+    bool global;
 };
+
+inline std::array<struct virq, NR_VIRQS> virq_info = {{
+    {"timer", true, false, false},
+    {"debug", true, false, false},
+    {"console", true, true, true},
+    {"dom_exc", true, true, true},
+    {"tbuf", true, true, true},
+    {"unused5", false, false, false},
+    {"debugger", true, true, true},
+    {"xenoprof", true, false, false},
+    {"con_ring", true, true, true},
+    {"pcpu_state", true, true, true},
+    {"mem_event", true, true, true},
+    {"argo", true, false, true},
+    {"enomem", true, true, true},
+    {"xenpmu", true, false, false},
+    {"unused14", false, false, false},
+    {"unused15", false, false, false},
+    {"arch0", true, false, false},
+    {"arch1", true, false, false},
+    {"arch2", true, false, false},
+    {"arch3", true, false, false},
+    {"arch4", true, false, false},
+    {"arch5", true, false, false},
+    {"arch6", true, false, false},
+    {"arch7", true, false, false}
+}};
+
 
 }
 #endif
