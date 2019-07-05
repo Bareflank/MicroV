@@ -40,20 +40,6 @@ extern "C" void _xrstors(void *area, uint64_t rfbm) noexcept;
 
 namespace intel_x64 {
 
-enum xstate_bit {
-    xstate_x87,
-    xstate_sse,
-    xstate_avx,
-    xstate_bndreg,
-    xstate_bndcsr,
-    xstate_opmask,
-    xstate_zmm_hi256,
-    xstate_hi16_zmm,
-    xstate_pt,
-    xstate_pkru,
-    xstate_hdc = 13
-};
-
 inline uint64_t read_xcr0() noexcept
 { return _xgetbv(0); }
 

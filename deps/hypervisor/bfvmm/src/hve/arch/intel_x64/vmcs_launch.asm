@@ -50,11 +50,14 @@ vmcs_launch:
 
     ; Load xsave_info address
     mov r12, [rdi + 0x0A8]
+    push r12
 
     ; Store current state to the host area
     mov rax, [r12 + 0x10]
     mov rdx, [r12 + 0x10]
     shr rdx, 32
+    xor rcx, rcx
+    xsetbv
     mov rcx, [r12 + 0x00]
     xsave [rcx]
 
@@ -62,9 +65,10 @@ vmcs_launch:
     mov rax, [r12 + 0x18]
     mov rdx, [r12 + 0x18]
     shr rdx, 32
+    xor rcx, rcx
+    xsetbv
     mov rcx, [r12 + 0x08]
     xrstor [rcx]
-    push r12
 
     mov r15, [rdi + 0x070]
     mov r14, [rdi + 0x068]
@@ -97,6 +101,8 @@ vmcs_launch:
     mov rax, [r12 + 0x10]
     mov rdx, [r12 + 0x10]
     shr rdx, 32
+    xor rcx, rcx
+    xsetbv
     mov rcx, [r12 + 0x00]
     xrstor [rcx]
 

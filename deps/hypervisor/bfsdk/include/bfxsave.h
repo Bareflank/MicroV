@@ -48,6 +48,24 @@ extern "C" {
 #define XSAVE_BUILD_XCR0 XSAVE_LEGACY_MASK
 #endif
 
+#define XSAVE_LEGACY_SIZE 512
+#define XSAVE_HEADER_SIZE 64
+
+enum xstate_bit {
+    xstate_bit_x87,
+    xstate_bit_sse,
+    xstate_bit_avx,
+    xstate_bit_bndreg,
+    xstate_bit_bndcsr,
+    xstate_bit_opmask,
+    xstate_bit_zmm_hi256,
+    xstate_bit_hi16_zmm,
+    xstate_bit_pt,
+    xstate_bit_pkru,
+    xstate_bit_hdc = 13,
+    xstate_bit_last = xstate_bit_hdc
+};
+
 /**
  * struct xsave_info
  *

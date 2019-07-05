@@ -22,6 +22,8 @@
 #ifndef VCPU_INTEL_X64_MICROV_H
 #define VCPU_INTEL_X64_MICROV_H
 
+#include <bfxsave.h>
+
 #include "apic/x2apic.h"
 #include "pci/pci_configuration_space.h"
 
@@ -315,7 +317,8 @@ private:
     vcpu *m_parent_vcpu{};
 
     std::unique_ptr<microv::xen::intel_x64::xen_op> m_xen_op;
-    std::unique_ptr<microv::intel_x64::xsave> m_guest_xsave;
+    std::unique_ptr<struct ::xsave_info> m_xsave;
+    std::unique_ptr<uint8_t[]> m_guest_area;
 };
 
 }

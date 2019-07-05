@@ -74,14 +74,6 @@ ept_violation_handler(vcpu_t *vcpu)
 namespace microv::intel_x64
 {
 
-bool vcpu::handle_hello(bfvmm::intel_x64::vcpu *vcpu)
-{
-    // TODO: xue_open for windows
-
-    bfdebug_info(0, "host os is" bfcolor_green " now " bfcolor_end "in a vm");
-    return vcpu->advance();
-}
-
 /*
  * Disable Intel MPX. GCC 9 dropped support for MPX, and Linux is
  * in the process of dropping support as well. Windows doesn't use MPX at all.
@@ -120,8 +112,6 @@ vcpu::vcpu(
 
     m_x2apic_handler{this},
     m_pci_configuration_space_handler{this}
-//    m_host_xsave{std::make_unique<microv::intel_x64::xsave>(this)}
-//    m_guest_xsave{std::make_unique<microv::intel_x64::xsave>(this)}
 {
     this->set_eptp(domain->ept());
 
@@ -129,11 +119,39 @@ vcpu::vcpu(
         this->write_dom0_guest_state(domain);
     }
     else {
+        uint64_t top;
+        struct thread_context_t *ctx;
+        struct xsave_info *old_xsave;
+        struct xsave_info *new_xsave;
+
         this->write_domU_guest_state(domain);
+
+        m_xsave = std::make_unique<struct xsave_info>();
+        top = reinterpret_cast<uint64_t>(m_stack.get()) + STACK_SIZE * 2;
+        top = (top & ~(STACK_SIZE - 1)) - 1;
+        ctx = reinterpret_cast<thread_context_t *>(top - sizeof(*ctx));
+
+        old_xsave = ctx->xsave_info;
+        new_xsave = m_xsave.get();
+        memcpy(new_xsave, old_xsave, sizeof(*new_xsave));
+
+        new_xsave->vcpuid = ctx->cpuid;
+        new_xsave->guest_xcr0 = XSAVE_LEGACY_MASK;
+        m_guest_area = std::make_unique<uint8_t[]>(new_xsave->guest_size);
+        new_xsave->guest_area = m_guest_area.get();
+        memset(new_xsave->guest_area, 0, new_xsave->guest_size);
+        ctx->xsave_info = new_xsave;
+
+        top = reinterpret_cast<uint64_t>(m_ist1.get()) + STACK_SIZE * 2;
+        top = (top & ~(STACK_SIZE - 1)) - 1;
+        ctx = reinterpret_cast<thread_context_t *>(top - sizeof(*ctx));
+        ctx->xsave_info = new_xsave;
+
+        this->state()->xsave_ptr = reinterpret_cast<uint64_t>(new_xsave);
     }
 
-    this->add_cpuid_handler(0x7, {handle_cpuid_disable_mpx});
     this->add_cpuid_emulator(0x4BF00011, {&vcpu::handle_hello, this});
+    this->add_cpuid_handler(0x7, {handle_cpuid_disable_mpx});
 }
 
 //------------------------------------------------------------------------------
@@ -161,6 +179,14 @@ vcpu::write_domU_guest_state(domain *domain)
 
         m_xen_op = std::make_unique<xen::intel_x64::xen_op>(this, m_domain);
     }
+}
+
+bool vcpu::handle_hello(bfvmm::intel_x64::vcpu *vcpu)
+{
+    // TODO: xue_open for windows
+
+    bfdebug_info(0, "host os is" bfcolor_green " now " bfcolor_end "in a vm");
+    return vcpu->advance();
 }
 
 //------------------------------------------------------------------------------
@@ -297,7 +323,7 @@ vcpu::setup_default_controls()
 
     using namespace secondary_processor_based_vm_execution_controls;
     enable_invpcid::disable();
-    enable_xsaves_xrstors::disable();
+    enable_xsaves_xrstors::enable();
 }
 
 void
