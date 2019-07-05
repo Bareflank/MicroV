@@ -267,6 +267,7 @@ create_vm(const args_type &args)
     ioctl_args.uart = uart;
     ioctl_args.pt_uart = pt_uart;
     ioctl_args.ram = ram;
+    ioctl_args.initdom = args.count("initdom");
 
     ctl->call_ioctl_create_vm(ioctl_args);
     dump_vm_create_verbose();

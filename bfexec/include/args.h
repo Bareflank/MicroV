@@ -43,7 +43,8 @@ parse_args(int argc, char *argv[])
     ("ram", "The VM's total RAM", value<uint64_t>(), "[bytes]")
     ("cmdline", "Additional Linux command line arguments", value<std::string>(), "[text]")
     ("uart", "Give the VM an emulated UART", value<uint64_t>(), "[port #]")
-    ("pt_uart", "Pass-through a host UART to the VM", value<uint64_t>(), "[port #]");
+    ("pt_uart", "Pass-through a host UART to the VM", value<uint64_t>(), "[port #]")
+    ("initdom", "The VM is an initial domain");
 
     auto args = options.parse(argc, argv);
 

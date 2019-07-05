@@ -85,6 +85,7 @@ struct vm_t {
     struct hvm_modlist_entry *pvh_modlist;
     struct bfelf_loader_t elf_ldr;
     struct bfelf_binary_t elf_bin;
+    uint64_t initdom;
 };
 
 static struct vm_t g_vms[MAX_VMS] = {0};
@@ -626,6 +627,19 @@ setup_bzimage(struct vm_t *vm, struct create_vm_args *args)
     return SUCCESS;
 }
 
+static uint32_t pvh_sifs(struct create_vm_args *args)
+{
+    uint32_t flags = 0;
+
+    if (args->initdom) {
+        flags |= SIF_INITDOMAIN;
+    }
+
+    BFDEBUG("PVH SIFs: %x", flags);
+
+    return flags;
+}
+
 static status_t
 setup_pvh_modlist(struct vm_t *vm, struct create_vm_args *args)
 {
@@ -670,7 +684,7 @@ setup_pvh_start_info(struct vm_t *vm, struct create_vm_args *args)
     vm->pvh_start_info->version = 1;
     vm->pvh_start_info->cmdline_paddr = COMMAND_LINE_PAGE_GPA;
     vm->pvh_start_info->rsdp_paddr = ACPI_RSDP_GPA;
-    // TODO SIF flags like LOCAL_STORE
+    vm->pvh_start_info->flags = pvh_sifs(args);
 
     ret = setup_pvh_modlist(vm, args);
     if (ret != SUCCESS) {
@@ -1115,6 +1129,10 @@ common_create_vm(
     }
 
     __domain_op__set_exec_mode(vm->domainid, args->exec_mode);
+
+    if (args->initdom) {
+        __domain_op__set_initdom(vm->domainid, args->initdom);
+    }
 
     ret = setup_kernel(vm, args);
     if (ret != SUCCESS) {

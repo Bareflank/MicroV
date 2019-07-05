@@ -237,6 +237,28 @@ public:
     ///
     uint64_t exec_mode() noexcept;
 
+    /// Set initdom
+    ///
+    /// @expects
+    /// @ensures
+    ///
+    /// Set if domain is a SIF_INITDOMAIN
+    ///
+    /// @param initdom is this is an initial domain?
+    ///
+    void set_initdom(uint64_t initdom) noexcept
+    { m_initdom = initdom; }
+
+    /// Initdom
+    ///
+    /// @expects
+    /// @ensures
+    ///
+    /// @return is this guest initial domain?
+    ///
+    bool initdom() noexcept
+    { return m_initdom != 0; }
+
     /// Set UART
     ///
     /// If set, enables the use of an emulated UART that will be created
@@ -510,6 +532,7 @@ private:
 
     uint64_t m_did{};
     uint64_t m_exec_mode{};
+    uint64_t m_initdom{};
 
 public:
 

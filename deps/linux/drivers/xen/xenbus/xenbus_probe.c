@@ -787,19 +787,25 @@ static int __init xenbus_init(void)
 	if (xen_pv_domain() && xen_start_info->store_evtchn)
 		xenstored_ready = 1;
 
+        pr_info("start_flags: 0x%x", xen_start_flags);
+        pr_info("initial_domain: %d", xen_initial_domain());
+
 	switch (xen_store_domain_type) {
 	case XS_LOCAL:
+                pr_info("local domain type");
 		err = xenstored_local_init();
 		if (err)
 			goto out_error;
 		xen_store_interface = gfn_to_virt(xen_store_gfn);
 		break;
 	case XS_PV:
+                pr_info("pv domain type");
 		xen_store_evtchn = xen_start_info->store_evtchn;
 		xen_store_gfn = xen_start_info->store_mfn;
 		xen_store_interface = gfn_to_virt(xen_store_gfn);
 		break;
 	case XS_HVM:
+                pr_info("hvm domain type");
 		err = hvm_get_parameter(HVM_PARAM_STORE_EVTCHN, &v);
 		if (err)
 			goto out_error;

@@ -141,6 +141,7 @@ __uart_ndec_op(uint16_t port, uint64_t val)
 #define __enum_domain_op__dump_uart 0xBF02000000000202
 #define __enum_domain_op__set_exec_mode 0xBF02000000000203
 #define __enum_domain_op__add_e820_entry 0xBF02000000000204
+#define __enum_domain_op__set_initdom 0xBF02000000000205
 
 #define __enum_domain_op__share_page_r 0xBF02000000000300
 #define __enum_domain_op__share_page_rw 0xBF02000000000301
@@ -300,6 +301,17 @@ __domain_op__set_exec_mode(domainid_t foreign_domainid, uint64_t mode)
         __enum_domain_op__set_exec_mode,
         foreign_domainid,
         mode,
+        0
+    );
+}
+
+static inline status_t
+__domain_op__set_initdom(domainid_t foreign_domainid, uint64_t initdom)
+{
+    return _vmcall(
+        __enum_domain_op__set_initdom,
+        foreign_domainid,
+        initdom,
         0
     );
 }

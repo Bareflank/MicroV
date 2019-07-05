@@ -53,6 +53,7 @@ private:
     void domain_op__destroy_domain(vcpu *vcpu);
 
     void domain_op__set_exec_mode(vcpu *vcpu);
+    void domain_op__set_initdom(vcpu *vcpu);
     void domain_op__add_e820_entry(vcpu *vcpu);
     void domain_op__set_uart(vcpu *vcpu);
     void domain_op__set_pt_uart(vcpu *vcpu);

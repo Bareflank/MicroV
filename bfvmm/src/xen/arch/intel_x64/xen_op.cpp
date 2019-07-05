@@ -439,6 +439,7 @@ xen_op::xen_op(microv::intel_x64::vcpu *vcpu, microv::intel_x64::domain *dom) :
     vcpu->add_vmcall_handler({&xen_op::handle_hypercall, this});
     vcpu->add_cpuid_emulator(xen_leaf(1), {xen_leaf1});
     vcpu->add_cpuid_emulator(xen_leaf(4), {xen_leaf4});
+
     vcpu->add_handler(0, handle_exception);
 }
 

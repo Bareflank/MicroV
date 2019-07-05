@@ -222,7 +222,6 @@ dev_init(void)
         return -EPERM;
     }
 
-    BFDEBUG("dev_init succeeded\n");
     return 0;
 }
 
@@ -230,8 +229,6 @@ void
 dev_exit(void)
 {
     misc_deregister(&builder_dev);
-
-    BFDEBUG("dev_exit succeeded\n");
     return;
 }
 
