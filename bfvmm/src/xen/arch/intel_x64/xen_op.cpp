@@ -19,6 +19,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+#include <mutex>
 #include <bfgpalayout.h>
 
 #include <xen/arch/intel_x64/xen_op.h>
@@ -44,9 +45,32 @@ using wrmsr_handler = bfvmm::intel_x64::wrmsr_handler;
 
 namespace microv::xen::intel_x64 {
 
+static std::mutex xen_mutex;
+static uint32_t xen_domid = 0;
+static uint32_t xen_vcpuid = 0;
+static uint32_t xen_apicid = 0;
+static uint32_t xen_acpiid = 0;
+
 static constexpr auto hcall_page_msr = 0xC0000500;
 static constexpr auto xen_leaf_base = 0x40000100;
 static constexpr auto xen_leaf(int i) { return xen_leaf_base + i; }
+
+static void make_xen_ids(microv::intel_x64::domain *dom, xen_op *xop)
+{
+    if (dom->initdom()) {
+        xop->domid = 0;
+        xop->vcpuid = 0;
+        xop->apicid = 0;
+        xop->acpiid = 0;
+        return;
+    } else {
+        std::lock_guard<std::mutex> lock(xen_mutex);
+        xop->domid = ++xen_domid;
+        xop->vcpuid = ++xen_vcpuid;
+        xop->apicid = ++xen_apicid;
+        xop->acpiid = ++xen_acpiid;
+    }
+}
 
 static bool handle_exception(base_vcpu *vcpu)
 {
@@ -111,7 +135,7 @@ static bool xen_leaf2(base_vcpu *vcpu)
     return true;
 }
 
-static bool xen_leaf4(base_vcpu *vcpu)
+bool xen_op::xen_leaf4(base_vcpu *vcpu)
 {
     uint32_t rax = 0;
 
@@ -122,11 +146,10 @@ static bool xen_leaf4(base_vcpu *vcpu)
     rax |= XEN_HVM_CPUID_DOMID_PRESENT;
 
     vcpu->set_rax(rax);
-    //vcpu->set_rbx(vcpu->id());
-    //vcpu->set_rcx(vcpu_cast(vcpu)->domid());
-    //FIXME:
-    vcpu->set_rbx(0);
-    vcpu->set_rcx(0);
+
+    /* These ID values are *not* the same as the microv ones */
+    vcpu->set_rbx(this->vcpuid);
+    vcpu->set_rcx(this->domid);
 
     vcpu->advance();
     return true;
@@ -483,7 +506,13 @@ bool xen_op::handle_platform_op()
     case XENPF_get_cpuinfo:
     {
         struct xenpf_pcpuinfo info = xpf->u.pcpu_info;
-        m_vcpu->set_rax(m_platform_op->get_cpuinfo(&info));
+
+        info.max_present = 1;
+        info.flags = XEN_PCPU_FLAGS_ONLINE;
+        info.apic_id = this->apicid;
+        info.acpi_id = this->acpiid;
+
+        m_vcpu->set_rax(0);
         return true;
     }
     default:
@@ -497,15 +526,16 @@ xen_op::xen_op(microv::intel_x64::vcpu *vcpu, microv::intel_x64::domain *dom) :
     m_vcpu{vcpu},
     m_dom{dom},
     m_evtchn_op{std::make_unique<evtchn_op>(vcpu)},
-    m_gnttab_op{std::make_unique<gnttab_op>(vcpu)},
-    m_platform_op{std::make_unique<platform_op>(vcpu)}
+    m_gnttab_op{std::make_unique<gnttab_op>(vcpu)}
 {
+    make_xen_ids(dom, this);
+
     vcpu->add_cpuid_emulator(xen_leaf(0), {xen_leaf0});
     vcpu->add_cpuid_emulator(xen_leaf(2), {xen_leaf2});
     vcpu->emulate_wrmsr(hcall_page_msr, {wrmsr_hcall_page});
     vcpu->add_vmcall_handler({&xen_op::handle_hypercall, this});
     vcpu->add_cpuid_emulator(xen_leaf(1), {xen_leaf1});
-    vcpu->add_cpuid_emulator(xen_leaf(4), {xen_leaf4});
+    vcpu->add_cpuid_emulator(xen_leaf(4), {&xen_op::xen_leaf4, this});
 
     vcpu->add_handler(0, handle_exception);
 }

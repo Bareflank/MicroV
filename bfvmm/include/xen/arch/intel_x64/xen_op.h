@@ -25,7 +25,6 @@
 #include <memory>
 #include "gnttab_op.h"
 #include "evtchn_op.h"
-#include "platform_op.h"
 
 namespace bfvmm::intel_x64 {
     class vcpu;
@@ -63,6 +62,8 @@ public:
 private:
     friend class microv::intel_x64::vcpu;
 
+    bool xen_leaf4(bfvmm::intel_x64::vcpu *vcpu);
+
     bool handle_hypercall(microv::intel_x64::vcpu *vcpu);
     bool handle_memory_op();
     bool handle_xen_version();
@@ -77,13 +78,17 @@ private:
 
     std::unique_ptr<gnttab_op> m_gnttab_op;
     std::unique_ptr<evtchn_op> m_evtchn_op;
-    std::unique_ptr<platform_op> m_platform_op;
 
     bfvmm::x64::unique_map<struct shared_info> m_shinfo{};
     bfvmm::x64::unique_map<uint8_t> m_console{};
     bfvmm::x64::unique_map<uint8_t> m_store{};
 
 public:
+
+    uint32_t domid{};
+    uint32_t vcpuid{};
+    uint32_t apicid{};
+    uint32_t acpiid{};
 
     /// @cond
 
