@@ -47,6 +47,7 @@ tags
 
 deps/hypervisor/bfdriver/src/platform/linux/Makefile
 
+bfvmm/include/compiler.h
 bfbuilder/src/platform/windows/.vs/
 bfbuilder/src/platform/windows/bfbuilder.VC.db
 bfbuilder/src/platform/windows/x64/

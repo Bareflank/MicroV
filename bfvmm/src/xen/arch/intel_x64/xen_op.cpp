@@ -351,8 +351,7 @@ bool xen_op::handle_xen_version()
     case XENVER_version:
         m_vcpu->set_rax((XEN_MAJOR << 16) | XEN_MINOR);
         return true;
-    case XENVER_compile_info:
-    {
+    case XENVER_compile_info: {
         static_assert(sizeof(xen_compile_info_t::compiler) == 64);
         static_assert(sizeof(xen_compile_info_t::compile_by) == 16);
         static_assert(sizeof(xen_compile_info_t::compile_domain) == 32);
@@ -372,6 +371,27 @@ bool xen_op::handle_xen_version()
         m_vcpu->set_rax(0);
         return true;
     }
+    case XENVER_extraversion: {
+        auto extra = m_vcpu->map_arg<xen_extraversion_t>(m_vcpu->rsi());
+        std::strncpy((char *)extra.get(), "microv", XEN_EXTRAVERSION_LEN);
+        m_vcpu->set_rax(0);
+        return true;
+    }
+    case XENVER_changeset: {
+        auto change = m_vcpu->map_arg<xen_changeset_info_t>(m_vcpu->rsi());
+        std::strncpy((char *)change.get(),
+                     MICROV_CHANGESET,
+                     XEN_CHANGESET_INFO_LEN);
+        m_vcpu->set_rax(0);
+        return true;
+    }
+    case XENVER_guest_handle:
+        bfalert_info(0, "Received XENVER_guest_handle hypercall");
+        m_vcpu->set_rax(0);
+        return true;
+    case XENVER_pagesize:
+        m_vcpu->set_rax(::x64::pt::page_size);
+        return true;
     default:
         return false;
     }
