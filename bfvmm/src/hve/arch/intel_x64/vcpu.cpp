@@ -178,7 +178,7 @@ vcpu::write_domU_guest_state(domain *domain)
         enable_rdtscp::enable();
         ::intel_x64::vmcs::exception_bitmap::set(1UL << 6);
 
-        m_xen_op = std::make_unique<xen::intel_x64::xen_op>(this, m_domain);
+        m_xen = std::make_unique<xen::xen>(this, m_domain);
     }
 }
 

@@ -31,7 +31,7 @@ target_include_directories(microv_xen PUBLIC
 target_sources(microv_xen PRIVATE
     $<${X64}:evtchn.cpp>
     $<${X64}:gnttab.cpp>
-    $<${X64}:arch/intel_x64/xen_op.cpp>
+    $<${X64}:xen.cpp>
 )
 
 install(TARGETS microv_xen DESTINATION lib EXPORT microv_bfvmm-vmm-targets)

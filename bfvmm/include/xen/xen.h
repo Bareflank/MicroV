@@ -19,12 +19,12 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#ifndef MICROV_INTEL_X64_XEN_OP_H
-#define MICROV_INTEL_X64_XEN_OP_H
+#ifndef MICROV_XEN_H
+#define MICROV_XEN_H
 
 #include <memory>
-#include "../../gnttab.h"
-#include "../../evtchn.h"
+#include "evtchn.h"
+#include "gnttab.h"
 
 namespace bfvmm::intel_x64 {
     class vcpu;
@@ -36,13 +36,8 @@ namespace microv::intel_x64 {
 }
 
 namespace microv::xen {
-    class evtchn;
-    class gnttab;
-}
 
-namespace microv::xen::intel_x64 {
-
-class xen_op {
+class xen {
 public:
 
     /// Constructor
@@ -50,16 +45,16 @@ public:
     /// @expects
     /// @ensures
     ///
-    /// @param vcpu the vcpu of the xen_op
+    /// @param vcpu the vcpu of the xen
     ///
-    xen_op(microv::intel_x64::vcpu *vcpu, microv::intel_x64::domain *dom);
+    xen(microv::intel_x64::vcpu *vcpu, microv::intel_x64::domain *dom);
 
     /// Destructor
     ///
     /// @expects
     /// @ensures
     ///
-    ~xen_op() = default;
+    ~xen() = default;
 
 private:
     friend class microv::intel_x64::vcpu;
@@ -94,11 +89,11 @@ public:
 
     /// @cond
 
-    xen_op(xen_op &&) = default;
-    xen_op &operator=(xen_op &&) = default;
+    xen(xen &&) = default;
+    xen &operator=(xen &&) = default;
 
-    xen_op(const xen_op &) = delete;
-    xen_op &operator=(const xen_op &) = delete;
+    xen(const xen &) = delete;
+    xen &operator=(const xen &) = delete;
 
     /// @endcond
 };

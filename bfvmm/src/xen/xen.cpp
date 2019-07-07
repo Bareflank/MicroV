@@ -28,7 +28,7 @@
 
 #include <xen/evtchn.h>
 #include <xen/gnttab.h>
-#include <xen/arch/intel_x64/xen_op.h>
+#include <xen/xen.h>
 
 #include <public/arch-x86/cpuid.h>
 #include <public/errno.h>
@@ -45,7 +45,7 @@ using wrmsr_handler = bfvmm::intel_x64::wrmsr_handler;
 #define XEN_MAJOR 4UL
 #define XEN_MINOR 13UL
 
-namespace microv::xen::intel_x64 {
+namespace microv::xen {
 
 static std::mutex xen_mutex;
 static uint32_t xen_domid = 0;
@@ -57,7 +57,7 @@ static constexpr auto hcall_page_msr = 0xC0000500;
 static constexpr auto xen_leaf_base = 0x40000100;
 static constexpr auto xen_leaf(int i) { return xen_leaf_base + i; }
 
-static void make_xen_ids(microv::intel_x64::domain *dom, xen_op *xop)
+static void make_xen_ids(microv::intel_x64::domain *dom, xen *xop)
 {
     if (dom->initdom()) {
         xop->domid = 0;
@@ -137,13 +137,13 @@ static bool xen_leaf2(base_vcpu *vcpu)
     return true;
 }
 
-bool xen_op::xen_leaf4(base_vcpu *vcpu)
+bool xen::xen_leaf4(base_vcpu *vcpu)
 {
     uint32_t rax = 0;
 
-//    rax |= XEN_HVM_CPUID_APIC_ACCESS_VIRT;
+//  rax |= XEN_HVM_CPUID_APIC_ACCESS_VIRT;
     rax |= XEN_HVM_CPUID_X2APIC_VIRT;
-//    rax |= XEN_HVM_CPUID_IOMMU_MAPPINGS;
+//  rax |= XEN_HVM_CPUID_IOMMU_MAPPINGS;
     rax |= XEN_HVM_CPUID_VCPU_ID_PRESENT;
     rax |= XEN_HVM_CPUID_DOMID_PRESENT;
 
@@ -179,7 +179,7 @@ static bool wrmsr_hcall_page(base_vcpu *vcpu, wrmsr_handler::info_t &info)
     return true;
 }
 
-bool xen_op::handle_hypercall(microv_vcpu *vcpu)
+bool xen::handle_hypercall(microv_vcpu *vcpu)
 {
     switch (vcpu->rax()) {
     case __HYPERVISOR_memory_op:
@@ -201,7 +201,7 @@ bool xen_op::handle_hypercall(microv_vcpu *vcpu)
     }
 }
 
-bool xen_op::handle_console_io()
+bool xen::handle_console_io()
 {
     expects(m_dom->initdom());
 
@@ -224,7 +224,7 @@ bool xen_op::handle_console_io()
     }
 }
 
-bool xen_op::handle_memory_op()
+bool xen::handle_memory_op()
 {
     switch (m_vcpu->rdi()) {
     case XENMEM_memory_map:
@@ -317,7 +317,7 @@ bool xen_op::handle_memory_op()
     return false;
 }
 
-bool xen_op::handle_xen_version()
+bool xen::handle_xen_version()
 {
     switch (m_vcpu->rdi()) {
     case XENVER_get_features:
@@ -413,7 +413,7 @@ static bool valid_cb_via(uint64_t via)
     return true;
 }
 
-bool xen_op::handle_hvm_op()
+bool xen::handle_hvm_op()
 {
     switch (m_vcpu->rdi()) {
     case HVMOP_set_param:
@@ -475,7 +475,7 @@ bool xen_op::handle_hvm_op()
     }
 }
 
-bool xen_op::handle_event_channel_op()
+bool xen::handle_event_channel_op()
 {
     switch (m_vcpu->rdi()) {
     case EVTCHNOP_init_control:
@@ -520,7 +520,7 @@ bool xen_op::handle_event_channel_op()
     return false;
 }
 
-bool xen_op::handle_grant_table_op()
+bool xen::handle_grant_table_op()
 {
     switch (m_vcpu->rdi()) {
     case GNTTABOP_query_size:
@@ -546,7 +546,7 @@ bool xen_op::handle_grant_table_op()
     }
 }
 
-bool xen_op::handle_platform_op()
+bool xen::handle_platform_op()
 {
     expects(m_dom->initdom());
     auto xpf = m_vcpu->map_arg<xen_platform_op_t>(m_vcpu->rdi());
@@ -571,7 +571,7 @@ bool xen_op::handle_platform_op()
     return false;
 }
 
-xen_op::xen_op(microv::intel_x64::vcpu *vcpu, microv::intel_x64::domain *dom) :
+xen::xen(microv::intel_x64::vcpu *vcpu, microv::intel_x64::domain *dom) :
     m_vcpu{vcpu},
     m_dom{dom},
     m_evtchn{std::make_unique<evtchn>(vcpu)},
@@ -582,9 +582,9 @@ xen_op::xen_op(microv::intel_x64::vcpu *vcpu, microv::intel_x64::domain *dom) :
     vcpu->add_cpuid_emulator(xen_leaf(0), {xen_leaf0});
     vcpu->add_cpuid_emulator(xen_leaf(2), {xen_leaf2});
     vcpu->emulate_wrmsr(hcall_page_msr, {wrmsr_hcall_page});
-    vcpu->add_vmcall_handler({&xen_op::handle_hypercall, this});
+    vcpu->add_vmcall_handler({&xen::handle_hypercall, this});
     vcpu->add_cpuid_emulator(xen_leaf(1), {xen_leaf1});
-    vcpu->add_cpuid_emulator(xen_leaf(4), {&xen_op::xen_leaf4, this});
+    vcpu->add_cpuid_emulator(xen_leaf(4), {&xen::xen_leaf4, this});
 
     vcpu->add_handler(0, handle_exception);
 }

@@ -45,7 +45,7 @@
 #include <bfvmm/vcpu/vcpu_manager.h>
 #include <bfvmm/hve/arch/intel_x64/vcpu.h>
 
-#include "../../../xen/arch/intel_x64/xen_op.h"
+#include "../../../xen/xen.h"
 
 //------------------------------------------------------------------------------
 // Definition
@@ -292,7 +292,7 @@ public:
     ///
     void queue_virq(uint32_t virq)
     {
-        auto evtchn = m_xen_op->m_evtchn.get();
+        auto evtchn = m_xen->m_evtchn.get();
         evtchn->queue_virq(virq);
     }
 
@@ -325,7 +325,7 @@ private:
     bool m_killed{};
     vcpu *m_parent_vcpu{};
 
-    std::unique_ptr<microv::xen::intel_x64::xen_op> m_xen_op;
+    std::unique_ptr<microv::xen::xen> m_xen;
     std::unique_ptr<struct ::xsave_info> m_xsave;
     std::unique_ptr<uint8_t[]> m_guest_area;
 };
