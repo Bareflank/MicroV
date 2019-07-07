@@ -20,13 +20,12 @@
 // SOFTWARE.
 
 #include <hve/arch/intel_x64/vcpu.h>
-#include <xen/arch/intel_x64/gnttab_op.h>
 #include <public/memory.h>
+#include <xen/gnttab.h>
 
-namespace microv::xen::intel_x64
-{
+namespace microv::xen {
 
-gnttab_op::gnttab_op(microv::intel_x64::vcpu *vcpu) :
+gnttab::gnttab(microv::intel_x64::vcpu *vcpu) :
     m_vcpu{vcpu},
     m_version{2}
 {
@@ -34,22 +33,20 @@ gnttab_op::gnttab_op(microv::intel_x64::vcpu *vcpu) :
     m_shared_gnttab.push_back(make_page<shared_entry_t>());
 }
 
-void
-gnttab_op::query_size(gnttab_query_size_t *arg)
+void gnttab::query_size(gnttab_query_size_t *arg)
 {
     arg->nr_frames = gsl::narrow_cast<uint32_t>(m_shared_gnttab.size());
     arg->max_nr_frames = max_nr_frames;
     arg->status = GNTST_okay;
 }
 
-void
-gnttab_op::set_version(gnttab_set_version_t *arg)
+void gnttab::set_version(gnttab_set_version_t *arg)
 {
     arg->version = m_version;
 }
 
 void
-gnttab_op::mapspace_grant_table(xen_add_to_physmap_t *arg)
+gnttab::mapspace_grant_table(xen_add_to_physmap_t *arg)
 {
     expects((arg->idx & XENMAPIDX_grant_table_status) == 0);
 
@@ -57,8 +54,6 @@ gnttab_op::mapspace_grant_table(xen_add_to_physmap_t *arg)
     auto idx = arg->idx;
     auto size = m_shared_gnttab.size();
 
-    // Get the mfn
-    //
     if (idx < size) {
         auto hva = m_shared_gnttab[idx].get();
         hpa = g_mm->virtptr_to_physint(hva);

@@ -25,7 +25,7 @@
 
 #include <xen/arch/intel_x64/xen_op.h>
 #include <xen/arch/intel_x64/evtchn_op.h>
-#include <xen/arch/intel_x64/gnttab_op.h>
+#include <xen/gnttab.h>
 #include <hve/arch/intel_x64/domain.h>
 #include <hve/arch/intel_x64/vcpu.h>
 
@@ -274,7 +274,7 @@ bool xen_op::handle_memory_op()
                 m_vcpu->set_rax(0);
                 return true;
             case XENMAPSPACE_grant_table:
-                m_gnttab_op->mapspace_grant_table(xatp.get());
+                m_gnttab->mapspace_grant_table(xatp.get());
                 m_vcpu->set_rax(0);
                 return true;
             default:
@@ -519,7 +519,7 @@ bool xen_op::handle_grant_table_op()
     case GNTTABOP_query_size:
         try {
             auto arg = m_vcpu->map_arg<gnttab_query_size_t>(m_vcpu->rsi());
-            m_gnttab_op->query_size(arg.get());
+            m_gnttab->query_size(arg.get());
             m_vcpu->set_rax(0);
             return true;
         } catchall({
@@ -528,7 +528,7 @@ bool xen_op::handle_grant_table_op()
     case GNTTABOP_set_version:
         try {
             auto arg = m_vcpu->map_arg<gnttab_set_version_t>(m_vcpu->rsi());
-            m_gnttab_op->set_version(arg.get());
+            m_gnttab->set_version(arg.get());
             m_vcpu->set_rax(SUCCESS);
             return true;
         } catchall ({
@@ -568,7 +568,7 @@ xen_op::xen_op(microv::intel_x64::vcpu *vcpu, microv::intel_x64::domain *dom) :
     m_vcpu{vcpu},
     m_dom{dom},
     m_evtchn_op{std::make_unique<evtchn_op>(vcpu)},
-    m_gnttab_op{std::make_unique<gnttab_op>(vcpu)}
+    m_gnttab{std::make_unique<gnttab>(vcpu)}
 {
     make_xen_ids(dom, this);
 

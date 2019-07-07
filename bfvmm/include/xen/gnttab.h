@@ -19,8 +19,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#ifndef MICROV_INTEL_X64_GNTTAB_OP_H
-#define MICROV_INTEL_X64_GNTTAB_OP_H
+#ifndef MICROV_XEN_GNTTAB_H
+#define MICROV_XEN_GNTTAB_H
 
 #include <bfmath.h>
 #include <bfvmm/memory_manager/memory_manager.h>
@@ -29,66 +29,36 @@
 #include <public/grant_table.h>
 #include <public/memory.h>
 
-namespace microv::intel_x64 { class vcpu; }
+namespace microv::intel_x64 {
+    class vcpu;
+}
 
-namespace microv::xen::intel_x64 {
+namespace microv::xen {
 
-class gnttab_op {
-public:
-
+class gnttab {
     using shared_entry_t = grant_entry_v2_t;
     static_assert(is_power_of_2(sizeof(shared_entry_t)));
 
-    /// Constructor
-    ///
-    /// @expects
-    /// @ensures
-    ///
-    /// @param vcpu the vcpu of the gnttab_op
-    ///
-    gnttab_op(microv::intel_x64::vcpu *vcpu);
-
-    /// Destructor
-    ///
-    /// @expects
-    /// @ensures
-    ///
-    ~gnttab_op() = default;
-
-    /// Query size
-    ///
-    void query_size(gnttab_query_size_t *arg);
-
-    /// Set version
-    ///
-    void set_version(gnttab_set_version_t *arg);
-
-    /// Map grant table
-    ///
-    void mapspace_grant_table(xen_add_to_physmap_t *arg);
-
-private:
-
-    /// Max number of frames per domain (the Xen default)
-    //
     static constexpr auto max_nr_frames = 64;
 
-    microv::intel_x64::vcpu *m_vcpu{};
     uint32_t m_version{};
-
+    microv::intel_x64::vcpu *m_vcpu{};
     std::vector<page_ptr<shared_entry_t>> m_shared_gnttab;
 
 public:
+    void query_size(gnttab_query_size_t *arg);
+    void set_version(gnttab_set_version_t *arg);
+    void mapspace_grant_table(xen_add_to_physmap_t *arg);
 
-    /// @cond
+    gnttab(microv::intel_x64::vcpu *vcpu);
+    ~gnttab() = default;
 
-    gnttab_op(gnttab_op &&) = default;
-    gnttab_op &operator=(gnttab_op &&) = default;
+    gnttab(gnttab &&) = default;
+    gnttab &operator=(gnttab &&) = default;
 
-    gnttab_op(const gnttab_op &) = delete;
-    gnttab_op &operator=(const gnttab_op &) = delete;
-
-    /// @endcond
+    gnttab(const gnttab &) = delete;
+    gnttab &operator=(const gnttab &) = delete;
 };
+
 }
 #endif

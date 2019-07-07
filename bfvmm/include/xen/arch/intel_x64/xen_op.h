@@ -23,7 +23,7 @@
 #define MICROV_INTEL_X64_XEN_OP_H
 
 #include <memory>
-#include "gnttab_op.h"
+#include "../../gnttab.h"
 #include "evtchn_op.h"
 
 namespace bfvmm::intel_x64 {
@@ -35,10 +35,13 @@ namespace microv::intel_x64 {
     class vcpu;
 }
 
+namespace microv::xen {
+    class gnttab;
+}
+
 namespace microv::xen::intel_x64 {
 
 class evtchn_op;
-class gnttab_op;
 
 class xen_op {
 public:
@@ -76,7 +79,7 @@ private:
     microv::intel_x64::vcpu *m_vcpu{};
     microv::intel_x64::domain *m_dom{};
 
-    std::unique_ptr<gnttab_op> m_gnttab_op;
+    std::unique_ptr<gnttab> m_gnttab;
     std::unique_ptr<evtchn_op> m_evtchn_op;
 
     bfvmm::x64::unique_map<struct shared_info> m_shinfo{};
