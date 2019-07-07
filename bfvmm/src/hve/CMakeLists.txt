@@ -23,6 +23,7 @@ add_library(microv_hve)
 
 target_link_libraries(microv_hve PUBLIC vmm::bfvmm microv_domain)
 target_include_directories(microv_hve PUBLIC
+    $<${BUILD_INCLUDE}:${XUE_DIR}/include>
     $<${BUILD_INCLUDE}:${PROJECT_SOURCE_DIR}/include>
     $<${BUILD_INCLUDE}:${PROJECT_SOURCE_DIR}/../bfsdk/include>
     $<${XEN}:${PROJECT_SOURCE_DIR}/../deps/xen/xen/include>

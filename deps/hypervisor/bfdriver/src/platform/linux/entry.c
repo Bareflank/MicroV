@@ -266,7 +266,12 @@ ioctl_dump_vmm(struct debug_ring_resources_t *user_drr)
 static long
 ioctl_dump_xue(void)
 {
+#ifdef XUE_DEBUG
     xue_dump(&g_xue);
+#else
+    printk("xue not in use becuase XUE_DEBUG is not defined");
+#endif
+
     return BF_IOCTL_SUCCESS;
 }
 
