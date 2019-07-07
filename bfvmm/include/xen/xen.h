@@ -35,7 +35,7 @@ namespace microv::intel_x64 {
     class vcpu;
 }
 
-namespace microv::xen {
+namespace microv {
 
 class xen {
 public:

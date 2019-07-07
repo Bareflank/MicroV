@@ -29,7 +29,7 @@
 #include <public/event_channel.h>
 #include <public/xen.h>
 
-namespace microv::xen {
+namespace microv {
 
 struct event_channel {
     enum state : uint8_t {
@@ -66,7 +66,7 @@ class evtchn {
 public:
     using port_t = evtchn_port_t;
     using word_t = std::atomic<event_word_t>;
-    using chan_t = class microv::xen::event_channel;
+    using chan_t = class microv::event_channel;
 
     using queue_t = struct fifo_queue {
         port_t *head;

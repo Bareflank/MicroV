@@ -24,7 +24,7 @@
 #include <xen/evtchn.h>
 #include <xen/virq.h>
 
-namespace microv::xen {
+namespace microv {
 
 evtchn::evtchn(microv::intel_x64::vcpu *vcpu) : m_vcpu{vcpu}
 {

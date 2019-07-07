@@ -33,7 +33,7 @@ namespace microv::intel_x64 {
     class vcpu;
 }
 
-namespace microv::xen {
+namespace microv {
 
 class gnttab {
     using shared_entry_t = grant_entry_v2_t;

@@ -45,7 +45,7 @@ using wrmsr_handler = bfvmm::intel_x64::wrmsr_handler;
 #define XEN_MAJOR 4UL
 #define XEN_MINOR 13UL
 
-namespace microv::xen {
+namespace microv {
 
 static std::mutex xen_mutex;
 static uint32_t xen_domid = 0;

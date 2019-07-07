@@ -23,7 +23,7 @@
 #include <public/memory.h>
 #include <xen/gnttab.h>
 
-namespace microv::xen {
+namespace microv {
 
 gnttab::gnttab(microv::intel_x64::vcpu *vcpu) :
     m_vcpu{vcpu},

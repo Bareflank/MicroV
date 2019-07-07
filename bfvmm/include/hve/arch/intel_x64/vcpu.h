@@ -325,8 +325,8 @@ private:
     bool m_killed{};
     vcpu *m_parent_vcpu{};
 
-    std::unique_ptr<microv::xen::xen> m_xen;
-    std::unique_ptr<struct ::xsave_info> m_xsave;
+    std::unique_ptr<microv::xen> m_xen;
+    std::unique_ptr<struct xsave_info> m_xsave;
     std::unique_ptr<uint8_t[]> m_guest_area;
 };
 

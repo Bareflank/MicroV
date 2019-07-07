@@ -25,7 +25,7 @@
 #include <array>
 #include <public/xen.h>
 
-namespace microv::xen {
+namespace microv {
 
 struct virq {
     const char *name;
