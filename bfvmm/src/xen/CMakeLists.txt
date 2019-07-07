@@ -29,7 +29,7 @@ target_include_directories(microv_xen PUBLIC
     $<${BUILD_INCLUDE}:${CMAKE_BINARY_DIR}/include>
 )
 target_sources(microv_xen PRIVATE
-    $<${X64}:arch/intel_x64/evtchn_op.cpp>
+    $<${X64}:evtchn.cpp>
     $<${X64}:gnttab.cpp>
     $<${X64}:arch/intel_x64/xen_op.cpp>
 )

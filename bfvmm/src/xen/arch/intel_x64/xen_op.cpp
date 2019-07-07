@@ -23,11 +23,12 @@
 #include <bfgpalayout.h>
 #include <compiler.h>
 
-#include <xen/arch/intel_x64/xen_op.h>
-#include <xen/arch/intel_x64/evtchn_op.h>
-#include <xen/gnttab.h>
 #include <hve/arch/intel_x64/domain.h>
 #include <hve/arch/intel_x64/vcpu.h>
+
+#include <xen/evtchn.h>
+#include <xen/gnttab.h>
+#include <xen/arch/intel_x64/xen_op.h>
 
 #include <public/arch-x86/cpuid.h>
 #include <public/errno.h>
@@ -421,7 +422,7 @@ bool xen_op::handle_hvm_op()
             switch (arg->index) {
             case HVM_PARAM_CALLBACK_IRQ:
                 if (valid_cb_via(arg->value)) {
-                    m_evtchn_op->set_callback_via(arg->value & 0xFF);
+                    m_evtchn->set_callback_via(arg->value & 0xFF);
                     m_vcpu->set_rax(0);
                 } else {
                     m_vcpu->set_rax(-EINVAL);
@@ -439,14 +440,14 @@ bool xen_op::handle_hvm_op()
     //        auto arg = m_vcpu->map_arg<xen_hvm_param_t>(m_vcpu->rsi());
     //        switch (arg->index) {
     //        case HVM_PARAM_CONSOLE_EVTCHN:
-    //            arg->value = m_evtchn_op->bind_console();
+    //            arg->value = m_evtchn->bind_console();
     //            break;
     //        case HVM_PARAM_CONSOLE_PFN:
     //            m_console = m_vcpu->map_gpa_4k<uint8_t>(PVH_CONSOLE_GPA);
     //            arg->value = PVH_CONSOLE_GPA >> 12;
     //            break;
     //        case HVM_PARAM_STORE_EVTCHN:
-    //            arg->value = m_evtchn_op->bind_store();
+    //            arg->value = m_evtchn->bind_store();
     //            m_vcpu->set_rax(-ENOSYS);
     //            return true;
     //            break;
@@ -480,32 +481,38 @@ bool xen_op::handle_event_channel_op()
     case EVTCHNOP_init_control:
     {
         auto ctl = m_vcpu->map_arg<evtchn_init_control_t>(m_vcpu->rsi());
-        m_evtchn_op->init_control(ctl.get());
+        m_evtchn->init_control(ctl.get());
         m_vcpu->set_rax(0);
         return true;
     }
     case EVTCHNOP_alloc_unbound:
     {
         auto eau = m_vcpu->map_arg<evtchn_alloc_unbound_t>(m_vcpu->rsi());
-        m_evtchn_op->alloc_unbound(eau.get());
+        m_evtchn->alloc_unbound(eau.get());
         m_vcpu->set_rax(0);
         return true;
     }
     case EVTCHNOP_expand_array:
     {
         auto arg = m_vcpu->map_arg<evtchn_expand_array_t>(m_vcpu->rsi());
-        m_evtchn_op->expand_array(arg.get());
+        m_evtchn->expand_array(arg.get());
         m_vcpu->set_rax(0);
         return true;
     }
     case EVTCHNOP_bind_virq:
     {
         auto arg = m_vcpu->map_arg<evtchn_bind_virq_t>(m_vcpu->rsi());
-        m_evtchn_op->bind_virq(arg.get());
+        m_evtchn->bind_virq(arg.get());
         m_vcpu->set_rax(0);
         return true;
     }
-//    case EVTCHNOP_send:
+    case EVTCHNOP_send:
+    {
+        auto arg = m_vcpu->map_arg<evtchn_send_t>(m_vcpu->rsi());
+        m_evtchn->send(arg.get());
+        m_vcpu->set_rax(0);
+        return true;
+    }
     default:
         ;
     }
@@ -567,7 +574,7 @@ bool xen_op::handle_platform_op()
 xen_op::xen_op(microv::intel_x64::vcpu *vcpu, microv::intel_x64::domain *dom) :
     m_vcpu{vcpu},
     m_dom{dom},
-    m_evtchn_op{std::make_unique<evtchn_op>(vcpu)},
+    m_evtchn{std::make_unique<evtchn>(vcpu)},
     m_gnttab{std::make_unique<gnttab>(vcpu)}
 {
     make_xen_ids(dom, this);

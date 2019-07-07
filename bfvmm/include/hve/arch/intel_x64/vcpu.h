@@ -292,7 +292,7 @@ public:
     ///
     void queue_virq(uint32_t virq)
     {
-        auto evtchn = m_xen_op->m_evtchn_op.get();
+        auto evtchn = m_xen_op->m_evtchn.get();
         evtchn->queue_virq(virq);
     }
 
