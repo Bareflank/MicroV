@@ -54,7 +54,7 @@ CFLAGS += -fomit-frame-pointer
 endif
 
 CFLAGS += -nostdinc -fno-builtin -fno-common
-CFLAGS += -Werror -Wredundant-decls -Wno-pointer-arith
+CFLAGS += -Wno-error -Wredundant-decls -Wno-pointer-arith
 $(call cc-option-add,CFLAGS,CC,-Wvla)
 CFLAGS += -pipe -D__XEN__ -include $(BASEDIR)/include/xen/config.h
 CFLAGS-$(CONFIG_DEBUG_INFO) += -g
@@ -155,7 +155,7 @@ obj-y += $(obj-bin-y)
 obj-bin-y :=
 endif
 
-# Always build obj-bin files as binary even if they come from C source. 
+# Always build obj-bin files as binary even if they come from C source.
 $(obj-bin-y): CFLAGS := $(filter-out -flto,$(CFLAGS))
 
 built_in.o: $(obj-y) $(extra-y)

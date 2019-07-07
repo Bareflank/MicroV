@@ -7,27 +7,27 @@ include $(XEN_ROOT)/tools/Rules.mk
 SUBDIRS-y :=
 SUBDIRS-y += libs
 SUBDIRS-y += libxc
-SUBDIRS-y += flask
-SUBDIRS-y += fuzz
+#SUBDIRS-y += flask
+#SUBDIRS-y += fuzz
 SUBDIRS-y += xenstore
 SUBDIRS-y += misc
-SUBDIRS-y += examples
+#SUBDIRS-y += examples
 SUBDIRS-y += hotplug
 SUBDIRS-y += xentrace
 SUBDIRS-$(CONFIG_XCUTILS) += xcutils
-SUBDIRS-$(CONFIG_X86) += firmware
+#SUBDIRS-$(CONFIG_X86) += firmware
 SUBDIRS-y += console
 SUBDIRS-y += xenmon
 SUBDIRS-y += xenstat
-SUBDIRS-$(CONFIG_Linux) += memshr 
+SUBDIRS-$(CONFIG_Linux) += memshr
 SUBDIRS-$(CONFIG_NetBSD) += xenbackendd
 SUBDIRS-y += libfsimage
 SUBDIRS-$(CONFIG_Linux) += libvchan
 
 # do not recurse in to a dir we are about to delete
 ifneq "$(MAKECMDGOALS)" "distclean"
-SUBDIRS-$(CONFIG_QEMU_TRAD) += qemu-xen-traditional-dir
-SUBDIRS-$(CONFIG_QEMU_XEN) += qemu-xen-dir
+#SUBDIRS-$(CONFIG_QEMU_TRAD) += qemu-xen-traditional-dir
+#SUBDIRS-$(CONFIG_QEMU_XEN) += qemu-xen-dir
 endif
 
 SUBDIRS-y += xenpmd
@@ -38,7 +38,7 @@ SUBDIRS-y += helpers
 SUBDIRS-$(CONFIG_X86) += xenpaging
 SUBDIRS-$(CONFIG_X86) += debugger/gdbsx
 SUBDIRS-$(CONFIG_X86) += debugger/kdd
-SUBDIRS-$(CONFIG_TESTS) += tests
+#SUBDIRS-$(CONFIG_TESTS) += tests
 
 # These don't cross-compile
 ifeq ($(XEN_COMPILE_ARCH),$(XEN_TARGET_ARCH))
@@ -117,7 +117,7 @@ endif
 #    Pull to the most recent update (as if you had checked it out for the
 #    first time)
 #  subdir-all-${target}-dir
-#    Do "make all" for ${target}, including all prerequisites (such as 
+#    Do "make all" for ${target}, including all prerequisites (such as
 #    configure)
 #  subdir-install-${target}-dir
 #    Do "make install" for $TARGET
@@ -130,7 +130,7 @@ endif
 #  ${target}-dir-remote
 #    Where remote repositories are cloned
 #  ${target}
-#    Where a copy of the source files are put when building a source 
+#    Where a copy of the source files are put when building a source
 #    tarball for release
 #
 # Expected variables:
