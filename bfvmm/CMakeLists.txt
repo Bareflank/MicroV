@@ -38,7 +38,7 @@ set(MICROV_CHANGESET "changeset")
 
 configure_file(
     ${PROJECT_SOURCE_DIR}/include/compiler.h.in
-    ${PROJECT_SOURCE_DIR}/include/compiler.h
+    ${CMAKE_BINARY_DIR}/include/compiler.h
     @ONLY
 )
 

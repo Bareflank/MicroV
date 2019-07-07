@@ -26,6 +26,7 @@ target_include_directories(microv_xen PUBLIC
     $<${BUILD_INCLUDE}:${PROJECT_SOURCE_DIR}/include>
     $<${BUILD_INCLUDE}:${PROJECT_SOURCE_DIR}/../bfsdk/include>
     $<${BUILD_INCLUDE}:${PROJECT_SOURCE_DIR}/../deps/xen/xen/include>
+    $<${BUILD_INCLUDE}:${CMAKE_BINARY_DIR}/include>
 )
 target_sources(microv_xen PRIVATE
     $<${X64}:arch/intel_x64/evtchn_op.cpp>
