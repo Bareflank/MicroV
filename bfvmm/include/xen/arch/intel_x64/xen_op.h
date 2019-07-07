@@ -61,6 +61,7 @@ public:
     ~xen_op() = default;
 
 private:
+    friend class microv::intel_x64::vcpu;
 
     bool handle_hypercall(microv::intel_x64::vcpu *vcpu);
     bool handle_memory_op();

@@ -52,62 +52,19 @@ public:
     static_assert(sizeof(chan_t) > sizeof(word_t));
     static_assert(word_t::is_always_lock_free);
 
-    /// Constructor
-    ///
-    /// @expects
-    /// @ensures
-    ///
-    /// @param vcpu the vcpu of the evtchn_op
-    ///
     evtchn_op(microv::intel_x64::vcpu *vcpu);
-
-    /// Destructor
-    ///
-    /// @expects
-    /// @ensures
-    ///
     ~evtchn_op() = default;
 
-    /// Init control
-    ///
     void init_control(evtchn_init_control_t *ctl);
-
-    /// Set callback via
-    ///
-    /// Set the vector used to inject events into the guest
-    ///
     void set_callback_via(uint64_t via);
-
-    /// Alloc unbound
-    ///
     void alloc_unbound(evtchn_alloc_unbound_t *unbound);
-
-    /// Expand array
-    ///
     void expand_array(evtchn_expand_array_t *arr);
-
-    /// Send
-    ///
     void send(evtchn_send_t *arg);
-
-    /// Bind IPI
-    ///
     void bind_ipi(gsl::not_null<evtchn_bind_ipi_t *> arg);
-
-    /// Bind VIRQ
-    ///
     void bind_virq(evtchn_bind_virq_t *arg);
-
-    /// Bind VCPU
-    ///
+    void queue_virq(uint32_t virq);
     void bind_vcpu(gsl::not_null<evtchn_bind_vcpu *> arg);
-
-    /// Bind console
-    ///
     port_t bind_console();
-
-    /// Bind store
-    ///
     port_t bind_store();
 
 private:

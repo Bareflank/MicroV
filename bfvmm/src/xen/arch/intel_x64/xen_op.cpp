@@ -64,9 +64,6 @@ static bool handle_exception(base_vcpu *vcpu)
     bfdebug_subnhex(0, "vector", vec);
     bfdebug_subnhex(0, "rip", vcpu->rip());
 
-    vmcs_n::guest_cr0::dump(0);
-    vmcs_n::guest_cr4::dump(0);
-
     auto rip = vcpu->map_gva_4k<uint8_t>(vcpu->rip(), 32);
     auto buf = rip.get();
 
@@ -125,8 +122,11 @@ static bool xen_leaf4(base_vcpu *vcpu)
     rax |= XEN_HVM_CPUID_DOMID_PRESENT;
 
     vcpu->set_rax(rax);
-    vcpu->set_rbx(vcpu->id());
-    vcpu->set_rcx(vcpu_cast(vcpu)->domid());
+    //vcpu->set_rbx(vcpu->id());
+    //vcpu->set_rcx(vcpu_cast(vcpu)->domid());
+    //FIXME:
+    vcpu->set_rbx(0);
+    vcpu->set_rcx(0);
 
     vcpu->advance();
     return true;
@@ -184,11 +184,16 @@ bool xen_op::handle_console_io()
     auto buf = m_vcpu->map_gva_4k<char>(m_vcpu->rdx(), len);
 
     switch (m_vcpu->rdi()) {
-    case CONSOLEIO_read:
-        bfdebug_nhex(0, "CONSOLEIO_read: len:", len);
-        m_vcpu->set_rax(0);
-        //get_domain(m_dom->id)->dump_uart(gsl::span(buf.get(), len));
+    case CONSOLEIO_read: {
+        auto n = m_dom->hvc_rx_get(gsl::span(buf.get(), len));
+        m_vcpu->set_rax(n);
         return true;
+    }
+    case CONSOLEIO_write: {
+        auto n = m_dom->hvc_tx_put(gsl::span(buf.get(), len));
+        m_vcpu->set_rax(n);
+        return true;
+    }
     default:
         return false;
     }

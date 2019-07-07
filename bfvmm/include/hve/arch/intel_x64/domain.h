@@ -26,6 +26,7 @@
 #include <memory>
 
 #include "uart.h"
+#include "../../../ring.h"
 #include "../../../domain/domain.h"
 #include "../../../domain/domain_manager.h"
 
@@ -237,27 +238,11 @@ public:
     ///
     uint64_t exec_mode() noexcept;
 
-    /// Set initdom
-    ///
-    /// @expects
-    /// @ensures
-    ///
-    /// Set if domain is a SIF_INITDOMAIN
-    ///
-    /// @param initdom is this is an initial domain?
-    ///
-    void set_initdom(uint64_t initdom) noexcept
-    { m_initdom = initdom; }
+    void set_initdom(uint64_t initdom) noexcept { m_initdom = initdom; }
+    bool initdom() noexcept { return m_initdom != 0; }
 
-    /// Initdom
-    ///
-    /// @expects
-    /// @ensures
-    ///
-    /// @return is this guest initial domain?
-    ///
-    bool initdom() noexcept
-    { return m_initdom != 0; }
+    void use_hvc(uint64_t use_hvc) noexcept { m_use_hvc = use_hvc; }
+    bool using_hvc() noexcept { return m_use_hvc != 0; }
 
     /// Set UART
     ///
@@ -308,6 +293,11 @@ public:
     /// @return the number of bytes transferred to the buffer
     ///
     uint64_t dump_uart(const gsl::span<char> &buffer);
+
+    size_t hvc_rx_put(const gsl::span<char> &span);
+    size_t hvc_rx_get(const gsl::span<char> &span);
+    size_t hvc_tx_put(const gsl::span<char> &span);
+    size_t hvc_tx_get(const gsl::span<char> &span);
 
     /// Domain Registers
     ///
@@ -533,8 +523,13 @@ private:
     uint64_t m_did{};
     uint64_t m_exec_mode{};
     uint64_t m_initdom{};
+    uint64_t m_use_hvc{};
+
+    std::unique_ptr<microv::ring<HVC_RX_SIZE>> m_hvc_rx_ring;
+    std::unique_ptr<microv::ring<HVC_TX_SIZE>> m_hvc_tx_ring;
 
 public:
+    microv::intel_x64::vcpu *m_vcpu{};
 
     /// @cond
 

@@ -40,6 +40,8 @@
 #include <verbose.h>
 #include <bootparams.h>
 
+#include <unistd.h>
+
 vcpuid_t g_vcpuid;
 domainid_t g_domainid;
 
@@ -100,6 +102,51 @@ uart_thread()
 
     auto size = __domain_op__dump_uart(g_domainid, buffer.data());
     std::cout.write(buffer.data(), gsl::narrow_cast<int>(size));
+}
+
+// -----------------------------------------------------------------------------
+// HVC Threads
+// -----------------------------------------------------------------------------
+
+bool g_hvc_rx = true;
+bool g_hvc_tx = true;
+
+static void hvc_rx_thread()
+{
+    using namespace std::chrono;
+    std::array<char, HVC_RX_SIZE> buf{};
+
+    do {
+        std::cin.getline(buf.data(), buf.size());
+        buf.data()[std::cin.gcount() - 1] = '\n';
+        auto rc = __domain_op__hvc_rx_put(g_domainid,
+                                          buf.data(),
+                                          std::cin.gcount());
+        std::this_thread::sleep_for(milliseconds(100));
+    } while (g_hvc_rx);
+}
+
+static void hvc_tx_thread()
+{
+    using namespace std::chrono;
+    std::array<char, HVC_TX_SIZE> buf{};
+
+    while (g_hvc_tx) {
+        auto size = __domain_op__hvc_tx_get(g_domainid,
+                                            buf.data(),
+                                            HVC_TX_SIZE);
+
+        std::cout.write(buf.data(), gsl::narrow_cast<int>(size));
+        std::cout.flush();
+        std::this_thread::sleep_for(milliseconds(100));
+    }
+
+    auto size = __domain_op__hvc_tx_get(g_domainid,
+                                        buf.data(),
+                                        HVC_TX_SIZE);
+
+    std::cout.write(buf.data(), gsl::narrow_cast<int>(size));
+    std::cout.flush();
 }
 
 // -----------------------------------------------------------------------------
@@ -164,14 +211,28 @@ attach_to_vm(const args_type &args)
 
     std::thread t(vcpu_thread, g_vcpuid);
     std::thread u;
+    std::thread hvc_rx;
+    std::thread hvc_tx;
 
-    output_vm_uart_verbose();
+    if (args.count("uart")) {
+        output_vm_uart_verbose();
+    } else if (args.count("hvc")) {
+        hvc_rx = std::thread(hvc_rx_thread);
+        hvc_tx = std::thread(hvc_tx_thread);
+    }
 
     t.join();
 
-    if (verbose) {
+    if (verbose && args.count("uart")) {
         g_process_uart = false;
         u.join();
+    }
+
+    if (args.count("hvc")) {
+        g_hvc_rx = false;
+        g_hvc_tx = false;
+        hvc_rx.join();
+        hvc_tx.join();
     }
 
     if (__vcpu_op__destroy_vcpu(g_vcpuid) != SUCCESS) {
@@ -252,6 +313,10 @@ create_vm(const args_type &args)
         );
     }
 
+    if (args.count("hvc")) {
+        cmdl.add("console=hvc0");
+    }
+
     if (args.count("cmdline")) {
         cmdl.add(args["cmdline"].as<std::string>());
     }
@@ -268,6 +333,7 @@ create_vm(const args_type &args)
     ioctl_args.pt_uart = pt_uart;
     ioctl_args.ram = ram;
     ioctl_args.initdom = args.count("initdom");
+    ioctl_args.hvc = args.count("hvc");
 
     ctl->call_ioctl_create_vm(ioctl_args);
     dump_vm_create_verbose();

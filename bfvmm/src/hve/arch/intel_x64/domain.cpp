@@ -21,8 +21,10 @@
 
 #include <bfdebug.h>
 #include <bfgpalayout.h>
+#include <bfhypercall.h>
 #include <bfbuilderinterface.h>
 
+#include <ring.h>
 #include <hve/arch/intel_x64/domain.h>
 
 using namespace bfvmm::intel_x64;
@@ -159,6 +161,42 @@ domain::set_uart(uart::port_type uart) noexcept
 void
 domain::set_pt_uart(uart::port_type uart) noexcept
 { m_pt_uart_port = uart; }
+
+size_t domain::hvc_rx_put(const gsl::span<char> &span)
+{
+    if (GSL_UNLIKELY(!m_hvc_rx_ring)) {
+        m_hvc_rx_ring = std::make_unique<microv::ring<HVC_RX_SIZE>>();
+    }
+
+    return m_hvc_rx_ring->put(span);
+}
+
+size_t domain::hvc_rx_get(const gsl::span<char> &span)
+{
+    if (GSL_UNLIKELY(!m_hvc_rx_ring)) {
+        m_hvc_rx_ring = std::make_unique<microv::ring<HVC_RX_SIZE>>();
+    }
+
+    return m_hvc_rx_ring->get(span);
+}
+
+size_t domain::hvc_tx_put(const gsl::span<char> &span)
+{
+    if (GSL_UNLIKELY(!m_hvc_tx_ring)) {
+        m_hvc_tx_ring = std::make_unique<microv::ring<HVC_TX_SIZE>>();
+    }
+
+    return m_hvc_tx_ring->put(span);
+}
+
+size_t domain::hvc_tx_get(const gsl::span<char> &span)
+{
+    if (GSL_UNLIKELY(!m_hvc_tx_ring)) {
+        m_hvc_tx_ring = std::make_unique<microv::ring<HVC_TX_SIZE>>();
+    }
+
+    return m_hvc_tx_ring->get(span);
+}
 
 void
 domain::setup_vcpu_uarts(gsl::not_null<vcpu *> vcpu)

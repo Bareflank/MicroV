@@ -86,6 +86,7 @@ struct vm_t {
     struct bfelf_loader_t elf_ldr;
     struct bfelf_binary_t elf_bin;
     uint64_t initdom;
+    uint64_t hvc;
 };
 
 static struct vm_t g_vms[MAX_VMS] = {0};
@@ -1132,6 +1133,10 @@ common_create_vm(
 
     if (args->initdom) {
         __domain_op__set_initdom(vm->domainid, args->initdom);
+    }
+
+    if (args->hvc) {
+        __domain_op__set_hvc(vm->domainid, args->hvc);
     }
 
     ret = setup_kernel(vm, args);

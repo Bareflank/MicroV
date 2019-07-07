@@ -286,6 +286,16 @@ public:
     ///
     uint8_t apic_timer_vector();
 
+    /// Queue a Xen virq into this vcpu
+    ///
+    /// @param virq the id of the virq to queue
+    ///
+    void queue_virq(uint32_t virq)
+    {
+        auto evtchn = m_xen_op->m_evtchn_op.get();
+        evtchn->queue_virq(virq);
+    }
+
     bool handle_hello(bfvmm::intel_x64::vcpu *vcpu);
 
 private:
@@ -295,7 +305,6 @@ private:
     void setup_default_register_state();
 
 private:
-
     domain *m_domain{};
 
     cpuid_handler m_cpuid_handler;

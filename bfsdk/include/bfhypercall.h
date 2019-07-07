@@ -142,6 +142,9 @@ __uart_ndec_op(uint16_t port, uint64_t val)
 #define __enum_domain_op__set_exec_mode 0xBF02000000000203
 #define __enum_domain_op__add_e820_entry 0xBF02000000000204
 #define __enum_domain_op__set_initdom 0xBF02000000000205
+#define __enum_domain_op__set_hvc 0xBF02000000000206
+#define __enum_domain_op__hvc_rx_put 0xBF02000000000207
+#define __enum_domain_op__hvc_tx_get 0xBF02000000000208
 
 #define __enum_domain_op__share_page_r 0xBF02000000000300
 #define __enum_domain_op__share_page_rw 0xBF02000000000301
@@ -269,6 +272,8 @@ __uart_ndec_op(uint16_t port, uint64_t val)
 #define __enum_domain_op__set_ldtr_access_rights 0xBF02000000020731
 
 #define UART_MAX_BUFFER 0x4000
+#define HVC_RX_SIZE 256
+#define HVC_TX_SIZE 0x4000
 
 static inline domainid_t
 __domain_op__create_domain(void)
@@ -314,6 +319,29 @@ __domain_op__set_initdom(domainid_t foreign_domainid, uint64_t initdom)
         initdom,
         0
     );
+}
+
+static inline status_t
+__domain_op__set_hvc(domainid_t foreign_domainid, uint64_t hvc)
+{
+    return _vmcall(
+        __enum_domain_op__set_hvc,
+        foreign_domainid,
+        hvc,
+        0
+    );
+}
+
+static inline uint64_t
+__domain_op__hvc_rx_put(domainid_t did, char *buf, uint64_t len)
+{
+    return _vmcall(__enum_domain_op__hvc_rx_put, did, (uint64_t)buf, len);
+}
+
+static inline uint64_t
+__domain_op__hvc_tx_get(domainid_t did, char *buf, uint64_t len)
+{
+    return _vmcall(__enum_domain_op__hvc_tx_get, did, (uint64_t)buf, len);
 }
 
 /**

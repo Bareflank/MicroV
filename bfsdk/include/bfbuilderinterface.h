@@ -119,6 +119,7 @@ struct create_vm_args {
     uint64_t ram;
     uint64_t domainid;
     uint64_t initdom;
+    uint64_t hvc;
 };
 
 /* -------------------------------------------------------------------------- */

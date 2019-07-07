@@ -26,6 +26,11 @@
 namespace microv::intel_x64
 {
 
+static bool foreign_domain(vcpu *vcpu)
+{
+    return vcpu->rbx() != self && vcpu->rbx() != vcpu->domid();
+}
+
 vmcall_domain_op_handler::vmcall_domain_op_handler(
     gsl::not_null<vcpu *> vcpu
 ) :
@@ -52,11 +57,7 @@ void
 vmcall_domain_op_handler::domain_op__destroy_domain(vcpu *vcpu)
 {
     try {
-        if (vcpu->rbx() == self || vcpu->rbx() == vcpu->domid()) {
-            throw std::runtime_error(
-                "domain_op__destroy_domain: self not supported");
-        }
-
+        expects(foreign_domain(vcpu));
         g_dm->destroy(vcpu->rbx(), nullptr);
         vcpu->set_rax(SUCCESS);
     }
@@ -69,11 +70,7 @@ void
 vmcall_domain_op_handler::domain_op__set_exec_mode(vcpu *vcpu)
 {
     try {
-        if (vcpu->rbx() == self || vcpu->rbx() == vcpu->domid()) {
-            throw std::runtime_error(
-                "domain_op__set_exec_mode: self not supported");
-        }
-
+        expects(foreign_domain(vcpu));
         get_domain(vcpu->rbx())->set_exec_mode(vcpu->rcx());
         vcpu->set_rax(SUCCESS);
     }
@@ -82,17 +79,62 @@ vmcall_domain_op_handler::domain_op__set_exec_mode(vcpu *vcpu)
     })
 }
 
-void
-vmcall_domain_op_handler::domain_op__set_initdom(vcpu *vcpu)
+void vmcall_domain_op_handler::domain_op__set_initdom(vcpu *vcpu)
 {
     try {
-        if (vcpu->rbx() == self || vcpu->rbx() == vcpu->domid()) {
-            throw std::runtime_error(
-                "domain_op__set_initdom: self not supported");
-        }
-
+        expects(foreign_domain(vcpu));
         get_domain(vcpu->rbx())->set_initdom(vcpu->rcx());
         vcpu->set_rax(SUCCESS);
+    }
+    catchall({
+        vcpu->set_rax(FAILURE);
+    })
+}
+
+void vmcall_domain_op_handler::domain_op__set_hvc(vcpu *vcpu)
+{
+    try {
+        expects(foreign_domain(vcpu));
+        get_domain(vcpu->rbx())->use_hvc(vcpu->rcx());
+        vcpu->set_rax(SUCCESS);
+    }
+    catchall({
+        vcpu->set_rax(FAILURE);
+    })
+}
+
+void vmcall_domain_op_handler::domain_op__hvc_rx_put(vcpu *vcpu)
+{
+    try {
+        expects(foreign_domain(vcpu));
+
+        auto dom = get_domain(vcpu->rbx());
+        auto len = vcpu->rdx();
+        auto buf = vcpu->map_gva_4k<char>(vcpu->rcx(), len);
+        auto num = dom->hvc_rx_put(gsl::span(buf.get(), len));
+
+        dom->m_vcpu->load();
+        dom->m_vcpu->queue_virq(VIRQ_CONSOLE);
+
+        vcpu->load();
+        vcpu->set_rax(num);
+    }
+    catchall({
+        vcpu->set_rax(0);
+    })
+}
+
+void vmcall_domain_op_handler::domain_op__hvc_tx_get(vcpu *vcpu)
+{
+    try {
+        expects(foreign_domain(vcpu));
+
+        auto dom = get_domain(vcpu->rbx());
+        auto len = vcpu->rdx();
+        auto buf = vcpu->map_gva_4k<char>(vcpu->rcx(), len);
+        auto num = dom->hvc_tx_get(gsl::span(buf.get(), len));
+
+        vcpu->set_rax(num);
     }
     catchall({
         vcpu->set_rax(FAILURE);
@@ -103,10 +145,7 @@ void
 vmcall_domain_op_handler::domain_op__add_e820_entry(vcpu *vcpu)
 {
     try {
-        if (vcpu->rbx() == self || vcpu->rbx() == vcpu->domid()) {
-            throw std::runtime_error(
-                "domain_op__add_e820_entry: self not supported");
-        }
+        expects(foreign_domain(vcpu));
 
         const auto base = vcpu->rcx();
         const auto end = vcpu->rdx() & ~(0xFFULL << 56);
@@ -124,10 +163,7 @@ void
 vmcall_domain_op_handler::domain_op__set_uart(vcpu *vcpu)
 {
     try {
-        if (vcpu->rbx() == self || vcpu->rbx() == vcpu->domid()) {
-            throw std::runtime_error(
-                "domain_op__set_uart: self not supported");
-        }
+        expects(foreign_domain(vcpu));
 
         get_domain(vcpu->rbx())->set_uart(
             gsl::narrow_cast<uart::port_type>(vcpu->rcx())
@@ -144,10 +180,7 @@ void
 vmcall_domain_op_handler::domain_op__set_pt_uart(vcpu *vcpu)
 {
     try {
-        if (vcpu->rbx() == self || vcpu->rbx() == vcpu->domid()) {
-            throw std::runtime_error(
-                "domain_op__set_pt_uart: self not supported");
-        }
+        expects(foreign_domain(vcpu));
 
         get_domain(vcpu->rbx())->set_pt_uart(
             gsl::narrow_cast<uart::port_type>(vcpu->rcx())
@@ -183,10 +216,7 @@ void
 vmcall_domain_op_handler::domain_op__share_page_r(vcpu *vcpu)
 {
     try {
-        if (vcpu->rbx() == self || vcpu->rbx() == vcpu->domid()) {
-            throw std::runtime_error(
-                "domain_op__share_page: self not supported");
-        }
+        expects(foreign_domain(vcpu));
 
         auto [hpa, unused] =
             vcpu->gpa_to_hpa(vcpu->rcx());
@@ -203,14 +233,9 @@ void
 vmcall_domain_op_handler::domain_op__share_page_rw(vcpu *vcpu)
 {
     try {
-        if (vcpu->rbx() == self || vcpu->rbx() == vcpu->domid()) {
-            throw std::runtime_error(
-                "domain_op__share_page: self not supported");
-        }
+        expects(foreign_domain(vcpu));
 
-        auto [hpa, unused] =
-            vcpu->gpa_to_hpa(vcpu->rcx());
-
+        auto [hpa, unused] = vcpu->gpa_to_hpa(vcpu->rcx());
         get_domain(vcpu->rbx())->map_4k_rw(vcpu->rdx(), hpa);
         vcpu->set_rax(SUCCESS);
     }
@@ -223,14 +248,9 @@ void
 vmcall_domain_op_handler::domain_op__share_page_rwe(vcpu *vcpu)
 {
     try {
-        if (vcpu->rbx() == self || vcpu->rbx() == vcpu->domid()) {
-            throw std::runtime_error(
-                "domain_op__share_page: self not supported");
-        }
+        expects(foreign_domain(vcpu));
 
-        auto [hpa, unused] =
-            vcpu->gpa_to_hpa(vcpu->rcx());
-
+        auto [hpa, unused] = vcpu->gpa_to_hpa(vcpu->rcx());
         get_domain(vcpu->rbx())->map_4k_rwe(vcpu->rdx(), hpa);
         vcpu->set_rax(SUCCESS);
     }
@@ -250,14 +270,9 @@ vmcall_domain_op_handler::domain_op__donate_page_r(vcpu *vcpu)
     //
 
     try {
-        if (vcpu->rbx() == self || vcpu->rbx() == vcpu->domid()) {
-            throw std::runtime_error(
-                "domain_op__donate_page: self not supported");
-        }
+        expects(foreign_domain(vcpu));
 
-        auto [hpa, unused] =
-            vcpu->gpa_to_hpa(vcpu->rcx());
-
+        auto [hpa, unused] = vcpu->gpa_to_hpa(vcpu->rcx());
         get_domain(vcpu->rbx())->map_4k_r(vcpu->rdx(), hpa);
         get_domain(vcpu->rbx())->process_donated_page(vcpu->rdx(), hpa);
 
@@ -279,14 +294,9 @@ vmcall_domain_op_handler::domain_op__donate_page_rw(vcpu *vcpu)
     //
 
     try {
-        if (vcpu->rbx() == self || vcpu->rbx() == vcpu->domid()) {
-            throw std::runtime_error(
-                "domain_op__donate_page: self not supported");
-        }
+        expects(foreign_domain(vcpu));
 
-        auto [hpa, unused] =
-            vcpu->gpa_to_hpa(vcpu->rcx());
-
+        auto [hpa, unused] = vcpu->gpa_to_hpa(vcpu->rcx());
         get_domain(vcpu->rbx())->map_4k_rw(vcpu->rdx(), hpa);
         vcpu->set_rax(SUCCESS);
     }
@@ -306,15 +316,9 @@ vmcall_domain_op_handler::domain_op__donate_page_rwe(vcpu *vcpu)
     //
 
     try {
+        expects(foreign_domain(vcpu));
 
-        if (vcpu->rbx() == self || vcpu->rbx() == vcpu->domid()) {
-            throw std::runtime_error(
-                "domain_op__donate_page: self not supported");
-        }
-
-        auto [hpa, unused] =
-            vcpu->gpa_to_hpa(vcpu->rcx());
-
+        auto [hpa, unused] = vcpu->gpa_to_hpa(vcpu->rcx());
         get_domain(vcpu->rbx())->map_4k_rwe(vcpu->rdx(), hpa);
         vcpu->set_rax(SUCCESS);
     }
@@ -485,6 +489,9 @@ vmcall_domain_op_handler::dispatch(vcpu *vcpu)
         dispatch_case(set_uart)
         dispatch_case(set_exec_mode)
         dispatch_case(set_initdom)
+        dispatch_case(set_hvc)
+        dispatch_case(hvc_rx_put)
+        dispatch_case(hvc_tx_get)
         dispatch_case(add_e820_entry)
         dispatch_case(set_pt_uart)
         dispatch_case(dump_uart)
