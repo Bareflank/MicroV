@@ -21,6 +21,7 @@
 
 #include <mutex>
 #include <bfgpalayout.h>
+#include <compiler.h>
 
 #include <xen/arch/intel_x64/xen_op.h>
 #include <xen/arch/intel_x64/evtchn_op.h>
@@ -318,9 +319,6 @@ bool xen_op::handle_memory_op()
 bool xen_op::handle_xen_version()
 {
     switch (m_vcpu->rdi()) {
-    case XENVER_version:
-        m_vcpu->set_rax((XEN_MAJOR << 16) | XEN_MINOR);
-        return true;
     case XENVER_get_features:
         try {
             auto info = m_vcpu->map_arg<xen_feature_info_t>(m_vcpu->rsi());
@@ -348,8 +346,32 @@ bool xen_op::handle_xen_version()
 
             return true;
         } catchall({
-            ;
+            return false;
         })
+    case XENVER_version:
+        m_vcpu->set_rax((XEN_MAJOR << 16) | XEN_MINOR);
+        return true;
+    case XENVER_compile_info:
+    {
+        static_assert(sizeof(xen_compile_info_t::compiler) == 64);
+        static_assert(sizeof(xen_compile_info_t::compile_by) == 16);
+        static_assert(sizeof(xen_compile_info_t::compile_domain) == 32);
+        static_assert(sizeof(xen_compile_info_t::compile_date) == 32);
+
+        auto info = m_vcpu->map_arg<xen_compile_info_t>(m_vcpu->rsi());
+        std::strncpy((char *)info->compiler, MICROV_COMPILER, 64);
+        std::strncpy((char *)info->compile_by, MICROV_COMPILE_BY, 16);
+        std::strncpy((char *)info->compile_domain, MICROV_COMPILE_DOMAIN, 32);
+        std::strncpy((char *)info->compile_date, MICROV_COMPILE_DATE, 32);
+
+        info->compiler[63] = 0;
+        info->compile_by[15] = 0;
+        info->compile_domain[31] = 0;
+        info->compile_date[31] = 0;
+
+        m_vcpu->set_rax(0);
+        return true;
+    }
     default:
         return false;
     }

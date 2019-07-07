@@ -20,9 +20,27 @@
 # SOFTWARE.
 
 cmake_minimum_required(VERSION 3.13)
-project(microv_bfvmm C CXX)
+project(microv_bfvmm LANGUAGES C CXX VERSION 1.1.0)
 
 init_project(microv_bfvmm INTERFACE)
+
+string(TIMESTAMP MICROV_COMPILE_DATE "%b %d, %Y")
+string(TIMESTAMP MICROV_COMPILE_TIME "%H:%M")
+
+set(MICROV_COMPILE_BY $ENV{USER})
+set(MICROV_COMPILE_DOMAIN "domain")
+set(MICROV_COMPILE_HOST "host")
+set(MICROV_COMPILER "${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}")
+set(MICROV_VERSION ${PROJECT_VERSION_MAJOR})
+set(MICROV_SUBVERSION ${PROJECT_VERSION_MINOR})
+set(MICROV_EXTRAVERSION "0")
+set(MICROV_CHANGESET "changeset")
+
+configure_file(
+    ${PROJECT_SOURCE_DIR}/include/compiler.h.in
+    ${PROJECT_SOURCE_DIR}/include/compiler.h
+    @ONLY
+)
 
 # -----------------------------------------------------------------------------
 # Generator expressions
