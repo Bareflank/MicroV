@@ -85,3 +85,51 @@ add_dependencies(driver_clean builder_clean)
 add_dependencies(driver_load builder_load)
 add_dependencies(driver_unload builder_unload)
 add_dependencies(driver_quick builder_quick)
+
+if(BUILD_XEN_GUEST)
+    add_custom_target_category("MicroV Guest VM")
+
+    execute_process(COMMAND ${CMAKE_COMMAND} -E make_directory ${BR_BUILD_DIR})
+    set(SRC ${MICROV_SOURCE_ROOT_DIR})
+
+    configure_file(${SRC}/buildroot.config.in ${BR_BUILD_DIR}/.config @ONLY)
+    configure_file(${SRC}/local.mk.in ${BR_BUILD_DIR}/local.mk @ONLY)
+
+    add_custom_target(brmenucfg
+        COMMAND ${CMAKE_COMMAND} -E chdir ${BR_SOURCE_DIR} make O=${BR_BUILD_DIR} menuconfig
+        DEPENDS xtools_x86_64-userspace-elf
+        USES_TERMINAL
+    )
+    add_custom_target_info(
+        TARGET brmenucfg
+        COMMENT "Configure the guest image with buildroot menuconfig"
+    )
+    add_custom_target(linuxrecfg
+        COMMAND ${CMAKE_COMMAND} -E chdir ${BR_SOURCE_DIR} make O=${BR_BUILD_DIR} linux-reconfigure
+        DEPENDS xtools_x86_64-userspace-elf
+        USES_TERMINAL
+    )
+    add_custom_target_info(
+        TARGET linuxrecfg
+        COMMENT "Reconfigure the guest kernel"
+    )
+    add_custom_target(linuxrebuild
+        COMMAND ${CMAKE_COMMAND} -E chdir ${BR_SOURCE_DIR} make O=${BR_BUILD_DIR} linux-rebuild
+        DEPENDS xtools_x86_64-userspace-elf
+        USES_TERMINAL
+    )
+    add_custom_target_info(
+        TARGET linuxrebuild
+        COMMENT "Rebuild the guest kernel"
+    )
+    add_custom_target(vm
+        COMMAND ${CMAKE_COMMAND} -E chdir ${BR_SOURCE_DIR} make O=${BR_BUILD_DIR}
+        DEPENDS xtools_x86_64-userspace-elf
+        USES_TERMINAL
+    )
+    add_custom_target_info(
+        TARGET vm
+        COMMENT "Make the guest image"
+    )
+
+endif()

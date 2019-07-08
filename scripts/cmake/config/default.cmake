@@ -22,7 +22,6 @@
 # ------------------------------------------------------------------------------
 # Source Tree
 # ------------------------------------------------------------------------------
-
 set(MICROV_SOURCE_ROOT_DIR ${CMAKE_CURRENT_LIST_DIR}/../../..
     CACHE INTERNAL
     "MICROV Source root direfctory"
@@ -36,6 +35,11 @@ set(MICROV_SOURCE_CMAKE_DIR ${MICROV_SOURCE_ROOT_DIR}/scripts/cmake
 set(MICROV_SOURCE_CONFIG_DIR ${MICROV_SOURCE_ROOT_DIR}/scripts/cmake/config
     CACHE INTERNAL
     "MICROV Cmake configurations directory"
+)
+
+set(MICROV_SOURCE_DEPS_DIR ${MICROV_SOURCE_ROOT_DIR}/deps
+    CACHE INTERNAL
+    "MICROV concurrently-developed dependencies directory"
 )
 
 set(MICROV_SOURCE_DEPENDS_DIR ${MICROV_SOURCE_ROOT_DIR}/scripts/cmake/depends
@@ -73,6 +77,8 @@ set(MICROV_SOURCE_BFVMM_DIR ${MICROV_SOURCE_ROOT_DIR}/bfvmm
     "MICROV bfvmm source dir"
 )
 
+set(BR_SOURCE_DIR ${MICROV_SOURCE_ROOT_DIR}/deps/buildroot)
+
 # ------------------------------------------------------------------------------
 # Links
 # ------------------------------------------------------------------------------
@@ -106,4 +112,11 @@ add_config(
     CONFIG_TYPE BOOL
     DEFAULT_VAL ON
     DESCRIPTION "Build a minimal Linux guest along with the VMM"
+)
+
+add_config(
+    CONFIG_NAME BR_BUILD_DIR
+    CONFIG_TYPE STRING
+    DEFAULT_VAL ${CMAKE_BINARY_DIR}/buildroot
+    DESCRIPTION "Buildroot build dir"
 )

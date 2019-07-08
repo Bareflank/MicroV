@@ -19,26 +19,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-if(NOT BUILD_XEN_GUEST OR WIN32)
-    return()
-endif()
+# This file is configured by cmake and the resulting local.mk is copied to
+# the buildroot build directory.
 
-message(STATUS "Including dependency: xtools")
-
-if(NOT DEFINED XTOOLS_DIR)
-    set(XTOOLS_DIR ${CACHE_DIR}/xtools)
-
-    download_dependency(
-        xtools
-        URL         ${XTOOLS_URL}
-        URL_MD5     ${XTOOLS_URL_MD5}
-    )
-
-    add_dependency(
-        xtools userspace
-        DOWNLOAD_COMMAND ${CMAKE_COMMAND} -E touch_nocreate foo
-        CONFIGURE_COMMAND ${CMAKE_COMMAND} -E chdir ${XTOOLS_DIR} ./relocate-sdk.sh
-        BUILD_COMMAND ${CMAKE_COMMAND} -E touch_nocreate foo
-        INSTALL_COMMAND ${CMAKE_COMMAND} -E touch_nocreate foo
-    )
-endif()
+LINUX_OVERRIDE_SRCDIR = @MICROV_SOURCE_DEPS_DIR@/linux
+XEN_OVERRIDE_SRCDIR = @MICROV_SOURCE_DEPS_DIR@/xen
