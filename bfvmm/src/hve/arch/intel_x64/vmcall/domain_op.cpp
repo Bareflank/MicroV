@@ -23,6 +23,9 @@
 #include <hve/arch/intel_x64/domain.h>
 #include <hve/arch/intel_x64/vmcall/domain_op.h>
 
+#include <xen/types.h>
+#include <public/xen.h>
+
 namespace microv::intel_x64
 {
 

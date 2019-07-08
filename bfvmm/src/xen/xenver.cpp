@@ -19,57 +19,16 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#ifndef MICROV_XEN_H
-#define MICROV_XEN_H
-
-#include "types.h"
-#include "evtchn.h"
-#include "gnttab.h"
-#include <public/xen.h>
+#include <xen/xenver.h>
 
 namespace microv {
 
-class xen {
-public:
-    void queue_virq(uint32_t virq);
+xenver::xenver(xen_vcpu *vcpu) : m_vcpu{vcpu}
+{ }
 
-private:
-    bool xen_leaf4(base_vcpu *vcpu);
-    bool handle_hypercall(xen_vcpu *vcpu);
-    bool handle_memory_op();
-    bool handle_xen_version();
-    bool handle_hvm_op();
-    bool handle_event_channel_op();
-    bool handle_grant_table_op();
-    bool handle_platform_op();
-    bool handle_console_io();
-
-    xen_vcpu *m_vcpu{};
-    xen_domain *m_dom{};
-
-    std::unique_ptr<class gnttab> m_gnttab;
-    std::unique_ptr<class evtchn> m_evtchn;
-
-    bfvmm::x64::unique_map<struct shared_info> m_shinfo{};
-    bfvmm::x64::unique_map<uint8_t> m_console{};
-    bfvmm::x64::unique_map<uint8_t> m_store{};
-
-public:
-
-    uint32_t domid{};
-    uint32_t vcpuid{};
-    uint32_t apicid{};
-    uint32_t acpiid{};
-
-    xen(xen_vcpu *vcpu, xen_domain *dom);
-    ~xen() = default;
-
-    xen(xen &&) = default;
-    xen &operator=(xen &&) = default;
-
-    xen(const xen &) = delete;
-    xen &operator=(const xen &) = delete;
-};
+bool xenver::get_features()
+{
+    return true;
 }
 
-#endif
+}

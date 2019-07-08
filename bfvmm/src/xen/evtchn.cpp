@@ -19,14 +19,12 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#include <bfvmm/memory_manager/memory_manager.h>
-#include <hve/arch/intel_x64/vcpu.h>
 #include <xen/evtchn.h>
 #include <xen/virq.h>
 
 namespace microv {
 
-evtchn::evtchn(microv::intel_x64::vcpu *vcpu) : m_vcpu{vcpu}
+evtchn::evtchn(xen_vcpu *vcpu) : m_vcpu{vcpu}
 {
     m_event_words.reserve(max_word_pages);
     m_event_chans.reserve(max_chan_pages);

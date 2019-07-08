@@ -38,12 +38,10 @@
 #include <public/hvm/hvm_op.h>
 #include <public/hvm/params.h>
 
-using base_vcpu = bfvmm::intel_x64::vcpu;
-using microv_vcpu = microv::intel_x64::vcpu;
-using wrmsr_handler = bfvmm::intel_x64::wrmsr_handler;
-
 #define XEN_MAJOR 4UL
 #define XEN_MINOR 13UL
+
+using wrmsr_handler = bfvmm::intel_x64::wrmsr_handler;
 
 namespace microv {
 
@@ -57,20 +55,20 @@ static constexpr auto hcall_page_msr = 0xC0000500;
 static constexpr auto xen_leaf_base = 0x40000100;
 static constexpr auto xen_leaf(int i) { return xen_leaf_base + i; }
 
-static void make_xen_ids(microv::intel_x64::domain *dom, xen *xop)
+static void make_xen_ids(xen_domain *dom, xen *xen)
 {
     if (dom->initdom()) {
-        xop->domid = 0;
-        xop->vcpuid = 0;
-        xop->apicid = 0;
-        xop->acpiid = 0;
+        xen->domid = 0;
+        xen->vcpuid = 0;
+        xen->apicid = 0;
+        xen->acpiid = 0;
         return;
     } else {
         std::lock_guard<std::mutex> lock(xen_mutex);
-        xop->domid = ++xen_domid;
-        xop->vcpuid = ++xen_vcpuid;
-        xop->apicid = ++xen_apicid;
-        xop->acpiid = ++xen_acpiid;
+        xen->domid = ++xen_domid;
+        xen->vcpuid = ++xen_vcpuid;
+        xen->apicid = ++xen_apicid;
+        xen->acpiid = ++xen_acpiid;
     }
 }
 
@@ -137,6 +135,11 @@ static bool xen_leaf2(base_vcpu *vcpu)
     return true;
 }
 
+void xen::queue_virq(uint32_t virq)
+{
+    m_evtchn->queue_virq(virq);
+}
+
 bool xen::xen_leaf4(base_vcpu *vcpu)
 {
     uint32_t rax = 0;
@@ -179,7 +182,7 @@ static bool wrmsr_hcall_page(base_vcpu *vcpu, wrmsr_handler::info_t &info)
     return true;
 }
 
-bool xen::handle_hypercall(microv_vcpu *vcpu)
+bool xen::handle_hypercall(xen_vcpu *vcpu)
 {
     switch (vcpu->rax()) {
     case __HYPERVISOR_memory_op:
@@ -571,7 +574,7 @@ bool xen::handle_platform_op()
     return false;
 }
 
-xen::xen(microv::intel_x64::vcpu *vcpu, microv::intel_x64::domain *dom) :
+xen::xen(xen_vcpu *vcpu, xen_domain *dom) :
     m_vcpu{vcpu},
     m_dom{dom},
     m_evtchn{std::make_unique<evtchn>(vcpu)},

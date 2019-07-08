@@ -22,12 +22,8 @@
 #ifndef MICROV_XEN_EVTCHN_H
 #define MICROV_XEN_EVTCHN_H
 
-#include <atomic>
-#include <bfhypercall.h>
-#include <bfmath.h>
-#include <bfvmm/hve/arch/x64/unmapper.h>
+#include "types.h"
 #include <public/event_channel.h>
-#include <public/xen.h>
 
 namespace microv {
 
@@ -186,13 +182,13 @@ private:
     std::vector<bfvmm::x64::unique_map<word_t>> m_event_words{};
     std::vector<page_ptr<chan_t>> m_event_chans{};
 
-    microv::intel_x64::vcpu *m_vcpu{};
+    xen_vcpu *m_vcpu{};
     uint64_t m_cb_via{};
     port_t m_port_end{1};
 
 public:
 
-    evtchn(microv::intel_x64::vcpu *vcpu);
+    evtchn(xen_vcpu *vcpu);
     ~evtchn() = default;
 
     evtchn(evtchn &&) = default;

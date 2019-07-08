@@ -20,12 +20,11 @@
 // SOFTWARE.
 
 #include <hve/arch/intel_x64/vcpu.h>
-#include <public/memory.h>
 #include <xen/gnttab.h>
 
 namespace microv {
 
-gnttab::gnttab(microv::intel_x64::vcpu *vcpu) :
+gnttab::gnttab(xen_vcpu *vcpu) :
     m_vcpu{vcpu},
     m_version{2}
 {
@@ -45,8 +44,7 @@ void gnttab::set_version(gnttab_set_version_t *arg)
     arg->version = m_version;
 }
 
-void
-gnttab::mapspace_grant_table(xen_add_to_physmap_t *arg)
+void gnttab::mapspace_grant_table(xen_add_to_physmap_t *arg)
 {
     expects((arg->idx & XENMAPIDX_grant_table_status) == 0);
 
@@ -66,5 +64,4 @@ gnttab::mapspace_grant_table(xen_add_to_physmap_t *arg)
 
     m_vcpu->map_4k_rw(arg->gpfn << x64::pt::page_shift, hpa);
 }
-
 }

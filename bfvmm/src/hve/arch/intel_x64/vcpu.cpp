@@ -26,6 +26,7 @@
 #include <bfbuilderinterface.h>
 #include <hve/arch/intel_x64/vcpu.h>
 #include <hve/arch/intel_x64/xsave.h>
+#include <xen/xen.h>
 
 //------------------------------------------------------------------------------
 // Fault Handlers
@@ -188,6 +189,11 @@ bool vcpu::handle_hello(bfvmm::intel_x64::vcpu *vcpu)
 
     bfdebug_info(0, "host os is" bfcolor_green " now " bfcolor_end "in a vm");
     return vcpu->advance();
+}
+
+void vcpu::queue_virq(uint32_t virq)
+{
+    m_xen->queue_virq(virq);
 }
 
 //------------------------------------------------------------------------------

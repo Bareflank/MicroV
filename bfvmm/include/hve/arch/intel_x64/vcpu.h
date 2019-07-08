@@ -45,11 +45,13 @@
 #include <bfvmm/vcpu/vcpu_manager.h>
 #include <bfvmm/hve/arch/intel_x64/vcpu.h>
 
-#include "../../../xen/xen.h"
-
 //------------------------------------------------------------------------------
 // Definition
 //------------------------------------------------------------------------------
+
+namespace microv {
+    class xen;
+}
 
 namespace microv::intel_x64
 {
@@ -286,15 +288,11 @@ public:
     ///
     uint8_t apic_timer_vector();
 
-    /// Queue a Xen virq into this vcpu
+    /// Queue virq into this vcpu
     ///
     /// @param virq the id of the virq to queue
     ///
-    void queue_virq(uint32_t virq)
-    {
-        auto evtchn = m_xen->m_evtchn.get();
-        evtchn->queue_virq(virq);
-    }
+    void queue_virq(uint32_t virq);
 
     bool handle_hello(bfvmm::intel_x64::vcpu *vcpu);
 

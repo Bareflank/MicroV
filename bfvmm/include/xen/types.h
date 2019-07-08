@@ -19,57 +19,39 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#ifndef MICROV_XEN_H
-#define MICROV_XEN_H
+#ifndef MICROV_XEN_TYPES_H
+#define MICROV_XEN_TYPES_H
 
-#include "types.h"
-#include "evtchn.h"
-#include "gnttab.h"
-#include <public/xen.h>
+#include <atomic>
+#include <bfhypercall.h>
+#include <bfmath.h>
+#include <bftypes.h>
+#include <bfvmm/hve/arch/x64/unmapper.h>
+#include <bfvmm/memory_manager/memory_manager.h>
+#include <hve/arch/intel_x64/vcpu.h>
+
+/* Base hypervisor vcpu */
+namespace bfvmm::intel_x64 {
+    class vcpu;
+}
+
+/* Microv vcpu and domain */
+namespace microv::intel_x64 {
+    class domain;
+    class vcpu;
+}
 
 namespace microv {
 
-class xen {
-public:
-    void queue_virq(uint32_t virq);
+class xen;
+class gnttab;
+class evtchn;
+class xenver;
 
-private:
-    bool xen_leaf4(base_vcpu *vcpu);
-    bool handle_hypercall(xen_vcpu *vcpu);
-    bool handle_memory_op();
-    bool handle_xen_version();
-    bool handle_hvm_op();
-    bool handle_event_channel_op();
-    bool handle_grant_table_op();
-    bool handle_platform_op();
-    bool handle_console_io();
+using xen_vcpu = microv::intel_x64::vcpu;
+using xen_domain = microv::intel_x64::domain;
+using base_vcpu = bfvmm::intel_x64::vcpu;
 
-    xen_vcpu *m_vcpu{};
-    xen_domain *m_dom{};
-
-    std::unique_ptr<class gnttab> m_gnttab;
-    std::unique_ptr<class evtchn> m_evtchn;
-
-    bfvmm::x64::unique_map<struct shared_info> m_shinfo{};
-    bfvmm::x64::unique_map<uint8_t> m_console{};
-    bfvmm::x64::unique_map<uint8_t> m_store{};
-
-public:
-
-    uint32_t domid{};
-    uint32_t vcpuid{};
-    uint32_t apicid{};
-    uint32_t acpiid{};
-
-    xen(xen_vcpu *vcpu, xen_domain *dom);
-    ~xen() = default;
-
-    xen(xen &&) = default;
-    xen &operator=(xen &&) = default;
-
-    xen(const xen &) = delete;
-    xen &operator=(const xen &) = delete;
-};
 }
 
 #endif

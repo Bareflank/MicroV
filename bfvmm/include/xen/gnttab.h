@@ -22,16 +22,10 @@
 #ifndef MICROV_XEN_GNTTAB_H
 #define MICROV_XEN_GNTTAB_H
 
-#include <bfmath.h>
-#include <bfvmm/memory_manager/memory_manager.h>
+#include "types.h"
 
-#include <public/xen.h>
 #include <public/grant_table.h>
 #include <public/memory.h>
-
-namespace microv::intel_x64 {
-    class vcpu;
-}
 
 namespace microv {
 
@@ -42,7 +36,7 @@ class gnttab {
     static constexpr auto max_nr_frames = 64;
 
     uint32_t m_version{};
-    microv::intel_x64::vcpu *m_vcpu{};
+    xen_vcpu *m_vcpu{};
     std::vector<page_ptr<shared_entry_t>> m_shared_gnttab;
 
 public:
@@ -50,7 +44,7 @@ public:
     void set_version(gnttab_set_version_t *arg);
     void mapspace_grant_table(xen_add_to_physmap_t *arg);
 
-    gnttab(microv::intel_x64::vcpu *vcpu);
+    gnttab(xen_vcpu *vcpu);
     ~gnttab() = default;
 
     gnttab(gnttab &&) = default;
