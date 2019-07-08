@@ -39,6 +39,10 @@ if(ENABLE_BUILD_GUEST)
     include_dependency(MICROV_SOURCE_DEPENDS_DIR linux)
 endif()
 
+if(BUILD_XEN_GUEST)
+    include_dependency(MICROV_SOURCE_DEPENDS_DIR xtools)
+endif()
+
 # ------------------------------------------------------------------------------
 # VMM
 # ------------------------------------------------------------------------------
