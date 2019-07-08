@@ -83,6 +83,7 @@ message(STATUS "    target: ${BFM_VMM_TARGET}")
 # Targets
 # ------------------------------------------------------------------------------
 
+add_subproject(bfdriver userspace)
 include(${SOURCE_CMAKE_DIR}/targets.cmake)
 
 # ------------------------------------------------------------------------------

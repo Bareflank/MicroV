@@ -61,6 +61,7 @@ if(NOT WIN32)
 
     add_custom_target(driver_build
         COMMAND ${SOURCE_UTIL_DIR}/driver_build.sh ${SOURCE_BFDRIVER_DIR}
+        DEPENDS bfdriver_x86_64-userspace-elf
         USES_TERMINAL
     )
     add_custom_target_info(
@@ -70,6 +71,7 @@ if(NOT WIN32)
 
     add_custom_target(driver_clean
         COMMAND ${SOURCE_UTIL_DIR}/driver_clean.sh ${SOURCE_BFDRIVER_DIR}
+        DEPENDS bfdriver_x86_64-userspace-elf
         USES_TERMINAL
     )
     add_custom_target_info(
@@ -79,6 +81,7 @@ if(NOT WIN32)
 
     add_custom_target(driver_load
         COMMAND ${SOURCE_UTIL_DIR}/driver_load.sh ${SOURCE_BFDRIVER_DIR}
+        DEPENDS bfdriver_x86_64-userspace-elf
         USES_TERMINAL
     )
     add_custom_target_info(
@@ -88,6 +91,7 @@ if(NOT WIN32)
 
     add_custom_target(driver_unload
         COMMAND ${SOURCE_UTIL_DIR}/driver_unload.sh ${SOURCE_BFDRIVER_DIR}
+        DEPENDS bfdriver_x86_64-userspace-elf
         USES_TERMINAL
     )
     add_custom_target_info(

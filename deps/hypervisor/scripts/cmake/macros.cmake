@@ -729,7 +729,9 @@ function(add_subproject NAME PREFIX)
     endif()
 
     set(SHORT_PREFIX ${PREFIX})
-    if(NOT PREFIX STREQUAL "efi" AND NOT ${NAME} STREQUAL "bfroot")
+    if(NOT PREFIX STREQUAL "efi" AND
+       NOT ${NAME} STREQUAL "bfroot" AND
+       NOT ${NAME} STREQUAL "bfdriver")
         add_targets(${NAME} ${PREFIX} ${SOURCE_DIR})
     endif()
 
