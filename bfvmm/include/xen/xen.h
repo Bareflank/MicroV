@@ -25,6 +25,7 @@
 #include "types.h"
 #include "evtchn.h"
 #include "gnttab.h"
+#include "xenver.h"
 #include <public/xen.h>
 
 namespace microv {
@@ -49,6 +50,7 @@ private:
 
     std::unique_ptr<class gnttab> m_gnttab;
     std::unique_ptr<class evtchn> m_evtchn;
+    std::unique_ptr<class xenver> m_xenver;
 
     bfvmm::x64::unique_map<struct shared_info> m_shinfo{};
     bfvmm::x64::unique_map<uint8_t> m_console{};

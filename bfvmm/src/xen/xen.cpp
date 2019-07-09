@@ -323,81 +323,18 @@ bool xen::handle_memory_op()
 bool xen::handle_xen_version()
 {
     switch (m_vcpu->rdi()) {
-    case XENVER_get_features:
-        try {
-            auto info = m_vcpu->map_arg<xen_feature_info_t>(m_vcpu->rsi());
-            if (info->submap_idx >= XENFEAT_NR_SUBMAPS) {
-                m_vcpu->set_rax(-EINVAL);
-                return true;
-            }
-
-            info->submap = 0;
-            info->submap |= (1 << XENFEAT_writable_page_tables);
-            info->submap |= (1 << XENFEAT_writable_descriptor_tables);
-            info->submap |= (1 << XENFEAT_auto_translated_physmap);
-            info->submap |= (1 << XENFEAT_supervisor_mode_kernel);
-            info->submap |= (1 << XENFEAT_pae_pgdir_above_4gb);
-            //info->submap |= (1 << XENFEAT_mmu_pt_update_preserve_ad);
-            //info->submap |= (1 << XENFEAT_highmem_assist);
-            info->submap |= (1 << XENFEAT_gnttab_map_avail_bits);
-            info->submap |= (1 << XENFEAT_hvm_callback_vector);
-            //info->submap |= (1 << XENFEAT_hvm_safe_pvclock);
-            //info->submap |= (1 << XENFEAT_hvm_pirqs);
-            info->submap |= (1 << XENFEAT_dom0);
-            //info->submap |= (1 << XENFEAT_memory_op_vnode_supported);
-            //info->submap |= (1 << XENFEAT_ARM_SMCCC_supported);
-            info->submap |= (1 << XENFEAT_linux_rsdp_unrestricted);
-
-            return true;
-        } catchall({
-            return false;
-        })
-    case XENVER_version:
-        m_vcpu->set_rax((XEN_MAJOR << 16) | XEN_MINOR);
-        return true;
-    case XENVER_compile_info: {
-        static_assert(sizeof(xen_compile_info_t::compiler) == 64);
-        static_assert(sizeof(xen_compile_info_t::compile_by) == 16);
-        static_assert(sizeof(xen_compile_info_t::compile_domain) == 32);
-        static_assert(sizeof(xen_compile_info_t::compile_date) == 32);
-
-        auto info = m_vcpu->map_arg<xen_compile_info_t>(m_vcpu->rsi());
-        std::strncpy((char *)info->compiler, MICROV_COMPILER, 64);
-        std::strncpy((char *)info->compile_by, MICROV_COMPILE_BY, 16);
-        std::strncpy((char *)info->compile_domain, MICROV_COMPILE_DOMAIN, 32);
-        std::strncpy((char *)info->compile_date, MICROV_COMPILE_DATE, 32);
-
-        info->compiler[63] = 0;
-        info->compile_by[15] = 0;
-        info->compile_domain[31] = 0;
-        info->compile_date[31] = 0;
-
-        m_vcpu->set_rax(0);
-        return true;
-    }
-    case XENVER_extraversion: {
-        auto extra = m_vcpu->map_arg<xen_extraversion_t>(m_vcpu->rsi());
-        std::strncpy((char *)extra.get(), "microv", XEN_EXTRAVERSION_LEN);
-        m_vcpu->set_rax(0);
-        return true;
-    }
-    case XENVER_changeset: {
-        auto change = m_vcpu->map_arg<xen_changeset_info_t>(m_vcpu->rsi());
-        std::strncpy((char *)change.get(),
-                     MICROV_CHANGESET,
-                     XEN_CHANGESET_INFO_LEN);
-        m_vcpu->set_rax(0);
-        return true;
-    }
-    case XENVER_guest_handle:
-        bfalert_info(0, "Received XENVER_guest_handle hypercall");
-        m_vcpu->set_rax(0);
-        return true;
-    case XENVER_pagesize:
-        m_vcpu->set_rax(::x64::pt::page_size);
-        return true;
-    default:
-        return false;
+    case XENVER_version: return m_xenver->version();
+    case XENVER_extraversion: return m_xenver->extraversion();
+    case XENVER_compile_info: return m_xenver->compile_info();
+    case XENVER_capabilities: return m_xenver->capabilities();
+    case XENVER_changeset: return m_xenver->changeset();
+    case XENVER_platform_parameters: return m_xenver->platform_parameters();
+    case XENVER_get_features: return m_xenver->get_features();
+    case XENVER_pagesize: return m_xenver->pagesize();
+    case XENVER_guest_handle: return m_xenver->guest_handle();
+    case XENVER_commandline: return m_xenver->commandline();
+    case XENVER_build_id: return m_xenver->build_id();
+    default: return false;
     }
 }
 
@@ -577,8 +514,9 @@ bool xen::handle_platform_op()
 xen::xen(xen_vcpu *vcpu, xen_domain *dom) :
     m_vcpu{vcpu},
     m_dom{dom},
-    m_evtchn{std::make_unique<evtchn>(vcpu)},
-    m_gnttab{std::make_unique<gnttab>(vcpu)}
+    m_evtchn{std::make_unique<class evtchn>(vcpu)},
+    m_gnttab{std::make_unique<class gnttab>(vcpu)},
+    m_xenver{std::make_unique<class xenver>(vcpu)}
 {
     make_xen_ids(dom, this);
 

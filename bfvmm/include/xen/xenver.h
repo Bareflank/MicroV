@@ -23,15 +23,27 @@
 #define MICROV_XEN_XENVER_H
 
 #include "types.h"
+#include <public/xen.h>
 
 namespace microv {
 
 class xenver {
 private:
     xen_vcpu *m_vcpu{};
+    xen_domain_handle_t m_hdl{};
 
 public:
+    bool build_id();
+    bool capabilities();
+    bool changeset();
+    bool commandline();
+    bool compile_info();
+    bool extraversion();
     bool get_features();
+    bool guest_handle();
+    bool pagesize();
+    bool platform_parameters();
+    bool version();
 
     xenver(xen_vcpu *vcpu);
     ~xenver() = default;
