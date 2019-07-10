@@ -68,16 +68,29 @@ void evtchn::alloc_unbound(evtchn_alloc_unbound_t *arg)
 
     arg->port = port;
 
-    //bfdebug_nhex(0, "alloc unbound", port);
-    //bfdebug_subnhex(0, "dom", arg->dom);
-    //bfdebug_subnhex(0, "remote_dom", arg->remote_dom);
+    bfdebug_nhex(0, "alloc unbound", port);
+    bfdebug_subnhex(0, "dom", arg->dom);
+    bfdebug_subnhex(0, "remote_dom", arg->remote_dom);
 }
 
-void
-evtchn::send(evtchn_send_t *arg)
+void evtchn::send(evtchn_send_t *arg)
 {
     bfdebug_nhex(0, "send port", arg->port);
     this->set_pending(this->port_to_chan(arg->port));
+}
+
+void evtchn::close(evtchn_close_t *arg)
+{
+    expects(arg->port);
+
+    bfdebug_nhex(0, "Closing interdomain port:", arg->port);
+    auto chan = this->port_to_chan(arg->port);
+    expects(chan);
+
+    if (chan->state == chan_t::state_interdomain) {
+        bfdebug_nhex(0, "Closing interdomain, setting unbound", arg->port);
+        chan->state = chan_t::state_unbound;
+    }
 }
 
 evtchn::port_t evtchn::bind_store()
@@ -104,13 +117,30 @@ evtchn::port_t evtchn::bind_console()
 //    bfdebug_nhex(0, "bound ipi:", port);
 //}
 
+void evtchn::bind_interdomain(evtchn_bind_interdomain_t *arg)
+{
+    bfdebug_info(0, "evtchn: bound interdomain");
+    bfdebug_subnhex(0, "remote_dom", arg->remote_dom);
+    bfdebug_subnhex(0, "remote_port", arg->remote_port);
+
+    auto port = this->bind(chan_t::state_interdomain);
+    auto chan = this->port_to_chan(port);
+
+    chan->data.interdom.remote_dom = arg->remote_dom;
+    chan->data.interdom.remote_port = arg->remote_port;
+    chan->data.interdom.local_port = port;
+    arg->local_port = port;
+
+    bfdebug_subnhex(0, "local_port", port);
+}
+
 void evtchn::bind_virq(evtchn_bind_virq_t *arg)
 {
     //expects(arg->vcpu == m_vcpu->id());
     expects(arg->virq < virq_info.size());
     expects(arg->virq < m_virq_to_port.size());
 
-    const auto port = this->bind(chan_t::state_virq);
+    auto port = this->bind(chan_t::state_virq);
     auto chan = this->port_to_chan(port);
 
     bfdebug_nhex(0, "evtchn: bound virq:", arg->virq);
@@ -133,20 +163,19 @@ void evtchn::queue_virq(uint32_t virq)
     this->set_pending(chan);
 }
 
-//void
-//evtchn::bind_vcpu(evtchn_bind_vcpu_t *arg)
-//{
-//    expects(arg->vcpu == 0);
-//
-//    auto chan = this->port_to_chan(arg->port);
-//    auto prev = chan->vcpuid();
-//
-//    bfdebug_nhex(0, "bound vcpu:", arg->vcpu);
-//    bfdebug_subnhex(0, "port:", arg->port);
-//
-//    chan->set_vcpuid(arg->vcpu);
-//    chan->set_prev_vcpuid(prev);
-//}
+void evtchn::bind_vcpu(evtchn_bind_vcpu_t *arg)
+{
+    expects(arg->vcpu == 0);
+
+    auto chan = this->port_to_chan(arg->port);
+    auto prev = chan->vcpuid;
+
+    bfdebug_nhex(0, "bound vcpu:", arg->vcpu);
+    bfdebug_subnhex(0, "port:", arg->port);
+
+    chan->vcpuid = arg->vcpu;
+    chan->prev_vcpuid = prev;
+}
 
 // =============================================================================
 // Initialization

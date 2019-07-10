@@ -453,6 +453,27 @@ bool xen::handle_event_channel_op()
         m_vcpu->set_rax(0);
         return true;
     }
+    case EVTCHNOP_bind_interdomain:
+    {
+        auto arg = m_vcpu->map_arg<evtchn_bind_interdomain_t>(m_vcpu->rsi());
+        m_evtchn->bind_interdomain(arg.get());
+        m_vcpu->set_rax(0);
+        return true;
+    }
+    case EVTCHNOP_close:
+    {
+        auto arg = m_vcpu->map_arg<evtchn_close_t>(m_vcpu->rsi());
+        m_evtchn->close(arg.get());
+        m_vcpu->set_rax(0);
+        return true;
+    }
+    case EVTCHNOP_bind_vcpu:
+    {
+        auto arg = m_vcpu->map_arg<evtchn_bind_vcpu_t>(m_vcpu->rsi());
+        m_evtchn->bind_vcpu(arg.get());
+        m_vcpu->set_rax(0);
+        return true;
+    }
     default:
         ;
     }

@@ -27,6 +27,8 @@
 
 namespace microv {
 
+#pragma pack(push, 1)
+
 struct event_channel {
     enum state : uint8_t {
         state_free,
@@ -42,11 +44,11 @@ struct event_channel {
 
     union {
         uint32_t virq;
+        struct evtchn_bind_interdomain interdom;
         // TODO:
         // unbound-specific data
-        // interdomain-specific data
         // pirq-specific data
-    } data;
+    } data{};
 
     bool is_pending{};
     enum state state{state_free};
@@ -55,8 +57,12 @@ struct event_channel {
     vcpuid_t vcpuid{};
     vcpuid_t prev_vcpuid{};
     evtchn_port_t port{};
+
+    uint8_t pad[28];
     /// TODO mutable std::mutex mutex{};
 };
+
+#pragma pack(pop)
 
 class evtchn {
 public:
@@ -84,10 +90,13 @@ public:
     void alloc_unbound(evtchn_alloc_unbound_t *unbound);
     void expand_array(evtchn_expand_array_t *arr);
     void send(evtchn_send_t *arg);
+    void close(evtchn_close_t *arg);
     void bind_ipi(evtchn_bind_ipi_t *arg);
     void bind_virq(evtchn_bind_virq_t *arg);
     void queue_virq(uint32_t virq);
     void bind_vcpu(evtchn_bind_vcpu *arg);
+    void bind_interdomain(evtchn_bind_interdomain_t *arg);
+
     port_t bind_console();
     port_t bind_store();
 
