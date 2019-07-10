@@ -2,13 +2,20 @@
 
 # $1 == the path to the rootfs
 
-rm -rf $1/usr/lib/systemd/system/systemd-modules-load.service
-rm -rf $1/usr/lib/systemd/system/systemd-update-utmp.service
-rm -rf $1/usr/lib/systemd/system/systemd-update-utmp-runlevel.service
-rm -rf $1/usr/lib/systemd/system/sysinit.target.wants/systemd-update-utmp.service
-rm -rf $1/usr/lib/systemd/system/sysinit.target.wants/systemd-update-utmp-runlevel.service
+pushd $1
 
-rm -rf $1/etc/systemd/system/network.service
-rm -rf $1/etc/systemd/system/multi-user.target.wants/network.service
+rm -rf usr/lib/systemd/system/systemd-modules-load.service
+rm -rf usr/lib/systemd/system/systemd-update-utmp.service
+rm -rf usr/lib/systemd/system/systemd-update-utmp-runlevel.service
+rm -rf usr/lib/systemd/system/sysinit.target.wants/systemd-update-utmp.service
+rm -rf usr/lib/systemd/system/sysinit.target.wants/systemd-update-utmp-runlevel.service
 
-echo '/proc/xen /proc/xen xenfs' >> $1/etc/fstab
+rm -rf etc/systemd/system/network.service
+rm -rf etc/systemd/system/multi-user.target.wants/network.service
+
+ln -s ../../../lib/systemd/system/xenstored.service \
+      etc/systemd/system/multi-user.target.wants/xenstored.service
+ln -s ../../../lib/systemd/system/xen-init-dom0.service \
+      etc/systemd/system/multi-user.target.wants/xen-init-dom0.service
+
+popd
