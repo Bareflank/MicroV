@@ -28,6 +28,8 @@
 
 #include <xen/evtchn.h>
 #include <xen/gnttab.h>
+#include <xen/sysctl.h>
+#include <xen/xenver.h>
 #include <xen/xen.h>
 
 #include <public/arch-x86/cpuid.h>
@@ -199,6 +201,8 @@ bool xen::handle_hypercall(xen_vcpu *vcpu)
         return this->handle_platform_op();
     case __HYPERVISOR_console_io:
         return this->handle_console_io();
+    case __HYPERVISOR_sysctl:
+        return this->handle_sysctl();
     default:
         return false;
     }
@@ -488,6 +492,12 @@ bool xen::handle_event_channel_op()
     return false;
 }
 
+bool xen::handle_sysctl()
+{
+    auto ctl = m_vcpu->map_arg<xen_sysctl_t>(m_vcpu->rdi());
+    return m_sysctl->handle(ctl.get());
+}
+
 bool xen::handle_grant_table_op()
 {
     switch (m_vcpu->rdi()) {
@@ -544,7 +554,8 @@ xen::xen(xen_vcpu *vcpu, xen_domain *dom) :
     m_dom{dom},
     m_evtchn{std::make_unique<class evtchn>(vcpu)},
     m_gnttab{std::make_unique<class gnttab>(vcpu)},
-    m_xenver{std::make_unique<class xenver>(vcpu)}
+    m_xenver{std::make_unique<class xenver>(vcpu)},
+    m_sysctl{std::make_unique<class sysctl>(vcpu)}
 {
     make_xen_ids(dom, this);
 
