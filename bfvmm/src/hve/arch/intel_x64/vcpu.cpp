@@ -20,6 +20,7 @@
 // SOFTWARE.
 
 #include <intrinsics.h>
+#include <bfexports.h>
 #include <bfgpalayout.h>
 #include <bfxsave.h>
 #include <bfthreadcontext.h>
@@ -27,6 +28,12 @@
 #include <hve/arch/intel_x64/vcpu.h>
 #include <hve/arch/intel_x64/xsave.h>
 #include <xen/xen.h>
+#include <xue.h>
+
+extern struct xue g_xue;
+extern struct xue_ops g_xue_ops;
+
+void WEAK_SYM vcpu_init_root(bfvmm::intel_x64::vcpu *vcpu);
 
 //------------------------------------------------------------------------------
 // Fault Handlers
@@ -152,7 +159,8 @@ vcpu::vcpu(
         this->state()->xsave_ptr = reinterpret_cast<uint64_t>(new_xsave);
     }
 
-    this->add_cpuid_emulator(0x4BF00011, {&vcpu::handle_hello, this});
+    this->add_cpuid_emulator(0x4BF00010, {&vcpu::handle_0x4BF00010, this});
+    this->add_cpuid_emulator(0x4BF00021, {&vcpu::handle_0x4BF00021, this});
     this->add_cpuid_handler(0x7, {handle_cpuid_disable_mpx});
 }
 
@@ -183,12 +191,30 @@ vcpu::write_domU_guest_state(domain *domain)
     }
 }
 
-bool vcpu::handle_hello(bfvmm::intel_x64::vcpu *vcpu)
+bool vcpu::handle_0x4BF00010(bfvmm::intel_x64::vcpu *vcpu)
 {
-    // TODO: xue_open for windows
+#ifdef XUE_DEBUG
+    if (vcpu->id() == 0 && g_xue.sysid == xue_sysid_windows) {
+        xue_open(&g_xue, &g_xue_ops, NULL);
+    }
+#endif
 
-    bfdebug_info(0, "host os is" bfcolor_green " now " bfcolor_end "in a vm");
+    vcpu_init_root(vcpu);
     return vcpu->advance();
+}
+
+bool vcpu::handle_0x4BF00021(bfvmm::intel_x64::vcpu *vcpu)
+{
+    bfdebug_info(0, "host os is" bfcolor_red " not " bfcolor_end "in a vm");
+
+#ifdef XUE_DEBUG
+    if (vcpu->id() == 0 && g_xue.sysid == xue_sysid_windows) {
+        xue_close(&g_xue);
+    }
+#endif
+
+    vcpu->promote();
+    throw std::runtime_error("unreachable exception - promote failed");
 }
 
 void vcpu::queue_virq(uint32_t virq)

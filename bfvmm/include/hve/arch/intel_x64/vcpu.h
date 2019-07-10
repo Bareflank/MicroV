@@ -294,7 +294,8 @@ public:
     ///
     void queue_virq(uint32_t virq);
 
-    bool handle_hello(bfvmm::intel_x64::vcpu *vcpu);
+    bool handle_0x4BF00010(bfvmm::intel_x64::vcpu *vcpu);
+    bool handle_0x4BF00021(bfvmm::intel_x64::vcpu *vcpu);
 
 private:
 

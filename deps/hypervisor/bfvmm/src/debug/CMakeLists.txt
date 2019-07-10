@@ -22,6 +22,7 @@
 add_library(bfvmm_debug)
 
 target_link_libraries(bfvmm_debug PUBLIC ${PREFIX}::bfroot)
+target_compile_definitions(bfvmm_debug PUBLIC $<$<BOOL:${XUE_DEBUG}>:XUE_DEBUG>)
 target_include_directories(bfvmm_debug PUBLIC
     $<${BUILD_INCLUDE}:${PROJECT_ROOT}/include>
     $<${BUILD_INCLUDE}:${PROJECT_ROOT}/../bfintrinsics/include>
