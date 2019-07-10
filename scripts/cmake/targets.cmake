@@ -122,6 +122,15 @@ if(BUILD_XEN_GUEST)
         TARGET linuxrebuild
         COMMENT "Rebuild the guest kernel"
     )
+    add_custom_target(xenrebuild
+        COMMAND ${CMAKE_COMMAND} -E chdir ${BR_SOURCE_DIR} make O=${BR_BUILD_DIR} xen-rebuild
+        DEPENDS xtools_x86_64-userspace-elf
+        USES_TERMINAL
+    )
+    add_custom_target_info(
+        TARGET xenrebuild
+        COMMENT "Rebuild the guest kernel"
+    )
     add_custom_target(vm
         COMMAND ${CMAKE_COMMAND} -E chdir ${BR_SOURCE_DIR} make O=${BR_BUILD_DIR}
         DEPENDS xtools_x86_64-userspace-elf
