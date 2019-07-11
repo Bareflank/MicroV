@@ -29,13 +29,14 @@ namespace microv {
 
 class sysctl {
 private:
-    xen_vcpu *m_vcpu{};
     xen *m_xen{};
+    xen_vcpu *m_vcpu{};
 
 public:
     bool handle(xen_sysctl_t *ctl);
+    bool getdomaininfolist(xen_sysctl_t *ctl);
 
-    sysctl(xen_vcpu *vcpu);
+    sysctl(xen *xen);
     ~sysctl() = default;
 
     sysctl(sysctl &&) = default;

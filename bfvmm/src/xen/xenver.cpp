@@ -22,6 +22,7 @@
 #include <stdlib.h>
 #include <compiler.h>
 #include <xen/xenver.h>
+#include <xen/xen.h>
 #include <public/version.h>
 
 #define XEN_MAJOR 4UL
@@ -29,7 +30,7 @@
 
 namespace microv {
 
-xenver::xenver(xen_vcpu *vcpu) : m_vcpu{vcpu}
+xenver::xenver(xen *xen) : m_xen{xen}, m_vcpu{xen->m_vcpu}
 {
     for (auto i = 0; i < sizeof(m_hdl); i++) {
         m_hdl[i] = rand() & 0xFF;

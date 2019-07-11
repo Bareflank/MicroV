@@ -29,6 +29,7 @@ namespace microv {
 
 class xenver {
 private:
+    xen *m_xen{};
     xen_vcpu *m_vcpu{};
     xen_domain_handle_t m_hdl{};
 
@@ -45,7 +46,7 @@ public:
     bool platform_parameters();
     bool version();
 
-    xenver(xen_vcpu *vcpu);
+    xenver(xen *xen);
     ~xenver() = default;
     xenver(xenver &&) = default;
     xenver &operator=(xenver &&) = default;

@@ -20,23 +20,24 @@
 // SOFTWARE.
 
 #include <xen/sysctl.h>
+#include <xen/xen.h>
+
 #include <public/domctl.h>
+#include <public/errno.h>
 
 namespace microv {
 
-std::mutex xen_dom_mtx;
-std::list<class xen *> xen_doms;
-
-sysctl::sysctl(xen_vcpu *vcpu) : m_vcpu{vcpu}
+sysctl::sysctl(xen *xen) : m_xen{xen}, m_vcpu{xen->m_vcpu}
 {
 
 }
 
-sysctl::getdomaininfolist(xen_sysctl_t *ctl)
+bool sysctl::getdomaininfolist(xen_sysctl_t *ctl)
 {
     auto info = ctl->u.getdomaininfolist;
     // map buffer
 
+    return false;
 }
 
 bool sysctl::handle(xen_sysctl_t *ctl)
@@ -48,8 +49,11 @@ bool sysctl::handle(xen_sysctl_t *ctl)
 
     switch (ctl->cmd) {
     case XEN_SYSCTL_getdomaininfolist:
+        return this->getdomaininfolist(ctl);
     default:
         bfalert_nhex(0, "unhandled sysctl", ctl->cmd);
     }
+
+    return false;
 }
 }

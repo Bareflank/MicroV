@@ -36,6 +36,7 @@ class gnttab {
     static constexpr auto max_nr_frames = 64;
 
     uint32_t m_version{};
+    xen *m_xen{};
     xen_vcpu *m_vcpu{};
     std::vector<page_ptr<shared_entry_t>> m_shared_gnttab;
 
@@ -44,7 +45,7 @@ public:
     void set_version(gnttab_set_version_t *arg);
     void mapspace_grant_table(xen_add_to_physmap_t *arg);
 
-    gnttab(xen_vcpu *vcpu);
+    gnttab(xen *xen);
     ~gnttab() = default;
 
     gnttab(gnttab &&) = default;

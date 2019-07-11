@@ -50,6 +50,11 @@ private:
     xen_vcpu *m_vcpu{};
     xen_domain *m_dom{};
 
+    friend class gnttab;
+    friend class evtchn;
+    friend class sysctl;
+    friend class xenver;
+
     std::unique_ptr<class gnttab> m_gnttab;
     std::unique_ptr<class evtchn> m_evtchn;
     std::unique_ptr<class sysctl> m_sysctl;

@@ -189,13 +189,14 @@ private:
     std::vector<bfvmm::x64::unique_map<word_t>> m_event_words{};
     std::vector<page_ptr<chan_t>> m_event_chans{};
 
+    xen *m_xen{};
     xen_vcpu *m_vcpu{};
     uint64_t m_cb_via{};
     port_t m_port_end{1};
 
 public:
 
-    evtchn(xen_vcpu *vcpu);
+    evtchn(xen *xen);
     ~evtchn() = default;
 
     evtchn(evtchn &&) = default;

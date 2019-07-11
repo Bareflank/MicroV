@@ -21,11 +21,13 @@
 
 #include <hve/arch/intel_x64/vcpu.h>
 #include <xen/gnttab.h>
+#include <xen/xen.h>
 
 namespace microv {
 
-gnttab::gnttab(xen_vcpu *vcpu) :
-    m_vcpu{vcpu},
+gnttab::gnttab(xen *xen) :
+    m_xen{xen},
+    m_vcpu{xen->m_vcpu},
     m_version{2}
 {
     m_shared_gnttab.reserve(max_nr_frames);

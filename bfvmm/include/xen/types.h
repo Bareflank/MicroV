@@ -48,6 +48,7 @@ class gnttab;
 class evtchn;
 class xenver;
 
+using xen = microv::xen;
 using xen_vcpu = microv::intel_x64::vcpu;
 using xen_domain = microv::intel_x64::domain;
 using base_vcpu = bfvmm::intel_x64::vcpu;

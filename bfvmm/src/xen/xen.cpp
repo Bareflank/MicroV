@@ -137,11 +137,6 @@ static bool xen_leaf2(base_vcpu *vcpu)
     return true;
 }
 
-void xen::queue_virq(uint32_t virq)
-{
-    m_evtchn->queue_virq(virq);
-}
-
 bool xen::xen_leaf4(base_vcpu *vcpu)
 {
     uint32_t rax = 0;
@@ -261,9 +256,6 @@ bool xen::handle_memory_op()
                 e820_view[map->nr_entries].size = entry.size;
                 e820_view[map->nr_entries].type = entry.type;
 
-                // Any holes in our E820 will use the default MTRR type UC
-                //m_mtrr.emplace_back(mtrr_range(entry));
-
                 map->nr_entries++;
             }
 
@@ -334,18 +326,30 @@ bool xen::handle_memory_op()
 bool xen::handle_xen_version()
 {
     switch (m_vcpu->rdi()) {
-    case XENVER_version: return m_xenver->version();
-    case XENVER_extraversion: return m_xenver->extraversion();
-    case XENVER_compile_info: return m_xenver->compile_info();
-    case XENVER_capabilities: return m_xenver->capabilities();
-    case XENVER_changeset: return m_xenver->changeset();
-    case XENVER_platform_parameters: return m_xenver->platform_parameters();
-    case XENVER_get_features: return m_xenver->get_features();
-    case XENVER_pagesize: return m_xenver->pagesize();
-    case XENVER_guest_handle: return m_xenver->guest_handle();
-    case XENVER_commandline: return m_xenver->commandline();
-    case XENVER_build_id: return m_xenver->build_id();
-    default: return false;
+    case XENVER_version:
+        return m_xenver->version();
+    case XENVER_extraversion:
+        return m_xenver->extraversion();
+    case XENVER_compile_info:
+        return m_xenver->compile_info();
+    case XENVER_capabilities:
+        return m_xenver->capabilities();
+    case XENVER_changeset:
+        return m_xenver->changeset();
+    case XENVER_platform_parameters:
+        return m_xenver->platform_parameters();
+    case XENVER_get_features:
+        return m_xenver->get_features();
+    case XENVER_pagesize:
+        return m_xenver->pagesize();
+    case XENVER_guest_handle:
+        return m_xenver->guest_handle();
+    case XENVER_commandline:
+        return m_xenver->commandline();
+    case XENVER_build_id:
+        return m_xenver->build_id();
+    default:
+        return false;
     }
 }
 
@@ -486,7 +490,7 @@ bool xen::handle_event_channel_op()
         return true;
     }
     default:
-        ;
+        return false;
     }
 
     return false;
@@ -500,28 +504,26 @@ bool xen::handle_sysctl()
 
 bool xen::handle_grant_table_op()
 {
-    switch (m_vcpu->rdi()) {
-    case GNTTABOP_query_size:
-        try {
+    try {
+        switch (m_vcpu->rdi()) {
+        case GNTTABOP_query_size: {
             auto arg = m_vcpu->map_arg<gnttab_query_size_t>(m_vcpu->rsi());
             m_gnttab->query_size(arg.get());
             m_vcpu->set_rax(0);
             return true;
-        } catchall({
-            ;
-        })
-    case GNTTABOP_set_version:
-        try {
+        }
+        case GNTTABOP_set_version: {
             auto arg = m_vcpu->map_arg<gnttab_set_version_t>(m_vcpu->rsi());
             m_gnttab->set_version(arg.get());
             m_vcpu->set_rax(SUCCESS);
             return true;
-        } catchall ({
-            ;
-        })
-    default:
+        }
+        default:
+            return false;
+        }
+    } catchall ({
         return false;
-    }
+    })
 }
 
 bool xen::handle_platform_op()
@@ -530,8 +532,7 @@ bool xen::handle_platform_op()
     auto xpf = m_vcpu->map_arg<xen_platform_op_t>(m_vcpu->rdi());
 
     switch (xpf->cmd) {
-    case XENPF_get_cpuinfo:
-    {
+    case XENPF_get_cpuinfo: {
         struct xenpf_pcpuinfo info = xpf->u.pcpu_info;
 
         info.max_present = 1;
@@ -543,19 +544,22 @@ bool xen::handle_platform_op()
         return true;
     }
     default:
-        ;
+        return false;
     }
+}
 
-    return false;
+void xen::queue_virq(uint32_t virq)
+{
+    m_evtchn->queue_virq(virq);
 }
 
 xen::xen(xen_vcpu *vcpu, xen_domain *dom) :
     m_vcpu{vcpu},
     m_dom{dom},
-    m_evtchn{std::make_unique<class evtchn>(vcpu)},
-    m_gnttab{std::make_unique<class gnttab>(vcpu)},
-    m_xenver{std::make_unique<class xenver>(vcpu)},
-    m_sysctl{std::make_unique<class sysctl>(vcpu)}
+    m_evtchn{std::make_unique<class evtchn>(this)},
+    m_gnttab{std::make_unique<class gnttab>(this)},
+    m_xenver{std::make_unique<class xenver>(this)},
+    m_sysctl{std::make_unique<class sysctl>(this)}
 {
     make_xen_ids(dom, this);
 

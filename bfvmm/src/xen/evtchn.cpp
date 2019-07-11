@@ -21,10 +21,11 @@
 
 #include <xen/evtchn.h>
 #include <xen/virq.h>
+#include <xen/xen.h>
 
 namespace microv {
 
-evtchn::evtchn(xen_vcpu *vcpu) : m_vcpu{vcpu}
+evtchn::evtchn(xen *xen) : m_xen{xen}, m_vcpu{xen->m_vcpu}
 {
     m_event_words.reserve(max_word_pages);
     m_event_chans.reserve(max_chan_pages);
