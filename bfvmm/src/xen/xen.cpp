@@ -29,6 +29,7 @@
 #include <xen/evtchn.h>
 #include <xen/gnttab.h>
 #include <xen/sysctl.h>
+#include <xen/xenmem.h>
 #include <xen/xenver.h>
 #include <xen/xen.h>
 
@@ -235,90 +236,20 @@ bool xen::handle_console_io()
 
 bool xen::handle_memory_op()
 {
-    switch (m_vcpu->rdi()) {
-    case XENMEM_memory_map:
-        try {
-            auto map = m_vcpu->map_arg<xen_memory_map_t>(m_vcpu->rsi());
-            if (map->nr_entries < m_vcpu->dom()->e820().size()) {
-                throw std::runtime_error("guest E820 too small");
-            }
-
-            auto addr = map->buffer.p;
-            auto size = map->nr_entries;
-
-            auto e820 = m_vcpu->map_gva_4k<e820_entry_t>(addr, size);
-            auto e820_view = gsl::span<e820_entry_t>(e820.get(), size);
-
-            map->nr_entries = 0;
-
-            for (const auto &entry : m_vcpu->dom()->e820()) {
-                e820_view[map->nr_entries].addr = entry.addr;
-                e820_view[map->nr_entries].size = entry.size;
-                e820_view[map->nr_entries].type = entry.type;
-
-                map->nr_entries++;
-            }
-
-            m_vcpu->set_rax(0);
-            return true;
-        } catchall({
-            ;
-        })
-        break;
-    case XENMEM_add_to_physmap:
-        try {
-            auto xatp = m_vcpu->map_arg<xen_add_to_physmap_t>(m_vcpu->rsi());
-            if (xatp->domid != DOMID_SELF) {
-                m_vcpu->set_rax(-EINVAL);
-            }
-
-            switch (xatp->space) {
-            case XENMAPSPACE_gmfn_foreign:
-                m_vcpu->set_rax(-ENOSYS);
-                return true;
-            case XENMAPSPACE_shared_info:
-                m_shinfo = m_vcpu->map_gpa_4k<shared_info>(xatp->gpfn << 12);
-                m_vcpu->set_rax(0);
-                return true;
-            case XENMAPSPACE_grant_table:
-                return m_gnttab->mapspace_grant_table(xatp.get());
-            default:
-                return false;
-            }
-
-        } catchall({
-            ;
-        })
-        break;
-    case XENMEM_decrease_reservation:
-        try {
-            auto arg = m_vcpu->map_arg<xen_memory_reservation_t>(m_vcpu->rsi());
-
-            expects(arg->domid == DOMID_SELF);
-            expects(arg->extent_order == 0);
-
-            auto gva = arg->extent_start.p;
-            auto len = arg->nr_extents * sizeof(xen_pfn_t);
-            auto map = m_vcpu->map_gva_4k<xen_pfn_t>(gva, len);
-            auto gfn = map.get();
-
-            for (auto i = 0U; i < arg->nr_extents; i++) {
-                auto dom = m_vcpu->dom();
-                auto gpa = (gfn[i] << 12);
-                dom->unmap(gpa);
-                dom->release(gpa);
-            }
-
-            m_vcpu->set_rax(arg->nr_extents);
-            return true;
-        } catchall({
-            m_vcpu->set_rax(FAILURE);
-        })
-    default:
-        break;
-    }
-
-    return false;
+    try {
+        switch (m_vcpu->rdi()) {
+        case XENMEM_memory_map:
+            return m_xenmem->memory_map();
+        case XENMEM_add_to_physmap:
+            return m_xenmem->add_to_physmap();
+        case XENMEM_decrease_reservation:
+            return m_xenmem->decrease_reservation();
+        default:
+            break;
+        }
+    } catchall ({
+        return false;
+    })
 }
 
 bool xen::handle_xen_version()
@@ -516,6 +447,7 @@ xen::xen(xen_vcpu *vcpu, xen_domain *dom) :
     m_dom{dom},
     m_evtchn{std::make_unique<class evtchn>(this)},
     m_gnttab{std::make_unique<class gnttab>(this)},
+    m_xenmem{std::make_unique<class xenmem>(this)},
     m_xenver{std::make_unique<class xenver>(this)},
     m_sysctl{std::make_unique<class sysctl>(this)}
 {

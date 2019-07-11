@@ -32,6 +32,7 @@ target_sources(microv_xen PRIVATE
     $<${X64}:evtchn.cpp>
     $<${X64}:gnttab.cpp>
     $<${X64}:sysctl.cpp>
+    $<${X64}:xenmem.cpp>
     $<${X64}:xenver.cpp>
     $<${X64}:xen.cpp>
 )

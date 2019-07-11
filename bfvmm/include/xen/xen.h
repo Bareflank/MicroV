@@ -26,6 +26,7 @@
 #include "evtchn.h"
 #include "gnttab.h"
 #include "sysctl.h"
+#include "xenmem.h"
 #include "xenver.h"
 #include <public/xen.h>
 
@@ -53,11 +54,13 @@ private:
     friend class gnttab;
     friend class evtchn;
     friend class sysctl;
+    friend class xenmem;
     friend class xenver;
 
     std::unique_ptr<class gnttab> m_gnttab;
     std::unique_ptr<class evtchn> m_evtchn;
     std::unique_ptr<class sysctl> m_sysctl;
+    std::unique_ptr<class xenmem> m_xenmem;
     std::unique_ptr<class xenver> m_xenver;
 
     bfvmm::x64::unique_map<struct shared_info> m_shinfo{};
