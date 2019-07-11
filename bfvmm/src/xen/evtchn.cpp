@@ -31,15 +31,18 @@ evtchn::evtchn(xen *xen) : m_xen{xen}, m_vcpu{xen->m_vcpu}
     m_event_chans.reserve(max_chan_pages);
 }
 
-void evtchn::init_control(evtchn_init_control_t *ctl)
+bool evtchn::init_control()
 {
+    auto ctl = m_vcpu->map_arg<evtchn_init_control_t>(m_vcpu->rsi());
     expects(ctl->offset <= (0x1000 - sizeof(evtchn_fifo_control_block_t)));
     expects((ctl->offset & 0x7) == 0);
 
     this->setup_control_block(ctl->control_gfn, ctl->offset);
     this->setup_ports();
-
     ctl->link_bits = EVTCHN_FIFO_LINK_BITS;
+
+    m_vcpu->set_rax(0);
+    return true;
 }
 
 void evtchn::set_callback_via(uint64_t via)
@@ -51,13 +54,18 @@ void evtchn::set_callback_via(uint64_t via)
     m_cb_via = via;
 }
 
-void evtchn::expand_array(evtchn_expand_array_t *arr)
+bool evtchn::expand_array()
 {
-    this->make_word_page(arr);
+    auto arg = m_vcpu->map_arg<evtchn_expand_array_t>(m_vcpu->rsi());
+    this->make_word_page(arg.get());
+
+    m_vcpu->set_rax(0);
+    return true;
 }
 
-void evtchn::alloc_unbound(evtchn_alloc_unbound_t *arg)
+bool evtchn::alloc_unbound()
 {
+    auto arg = m_vcpu->map_arg<evtchn_alloc_unbound_t>(m_vcpu->rsi());
     expects(arg->dom == DOMID_SELF);
     expects(arg->remote_dom == DOMID_SELF);
 
@@ -66,20 +74,29 @@ void evtchn::alloc_unbound(evtchn_alloc_unbound_t *arg)
 
     chan->port = port;
     chan->state = chan_t::state_unbound;
-
     arg->port = port;
 
-//    bfdebug_nhex(0, "alloc unbound port", port);
+    //bfdebug_nhex(0, "alloc unbound", port);
+    //bfdebug_subnhex(0, "dom", arg->dom);
+    //bfdebug_subnhex(0, "remote_dom", arg->remote_dom);
+
+    m_vcpu->set_rax(0);
+    return true;
 }
 
-void evtchn::send(evtchn_send_t *arg)
+bool evtchn::send()
 {
+    auto arg = m_vcpu->map_arg<evtchn_send_t>(m_vcpu->rsi());
 //    bfdebug_nhex(0, "send port", arg->port);
     this->upcall(this->port_to_chan(arg->port));
+
+    m_vcpu->set_rax(0);
+    return true;
 }
 
-void evtchn::close(evtchn_close_t *arg)
+bool evtchn::close()
 {
+    auto arg = m_vcpu->map_arg<evtchn_close_t>(m_vcpu->rsi());
     expects(arg->port);
 
     bfalert_nhex(0, "Closing interdomain port:", arg->port);
@@ -90,6 +107,9 @@ void evtchn::close(evtchn_close_t *arg)
         bfalert_nhex(0, "Closing interdomain, setting unbound", arg->port);
         chan->state = chan_t::state_unbound;
     }
+
+    m_vcpu->set_rax(0);
+    return true;
 }
 
 evtchn::port_t evtchn::bind_store()
@@ -116,8 +136,10 @@ evtchn::port_t evtchn::bind_console()
 //    bfdebug_nhex(0, "bound ipi:", port);
 //}
 
-void evtchn::bind_interdomain(evtchn_bind_interdomain_t *arg)
+bool evtchn::bind_interdomain()
 {
+    auto arg = m_vcpu->map_arg<evtchn_bind_interdomain_t>(m_vcpu->rsi());
+
 //    bfdebug_info(0, "evtchn: bound interdomain");
 //    bfdebug_subnhex(0, "remote_dom", arg->remote_dom);
 //    bfdebug_subnhex(0, "remote_port", arg->remote_port);
@@ -131,11 +153,16 @@ void evtchn::bind_interdomain(evtchn_bind_interdomain_t *arg)
     arg->local_port = port;
 
 //    bfdebug_subnhex(0, "local_port", port);
+
+    m_vcpu->set_rax(0);
+    return true;
 }
 
-void evtchn::bind_virq(evtchn_bind_virq_t *arg)
+bool evtchn::bind_virq()
 {
-    //expects(arg->vcpu == m_xen->vcpuid);
+    auto arg = m_vcpu->map_arg<evtchn_bind_virq_t>(m_vcpu->rsi());
+
+    expects(arg->vcpu == m_xen->vcpuid);
     expects(arg->virq < virq_info.size());
     expects(arg->virq < m_virq_to_port.size());
 
@@ -148,6 +175,9 @@ void evtchn::bind_virq(evtchn_bind_virq_t *arg)
     chan->data.virq = arg->virq;
     m_virq_to_port[arg->virq] = port;
     arg->port = port;
+
+    m_vcpu->set_rax(0);
+    return true;
 }
 
 void evtchn::queue_virq(uint32_t virq)
@@ -166,9 +196,10 @@ void evtchn::queue_virq(uint32_t virq)
 //    bfdebug_subnhex(0, "port", port);
 }
 
-void evtchn::bind_vcpu(evtchn_bind_vcpu_t *arg)
+bool evtchn::bind_vcpu()
 {
-    expects(arg->vcpu == 0);
+    auto arg = m_vcpu->map_arg<evtchn_bind_vcpu_t>(m_vcpu->rsi());
+    expects(arg->vcpu == m_xen->vcpuid);
 
     auto chan = this->port_to_chan(arg->port);
     auto prev = chan->vcpuid;
@@ -178,6 +209,9 @@ void evtchn::bind_vcpu(evtchn_bind_vcpu_t *arg)
 
     chan->vcpuid = arg->vcpu;
     chan->prev_vcpuid = prev;
+
+    m_vcpu->set_rax(0);
+    return true;
 }
 
 // =============================================================================

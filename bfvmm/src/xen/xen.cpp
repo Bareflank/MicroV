@@ -281,9 +281,7 @@ bool xen::handle_memory_op()
                 m_vcpu->set_rax(0);
                 return true;
             case XENMAPSPACE_grant_table:
-                m_gnttab->mapspace_grant_table(xatp.get());
-                m_vcpu->set_rax(0);
-                return true;
+                return m_gnttab->mapspace_grant_table(xatp.get());
             default:
                 return false;
             }
@@ -325,32 +323,36 @@ bool xen::handle_memory_op()
 
 bool xen::handle_xen_version()
 {
-    switch (m_vcpu->rdi()) {
-    case XENVER_version:
-        return m_xenver->version();
-    case XENVER_extraversion:
-        return m_xenver->extraversion();
-    case XENVER_compile_info:
-        return m_xenver->compile_info();
-    case XENVER_capabilities:
-        return m_xenver->capabilities();
-    case XENVER_changeset:
-        return m_xenver->changeset();
-    case XENVER_platform_parameters:
-        return m_xenver->platform_parameters();
-    case XENVER_get_features:
-        return m_xenver->get_features();
-    case XENVER_pagesize:
-        return m_xenver->pagesize();
-    case XENVER_guest_handle:
-        return m_xenver->guest_handle();
-    case XENVER_commandline:
-        return m_xenver->commandline();
-    case XENVER_build_id:
-        return m_xenver->build_id();
-    default:
+    try {
+        switch (m_vcpu->rdi()) {
+        case XENVER_version:
+            return m_xenver->version();
+        case XENVER_extraversion:
+            return m_xenver->extraversion();
+        case XENVER_compile_info:
+            return m_xenver->compile_info();
+        case XENVER_capabilities:
+            return m_xenver->capabilities();
+        case XENVER_changeset:
+            return m_xenver->changeset();
+        case XENVER_platform_parameters:
+            return m_xenver->platform_parameters();
+        case XENVER_get_features:
+            return m_xenver->get_features();
+        case XENVER_pagesize:
+            return m_xenver->pagesize();
+        case XENVER_guest_handle:
+            return m_xenver->guest_handle();
+        case XENVER_commandline:
+            return m_xenver->commandline();
+        case XENVER_build_id:
+            return m_xenver->build_id();
+        default:
+            return false;
+        }
+    } catchall ({
         return false;
-    }
+    })
 }
 
 static bool valid_cb_via(uint64_t via)
@@ -432,66 +434,30 @@ bool xen::handle_hvm_op()
 
 bool xen::handle_event_channel_op()
 {
-    switch (m_vcpu->rdi()) {
-    case EVTCHNOP_init_control:
-    {
-        auto ctl = m_vcpu->map_arg<evtchn_init_control_t>(m_vcpu->rsi());
-        m_evtchn->init_control(ctl.get());
-        m_vcpu->set_rax(0);
-        return true;
-    }
-    case EVTCHNOP_alloc_unbound:
-    {
-        auto eau = m_vcpu->map_arg<evtchn_alloc_unbound_t>(m_vcpu->rsi());
-        m_evtchn->alloc_unbound(eau.get());
-        m_vcpu->set_rax(0);
-        return true;
-    }
-    case EVTCHNOP_expand_array:
-    {
-        auto arg = m_vcpu->map_arg<evtchn_expand_array_t>(m_vcpu->rsi());
-        m_evtchn->expand_array(arg.get());
-        m_vcpu->set_rax(0);
-        return true;
-    }
-    case EVTCHNOP_bind_virq:
-    {
-        auto arg = m_vcpu->map_arg<evtchn_bind_virq_t>(m_vcpu->rsi());
-        m_evtchn->bind_virq(arg.get());
-        m_vcpu->set_rax(0);
-        return true;
-    }
-    case EVTCHNOP_send:
-    {
-        auto arg = m_vcpu->map_arg<evtchn_send_t>(m_vcpu->rsi());
-        m_evtchn->send(arg.get());
-        m_vcpu->set_rax(0);
-        return true;
-    }
-    case EVTCHNOP_bind_interdomain:
-    {
-        auto arg = m_vcpu->map_arg<evtchn_bind_interdomain_t>(m_vcpu->rsi());
-        m_evtchn->bind_interdomain(arg.get());
-        m_vcpu->set_rax(0);
-        return true;
-    }
-    case EVTCHNOP_close:
-    {
-        auto arg = m_vcpu->map_arg<evtchn_close_t>(m_vcpu->rsi());
-        m_evtchn->close(arg.get());
-        m_vcpu->set_rax(0);
-        return true;
-    }
-    case EVTCHNOP_bind_vcpu:
-    {
-        auto arg = m_vcpu->map_arg<evtchn_bind_vcpu_t>(m_vcpu->rsi());
-        m_evtchn->bind_vcpu(arg.get());
-        m_vcpu->set_rax(0);
-        return true;
-    }
-    default:
+    try {
+        switch (m_vcpu->rdi()) {
+        case EVTCHNOP_init_control:
+            return m_evtchn->init_control();
+        case EVTCHNOP_alloc_unbound:
+            return m_evtchn->alloc_unbound();
+        case EVTCHNOP_expand_array:
+            return m_evtchn->expand_array();
+        case EVTCHNOP_bind_virq:
+            return m_evtchn->bind_virq();
+        case EVTCHNOP_send:
+            return m_evtchn->send();
+        case EVTCHNOP_bind_interdomain:
+            return m_evtchn->bind_interdomain();
+        case EVTCHNOP_close:
+            return m_evtchn->close();
+        case EVTCHNOP_bind_vcpu:
+            return m_evtchn->bind_vcpu();
+        default:
+            return false;
+        }
+    } catchall({
         return false;
-    }
+    })
 
     return false;
 }
@@ -506,18 +472,10 @@ bool xen::handle_grant_table_op()
 {
     try {
         switch (m_vcpu->rdi()) {
-        case GNTTABOP_query_size: {
-            auto arg = m_vcpu->map_arg<gnttab_query_size_t>(m_vcpu->rsi());
-            m_gnttab->query_size(arg.get());
-            m_vcpu->set_rax(0);
-            return true;
-        }
-        case GNTTABOP_set_version: {
-            auto arg = m_vcpu->map_arg<gnttab_set_version_t>(m_vcpu->rsi());
-            m_gnttab->set_version(arg.get());
-            m_vcpu->set_rax(SUCCESS);
-            return true;
-        }
+        case GNTTABOP_query_size:
+            return m_gnttab->query_size();
+        case GNTTABOP_set_version:
+            return m_gnttab->set_version();
         default:
             return false;
         }

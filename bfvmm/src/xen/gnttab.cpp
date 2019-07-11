@@ -34,24 +34,33 @@ gnttab::gnttab(xen *xen) :
     m_shared_gnttab.push_back(make_page<shared_entry_t>());
 }
 
-void gnttab::query_size(gnttab_query_size_t *arg)
+bool gnttab::query_size()
 {
-    arg->nr_frames = gsl::narrow_cast<uint32_t>(m_shared_gnttab.size());
-    arg->max_nr_frames = max_nr_frames;
-    arg->status = GNTST_okay;
+    auto gqs = m_vcpu->map_arg<gnttab_query_size_t>(m_vcpu->rsi());
+
+    gqs->nr_frames = gsl::narrow_cast<uint32_t>(m_shared_gnttab.size());
+    gqs->max_nr_frames = max_nr_frames;
+    gqs->status = GNTST_okay;
+
+    m_vcpu->set_rax(0);
+    return true;
 }
 
-void gnttab::set_version(gnttab_set_version_t *arg)
+bool gnttab::set_version()
 {
-    arg->version = m_version;
+    auto gsv = m_vcpu->map_arg<gnttab_set_version_t>(m_vcpu->rsi());
+    gsv->version = m_version;
+
+    m_vcpu->set_rax(0);
+    return true;
 }
 
-void gnttab::mapspace_grant_table(xen_add_to_physmap_t *arg)
+bool gnttab::mapspace_grant_table(xen_add_to_physmap_t *atp)
 {
-    expects((arg->idx & XENMAPIDX_grant_table_status) == 0);
+    expects((atp->idx & XENMAPIDX_grant_table_status) == 0);
 
     auto hpa = 0ULL;
-    auto idx = arg->idx;
+    auto idx = atp->idx;
     auto size = m_shared_gnttab.size();
 
     if (idx < size) {
@@ -64,6 +73,8 @@ void gnttab::mapspace_grant_table(xen_add_to_physmap_t *arg)
         m_shared_gnttab.push_back(std::move(map));
     }
 
-    m_vcpu->map_4k_rw(arg->gpfn << x64::pt::page_shift, hpa);
+    m_vcpu->map_4k_rw(atp->gpfn << x64::pt::page_shift, hpa);
+    m_vcpu->set_rax(0);
+    return true;
 }
 }

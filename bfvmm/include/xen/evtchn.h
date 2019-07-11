@@ -83,17 +83,17 @@ public:
     static_assert(sizeof(chan_t) > sizeof(word_t));
     static_assert(word_t::is_always_lock_free);
 
-    void init_control(evtchn_init_control_t *ctl);
+    bool init_control();
+    bool alloc_unbound();
+    bool expand_array();
+    bool bind_interdomain();
+    bool bind_vcpu();
+    bool bind_virq();
+    bool close();
+    bool send();
+
     void set_callback_via(uint64_t via);
-    void alloc_unbound(evtchn_alloc_unbound_t *unbound);
-    void expand_array(evtchn_expand_array_t *arr);
-    void send(evtchn_send_t *arg);
-    void close(evtchn_close_t *arg);
-    void bind_ipi(evtchn_bind_ipi_t *arg);
-    void bind_virq(evtchn_bind_virq_t *arg);
     void queue_virq(uint32_t virq);
-    void bind_vcpu(evtchn_bind_vcpu *arg);
-    void bind_interdomain(evtchn_bind_interdomain_t *arg);
 
     port_t bind_console();
     port_t bind_store();

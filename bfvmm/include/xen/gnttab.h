@@ -41,9 +41,9 @@ class gnttab {
     std::vector<page_ptr<shared_entry_t>> m_shared_gnttab;
 
 public:
-    void query_size(gnttab_query_size_t *arg);
-    void set_version(gnttab_set_version_t *arg);
-    void mapspace_grant_table(xen_add_to_physmap_t *arg);
+    bool query_size();
+    bool set_version();
+    bool mapspace_grant_table(xen_add_to_physmap_t *arg);
 
     gnttab(xen *xen);
     ~gnttab() = default;
