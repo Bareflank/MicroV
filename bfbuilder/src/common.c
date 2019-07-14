@@ -633,7 +633,7 @@ static uint32_t pvh_sifs(struct create_vm_args *args)
     uint32_t flags = 0;
 
     if (args->initdom) {
-        flags |= SIF_INITDOMAIN;
+        flags = SIF_PRIVILEGED | SIF_INITDOMAIN;
     }
 
     BFDEBUG("PVH SIFs: %x", flags);

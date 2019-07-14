@@ -215,6 +215,13 @@ bool xen::handle_console_io()
     case CONSOLEIO_read: {
         auto n = m_dom->hvc_rx_get(gsl::span(buf.get(), len));
         m_vcpu->set_rax(n);
+//        if (n) {
+//            printf("console read: ");
+//            for (auto i = 0; i < n; i++) {
+//                printf("%c", buf.get()[i]);
+//            }
+//            printf("\n");
+//        }
         return true;
     }
     case CONSOLEIO_write: {

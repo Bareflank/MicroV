@@ -68,27 +68,25 @@ void evtchn::alloc_unbound(evtchn_alloc_unbound_t *arg)
 
     arg->port = port;
 
-    bfdebug_nhex(0, "alloc unbound", port);
-    bfdebug_subnhex(0, "dom", arg->dom);
-    bfdebug_subnhex(0, "remote_dom", arg->remote_dom);
+//    bfdebug_nhex(0, "alloc unbound port", port);
 }
 
 void evtchn::send(evtchn_send_t *arg)
 {
-    bfdebug_nhex(0, "send port", arg->port);
-    this->set_pending(this->port_to_chan(arg->port));
+//    bfdebug_nhex(0, "send port", arg->port);
+    this->upcall(this->port_to_chan(arg->port));
 }
 
 void evtchn::close(evtchn_close_t *arg)
 {
     expects(arg->port);
 
-    bfdebug_nhex(0, "Closing interdomain port:", arg->port);
+    bfalert_nhex(0, "Closing interdomain port:", arg->port);
     auto chan = this->port_to_chan(arg->port);
     expects(chan);
 
     if (chan->state == chan_t::state_interdomain) {
-        bfdebug_nhex(0, "Closing interdomain, setting unbound", arg->port);
+        bfalert_nhex(0, "Closing interdomain, setting unbound", arg->port);
         chan->state = chan_t::state_unbound;
     }
 }
@@ -119,9 +117,9 @@ evtchn::port_t evtchn::bind_console()
 
 void evtchn::bind_interdomain(evtchn_bind_interdomain_t *arg)
 {
-    bfdebug_info(0, "evtchn: bound interdomain");
-    bfdebug_subnhex(0, "remote_dom", arg->remote_dom);
-    bfdebug_subnhex(0, "remote_port", arg->remote_port);
+//    bfdebug_info(0, "evtchn: bound interdomain");
+//    bfdebug_subnhex(0, "remote_dom", arg->remote_dom);
+//    bfdebug_subnhex(0, "remote_port", arg->remote_port);
 
     auto port = this->bind(chan_t::state_interdomain);
     auto chan = this->port_to_chan(port);
@@ -131,20 +129,20 @@ void evtchn::bind_interdomain(evtchn_bind_interdomain_t *arg)
     chan->data.interdom.local_port = port;
     arg->local_port = port;
 
-    bfdebug_subnhex(0, "local_port", port);
+//    bfdebug_subnhex(0, "local_port", port);
 }
 
 void evtchn::bind_virq(evtchn_bind_virq_t *arg)
 {
-    //expects(arg->vcpu == m_vcpu->id());
+    //expects(arg->vcpu == m_xen->vcpuid);
     expects(arg->virq < virq_info.size());
     expects(arg->virq < m_virq_to_port.size());
 
     auto port = this->bind(chan_t::state_virq);
     auto chan = this->port_to_chan(port);
 
-    bfdebug_nhex(0, "evtchn: bound virq:", arg->virq);
-    bfdebug_subtext(0, "name:", virq_info[arg->virq].name);
+ //   bfdebug_nhex(0, "evtchn: bound virq port", port);
+ //   bfdebug_subtext(0, "name:", virq_info[arg->virq].name);
 
     chan->data.virq = arg->virq;
     m_virq_to_port[arg->virq] = port;
@@ -160,7 +158,11 @@ void evtchn::queue_virq(uint32_t virq)
     expects(chan);
     expects(chan->data.virq == virq);
 
-    this->set_pending(chan);
+    this->upcall(chan);
+
+//    bfdebug_info(0, "queueing virq");
+//    bfdebug_subnhex(0, "virq", virq);
+//    bfdebug_subnhex(0, "port", port);
 }
 
 void evtchn::bind_vcpu(evtchn_bind_vcpu_t *arg)
@@ -170,8 +172,8 @@ void evtchn::bind_vcpu(evtchn_bind_vcpu_t *arg)
     auto chan = this->port_to_chan(arg->port);
     auto prev = chan->vcpuid;
 
-    bfdebug_nhex(0, "bound vcpu:", arg->vcpu);
-    bfdebug_subnhex(0, "port:", arg->port);
+//    bfdebug_nhex(0, "bound vcpu:", arg->vcpu);
+//    bfdebug_subnhex(0, "port:", arg->port);
 
     chan->vcpuid = arg->vcpu;
     chan->prev_vcpuid = prev;
@@ -228,54 +230,51 @@ bool evtchn::set_link(word_t *word, event_word_t *val, port_t link)
     return word->compare_exchange_strong(expect, desire);
 }
 
-void evtchn::set_pending(chan_t *chan)
+void evtchn::upcall(chan_t *chan)
 {
     expects(m_ctl_blk);
+//    printf("upcall: port: %u ", chan->port);
 
-    const auto new_port = chan->port;
-    auto new_word = this->port_to_word(new_port);
-    if (!new_word) {
-
-        // The guest hasn't added the corresponding
-        // event array, so we set pending for later
-        bfalert_nhex(0, "port doesn't map to word", new_port);
+    auto port = chan->port;
+    auto word = this->port_to_word(port);
+    if (!word) {
+        bferror_nhex(0, "port doesn't map to word", port);
         chan->is_pending = true;
         return;
     }
 
-    if (this->word_is_masked(new_word) || this->word_is_linked(new_word)) {
+    /* Return if the guest has masked the event */
+    if (this->word_is_masked(word)) {
         return;
     }
 
-    this->word_set_pending(new_word);
     auto p = chan->priority;
     auto q = &m_queues.at(p);
 
-    // If the queue is empty, insert the tail and signal ready
-    if (*q->head == 0) {
-        *q->head = new_port;
-        q->tail = new_port;
+    if (*q->head == null_port) {
+        *q->head = port;
+    } else if (*q->head != port) {
+        auto link = *q->head;
+        auto tail = *q->head;
+        do {
+            tail = link;
+            auto w = this->port_to_word(tail);
+            link = w->load() & EVTCHN_FIFO_LINK_MASK;
+        } while (link && link != port);
 
-        m_ctl_blk->ready |= (1UL << p);
-        ::intel_x64::barrier::wmb();
-        m_vcpu->queue_external_interrupt(m_cb_via);
-
-        return;
+        if (GSL_LIKELY(!link)) {
+            auto w = this->port_to_word(tail);
+            auto val = w->load();
+            if (!this->set_link(w, &val, port)) {
+                bferror_info(0, "evtchn: failed to set_link");
+            }
+        }
     }
 
-    auto tail_word = this->port_to_word(q->tail);
-    auto tail_val = tail_word->load();
-
-    if (!this->set_link(tail_word, &tail_val, new_port)) {
-        bfalert_nhex(0, "Failed to set link:", new_port);
-        throw std::runtime_error("Failed to set link: " +
-                                 std::to_string(new_port));
-    }
-
-    q->tail = new_port;
+    this->word_set_pending(word);
+    m_vcpu->queue_external_interrupt(m_cb_via);
     m_ctl_blk->ready |= (1UL << p);
     ::intel_x64::barrier::wmb();
-    m_vcpu->queue_external_interrupt(m_cb_via);
 }
 
 // Ports

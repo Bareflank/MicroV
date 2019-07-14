@@ -72,9 +72,7 @@ public:
 
     using queue_t = struct fifo_queue {
         port_t *head;
-        port_t tail;
         uint8_t priority;
-        // No locking needed yet
         // std::mutex lock;
     };
 
@@ -144,7 +142,7 @@ private:
     // Links
     //
     bool set_link(word_t *word, event_word_t *val, port_t link);
-    void set_pending(chan_t *chan);
+    void upcall(chan_t *chan);
 
     // Interface for atomic accesses to shared memory
     //

@@ -311,14 +311,16 @@ static void consume_one_event(unsigned cpu,
 	 * If the queue is empty, clear this priority from our local
 	 * copy of the ready word.
 	 */
-	if (head == 0)
+	if (head == 0) {
 		clear_bit(priority, ready);
+        }
 
 	if (evtchn_fifo_is_pending(port) && !evtchn_fifo_is_masked(port)) {
-		if (unlikely(drop))
+		if (unlikely(drop)) {
 			pr_warn("Dropping pending event for port %u\n", port);
-		else
+                } else {
 			handle_irq_for_port(port);
+                }
 	}
 
 	q->head[priority] = head;

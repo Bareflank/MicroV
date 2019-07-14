@@ -51,9 +51,9 @@ write_str(const std::string &str)
         std::lock_guard<std::mutex> guard(g_write_mutex);
 
         g_debug_ring()->write(str);
-#ifdef XUE_DEBUG
-        xue_write(&g_xue, (const char *)str.data(), str.size());
-#endif
+//#ifdef XUE_DEBUG
+//        xue_write(&g_xue, (const char *)str.data(), str.size());
+//#endif
 
         for (const auto c : str) {
             bfvmm::DEFAULT_COM_DRIVER::instance()->write(c);
