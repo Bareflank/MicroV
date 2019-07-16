@@ -1,6 +1,6 @@
 #
 # Automatically generated file; DO NOT EDIT.
-# Buildroot 2019.08-git-g5af2801689a9 Configuration
+# Buildroot 2019.08-git-g61cdeb4f6-dirty Configuration
 #
 BR2_HAVE_DOT_CONFIG=y
 BR2_HOST_GCC_AT_LEAST_4_5=y
@@ -96,7 +96,7 @@ BR2_BZCAT="bzcat"
 BR2_XZCAT="xzcat"
 BR2_LZCAT="lzip -d -c"
 BR2_TAR_OPTIONS=""
-BR2_DEFCONFIG="@MICROV_SOURCE_DEPS_DIR@/buildroot/configs/venom_config"
+BR2_DEFCONFIG="/home/cjd/bf/microv/deps/buildroot/configs/venom_basepvh_defconfig"
 BR2_DL_DIR="$(TOPDIR)/dl"
 BR2_HOST_DIR="$(BASE_DIR)/host"
 
@@ -117,10 +117,10 @@ BR2_STRIP_EXCLUDE_FILES=""
 BR2_STRIP_EXCLUDE_DIRS=""
 # BR2_OPTIMIZE_0 is not set
 # BR2_OPTIMIZE_1 is not set
-# BR2_OPTIMIZE_2 is not set
+BR2_OPTIMIZE_2=y
 # BR2_OPTIMIZE_3 is not set
 # BR2_OPTIMIZE_G is not set
-BR2_OPTIMIZE_S=y
+# BR2_OPTIMIZE_S is not set
 # BR2_OPTIMIZE_FAST is not set
 # BR2_GOOGLE_BREAKPAD_ENABLE is not set
 # BR2_STATIC_LIBS is not set
@@ -164,7 +164,7 @@ BR2_TOOLCHAIN_EXTERNAL=y
 BR2_TOOLCHAIN_EXTERNAL_CUSTOM=y
 # BR2_TOOLCHAIN_EXTERNAL_DOWNLOAD is not set
 BR2_TOOLCHAIN_EXTERNAL_PREINSTALLED=y
-BR2_TOOLCHAIN_EXTERNAL_PATH="@CACHE_DIR@/xtools"
+BR2_TOOLCHAIN_EXTERNAL_PATH="/home/cjd/xtools/venom/x86_64-buildroot-linux-gnu"
 BR2_TOOLCHAIN_EXTERNAL_GLIBC=y
 BR2_PACKAGE_HAS_TOOLCHAIN_EXTERNAL=y
 BR2_PACKAGE_PROVIDES_TOOLCHAIN_EXTERNAL="toolchain-external-custom"
@@ -354,13 +354,12 @@ BR2_ROOTFS_DEVICE_TABLE="system/device_table.txt"
 BR2_ROOTFS_MERGED_USR=y
 BR2_TARGET_ENABLE_ROOT_LOGIN=y
 BR2_TARGET_GENERIC_ROOT_PASSWD=""
-# BR2_SYSTEM_BIN_SH_BUSYBOX is not set
-BR2_SYSTEM_BIN_SH_BASH=y
+BR2_SYSTEM_BIN_SH_BUSYBOX=y
+# BR2_SYSTEM_BIN_SH_BASH is not set
 # BR2_SYSTEM_BIN_SH_DASH is not set
 # BR2_SYSTEM_BIN_SH_MKSH is not set
 # BR2_SYSTEM_BIN_SH_ZSH is not set
 # BR2_SYSTEM_BIN_SH_NONE is not set
-BR2_SYSTEM_BIN_SH="bash"
 # BR2_TARGET_GENERIC_GETTY is not set
 BR2_TARGET_GENERIC_REMOUNT_ROOTFS_RW=y
 BR2_SYSTEM_DHCP=""
@@ -397,7 +396,7 @@ BR2_LINUX_KERNEL_PATCH=""
 # BR2_LINUX_KERNEL_USE_DEFCONFIG is not set
 # BR2_LINUX_KERNEL_USE_ARCH_DEFAULT_CONFIG is not set
 BR2_LINUX_KERNEL_USE_CUSTOM_CONFIG=y
-BR2_LINUX_KERNEL_CUSTOM_CONFIG_FILE="@MICROV_SOURCE_DEPS_DIR@/linux/venom_config"
+BR2_LINUX_KERNEL_CUSTOM_CONFIG_FILE="/home/cjd/bf/microv/deps/linux/.config"
 BR2_LINUX_KERNEL_CONFIG_FRAGMENT_FILES=""
 BR2_LINUX_KERNEL_CUSTOM_LOGO_PATH=""
 # BR2_LINUX_KERNEL_BZIMAGE is not set
@@ -607,7 +606,6 @@ BR2_PACKAGE_VALGRIND_ARCH_SUPPORTS=y
 #
 # Development tools
 #
-# BR2_PACKAGE_BATS_CORE is not set
 # BR2_PACKAGE_BINUTILS is not set
 # BR2_PACKAGE_BSDIFF is not set
 # BR2_PACKAGE_BUSTLE is not set
@@ -1746,7 +1744,7 @@ BR2_PACKAGE_PCRE_UTF=y
 BR2_PACKAGE_PCRE_UCP=y
 # BR2_PACKAGE_PCRE2 is not set
 # BR2_PACKAGE_POPT is not set
-BR2_PACKAGE_READLINE=y
+# BR2_PACKAGE_READLINE is not set
 # BR2_PACKAGE_SLANG is not set
 # BR2_PACKAGE_TCLAP is not set
 # BR2_PACKAGE_USTR is not set
@@ -2064,35 +2062,35 @@ BR2_PACKAGE_MONGREL2_LIBC_SUPPORTS=y
 #
 
 #
-# Please note:
+# Please note:                                           
 #
 
 #
-# - Buildroot does *not* generate binary packages,
+# - Buildroot does *not* generate binary packages,       
 #
 
 #
-# - Buildroot does *not* install any package database.
+# - Buildroot does *not* install any package database.   
 #
 
 #
-# *
+# *                                                      
 #
 
 #
-# It is up to you to provide those by yourself if you
+# It is up to you to provide those by yourself if you    
 #
 
 #
-# want to use any of those package managers.
+# want to use any of those package managers.             
 #
 
 #
-# *
+# *                                                      
 #
 
 #
-# See the manual:
+# See the manual:                                        
 #
 
 #
@@ -2132,8 +2130,8 @@ BR2_PACKAGE_XENOMAI_COBALT_ARCH_SUPPORTS=y
 #
 # Shells
 #
-BR2_PACKAGE_BASH=y
-# BR2_PACKAGE_DASH is not set
+# BR2_PACKAGE_BASH is not set
+BR2_PACKAGE_DASH=y
 # BR2_PACKAGE_MKSH is not set
 # BR2_PACKAGE_ZSH is not set
 
@@ -2141,7 +2139,6 @@ BR2_PACKAGE_BASH=y
 # Utilities
 #
 # BR2_PACKAGE_AT is not set
-# BR2_PACKAGE_BASH_COMPLETION is not set
 # BR2_PACKAGE_CCRYPT is not set
 # BR2_PACKAGE_DIALOG is not set
 # BR2_PACKAGE_DTACH is not set
@@ -2171,7 +2168,7 @@ BR2_PACKAGE_BASH=y
 # BR2_PACKAGE_ACL is not set
 # BR2_PACKAGE_ANDROID_TOOLS is not set
 # BR2_PACKAGE_ATOP is not set
-# BR2_PACKAGE_ATTR is not set
+BR2_PACKAGE_ATTR=y
 BR2_PACKAGE_AUDIT_ARCH_SUPPORTS=y
 # BR2_PACKAGE_AUDIT is not set
 
@@ -2219,7 +2216,7 @@ BR2_PACKAGE_KMOD_TOOLS=y
 #
 # pamtester depends on linux-pam
 #
-# BR2_PACKAGE_POLKIT is not set
+BR2_PACKAGE_POLKIT=y
 # BR2_PACKAGE_PROCPS_NG is not set
 # BR2_PACKAGE_PROCRANK_LINUX is not set
 # BR2_PACKAGE_PSMISC is not set
@@ -2236,7 +2233,7 @@ BR2_PACKAGE_KMOD_TOOLS=y
 # BR2_PACKAGE_S6_RC is not set
 # BR2_PACKAGE_SCRUB is not set
 # BR2_PACKAGE_SCRYPT is not set
-# BR2_PACKAGE_SMACK is not set
+BR2_PACKAGE_SMACK=y
 # BR2_PACKAGE_START_STOP_DAEMON is not set
 
 #
@@ -2267,7 +2264,7 @@ BR2_PACKAGE_SYSTEMD_LOGIND=y
 # BR2_PACKAGE_SYSTEMD_RANDOMSEED is not set
 # BR2_PACKAGE_SYSTEMD_RESOLVED is not set
 # BR2_PACKAGE_SYSTEMD_RFKILL is not set
-# BR2_PACKAGE_SYSTEMD_SMACK_SUPPORT is not set
+BR2_PACKAGE_SYSTEMD_SMACK_SUPPORT=y
 # BR2_PACKAGE_SYSTEMD_SYSUSERS is not set
 BR2_PACKAGE_SYSTEMD_TIMEDATED=y
 BR2_PACKAGE_SYSTEMD_TIMESYNCD=y
