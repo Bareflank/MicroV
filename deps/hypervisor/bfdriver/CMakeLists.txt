@@ -41,6 +41,12 @@ elseif(DEFINED ENABLE_VMM_AVX512)
     set(BFVMM_XSAVE BFVMM_AVX512)
 endif()
 
+if(USE_XUE)
+    set(XUE_DEBUG "USE_XUE")
+else()
+    set(XUE_DEBUG NO_XUE)
+endif()
+
 configure_file(
     src/platform/linux/Makefile.in
     ${PROJECT_SOURCE_DIR}/src/platform/linux/Makefile

@@ -78,7 +78,7 @@ handle_cpuid_0x4BF00010(vcpu *vcpu)
     /// initalized using the VMM's CR3, and not the hosts.
     ///
 
-#ifdef XUE_DEBUG
+#ifdef USE_XUE
     if (vcpu->id() == 0 && g_xue.sysid == xue_sysid_windows) {
         xue_open(&g_xue, &g_xue_ops, NULL);
     }
@@ -128,7 +128,7 @@ handle_cpuid_0x4BF00021(vcpu *vcpu)
 
     bfdebug_info(0, "host os is" bfcolor_red " not " bfcolor_end "in a vm");
 
-#ifdef XUE_DEBUG
+#ifdef USE_XUE
     if (vcpu->id() == 0 && g_xue.sysid == xue_sysid_windows) {
         xue_close(&g_xue);
     }

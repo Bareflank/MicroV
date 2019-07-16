@@ -137,6 +137,7 @@ target_compile_definitions(bfroot INTERFACE
     $<${VMM_C_CXX}:__ELF__>
     $<${VMM_C_CXX_AVX}:BFVMM_AVX>
     $<${VMM_C_CXX_AVX512}:BFVMM_AVX512>
+    $<$<BOOL:${USE_XUE}>:USE_XUE>
 )
 target_include_directories(bfroot SYSTEM INTERFACE
     $<INSTALL_INTERFACE:$<${VMM_C_CXX}:${VMM_PREFIX_PATH}/include/c++/v1>>
@@ -271,6 +272,7 @@ target_compile_definitions(bfroot INTERFACE
     $<${EFI_C}:EFI>
     $<${EFI_C_AVX}:BFVMM_AVX>
     $<${EFI_C_AVX512}:BFVMM_AVX512>
+    $<$<BOOL:${USE_XUE}>:USE_XUE>
 )
 target_include_directories(bfroot SYSTEM INTERFACE
     $<INSTALL_INTERFACE:$<${EFI_C}:${EFI_PREFIX_PATH}/include/efi>>

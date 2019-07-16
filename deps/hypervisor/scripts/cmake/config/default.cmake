@@ -378,6 +378,14 @@ add_config(
     SKIP_VALIDATION
 )
 
+add_config(
+    CONFIG_NAME USE_XUE
+    CONFIG_TYPE BOOL
+    DEFAULT_VAL OFF
+    DESCRIPTION "Use the xue debugger"
+    SKIP_VALIDATION
+)
+
 # ------------------------------------------------------------------------------
 # Non-configurable directories
 # ------------------------------------------------------------------------------

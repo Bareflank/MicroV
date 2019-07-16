@@ -193,7 +193,7 @@ vcpu::write_domU_guest_state(domain *domain)
 
 bool vcpu::handle_0x4BF00010(bfvmm::intel_x64::vcpu *vcpu)
 {
-#ifdef XUE_DEBUG
+#ifdef USE_XUE
     if (vcpu->id() == 0 && g_xue.sysid == xue_sysid_windows) {
         xue_open(&g_xue, &g_xue_ops, NULL);
     }
@@ -207,7 +207,7 @@ bool vcpu::handle_0x4BF00021(bfvmm::intel_x64::vcpu *vcpu)
 {
     bfdebug_info(0, "host os is" bfcolor_red " not " bfcolor_end "in a vm");
 
-#ifdef XUE_DEBUG
+#ifdef USE_XUE
     if (vcpu->id() == 0 && g_xue.sysid == xue_sysid_windows) {
         xue_close(&g_xue);
     }
