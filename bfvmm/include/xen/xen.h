@@ -47,6 +47,7 @@ private:
     bool handle_event_channel_op();
     bool handle_grant_table_op();
     bool handle_platform_op();
+    bool handle_xsm_op();
     bool handle_console_io();
     bool handle_sysctl();
 

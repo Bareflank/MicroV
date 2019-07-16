@@ -41,6 +41,7 @@
 #include <public/version.h>
 #include <public/hvm/hvm_op.h>
 #include <public/hvm/params.h>
+#include <public/xsm/flask_op.h>
 
 #define XEN_MAJOR 4UL
 #define XEN_MINOR 13UL
@@ -200,6 +201,8 @@ bool xen::handle_hypercall(xen_vcpu *vcpu)
         return this->handle_console_io();
     case __HYPERVISOR_sysctl:
         return this->handle_sysctl();
+    case __HYPERVISOR_xsm_op:
+        return this->handle_xsm_op();
     default:
         return false;
     }
@@ -436,6 +439,23 @@ bool xen::handle_platform_op()
     default:
         return false;
     }
+}
+
+bool xen::handle_xsm_op()
+{
+    expects(m_dom->initdom());
+    auto flop = m_vcpu->map_arg<xen_flask_op_t>(m_vcpu->rdi());
+
+    switch (flop->cmd) {
+    case FLASK_SID_TO_CONTEXT:
+        break;
+    default:
+        bfalert_nhex(0, "unhandled flask_op", flop->cmd);
+        break;
+    }
+
+    m_vcpu->set_rax(-EACCES);
+    return true;
 }
 
 void xen::queue_virq(uint32_t virq)
