@@ -836,7 +836,6 @@ setup_kernel(struct vm_t *vm, struct create_vm_args *args)
         break;
     }
 
-    platform_free_rw(vm->addr, vm->size);
     return FAILURE;
 }
 
@@ -1222,6 +1221,12 @@ common_destroy(uint64_t domainid)
     platform_free_rw(vm->addr, vm->size);
 
     // TODO free PVH specific stuff
+    if (vm->exec_mode == VM_EXEC_XENPVH) {
+        platform_free_rw(vm->pvh_console, BAREFLANK_PAGE_SIZE);
+        platform_free_rw(vm->pvh_store, BAREFLANK_PAGE_SIZE);
+        platform_free_rw(vm->pvh_start_info, BAREFLANK_PAGE_SIZE);
+        platform_free_rw(vm->pvh_modlist, BAREFLANK_PAGE_SIZE);
+    }
 
     release_vm(vm);
     return SUCCESS;
