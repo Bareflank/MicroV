@@ -115,8 +115,16 @@ add_config(
 )
 
 add_config(
+    CONFIG_NAME BR_IMAGE
+    CONFIG_TYPE STRING
+    DEFAULT_VAL xsvm
+    DESCRIPTION "Select a pre-canned VM to build"
+    OPTIONS xsvm
+)
+
+add_config(
     CONFIG_NAME BR_BUILD_DIR
     CONFIG_TYPE STRING
-    DEFAULT_VAL ${CMAKE_BINARY_DIR}/buildroot
+    DEFAULT_VAL ${CACHE_DIR}/brbuild/${BR_IMAGE}
     DESCRIPTION "Buildroot build dir"
 )
