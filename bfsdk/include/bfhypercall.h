@@ -139,10 +139,7 @@ __uart_ndec_op(uint16_t port, uint64_t val)
 #define __enum_domain_op__set_uart 0xBF02000000000200
 #define __enum_domain_op__set_pt_uart 0xBF02000000000201
 #define __enum_domain_op__dump_uart 0xBF02000000000202
-#define __enum_domain_op__set_exec_mode 0xBF02000000000203
 #define __enum_domain_op__add_e820_entry 0xBF02000000000204
-#define __enum_domain_op__set_initdom 0xBF02000000000205
-#define __enum_domain_op__set_hvc 0xBF02000000000206
 #define __enum_domain_op__hvc_rx_put 0xBF02000000000207
 #define __enum_domain_op__hvc_tx_get 0xBF02000000000208
 
@@ -275,12 +272,31 @@ __uart_ndec_op(uint16_t port, uint64_t val)
 #define HVC_RX_SIZE 256
 #define HVC_TX_SIZE 0x4000
 
+/* Is this a privileged xen domain? */
+#define DOMF_XENPRIV (1ULL << 0)
+
+/* Is this an initial xen domain? */
+#define DOMF_XENINIT (1ULL << 1)
+
+/* Is this a xenstore domain? */
+#define DOMF_XENSTORE (DOMF_XENINIT | DOMF_XENPRIV)
+
+/* Does this domain use the xen console? */
+#define DOMF_XENHVC (1ULL << 2)
+
+/* Does this domain run with xenpvh exec mode? */
+#define DOMF_EXEC_XENPVH (1ULL << 3)
+
+/* Does this domain run with native microv exec mode? */
+#define DOMF_EXEC_NATIVE (1ULL << 4)
+
+
 static inline domainid_t
-__domain_op__create_domain(void)
+__domain_op__create_domain(uint64_t flags)
 {
     return _vmcall(
         __enum_domain_op__create_domain,
-        0,
+        flags,
         0,
         0
     );
@@ -297,39 +313,6 @@ __domain_op__destroy_domain(domainid_t foreign_domainid)
     );
 
     return ret == 0 ? SUCCESS : FAILURE;
-}
-
-static inline status_t
-__domain_op__set_exec_mode(domainid_t foreign_domainid, uint64_t mode)
-{
-    return _vmcall(
-        __enum_domain_op__set_exec_mode,
-        foreign_domainid,
-        mode,
-        0
-    );
-}
-
-static inline status_t
-__domain_op__set_initdom(domainid_t foreign_domainid, uint64_t initdom)
-{
-    return _vmcall(
-        __enum_domain_op__set_initdom,
-        foreign_domainid,
-        initdom,
-        0
-    );
-}
-
-static inline status_t
-__domain_op__set_hvc(domainid_t foreign_domainid, uint64_t hvc)
-{
-    return _vmcall(
-        __enum_domain_op__set_hvc,
-        foreign_domainid,
-        hvc,
-        0
-    );
 }
 
 static inline uint64_t

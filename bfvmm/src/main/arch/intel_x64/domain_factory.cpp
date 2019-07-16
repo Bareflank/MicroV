@@ -28,8 +28,10 @@ namespace microv
 std::unique_ptr<domain>
 domain_factory::make(domain::domainid_type domainid, bfobject *obj)
 {
-    bfignored(obj);
-    return std::make_unique<microv::intel_x64::domain>(domainid);
+    return std::make_unique<microv::intel_x64::domain>(
+               domainid,
+               dynamic_cast<struct domain_info *>(obj)
+           );
 }
 
 }

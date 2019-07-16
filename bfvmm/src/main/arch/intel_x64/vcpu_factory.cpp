@@ -30,7 +30,9 @@ std::unique_ptr<vcpu>
 vcpu_factory::make(vcpuid::type vcpuid, bfobject *obj)
 {
     using namespace microv::intel_x64;
-    static domain dom0{0};
+
+    static microv::domain_info dom0_info{};
+    static domain dom0{0, &dom0_info};
 
     if (vcpuid::is_host_vm_vcpu(vcpuid)) {
         return

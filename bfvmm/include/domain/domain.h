@@ -33,6 +33,11 @@
 namespace microv
 {
 
+struct domain_info : public bfobject {
+    uint64_t flags{};
+    virtual ~domain_info() = default;
+};
+
 /// Domain
 ///
 class domain : public bfobject

@@ -36,9 +36,11 @@ using namespace bfvmm::intel_x64;
 namespace microv::intel_x64
 {
 
-domain::domain(domainid_type domainid) :
+domain::domain(domainid_type domainid, struct domain_info *info) :
     microv::domain{domainid}
 {
+    m_info.flags = info->flags;
+
     if (domainid == 0) {
         this->setup_dom0();
     }
@@ -69,30 +71,10 @@ domain::setup_dom0()
 void
 domain::setup_domU()
 {
-}
-
-void
-domain::process_donated_page(uintptr_t gpa, uintptr_t hpa)
-{
-//    if (m_did == 0) {
-//        return;
-//    }
-//
-//    switch (m_exec_mode) {
-//    case VM_EXEC_NATIVE:
-//        return;
-//
-//    case VM_EXEC_XENPVH:
-//        if (gpa != XAPIC_GPA) {
-//            return;
-//        }
-//        this->set_xapic_hpa(hpa);
-//        return;
-//
-//    default:
-//        bferror_nhex(0, "process_donated_page: invalid mode:", m_exec_mode);
-//        throw std::runtime_error("invalid exec mode");
-//    }
+    if (m_info.flags & DOMF_XENHVC) {
+        m_hvc_rx_ring = std::make_unique<microv::ring<HVC_RX_SIZE>>();
+        m_hvc_tx_ring = std::make_unique<microv::ring<HVC_TX_SIZE>>();
+    }
 }
 
 void
@@ -146,13 +128,15 @@ void
 domain::release(uintptr_t gpa)
 { m_ept_map.release(gpa); }
 
-void
-domain::set_exec_mode(uint64_t mode) noexcept
-{ m_exec_mode = mode; }
-
 uint64_t
 domain::exec_mode() noexcept
-{ return m_exec_mode; }
+{
+    if (m_info.flags & DOMF_EXEC_XENPVH) {
+        return VM_EXEC_XENPVH;
+    }
+
+    return VM_EXEC_NATIVE;
+}
 
 void
 domain::set_uart(uart::port_type uart) noexcept
@@ -163,40 +147,16 @@ domain::set_pt_uart(uart::port_type uart) noexcept
 { m_pt_uart_port = uart; }
 
 size_t domain::hvc_rx_put(const gsl::span<char> &span)
-{
-    if (GSL_UNLIKELY(!m_hvc_rx_ring)) {
-        m_hvc_rx_ring = std::make_unique<microv::ring<HVC_RX_SIZE>>();
-    }
-
-    return m_hvc_rx_ring->put(span);
-}
+{ return m_hvc_rx_ring->put(span); }
 
 size_t domain::hvc_rx_get(const gsl::span<char> &span)
-{
-    if (GSL_UNLIKELY(!m_hvc_rx_ring)) {
-        m_hvc_rx_ring = std::make_unique<microv::ring<HVC_RX_SIZE>>();
-    }
-
-    return m_hvc_rx_ring->get(span);
-}
+{ return m_hvc_rx_ring->get(span); }
 
 size_t domain::hvc_tx_put(const gsl::span<char> &span)
-{
-    if (GSL_UNLIKELY(!m_hvc_tx_ring)) {
-        m_hvc_tx_ring = std::make_unique<microv::ring<HVC_TX_SIZE>>();
-    }
-
-    return m_hvc_tx_ring->put(span);
-}
+{ return m_hvc_tx_ring->put(span); }
 
 size_t domain::hvc_tx_get(const gsl::span<char> &span)
-{
-    if (GSL_UNLIKELY(!m_hvc_tx_ring)) {
-        m_hvc_tx_ring = std::make_unique<microv::ring<HVC_TX_SIZE>>();
-    }
-
-    return m_hvc_tx_ring->get(span);
-}
+{ return m_hvc_tx_ring->get(span); }
 
 void
 domain::setup_vcpu_uarts(gsl::not_null<vcpu *> vcpu)

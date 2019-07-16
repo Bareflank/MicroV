@@ -49,7 +49,7 @@ public:
     /// @expects
     /// @ensures
     ///
-    domain(domainid_type domainid);
+    domain(domainid_type domainid, struct domain_info *info);
 
     /// Destructor
     ///
@@ -214,18 +214,6 @@ public:
     ///
     void release(uintptr_t gpa);
 
-    /// Set exec mode
-    ///
-    /// @expects
-    /// @ensures
-    ///
-    /// Set the execution mode of the domain.
-    /// One of VM_EXEC_NATIVE or VM_EXEC_XENPVH.
-    ///
-    /// @param mode the mode this domain is running with
-    ///
-    void set_exec_mode(uint64_t mode) noexcept;
-
     /// Exec mode
     ///
     /// @expects
@@ -238,11 +226,7 @@ public:
     ///
     uint64_t exec_mode() noexcept;
 
-    void set_initdom(uint64_t initdom) noexcept { m_initdom = initdom; }
-    bool initdom() noexcept { return m_initdom != 0; }
-
-    void use_hvc(uint64_t use_hvc) noexcept { m_use_hvc = use_hvc; }
-    bool using_hvc() noexcept { return m_use_hvc != 0; }
+    bool initdom() noexcept { return m_info.flags & DOMF_XENINIT; }
 
     /// Set UART
     ///
@@ -427,8 +411,6 @@ public:
     VIRTUAL uint64_t ldtr_access_rights() const noexcept;
     VIRTUAL void set_ldtr_access_rights(uint64_t val) noexcept;
 
-    void process_donated_page(uintptr_t gpa, uintptr_t hpa);
-
     /// @endcond
 
     std::vector<e820_entry_t> &e820()
@@ -521,9 +503,7 @@ private:
     uint64_t m_ldtr_access_rights{};
 
     uint64_t m_did{};
-    uint64_t m_exec_mode{};
-    uint64_t m_initdom{};
-    uint64_t m_use_hvc{};
+    struct microv::domain_info m_info{};
 
     std::unique_ptr<microv::ring<HVC_RX_SIZE>> m_hvc_rx_ring;
     std::unique_ptr<microv::ring<HVC_TX_SIZE>> m_hvc_tx_ring;

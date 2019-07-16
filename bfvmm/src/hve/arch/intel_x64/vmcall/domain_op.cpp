@@ -48,8 +48,12 @@ void
 vmcall_domain_op_handler::domain_op__create_domain(vcpu *vcpu)
 {
     try {
+        struct microv::domain_info info{};
+
+        info.flags = vcpu->rbx();
         vcpu->set_rax(domain::generate_domainid());
-        g_dm->create(vcpu->rax(), nullptr);
+
+        g_dm->create(vcpu->rax(), &info);
     }
     catchall({
         vcpu->set_rax(INVALID_DOMAINID);
@@ -62,43 +66,6 @@ vmcall_domain_op_handler::domain_op__destroy_domain(vcpu *vcpu)
     try {
         expects(foreign_domain(vcpu));
         g_dm->destroy(vcpu->rbx(), nullptr);
-        vcpu->set_rax(SUCCESS);
-    }
-    catchall({
-        vcpu->set_rax(FAILURE);
-    })
-}
-
-void
-vmcall_domain_op_handler::domain_op__set_exec_mode(vcpu *vcpu)
-{
-    try {
-        expects(foreign_domain(vcpu));
-        get_domain(vcpu->rbx())->set_exec_mode(vcpu->rcx());
-        vcpu->set_rax(SUCCESS);
-    }
-    catchall({
-        vcpu->set_rax(FAILURE);
-    })
-}
-
-void vmcall_domain_op_handler::domain_op__set_initdom(vcpu *vcpu)
-{
-    try {
-        expects(foreign_domain(vcpu));
-        get_domain(vcpu->rbx())->set_initdom(vcpu->rcx());
-        vcpu->set_rax(SUCCESS);
-    }
-    catchall({
-        vcpu->set_rax(FAILURE);
-    })
-}
-
-void vmcall_domain_op_handler::domain_op__set_hvc(vcpu *vcpu)
-{
-    try {
-        expects(foreign_domain(vcpu));
-        get_domain(vcpu->rbx())->use_hvc(vcpu->rcx());
         vcpu->set_rax(SUCCESS);
     }
     catchall({
@@ -277,7 +244,6 @@ vmcall_domain_op_handler::domain_op__donate_page_r(vcpu *vcpu)
 
         auto [hpa, unused] = vcpu->gpa_to_hpa(vcpu->rcx());
         get_domain(vcpu->rbx())->map_4k_r(vcpu->rdx(), hpa);
-        get_domain(vcpu->rbx())->process_donated_page(vcpu->rdx(), hpa);
 
         vcpu->set_rax(SUCCESS);
     }
@@ -490,9 +456,6 @@ vmcall_domain_op_handler::dispatch(vcpu *vcpu)
         dispatch_case(destroy_domain)
 
         dispatch_case(set_uart)
-        dispatch_case(set_exec_mode)
-        dispatch_case(set_initdom)
-        dispatch_case(set_hvc)
         dispatch_case(hvc_rx_put)
         dispatch_case(hvc_tx_get)
         dispatch_case(add_e820_entry)

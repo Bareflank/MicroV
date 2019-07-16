@@ -85,8 +85,6 @@ struct vm_t {
     struct hvm_modlist_entry *pvh_modlist;
     struct bfelf_loader_t elf_ldr;
     struct bfelf_binary_t elf_bin;
-    uint64_t initdom;
-    uint64_t hvc;
 };
 
 static struct vm_t g_vms[MAX_VMS] = {0};
@@ -1110,9 +1108,41 @@ setup_32bit_register_state(struct vm_t *vm)
 /* Implementation                                                             */
 /* -------------------------------------------------------------------------- */
 
-int64_t
-common_create_vm(
-    struct create_vm_args *args)
+static uint64_t get_domflags(struct create_vm_args *args)
+{
+    uint64_t flags = 0;
+
+    switch (args->exec_mode) {
+    case VM_EXEC_XENPVH:
+        flags |= DOMF_EXEC_XENPVH;
+        break;
+    case VM_EXEC_NATIVE:
+        flags |= DOMF_EXEC_NATIVE;
+        break;
+    default:
+        BFALERT("get_domflags: unknown exec_mode: %u", args->exec_mode);
+        BFALERT("get_domflags: falling back to native");
+        flags |= DOMF_EXEC_NATIVE;
+        break;
+    }
+
+    /*
+     * Initdom implies xenstore vm implies initial, privileged domain. The
+     * initial and privileged flags map to SIF_PRIVILEGED and SIF_INITDOMAIN
+     * defined in deps/xen/xen/include/public/xen.h
+     */
+    if (args->initdom) {
+        flags |= DOMF_XENSTORE;
+    }
+
+    if (args->hvc) {
+        flags |= DOMF_XENHVC;
+    }
+
+    return flags;
+}
+
+int64_t common_create_vm(struct create_vm_args *args)
 {
     status_t ret;
     struct vm_t *vm = acquire_vm();
@@ -1123,20 +1153,10 @@ common_create_vm(
         return COMMON_NO_HYPERVISOR;
     }
 
-    vm->domainid = __domain_op__create_domain();
+    vm->domainid = __domain_op__create_domain(get_domflags(args));
     if (vm->domainid == INVALID_DOMAINID) {
         BFDEBUG("__domain_op__create_domain failed\n");
-        return COMMON_CREATE_VM_FROM_BZIMAGE_FAILED;
-    }
-
-    __domain_op__set_exec_mode(vm->domainid, args->exec_mode);
-
-    if (args->initdom) {
-        __domain_op__set_initdom(vm->domainid, args->initdom);
-    }
-
-    if (args->hvc) {
-        __domain_op__set_hvc(vm->domainid, args->hvc);
+        return COMMON_CREATE_VM_FAILED;
     }
 
     ret = setup_kernel(vm, args);
