@@ -31,7 +31,6 @@ class xenver {
 private:
     xen *m_xen{};
     xen_vcpu *m_vcpu{};
-    xen_domain_handle_t m_hdl{};
 
 public:
     bool build_id();

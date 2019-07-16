@@ -70,6 +70,8 @@ private:
     bfvmm::x64::unique_map<uint8_t> m_store{};
 
     struct xen_domctl_getdomaininfo info{};
+    xen_domain_handle_t xdh{};
+    uintptr_t m_shinfo_gpfn{};
 
 public:
 

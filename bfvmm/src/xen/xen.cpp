@@ -22,6 +22,7 @@
 #include <mutex>
 #include <bfgpalayout.h>
 #include <compiler.h>
+#include <stdlib.h>
 
 #include <hve/arch/intel_x64/domain.h>
 #include <hve/arch/intel_x64/vcpu.h>
@@ -452,6 +453,11 @@ xen::xen(xen_vcpu *vcpu, xen_domain *dom) :
     m_sysctl{std::make_unique<class sysctl>(this)}
 {
     make_xen_ids(dom, this);
+
+    srand(dom->id());
+    for (auto i = 0; i < sizeof(xdh); i++) {
+        xdh[i] = rand() & 0xFF;
+    }
 
     vcpu->add_cpuid_emulator(xen_leaf(0), {xen_leaf0});
     vcpu->add_cpuid_emulator(xen_leaf(2), {xen_leaf2});

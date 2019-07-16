@@ -31,11 +31,7 @@
 namespace microv {
 
 xenver::xenver(xen *xen) : m_xen{xen}, m_vcpu{xen->m_vcpu}
-{
-    for (auto i = 0; i < sizeof(m_hdl); i++) {
-        m_hdl[i] = rand() & 0xFF;
-    }
-}
+{ }
 
 bool xenver::changeset()
 {
@@ -113,6 +109,7 @@ bool xenver::compile_info()
 bool xenver::extraversion()
 {
     bfalert_info(0, "xenver:extraversion");
+
     auto extra = m_vcpu->map_arg<xen_extraversion_t>(m_vcpu->rsi());
     std::strncpy((char *)extra.get(), "microv", XEN_EXTRAVERSION_LEN);
     m_vcpu->set_rax(0);
@@ -129,8 +126,11 @@ bool xenver::pagesize()
 bool xenver::guest_handle()
 {
     bfalert_info(0, "xenver:guest_handle");
+
     auto hdl = m_vcpu->map_arg<xen_domain_handle_t>(m_vcpu->rsi());
-    std::strncpy((char *)hdl.get(), (char *)m_hdl, sizeof(m_hdl));
+    expects(sizeof(*hdl.get()) == sizeof(m_xen->xdh));
+    memcpy(hdl.get(), &m_xen->xdh, sizeof(m_xen->xdh));
+    m_vcpu->set_rax(0);
     return true;
 }
 

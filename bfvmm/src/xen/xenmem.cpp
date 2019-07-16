@@ -69,6 +69,7 @@ bool xenmem::add_to_physmap()
         return true;
     case XENMAPSPACE_shared_info:
         m_xen->m_shinfo = m_vcpu->map_gpa_4k<shared_info>(xatp->gpfn << 12);
+        m_xen->m_shinfo_gpfn = xatp->gpfn;
         m_vcpu->set_rax(0);
         return true;
     case XENMAPSPACE_grant_table:
