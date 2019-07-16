@@ -35,7 +35,7 @@ xenver::xenver(xen *xen) : m_xen{xen}, m_vcpu{xen->m_vcpu}
 
 bool xenver::changeset()
 {
-    bfalert_info(0, "xenver:changeset");
+    //bfalert_info(0, "xenver:changeset");
 
     auto chg = m_vcpu->map_arg<xen_changeset_info_t>(m_vcpu->rsi());
     std::strncpy((char *)chg.get(), MICROV_CHANGESET, XEN_CHANGESET_INFO_LEN);
@@ -45,7 +45,7 @@ bool xenver::changeset()
 
 bool xenver::get_features()
 {
-    bfalert_info(0, "xenver:get_features");
+    //bfalert_info(0, "xenver:get_features");
 
     auto info = m_vcpu->map_arg<xen_feature_info_t>(m_vcpu->rsi());
     if (info->submap_idx >= XENFEAT_NR_SUBMAPS) {
@@ -76,7 +76,7 @@ bool xenver::get_features()
 
 bool xenver::version()
 {
-    bfalert_info(0, "xenver:version");
+    //bfalert_info(0, "xenver:version");
 
     m_vcpu->set_rax((XEN_MAJOR << 16) | XEN_MINOR);
     return true;
@@ -84,7 +84,7 @@ bool xenver::version()
 
 bool xenver::compile_info()
 {
-    bfalert_info(0, "xenver:compile_info");
+    //bfalert_info(0, "xenver:compile_info");
 
     static_assert(sizeof(xen_compile_info_t::compiler) == 64);
     static_assert(sizeof(xen_compile_info_t::compile_by) == 16);
@@ -108,7 +108,7 @@ bool xenver::compile_info()
 
 bool xenver::extraversion()
 {
-    bfalert_info(0, "xenver:extraversion");
+    //bfalert_info(0, "xenver:extraversion");
 
     auto extra = m_vcpu->map_arg<xen_extraversion_t>(m_vcpu->rsi());
     std::strncpy((char *)extra.get(), "microv", XEN_EXTRAVERSION_LEN);
@@ -118,14 +118,14 @@ bool xenver::extraversion()
 
 bool xenver::pagesize()
 {
-    bfalert_info(0, "xenver:pagesize");
+    //bfalert_info(0, "xenver:pagesize");
     m_vcpu->set_rax(::x64::pt::page_size);
     return true;
 }
 
 bool xenver::guest_handle()
 {
-    bfalert_info(0, "xenver:guest_handle");
+    //bfalert_info(0, "xenver:guest_handle");
 
     auto hdl = m_vcpu->map_arg<xen_domain_handle_t>(m_vcpu->rsi());
     expects(sizeof(*hdl.get()) == sizeof(m_xen->xdh));
@@ -136,7 +136,7 @@ bool xenver::guest_handle()
 
 bool xenver::capabilities()
 {
-    bfalert_info(0, "xenver:capabilities");
+    //bfalert_info(0, "xenver:capabilities");
 
     const char *str = "hvm-3.0-x86_64";
     auto caps = m_vcpu->map_arg<xen_capabilities_info_t>(m_vcpu->rsi());
@@ -147,7 +147,7 @@ bool xenver::capabilities()
 
 bool xenver::platform_parameters()
 {
-    bfalert_info(0, "xenver:platform_parameters");
+    //bfalert_info(0, "xenver:platform_parameters");
 
     auto params = m_vcpu->map_arg<xen_platform_parameters_t>(m_vcpu->rsi());
     params->virt_start = HYPERVISOR_VIRT_START;
@@ -157,7 +157,7 @@ bool xenver::platform_parameters()
 
 bool xenver::commandline()
 {
-    bfalert_info(0, "xenver:commandline");
+    //bfalert_info(0, "xenver:commandline");
 
     auto cmdline = m_vcpu->map_arg<xen_commandline_t>(m_vcpu->rsi());
     memset((char *)cmdline.get(), 0, sizeof(*cmdline.get()));
@@ -167,7 +167,7 @@ bool xenver::commandline()
 
 bool xenver::build_id()
 {
-    bfalert_info(0, "xenver:build_id");
+//    bfalert_info(0, "xenver:build_id");
 //    auto id = m_vcpu->map_arg<xen_build_id_t>(m_vcpu->rsi());
 //    id->len = 0;
     m_vcpu->set_rax(0);

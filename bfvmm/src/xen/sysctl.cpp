@@ -34,16 +34,16 @@ sysctl::sysctl(xen *xen) : m_xen{xen}, m_vcpu{xen->m_vcpu}
 
 bool sysctl::getdomaininfolist(xen_sysctl_t *ctl)
 {
-    auto gdil = ctl->u.getdomaininfolist;
+    auto gdil = &ctl->u.getdomaininfolist;
 
     expects(m_xen->m_dom->initdom());
-    expects(gdil.first_domain == m_xen->domid);
-    expects(gdil.max_domains == 1);
+    expects(gdil->first_domain == m_xen->domid);
+    expects(gdil->max_domains == 1);
 
-    gdil.num_domains = 1;
+    gdil->num_domains = 1;
     auto buf = m_vcpu->map_gva_4k<xen_domctl_getdomaininfo_t>(
-                   gdil.buffer.p,
-                   gdil.max_domains);
+                   gdil->buffer.p,
+                   gdil->max_domains);
 
     auto info = buf.get();
     info->domain = m_xen->domid;

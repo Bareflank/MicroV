@@ -254,6 +254,8 @@ bool xen::handle_memory_op()
     } catchall ({
         return false;
     })
+
+    return false;
 }
 
 bool xen::handle_xen_version()
@@ -426,12 +428,12 @@ bool xen::handle_platform_op()
 
     switch (xpf->cmd) {
     case XENPF_get_cpuinfo: {
-        struct xenpf_pcpuinfo info = xpf->u.pcpu_info;
+        struct xenpf_pcpuinfo *info = &xpf->u.pcpu_info;
 
-        info.max_present = 1;
-        info.flags = XEN_PCPU_FLAGS_ONLINE;
-        info.apic_id = this->apicid;
-        info.acpi_id = this->acpiid;
+        info->max_present = 1;
+        info->flags = XEN_PCPU_FLAGS_ONLINE;
+        info->apic_id = this->apicid;
+        info->acpi_id = this->acpiid;
 
         m_vcpu->set_rax(0);
         return true;
