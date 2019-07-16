@@ -13,15 +13,15 @@ SUBDIRS-y += xenstore
 SUBDIRS-y += misc
 #SUBDIRS-y += examples
 SUBDIRS-y += hotplug
-SUBDIRS-y += xentrace
+#SUBDIRS-y += xentrace
 SUBDIRS-$(CONFIG_XCUTILS) += xcutils
 #SUBDIRS-$(CONFIG_X86) += firmware
-SUBDIRS-y += console
-SUBDIRS-y += xenmon
-SUBDIRS-y += xenstat
+#SUBDIRS-y += console
+#SUBDIRS-y += xenmon
+#SUBDIRS-y += xenstat
 SUBDIRS-$(CONFIG_Linux) += memshr
 SUBDIRS-$(CONFIG_NetBSD) += xenbackendd
-SUBDIRS-y += libfsimage
+#SUBDIRS-y += libfsimage
 SUBDIRS-$(CONFIG_Linux) += libvchan
 
 # do not recurse in to a dir we are about to delete
@@ -30,21 +30,21 @@ ifneq "$(MAKECMDGOALS)" "distclean"
 #SUBDIRS-$(CONFIG_QEMU_XEN) += qemu-xen-dir
 endif
 
-SUBDIRS-y += xenpmd
+#SUBDIRS-y += xenpmd
 SUBDIRS-y += libxl
-SUBDIRS-$(CONFIG_GOLANG) += golang
+#SUBDIRS-$(CONFIG_GOLANG) += golang
 SUBDIRS-y += xl
 SUBDIRS-y += helpers
 SUBDIRS-$(CONFIG_X86) += xenpaging
-SUBDIRS-$(CONFIG_X86) += debugger/gdbsx
-SUBDIRS-$(CONFIG_X86) += debugger/kdd
+#SUBDIRS-$(CONFIG_X86) += debugger/gdbsx
+#SUBDIRS-$(CONFIG_X86) += debugger/kdd
 #SUBDIRS-$(CONFIG_TESTS) += tests
 
 # These don't cross-compile
 ifeq ($(XEN_COMPILE_ARCH),$(XEN_TARGET_ARCH))
 SUBDIRS-y += python
-SUBDIRS-y += pygrub
-SUBDIRS-$(OCAML_TOOLS) += ocaml
+#SUBDIRS-y += pygrub
+#SUBDIRS-$(OCAML_TOOLS) += ocaml
 endif
 
 ifeq ($(CONFIG_RUMP),y)
