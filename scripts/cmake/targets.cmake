@@ -95,6 +95,30 @@ if(BUILD_XEN_GUEST)
     configure_file(${SRC}/buildroot.config.in ${BR_BUILD_DIR}/.config @ONLY)
     configure_file(${SRC}/local.mk.in ${BR_BUILD_DIR}/local.mk @ONLY)
 
+    add_custom_target(vm
+        COMMAND ${CMAKE_COMMAND} -E chdir ${BR_SOURCE_DIR} make O=${BR_BUILD_DIR}
+        DEPENDS xtools_x86_64-userspace-elf
+        USES_TERMINAL
+    )
+    add_custom_target_info(
+        TARGET vm
+        COMMENT "Make the guest image"
+    )
+
+    ##########################################################################
+    # Buildroot targets
+    ##########################################################################
+
+    add_custom_target(brclean
+        COMMAND ${CMAKE_COMMAND} -E chdir ${BR_SOURCE_DIR} make O=${BR_BUILD_DIR} clean
+        DEPENDS xtools_x86_64-userspace-elf
+        USES_TERMINAL
+    )
+    add_custom_target_info(
+        TARGET brclean
+        COMMENT "Clean the guest image"
+    )
+
     add_custom_target(brmenucfg
         COMMAND ${CMAKE_COMMAND} -E chdir ${BR_SOURCE_DIR} make O=${BR_BUILD_DIR} menuconfig
         DEPENDS xtools_x86_64-userspace-elf
@@ -104,6 +128,11 @@ if(BUILD_XEN_GUEST)
         TARGET brmenucfg
         COMMENT "Configure the guest image with buildroot menuconfig"
     )
+
+    ##########################################################################
+    # Linux targets
+    ##########################################################################
+
     add_custom_target(linuxrecfg
         COMMAND ${CMAKE_COMMAND} -E chdir ${BR_SOURCE_DIR} make O=${BR_BUILD_DIR} linux-reconfigure
         DEPENDS xtools_x86_64-userspace-elf
@@ -122,6 +151,21 @@ if(BUILD_XEN_GUEST)
         TARGET linuxrebuild
         COMMENT "Rebuild the guest kernel"
     )
+
+    ##########################################################################
+    # Xen targets
+    ##########################################################################
+
+    add_custom_target(xenrecfg
+        COMMAND ${CMAKE_COMMAND} -E chdir ${BR_SOURCE_DIR} make O=${BR_BUILD_DIR} xen-reconfigure
+        DEPENDS xtools_x86_64-userspace-elf
+        USES_TERMINAL
+    )
+    add_custom_target_info(
+        TARGET xenrecfg
+        COMMENT "Reconfigure xen tools"
+    )
+
     add_custom_target(xenrebuild
         COMMAND ${CMAKE_COMMAND} -E chdir ${BR_SOURCE_DIR} make O=${BR_BUILD_DIR} xen-rebuild
         DEPENDS xtools_x86_64-userspace-elf
@@ -129,16 +173,6 @@ if(BUILD_XEN_GUEST)
     )
     add_custom_target_info(
         TARGET xenrebuild
-        COMMENT "Rebuild the guest kernel"
+        COMMENT "Rebuild xen tools"
     )
-    add_custom_target(vm
-        COMMAND ${CMAKE_COMMAND} -E chdir ${BR_SOURCE_DIR} make O=${BR_BUILD_DIR}
-        DEPENDS xtools_x86_64-userspace-elf
-        USES_TERMINAL
-    )
-    add_custom_target_info(
-        TARGET vm
-        COMMENT "Make the guest image"
-    )
-
 endif()
