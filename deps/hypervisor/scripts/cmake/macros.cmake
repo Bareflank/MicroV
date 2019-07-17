@@ -667,7 +667,7 @@ function(add_custom_target_info)
         cmake_parse_arguments(ARG "" "${oneVal}" "" ${ARGN})
 
         if(NOT_ARG_TARGET)
-            right_justify("${BUILD_COMMAND}" 20 JUSTIFY_STR)
+            right_justify("${BUILD_COMMAND}" 30 JUSTIFY_STR)
             add_custom_command(
                 TARGET info
                 COMMAND ${CMAKE_COMMAND} -E cmake_echo_color --yellow --no-newline "    ${BUILD_COMMAND}"
@@ -675,7 +675,7 @@ function(add_custom_target_info)
                 COMMAND ${CMAKE_COMMAND} -E cmake_echo_color --white "${ARG_COMMENT}"
             )
         else()
-            right_justify("${BUILD_COMMAND} ${ARG_TARGET}" 20 JUSTIFY_STR)
+            right_justify("${BUILD_COMMAND} ${ARG_TARGET}" 30 JUSTIFY_STR)
             add_custom_command(
                 TARGET info
                 COMMAND ${CMAKE_COMMAND} -E cmake_echo_color --yellow --no-newline "    ${BUILD_COMMAND} ${ARG_TARGET}"

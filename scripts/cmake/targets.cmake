@@ -86,93 +86,150 @@ add_dependencies(driver_load builder_load)
 add_dependencies(driver_unload builder_unload)
 add_dependencies(driver_quick builder_quick)
 
-if(BUILD_XEN_GUEST)
-    add_custom_target_category("MicroV Guest VM")
+# ------------------------------------------------------------------------------
+# Guest VMs
+# ------------------------------------------------------------------------------
 
-    execute_process(COMMAND ${CMAKE_COMMAND} -E make_directory ${BR_BUILD_DIR})
-    set(SRC ${MICROV_SOURCE_ROOT_DIR})
+function(add_vm_targets VM)
+    set(BR_BIN ${BR_BIN_DIR}/${VM})
+    set(BR_CFG ${BR_SRC_DIR}/configs)
+    set(MV_SRC ${MICROV_SOURCE_ROOT_DIR})
 
-    configure_file(${SRC}/buildroot.config.in ${BR_BUILD_DIR}/.config @ONLY)
-    configure_file(${SRC}/local.mk.in ${BR_BUILD_DIR}/local.mk @ONLY)
+    execute_process(COMMAND ${CMAKE_COMMAND} -E make_directory ${BR_BIN})
+    configure_file(${MV_SRC}/local.mk.in ${BR_BIN}/local.mk @ONLY)
+    configure_file(${BR_CFG}/venom_${VM}_config.in ${BR_BIN}/.config @ONLY)
 
-    add_custom_target(vm
-        COMMAND ${CMAKE_COMMAND} -E chdir ${BR_SOURCE_DIR} make O=${BR_BUILD_DIR}
+    add_custom_target(${VM}
+        COMMAND ${CMAKE_COMMAND} -E chdir ${BR_SRC_DIR} make O=${BR_BIN}
         DEPENDS xtools_x86_64-userspace-elf
         USES_TERMINAL
     )
     add_custom_target_info(
-        TARGET vm
-        COMMENT "Make the guest image"
+        TARGET ${VM}
+        COMMENT "Make the ${VM} image"
     )
 
-    ##########################################################################
-    # Buildroot targets
-    ##########################################################################
-
-    add_custom_target(brclean
-        COMMAND ${CMAKE_COMMAND} -E chdir ${BR_SOURCE_DIR} make O=${BR_BUILD_DIR} clean
+    add_custom_target(${VM}-clean
+        COMMAND ${CMAKE_COMMAND} -E chdir ${BR_SRC_DIR} make O=${BR_BIN} clean
         DEPENDS xtools_x86_64-userspace-elf
         USES_TERMINAL
     )
     add_custom_target_info(
-        TARGET brclean
-        COMMENT "Clean the guest image"
+        TARGET ${VM}-clean
+        COMMENT "Clean the ${VM} image"
     )
 
-    add_custom_target(brmenucfg
-        COMMAND ${CMAKE_COMMAND} -E chdir ${BR_SOURCE_DIR} make O=${BR_BUILD_DIR} menuconfig
+    add_custom_target(${VM}-distclean
+        COMMAND ${CMAKE_COMMAND} -E chdir ${BR_SRC_DIR} make O=${BR_BIN} distclean
         DEPENDS xtools_x86_64-userspace-elf
         USES_TERMINAL
     )
     add_custom_target_info(
-        TARGET brmenucfg
-        COMMENT "Configure the guest image with buildroot menuconfig"
+        TARGET ${VM}-distclean
+        COMMENT "Clean the ${VM} image, including .config"
     )
 
-    ##########################################################################
-    # Linux targets
-    ##########################################################################
-
-    add_custom_target(linuxrecfg
-        COMMAND ${CMAKE_COMMAND} -E chdir ${BR_SOURCE_DIR} make O=${BR_BUILD_DIR} linux-reconfigure
+    add_custom_target(${VM}-cfg
+        COMMAND ${CMAKE_COMMAND} -E chdir ${BR_SRC_DIR} make O=${BR_BIN} menuconfig
         DEPENDS xtools_x86_64-userspace-elf
         USES_TERMINAL
     )
     add_custom_target_info(
-        TARGET linuxrecfg
-        COMMENT "Reconfigure the guest kernel"
+        TARGET ${VM}-cfg
+        COMMENT "Configure the ${VM} with buildroot"
     )
-    add_custom_target(linuxrebuild
-        COMMAND ${CMAKE_COMMAND} -E chdir ${BR_SOURCE_DIR} make O=${BR_BUILD_DIR} linux-rebuild
+
+    add_custom_target(${VM}-linux-cfg
+        COMMAND ${CMAKE_COMMAND} -E chdir ${BR_SRC_DIR} make O=${BR_BIN} linux-menuconfig
+        COMMAND ${CMAKE_COMMAND} -E chdir ${BR_SRC_DIR} make O=${BR_BIN} linux-update-defconfig
         DEPENDS xtools_x86_64-userspace-elf
         USES_TERMINAL
     )
     add_custom_target_info(
-        TARGET linuxrebuild
-        COMMENT "Rebuild the guest kernel"
+        TARGET ${VM}-linux-cfg
+        COMMENT "Configure the ${VM} kernel"
     )
 
-    ##########################################################################
-    # Xen targets
-    ##########################################################################
-
-    add_custom_target(xenrecfg
-        COMMAND ${CMAKE_COMMAND} -E chdir ${BR_SOURCE_DIR} make O=${BR_BUILD_DIR} xen-reconfigure
+    add_custom_target(${VM}-linux-recfg
+        COMMAND ${CMAKE_COMMAND} -E chdir ${BR_SRC_DIR} make O=${BR_BIN} linux-reconfigure
         DEPENDS xtools_x86_64-userspace-elf
         USES_TERMINAL
     )
     add_custom_target_info(
-        TARGET xenrecfg
+        TARGET ${VM}-linux-recfg
+        COMMENT "Restart the ${VM} kernel build from the configure step"
+    )
+
+    add_custom_target(${VM}-linux-rebuild
+        COMMAND ${CMAKE_COMMAND} -E chdir ${BR_SRC_DIR} make O=${BR_BIN} linux-rebuild
+        DEPENDS xtools_x86_64-userspace-elf
+        USES_TERMINAL
+    )
+    add_custom_target_info(
+        TARGET ${VM}-linux-rebuild
+        COMMENT "Restart the ${VM} kernel build from the build step"
+    )
+
+
+if(GRAPH_GUEST_IMAGES)
+    add_custom_target(${VM}-graph-size
+        COMMAND ${CMAKE_COMMAND} -E chdir ${BR_SRC_DIR} make O=${BR_BIN} graph-size
+        DEPENDS xtools_x86_64-userspace-elf
+        USES_TERMINAL
+    )
+    add_custom_target_info(
+        TARGET ${VM}-graph-size
+        COMMENT "Graph the ${VM} filesystem size"
+    )
+
+    add_custom_target(${VM}-graph-depends
+        COMMAND ${CMAKE_COMMAND} -E chdir ${BR_SRC_DIR} make O=${BR_BIN} graph-depends
+        DEPENDS xtools_x86_64-userspace-elf
+        USES_TERMINAL
+    )
+    add_custom_target_info(
+        TARGET ${VM}-graph-depends
+        COMMENT "Graph the ${VM} filesystem dependencies"
+    )
+
+    add_custom_target(${VM}-graph-build
+        COMMAND ${CMAKE_COMMAND} -E chdir ${BR_SRC_DIR} make O=${BR_BIN} graph-build
+        DEPENDS xtools_x86_64-userspace-elf
+        USES_TERMINAL
+    )
+    add_custom_target_info(
+        TARGET ${VM}-graph-build
+        COMMENT "Graph the ${VM} package build times"
+    )
+endif()
+
+# Add xenstore VM targets
+if(VM STREQUAL xsvm)
+    add_custom_target(xsvm-xen-recfg
+        COMMAND ${CMAKE_COMMAND} -E chdir ${BR_SRC_DIR} make O=${BR_BIN_DIR} xen-reconfigure
+        DEPENDS xtools_x86_64-userspace-elf
+        USES_TERMINAL
+    )
+    add_custom_target_info(
+        TARGET xsvm-xen-recfg
         COMMENT "Reconfigure xen tools"
     )
-
-    add_custom_target(xenrebuild
-        COMMAND ${CMAKE_COMMAND} -E chdir ${BR_SOURCE_DIR} make O=${BR_BUILD_DIR} xen-rebuild
+    add_custom_target(xsvm-xen-rebuild
+        COMMAND ${CMAKE_COMMAND} -E chdir ${BR_SRC_DIR} make O=${BR_BIN_DIR} xen-rebuild
         DEPENDS xtools_x86_64-userspace-elf
         USES_TERMINAL
     )
     add_custom_target_info(
-        TARGET xenrebuild
+        TARGET xsvm-xen-rebuild
         COMMENT "Rebuild xen tools"
     )
+endif()
+
+endfunction(add_vm_targets)
+
+if(BUILD_XEN_GUEST)
+    add_custom_target_category("MicroV Guest VMs")
+
+    add_vm_targets(vm)
+    add_vm_targets(xsvm)
 endif()

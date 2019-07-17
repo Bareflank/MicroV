@@ -77,7 +77,8 @@ set(MICROV_SOURCE_BFVMM_DIR ${MICROV_SOURCE_ROOT_DIR}/bfvmm
     "MICROV bfvmm source dir"
 )
 
-set(BR_SOURCE_DIR ${MICROV_SOURCE_ROOT_DIR}/deps/buildroot)
+set(BR_SRC_DIR ${MICROV_SOURCE_ROOT_DIR}/deps/buildroot)
+set(BR_BIN_DIR ${CACHE_DIR}/brbuild)
 
 # ------------------------------------------------------------------------------
 # Links
@@ -110,21 +111,20 @@ set(XTOOLS_URL_MD5 "d025f4ad293a51ed77831d3e1245af62"
 add_config(
     CONFIG_NAME ENABLE_BUILD_GUEST
     CONFIG_TYPE BOOL
-    DEFAULT_VAL ON
+    DEFAULT_VAL OFF
     DESCRIPTION "Build a minimal Linux guest along with the VMM"
 )
 
 add_config(
-    CONFIG_NAME BR_IMAGE
-    CONFIG_TYPE STRING
-    DEFAULT_VAL xsvm
-    DESCRIPTION "Select a pre-canned VM to build"
-    OPTIONS xsvm
+    CONFIG_NAME BUILD_XEN_GUEST
+    CONFIG_TYPE BOOL
+    DEFAULT_VAL ON
+    DESCRIPTION "Build a Xen PVH guest"
 )
 
 add_config(
-    CONFIG_NAME BR_BUILD_DIR
-    CONFIG_TYPE STRING
-    DEFAULT_VAL ${CACHE_DIR}/brbuild/${BR_IMAGE}
-    DESCRIPTION "Buildroot build dir"
+    CONFIG_NAME GRAPH_GUEST_IMAGES
+    CONFIG_TYPE BOOL
+    DEFAULT_VAL OFF
+    DESCRIPTION "Make targets to graph guest filesystem info"
 )
