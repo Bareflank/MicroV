@@ -232,4 +232,5 @@ if(BUILD_XEN_GUEST)
 
     add_vm_targets(vm)
     add_vm_targets(xsvm)
+    add_vm_targets(ndvm)
 endif()
