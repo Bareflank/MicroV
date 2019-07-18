@@ -28,7 +28,7 @@
 #include "uart.h"
 #include "../../../ring.h"
 #include "../../../domain/domain.h"
-#include "../../../domain/domain_manager.h"
+#include "../../../domain/manager.h"
 
 #include <bfvmm/hve/arch/intel_x64/vcpu.h>
 

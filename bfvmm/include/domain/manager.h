@@ -25,7 +25,7 @@
 #include <bfmanager.h>
 
 #include "domain.h"
-#include "domain_factory.h"
+#include "factory.h"
 
 /// Domain Manager Macro
 ///
@@ -38,8 +38,8 @@
 ///
 #define g_dm                                                                    \
     bfmanager<                                                                  \
-    microv::domain,                                                               \
-    microv::domain_factory,                                                       \
+    microv::domain,                                                             \
+    microv::domain_factory,                                                     \
     microv::domain::domainid_type>::instance()
 
 #endif

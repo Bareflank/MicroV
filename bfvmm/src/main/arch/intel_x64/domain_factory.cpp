@@ -19,7 +19,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#include <domain/domain_factory.h>
+#include <domain/factory.h>
 #include <hve/arch/intel_x64/domain.h>
 
 namespace microv

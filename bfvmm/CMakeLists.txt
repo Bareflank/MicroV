@@ -58,7 +58,7 @@ set(BUILD_INCLUDE $<AND:$<COMPILE_LANGUAGE:CXX>,${BUILD}>)
 target_compile_definitions(microv_bfvmm INTERFACE $<${XEN}:__XEN__>)
 target_compile_definitions(microv_bfvmm INTERFACE $<${X64}:__x86_64__>)
 
-add_subdirectory(src/domain)
+add_subdirectory(src)
 add_subdirectory(src/hve)
 
 if(BUILD_XEN)

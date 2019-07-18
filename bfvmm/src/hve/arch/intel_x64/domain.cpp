@@ -63,9 +63,7 @@ domain::setup_dom0()
     //   so we should assume that 1 gig page support is required. Once again,
     //   legacy support is not a focus of this project
     //
-    ept::identity_map(
-        m_ept_map, MAX_PHYS_ADDR
-    );
+    ept::identity_map(m_ept_map, MAX_PHYS_ADDR);
 }
 
 void
