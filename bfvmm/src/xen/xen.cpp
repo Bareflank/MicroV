@@ -211,31 +211,7 @@ bool xen::handle_hypercall(xen_vcpu *vcpu)
 bool xen::handle_console_io()
 {
     expects(m_dom->initdom());
-
-    uint64_t len = m_vcpu->rsi();
-    auto buf = m_vcpu->map_gva_4k<char>(m_vcpu->rdx(), len);
-
-    switch (m_vcpu->rdi()) {
-    case CONSOLEIO_read: {
-        auto n = m_dom->hvc_rx_get(gsl::span(buf.get(), len));
-        m_vcpu->set_rax(n);
-//        if (n) {
-//            printf("console read: ");
-//            for (auto i = 0; i < n; i++) {
-//                printf("%c", buf.get()[i]);
-//            }
-//            printf("\n");
-//        }
-        return true;
-    }
-    case CONSOLEIO_write: {
-        auto n = m_dom->hvc_tx_put(gsl::span(buf.get(), len));
-        m_vcpu->set_rax(n);
-        return true;
-    }
-    default:
-        return false;
-    }
+    return m_xencon->handle_console_io();
 }
 
 bool xen::handle_memory_op()
@@ -329,38 +305,40 @@ bool xen::handle_hvm_op()
         } catchall({
             return false;
         })
-    //case HVMOP_get_param:
-    //    try {
-    //        auto arg = m_vcpu->map_arg<xen_hvm_param_t>(m_vcpu->rsi());
-    //        switch (arg->index) {
-    //        case HVM_PARAM_CONSOLE_EVTCHN:
-    //            arg->value = m_evtchn->bind_console();
-    //            break;
-    //        case HVM_PARAM_CONSOLE_PFN:
-    //            m_console = m_vcpu->map_gpa_4k<uint8_t>(PVH_CONSOLE_GPA);
-    //            arg->value = PVH_CONSOLE_GPA >> 12;
-    //            break;
-    //        case HVM_PARAM_STORE_EVTCHN:
-    //            arg->value = m_evtchn->bind_store();
-    //            m_vcpu->set_rax(-ENOSYS);
-    //            return true;
-    //            break;
-    //        case HVM_PARAM_STORE_PFN:
-    //            m_store = m_vcpu->map_gpa_4k<uint8_t>(PVH_STORE_GPA);
-    //            arg->value = PVH_STORE_GPA >> 12;
-    //            m_vcpu->set_rax(-ENOSYS);
-    //            return true;
-    //            break;
-    //        default:
-    //            bfalert_nhex(0, "Unsupported HVM get_param:", arg->index);
-    //            return false;
-    //        }
+    case HVMOP_get_param:
+        expects(!m_dom->initdom());
+        try {
+            auto arg = m_vcpu->map_arg<xen_hvm_param_t>(m_vcpu->rsi());
+            switch (arg->index) {
+            case HVM_PARAM_CONSOLE_EVTCHN:
+                arg->value = m_evtchn->bind_console();
+                m_console_port = arg->value;
+                break;
+            case HVM_PARAM_CONSOLE_PFN:
+                //m_console = m_vcpu->map_gpa_4k<uint8_t>(PVH_CONSOLE_GPA);
+                arg->value = PVH_CONSOLE_GPA >> 12;
+                break;
+            //case HVM_PARAM_STORE_EVTCHN:
+            //    arg->value = m_evtchn->bind_store();
+            //    m_vcpu->set_rax(-ENOSYS);
+            //    return true;
+            //    break;
+            //case HVM_PARAM_STORE_PFN:
+            //    m_store = m_vcpu->map_gpa_4k<uint8_t>(PVH_STORE_GPA);
+            //    arg->value = PVH_STORE_GPA >> 12;
+            //    m_vcpu->set_rax(-ENOSYS);
+            //    return true;
+            //    break;
+            default:
+                bfalert_nhex(0, "Unsupported HVM get_param:", arg->index);
+                return false;
+            }
 
-    //        m_vcpu->set_rax(0);
-    //        return true;
-    //    } catchall({
-    //        return false;
-    //    })
+            m_vcpu->set_rax(0);
+            return true;
+        } catchall({
+            return false;
+        })
     case HVMOP_pagetable_dying:
         m_vcpu->set_rax(0);
         return true;
@@ -401,6 +379,7 @@ bool xen::handle_event_channel_op()
 
 bool xen::handle_sysctl()
 {
+    expects(m_dom->initdom());
     auto ctl = m_vcpu->map_arg<xen_sysctl_t>(m_vcpu->rdi());
     return m_sysctl->handle(ctl.get());
 }
@@ -465,11 +444,21 @@ void xen::queue_virq(uint32_t virq)
     m_evtchn->queue_virq(virq);
 }
 
+void xen::notify_hvc()
+{
+    if (m_dom->initdom()) {
+        m_evtchn->queue_virq(VIRQ_CONSOLE);
+    } else {
+        m_evtchn->upcall(m_console_port);
+    }
+}
+
 xen::xen(xen_vcpu *vcpu, xen_domain *dom) :
     m_vcpu{vcpu},
     m_dom{dom},
     m_evtchn{std::make_unique<class evtchn>(this)},
     m_gnttab{std::make_unique<class gnttab>(this)},
+    m_xencon{std::make_unique<class xencon>(this)},
     m_xenmem{std::make_unique<class xenmem>(this)},
     m_xenver{std::make_unique<class xenver>(this)},
     m_sysctl{std::make_unique<class sysctl>(this)}

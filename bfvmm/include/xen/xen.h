@@ -26,6 +26,7 @@
 #include "evtchn.h"
 #include "gnttab.h"
 #include "sysctl.h"
+#include "xencon.h"
 #include "xenmem.h"
 #include "xenver.h"
 
@@ -36,6 +37,7 @@ namespace microv {
 
 class xen {
 public:
+    void notify_hvc();
     void queue_virq(uint32_t virq);
 
 private:
@@ -54,25 +56,29 @@ private:
     xen_vcpu *m_vcpu{};
     xen_domain *m_dom{};
 
-    friend class gnttab;
     friend class evtchn;
+    friend class gnttab;
     friend class sysctl;
+    friend class xencon;
     friend class xenmem;
     friend class xenver;
 
-    std::unique_ptr<class gnttab> m_gnttab;
     std::unique_ptr<class evtchn> m_evtchn;
+    std::unique_ptr<class gnttab> m_gnttab;
     std::unique_ptr<class sysctl> m_sysctl;
+    std::unique_ptr<class xencon> m_xencon;
     std::unique_ptr<class xenmem> m_xenmem;
     std::unique_ptr<class xenver> m_xenver;
 
     bfvmm::x64::unique_map<struct shared_info> m_shinfo{};
-    bfvmm::x64::unique_map<uint8_t> m_console{};
     bfvmm::x64::unique_map<uint8_t> m_store{};
 
     struct xen_domctl_getdomaininfo info{};
     xen_domain_handle_t xdh{};
     uintptr_t m_shinfo_gpfn{};
+
+    evtchn::port_t m_console_port{};
+    evtchn::port_t m_store_port{};
 
 public:
 

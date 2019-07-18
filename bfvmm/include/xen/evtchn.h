@@ -98,6 +98,8 @@ public:
     port_t bind_console();
     port_t bind_store();
 
+    void upcall(port_t port);
+
 private:
 
     port_t bind(chan_t::state_t state);

@@ -84,7 +84,7 @@ void vmcall_domain_op_handler::domain_op__hvc_rx_put(vcpu *vcpu)
         auto num = dom->hvc_rx_put(gsl::span(buf.get(), len));
 
         dom->m_vcpu->load();
-        dom->m_vcpu->queue_virq(VIRQ_CONSOLE);
+        dom->m_vcpu->notify_hvc();
 
         vcpu->load();
         vcpu->set_rax(num);

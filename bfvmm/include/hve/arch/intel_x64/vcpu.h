@@ -294,6 +294,12 @@ public:
     ///
     void queue_virq(uint32_t virq);
 
+    /// Notify the guest that data is ready on the HVC
+    ///
+    /// @expects m_domain->exec_mode() == VM_EXEC_XENPVH
+    ///
+    void notify_hvc();
+
     bool handle_0x4BF00010(bfvmm::intel_x64::vcpu *vcpu);
     bool handle_0x4BF00021(bfvmm::intel_x64::vcpu *vcpu);
 

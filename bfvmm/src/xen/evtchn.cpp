@@ -265,6 +265,11 @@ bool evtchn::set_link(word_t *word, event_word_t *val, port_t link)
     return word->compare_exchange_strong(expect, desire);
 }
 
+void evtchn::upcall(port_t port)
+{
+    this->upcall(this->port_to_chan(port));
+}
+
 void evtchn::upcall(chan_t *chan)
 {
     expects(m_ctl_blk);

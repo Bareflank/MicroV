@@ -222,6 +222,12 @@ void vcpu::queue_virq(uint32_t virq)
     m_xen->queue_virq(virq);
 }
 
+void vcpu::notify_hvc()
+{
+    expects(m_domain->exec_mode() == VM_EXEC_XENPVH);
+    m_xen->notify_hvc();
+}
+
 //------------------------------------------------------------------------------
 // Domain Info
 //------------------------------------------------------------------------------
