@@ -19,12 +19,13 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-add_library(microv_domain domain.cpp)
+add_library(microv_domain domain.cpp iommu.cpp)
 
 target_link_libraries(microv_domain PUBLIC vmm::bfvmm microv_bfvmm)
 target_include_directories(microv_domain PUBLIC
     $<${BUILD_INCLUDE}:${PROJECT_SOURCE_DIR}/include>
     $<${BUILD_INCLUDE}:${PROJECT_SOURCE_DIR}/../bfsdk/include>
+    $<${BUILD_INCLUDE}:${PROJECT_SOURCE_DIR}/../bfbuilder/include>
     $<${BUILD_INCLUDE}:${PROJECT_SOURCE_DIR}/../deps/xen/xen/include>
 )
 

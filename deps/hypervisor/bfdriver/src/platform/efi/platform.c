@@ -230,7 +230,13 @@ platform_call_vmm_on_core(
 
 void *
 platform_get_rsdp(void)
-{ return 0; }
+{
+    VOID *rsdp = NULL;
+    EFI_GUID guid = ACPI_20_TABLE_GUID;
+    LibGetSystemConfigurationTable(&guid, &rsdp);
+
+    return rsdp;
+}
 
 void
 platform_cpuid(uint32_t *eax, uint32_t *ebx, uint32_t *ecx, uint32_t *edx)

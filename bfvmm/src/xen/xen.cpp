@@ -27,6 +27,10 @@
 #include <hve/arch/intel_x64/domain.h>
 #include <hve/arch/intel_x64/vcpu.h>
 
+#include <pci/config.h>
+#include <pci/bar.h>
+#include <pci/dev.h>
+
 #include <xen/evtchn.h>
 #include <xen/gnttab.h>
 #include <xen/sysctl.h>
@@ -489,6 +493,13 @@ xen::xen(xen_vcpu *vcpu, xen_domain *dom) :
     vcpu->add_cpuid_emulator(xen_leaf(4), {&xen::xen_leaf4, this});
 
     vcpu->add_handler(0, handle_exception);
+
+    for (auto i = 0; i < 32; i++) {
+        auto cf8 = pci_cfg_bdf_to_addr(0, i, 0);
+        if (pci_cfg_is_present(cf8)) {
+            printf("%02x:%02x.%02x is multifun: %u\n", 0, i, 0, pci_cfg_is_multifun(cf8));
+        }
+    }
 }
 
 }

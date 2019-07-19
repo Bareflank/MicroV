@@ -27,8 +27,11 @@
 #include <bfbuilderinterface.h>
 #include <hve/arch/intel_x64/vcpu.h>
 #include <hve/arch/intel_x64/xsave.h>
+#include <iommu/iommu.h>
 #include <xen/xen.h>
 #include <xue.h>
+
+microv::intel_x64::vcpu *vcpu0{nullptr};
 
 extern struct xue g_xue;
 extern struct xue_ops g_xue_ops;
@@ -126,6 +129,10 @@ vcpu::vcpu(
 
     if (this->is_dom0()) {
         this->write_dom0_guest_state(domain);
+
+        if (vcpu0 == nullptr) {
+            vcpu0 = this;
+        }
     }
     else {
         uint64_t top;
@@ -198,6 +205,13 @@ bool vcpu::handle_0x4BF00010(bfvmm::intel_x64::vcpu *vcpu)
         xue_open(&g_xue, &g_xue_ops, NULL);
     }
 #endif
+
+    static bool init_iommu = true;
+    if (g_uefi_boot && init_iommu) {
+        probe_iommu();
+        //bfdebug_nhex(0, "IOMMU addr:", g_iommu);
+        init_iommu = false;
+    }
 
     vcpu_init_root(vcpu);
     return vcpu->advance();
