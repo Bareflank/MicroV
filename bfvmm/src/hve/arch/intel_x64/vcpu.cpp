@@ -119,35 +119,7 @@ vcpu::vcpu(
         }
     }
     else {
-        uint64_t top;
-        struct thread_context_t *ctx;
-        struct xsave_info *old_xsave;
-        struct xsave_info *new_xsave;
-
         this->write_domU_guest_state(domain);
-
-        m_xsave = std::make_unique<struct xsave_info>();
-        top = reinterpret_cast<uint64_t>(m_stack.get()) + STACK_SIZE * 2;
-        top = (top & ~(STACK_SIZE - 1)) - 1;
-        ctx = reinterpret_cast<thread_context_t *>(top - sizeof(*ctx));
-
-        old_xsave = ctx->xsave_info;
-        new_xsave = m_xsave.get();
-        memcpy(new_xsave, old_xsave, sizeof(*new_xsave));
-
-        new_xsave->vcpuid = ctx->cpuid;
-        new_xsave->guest_xcr0 = XSAVE_LEGACY_MASK;
-        m_guest_area = std::make_unique<uint8_t[]>(new_xsave->guest_size);
-        new_xsave->guest_area = m_guest_area.get();
-        memset(new_xsave->guest_area, 0, new_xsave->guest_size);
-        ctx->xsave_info = new_xsave;
-
-        top = reinterpret_cast<uint64_t>(m_ist1.get()) + STACK_SIZE * 2;
-        top = (top & ~(STACK_SIZE - 1)) - 1;
-        ctx = reinterpret_cast<thread_context_t *>(top - sizeof(*ctx));
-        ctx->xsave_info = new_xsave;
-
-        this->state()->xsave_ptr = reinterpret_cast<uint64_t>(new_xsave);
     }
 
     this->add_cpuid_emulator(0x4BF00010, {&vcpu::handle_0x4BF00010, this});
@@ -356,7 +328,7 @@ vcpu::setup_default_controls()
 
     using namespace secondary_processor_based_vm_execution_controls;
     enable_invpcid::disable();
-    enable_xsaves_xrstors::enable();
+    enable_xsaves_xrstors::disable();
 }
 
 void

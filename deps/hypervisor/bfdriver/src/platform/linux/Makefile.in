@@ -31,7 +31,6 @@ ifneq ($(KERNELRELEASE),)
 
 	EXTRA_CFLAGS += -DKERNEL
 	EXTRA_CFLAGS += -DLINUX_KERNEL
-	EXTRA_CFLAGS += -D@BFVMM_XSAVE@
 	EXTRA_CFLAGS += -D@XUE_DEBUG@
 	EXTRA_CFLAGS += -I$(src)/../../../include/
 	EXTRA_CFLAGS += -I$(src)/../../../../bfsdk/include/

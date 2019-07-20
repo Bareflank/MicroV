@@ -1887,10 +1887,6 @@ public:
     VIRTUAL uint64_t gr4() const noexcept;
     VIRTUAL void set_gr4(uint64_t val) noexcept;
 
-    /// Stacks
-    std::unique_ptr<gsl::byte[]> m_ist1;
-    std::unique_ptr<gsl::byte[]> m_stack;
-
     /// @endcond
 
 private:
@@ -1908,6 +1904,9 @@ private:
     page_ptr<uint8_t> m_msr_bitmap;
     page_ptr<uint8_t> m_io_bitmap_a;
     page_ptr<uint8_t> m_io_bitmap_b;
+
+    std::unique_ptr<gsl::byte[]> m_ist1;
+    std::unique_ptr<gsl::byte[]> m_stack;
 
     x64::tss m_host_tss{};
     x64::gdt m_host_gdt{512};

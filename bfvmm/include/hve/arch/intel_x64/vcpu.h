@@ -22,8 +22,6 @@
 #ifndef VCPU_INTEL_X64_MICROV_H
 #define VCPU_INTEL_X64_MICROV_H
 
-#include <bfxsave.h>
-
 #include "apic/x2apic.h"
 #include "pci/pci_configuration_space.h"
 

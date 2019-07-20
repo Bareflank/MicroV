@@ -89,9 +89,6 @@ struct thread_context_t {
  *
  * https://github.com/Bareflank/hypervisor/issues/213
  *
- * This effectively copies the stack-local data of the stack we are
- * currently on to the provided argument.
- *
  * @param stack the stack pointer
  * @return the stack pointer (in interger form)
  */
