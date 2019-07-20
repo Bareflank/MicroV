@@ -28,6 +28,7 @@
 #include <hve/arch/intel_x64/vcpu.h>
 #include <hve/arch/intel_x64/xsave.h>
 #include <iommu/iommu.h>
+#include <pci/dev.h>
 #include <xen/xen.h>
 #include <xue.h>
 
@@ -37,6 +38,9 @@ extern struct xue g_xue;
 extern struct xue_ops g_xue_ops;
 
 void WEAK_SYM vcpu_init_root(bfvmm::intel_x64::vcpu *vcpu);
+
+static bool iommu_ready = false;
+static bool pci_ready = false;
 
 //------------------------------------------------------------------------------
 // Fault Handlers
@@ -91,15 +95,17 @@ namespace microv::intel_x64
  * Leaving this on triggers a bug when booting Linux from EFI when the xsave
  * features are used in the VMM.
  */
-static bool handle_cpuid_disable_mpx(bfvmm::intel_x64::vcpu *vcpu)
+static bool cpuid_disable_mpx(bfvmm::intel_x64::vcpu *vcpu)
 {
     constexpr auto mpx_bit = 1UL << 14;
 
-    if (vcpu->rcx() == 0) {
+    vcpu->execute_cpuid();
+    if (vcpu->gr2() == 0) {
         vcpu->set_rbx(vcpu->rbx() & ~mpx_bit);
+        //bfdebug_info(0, "cpuid: disabled mpx");
     }
 
-    return false;
+    return vcpu->advance();
 }
 
 vcpu::vcpu(
@@ -168,7 +174,7 @@ vcpu::vcpu(
 
     this->add_cpuid_emulator(0x4BF00010, {&vcpu::handle_0x4BF00010, this});
     this->add_cpuid_emulator(0x4BF00021, {&vcpu::handle_0x4BF00021, this});
-    this->add_cpuid_handler(0x7, {handle_cpuid_disable_mpx});
+    this->add_cpuid_emulator(0x7, {cpuid_disable_mpx});
 }
 
 //------------------------------------------------------------------------------
@@ -206,11 +212,14 @@ bool vcpu::handle_0x4BF00010(bfvmm::intel_x64::vcpu *vcpu)
     }
 #endif
 
-    static bool init_iommu = true;
-    if (g_uefi_boot && init_iommu) {
+    if (g_uefi_boot && !iommu_ready) {
         probe_iommu();
-        //bfdebug_nhex(0, "IOMMU addr:", g_iommu);
-        init_iommu = false;
+        iommu_ready = true;
+    }
+
+    if (!pci_ready) {
+        probe_pci();
+        pci_ready = true;
     }
 
     vcpu_init_root(vcpu);

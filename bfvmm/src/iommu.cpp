@@ -45,8 +45,9 @@ static char *find_dmar()
     constexpr auto XSDT_ENTRY_SIZE = 8;
     constexpr auto XSDT_ENTRY_FROM = 3;
 
-    expects(vcpu0);
-    expects(g_rsdp);
+    if (!vcpu0 || !g_rsdp) {
+        return NULL;
+    }
 
     rsdp_map = vcpu0->map_gpa_4k<rsdp_t>(g_rsdp, 1);
     expects(rsdp_map->revision == 2);

@@ -24,7 +24,9 @@
 
 #include <list>
 #include <vector>
-#include "config.h"
+#include <bfdebug.h>
+
+#include "cfg.h"
 
 namespace microv {
 

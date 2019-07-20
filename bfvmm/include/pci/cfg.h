@@ -67,11 +67,16 @@ enum pci_subclass_bridge_t {
     pci_sc_bridge_other = 0x80
 };
 
-constexpr uint32_t pci_en_mask =  0x80000000;
+constexpr uint32_t pci_nr_bus = 256;
+constexpr uint32_t pci_nr_dev = 32;
+constexpr uint32_t pci_nr_fun = 8;
+
+constexpr uint32_t pci_en_mask  = 0x80000000;
 constexpr uint32_t pci_bus_mask = 0x00FF0000;
 constexpr uint32_t pci_dev_mask = 0x0000F800;
 constexpr uint32_t pci_fun_mask = 0x00000700;
 constexpr uint32_t pci_reg_mask = 0x000000FC;
+constexpr uint32_t pci_off_mask = 0x00000003;
 
 constexpr bool pci_cfg_addr_enabled(uint32_t addr)
 {
@@ -135,40 +140,44 @@ inline bool pci_cfg_is_present(uint32_t addr)
     return pci_cfg_read_reg(addr, 0) != 0xFFFFFFFF;
 }
 
-inline bool pci_cfg_is_host_bridge(uint32_t addr)
+/* Query config register 2 */
+
+inline bool pci_cfg_is_netdev(uint32_t reg2)
 {
-    const auto val = pci_cfg_read_reg(addr, 2);
-    const auto cc = (val & 0xFF000000) >> 24;
-    const auto sc = (val & 0x00FF0000) >> 16;
+    const auto cc = (reg2 & 0xFF000000) >> 24;
+    return cc == pci_cc_network;
+}
+
+inline bool pci_cfg_is_host_bridge(uint32_t reg2)
+{
+    const auto cc = (reg2 & 0xFF000000) >> 24;
+    const auto sc = (reg2 & 0x00FF0000) >> 16;
 
     return cc == pci_cc_bridge && sc == pci_sc_bridge_host;
 }
 
-inline bool pci_cfg_is_netdev(uint32_t addr)
+inline uint32_t pci_bridge_sec_bus(uint32_t reg6)
 {
-    const auto val = pci_cfg_read_reg(addr, 2);
-    const auto cc = (val & 0xFF000000) >> 24;
-
-    return cc == pci_cc_network;
+    return (reg6 & 0xFF00) >> 8;
 }
 
-inline uint32_t pci_cfg_sec_bus(uint32_t bus, uint32_t dev, uint32_t fun)
-{
-    const auto cf8 = pci_cfg_bdf_to_addr(bus, dev, fun);
-    const auto reg = pci_cfg_read_reg(cf8, 6);
+/* Query config register 3 */
 
-    return (reg & 0xFF00) >> 8;
+inline uint32_t pci_cfg_header(uint32_t reg3)
+{
+    return (reg3 & 0x00FF0000) >> 16;
 }
 
-inline uint32_t pci_cfg_header(uint32_t addr)
+inline bool pci_cfg_is_pci_bridge(uint32_t reg3)
 {
-    const auto val = pci_cfg_read_reg(addr, 3);
-    return (val & 0x00FF0000) >> 16;
+    const auto hdr = pci_cfg_header(reg3);
+    return hdr == pci_hdr_pci_bridge || hdr == pci_hdr_pci_bridge_multi;
 }
 
-inline bool pci_cfg_is_multifun(uint32_t addr)
+inline bool pci_cfg_is_multifun(uint32_t reg3)
 {
-    return (pci_cfg_header(addr) & 0x80) != 0;
+    const auto hdr = pci_cfg_header(reg3);
+    return (hdr & 0x80) != 0;
 }
 
 }

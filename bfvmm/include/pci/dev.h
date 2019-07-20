@@ -22,8 +22,11 @@
 #ifndef MICROV_PCI_DEV_H
 #define MICROV_PCI_DEV_H
 
-#include "config.h"
+#include <array>
+#include <bfgsl.h>
+
 #include "bar.h"
+#include "cfg.h"
 
 namespace microv {
 
@@ -32,9 +35,9 @@ struct pci_dev {
     uint32_t bus{};
     uint32_t dev{};
     uint32_t fun{};
-    uint32_t classc{};
-    uint32_t subclassc{};
+    std::array<uint32_t, 4> cfg_reg{};
     pci_bar_list bars{};
+    struct pci_dev *bridge{};
 
     void parse_bars()
     {
@@ -43,12 +46,24 @@ struct pci_dev {
 
     bool is_netdev() const
     {
-        return classc == pci_cc_network;
+        return pci_cfg_is_netdev(cfg_reg[2]);
     }
 
-    pci_dev(uint32_t addr)
+    bool is_pci_bridge() const
     {
-        expects(pci_cfg_addr_enabled(addr));
+        return pci_cfg_is_pci_bridge(cfg_reg[3]);
+    }
+
+    bool is_host_bridge() const
+    {
+        return pci_cfg_is_host_bridge(cfg_reg[2]);
+    }
+
+    pci_dev(uint32_t addr, struct pci_dev *parent_bridge = nullptr)
+    {
+        addr |= pci_en_mask;
+        addr &= ~(pci_reg_mask | pci_off_mask);
+
         expects(pci_cfg_is_present(addr));
 
         cf8 = addr;
@@ -56,9 +71,14 @@ struct pci_dev {
         dev = pci_cfg_dev(addr);
         fun = pci_cfg_fun(addr);
 
-        const auto reg = pci_cfg_read_reg(addr, 2);
-        classc = (reg & 0xFF000000) >> 24;
-        subclassc = (reg & 0x00FF0000) >> 16;
+        for (auto i = 0; i < cfg_reg.size(); i++) {
+            cfg_reg[i] = pci_cfg_read_reg(addr, i);
+        }
+
+        bridge = parent_bridge;
+        if (!bridge) {
+            ensures(this->is_host_bridge());
+        }
     }
 
     ~pci_dev() = default;
@@ -69,6 +89,8 @@ struct pci_dev {
     pci_dev(const pci_dev &) = delete;
     pci_dev &operator=(const pci_dev &) = delete;
 };
+
+int probe_pci();
 
 }
 #endif
