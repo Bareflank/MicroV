@@ -62,8 +62,6 @@ set(VMM_C_CXX_AVX512 $<AND:${VMM_C_CXX},${AVX512}>)
 # EFI
 set(EFI_C $<AND:${EFI},${C}>)
 set(EFI_C_CXX $<AND:${EFI},${C_CXX}>)
-set(EFI_C_AVX $<AND:${EFI_C},${AVX}>)
-set(EFI_C_AVX512 $<AND:${EFI_C},${AVX512}>)
 
 # Test
 set(TST_C_CXX $<AND:${TST},${C_CXX}>)
@@ -249,7 +247,7 @@ endif()
 
 target_compile_options(bfroot INTERFACE
     $<${EFI_C}:-mno-red-zone>
-    #$<${EFI_C}:-mno-avx>
+    $<${EFI_C}:-mno-avx>
     $<${EFI_C}:-g>
     $<${EFI_C}:-O2>
     $<${EFI_C}:-Wall>
@@ -270,8 +268,6 @@ target_compile_definitions(bfroot INTERFACE
     $<${EFI_C}:__KERNEL__>
     $<${EFI_C}:KERNEL>
     $<${EFI_C}:EFI>
-    $<${EFI_C_AVX}:BFVMM_AVX>
-    $<${EFI_C_AVX512}:BFVMM_AVX512>
     $<$<BOOL:${USE_XUE}>:USE_XUE>
 )
 target_include_directories(bfroot SYSTEM INTERFACE

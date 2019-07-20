@@ -19,8 +19,6 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#include <bfthreadcontext.h>
-#include <bfxsave.h>
 #include <hve/arch/intel_x64/vcpu.h>
 
 namespace bfvmm::intel_x64
@@ -70,19 +68,7 @@ xsetbv_handler::handle(vcpu *vcpu)
     }
 
     if (!info.ignore_write) {
-        struct xsave_info *xsave = thread_context_xsave();
-
-        //bfdebug_info(0, "xsetbv");
-        //bfdebug_subnhex(0, "guest_xcr0", xsave->guest_xcr0);
-        //bfdebug_subnhex(0, "host_xcr0", xsave->host_xcr0);
-        //bfdebug_subnhex(0, "new xcr0", info.val);
-        //bfdebug_subbool(0, "host_area == guest_area", xsave->host_area == xsave->guest_area);
-
-        if (xsave->host_area != xsave->guest_area) {
-            xsave->guest_xcr0 = info.val;
-        } else {
-            ::intel_x64::xcr0::set(info.val);
-        }
+        ::intel_x64::xcr0::set(info.val);
     }
 
     if (!info.ignore_advance) {

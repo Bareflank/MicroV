@@ -29,7 +29,6 @@
 
 #include <bftypes.h>
 #include <bfconstants.h>
-#include <bfxsave.h>
 
 #pragma pack(push, 1)
 
@@ -52,13 +51,6 @@ uint64_t thread_context_cpuid(void);
 uint64_t *thread_context_tlsptr(void);
 
 /**
- * Return XSAVE info
- *
- * @return returns the XSAVE info for the currently executing thread
- */
-struct xsave_info *thread_context_xsave(void);
-
-/**
  * @struct thread_context_t
  *
  * Thread Context
@@ -77,15 +69,15 @@ struct xsave_info *thread_context_xsave(void);
  *      the cpuid of the thread
  * @var thread_context_t::tlsptr
  *      the TLS pointer of the thread
- * @var thread_context_t::xsave_info
- *      the pointer to xsave_info of the thread
+ * @var thread_context_t::reserved1
+ *      reserved
  * @var thread_context_t::reserved2
  *      reserved
  */
 struct thread_context_t {
     uint64_t cpuid;
     uint64_t *tlsptr;
-    struct xsave_info *xsave_info;
+    uint64_t reserved1;
     uint64_t reserved2;
 };
 
@@ -116,7 +108,6 @@ setup_stack(void *stack, uint64_t cpuid)
     tc = bfrcast(struct thread_context_t *, stack_top - sizeof(struct thread_context_t));
     tc->cpuid = cpuid;
     tc->tlsptr = thread_context_tlsptr();
-    tc->xsave_info = thread_context_xsave();
 
     return stack_int;
 }

@@ -291,13 +291,8 @@ pthread_setspecific(pthread_key_t __key, const void *__value)
     return 0;
 }
 
-extern "C" struct xsave_info *_thread_context_xsave(void);
 extern "C" uint64_t *_thread_context_tlsptr(void);
 extern "C" uint64_t _thread_context_cpuid(void);
-
-extern "C" struct xsave_info *
-WEAK_SYM thread_context_xsave(void)
-{ return _thread_context_xsave(); }
 
 extern "C" uint64_t *
 WEAK_SYM thread_context_tlsptr(void)

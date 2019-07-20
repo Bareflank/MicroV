@@ -44,12 +44,7 @@
 #define ENTRY_ERROR_VMM_INIT_FAILED bfscast(status_t, 0x8000000000000020)
 #define ENTRY_ERROR_VMM_START_FAILED bfscast(status_t, 0x8000000000000030)
 #define ENTRY_ERROR_VMM_STOP_FAILED bfscast(status_t, 0x8000000000000040)
-#define ENTRY_ERROR_NO_XSAVE bfscast(status_t, 0x8000000000000050)
-#define ENTRY_ERROR_XSAVE_HOST_XCR0 bfscast(status_t, 0x8000000000000060)
-#define ENTRY_ERROR_XSAVE_HOST_SIZE bfscast(status_t, 0x8000000000000070)
-#define ENTRY_ERROR_XSAVE_GUEST_SIZE bfscast(status_t, 0x8000000000000080)
-#define ENTRY_ERROR_XSAVE_GUEST_XCR0 bfscast(status_t, 0x8000000000000090)
-#define ENTRY_ERROR_UNKNOWN bfscast(status_t, 0x80000000000000A0)
+#define ENTRY_ERROR_UNKNOWN bfscast(status_t, 0x8000000000000050)
 
 /* -------------------------------------------------------------------------- */
 /* C Runtime Error Codes                                                      */
@@ -112,10 +107,7 @@
 #define BF_ERROR_FAILED_TO_DUMP_DR bfscast(status_t, 0x8000000070000000)
 #define BF_ERROR_OUT_OF_MEMORY bfscast(status_t, 0x8000000080000000)
 #define BF_ERROR_VMM_CORRUPTED bfscast(status_t, 0x8000000090000000)
-#define BF_ERROR_NO_XSAVE bfscast(status_t, 0x80000000A0000000)
-#define BF_ERROR_XSAVE_AREA bfscast(status_t, 0x80000000B0000000)
-#define BF_ERROR_XSAVE_BUILD bfscast(status_t, 0x80000000C0000000)
-#define BF_ERROR_UNKNOWN bfscast(status_t, 0x80000000D0000000)
+#define BF_ERROR_UNKNOWN bfscast(status_t, 0x80000000A0000000)
 
 /* -------------------------------------------------------------------------- */
 /* IOCTL Error Codes                                                          */
@@ -150,11 +142,6 @@ ec_to_str(int64_t value)
         case ENTRY_ERROR_VMM_INIT_FAILED: return "ENTRY_ERROR_VMM_INIT_FAILED";
         case ENTRY_ERROR_VMM_START_FAILED: return "ENTRY_ERROR_VMM_START_FAILED";
         case ENTRY_ERROR_VMM_STOP_FAILED: return "ENTRY_ERROR_VMM_STOP_FAILED";
-        case ENTRY_ERROR_NO_XSAVE: return "ENTRY_ERROR_NO_XSAVE";
-        case ENTRY_ERROR_XSAVE_HOST_XCR0: return "ENTRY_ERROR_XSAVE_HOST_XCR0";
-        case ENTRY_ERROR_XSAVE_HOST_SIZE: return "ENTRY_ERROR_XSAVE_HOST_SIZE";
-        case ENTRY_ERROR_XSAVE_GUEST_XCR0: return "ENTRY_ERROR_XSAVE_GUEST_XCR0";
-        case ENTRY_ERROR_XSAVE_GUEST_SIZE: return "ENTRY_ERROR_XSAVE_GUEST_SIZE";
         case ENTRY_ERROR_UNKNOWN: return "ENTRY_ERROR_UNKNOWN";
         case CRT_FAILURE: return "CRT_FAILURE";
         case REGISTER_EH_FRAME_FAILURE: return "REGISTER_EH_FRAME_FAILURE";
@@ -182,9 +169,6 @@ ec_to_str(int64_t value)
         case BF_ERROR_FAILED_TO_DUMP_DR: return "BF_ERROR_FAILED_TO_DUMP_DR";
         case BF_ERROR_OUT_OF_MEMORY: return "BF_ERROR_OUT_OF_MEMORY";
         case BF_ERROR_VMM_CORRUPTED: return "BF_ERROR_VMM_CORRUPTED";
-        case BF_ERROR_NO_XSAVE: return "BF_ERROR_NO_XSAVE";
-        case BF_ERROR_XSAVE_AREA: return "BF_ERROR_XSAVE_AREA";
-        case BF_ERROR_XSAVE_BUILD: return "BF_ERROR_XSAVE_BUILD";
         case BF_ERROR_UNKNOWN: return "BF_ERROR_UNKNOWN";
         case BF_BAD_ALLOC: return "BF_BAD_ALLOC";
         case BF_IOCTL_FAILURE: return "BF_IOCTL_FAILURE";

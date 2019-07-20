@@ -26,7 +26,6 @@
 #include <bfthreadcontext.h>
 #include <bfbuilderinterface.h>
 #include <hve/arch/intel_x64/vcpu.h>
-#include <hve/arch/intel_x64/xsave.h>
 #include <iommu/iommu.h>
 #include <pci/dev.h>
 #include <xen/xen.h>

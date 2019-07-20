@@ -134,7 +134,7 @@ private_init_xue(struct xue *xue) noexcept
 
     auto out_work = g_mm->alloc_map(XUE_WORK_RING_CAP);
     for (auto i = 0; i < XUE_WORK_RING_CAP; i += XUE_PAGE_SIZE) {
-        g_cr3->map_4k((uint64_t)out_work + i, g_xue.dbc_owork.dma + i);
+        g_cr3->map_4k((uint64_t)out_work + i, g_xue.dbc_owork.phys + i);
     }
 
     g_xue.dbc_owork.buf = (uint8_t *)out_work;

@@ -40,7 +40,6 @@
 #include "vmcall/vcpu_op.h"
 
 #include "domain.h"
-#include "xsave.h"
 
 #include <bfvmm/vcpu/vcpu_manager.h>
 #include <bfvmm/hve/arch/intel_x64/vcpu.h>
@@ -325,8 +324,6 @@ private:
     vcpu *m_parent_vcpu{};
 
     std::unique_ptr<microv::xen> m_xen;
-    std::unique_ptr<struct xsave_info> m_xsave;
-    std::unique_ptr<uint8_t[]> m_guest_area;
 };
 
 }

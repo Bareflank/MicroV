@@ -44,7 +44,6 @@ target_sources(microv_hve PRIVATE
     $<${X64}:arch/intel_x64/domain.cpp>
     $<${X64}:arch/intel_x64/uart.cpp>
     $<${X64}:arch/intel_x64/vcpu.cpp>
-    $<${X64}:arch/intel_x64/xsave.cpp>
 )
 
 install(TARGETS microv_hve DESTINATION lib EXPORT microv_bfvmm-vmm-targets)

@@ -20,23 +20,24 @@
  * SOFTWARE.
  */
 
-.code64
-.intel_syntax noprefix
+        .code64
+        .intel_syntax noprefix
 
-.globl  _vmcall
-.type   _vmcall, @function
+        .globl  _vmcall
+        .type   _vmcall, @function
 _vmcall:
-    push rbx
 
-    mov r9, rdx
-    mov r8, rcx
+        push rbx
 
-    mov rax, rdi
-    mov rbx, rsi
-    mov rcx, r9
-    mov rdx, r8
+        mov r9, rdx
+        mov r8, rcx
 
-    vmcall
+        mov rax, rdi
+        mov rbx, rsi
+        mov rcx, r9
+        mov rdx, r8
 
-    pop rbx
-    ret
+        vmcall
+
+        pop rbx
+        ret

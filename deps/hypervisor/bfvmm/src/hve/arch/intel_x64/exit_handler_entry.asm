@@ -24,13 +24,8 @@ default rel
 
 %define VMCS_GUEST_RSP 0x0000681C
 %define VMCS_GUEST_RIP 0x0000681E
-%define IA32_XSS_MSR 0xDA0
 
 extern handle_exit
-extern _read_msr
-extern _xsaves
-extern _xgetbv
-
 global exit_handler_entry:function
 
 section .text
@@ -62,31 +57,14 @@ exit_handler_entry:
     mov [gs:0x068], r14
     mov [gs:0x070], r15
 
-    mov r12, [gs:0x0A8]
-
-    mov rax, [r12 + 0x00] ; host_area
-    mov rbx, [r12 + 0x08] ; guest_area
-    cmp rax, rbx
-    je load_host_state
-
-    ; Store current state to the guest area
-    mov rax, [r12 + 0x18]
-    mov rdx, [r12 + 0x18]
-    shr rdx, 32
-    xor rcx, rcx
-    xsetbv
-    mov rdi, [r12 + 0x08]
-    xsave [rdi]
-
-load_host_state:
-    ; Load state from host area
-    mov rax, [r12 + 0x10]
-    mov rdx, [r12 + 0x10]
-    shr rdx, 32
-    xor rcx, rcx
-    xsetbv
-    mov rdi, [r12 + 0x00]
-    xrstor [rdi]
+    movdqa [gs:0x0C0], xmm0
+    movdqa [gs:0x0E0], xmm1
+    movdqa [gs:0x100], xmm2
+    movdqa [gs:0x120], xmm3
+    movdqa [gs:0x140], xmm4
+    movdqa [gs:0x160], xmm5
+    movdqa [gs:0x180], xmm6
+    movdqa [gs:0x1A0], xmm7
 
     mov rdi, VMCS_GUEST_RIP
     vmread [gs:0x078], rdi

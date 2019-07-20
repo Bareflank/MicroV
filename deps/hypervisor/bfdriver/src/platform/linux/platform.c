@@ -35,7 +35,6 @@
 #include <linux/cpumask.h>
 #include <linux/sched.h>
 #include <linux/kallsyms.h>
-#include <asm/processor.h>
 
 #if defined(BF_AARCH64)
 #   include <asm/io.h>
@@ -197,7 +196,3 @@ platform_call_vmm_on_core(
 void *
 platform_get_rsdp(void)
 { return 0; }
-
-void
-platform_cpuid(uint32_t *eax, uint32_t *ebx, uint32_t *ecx, uint32_t *edx)
-{ __cpuid(eax, ebx, ecx, edx); }

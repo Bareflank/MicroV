@@ -19,10 +19,6 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-if(ENABLE_VMM_AVX512 AND ENABLE_VMM_AVX)
-    invalid_config("ENABLE_VMM_AVX must not be ON if ENABLE_VMM_AVX512 is ON")
-endif()
-
 # ------------------------------------------------------------------------------
 # Only static builds are supported
 # ------------------------------------------------------------------------------
