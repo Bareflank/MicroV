@@ -26,8 +26,11 @@
 #include <acpi.h>
 #include <iommu/dmar.h>
 #include <iommu/iommu.h>
-
 #include <hve/arch/intel_x64/vcpu.h>
+
+constexpr auto PAGE_SIZE_4K = (1UL << 12);
+constexpr auto PAGE_SIZE_2M = (1UL << 21);
+constexpr auto SIG_SIZE = 4;
 
 extern microv::intel_x64::vcpu *vcpu0;
 using namespace bfvmm::x64;
@@ -37,7 +40,30 @@ namespace microv {
 static std::list<std::unique_ptr<class iommu>> iommu_list;
 static bfvmm::x64::unique_map<rsdp_t> rsdp_map;
 static bfvmm::x64::unique_map<char> dmar_map;
+static uintptr_t dmar_gpa;
+static char *dmar_hva;
 static size_t dmar_len;
+
+static void hide_dmar(char *dmar_hva, uintptr_t dmar_gpa)
+{
+    using namespace bfvmm::intel_x64;
+
+    auto gpa_4k = bfn::upper(dmar_gpa, 12);
+    auto gpa_2m = bfn::upper(dmar_gpa, 21);
+    auto offset = reinterpret_cast<uintptr_t>(dmar_gpa - gpa_4k);
+    auto hva_4k = reinterpret_cast<const char *>(bfn::upper(dmar_hva, 12));
+
+    static auto copy = make_page<char>();
+    memcpy(copy.get(), hva_4k, PAGE_SIZE_4K);
+    memset(copy.get() + offset, 0, SIG_SIZE);
+
+    auto dom = vcpu0->dom();
+    ept::identity_map_convert_2m_to_4k(dom->ept(), gpa_2m);
+    dom->unmap(gpa_4k);
+    dom->map_4k_rw(gpa_4k, g_mm->virtptr_to_physint(copy.get()));
+
+    ::intel_x64::vmx::invept_global();
+}
 
 static char *find_dmar()
 {
@@ -69,12 +95,14 @@ static char *find_dmar()
 
     for (auto i = 0; i < xsdt_entries; i++) {
         auto hdr = vcpu0->map_gpa_4k<acpi_header_t>(entry[i], 1);
-        if (!strncmp(dmar_sig, hdr->signature, 4)) {
-            {
-                auto dmar_hdr = std::move(hdr);
-                dmar_len = dmar_hdr->length;
-            }
-            dmar_map = vcpu0->map_gpa_4k<char>(entry[i], dmar_len);
+        if (!strncmp(dmar_sig, hdr->signature, SIG_SIZE)) {
+            dmar_len = hdr->length;
+            dmar_gpa = reinterpret_cast<uintptr_t>(entry[i]);
+
+            hide_dmar(reinterpret_cast<char *>(hdr.get()), dmar_gpa);
+            hdr.get_deleter()(hdr.release());
+
+            dmar_map = vcpu0->map_gpa_4k<char>(dmar_gpa, dmar_len);
             return dmar_map.get();
         }
     }
@@ -90,6 +118,7 @@ int probe_iommu()
         return -ENODEV;
     }
 
+    dmar_hva = dmar;
     auto drs = dmar + drs_offset;
     auto end = dmar + dmar_len;
 
