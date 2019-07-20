@@ -22,8 +22,6 @@
 #include <intrinsics.h>
 #include <bfexports.h>
 #include <bfgpalayout.h>
-#include <bfxsave.h>
-#include <bfthreadcontext.h>
 #include <bfbuilderinterface.h>
 #include <hve/arch/intel_x64/vcpu.h>
 #include <iommu/iommu.h>
@@ -87,25 +85,6 @@ ept_violation_handler(vcpu_t *vcpu)
 
 namespace microv::intel_x64
 {
-
-/*
- * Disable Intel MPX. GCC 9 dropped support for MPX, and Linux is
- * in the process of dropping support as well. Windows doesn't use MPX at all.
- * Leaving this on triggers a bug when booting Linux from EFI when the xsave
- * features are used in the VMM.
- */
-static bool cpuid_disable_mpx(bfvmm::intel_x64::vcpu *vcpu)
-{
-    constexpr auto mpx_bit = 1UL << 14;
-
-    vcpu->execute_cpuid();
-    if (vcpu->gr2() == 0) {
-        vcpu->set_rbx(vcpu->rbx() & ~mpx_bit);
-        //bfdebug_info(0, "cpuid: disabled mpx");
-    }
-
-    return vcpu->advance();
-}
 
 vcpu::vcpu(
     vcpuid::type id,
@@ -173,7 +152,6 @@ vcpu::vcpu(
 
     this->add_cpuid_emulator(0x4BF00010, {&vcpu::handle_0x4BF00010, this});
     this->add_cpuid_emulator(0x4BF00021, {&vcpu::handle_0x4BF00021, this});
-    this->add_cpuid_emulator(0x7, {cpuid_disable_mpx});
 }
 
 //------------------------------------------------------------------------------
