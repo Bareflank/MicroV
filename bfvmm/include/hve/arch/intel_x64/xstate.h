@@ -19,46 +19,40 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#include <hve/arch/intel_x64/vcpu.h>
-#include <hve/arch/intel_x64/vmexit/external_interrupt.h>
+#ifndef XSTATE_INTEL_X64_MICROV_H
+#define XSTATE_INTEL_X64_MICROV_H
 
-namespace microv::intel_x64
-{
+#include <bftypes.h>
+#include <memory>
+#include <bfvmm/hve/arch/intel_x64/vcpu.h>
 
-external_interrupt_handler::external_interrupt_handler(
-    gsl::not_null<vcpu *> vcpu
-) :
-    m_vcpu{vcpu}
-{
-    using namespace vmcs_n;
+namespace microv::intel_x64 {
 
-    if (vcpu->is_dom0()) {
-        return;
-    }
+class vcpu;
 
-    m_vcpu->add_external_interrupt_handler(
-        {&external_interrupt_handler::handle, this});
-}
+class xstate {
+public:
+    using base_vcpu = bfvmm::intel_x64::vcpu;
+    using xsetbv_info = bfvmm::intel_x64::xsetbv_handler::info_t;
 
-// -----------------------------------------------------------------------------
-// Handlers
-// -----------------------------------------------------------------------------
+    void load();
+    void save();
+    bool handle_xsetbv(base_vcpu *vcpu, xsetbv_info &info);
 
-bool
-external_interrupt_handler::handle(
-    vcpu_t *vcpu, bfvmm::intel_x64::external_interrupt_handler::info_t &info)
-{
-    bfignored(vcpu);
-    m_vcpu->save_xstate();
+    xstate(vcpu *v);
+    ~xstate() = default;
+    xstate(xstate &&) = default;
+    xstate &operator=(xstate &&) = default;
+    xstate(const xstate &) = delete;
+    xstate &operator=(const xstate &) = delete;
 
-    auto parent_vcpu = m_vcpu->parent_vcpu();
-
-    parent_vcpu->load();
-    parent_vcpu->queue_external_interrupt(info.vector);
-    parent_vcpu->return_resume_after_interrupt();
-
-    // Unreachable
-    return true;
-}
+private:
+    vcpu *m_vcpu{};
+    uint64_t m_xcr0{};
+    uint64_t m_rfbm{};
+    uint64_t m_size{};
+    std::unique_ptr<char[]> m_area{};
+};
 
 }
+#endif

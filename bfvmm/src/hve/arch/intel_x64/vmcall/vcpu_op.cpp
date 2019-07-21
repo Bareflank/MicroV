@@ -40,6 +40,7 @@ void
 vmcall_vcpu_op_handler::vcpu_op__create_vcpu(vcpu *vcpu)
 {
     try {
+        vcpu->init_xstate();
         vcpu->set_rax(bfvmm::vcpu::generate_vcpuid());
         g_vcm->create(vcpu->rax(), get_domain(vcpu->rbx()));
     }

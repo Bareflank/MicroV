@@ -120,6 +120,7 @@ vcpu::vcpu(
     }
     else {
         this->write_domU_guest_state(domain);
+        this->init_xstate();
     }
 
     this->add_cpuid_emulator(0x4BF00010, {&vcpu::handle_0x4BF00010, this});
@@ -234,6 +235,7 @@ vcpu::parent_vcpu() const
 void
 vcpu::return_hlt()
 {
+    this->load_xstate();
     this->set_rax(__enum_run_op__hlt);
     this->run(&world_switch);
 }
@@ -241,6 +243,7 @@ vcpu::return_hlt()
 void
 vcpu::return_fault(uint64_t error)
 {
+    this->load_xstate();
     this->set_rax((error << 4) | __enum_run_op__fault);
     this->run(&world_switch);
 }
@@ -248,6 +251,7 @@ vcpu::return_fault(uint64_t error)
 void
 vcpu::return_resume_after_interrupt()
 {
+    this->load_xstate();
     this->set_rax(__enum_run_op__resume_after_interrupt);
     this->run(&world_switch);
 }
@@ -255,6 +259,7 @@ vcpu::return_resume_after_interrupt()
 void
 vcpu::return_yield(uint64_t usec)
 {
+    this->load_xstate();
     this->set_rax((usec << 4) | __enum_run_op__yield);
     this->run(&world_switch);
 }
@@ -289,6 +294,8 @@ vcpu::halt(const std::string &str)
         bferror_lnbr(0);
         bferror_info(0, "child vcpu being killed");
         bferror_lnbr(0);
+
+        this->save_xstate();
 
         parent_vcpu->load();
         parent_vcpu->return_fault();
@@ -328,7 +335,7 @@ vcpu::setup_default_controls()
 
     using namespace secondary_processor_based_vm_execution_controls;
     enable_invpcid::disable();
-    enable_xsaves_xrstors::disable();
+    enable_xsaves_xrstors::enable();
 }
 
 void
@@ -409,6 +416,21 @@ vcpu::setup_default_register_state()
 
     guest_rflags::set(2);
     vmcs_link_pointer::set(0xFFFFFFFFFFFFFFFF);
+}
+
+void vcpu::init_xstate()
+{
+    m_xstate = std::make_unique<xstate>(this);
+}
+
+void vcpu::save_xstate()
+{
+    m_xstate->save();
+}
+
+void vcpu::load_xstate()
+{
+    m_xstate->load();
 }
 
 }

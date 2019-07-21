@@ -22,71 +22,49 @@
 bits 64
 default rel
 
+global xstate_save:function
+global xstate_load:function
+
 section .text
 
-global _read_cr0
-_read_cr0:
-    mov rax, cr0
-    ret
+; void xstate_save(uint64_t xcr0, uint64_t rfbm, void *area);
+;
+; @xcr0 is the value of xcr0 programmed by the vcpu
+; @rfbm is the mask of state components that need to be saved
+; @area is the base address of the XSAVE area to save to
+;
+xstate_save:
+    mov r11, rdx
 
-global _write_cr0
-_write_cr0:
-    mov cr0, rdi
-    ret
-
-global _read_cr2
-_read_cr2:
-    mov rax, cr2
-    ret
-
-global _write_cr2
-_write_cr2:
-    mov cr2, rdi
-    ret
-
-global _read_cr3
-_read_cr3:
-    mov rax, cr3
-    ret
-
-global _write_cr3
-_write_cr3:
-    mov cr3, rdi
-    ret
-
-global _read_cr4
-_read_cr4:
-    mov rax, cr4
-    ret
-
-global _write_cr4
-_write_cr4:
-    mov cr4, rdi
-    ret
-
-global _read_cr8
-_read_cr8:
-    mov rax, cr8
-    ret
-
-global _write_cr8
-_write_cr8:
-    mov cr8, rdi
-    ret
-
-global _write_xcr0
-_write_xcr0:
     mov rax, rdi
     mov rdx, rdi
     shr rdx, 32
-    mov rcx, 0
+    xor rcx, rcx
     xsetbv
+
+    mov rax, rsi
+    mov rdx, rsi
+    shr rdx, 32
+    xsave [r11]
     ret
 
-global _read_xcr0
-_read_xcr0:
-    mov rcx, 0
-    xgetbv
-    shl rdx, 32
-    or rax, rdx
+; void xstate_load(uint64_t xcr0, uint64_t rfbm, void *area);
+;
+; @xcr0 is the value of xcr0 programmed by the vcpu
+; @rfbm is the mask of state components that need to be loaded
+; @area is the base address of the XSAVE area to load from
+;
+xstate_load:
+    mov r11, rdx
+
+    mov rax, rdi
+    mov rdx, rdi
+    shr rdx, 32
+    xor rcx, rcx
+    xsetbv
+
+    mov rax, rsi
+    mov rdx, rsi
+    shr rdx, 32
+    xrstor [r11]
     ret

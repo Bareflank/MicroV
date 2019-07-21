@@ -516,6 +516,7 @@ vcpu::dump(const char *str)
         bferror_subnhex(0, "cr2", ::intel_x64::cr2::get(), msg);
         bferror_subnhex(0, "cr3", guest_cr3::get(), msg);
         bferror_subnhex(0, "cr4", guest_cr4::get(), msg);
+        bferror_subnhex(0, "xcr0", ::intel_x64::xcr0::get(), msg);
 
         bferror_lnbr(0, msg);
         bferror_info(0, "addressing", msg);

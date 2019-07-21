@@ -67,6 +67,9 @@ vmcall_run_op_handler::dispatch(vcpu *vcpu)
         m_child_vcpu->set_parent_vcpu(vcpu);
 
         if (m_child_vcpu->is_alive()) {
+            vcpu->save_xstate();
+
+            m_child_vcpu->load_xstate();
             m_child_vcpu->load();
             m_child_vcpu->run(&world_switch);
         }

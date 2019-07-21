@@ -102,6 +102,18 @@ cpuid_handler::handle_0x00000001(vcpu_t *vcpu)
 
     vcpu->set_rcx(vcpu->rcx() | 0x80000000);
 
+    // Enable xsave and avx
+    vcpu->set_rcx(vcpu->rcx() | (1UL << 26));
+    vcpu->set_rcx(vcpu->rcx() | (1UL << 28));
+
+    // Set osxsave based on current cr4 value
+    auto osxsave = vcpu->cr4() & (1UL << 18);
+    if (osxsave) {
+        vcpu->set_rcx(vcpu->rcx() | (1UL << 18));
+    } else {
+        vcpu->set_rcx(vcpu->rcx() & ~(1UL << 18));
+    }
+
     return vcpu->advance();
 }
 
@@ -145,7 +157,7 @@ cpuid_handler::handle_0x00000007(vcpu_t *vcpu)
     vcpu->execute_cpuid();
 
     vcpu->set_rax(0);
-    vcpu->set_rbx(vcpu->rbx() & 0x019C23D9);
+    vcpu->set_rbx(vcpu->rbx() & 0x019D23F9);
     vcpu->set_rcx(0);
     vcpu->set_rdx(0);
 
@@ -179,11 +191,7 @@ cpuid_handler::handle_0x0000000B(vcpu_t *vcpu)
 bool
 cpuid_handler::handle_0x0000000D(vcpu_t *vcpu)
 {
-    vcpu->set_rax(0);
-    vcpu->set_rbx(0);
-    vcpu->set_rcx(0);
-    vcpu->set_rdx(0);
-
+    vcpu->execute_cpuid();
     return vcpu->advance();
 }
 

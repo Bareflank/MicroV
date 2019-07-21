@@ -142,6 +142,7 @@ yield_handler::handle_hlt(vcpu_t *vcpu)
     if (auto pet = m_vcpu->get_preemption_timer(); pet > 0) {
         auto yield = ((pet << m_pet_shift) * 1000) / m_tsc_freq;
 
+        m_vcpu->save_xstate();
         m_vcpu->parent_vcpu()->load();
         m_vcpu->parent_vcpu()->return_yield(yield);
     }

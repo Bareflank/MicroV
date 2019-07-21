@@ -38,6 +38,7 @@
 #include "vmcall/vcpu_op.h"
 
 #include "domain.h"
+#include "xstate.h"
 
 #include <bfvmm/vcpu/vcpu_manager.h>
 #include <bfvmm/hve/arch/intel_x64/vcpu.h>
@@ -294,6 +295,10 @@ public:
     bool handle_0x4BF00010(bfvmm::intel_x64::vcpu *vcpu);
     bool handle_0x4BF00021(bfvmm::intel_x64::vcpu *vcpu);
 
+    void init_xstate();
+    void save_xstate();
+    void load_xstate();
+
 private:
 
     void setup_default_controls();
@@ -322,6 +327,7 @@ private:
     vcpu *m_parent_vcpu{};
 
     std::unique_ptr<microv::xen> m_xen;
+    std::unique_ptr<microv::intel_x64::xstate> m_xstate{};
 };
 
 }
