@@ -21,6 +21,8 @@
 
 #include <memory>
 #include <unordered_map>
+
+#include <bfvcpuid.h>
 #include <pci/dev.h>
 #include <hve/arch/intel_x64/vcpu.h>
 
@@ -37,24 +39,35 @@ extern size_t mcfg_len;
  * is a PCI CONFIG_ADDR value with the enable bit (bit 31),
  * bus, device, and function set. The register and offset bits are 0.
  */
-static std::unordered_map<uint32_t, std::unique_ptr<class pci_dev>> pci_devs;
+static std::unordered_map<uint32_t, std::unique_ptr<class pci_dev>> pci_dev_map;
+
+/* List of all PCI devices */
+static std::list<class pci_dev *> pci_devs;
+
+/* List of PCI devices to passthru */
+std::list<class pci_dev *> pci_devs_pt;
 
 static int probe_bus(uint32_t b, struct pci_dev *bridge)
 {
     for (auto d = 0; d < pci_nr_dev; d++) {
         for (auto f = 0; f < pci_nr_fun; f++) {
             auto addr = pci_cfg_bdf_to_addr(b, d, f);
+            if (!pci_cfg_is_present(addr)) {
+                continue;
+            }
 
-            if (pci_cfg_is_present(addr)) {
-                pci_devs[addr] = std::make_unique<class pci_dev>(addr, bridge);
-                printf("added pci device: %02x:%02x.%02x\n", b, d, f);
+            pci_dev_map[addr] = std::make_unique<class pci_dev>(addr, bridge);
+            auto pdev = pci_dev_map[addr].get();
+            pci_devs.push_back(pdev);
 
-                auto pdev = pci_devs[addr].get();
-                if (pdev->is_pci_bridge()) {
-                    auto reg6 = pci_cfg_read_reg(addr, 6);
-                    auto next = pci_bridge_sec_bus(reg6);
-                    probe_bus(next, pdev);
-                }
+            if (pdev->is_pci_bridge()) {
+                auto reg6 = pci_cfg_read_reg(addr, 6);
+                auto next = pci_bridge_sec_bus(reg6);
+                probe_bus(next, pdev);
+            } else if (pdev->is_netdev()) {
+                pci_devs_pt.push_back(pdev);
+                pdev->passthru = true;
+                pdev->parse_cap_regs();
             }
         }
     }
@@ -68,9 +81,9 @@ int probe_pci()
     expects(mcfg_len);
 
     auto addr = pci_cfg_bdf_to_addr(0, 0, 0);
-    pci_devs[addr] = std::make_unique<class pci_dev>(addr);
+    pci_dev_map[addr] = std::make_unique<class pci_dev>(addr);
 
-    return probe_bus(0, pci_devs[addr].get());
+    return probe_bus(0, pci_dev_map[addr].get());
 }
 
 }

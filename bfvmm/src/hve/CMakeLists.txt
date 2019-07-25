@@ -30,12 +30,12 @@ target_include_directories(microv_hve PUBLIC
 )
 target_sources(microv_hve PRIVATE
     $<${X64}:arch/intel_x64/apic/x2apic.cpp>
-    $<${X64}:arch/intel_x64/pci/pci_configuration_space.cpp>
     $<${X64}:arch/intel_x64/vmexit/cpuid.cpp>
     $<${X64}:arch/intel_x64/vmexit/external_interrupt.cpp>
     $<${X64}:arch/intel_x64/vmexit/io_instruction.cpp>
     $<${X64}:arch/intel_x64/vmexit/msr.cpp>
     $<${X64}:arch/intel_x64/vmexit/mtrr.cpp>
+    $<${X64}:arch/intel_x64/vmexit/pci.cpp>
     $<${X64}:arch/intel_x64/vmexit/vmcall.cpp>
     $<${X64}:arch/intel_x64/vmexit/yield.cpp>
     $<${X64}:arch/intel_x64/vmcall/domain_op.cpp>

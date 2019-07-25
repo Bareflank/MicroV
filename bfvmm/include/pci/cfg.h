@@ -140,6 +140,13 @@ inline bool pci_cfg_is_present(uint32_t addr)
     return pci_cfg_read_reg(addr, 0) != 0xFFFFFFFF;
 }
 
+/* Query config register 1 */
+
+inline bool pci_cfg_has_caps(uint32_t reg1)
+{
+    return (reg1 & 0x0010'0000) != 0;
+}
+
 /* Query config register 2 */
 
 inline bool pci_cfg_is_netdev(uint32_t reg2)
@@ -154,11 +161,6 @@ inline bool pci_cfg_is_host_bridge(uint32_t reg2)
     const auto sc = (reg2 & 0x00FF0000) >> 16;
 
     return cc == pci_cc_bridge && sc == pci_sc_bridge_host;
-}
-
-inline uint32_t pci_bridge_sec_bus(uint32_t reg6)
-{
-    return (reg6 & 0xFF00) >> 8;
 }
 
 /* Query config register 3 */
@@ -178,6 +180,19 @@ inline bool pci_cfg_is_multifun(uint32_t reg3)
 {
     const auto hdr = pci_cfg_header(reg3);
     return (hdr & 0x80) != 0;
+}
+
+inline bool pci_cfg_is_normal(uint32_t reg3)
+{
+    const auto hdr = pci_cfg_header(reg3);
+    return hdr == pci_hdr_normal || hdr == pci_hdr_normal_multi;
+}
+
+/* Query config register 6 */
+
+inline uint32_t pci_bridge_sec_bus(uint32_t reg6)
+{
+    return (reg6 & 0xFF00) >> 8;
 }
 
 }

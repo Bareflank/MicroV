@@ -184,7 +184,7 @@ io_instruction_handler::handle_in(vcpu *vcpu, info_t &info)
     if (GSL_LIKELY(hdlrs != m_in_handlers.end())) {
 
         if (!m_emulate[info.port_number]) {
-            emulate_in(info);
+            phys_in(info);
         }
 
         for (const auto &d : hdlrs->second) {
@@ -224,7 +224,7 @@ io_instruction_handler::handle_out(vcpu *vcpu, info_t &info)
             if (d(vcpu, info)) {
 
                 if (!info.ignore_write && !m_emulate[info.port_number]) {
-                    emulate_out(info);
+                    phys_out(info);
                 }
 
                 if (!info.ignore_advance) {
@@ -245,7 +245,7 @@ io_instruction_handler::handle_out(vcpu *vcpu, info_t &info)
 }
 
 void
-io_instruction_handler::emulate_in(info_t &info)
+io_instruction_handler::phys_in(info_t &info)
 {
     namespace io_instruction = vmcs_n::exit_qualification::io_instruction;
 
@@ -265,7 +265,7 @@ io_instruction_handler::emulate_in(info_t &info)
 }
 
 void
-io_instruction_handler::emulate_out(info_t &info)
+io_instruction_handler::phys_out(info_t &info)
 {
     namespace io_instruction = vmcs_n::exit_qualification::io_instruction;
 

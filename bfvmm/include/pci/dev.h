@@ -30,14 +30,21 @@
 
 namespace microv {
 
+namespace intel_x64 {
+    class vcpu;
+}
+
 struct pci_dev {
     uint32_t cf8{};
     uint32_t bus{};
     uint32_t dev{};
     uint32_t fun{};
+    uint32_t msi_base{};
+
+    bool passthru{};
+    struct pci_dev *bridge{};
     std::array<uint32_t, 4> cfg_reg{};
     pci_bar_list bars{};
-    struct pci_dev *bridge{};
 
     void parse_bars()
     {
@@ -57,6 +64,36 @@ struct pci_dev {
     bool is_host_bridge() const
     {
         return pci_cfg_is_host_bridge(cfg_reg[2]);
+    }
+
+    void parse_cap_regs()
+    {
+        if (msi_base) {
+            return;
+        }
+
+        constexpr auto CAP_PTR_REG = 0xD;
+        constexpr auto MSI_ID = 0x05;
+
+        expects(pci_cfg_is_normal(cfg_reg[3]));
+        expects(pci_cfg_has_caps(cfg_reg[1]));
+
+        auto ptr = pci_cfg_read_reg(cf8, CAP_PTR_REG) & 0xFF;
+        auto reg = ptr >> 2;
+
+        while (reg) {
+            auto cap = pci_cfg_read_reg(cf8, reg);
+            auto id = cap & 0xFF;
+
+            if (id == MSI_ID) {
+                msi_base = reg;
+                break;
+            }
+
+            reg = (cap & 0xFF00) >> (8 + 2);
+        }
+
+        ensures(msi_base);
     }
 
     pci_dev(uint32_t addr, struct pci_dev *parent_bridge = nullptr)
@@ -82,10 +119,8 @@ struct pci_dev {
     }
 
     ~pci_dev() = default;
-
     pci_dev(pci_dev &&) = default;
     pci_dev &operator=(pci_dev &&) = default;
-
     pci_dev(const pci_dev &) = delete;
     pci_dev &operator=(const pci_dev &) = delete;
 };

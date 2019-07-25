@@ -40,6 +40,10 @@ static bool iommu_ready = false;
 static bool acpi_ready = false;
 static bool pci_ready = false;
 
+namespace microv {
+    extern std::list<class pci_dev *> pci_devs_pt;
+}
+
 //------------------------------------------------------------------------------
 // Fault Handlers
 //------------------------------------------------------------------------------
@@ -107,7 +111,7 @@ vcpu::vcpu(
     m_vmcall_vcpu_op_handler{this},
 
     m_x2apic_handler{this},
-    m_pci_configuration_space_handler{this}
+    m_pci_handler{this}
 {
     domain->m_vcpu = this;
     this->set_eptp(domain->ept());
@@ -176,6 +180,11 @@ bool vcpu::handle_0x4BF00010(bfvmm::intel_x64::vcpu *vcpu)
     if (!pci_ready) {
         probe_pci();
         pci_ready = true;
+    }
+
+    if (pci_devs_pt.size()) {
+        m_pci_handler.enable_host_defaults();
+        bfdebug_info(0, "pci: enabled default host handlers");
     }
 
     vcpu_init_root(vcpu);
@@ -438,5 +447,4 @@ void vcpu::load_xstate()
 {
     m_xstate->load();
 }
-
 }

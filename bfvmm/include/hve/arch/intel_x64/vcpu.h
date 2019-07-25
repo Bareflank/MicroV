@@ -23,13 +23,13 @@
 #define VCPU_INTEL_X64_MICROV_H
 
 #include "apic/x2apic.h"
-#include "pci/pci_configuration_space.h"
 
 #include "vmexit/cpuid.h"
 #include "vmexit/external_interrupt.h"
 #include "vmexit/io_instruction.h"
 #include "vmexit/msr.h"
 #include "vmexit/mtrr.h"
+#include "vmexit/pci.h"
 #include "vmexit/vmcall.h"
 #include "vmexit/yield.h"
 
@@ -321,7 +321,7 @@ private:
     vmcall_vcpu_op_handler m_vmcall_vcpu_op_handler;
 
     x2apic_handler m_x2apic_handler;
-    pci_configuration_space_handler m_pci_configuration_space_handler;
+    pci_handler m_pci_handler;
 
     bool m_killed{};
     vcpu *m_parent_vcpu{};
