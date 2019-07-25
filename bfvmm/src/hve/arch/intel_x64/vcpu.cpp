@@ -22,12 +22,14 @@
 #include <intrinsics.h>
 
 #include <acpi.h>
+#include <bfcallonce.h>
 #include <bfexports.h>
 #include <bfgpalayout.h>
 #include <bfbuilderinterface.h>
 #include <hve/arch/intel_x64/vcpu.h>
 #include <iommu/iommu.h>
 #include <pci/dev.h>
+#include <pci/pci.h>
 #include <xen/xen.h>
 #include <xue.h>
 
@@ -38,13 +40,9 @@ extern struct xue_ops g_xue_ops;
 
 void WEAK_SYM vcpu_init_root(bfvmm::intel_x64::vcpu *vcpu);
 
-static bool iommu_ready = false;
-static bool acpi_ready = false;
-static bool pci_ready = false;
-
-namespace microv {
-    extern std::list<class pci_dev *> pci_devs_pt;
-}
+static bfn::once_flag acpi_ready;
+static bfn::once_flag iommu_ready;
+static bfn::once_flag pci_ready;
 
 //------------------------------------------------------------------------------
 // Fault Handlers
@@ -169,14 +167,15 @@ bool vcpu::handle_0x4BF00010(bfvmm::intel_x64::vcpu *vcpu)
     }
 #endif
 
-    if (g_uefi_boot && !acpi_ready) {
-        init_acpi();
-        acpi_ready = true;
-    }
+    if (g_uefi_boot) {
+        bfn::call_once(acpi_ready, []{ init_acpi(); });
+        bfn::call_once(iommu_ready, []{ probe_iommu(); });
+        bfn::call_once(pci_ready, []{ init_pci(); });
 
-    if (g_uefi_boot && !iommu_ready) {
-        probe_iommu();
-        iommu_ready = true;
+        if (pci_passthru) {
+            m_pci_handler.enable();
+            init_pci_on_vcpu(this);
+        }
     }
 
     vcpu_init_root(vcpu);
@@ -439,4 +438,17 @@ void vcpu::load_xstate()
 {
     m_xstate->load();
 }
+
+void vcpu::add_pci_cfg_handler(uint64_t cfg_addr,
+                               const pci_cfg_handler::delegate_t &d,
+                               enum pci_cfg_dir dir)
+{
+    if (dir == pci_cfg_in) {
+        m_pci_handler.add_in_handler(cfg_addr, d);
+        return;
+    }
+
+    m_pci_handler.add_out_handler(cfg_addr, d);
+}
+
 }

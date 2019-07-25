@@ -27,9 +27,6 @@
 #include <bfacpi.h>
 #include <hve/arch/intel_x64/vcpu.h>
 
-#define PAGE_SIZE_4K (1UL << 12)
-#define PAGE_SIZE_2M (1UL << 21)
-
 #define XSDT_ENTRY_SIZE 8
 #define HDR_SIZE sizeof(acpi_header_t)
 
@@ -38,14 +35,13 @@ extern ::microv::intel_x64::vcpu *vcpu0;
 namespace microv {
 
 using namespace bfvmm::x64;
-using gpa_t = uintptr_t;
 
 static std::vector<struct acpi_table> table_list;
 static bfvmm::x64::unique_map<char> table_region_map;
 static uintptr_t table_region_gpa;
 static size_t table_region_len;
 
-static gpa_t parse_rsdp()
+static uintptr_t parse_rsdp()
 {
     auto rsdp = vcpu0->map_gpa_4k<rsdp_t>(g_rsdp, 1);
     expects(rsdp->revision == 2);
@@ -141,9 +137,11 @@ int init_acpi()
         using namespace bfvmm::intel_x64::ept;
 
         auto dom0 = vcpu0->dom();
-        auto addr = base + (i * PAGE_SIZE_2M);
+        auto addr = base + (i * ::x64::pd::page_size);
 
-        identity_map_convert_2m_to_4k(dom0->ept(), addr);
+        if (dom0->ept().from(addr) == ::x64::pd::from) {
+            identity_map_convert_2m_to_4k(dom0->ept(), addr);
+        }
     }
 
     ::intel_x64::vmx::invept_global();

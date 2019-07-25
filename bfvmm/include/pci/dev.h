@@ -23,109 +23,70 @@
 #define MICROV_PCI_DEV_H
 
 #include <array>
+#include <memory>
+
 #include <bfgsl.h>
+#include <hve/arch/intel_x64/vcpu.h>
 
 #include "bar.h"
 #include "cfg.h"
 
 namespace microv {
 
-namespace intel_x64 {
-    class vcpu;
-}
-
 struct pci_dev {
-    uint32_t cf8{};
-    uint32_t bus{};
-    uint32_t dev{};
-    uint32_t fun{};
-    uint32_t msi_base{};
+    using vcpu = intel_x64::vcpu;
+    using base_vcpu = ::bfvmm::intel_x64::vcpu;
+    using cfg_info = intel_x64::pci_cfg_handler::info;
 
-    bool passthru{};
-    struct pci_dev *bridge{};
-    std::array<uint32_t, 4> cfg_reg{};
-    pci_bar_list bars{};
+    static constexpr size_t vcfg_size = 1024;
+
+    uint32_t m_cf8{};
+    uint32_t m_msi_cap{};
+    uint32_t m_pcie_cap{};
+    uintptr_t m_ecam_gpa{};
+    uintptr_t m_ecam_hpa{};
+
+    bool m_guest_owned{};
+    struct pci_dev *m_bridge{};
+    std::array<uint32_t, 4> m_cfg_reg{};
+    std::unique_ptr<uint32_t[]> m_vcfg{};
+    pci_bar_list m_bars{};
 
     void parse_bars()
     {
-        pci_parse_bars(cf8, bars);
+        pci_parse_bars(m_cf8, m_bars);
     }
 
     bool is_netdev() const
     {
-        return pci_cfg_is_netdev(cfg_reg[2]);
-    }
-
-    bool is_pci_bridge() const
-    {
-        return pci_cfg_is_pci_bridge(cfg_reg[3]);
+        return pci_cfg_is_netdev(m_cfg_reg[2]);
     }
 
     bool is_host_bridge() const
     {
-        return pci_cfg_is_host_bridge(cfg_reg[2]);
+        return pci_cfg_is_host_bridge(m_cfg_reg[2]);
     }
 
-    void parse_cap_regs()
+    bool is_pci_bridge() const
     {
-        if (msi_base) {
-            return;
-        }
-
-        constexpr auto CAP_PTR_REG = 0xD;
-        constexpr auto MSI_ID = 0x05;
-
-        expects(pci_cfg_is_normal(cfg_reg[3]));
-        expects(pci_cfg_has_caps(cfg_reg[1]));
-
-        auto ptr = pci_cfg_read_reg(cf8, CAP_PTR_REG) & 0xFF;
-        auto reg = ptr >> 2;
-
-        while (reg) {
-            auto cap = pci_cfg_read_reg(cf8, reg);
-            auto id = cap & 0xFF;
-
-            if (id == MSI_ID) {
-                msi_base = reg;
-                break;
-            }
-
-            reg = (cap & 0xFF00) >> (8 + 2);
-        }
-
-        ensures(msi_base);
+        return pci_cfg_is_pci_bridge(m_cfg_reg[3]);
     }
 
-    pci_dev(uint32_t addr, struct pci_dev *parent_bridge = nullptr)
-    {
-        addr |= pci_en_mask;
-        addr &= ~(pci_reg_mask | pci_off_mask);
+    void remap_ecam();
+    void parse_cap_regs();
+    void init_host_vcfg();
+    void add_host_handlers(vcpu *vcpu);
 
-        expects(pci_cfg_is_present(addr));
+    bool host_cfg_in(base_vcpu *vcpu, cfg_info &info);
+    bool host_cfg_out(base_vcpu *vcpu, cfg_info &info);
 
-        cf8 = addr;
-        bus = pci_cfg_bus(addr);
-        dev = pci_cfg_dev(addr);
-        fun = pci_cfg_fun(addr);
-
-        for (auto i = 0; i < cfg_reg.size(); i++) {
-            cfg_reg[i] = pci_cfg_read_reg(addr, i);
-        }
-
-        bridge = parent_bridge;
-        if (!bridge) {
-            ensures(this->is_host_bridge());
-        }
-    }
-
+    pci_dev(uint32_t addr, struct pci_dev *parent_bridge = nullptr);
     ~pci_dev() = default;
     pci_dev(pci_dev &&) = default;
     pci_dev &operator=(pci_dev &&) = default;
     pci_dev(const pci_dev &) = delete;
     pci_dev &operator=(const pci_dev &) = delete;
 };
-
-int probe_pci();
 
 }
 #endif

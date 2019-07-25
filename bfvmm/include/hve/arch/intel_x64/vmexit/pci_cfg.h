@@ -19,8 +19,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#ifndef PCI_HANDLER_MICROV_H
-#define PCI_HANDLER_MICROV_H
+#ifndef PCI_CFG_HANDLER_MICROV_H
+#define PCI_CFG_HANDLER_MICROV_H
 
 #include "../vcpu.h"
 #include "io_instruction.h"
@@ -34,47 +34,50 @@ namespace microv::intel_x64
 
 class vcpu;
 
-class pci_handler
-{
-    vcpu *m_vcpu;
-
+class pci_cfg_handler {
 public:
     using base_vcpu = bfvmm::intel_x64::vcpu;
-    using handler = delegate<bool(base_vcpu *)>;
-    using info = bfvmm::intel_x64::io_instruction_handler::info_t;
+    using base_hdlr = bfvmm::intel_x64::io_instruction_handler;
+    using base_info = base_hdlr::info_t;
 
-    /// Constructor
-    ///
-    /// @expects
-    /// @ensures
-    ///
-    /// @param vcpu the vcpu object for this handler
-    ///
-    pci_handler(vcpu *vcpu);
+    struct info {
+        base_info &exit_info;
+        uint32_t reg;
+    };
 
-    /// Destructor
-    ///
-    /// @expects
-    /// @ensures
-    ///
-    ~pci_handler() = default;
+    using delegate_t = delegate<bool(base_vcpu *, struct info &info)>;
 
-    /// Enable the default host handlers
-    ///
-    void enable_host_defaults();
+    void enable();
+    void add_in_handler(uint64_t addr, const delegate_t &hdlr);
+    void add_out_handler(uint64_t addr, const delegate_t &hdlr);
 
-    /// Handle config access to the device at the given bus/dev/fun
-    ///
-    void add_handler(uint32_t bus, uint32_t dev, uint32_t fun);
+    pci_cfg_handler(vcpu *vcpu);
 
-    /// @cond
+    ~pci_cfg_handler() = default;
+    pci_cfg_handler(pci_cfg_handler &&) = default;
+    pci_cfg_handler &operator=(pci_cfg_handler &&) = default;
+    pci_cfg_handler(const pci_cfg_handler &) = delete;
+    pci_cfg_handler &operator=(const pci_cfg_handler &) = delete;
 
-    pci_handler(pci_handler &&) = default;
-    pci_handler &operator=(pci_handler &&) = default;
-    pci_handler(const pci_handler &) = delete;
-    pci_handler &operator=(const pci_handler &) = delete;
+private:
+    bool addr_in(base_vcpu *vcpu, base_info &info);
+    bool data_in(base_vcpu *vcpu, base_info &info);
 
-    /// @endcond
+    bool addr_out(base_vcpu *vcpu, base_info &info);
+    bool data_out(base_vcpu *vcpu, base_info &info);
+
+    bool host_def_in(base_vcpu *vcpu, struct info &info);
+    bool host_def_out(base_vcpu *vcpu, struct info &info);
+
+    delegate_t m_default_in;
+    delegate_t m_default_out;
+
+    vcpu *m_vcpu{};
+    uint64_t m_cf8{};
+
+    std::unordered_map<uint64_t, delegate_t> m_in_hdlrs;
+    std::unordered_map<uint64_t, delegate_t> m_out_hdlrs;
 };
+
 }
 #endif

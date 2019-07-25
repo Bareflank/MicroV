@@ -29,7 +29,7 @@
 #include "vmexit/io_instruction.h"
 #include "vmexit/msr.h"
 #include "vmexit/mtrr.h"
-#include "vmexit/pci.h"
+#include "vmexit/pci_cfg.h"
 #include "vmexit/vmcall.h"
 #include "vmexit/yield.h"
 
@@ -299,6 +299,15 @@ public:
     void save_xstate();
     void load_xstate();
 
+    enum pci_cfg_dir {
+        pci_cfg_in,
+        pci_cfg_out
+    };
+
+    void add_pci_cfg_handler(uint64_t cfg_addr,
+                             const pci_cfg_handler::delegate_t &d,
+                             enum pci_cfg_dir dir);
+
 private:
 
     void setup_default_controls();
@@ -321,7 +330,7 @@ private:
     vmcall_vcpu_op_handler m_vmcall_vcpu_op_handler;
 
     x2apic_handler m_x2apic_handler;
-    pci_handler m_pci_handler;
+    pci_cfg_handler m_pci_handler;
 
     bool m_killed{};
     vcpu *m_parent_vcpu{};
