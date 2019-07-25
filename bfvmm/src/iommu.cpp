@@ -44,6 +44,11 @@ static uintptr_t dmar_gpa;
 static char *dmar_hva;
 static size_t dmar_len;
 
+static bfvmm::x64::unique_map<char> mcfg_map;
+static uintptr_t mcfg_gpa;
+char *mcfg_hva;
+size_t mcfg_len;
+
 static void hide_dmar(char *dmar_hva, uintptr_t dmar_gpa)
 {
     using namespace bfvmm::intel_x64;
@@ -65,14 +70,14 @@ static void hide_dmar(char *dmar_hva, uintptr_t dmar_gpa)
     ::intel_x64::vmx::invept_global();
 }
 
-static char *find_dmar()
+int probe_acpi()
 {
     constexpr auto HDR_SIZE = sizeof(acpi_header_t);
     constexpr auto XSDT_ENTRY_SIZE = 8;
     constexpr auto XSDT_ENTRY_FROM = 3;
 
     if (!vcpu0 || !g_rsdp) {
-        return NULL;
+        return -EINVAL;
     }
 
     rsdp_map = vcpu0->map_gpa_4k<rsdp_t>(g_rsdp, 1);
@@ -95,7 +100,7 @@ static char *find_dmar()
 
     for (auto i = 0; i < xsdt_entries; i++) {
         auto hdr = vcpu0->map_gpa_4k<acpi_header_t>(entry[i], 1);
-        if (!strncmp(dmar_sig, hdr->signature, SIG_SIZE)) {
+        if (!strncmp("DMAR", hdr->signature, SIG_SIZE)) {
             dmar_len = hdr->length;
             dmar_gpa = reinterpret_cast<uintptr_t>(entry[i]);
 
@@ -103,22 +108,35 @@ static char *find_dmar()
             hdr.get_deleter()(hdr.release());
 
             dmar_map = vcpu0->map_gpa_4k<char>(dmar_gpa, dmar_len);
-            return dmar_map.get();
+            dmar_hva = dmar_map.get();
+
+            continue;
+        }
+
+        if (!strncmp("MCFG", hdr->signature, SIG_SIZE)) {
+            mcfg_len = hdr->length;
+            mcfg_gpa = reinterpret_cast<uintptr_t>(entry[i]);
+
+            hdr.get_deleter()(hdr.release());
+
+            mcfg_map = vcpu0->map_gpa_4k<char>(mcfg_gpa, mcfg_len);
+            mcfg_hva = mcfg_map.get();
+
+            continue;
         }
     }
 
-    return nullptr;
+    ensures(dmar_hva);
+    ensures(mcfg_hva);
+
+    return 0;
 }
 
 int probe_iommu()
 {
-    auto dmar = find_dmar();
-    if (!dmar) {
-        bferror_info(0, "DMAR not found");
-        return -ENODEV;
-    }
+    expects(dmar_hva);
 
-    dmar_hva = dmar;
+    auto dmar = dmar_hva;
     auto drs = dmar + drs_offset;
     auto end = dmar + dmar_len;
 

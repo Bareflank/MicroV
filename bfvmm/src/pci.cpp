@@ -29,6 +29,9 @@ using namespace bfvmm::x64;
 
 namespace microv {
 
+extern char *mcfg_hva;
+extern size_t mcfg_len;
+
 /*
  * Owner of PCI devices enumerated on the platform. Each key
  * is a PCI CONFIG_ADDR value with the enable bit (bit 31),
@@ -61,6 +64,9 @@ static int probe_bus(uint32_t b, struct pci_dev *bridge)
 
 int probe_pci()
 {
+    expects(mcfg_hva);
+    expects(mcfg_len);
+
     auto addr = pci_cfg_bdf_to_addr(0, 0, 0);
     pci_devs[addr] = std::make_unique<class pci_dev>(addr);
 

@@ -40,9 +40,6 @@ namespace microv {
  * dmar_andd as defined below.
  */
 
-/* ACPI signature */
-inline const char *dmar_sig = "DMAR";
-
 /*
  * Byte offset of the DMA remapping structure (drs) list
  * from the base of the DMAR

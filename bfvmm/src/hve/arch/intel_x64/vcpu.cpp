@@ -37,6 +37,7 @@ extern struct xue_ops g_xue_ops;
 void WEAK_SYM vcpu_init_root(bfvmm::intel_x64::vcpu *vcpu);
 
 static bool iommu_ready = false;
+static bool acpi_ready = false;
 static bool pci_ready = false;
 
 //------------------------------------------------------------------------------
@@ -161,6 +162,11 @@ bool vcpu::handle_0x4BF00010(bfvmm::intel_x64::vcpu *vcpu)
         xue_open(&g_xue, &g_xue_ops, NULL);
     }
 #endif
+
+    if (g_uefi_boot && !acpi_ready) {
+        probe_acpi();
+        acpi_ready = true;
+    }
 
     if (g_uefi_boot && !iommu_ready) {
         probe_iommu();

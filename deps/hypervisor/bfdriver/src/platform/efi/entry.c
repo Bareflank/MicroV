@@ -198,7 +198,7 @@ load_start_vm(EFI_HANDLE ParentImage)
             continue;
         }
 
-        FilePath = FileDevicePath(FileSystemHandles[i], L"\\EFI\\BOOT\\bootx64.efi");
+        FilePath = FileDevicePath(FileSystemHandles[i], L"\\EFI\\shellx64_v2.efi");
 
         status =
             gBS->LoadImage(
@@ -268,6 +268,7 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *systab)
     xue_mset(&g_xue_efi, 0, sizeof(g_xue_efi));
 
     g_xue_efi.img_hand = image;
+    g_xue.sysid = xue_sysid_efi;
     xue_open(&g_xue, &g_xue_ops, &g_xue_efi);
 #endif
 
