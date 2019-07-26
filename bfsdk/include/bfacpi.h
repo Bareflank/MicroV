@@ -20,8 +20,8 @@
  * SOFTWARE.
  */
 
-#ifndef ACPI_INTEL_X64_MICROV_H
-#define ACPI_INTEL_X64_MICROV_H
+#ifndef BFACPI_MICROV_H
+#define BFACPI_MICROV_H
 
 #include <bftypes.h>
 #include <bfgpalayout.h>

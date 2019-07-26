@@ -21,11 +21,10 @@
  */
 
 #include <bootparams.h>
-
-#include <acpi.h>
 #include <common.h>
 
 #include <bfack.h>
+#include <bfacpi.h>
 #include <bfdebug.h>
 #include <bfplatform.h>
 #include <bfconstants.h>

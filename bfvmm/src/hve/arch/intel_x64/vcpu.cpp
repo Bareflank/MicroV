@@ -20,6 +20,8 @@
 // SOFTWARE.
 
 #include <intrinsics.h>
+
+#include <acpi.h>
 #include <bfexports.h>
 #include <bfgpalayout.h>
 #include <bfbuilderinterface.h>
@@ -168,23 +170,13 @@ bool vcpu::handle_0x4BF00010(bfvmm::intel_x64::vcpu *vcpu)
 #endif
 
     if (g_uefi_boot && !acpi_ready) {
-        probe_acpi();
+        init_acpi();
         acpi_ready = true;
     }
 
     if (g_uefi_boot && !iommu_ready) {
         probe_iommu();
         iommu_ready = true;
-    }
-
-    if (!pci_ready) {
-        probe_pci();
-        pci_ready = true;
-    }
-
-    if (pci_devs_pt.size()) {
-        m_pci_handler.enable_host_defaults();
-        bfdebug_info(0, "pci: enabled default host handlers");
     }
 
     vcpu_init_root(vcpu);

@@ -99,7 +99,6 @@ private:
 extern char *mcfg_hva;
 extern size_t mcfg_len;
 
-int probe_acpi();
 int probe_iommu();
 
 }

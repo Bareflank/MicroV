@@ -19,7 +19,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-add_library(microv_domain domain.cpp iommu.cpp pci.cpp)
+add_library(microv_domain domain.cpp iommu.cpp pci.cpp acpi.cpp)
 
 target_link_libraries(microv_domain PUBLIC vmm::bfvmm microv_bfvmm)
 target_include_directories(microv_domain PUBLIC

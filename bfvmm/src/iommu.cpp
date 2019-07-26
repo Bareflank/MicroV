@@ -24,13 +24,13 @@
 #include <errno.h>
 
 #include <acpi.h>
+#include <bfacpi.h>
 #include <iommu/dmar.h>
 #include <iommu/iommu.h>
 #include <hve/arch/intel_x64/vcpu.h>
 
 constexpr auto PAGE_SIZE_4K = (1UL << 12);
 constexpr auto PAGE_SIZE_2M = (1UL << 21);
-constexpr auto SIG_SIZE = 4;
 
 extern microv::intel_x64::vcpu *vcpu0;
 using namespace bfvmm::x64;
@@ -38,107 +38,45 @@ using namespace bfvmm::x64;
 namespace microv {
 
 static std::list<std::unique_ptr<class iommu>> iommu_list;
-static bfvmm::x64::unique_map<rsdp_t> rsdp_map;
-static bfvmm::x64::unique_map<char> dmar_map;
-static uintptr_t dmar_gpa;
-static char *dmar_hva;
-static size_t dmar_len;
+static struct acpi_table *dmar{};
 
-static bfvmm::x64::unique_map<char> mcfg_map;
-static uintptr_t mcfg_gpa;
-char *mcfg_hva;
-size_t mcfg_len;
-
-static void hide_dmar(char *dmar_hva, uintptr_t dmar_gpa)
+static void hide_dmar(struct acpi_table *dmar)
 {
     using namespace bfvmm::intel_x64;
 
-    auto gpa_4k = bfn::upper(dmar_gpa, 12);
-    auto gpa_2m = bfn::upper(dmar_gpa, 21);
-    auto offset = reinterpret_cast<uintptr_t>(dmar_gpa - gpa_4k);
-    auto hva_4k = reinterpret_cast<const char *>(bfn::upper(dmar_hva, 12));
+    auto gpa_4k = bfn::upper(dmar->gpa, 12);
+    auto hva_4k = reinterpret_cast<const char *>(bfn::upper(dmar->hva, 12));
+    auto offset = reinterpret_cast<uintptr_t>(dmar->gpa - gpa_4k);
 
     static auto copy = make_page<char>();
     memcpy(copy.get(), hva_4k, PAGE_SIZE_4K);
-    memset(copy.get() + offset, 0, SIG_SIZE);
+
+    ensures(!memcmp(copy.get() + offset, "DMAR", 4));
+    memset(copy.get() + offset, 0, ACPI_SIG_SIZE);
 
     auto dom = vcpu0->dom();
-    ept::identity_map_convert_2m_to_4k(dom->ept(), gpa_2m);
     dom->unmap(gpa_4k);
     dom->map_4k_rw(gpa_4k, g_mm->virtptr_to_physint(copy.get()));
 
     ::intel_x64::vmx::invept_global();
 }
 
-int probe_acpi()
+int probe_iommu()
 {
-    constexpr auto HDR_SIZE = sizeof(acpi_header_t);
-    constexpr auto XSDT_ENTRY_SIZE = 8;
-    constexpr auto XSDT_ENTRY_FROM = 3;
-
-    if (!vcpu0 || !g_rsdp) {
+    dmar = find_acpi_table("DMAR");
+    if (!dmar) {
+        bferror_info(0, "probe_iommu: DMAR not found");
         return -EINVAL;
     }
 
-    rsdp_map = vcpu0->map_gpa_4k<rsdp_t>(g_rsdp, 1);
-    expects(rsdp_map->revision == 2);
-
-    auto xsdt_gpa = rsdp_map->xsdtphysicaladdress;
-    auto xsdt_len = 0U;
-    auto xsdt_entry_len = 0U;
-
-    {
-        auto hdr = vcpu0->map_gpa_4k<acpi_header_t>(xsdt_gpa, 1);
-        xsdt_len = hdr->length;
-        xsdt_entry_len = (xsdt_len - HDR_SIZE);
-        expects((xsdt_entry_len & (XSDT_ENTRY_SIZE - 1)) == 0);
+    if (memcmp(dmar->hva, "DMAR", 4)) {
+        bferror_info(0, "probe_iommu: Invalid DMAR signature");
     }
 
-    auto xsdt = vcpu0->map_gpa_4k<char>(xsdt_gpa, xsdt_len);
-    auto xsdt_entries = xsdt_entry_len >> XSDT_ENTRY_FROM;
-    auto entry = reinterpret_cast<acpi_header_t **>(xsdt.get() + HDR_SIZE);
+    hide_dmar(dmar);
 
-    for (auto i = 0; i < xsdt_entries; i++) {
-        auto hdr = vcpu0->map_gpa_4k<acpi_header_t>(entry[i], 1);
-        if (!strncmp("DMAR", hdr->signature, SIG_SIZE)) {
-            dmar_len = hdr->length;
-            dmar_gpa = reinterpret_cast<uintptr_t>(entry[i]);
-
-            hide_dmar(reinterpret_cast<char *>(hdr.get()), dmar_gpa);
-            hdr.get_deleter()(hdr.release());
-
-            dmar_map = vcpu0->map_gpa_4k<char>(dmar_gpa, dmar_len);
-            dmar_hva = dmar_map.get();
-
-            continue;
-        }
-
-        if (!strncmp("MCFG", hdr->signature, SIG_SIZE)) {
-            mcfg_len = hdr->length;
-            mcfg_gpa = reinterpret_cast<uintptr_t>(entry[i]);
-
-            hdr.get_deleter()(hdr.release());
-
-            mcfg_map = vcpu0->map_gpa_4k<char>(mcfg_gpa, mcfg_len);
-            mcfg_hva = mcfg_map.get();
-
-            continue;
-        }
-    }
-
-    ensures(dmar_hva);
-    ensures(mcfg_hva);
-
-    return 0;
-}
-
-int probe_iommu()
-{
-    expects(dmar_hva);
-
-    auto dmar = dmar_hva;
-    auto drs = dmar + drs_offset;
-    auto end = dmar + dmar_len;
+    auto drs = dmar->hva + drs_offset;
+    auto end = dmar->hva + dmar->len;
 
     while (drs < end) {
         /* Read the type and size of the DMAR remapping structure */

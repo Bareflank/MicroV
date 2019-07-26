@@ -22,7 +22,7 @@
 #ifndef MICROV_DMAR_H
 #define MICROV_DMAR_H
 
-#include <acpi.h>
+#include <bfacpi.h>
 
 namespace microv {
 
