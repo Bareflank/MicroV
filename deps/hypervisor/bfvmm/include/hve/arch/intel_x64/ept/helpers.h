@@ -28,10 +28,6 @@
 namespace bfvmm::intel_x64::ept
 {
 
-//--------------------------------------------------------------------------
-// Free
-//--------------------------------------------------------------------------
-
 /// Identity Map with 1g Granularity
 ///
 /// Adds a 1:1 map from the starting address to the ending address
@@ -402,11 +398,12 @@ identity_map_convert_2m_to_4k(
     expects(bfn::lower(addr, pd::from) == 0);
     expects(map.is_2m(addr));
 
-    map.unmap(addr);
+    auto &entry = map.entry(addr).first.get();
+    cache = (mmap::memory_type)pd::entry::memory_type::get(entry);
 
-    ept::identity_map_4k(
-        map, addr, addr + pd::page_size, attr, cache
-    );
+    entry = 0;
+    ::intel_x64::barrier::wmb();
+    ept::identity_map_4k(map, addr, addr + pd::page_size, attr, cache);
 }
 
 /// Convert Identity Map Granularity

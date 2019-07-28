@@ -68,7 +68,7 @@ public:
         read_write_execute
     };
 
-    enum class memory_type {
+    enum memory_type {
         uncacheable = 0,
         write_combining = 1,
         write_through = 4,
