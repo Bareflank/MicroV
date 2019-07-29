@@ -83,8 +83,7 @@ static_assert(header_size == 64);
 xstate::xstate(class vcpu *vcpu) : m_vcpu{vcpu}
 {
     if (vcpu->is_host_vm_vcpu()) {
-        expects(::intel_x64::cr4::osxsave::is_enabled(vcpu->cr4()));
-
+        expects(::intel_x64::vmcs::guest_cr4::osxsave::is_enabled());
         m_xcr0 = ::intel_x64::xcr0::get();
         m_rfbm = m_xcr0 & ~sse_mask;
         m_size = ::x64::cpuid::ebx::get(cpuid_leaf);
