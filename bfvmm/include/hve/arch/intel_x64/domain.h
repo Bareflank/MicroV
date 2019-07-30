@@ -148,6 +148,7 @@ public:
     /// @param hpa the host physical address
     ///
     void map_4k_rw(uintptr_t gpa, uintptr_t hpa);
+    void map_4k_rw_uc(uintptr_t gpa, uintptr_t hpa);
 
     /// Map 1g GPA to HPA (Read/Write/Execute)
     ///
@@ -227,6 +228,7 @@ public:
     uint64_t exec_mode() noexcept;
 
     bool initdom() noexcept { return m_info.flags & DOMF_XENINIT; }
+    bool ndvm() noexcept { return m_info.flags & DOMF_NDVM; }
 
     /// Set UART
     ///

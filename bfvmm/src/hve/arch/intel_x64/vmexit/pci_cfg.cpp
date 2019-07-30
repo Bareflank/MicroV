@@ -43,14 +43,11 @@ using cfg_info = microv::intel_x64::pci_cfg_handler::info;
 using namespace ::x64::portio;
 namespace ioqual = vmcs_n::exit_qualification::io_instruction;
 
-static std::mutex cfg_mutex;
-
 static void phys_in(uint32_t addr, cfg_info &info)
 {
     auto &exit_info = info.exit_info;
     const auto port = gsl::narrow_cast<uint16_t>(exit_info.port_number);
 
-    std::lock_guard<std::mutex> lock(cfg_mutex);
     outd(0xCF8, addr);
 
     switch (exit_info.size_of_access) {
@@ -73,7 +70,6 @@ static void phys_out(uint32_t addr, cfg_info &info)
     const auto &exit_info = info.exit_info;
     const auto port = gsl::narrow_cast<uint16_t>(exit_info.port_number);
 
-    std::lock_guard<std::mutex> lock(cfg_mutex);
     outd(0xCF8, addr);
 
     switch (exit_info.size_of_access) {

@@ -72,13 +72,26 @@ struct pci_dev {
         return pci_cfg_is_pci_bridge(m_cfg_reg[3]);
     }
 
+    bool is_normal() const
+    {
+        return pci_cfg_is_normal(m_cfg_reg[3]);
+    }
+
     void remap_ecam();
     void parse_cap_regs();
     void init_host_vcfg();
     void add_host_handlers(vcpu *vcpu);
+    void add_guest_handlers(vcpu *vcpu);
 
     bool host_cfg_in(base_vcpu *vcpu, cfg_info &info);
     bool host_cfg_out(base_vcpu *vcpu, cfg_info &info);
+    bool guest_cfg_out(base_vcpu *vcpu, cfg_info &info);
+    bool guest_host_bridge_cfg_in(base_vcpu *vcpu, cfg_info &info);
+    bool guest_host_bridge_cfg_out(base_vcpu *vcpu, cfg_info &info);
+    bool guest_pci_bridge_cfg_in(base_vcpu *vcpu, cfg_info &info);
+    bool guest_pci_bridge_cfg_out(base_vcpu *vcpu, cfg_info &info);
+    bool guest_normal_cfg_in(base_vcpu *vcpu, cfg_info &info);
+    bool guest_normal_cfg_out(base_vcpu *vcpu, cfg_info &info);
 
     pci_dev(uint32_t addr, struct pci_dev *parent_bridge = nullptr);
     ~pci_dev() = default;

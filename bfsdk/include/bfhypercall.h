@@ -74,8 +74,21 @@ struct e820_entry_t {
 #define __enum_domain_op 2
 #define __enum_vcpu_op 3
 #define __enum_uart_op 4
+#define __enum_xue_op 5
 
 #define bfopcode(a) ((a & 0x00FF000000000000) >> 48)
+
+// -----------------------------------------------------------------------------
+// Xue Operations
+// -----------------------------------------------------------------------------
+
+#define __enum_xue_op__reset 1
+
+static inline status_t
+__xue_op(uint64_t arg1, uint64_t arg2, uint64_t arg3)
+{
+    return _vmcall(0xBF05000000000000, arg1, arg2, arg3);
+}
 
 // -----------------------------------------------------------------------------
 // Run Operations
@@ -290,6 +303,8 @@ __uart_ndec_op(uint16_t port, uint64_t val)
 /* Does this domain run with native microv exec mode? */
 #define DOMF_EXEC_NATIVE (1ULL << 4)
 
+/* Is this domain an NDVM? */
+#define DOMF_NDVM (1ULL << 5)
 
 static inline domainid_t
 __domain_op__create_domain(uint64_t flags)

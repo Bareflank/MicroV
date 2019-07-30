@@ -41,6 +41,7 @@ target_sources(microv_hve PRIVATE
     $<${X64}:arch/intel_x64/vmcall/domain_op.cpp>
     $<${X64}:arch/intel_x64/vmcall/run_op.cpp>
     $<${X64}:arch/intel_x64/vmcall/vcpu_op.cpp>
+    $<${X64}:arch/intel_x64/vmcall/xue_op.cpp>
     $<${X64}:arch/intel_x64/domain.cpp>
     $<${X64}:arch/intel_x64/uart.cpp>
     $<${X64}:arch/intel_x64/xsave.asm>

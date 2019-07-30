@@ -314,7 +314,13 @@ create_vm(const args_type &args)
     }
 
     if (args.count("hvc")) {
+        ioctl_args.hvc = 1;
         cmdl.add("console=hvc0");
+    }
+
+    if (args.count("ndvm")) {
+        ioctl_args.ndvm = 1;
+        cmdl.add("pci=nocrs,lastbus=5");
     }
 
     if (args.count("cmdline")) {
@@ -333,7 +339,6 @@ create_vm(const args_type &args)
     ioctl_args.pt_uart = pt_uart;
     ioctl_args.ram = ram;
     ioctl_args.initdom = args.count("initdom");
-    ioctl_args.hvc = args.count("hvc");
 
     ctl->call_ioctl_create_vm(ioctl_args);
     dump_vm_create_verbose();

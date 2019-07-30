@@ -104,7 +104,7 @@ inline void __parse_pci_bridge_bars(uint32_t cf8, pci_bar_list &bars)
 
 inline void pci_parse_bars(uint32_t cf8, pci_bar_list &bars)
 {
-    const auto hdr = pci_cfg_header(cf8);
+    const auto hdr = pci_cfg_header(pci_cfg_read_reg(cf8, 0x3));
 
     switch (hdr) {
     case pci_hdr_normal:

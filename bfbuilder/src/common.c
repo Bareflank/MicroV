@@ -633,8 +633,6 @@ static uint32_t pvh_sifs(struct create_vm_args *args)
         flags = SIF_PRIVILEGED | SIF_INITDOMAIN;
     }
 
-    BFDEBUG("PVH SIFs: %x", flags);
-
     return flags;
 }
 
@@ -694,7 +692,6 @@ setup_pvh_start_info(struct vm_t *vm, struct create_vm_args *args)
         BFDEBUG("setup_pvh_start_info: donate failed\n");
         return ret;
     }
-
 
     return ret;
 }
@@ -1135,6 +1132,10 @@ static uint64_t get_domflags(struct create_vm_args *args)
 
     if (args->hvc) {
         flags |= DOMF_XENHVC;
+    }
+
+    if (args->ndvm) {
+        flags |= DOMF_NDVM;
     }
 
     return flags;

@@ -333,38 +333,43 @@ bool xen::handle_hvm_op()
         } catchall({
             return false;
         })
-    //case HVMOP_get_param:
-    //    try {
-    //        auto arg = m_vcpu->map_arg<xen_hvm_param_t>(m_vcpu->rsi());
-    //        switch (arg->index) {
-    //        case HVM_PARAM_CONSOLE_EVTCHN:
-    //            arg->value = m_evtchn->bind_console();
-    //            break;
-    //        case HVM_PARAM_CONSOLE_PFN:
-    //            m_console = m_vcpu->map_gpa_4k<uint8_t>(PVH_CONSOLE_GPA);
-    //            arg->value = PVH_CONSOLE_GPA >> 12;
-    //            break;
-    //        case HVM_PARAM_STORE_EVTCHN:
-    //            arg->value = m_evtchn->bind_store();
-    //            m_vcpu->set_rax(-ENOSYS);
-    //            return true;
-    //            break;
-    //        case HVM_PARAM_STORE_PFN:
-    //            m_store = m_vcpu->map_gpa_4k<uint8_t>(PVH_STORE_GPA);
-    //            arg->value = PVH_STORE_GPA >> 12;
-    //            m_vcpu->set_rax(-ENOSYS);
-    //            return true;
-    //            break;
-    //        default:
-    //            bfalert_nhex(0, "Unsupported HVM get_param:", arg->index);
-    //            return false;
-    //        }
+    case HVMOP_get_param:
+        expects(!m_dom->initdom());
+        m_vcpu->set_rax(-ENOSYS);
+        return true;
+        //try {
+        //    auto arg = m_vcpu->map_arg<xen_hvm_param_t>(m_vcpu->rsi());
+        //    switch (arg->index) {
+        //    case HVM_PARAM_CONSOLE_EVTCHN:
+        //        m_vcpu->set_rax(-ENOSYS);
+        //        return true;
+        //        //arg->value = m_evtchn->bind_console();
+        //        //break;
+        //    case HVM_PARAM_CONSOLE_PFN:
+        //        m_vcpu->set_rax(-ENOSYS);
+        //        return true;
+        //        //m_console = m_vcpu->map_gpa_4k<uint8_t>(PVH_CONSOLE_GPA);
+        //        //arg->value = PVH_CONSOLE_GPA >> 12;
+        //        //break;
+        //    case HVM_PARAM_STORE_EVTCHN:
+        //        arg->value = m_evtchn->bind_store();
+        //        m_vcpu->set_rax(-ENOSYS);
+        //        return true;
+        //    case HVM_PARAM_STORE_PFN:
+        //        m_store = m_vcpu->map_gpa_4k<uint8_t>(PVH_STORE_GPA);
+        //        arg->value = PVH_STORE_GPA >> 12;
+        //        m_vcpu->set_rax(-ENOSYS);
+        //        return true;
+        //    default:
+        //        bfalert_nhex(0, "Unsupported HVM get_param:", arg->index);
+        //        return false;
+        //    }
 
-    //        m_vcpu->set_rax(0);
-    //        return true;
-    //    } catchall({
-    //        return false;
-    //    })
+        //    m_vcpu->set_rax(0);
+        //    return true;
+        //} catchall({
+        //    return false;
+        //})
     case HVMOP_pagetable_dying:
         m_vcpu->set_rax(0);
         return true;

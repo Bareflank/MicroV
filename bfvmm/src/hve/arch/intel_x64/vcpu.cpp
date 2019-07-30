@@ -109,6 +109,7 @@ vcpu::vcpu(
     m_vmcall_run_op_handler{this},
     m_vmcall_domain_op_handler{this},
     m_vmcall_vcpu_op_handler{this},
+    m_vmcall_xue_op_handler{this},
 
     m_x2apic_handler{this},
     m_pci_handler{this}
@@ -136,6 +137,12 @@ vcpu::vcpu(
 // Setup
 //------------------------------------------------------------------------------
 
+static inline void trap_exceptions()
+{
+    /* Only used for guest debugging */
+    ::intel_x64::vmcs::exception_bitmap::set(1UL << 6);
+}
+
 void
 vcpu::write_dom0_guest_state(domain *domain)
 { }
@@ -153,9 +160,13 @@ vcpu::write_domU_guest_state(domain *domain)
         using namespace vmcs_n::secondary_processor_based_vm_execution_controls;
 
         enable_rdtscp::enable();
-        ::intel_x64::vmcs::exception_bitmap::set(1UL << 6);
+        trap_exceptions();
 
-        m_xen = std::make_unique<xen>(this, m_domain);
+        if (domain->ndvm()) {
+            init_pci_on_vcpu(this);
+        }
+
+        m_xen = std::make_unique<xen>(this, domain);
     }
 }
 
