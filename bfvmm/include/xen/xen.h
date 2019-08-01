@@ -29,6 +29,7 @@
 #include "xenmem.h"
 #include "xenver.h"
 
+#include <public/io/console.h>
 #include <public/xen.h>
 #include <public/domctl.h>
 
@@ -67,7 +68,7 @@ private:
     std::unique_ptr<class xenver> m_xenver;
 
     bfvmm::x64::unique_map<struct shared_info> m_shinfo{};
-    bfvmm::x64::unique_map<uint8_t> m_console{};
+    bfvmm::x64::unique_map<struct xencons_interface> m_console{};
     bfvmm::x64::unique_map<uint8_t> m_store{};
 
     struct xen_domctl_getdomaininfo info{};
