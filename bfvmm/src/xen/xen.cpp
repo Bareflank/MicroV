@@ -33,6 +33,7 @@
 
 #include <xen/evtchn.h>
 #include <xen/gnttab.h>
+#include <xen/physdev.h>
 #include <xen/sysctl.h>
 #include <xen/xenmem.h>
 #include <xen/xenver.h>
@@ -207,9 +208,25 @@ bool xen::handle_hypercall(xen_vcpu *vcpu)
         return this->handle_sysctl();
     case __HYPERVISOR_xsm_op:
         return this->handle_xsm_op();
+    case __HYPERVISOR_physdev_op:
+        return this->handle_physdev_op();
     default:
         return false;
     }
+}
+
+bool xen::handle_physdev_op()
+{
+    try {
+        switch (m_vcpu->rdi()) {
+        case PHYSDEVOP_pci_device_add:
+            return m_physdev->pci_device_add();
+        default:
+            return false;
+        }
+    } catchall ({
+        return false;
+    })
 }
 
 bool xen::handle_console_io()
@@ -335,41 +352,34 @@ bool xen::handle_hvm_op()
         })
     case HVMOP_get_param:
         expects(!m_dom->initdom());
-        m_vcpu->set_rax(-ENOSYS);
-        return true;
-        //try {
-        //    auto arg = m_vcpu->map_arg<xen_hvm_param_t>(m_vcpu->rsi());
-        //    switch (arg->index) {
-        //    case HVM_PARAM_CONSOLE_EVTCHN:
-        //        m_vcpu->set_rax(-ENOSYS);
-        //        return true;
-        //        //arg->value = m_evtchn->bind_console();
-        //        //break;
-        //    case HVM_PARAM_CONSOLE_PFN:
-        //        m_vcpu->set_rax(-ENOSYS);
-        //        return true;
-        //        //m_console = m_vcpu->map_gpa_4k<uint8_t>(PVH_CONSOLE_GPA);
-        //        //arg->value = PVH_CONSOLE_GPA >> 12;
-        //        //break;
-        //    case HVM_PARAM_STORE_EVTCHN:
-        //        arg->value = m_evtchn->bind_store();
-        //        m_vcpu->set_rax(-ENOSYS);
-        //        return true;
-        //    case HVM_PARAM_STORE_PFN:
-        //        m_store = m_vcpu->map_gpa_4k<uint8_t>(PVH_STORE_GPA);
-        //        arg->value = PVH_STORE_GPA >> 12;
-        //        m_vcpu->set_rax(-ENOSYS);
-        //        return true;
-        //    default:
-        //        bfalert_nhex(0, "Unsupported HVM get_param:", arg->index);
-        //        return false;
-        //    }
-
-        //    m_vcpu->set_rax(0);
-        //    return true;
-        //} catchall({
-        //    return false;
-        //})
+        return false;
+//        try {
+//            auto arg = m_vcpu->map_arg<xen_hvm_param_t>(m_vcpu->rsi());
+//            switch (arg->index) {
+//            case HVM_PARAM_CONSOLE_EVTCHN:
+//                arg->value = m_evtchn->bind_console();
+//                break;
+//            case HVM_PARAM_CONSOLE_PFN:
+//                m_console = m_vcpu->map_gpa_4k<struct xencons_interface>(PVH_CONSOLE_GPA);
+//                arg->value = PVH_CONSOLE_GPA >> 12;
+//                break;
+//            case HVM_PARAM_STORE_EVTCHN:
+//                arg->value = m_evtchn->bind_store();
+//                break;
+//            case HVM_PARAM_STORE_PFN:
+//                m_store = m_vcpu->map_gpa_4k<uint8_t>(PVH_STORE_GPA);
+//                arg->value = PVH_STORE_GPA >> 12;
+//                break;
+//            default:
+//                bfalert_nhex(0, "Unsupported HVM get_param:", arg->index);
+//                return false;
+//            }
+//
+//            m_vcpu->set_rax(0);
+//            return true;
+//        } catchall({
+//            return false;
+//        })
     case HVMOP_pagetable_dying:
         m_vcpu->set_rax(0);
         return true;
@@ -479,6 +489,7 @@ xen::xen(xen_vcpu *vcpu, xen_domain *dom) :
     m_dom{dom},
     m_evtchn{std::make_unique<class evtchn>(this)},
     m_gnttab{std::make_unique<class gnttab>(this)},
+    m_physdev{std::make_unique<class physdev>(this)},
     m_xenmem{std::make_unique<class xenmem>(this)},
     m_xenver{std::make_unique<class xenver>(this)},
     m_sysctl{std::make_unique<class sysctl>(this)}

@@ -25,6 +25,7 @@
 #include "types.h"
 #include "evtchn.h"
 #include "gnttab.h"
+#include "physdev.h"
 #include "sysctl.h"
 #include "xenmem.h"
 #include "xenver.h"
@@ -51,6 +52,7 @@ private:
     bool handle_xsm_op();
     bool handle_console_io();
     bool handle_sysctl();
+    bool handle_physdev_op();
 
     xen_vcpu *m_vcpu{};
     xen_domain *m_dom{};
@@ -60,12 +62,14 @@ private:
     friend class sysctl;
     friend class xenmem;
     friend class xenver;
+    friend class physdev;
 
     std::unique_ptr<class gnttab> m_gnttab;
     std::unique_ptr<class evtchn> m_evtchn;
     std::unique_ptr<class sysctl> m_sysctl;
     std::unique_ptr<class xenmem> m_xenmem;
     std::unique_ptr<class xenver> m_xenver;
+    std::unique_ptr<class physdev> m_physdev;
 
     bfvmm::x64::unique_map<struct shared_info> m_shinfo{};
     bfvmm::x64::unique_map<struct xencons_interface> m_console{};
