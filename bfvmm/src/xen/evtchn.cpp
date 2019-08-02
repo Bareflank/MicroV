@@ -56,6 +56,7 @@ void evtchn::set_callback_via(uint64_t via)
 
 bool evtchn::expand_array()
 {
+    bfdebug_info(0, "evtchn expand array");
     auto arg = m_vcpu->map_arg<evtchn_expand_array_t>(m_vcpu->rsi());
     this->make_word_page(arg.get());
 
@@ -99,7 +100,6 @@ bool evtchn::close()
     auto arg = m_vcpu->map_arg<evtchn_close_t>(m_vcpu->rsi());
     expects(arg->port);
 
-    bfalert_nhex(0, "Closing interdomain port:", arg->port);
     auto chan = this->port_to_chan(arg->port);
     expects(chan);
 

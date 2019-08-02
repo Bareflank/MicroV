@@ -380,9 +380,9 @@ bool xen::handle_hvm_op()
 //        } catchall({
 //            return false;
 //        })
-    case HVMOP_pagetable_dying:
-        m_vcpu->set_rax(0);
-        return true;
+//    case HVMOP_pagetable_dying:
+//        m_vcpu->set_rax(0);
+//        return true;
     default:
        return false;
     }

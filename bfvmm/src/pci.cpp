@@ -378,16 +378,14 @@ void pci_dev::add_guest_handlers(vcpu *vcpu)
 
     auto parent = this->m_bridge;
     while (parent) {
-        if (!parent->m_bars.empty()) {
-            break;
+        if (parent->m_bars.empty()) {
+            parent->parse_bars();
         }
 
         if (parent->is_pci_bridge()) {
-            parent->parse_bars();
             HANDLE_CFG_ACCESS(parent, guest_pci_bridge_cfg_in, cfg_in);
             HANDLE_CFG_ACCESS(parent, guest_cfg_out, cfg_out);
         } else if (parent->is_host_bridge()) {
-            parent->parse_bars();
             HANDLE_CFG_ACCESS(parent, guest_host_bridge_cfg_in, cfg_in);
             HANDLE_CFG_ACCESS(parent, guest_cfg_out, cfg_out);
         }
