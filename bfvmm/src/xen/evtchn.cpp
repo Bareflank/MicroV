@@ -64,6 +64,16 @@ bool evtchn::expand_array()
     return true;
 }
 
+bool evtchn::set_priority()
+{
+    auto arg = m_vcpu->map_arg<evtchn_set_priority_t>(m_vcpu->rsi());
+    auto chan = this->port_to_chan(arg->port);
+
+    chan->priority = arg->priority;
+    m_vcpu->set_rax(0);
+    return true;
+}
+
 bool evtchn::alloc_unbound()
 {
     auto arg = m_vcpu->map_arg<evtchn_alloc_unbound_t>(m_vcpu->rsi());
@@ -88,8 +98,7 @@ bool evtchn::alloc_unbound()
 bool evtchn::send()
 {
     auto arg = m_vcpu->map_arg<evtchn_send_t>(m_vcpu->rsi());
-//    bfdebug_nhex(0, "send port", arg->port);
-    this->upcall(this->port_to_chan(arg->port));
+    this->queue_upcall(this->port_to_chan(arg->port));
 
     m_vcpu->set_rax(0);
     return true;
@@ -169,8 +178,9 @@ bool evtchn::bind_virq()
     auto port = this->bind(chan_t::state_virq);
     auto chan = this->port_to_chan(port);
 
- //   bfdebug_nhex(0, "evtchn: bound virq port", port);
- //   bfdebug_subtext(0, "name:", virq_info[arg->virq].name);
+    bfdebug_info(0, "evtchn: bound virq");
+    bfdebug_subnhex(0, "port", port);
+    bfdebug_subtext(0, "name", virq_info[arg->virq].name);
 
     chan->data.virq = arg->virq;
     m_virq_to_port[arg->virq] = port;
@@ -189,11 +199,19 @@ void evtchn::queue_virq(uint32_t virq)
     expects(chan);
     expects(chan->data.virq == virq);
 
-    this->upcall(chan);
+    this->queue_upcall(chan);
+}
 
-//    bfdebug_info(0, "queueing virq");
-//    bfdebug_subnhex(0, "virq", virq);
-//    bfdebug_subnhex(0, "port", port);
+void evtchn::inject_virq(uint32_t virq)
+{
+    auto port = m_virq_to_port[virq];
+    expects(port);
+
+    auto chan = this->port_to_chan(port);
+    expects(chan);
+    expects(chan->data.virq == virq);
+
+    this->inject_upcall(chan);
 }
 
 bool evtchn::bind_vcpu()
@@ -265,7 +283,21 @@ bool evtchn::set_link(word_t *word, event_word_t *val, port_t link)
     return word->compare_exchange_strong(expect, desire);
 }
 
-void evtchn::upcall(chan_t *chan)
+void evtchn::queue_upcall(chan_t *chan)
+{
+    if (!this->upcall(chan)) {
+        m_vcpu->queue_external_interrupt(m_cb_via);
+    }
+}
+
+void evtchn::inject_upcall(chan_t *chan)
+{
+    if (!this->upcall(chan)) {
+        m_vcpu->inject_external_interrupt(m_cb_via);
+    }
+}
+
+int evtchn::upcall(chan_t *chan)
 {
     expects(m_ctl_blk);
 //    printf("upcall: port: %u ", chan->port);
@@ -275,12 +307,12 @@ void evtchn::upcall(chan_t *chan)
     if (!word) {
         bferror_nhex(0, "port doesn't map to word", port);
         chan->is_pending = true;
-        return;
+        return -EADDRNOTAVAIL;
     }
 
     /* Return if the guest has masked the event */
     if (this->word_is_masked(word)) {
-        return;
+        return -EBUSY;
     }
 
     auto p = chan->priority;
@@ -307,9 +339,10 @@ void evtchn::upcall(chan_t *chan)
     }
 
     this->word_set_pending(word);
-    m_vcpu->queue_external_interrupt(m_cb_via);
     m_ctl_blk->ready |= (1UL << p);
     ::intel_x64::barrier::wmb();
+
+    return 0;
 }
 
 // Ports

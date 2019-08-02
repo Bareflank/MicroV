@@ -19,6 +19,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+#include <arch/x64/rdtsc.h>
+#include <bfhypercall.h>
 #include <hve/arch/intel_x64/vcpu.h>
 #include <hve/arch/intel_x64/domain.h>
 #include <hve/arch/intel_x64/vmcall/domain_op.h>
@@ -49,10 +51,14 @@ vmcall_domain_op_handler::domain_op__create_domain(vcpu *vcpu)
 {
     try {
         struct microv::domain_info info{};
+        auto arg = vcpu->map_arg<struct dom_info>(vcpu->rbx());
 
-        info.flags = vcpu->rbx();
+        info.flags = arg->flags;
+        info.tsc = arg->tsc;
+        info.wc_sec = arg->wc_sec;
+        info.wc_nsec = arg->wc_nsec;
+
         vcpu->set_rax(domain::generate_domainid());
-
         g_dm->create(vcpu->rax(), &info);
     }
     catchall({
@@ -71,6 +77,11 @@ vmcall_domain_op_handler::domain_op__destroy_domain(vcpu *vcpu)
     catchall({
         vcpu->set_rax(FAILURE);
     })
+}
+
+void vmcall_domain_op_handler::domain_op__read_tsc(vcpu *vcpu) noexcept
+{
+    vcpu->set_rax(::x64::read_tsc::get());
 }
 
 void vmcall_domain_op_handler::domain_op__hvc_rx_put(vcpu *vcpu)
@@ -454,6 +465,7 @@ vmcall_domain_op_handler::dispatch(vcpu *vcpu)
     switch (vcpu->rax()) {
         dispatch_case(create_domain)
         dispatch_case(destroy_domain)
+        dispatch_case(read_tsc)
 
         dispatch_case(set_uart)
         dispatch_case(hvc_rx_put)

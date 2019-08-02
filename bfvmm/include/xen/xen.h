@@ -30,9 +30,11 @@
 #include "xenmem.h"
 #include "xenver.h"
 
-#include <public/io/console.h>
-#include <public/xen.h>
 #include <public/domctl.h>
+#include <public/io/console.h>
+#include <public/platform.h>
+#include <public/vcpu.h>
+#include <public/xen.h>
 
 namespace microv {
 
@@ -41,8 +43,24 @@ public:
     void queue_virq(uint32_t virq);
 
 private:
+    int set_timer();
+    void stop_timer();
+    void steal_pet_ticks();
+    void system_time();
+    void init_shared_info(uintptr_t shinfo_gpfn);
+
+    bool vmexit_save_tsc(base_vcpu *vcpu);
+    void resume_update(bfobject *obj);
+    void update_runstate(int new_state);
+    void update_wallclock(const struct xenpf_settime64 *time);
+
     bool xen_leaf4(base_vcpu *vcpu);
-    bool handle_hypercall(xen_vcpu *vcpu);
+    bool handle_pet(base_vcpu *vcpu);
+    bool handle_hlt(base_vcpu *vcpu, hlt_handler::info_t &);
+    bool handle_interrupt(base_vcpu *vcpu, interrupt_handler::info_t &);
+
+    /* Hypercall handlers */
+    bool hypercall(xen_vcpu *vcpu);
     bool handle_memory_op();
     bool handle_xen_version();
     bool handle_hvm_op();
@@ -53,6 +71,8 @@ private:
     bool handle_console_io();
     bool handle_sysctl();
     bool handle_physdev_op();
+    bool handle_vcpu_op();
+    bool handle_vm_assist();
 
     xen_vcpu *m_vcpu{};
     xen_domain *m_dom{};
@@ -74,10 +94,22 @@ private:
     bfvmm::x64::unique_map<struct shared_info> m_shinfo{};
     bfvmm::x64::unique_map<struct xencons_interface> m_console{};
     bfvmm::x64::unique_map<uint8_t> m_store{};
+    bfvmm::x64::unique_map<struct vcpu_time_info> m_user_vti{};
+    bfvmm::x64::unique_map<struct vcpu_runstate_info> m_runstate{};
 
-    struct xen_domctl_getdomaininfo info{};
     xen_domain_handle_t xdh{};
+    struct xen_domctl_getdomaininfo info{};
     uintptr_t m_shinfo_gpfn{};
+
+    uint64_t m_tsc_shift{};
+    uint64_t m_tsc_khz{};
+    uint64_t m_tsc_mul{};
+    uint64_t m_tsc_at_exit{};
+
+    uint64_t m_pet_shift{};
+    bool m_pet_enabled{};
+    bool m_pet_hdlrs_added{};
+    bool m_runstate_assist{};
 
 public:
 

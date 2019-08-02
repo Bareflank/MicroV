@@ -68,7 +68,7 @@ class evtchn {
 public:
     using port_t = evtchn_port_t;
     using word_t = std::atomic<event_word_t>;
-    using chan_t = class microv::event_channel;
+    using chan_t = struct microv::event_channel;
 
     using queue_t = struct fifo_queue {
         port_t *head;
@@ -84,8 +84,9 @@ public:
     static_assert(word_t::is_always_lock_free);
 
     bool init_control();
-    bool alloc_unbound();
     bool expand_array();
+    bool set_priority();
+    bool alloc_unbound();
     bool bind_interdomain();
     bool bind_vcpu();
     bool bind_virq();
@@ -94,6 +95,7 @@ public:
 
     void set_callback_via(uint64_t via);
     void queue_virq(uint32_t virq);
+    void inject_virq(uint32_t virq);
 
     port_t bind_console();
     port_t bind_store();
@@ -139,10 +141,11 @@ private:
     void make_chan_page(port_t port);
     void make_word_page(evtchn_expand_array_t *expand);
 
-    // Links
-    //
+    void queue_upcall(chan_t *chan);
+    void inject_upcall(chan_t *chan);
+    int upcall(chan_t *chan);
+
     bool set_link(word_t *word, event_word_t *val, port_t link);
-    void upcall(chan_t *chan);
 
     // Interface for atomic accesses to shared memory
     //

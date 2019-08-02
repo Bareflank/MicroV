@@ -1103,7 +1103,7 @@ setup_32bit_register_state(struct vm_t *vm)
 /* Implementation                                                             */
 /* -------------------------------------------------------------------------- */
 
-static uint64_t get_domflags(struct create_vm_args *args)
+static uint64_t make_dom_flags(const struct create_vm_args *args)
 {
     uint64_t flags = 0;
 
@@ -1141,9 +1141,18 @@ static uint64_t get_domflags(struct create_vm_args *args)
     return flags;
 }
 
+void init_dom_info(struct dom_info *info, const struct create_vm_args *args)
+{
+    info->flags = make_dom_flags(args);
+    info->wc_sec = args->wc_sec;
+    info->wc_nsec = args->wc_nsec;
+    info->tsc = args->tsc;
+}
+
 int64_t common_create_vm(struct create_vm_args *args)
 {
     status_t ret;
+    struct dom_info info;
     struct vm_t *vm = acquire_vm();
 
     args->domainid = INVALID_DOMAINID;
@@ -1152,7 +1161,8 @@ int64_t common_create_vm(struct create_vm_args *args)
         return COMMON_NO_HYPERVISOR;
     }
 
-    vm->domainid = __domain_op__create_domain(get_domflags(args));
+    init_dom_info(&info, args);
+    vm->domainid = __domain_op__create_domain(&info);
     if (vm->domainid == INVALID_DOMAINID) {
         BFDEBUG("__domain_op__create_domain failed\n");
         return COMMON_CREATE_VM_FAILED;

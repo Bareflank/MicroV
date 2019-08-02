@@ -309,6 +309,19 @@ public:
                              const pci_cfg_handler::delegate_t &d,
                              enum pci_cfg_dir dir);
 
+    using return_delegate_t = delegate<void(void)>;
+    void add_return_delegate(const return_delegate_t &rd)
+    {
+        m_ret_delegates.push_front(rd);
+    }
+
+    void call_return_delegates()
+    {
+        for (const auto &rd : m_ret_delegates) {
+            rd();
+        }
+    }
+
 private:
 
     void setup_default_controls();
@@ -316,6 +329,7 @@ private:
     void setup_default_register_state();
 
 private:
+    friend class microv::xen;
     domain *m_domain{};
 
     cpuid_handler m_cpuid_handler;
@@ -339,6 +353,7 @@ private:
 
     std::unique_ptr<microv::xen> m_xen;
     std::unique_ptr<microv::intel_x64::xstate> m_xstate{};
+    std::list<return_delegate_t> m_ret_delegates;
 };
 
 }

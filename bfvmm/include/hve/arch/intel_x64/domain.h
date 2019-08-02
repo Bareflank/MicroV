@@ -227,8 +227,8 @@ public:
     ///
     uint64_t exec_mode() noexcept;
 
-    bool initdom() noexcept { return m_info.flags & DOMF_XENINIT; }
-    bool ndvm() noexcept { return m_info.flags & DOMF_NDVM; }
+    bool initdom() noexcept { return m_sod_info.flags & DOMF_XENINIT; }
+    bool ndvm() noexcept { return m_sod_info.flags & DOMF_NDVM; }
 
     /// Set UART
     ///
@@ -425,6 +425,10 @@ public:
     global_state()
     { return &m_vcpu_global_state; }
 
+    /* Start-of-day info */
+    struct microv::domain_info *sod_info()
+    { return &m_sod_info; }
+
 private:
 
     void setup_dom0();
@@ -504,8 +508,7 @@ private:
     uint64_t m_ldtr_limit{};
     uint64_t m_ldtr_access_rights{};
 
-    uint64_t m_did{};
-    struct microv::domain_info m_info{};
+    struct microv::domain_info m_sod_info{};
 
     std::unique_ptr<microv::ring<HVC_RX_SIZE>> m_hvc_rx_ring;
     std::unique_ptr<microv::ring<HVC_TX_SIZE>> m_hvc_tx_ring;

@@ -39,7 +39,11 @@ namespace microv::intel_x64
 domain::domain(domainid_type domainid, struct domain_info *info) :
     microv::domain{domainid}
 {
-    m_info.flags = info->flags;
+    /* Set start-of-day info */
+    m_sod_info.flags = info->flags;
+    m_sod_info.tsc = info->tsc;
+    m_sod_info.wc_sec = info->wc_sec;
+    m_sod_info.wc_nsec = info->wc_nsec;
 
     if (domainid == 0) {
         this->setup_dom0();
@@ -69,7 +73,7 @@ domain::setup_dom0()
 void
 domain::setup_domU()
 {
-    if (m_info.flags & DOMF_XENHVC) {
+    if (m_sod_info.flags & DOMF_XENHVC) {
         m_hvc_rx_ring = std::make_unique<microv::ring<HVC_RX_SIZE>>();
         m_hvc_tx_ring = std::make_unique<microv::ring<HVC_TX_SIZE>>();
     }
@@ -137,7 +141,7 @@ domain::release(uintptr_t gpa)
 uint64_t
 domain::exec_mode() noexcept
 {
-    if (m_info.flags & DOMF_EXEC_XENPVH) {
+    if (m_sod_info.flags & DOMF_EXEC_XENPVH) {
         return VM_EXEC_XENPVH;
     }
 

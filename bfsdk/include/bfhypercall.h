@@ -148,6 +148,7 @@ __uart_ndec_op(uint16_t port, uint64_t val)
 
 #define __enum_domain_op__create_domain 0xBF02000000000100
 #define __enum_domain_op__destroy_domain 0xBF02000000000101
+#define __enum_domain_op__read_tsc 0xBF02000000000102
 
 #define __enum_domain_op__set_uart 0xBF02000000000200
 #define __enum_domain_op__set_pt_uart 0xBF02000000000201
@@ -306,12 +307,19 @@ __uart_ndec_op(uint16_t port, uint64_t val)
 /* Is this domain an NDVM? */
 #define DOMF_NDVM (1ULL << 5)
 
+struct dom_info {
+    uint64_t flags;   /* DOMF_* bitmask */
+    uint64_t wc_sec;  /* seconds since UNIX epoch */
+    uint64_t wc_nsec; /* nanoseconds since UNIX epoch */
+    uint64_t tsc;     /* TSC value associated with above wc_* times */
+};
+
 static inline domainid_t
-__domain_op__create_domain(uint64_t flags)
+__domain_op__create_domain(struct dom_info *info)
 {
     return _vmcall(
         __enum_domain_op__create_domain,
-        flags,
+        (uint64_t)info,
         0,
         0
     );
@@ -328,6 +336,12 @@ __domain_op__destroy_domain(domainid_t foreign_domainid)
     );
 
     return ret == 0 ? SUCCESS : FAILURE;
+}
+
+static inline uint64_t
+__domain_op__read_tsc(void)
+{
+    return _vmcall(__enum_domain_op__read_tsc, 0, 0, 0);
 }
 
 static inline uint64_t

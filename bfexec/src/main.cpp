@@ -25,6 +25,7 @@
 #include <bfstring.h>
 #include <bfaffinity.h>
 #include <bfbuilderinterface.h>
+#include <bfhypercall.h>
 
 #include <list>
 #include <memory>
@@ -282,6 +283,8 @@ vm_exec_mode(uint64_t file_type)
 static void
 create_vm(const args_type &args)
 {
+    using namespace std::chrono;
+
     create_vm_args ioctl_args {};
 
     bfn::cmdl cmdl;
@@ -339,6 +342,15 @@ create_vm(const args_type &args)
     ioctl_args.pt_uart = pt_uart;
     ioctl_args.ram = ram;
     ioctl_args.initdom = args.count("initdom");
+
+    auto now = system_clock::now();
+    auto tsc = __domain_op__read_tsc();
+    ioctl_args.wc_sec = duration_cast<seconds>(now.time_since_epoch()).count();
+    ioctl_args.wc_nsec = duration_cast<nanoseconds>(now.time_since_epoch()).count();
+    ioctl_args.tsc = tsc;
+
+    printf("seconds since epoch: 0x%llx\n", ioctl_args.wc_sec);
+    printf("nanoseconds since epoch: 0x%llx\n", ioctl_args.wc_nsec);
 
     ctl->call_ioctl_create_vm(ioctl_args);
     dump_vm_create_verbose();

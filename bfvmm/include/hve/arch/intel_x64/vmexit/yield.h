@@ -30,6 +30,10 @@
 // Definitions
 // -----------------------------------------------------------------------------
 
+namespace microv {
+    class xen;
+}
+
 namespace microv::intel_x64
 {
 
@@ -46,8 +50,7 @@ public:
     ///
     /// @param vcpu the vcpu object for this handler
     ///
-    yield_handler(
-        gsl::not_null<vcpu *> vcpu);
+    yield_handler(gsl::not_null<vcpu *> vcpu);
 
     /// Destructor
     ///
@@ -60,7 +63,7 @@ public:
 
     /// @cond
 
-    bool handle_hlt(vcpu_t *vcpu);
+    bool handle_hlt(vcpu_t *vcpu, bfvmm::intel_x64::hlt_handler::info_t &info);
     bool handle_preemption(vcpu_t *vcpu);
 
     bool handle_rdmsr_0x000006E0(
@@ -71,7 +74,7 @@ public:
     /// @endcond
 
 private:
-
+    friend class microv::xen;
     vcpu *m_vcpu;
 
     uint64_t m_tsc_freq;
