@@ -139,6 +139,7 @@ vcpu::vcpu(
     m_ept_misconfiguration_handler{this},
     m_ept_violation_handler{this},
     m_external_interrupt_handler{this},
+    m_hlt_handler{this},
     m_init_signal_handler{this},
     m_interrupt_window_handler{this},
     m_io_instruction_handler{this},
@@ -678,6 +679,22 @@ vcpu::add_external_interrupt_handler(
 void
 vcpu::disable_external_interrupts()
 { m_external_interrupt_handler.disable_exiting(); }
+
+//--------------------------------------------------------------------------
+// HLT
+//--------------------------------------------------------------------------
+
+void vcpu::enable_hlt_exiting()
+{ m_hlt_handler.enable_exiting(); }
+
+void vcpu::disable_hlt_exiting()
+{ m_hlt_handler.disable_exiting(); }
+
+void vcpu::add_hlt_handler(const hlt_handler::handler_delegate_t &d)
+{
+    m_hlt_handler.add_handler(d);
+    m_hlt_handler.enable_exiting();
+}
 
 //--------------------------------------------------------------------------
 // Interrupt Window

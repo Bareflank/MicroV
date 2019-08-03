@@ -27,6 +27,7 @@
 #include "vmexit/ept_misconfiguration.h"
 #include "vmexit/ept_violation.h"
 #include "vmexit/external_interrupt.h"
+#include "vmexit/hlt.h"
 #include "vmexit/init_signal.h"
 #include "vmexit/interrupt_window.h"
 #include "vmexit/io_instruction.h"
@@ -504,6 +505,13 @@ public:
     /// @ensures
     ///
     VIRTUAL void disable_external_interrupts();
+
+    //--------------------------------------------------------------------------
+    // HLT
+    //--------------------------------------------------------------------------
+    VIRTUAL void enable_hlt_exiting();
+    VIRTUAL void disable_hlt_exiting();
+    VIRTUAL void add_hlt_handler(const hlt_handler::handler_delegate_t &d);
 
     //--------------------------------------------------------------------------
     // Interrupt Window
@@ -1924,6 +1932,7 @@ private:
     ept_misconfiguration_handler m_ept_misconfiguration_handler;
     ept_violation_handler m_ept_violation_handler;
     external_interrupt_handler m_external_interrupt_handler;
+    hlt_handler m_hlt_handler;
     init_signal_handler m_init_signal_handler;
     interrupt_window_handler m_interrupt_window_handler;
     io_instruction_handler m_io_instruction_handler;

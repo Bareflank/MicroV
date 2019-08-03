@@ -36,6 +36,7 @@ target_sources(bfvmm_hve PRIVATE
     $<${X64}:arch/intel_x64/vmexit/ept_misconfiguration.cpp>
     $<${X64}:arch/intel_x64/vmexit/ept_violation.cpp>
     $<${X64}:arch/intel_x64/vmexit/external_interrupt.cpp>
+    $<${X64}:arch/intel_x64/vmexit/hlt.cpp>
     $<${X64}:arch/intel_x64/vmexit/init_signal.cpp>
     $<${X64}:arch/intel_x64/vmexit/interrupt_window.cpp>
     $<${X64}:arch/intel_x64/vmexit/io_instruction.cpp>
