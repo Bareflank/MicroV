@@ -49,15 +49,14 @@ write_str(const std::string &str)
 {
     try {
         std::lock_guard<std::mutex> guard(g_write_mutex);
-
         g_debug_ring()->write(str);
 #ifdef USE_XUE
         xue_write(&g_xue, (const char *)str.data(), str.size());
-#endif
-
+#else
         for (const auto c : str) {
             bfvmm::DEFAULT_COM_DRIVER::instance()->write(c);
         }
+#endif
     }
     catch (...) {
         return 0;
@@ -70,11 +69,14 @@ extern "C" uint64_t
 unsafe_write_cstr(const char *cstr, size_t len)
 {
     try {
+#ifdef USE_XUE
+        xue_write(&g_xue, cstr, len);
+#else
         auto str = gsl::make_span(cstr, gsl::narrow_cast<std::ptrdiff_t>(len));
-
         for (const auto &c : str) {
             bfvmm::DEFAULT_COM_DRIVER::instance()->write(c);
         }
+#endif
     }
     catch (...) {
         return 0;
