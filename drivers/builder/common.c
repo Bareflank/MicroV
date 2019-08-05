@@ -20,8 +20,8 @@
  * SOFTWARE.
  */
 
-#include <bootparams.h>
-#include <common.h>
+#include "bootparams.h"
+#include "common.h"
 
 #include <bfack.h>
 #include <bfacpi.h>

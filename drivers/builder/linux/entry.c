@@ -25,13 +25,13 @@
 #include <linux/uaccess.h>
 #include <linux/miscdevice.h>
 
-#include <common.h>
-#include <bfbuilderinterface.h>
+#include "../common.h"
 
-#include <bfdebug.h>
-#include <bftypes.h>
+#include <bfbuilderinterface.h>
 #include <bfconstants.h>
+#include <bfdebug.h>
 #include <bfplatform.h>
+#include <bftypes.h>
 
 /* -------------------------------------------------------------------------- */
 /* Misc Device                                                                */

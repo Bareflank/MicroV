@@ -19,7 +19,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-TARGET_MODULE:=bfbuilder
+TARGET_MODULE:=uv-builder
 
 ifneq ($(KERNELRELEASE),)
 	obj-m := $(TARGET_MODULE).o
@@ -27,15 +27,13 @@ ifneq ($(KERNELRELEASE),)
 	$(TARGET_MODULE)-objs += entry.o
 	$(TARGET_MODULE)-objs += platform.o
 	$(TARGET_MODULE)-objs += intrinsics.o
-	$(TARGET_MODULE)-objs += ../../common.o
+	$(TARGET_MODULE)-objs += ../common.o
 
 	EXTRA_CFLAGS += -DKERNEL
-	EXTRA_CFLAGS += -DLINUX_KERNEL
-	EXTRA_CFLAGS += -I$(SOURCE_ROOT_DIR)/bfsdk/include/
-	EXTRA_CFLAGS += -I$(SOURCE_ROOT_DIR)/bfelf_loader/include/
-	EXTRA_CFLAGS += -I$(src)/../../../include/
-	EXTRA_CFLAGS += -I$(src)/../../../../bfsdk/include/
-	EXTRA_CFLAGS += -I$(src)/../../../../deps/xen/xen/include/public
+	EXTRA_CFLAGS += -I$(SOURCE_ROOT_DIR)/bfsdk/include
+	EXTRA_CFLAGS += -I$(SOURCE_ROOT_DIR)/bfelf_loader/include
+	EXTRA_CFLAGS += -I$(src)/../../../bfsdk/include
+	EXTRA_CFLAGS += -I$(src)/../../../deps/xen/xen/include/public
 
 else
 	BUILDSYSTEM_DIR:=/lib/modules/$(shell uname -r)/build
@@ -46,8 +44,8 @@ all:
 
 clean:
 	$(MAKE) -C $(BUILDSYSTEM_DIR) M=$(PWD) clean
-	rm -f ../../common.o
-	rm -f ../../.common.o.cmd
+	rm -f ../common.o
+	rm -f ../.common.o.cmd
 
 load:
 	insmod ./$(TARGET_MODULE).ko

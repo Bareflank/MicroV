@@ -81,7 +81,7 @@ CYGWIN_NT*)
     >&2 /cygdrive/c/Program\ Files\ \(x86\)/Windows\ Kits/10/Tools/x64/devcon install x64/Release/bfbuilder/bfbuilder.inf "ROOT\bfbuilder"
     ;;
 Linux)
-    cd $1/bfbuilder/src/platform/linux
+    cd $1/drivers/$2/linux
     sudo make unload 1> /dev/null 2> /dev/null
     sudo make load 1> /dev/null 2> /dev/null
     ;;

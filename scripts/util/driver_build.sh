@@ -22,6 +22,7 @@
 
 # $1 == MICROV_SOURCE_ROOT_DIR
 # $2 == SOURCE_ROOT_DIR
+# $3 == DRIVER
 
 msbuild_2015="/cygdrive/c/Program Files (x86)/MSBuild/14.0/Bin/MSBuild.exe"
 msbuild_2017="/cygdrive/c/Program Files (x86)/Microsoft Visual Studio/2017/Community/MSBuild/15.0/bin/msbuild.exe"
@@ -68,7 +69,7 @@ CYGWIN_NT-10.0*)
     >&2 eval "'$msbuild' /p:SOURCE_ROOT_DIR=$SOURCE_ROOT_DIR /m:3 /p:Configuration=Release /p:Platform=x64 /p:TargetVersion=Windows10 bfbuilder.sln"
     ;;
 Linux)
-    cd $1/bfbuilder/src/platform/linux
+    cd $1/drivers/$3/linux
     make SOURCE_ROOT_DIR=$2 -j3
     ;;
 *)
