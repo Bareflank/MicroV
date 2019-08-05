@@ -361,7 +361,7 @@ setup_fadt(struct fadt_t *fadt)
         .dayalarm = 0,
         .monthalarm = 0,
         .century = 0,
-        .bootflags = 0,
+        .bootflags = 0x4,
         .reserved = 0,
         .flags = 0x101873U,
         .resetregister = {0, 0, 0, 0, 0},

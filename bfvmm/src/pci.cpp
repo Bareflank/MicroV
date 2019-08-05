@@ -62,39 +62,6 @@ static uint32_t passthru_device{};
 /* Emulation constants */
 static constexpr uint32_t INTX_DISABLE = (1UL << 10);
 
-/* PCI config handling helpers */
-static constexpr cfg_key make_cfg_key(uint64_t port, uint32_t size)
-{
-    return (port << 32) | size;
-}
-
-static inline cfg_key make_cfg_key(const cfg_info &info)
-{
-    const uint64_t port = info.exit_info.port_number;
-    const uint32_t size = info.exit_info.size_of_access + 1;
-
-    return make_cfg_key(port, size);
-}
-
-struct cfg_access {
-    uint32_t mask;
-    uint32_t shift;
-};
-
-constexpr auto cfg_in = vcpu::pci_cfg_dir::pci_cfg_in;
-constexpr auto cfg_out = vcpu::pci_cfg_dir::pci_cfg_out;
-
-const std::unordered_map<cfg_key, struct cfg_access> cfg_map = {
-    {make_cfg_key(0xCFC, 1), {0x000000FF, 0}},
-    {make_cfg_key(0xCFC, 2), {0x0000FFFF, 0}},
-    {make_cfg_key(0xCFC, 4), {0xFFFFFFFF, 0}},
-    {make_cfg_key(0xCFD, 1), {0x0000FF00, 8}},
-    {make_cfg_key(0xCFD, 2), {0x00FFFF00, 8}},
-    {make_cfg_key(0xCFE, 1), {0x00FF0000, 16}},
-    {make_cfg_key(0xCFE, 2), {0xFFFF0000, 16}},
-    {make_cfg_key(0xCFF, 1), {0xFF000000, 24}}
-};
-
 /* PCIe enhanced configuration access mechanism (ECAM) */
 struct mcfg_alloc {
     uint64_t base_gpa;
@@ -167,7 +134,8 @@ static void probe_bus(uint32_t b, struct pci_dev *bridge)
     for (auto d = (!b) ? 1 : 0; d < pci_nr_dev; d++) {
         for (auto f = 0; f < pci_nr_fun; f++) {
             const auto addr = pci_cfg_bdf_to_addr(b, d, f);
-            if (!pci_cfg_is_present(addr)) {
+            const auto reg0 = pci_cfg_read_reg(addr, 0);
+            if (!pci_cfg_is_present(reg0)) {
                 continue;
             }
 
@@ -220,9 +188,15 @@ pci_dev::pci_dev(uint32_t addr, struct pci_dev *parent_bridge)
     addr |= pci_en_mask;
     addr &= ~(pci_reg_mask | pci_off_mask);
 
-    expects(pci_cfg_is_present(addr));
+    expects(pci_cfg_is_present(pci_cfg_read_reg(addr, 0)));
 
     m_cf8 = addr;
+    snprintf(m_bdf_str, sizeof(m_bdf_str), "%02x:%02x.%02x",
+             pci_cfg_bus(m_cf8),
+             pci_cfg_dev(m_cf8),
+             pci_cfg_fun(m_cf8));
+    ensures(!m_bdf_str[sizeof(m_bdf_str) - 1]);
+
     for (auto i = 0; i < m_cfg_reg.size(); i++) {
         m_cfg_reg[i] = pci_cfg_read_reg(addr, i);
     }
@@ -340,8 +314,8 @@ void pci_dev::add_host_handlers(vcpu *vcpu)
     expects(vcpuid::is_host_vm_vcpu(vcpu->id()));
     expects(m_guest_owned);
 
-    HANDLE_CFG_ACCESS(this, host_cfg_in, cfg_in);
-    HANDLE_CFG_ACCESS(this, host_cfg_out, cfg_out);
+    HANDLE_CFG_ACCESS(this, host_cfg_in, pci_dir_in);
+    HANDLE_CFG_ACCESS(this, host_cfg_out, pci_dir_out);
 }
 
 void pci_dev::add_guest_handlers(vcpu *vcpu)
@@ -349,18 +323,17 @@ void pci_dev::add_guest_handlers(vcpu *vcpu)
     expects(this->is_normal());
     expects(!this->is_host_bridge());
     expects(vcpuid::is_guest_vm_vcpu(vcpu->id()));
+    expects(m_hdlrs_added.count(vcpu->id()) == 0);
 
     if (m_bars.empty()) {
         this->parse_bars();
     }
 
-    HANDLE_CFG_ACCESS(this, guest_normal_cfg_in, cfg_in);
-    HANDLE_CFG_ACCESS(this, guest_cfg_out, cfg_out);
+    HANDLE_CFG_ACCESS(this, guest_normal_cfg_in, pci_dir_in);
+    HANDLE_CFG_ACCESS(this, guest_normal_cfg_out, pci_dir_out);
+    m_hdlrs_added[vcpu->id()] = true;
 
-    printf("Added guest PCI handlers for %02x:%02x.%02x\n",
-            pci_cfg_bus(m_cf8),
-            pci_cfg_dev(m_cf8),
-            pci_cfg_fun(m_cf8));
+    printf("PCI: added handlers @ %s\n", this->bdf_str());
 
     for (const auto &bar : m_bars) {
         if (bar.type == pci_bar_io) {
@@ -375,117 +348,15 @@ void pci_dev::add_guest_handlers(vcpu *vcpu)
             dom->map_4k_rw_uc(bar.addr + i, bar.addr + i);
         }
     }
-
-    auto parent = this->m_bridge;
-    while (parent) {
-        if (parent->m_bars.empty()) {
-            parent->parse_bars();
-        }
-
-        if (parent->is_pci_bridge()) {
-            HANDLE_CFG_ACCESS(parent, guest_pci_bridge_cfg_in, cfg_in);
-            HANDLE_CFG_ACCESS(parent, guest_cfg_out, cfg_out);
-        } else if (parent->is_host_bridge()) {
-            HANDLE_CFG_ACCESS(parent, guest_host_bridge_cfg_in, cfg_in);
-            HANDLE_CFG_ACCESS(parent, guest_cfg_out, cfg_out);
-        }
-
-        parent = parent->m_bridge;
-    }
-}
-
-static void write_cfg_info(uint32_t val, cfg_info &info)
-{
-    const auto key = make_cfg_key(info);
-    const auto itr = cfg_map.find(key);
-
-    if (itr == cfg_map.end()) {
-        bfalert_info(0, "Unexpected PCI config in access");
-        bfalert_subnhex(0, "port:", info.exit_info.port_number);
-        bfalert_subnhex(0, "size:", info.exit_info.size_of_access + 1);
-        info.exit_info.val = 0;
-        return;
-    }
-
-    const auto access = itr->second;
-    info.exit_info.val = (val & access.mask) >> access.shift;
-}
-
-static uint32_t read_cfg_info(uint32_t oldval, const cfg_info &info)
-{
-    const auto key = make_cfg_key(info);
-    const auto itr = cfg_map.find(key);
-
-    if (itr == cfg_map.end()) {
-        bfalert_info(0, "Unexpected PCI config out access");
-        bfalert_subnhex(0, "port:", info.exit_info.port_number);
-        bfalert_subnhex(0, "size:", info.exit_info.size_of_access + 1);
-        return 0;
-    }
-
-    const auto access = itr->second;
-    return (oldval & ~access.mask) | (info.exit_info.val << access.shift);
-}
-
-bool pci_dev::guest_host_bridge_cfg_in(base_vcpu *vcpu, cfg_info &info)
-{
-    const uint32_t reg = info.reg;
-    uint32_t val = 0;
-
-    switch (reg) {
-    case 0x1:
-        val = pci_cfg_read_reg(m_cf8, reg) | INTX_DISABLE;
-        break;
-    case 0xA:
-    case 0xC:
-    case 0xD:
-        val = 0;
-        break;
-    case 0xF:
-        val = 0xFF;
-        break;
-    default:
-        val = pci_cfg_read_reg(m_cf8, reg);
-        break;
-    }
-
-    write_cfg_info(val, info);
-    return true;
-}
-
-bool pci_dev::guest_pci_bridge_cfg_in(base_vcpu *vcpu, cfg_info &info)
-{
-    const uint32_t reg = info.reg;
-    uint32_t val = 0;
-
-    switch (reg) {
-    case 0x1:
-        val = pci_cfg_read_reg(m_cf8, reg) | INTX_DISABLE;
-        break;
-    case 0xD:
-    case 0xE:
-        val = 0;
-        break;
-    case 0xF:
-        val = 0xFF;
-        break;
-    default:
-        val = pci_cfg_read_reg(m_cf8, reg);
-        break;
-    }
-
-    write_cfg_info(val, info);
-    return true;
 }
 
 bool pci_dev::guest_normal_cfg_in(base_vcpu *vcpu, cfg_info &info)
 {
-    const uint32_t reg = info.reg;
     uint32_t val = 0;
 
-    switch (reg) {
+    switch (info.reg) {
     case 0x1:
-        val = pci_cfg_read_reg(m_cf8, reg) | INTX_DISABLE;
+        val = pci_cfg_read_reg(m_cf8, 0x1) | INTX_DISABLE;
         break;
     case 0xA:
     case 0xC:
@@ -498,24 +369,39 @@ bool pci_dev::guest_normal_cfg_in(base_vcpu *vcpu, cfg_info &info)
         val = 0xFF;
         break;
     default:
-        val = pci_cfg_read_reg(m_cf8, reg);
+        val = pci_cfg_read_reg(m_cf8, info.reg);
         break;
     }
 
     /* Expose the MSI capability only */
-    if (reg == m_msi_cap) {
+    if (info.reg == m_msi_cap) {
         val &= 0xFFFF00FF;
     }
 
-    write_cfg_info(val, info);
+    cfg_hdlr::write_cfg_info(val, info);
     return true;
 }
 
-bool pci_dev::guest_cfg_out(base_vcpu *vcpu, cfg_info &info)
+bool pci_dev::guest_normal_cfg_out(base_vcpu *vcpu, cfg_info &info)
 {
     auto old = pci_cfg_read_reg(m_cf8, info.reg);
-    auto val = read_cfg_info(old, info);
+    auto val = cfg_hdlr::read_cfg_info(old, info);
     pci_cfg_write_reg(m_cf8, info.reg, val);
+
+    if (info.reg == m_msi_cap && (val & (1UL << 16)) != 0) {
+        uint32_t data = pci_cfg_read_reg(m_cf8, info.reg + 3);
+        uint64_t addr = pci_cfg_read_reg(m_cf8, info.reg + 1);
+        addr |= (uint64_t)pci_cfg_read_reg(m_cf8, info.reg + 2) << 32;
+
+        printf("PCI: %s: MSI enabled, vector %u, apic_dest 0x%x\n",
+              this->bdf_str(), data & 0xFF, (addr & 0xFF000) >> 12);
+
+        expects((addr >> 32) == 0);
+        expects((addr & 0x8) == 0); /* redirection hint must be zero */
+        expects((data & 0x700) == 0); /* delivery mode must be fixed */
+        expects((data & 0x8000) == 0); /* trigger mode must be edge */
+    }
+
     return true;
 }
 
@@ -542,11 +428,11 @@ bool pci_dev::host_cfg_in(base_vcpu *vcpu, cfg_info &info)
 
     if (reg >= bar_base && reg <= bar_last) {
         const auto bar = pci_cfg_read_reg(m_cf8, reg);
-        write_cfg_info(bar, info);
+        cfg_hdlr::write_cfg_info(bar, info);
         return true;
     }
 
-    write_cfg_info(m_vcfg[reg], info);
+    cfg_hdlr::write_cfg_info(m_vcfg[reg], info);
     return true;
 }
 
@@ -566,12 +452,12 @@ bool pci_dev::host_cfg_out(base_vcpu *vcpu, cfg_info &info)
 
     if (reg >= bar_base && reg <= bar_last) {
         auto old = pci_cfg_read_reg(m_cf8, reg);
-        auto val = read_cfg_info(old, info);
+        auto val = cfg_hdlr::read_cfg_info(old, info);
         pci_cfg_write_reg(m_cf8, reg, val);
         return true;
     }
 
-    m_vcfg[reg] = read_cfg_info(m_vcfg[reg], info);
+    m_vcfg[reg] = cfg_hdlr::read_cfg_info(m_vcfg[reg], info);
     return true;
 }
 

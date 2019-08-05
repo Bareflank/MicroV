@@ -85,9 +85,23 @@ static void make_xen_ids(xen_domain *dom, xen *xen)
     } else {
         std::lock_guard<std::mutex> lock(xen_mutex);
         xen->domid = ++xen_domid;
-        xen->vcpuid = ++xen_vcpuid;
-        xen->apicid = ++xen_apicid;
-        xen->acpiid = ++xen_acpiid;
+
+        /**
+         * Linux uses the vcpuid to index into the vcpu_info array in the
+         * struct shared_info page. However it hardcodes vcpu_info[0] in
+         * xen_tsc_khz which is used to calibrate the TSC at early boot.
+         * This means that we can't index into vcpu_info with vcpuid; it
+         * has to be zero. Otherwise, xen_tsc_khz calls pvclock_tsc_khz,
+         * which ends up doing a div by zero since vcpu_info[0] is 0.
+         */
+        //xen->vcpuid = ++xen_vcpuid;
+        //xen->apicid = ++xen_apicid;
+        //xen->acpiid = ++xen_acpiid;
+        xen->vcpuid = 0;
+        xen->apicid = 0;
+        xen->acpiid = 0;
+
+        ensures(xen->vcpuid < XEN_LEGACY_MAX_VCPUS);
     }
 }
 
@@ -377,7 +391,7 @@ bool xen::handle_hvm_op()
         })
     case HVMOP_get_param:
         expects(!m_dom->initdom());
-        return false;
+//        return false;
 //        try {
 //            auto arg = m_vcpu->map_arg<xen_hvm_param_t>(m_vcpu->rsi());
 //            switch (arg->index) {
@@ -399,12 +413,12 @@ bool xen::handle_hvm_op()
 //                bfalert_nhex(0, "Unsupported HVM get_param:", arg->index);
 //                return false;
 //            }
-//
-//            m_vcpu->set_rax(0);
-//            return true;
-//        } catchall({
-//            return false;
-//        })
+
+            m_vcpu->set_rax(-ENOSYS);
+            return true;
+        //} catchall({
+        //    return false;
+        //})
     case HVMOP_pagetable_dying:
         m_vcpu->set_rax(-ENOSYS);
         return true;
@@ -485,9 +499,7 @@ void xen::update_wallclock(const struct xenpf_settime64 *time)
 
 bool xen::handle_platform_op()
 {
-    expects(m_dom->initdom());
     auto xpf = m_vcpu->map_arg<xen_platform_op_t>(m_vcpu->rdi());
-
     if (xpf->interface_version != XENPF_INTERFACE_VERSION) {
         m_vcpu->set_rax(-EACCES);
         return true;
@@ -495,6 +507,7 @@ bool xen::handle_platform_op()
 
     switch (xpf->cmd) {
     case XENPF_get_cpuinfo: {
+        expects(m_dom->initdom());
         struct xenpf_pcpuinfo *info = &xpf->u.pcpu_info;
         info->max_present = 1;
         info->flags = XEN_PCPU_FLAGS_ONLINE;
@@ -541,6 +554,11 @@ bool xen::handle_xsm_op()
     return true;
 }
 
+struct vcpu_time_info *xen::vcpu_time()
+{
+    return &m_shinfo->vcpu_info[this->vcpuid].time;
+}
+
 void xen::stop_timer()
 {
     m_vcpu->disable_preemption_timer();
@@ -550,7 +568,7 @@ void xen::stop_timer()
 int xen::set_timer()
 {
     auto pet = 0ULL;
-    auto vti = &m_shinfo->vcpu_info[0].time;
+    auto vti = this->vcpu_time();
     auto sst = m_vcpu->map_arg<vcpu_set_singleshot_timer_t>(m_vcpu->rdx());
 
     /* Get the preemption timer ticks corresponding to the deadline */
@@ -599,9 +617,7 @@ bool xen::handle_vcpu_op()
         auto tma = m_vcpu->map_arg<vcpu_register_time_memory_area_t>(
             m_vcpu->rdx());
         m_user_vti = m_vcpu->map_arg<struct vcpu_time_info>(tma->addr.v);
-        memcpy(m_user_vti.get(),
-               &m_shinfo->vcpu_info[0].time,
-               sizeof(struct vcpu_time_info));
+        memcpy(m_user_vti.get(), this->vcpu_time(), sizeof(*this->vcpu_time()));
         m_vcpu->set_rax(0);
         return true;
     }
@@ -610,7 +626,7 @@ bool xen::handle_vcpu_op()
             m_vcpu->rdx());
         m_runstate = m_vcpu->map_arg<struct vcpu_runstate_info>(rma->addr.v);
         m_runstate->state = RUNSTATE_running;
-        m_runstate->state_entry_time = m_shinfo->vcpu_info[0].time.system_time;
+        m_runstate->state_entry_time = this->vcpu_time()->system_time;
         m_runstate->time[RUNSTATE_running] = m_runstate->state_entry_time;
         m_vcpu->set_rax(0);
         return true;
@@ -641,22 +657,6 @@ void xen::queue_virq(uint32_t virq)
     m_evtchn->queue_virq(virq);
 }
 
-/* Steal ticks from the guest's preemption timer */
-void xen::steal_pet_ticks()
-{
-    if (GSL_UNLIKELY(m_tsc_at_exit == 0)) {
-        return;
-    }
-
-    auto pet = m_vcpu->get_preemption_timer();
-    auto tsc = m_shinfo->vcpu_info[0].time.tsc_timestamp;
-    auto stolen_tsc = tsc - m_tsc_at_exit;
-    auto stolen_pet = stolen_tsc >> m_pet_shift;
-
-    pet = (stolen_pet >= pet) ? 0 : pet - stolen_pet;
-    m_vcpu->set_preemption_timer(pet);
-}
-
 void xen::update_runstate(int new_state)
 {
     if (GSL_UNLIKELY(!m_shinfo)) {
@@ -664,7 +664,7 @@ void xen::update_runstate(int new_state)
     }
 
     /* Update kernel time info */
-    auto kvti = &m_shinfo->vcpu_info[0].time;
+    auto kvti = this->vcpu_time();
     const uint64_t mult = kvti->tsc_to_system_mul;
     const uint64_t shft = kvti->tsc_shift;
     const uint64_t prev = kvti->tsc_timestamp;
@@ -714,6 +714,22 @@ void xen::update_runstate(int new_state)
     }
 }
 
+/* Steal ticks from the guest's preemption timer */
+void xen::steal_pet_ticks()
+{
+    if (GSL_UNLIKELY(m_tsc_at_exit == 0)) {
+        return;
+    }
+
+    auto pet = m_vcpu->get_preemption_timer();
+    auto tsc = this->vcpu_time()->tsc_timestamp;
+    auto stolen_tsc = tsc - m_tsc_at_exit;
+    auto stolen_pet = stolen_tsc >> m_pet_shift;
+
+    pet = (stolen_pet >= pet) ? 0 : pet - stolen_pet;
+    m_vcpu->set_preemption_timer(pet);
+}
+
 void xen::resume_update(bfobject *obj)
 {
     bfignored(obj);
@@ -732,7 +748,7 @@ void xen::init_shared_info(uintptr_t shinfo_gpfn)
     m_shinfo = m_vcpu->map_gpa_4k<struct shared_info>(shinfo_gpfn << 12);
     m_shinfo_gpfn = shinfo_gpfn;
 
-    auto vti = &m_shinfo->vcpu_info[0].time;
+    auto vti = this->vcpu_time();
     vti->flags |= XEN_PVCLOCK_TSC_STABLE_BIT;
     vti->tsc_shift = m_tsc_shift;
     vti->tsc_to_system_mul = m_tsc_mul;
@@ -818,7 +834,7 @@ bool xen::handle_hlt(
 
 bool xen::hypercall(xen_vcpu *vcpu)
 {
-    //if (vcpu->rax() != __HYPERVISOR_console_io) {
+    //if (vcpu->rax() != __HYPERVISOR_console_io && m_dom->ndvm()) {
     //    printf("xen: hypercall %lu:%lu\n", vcpu->rax(), vcpu->rdi());
     //}
 

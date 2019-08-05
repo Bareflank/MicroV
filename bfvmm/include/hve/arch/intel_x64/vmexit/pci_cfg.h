@@ -47,12 +47,14 @@ public:
 
     using delegate_t = delegate<bool(base_vcpu *, struct info &info)>;
 
+    static uint32_t read_cfg_info(uint32_t val, const struct info &info);
+    static void write_cfg_info(uint32_t val, struct info &info);
+
     void enable();
     void add_in_handler(uint64_t addr, const delegate_t &hdlr);
     void add_out_handler(uint64_t addr, const delegate_t &hdlr);
 
     pci_cfg_handler(vcpu *vcpu);
-
     ~pci_cfg_handler() = default;
     pci_cfg_handler(pci_cfg_handler &&) = default;
     pci_cfg_handler &operator=(pci_cfg_handler &&) = default;
@@ -68,6 +70,8 @@ private:
 
     bool host_def_in(base_vcpu *vcpu, struct info &info);
     bool host_def_out(base_vcpu *vcpu, struct info &info);
+    bool guest_def_in(base_vcpu *vcpu, struct info &info);
+    bool guest_def_out(base_vcpu *vcpu, struct info &info);
 
     delegate_t m_default_in;
     delegate_t m_default_out;

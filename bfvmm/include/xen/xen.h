@@ -46,8 +46,8 @@ private:
     int set_timer();
     void stop_timer();
     void steal_pet_ticks();
-    void system_time();
     void init_shared_info(uintptr_t shinfo_gpfn);
+    struct vcpu_time_info *vcpu_time();
 
     bool vmexit_save_tsc(base_vcpu *vcpu);
     void resume_update(bfobject *obj);

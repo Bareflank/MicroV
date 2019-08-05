@@ -78,6 +78,11 @@ constexpr uint32_t pci_fun_mask = 0x00000700;
 constexpr uint32_t pci_reg_mask = 0x000000FC;
 constexpr uint32_t pci_off_mask = 0x00000003;
 
+enum {
+    pci_dir_in,
+    pci_dir_out
+};
+
 constexpr bool pci_cfg_addr_enabled(uint32_t addr)
 {
     return (addr & pci_en_mask) != 0;
@@ -135,9 +140,11 @@ inline void pci_cfg_write_reg(uint32_t addr, uint32_t reg, uint32_t val)
     ::x64::portio::outd(0xCF8, cf8);
 }
 
-inline bool pci_cfg_is_present(uint32_t addr)
+/* Query config register 0 */
+
+inline bool pci_cfg_is_present(uint32_t reg0)
 {
-    return pci_cfg_read_reg(addr, 0) != 0xFFFFFFFF;
+    return reg0 != 0xFFFF'FFFF;
 }
 
 /* Query config register 1 */
@@ -151,14 +158,14 @@ inline bool pci_cfg_has_caps(uint32_t reg1)
 
 inline bool pci_cfg_is_netdev(uint32_t reg2)
 {
-    const auto cc = (reg2 & 0xFF000000) >> 24;
+    const auto cc = (reg2 & 0xFF00'0000) >> 24;
     return cc == pci_cc_network;
 }
 
 inline bool pci_cfg_is_host_bridge(uint32_t reg2)
 {
-    const auto cc = (reg2 & 0xFF000000) >> 24;
-    const auto sc = (reg2 & 0x00FF0000) >> 16;
+    const auto cc = (reg2 & 0xFF00'0000) >> 24;
+    const auto sc = (reg2 & 0x00FF'0000) >> 16;
 
     return cc == pci_cc_bridge && sc == pci_sc_bridge_host;
 }
@@ -167,7 +174,7 @@ inline bool pci_cfg_is_host_bridge(uint32_t reg2)
 
 inline uint32_t pci_cfg_header(uint32_t reg3)
 {
-    return (reg3 & 0x00FF0000) >> 16;
+    return (reg3 & 0x00FF'0000) >> 16;
 }
 
 inline bool pci_cfg_is_pci_bridge(uint32_t reg3)

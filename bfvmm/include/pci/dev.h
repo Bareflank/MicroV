@@ -26,6 +26,7 @@
 #include <memory>
 
 #include <bfgsl.h>
+#include <bfvcpuid.h>
 #include <hve/arch/intel_x64/vcpu.h>
 
 #include "bar.h"
@@ -45,12 +46,16 @@ struct pci_dev {
     uint32_t m_pcie_cap{};
     uintptr_t m_ecam_gpa{};
     uintptr_t m_ecam_hpa{};
+    uint64_t m_msi_addr{};
+    uint32_t m_msi_data{};
 
+    char m_bdf_str[9]{};
     bool m_guest_owned{};
     struct pci_dev *m_bridge{};
+    pci_bar_list m_bars{};
     std::array<uint32_t, 4> m_cfg_reg{};
     std::unique_ptr<uint32_t[]> m_vcfg{};
-    pci_bar_list m_bars{};
+    std::unordered_map<vcpuid::type, bool> m_hdlrs_added{};
 
     void parse_bars()
     {
@@ -77,6 +82,11 @@ struct pci_dev {
         return pci_cfg_is_normal(m_cfg_reg[3]);
     }
 
+    const char *bdf_str() const
+    {
+        return &m_bdf_str[0];
+    }
+
     void remap_ecam();
     void parse_cap_regs();
     void init_host_vcfg();
@@ -85,11 +95,6 @@ struct pci_dev {
 
     bool host_cfg_in(base_vcpu *vcpu, cfg_info &info);
     bool host_cfg_out(base_vcpu *vcpu, cfg_info &info);
-    bool guest_cfg_out(base_vcpu *vcpu, cfg_info &info);
-    bool guest_host_bridge_cfg_in(base_vcpu *vcpu, cfg_info &info);
-    bool guest_host_bridge_cfg_out(base_vcpu *vcpu, cfg_info &info);
-    bool guest_pci_bridge_cfg_in(base_vcpu *vcpu, cfg_info &info);
-    bool guest_pci_bridge_cfg_out(base_vcpu *vcpu, cfg_info &info);
     bool guest_normal_cfg_in(base_vcpu *vcpu, cfg_info &info);
     bool guest_normal_cfg_out(base_vcpu *vcpu, cfg_info &info);
 

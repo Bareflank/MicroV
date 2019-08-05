@@ -452,9 +452,9 @@ void vcpu::load_xstate()
 
 void vcpu::add_pci_cfg_handler(uint64_t cfg_addr,
                                const pci_cfg_handler::delegate_t &d,
-                               enum pci_cfg_dir dir)
+                               int direction)
 {
-    if (dir == pci_cfg_in) {
+    if (direction == pci_dir_in) {
         m_pci_handler.add_in_handler(cfg_addr, d);
         return;
     }
