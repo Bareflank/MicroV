@@ -20,11 +20,11 @@
  * SOFTWARE.
  */
 
-#include "bootparams.h"
 #include "common.h"
 
 #include <bfack.h>
 #include <bfacpi.h>
+#include <bfbootparams.h>
 #include <bfdebug.h>
 #include <bfplatform.h>
 #include <bfconstants.h>

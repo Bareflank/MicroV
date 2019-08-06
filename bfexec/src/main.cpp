@@ -24,6 +24,7 @@
 #include <bfdebug.h>
 #include <bfstring.h>
 #include <bfaffinity.h>
+#include <bfbootparams.h>
 #include <bfbuilderinterface.h>
 #include <bfhypercall.h>
 
@@ -39,7 +40,6 @@
 #include <file.h>
 #include <ioctl.h>
 #include <verbose.h>
-#include <bootparams.h>
 
 #include <unistd.h>
 
