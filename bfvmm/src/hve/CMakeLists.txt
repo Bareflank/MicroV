@@ -29,6 +29,7 @@ target_include_directories(microv_hve PUBLIC
     $<${XEN}:${PROJECT_SOURCE_DIR}/../deps/xen/xen/include>
 )
 target_sources(microv_hve PRIVATE
+    $<${X64}:arch/intel_x64/apic/lapic.cpp>
     $<${X64}:arch/intel_x64/apic/x2apic.cpp>
     $<${X64}:arch/intel_x64/vmexit/cpuid.cpp>
     $<${X64}:arch/intel_x64/vmexit/external_interrupt.cpp>

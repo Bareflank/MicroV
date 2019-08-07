@@ -31,6 +31,7 @@
 
 #include "bar.h"
 #include "cfg.h"
+#include "msi.h"
 
 namespace microv {
 
@@ -46,16 +47,18 @@ struct pci_dev {
     uint32_t m_pcie_cap{};
     uintptr_t m_ecam_gpa{};
     uintptr_t m_ecam_hpa{};
-    uint64_t m_msi_addr{};
-    uint32_t m_msi_data{};
-
     char m_bdf_str[9]{};
+
     bool m_guest_owned{};
+    vcpu *m_guest_vcpu{};
+
+    struct msi_desc m_guest_msi{};
+    struct msi_desc m_host_msi{};
+
     struct pci_dev *m_bridge{};
     pci_bar_list m_bars{};
     std::array<uint32_t, 4> m_cfg_reg{};
     std::unique_ptr<uint32_t[]> m_vcfg{};
-    std::unordered_map<vcpuid::type, bool> m_hdlrs_added{};
 
     void parse_bars()
     {
@@ -100,10 +103,10 @@ struct pci_dev {
 
     pci_dev(uint32_t addr, struct pci_dev *parent_bridge = nullptr);
     ~pci_dev() = default;
-    pci_dev(pci_dev &&) = default;
-    pci_dev &operator=(pci_dev &&) = default;
     pci_dev(const pci_dev &) = delete;
+    pci_dev(pci_dev &&) = default;
     pci_dev &operator=(const pci_dev &) = delete;
+    pci_dev &operator=(pci_dev &&) = default;
 };
 
 }

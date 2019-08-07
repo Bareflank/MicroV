@@ -118,6 +118,7 @@ vcpu::vcpu(
     this->set_eptp(domain->ept());
 
     if (this->is_dom0()) {
+        nr_host_vcpus++;
         this->write_dom0_guest_state(domain);
 
         if (vcpu0 == nullptr) {
@@ -139,7 +140,7 @@ vcpu::vcpu(
 
 static inline void trap_exceptions()
 {
-    /* Only used for guest debugging */
+    /* Only used for guest debugging of invalid opcodes */
     ::intel_x64::vmcs::exception_bitmap::set(1UL << 6);
 }
 
@@ -177,6 +178,11 @@ bool vcpu::handle_0x4BF00010(bfvmm::intel_x64::vcpu *vcpu)
         xue_open(&g_xue, &g_xue_ops, NULL);
     }
 #endif
+
+    m_lapic = std::make_unique<lapic>(this);
+    //m_apicid = m_lapic->id();
+    //printf("APIC: id: 0x%x, dest_mode: %u dest_model: 0x%x\n",
+    //        m_apicid, m_lapic->dest_mode(), m_lapic->dest_model());
 
     if (g_uefi_boot) {
         bfn::call_once(acpi_ready, []{ init_acpi(); });
@@ -460,6 +466,102 @@ void vcpu::add_pci_cfg_handler(uint64_t cfg_addr,
     }
 
     m_pci_handler.add_out_handler(cfg_addr, d);
+}
+
+void vcpu::add_pci_cfg_handler(uint32_t bus,
+                               uint32_t dev,
+                               uint32_t fun,
+                               const pci_cfg_handler::delegate_t &d,
+                               int direction)
+{
+    auto addr = pci_cfg_bdf_to_addr(bus, dev, fun);
+    this->add_pci_cfg_handler(addr, d, direction);
+}
+
+uint64_t vcpu::pcpuid()
+{
+    if (this->is_dom0()) {
+        return this->id();
+    } else {
+        expects(m_parent_vcpu);
+        expects(m_parent_vcpu->is_dom0());
+        return m_parent_vcpu->id();
+    }
+}
+
+void vcpu::map_msi(const struct msi_desc *host_msi,
+                   const struct msi_desc *guest_msi)
+{
+    if (this->is_domU()) {
+        expects(this->m_parent_vcpu);
+        expects(this->m_parent_vcpu->is_dom0());
+        m_parent_vcpu->map_msi(host_msi, guest_msi);
+        return;
+    }
+
+    validate_msi(host_msi);
+    validate_msi(guest_msi);
+
+    expects(m_lapic);
+    expects(m_lapic->is_xapic());
+
+    const auto host_destid = host_msi->destid();
+    const auto host_vector = host_msi->vector();
+
+    /*
+     * Interpretation of destid depends on the destination mode of the ICR:
+     *
+     *    logical_mode() -> destid is from LDR (logical APIC ID)
+     *   !logical_mode() -> destid is from ID register (local APIC ID)
+     *
+     * Note we are reading the mode of the local APIC of the CPU we are
+     * currently running on; it's possible the local APIC implied by destid
+     * is different than the current one. However, it should be safe to
+     * assume that the destination mode of every local APIC is the same
+     * because
+     *
+     *   1) the manual states that it must be the same and
+     *   2) any sane OS will ensure that identitical modes are being used
+     */
+
+    if (m_lapic->logical_dest()) {
+        for (uint64_t i = 0; i < nr_host_vcpus; i++) {
+            if (host_destid == (1UL << i)) {
+                auto key = host_vector;
+                auto host = get_vcpu(i);
+
+                expects(host->m_msi_map.count(key) == 0);
+                host->m_msi_map[key] = {host_msi, guest_msi};
+                return;
+            }
+        }
+
+        bfalert_nhex(0, "map_msi: logical mode destid not found", host_destid);
+        return;
+    }
+
+    /*
+     * In physical mode, the destid is the local APIC id. Note that the
+     * lapic::local_id member function reads the cached ID from ordinary memory.
+     * No APIC access occurs. This is fine because the ID register is read-only
+     * (although the manual does state that some systems may support changing
+     * its value 0_0 - it also says software shouldn't change it). If that
+     * function did do an APIC access, we would either have to remap each
+     * (x)APIC or do an IPI to the proper core.
+     */
+    for (uint64_t i = 0; i < nr_host_vcpus; i++) {
+        auto host = get_vcpu(i);
+        auto local_id = host->m_lapic->local_id();
+        if (host_destid == local_id) {
+             auto key = host_vector;
+             expects(host->m_msi_map.count(key) == 0);
+             host->m_msi_map[key] = {host_msi, guest_msi};
+             return;
+        }
+    }
+
+    bfalert_nhex(0, "map_msi: physical mode destid not found", host_destid);
+    return;
 }
 
 }

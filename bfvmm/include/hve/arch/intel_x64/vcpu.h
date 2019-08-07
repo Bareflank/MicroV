@@ -22,7 +22,9 @@
 #ifndef VCPU_INTEL_X64_MICROV_H
 #define VCPU_INTEL_X64_MICROV_H
 
+#include "apic/lapic.h"
 #include "apic/x2apic.h"
+#include "../../../pci/msi.h"
 
 #include "vmexit/cpuid.h"
 #include "vmexit/external_interrupt.h"
@@ -48,8 +50,11 @@
 // Definition
 //------------------------------------------------------------------------------
 
+inline vcpuid_t nr_host_vcpus = 0;
+
 namespace microv {
     class xen;
+    struct msi_desc;
 }
 
 namespace microv::intel_x64
@@ -80,6 +85,13 @@ public:
     /// @ensures
     ///
     ~vcpu() = default;
+
+    /// Physical CPU ID
+    ///
+    /// @expects
+    /// @ensures
+    ///
+    uint64_t pcpuid();
 
     /// Write Dom0 Guest State
     ///
@@ -278,7 +290,7 @@ public:
     // APIC
     //--------------------------------------------------------------------------
 
-    /// APIC Timer Vector
+    /// APIC Timer Vector (guest vcpu only)
     ///
     /// @expects
     /// @ensures
@@ -287,44 +299,47 @@ public:
     ///
     uint8_t apic_timer_vector();
 
+    /// Map MSI
+    ///
+    /// Create a host->guest MSI mapping
+    ///
+    /// @param host_msi the msi info programmed by the host
+    /// @param guest_msi the msi info programmed by the guest
+    ///
+    void map_msi(const struct msi_desc *host_msi,
+                 const struct msi_desc *guest_msi);
+
     /// Queue virq into this vcpu
-    ///
-    /// @param virq the id of the virq to queue
-    ///
     void queue_virq(uint32_t virq);
 
+    /// Start-of-day base cpuid handler overrides
     bool handle_0x4BF00010(bfvmm::intel_x64::vcpu *vcpu);
     bool handle_0x4BF00021(bfvmm::intel_x64::vcpu *vcpu);
 
+    /// xstate management
     void init_xstate();
     void save_xstate();
     void load_xstate();
 
+    /// Add a config space handler for the PCI device given by cfg_addr
     void add_pci_cfg_handler(uint64_t cfg_addr,
                              const pci_cfg_handler::delegate_t &d,
                              int direction);
 
-//    using return_delegate_t = delegate<void(void)>;
-//    void add_return_delegate(const return_delegate_t &rd)
-//    {
-//        m_ret_delegates.push_front(rd);
-//    }
-//
-//    void call_return_delegates()
-//    {
-//        for (const auto &rd : m_ret_delegates) {
-//            rd();
-//        }
-//    }
-
+    /// Add a config space handler for the PCI device given by bus/dev/fun
+    void add_pci_cfg_handler(uint32_t bus,
+                             uint32_t dev,
+                             uint32_t fun,
+                             const pci_cfg_handler::delegate_t &d,
+                             int direction);
 private:
+    friend class microv::xen;
+    friend class microv::intel_x64::vcpu;
 
     void setup_default_controls();
     void setup_default_handlers();
     void setup_default_register_state();
 
-private:
-    friend class microv::xen;
     domain *m_domain{};
 
     cpuid_handler m_cpuid_handler;
@@ -346,9 +361,11 @@ private:
     bool m_killed{};
     vcpu *m_parent_vcpu{};
 
-    std::unique_ptr<microv::xen> m_xen;
+    std::unique_ptr<microv::xen> m_xen{};
+    std::unique_ptr<microv::intel_x64::lapic> m_lapic{};
     std::unique_ptr<microv::intel_x64::xstate> m_xstate{};
-//    std::list<return_delegate_t> m_ret_delegates;
+
+    msi_map_t m_msi_map{};
 };
 
 }

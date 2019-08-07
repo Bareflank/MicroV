@@ -33,10 +33,10 @@ physdev::physdev(xen *xen) :
 
 bool physdev::pci_device_add()
 {
-    auto pda = m_vcpu->map_arg<physdev_pci_device_add_t>(m_vcpu->rsi());
+//    auto pda = m_vcpu->map_arg<physdev_pci_device_add_t>(m_vcpu->rsi());
 
-    printf("pci_device_add: %04x:%02x:%02x.%02x, flags: 0x%x\n",
-        pda->seg, pda->bus, pda->devfn >> 3, pda->devfn & 7, pda->flags);
+//    printf("pci_device_add: %04x:%02x:%02x.%02x, flags: 0x%x\n",
+//        pda->seg, pda->bus, pda->devfn >> 3, pda->devfn & 7, pda->flags);
 
     m_vcpu->set_rax(0);
     return true;

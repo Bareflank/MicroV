@@ -26,6 +26,7 @@
 #include <bfvcpuid.h>
 #include <hve/arch/intel_x64/vcpu.h>
 #include <pci/dev.h>
+#include <pci/msi.h>
 #include <pci/pci.h>
 
 #define HANDLE_CFG_ACCESS(ptr, memfn, dir) \
@@ -249,7 +250,6 @@ void pci_dev::parse_cap_regs()
     }
 
     constexpr auto CAP_PTR_REG = 0xDUL;
-    constexpr auto MSI_64BIT = 0x80UL << 16;
     constexpr auto CAP_ID_MSI = 0x05UL;
     constexpr auto CAP_ID_PCIE = 0x10UL;
 
@@ -278,7 +278,7 @@ void pci_dev::parse_cap_regs()
     }
 
     ensures(m_msi_cap);
-    ensures(pci_cfg_read_reg(m_cf8, m_msi_cap) & MSI_64BIT);
+    ensures(msi_64bit(pci_cfg_read_reg(m_cf8, m_msi_cap)));
 }
 
 void pci_dev::init_host_vcfg()
@@ -298,15 +298,12 @@ void pci_dev::init_host_vcfg()
     m_vcfg[1] = m_cfg_reg[1] | INTX_DISABLE;
     m_vcfg[2] = m_cfg_reg[2];
     m_vcfg[3] = m_cfg_reg[3];
-
-    /* Remove all caps except MSI */
     m_vcfg[0xD] = m_msi_cap << 2;
+    m_vcfg[0xF] = 0xFF;
     m_vcfg[m_msi_cap] = pci_cfg_read_reg(m_cf8, m_msi_cap) & 0xFFFF00FF;
     m_vcfg[m_msi_cap + 1] = pci_cfg_read_reg(m_cf8, m_msi_cap + 1);
     m_vcfg[m_msi_cap + 2] = pci_cfg_read_reg(m_cf8, m_msi_cap + 2);
     m_vcfg[m_msi_cap + 3] = pci_cfg_read_reg(m_cf8, m_msi_cap + 3);
-
-    m_vcfg[0xF] = 0xFF;
 }
 
 void pci_dev::add_host_handlers(vcpu *vcpu)
@@ -323,7 +320,9 @@ void pci_dev::add_guest_handlers(vcpu *vcpu)
     expects(this->is_normal());
     expects(!this->is_host_bridge());
     expects(vcpuid::is_guest_vm_vcpu(vcpu->id()));
-    expects(m_hdlrs_added.count(vcpu->id()) == 0);
+    expects(!m_guest_vcpu);
+
+    m_guest_vcpu = vcpu;
 
     if (m_bars.empty()) {
         this->parse_bars();
@@ -331,7 +330,6 @@ void pci_dev::add_guest_handlers(vcpu *vcpu)
 
     HANDLE_CFG_ACCESS(this, guest_normal_cfg_in, pci_dir_in);
     HANDLE_CFG_ACCESS(this, guest_normal_cfg_out, pci_dir_out);
-    m_hdlrs_added[vcpu->id()] = true;
 
     printf("PCI: added handlers @ %s\n", this->bdf_str());
 
@@ -386,22 +384,39 @@ bool pci_dev::guest_normal_cfg_out(base_vcpu *vcpu, cfg_info &info)
 {
     auto old = pci_cfg_read_reg(m_cf8, info.reg);
     auto val = cfg_hdlr::read_cfg_info(old, info);
-    pci_cfg_write_reg(m_cf8, info.reg, val);
 
-    if (info.reg == m_msi_cap && (val & (1UL << 16)) != 0) {
-        uint32_t data = pci_cfg_read_reg(m_cf8, info.reg + 3);
-        uint64_t addr = pci_cfg_read_reg(m_cf8, info.reg + 1);
-        addr |= (uint64_t)pci_cfg_read_reg(m_cf8, info.reg + 2) << 32;
-
-        printf("PCI: %s: MSI enabled, vector %u, apic_dest 0x%x\n",
-              this->bdf_str(), data & 0xFF, (addr & 0xFF000) >> 12);
-
-        expects((addr >> 32) == 0);
-        expects((addr & 0x8) == 0); /* redirection hint must be zero */
-        expects((data & 0x700) == 0); /* delivery mode must be fixed */
-        expects((data & 0x8000) == 0); /* trigger mode must be edge */
+    if (info.reg != m_msi_cap) {
+        pci_cfg_write_reg(m_cf8, info.reg, val);
+        return true;
     }
 
+    if (msi_enabled(val)) {
+        m_host_msi = {
+            this,
+            m_vcfg[m_msi_cap],
+            m_vcfg[m_msi_cap + 3],
+            m_vcfg[m_msi_cap + 1],
+            m_vcfg[m_msi_cap + 2]
+        };
+
+        m_guest_msi = {
+            this,
+            pci_cfg_read_reg(m_cf8, val),
+            pci_cfg_read_reg(m_cf8, info.reg + 3),
+            pci_cfg_read_reg(m_cf8, info.reg + 1),
+            pci_cfg_read_reg(m_cf8, info.reg + 2)
+        };
+
+        /* Create a new host->guest MSI mapping */
+        m_guest_vcpu->map_msi(&m_host_msi, &m_guest_msi);
+
+        /* Write the host-programmed values to the device */
+        pci_cfg_write_reg(m_cf8, info.reg + 1, m_vcfg[m_msi_cap + 1]);
+        pci_cfg_write_reg(m_cf8, info.reg + 2, m_vcfg[m_msi_cap + 2]);
+        pci_cfg_write_reg(m_cf8, info.reg + 3, m_vcfg[m_msi_cap + 3]);
+    }
+
+    pci_cfg_write_reg(m_cf8, info.reg, val);
     return true;
 }
 

@@ -22,18 +22,21 @@
 
 #include <linux/module.h>
 #include <linux/pci.h>
+
+#include <bfhypercall.h>
 #include <bfpci.h>
 
 #define MODULENAME "uv-pci"
+#define IRQ_FLAGS (PCI_IRQ_MSI)
 
 static const struct pci_device_id uv_id_table[] = {
     { PCI_DEVICE(MICROV_PCI_VENDOR, PCI_ANY_ID) },
     {}
 };
 
-static irqreturn_t handle_uv_irq(int irq, void *data)
+static irqreturn_t uv_handle_irq(int irq, void *data)
 {
-    struct pci_dev *pdev = data;
+    //struct pci_dev *pdev = data;
     return IRQ_HANDLED;
 }
 
@@ -44,13 +47,13 @@ static int uv_pci_probe(struct pci_dev *pdev, const struct pci_device_id *id)
         printk("uv-pci: failed to enable device");
     }
 
-    rc = pci_alloc_irq_vectors(pdev, 1, 1, PCI_IRQ_MSI);
+    rc = pci_alloc_irq_vectors(pdev, 1, 1, IRQ_FLAGS);
     if (rc != 1) {
         printk("uv-pci: failed to alloc irq vectors");
         return -ENODEV;
     }
 
-    rc = pci_request_irq(pdev, 0, handle_uv_irq, NULL, pdev, MODULENAME);
+    rc = pci_request_irq(pdev, 0, uv_handle_irq, NULL, pdev, MODULENAME);
     if (rc < 0) {
         printk("uv-pci: pci_request_irq failed");
     }

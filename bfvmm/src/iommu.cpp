@@ -34,6 +34,7 @@ constexpr auto PAGE_SIZE_2M = (1UL << 21);
 
 extern microv::intel_x64::vcpu *vcpu0;
 using namespace bfvmm::x64;
+using namespace bfvmm::intel_x64;
 
 namespace microv {
 
@@ -42,7 +43,6 @@ static struct acpi_table *dmar{};
 
 static void hide_dmar(struct acpi_table *dmar)
 {
-    using namespace bfvmm::intel_x64;
 
     auto gpa_4k = bfn::upper(dmar->gpa, 12);
     auto hva_4k = reinterpret_cast<const char *>(bfn::upper(dmar->hva, 12));
