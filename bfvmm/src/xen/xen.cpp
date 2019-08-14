@@ -790,15 +790,30 @@ bool xen::handle_pet(base_vcpu *vcpu)
 
 bool xen::handle_interrupt(base_vcpu *vcpu, interrupt_handler::info_t &info)
 {
-    m_vcpu->save_xstate();
-    this->update_runstate(RUNSTATE_runnable);
-
     auto parent = m_vcpu->parent_vcpu();
-    parent->load();
-    parent->queue_external_interrupt(info.vector);
-    parent->return_resume_after_interrupt();
+    auto guest_msi = parent->find_guest_msi(info.vector);
 
-    // Unreachable
+    if (guest_msi) {
+        auto pdev = guest_msi->dev();
+        expects(pdev);
+
+        auto guest = pdev->m_guest_vcpu;
+        expects(guest);
+
+        if (guest == m_vcpu) {
+            guest->queue_external_interrupt(guest_msi->vector());
+        } else {
+            guest->push_external_interrupt(guest_msi->vector());
+        }
+    } else {
+        m_vcpu->save_xstate();
+        this->update_runstate(RUNSTATE_runnable);
+
+        parent->load();
+        parent->queue_external_interrupt(info.vector);
+        parent->return_resume_after_interrupt();
+    }
+
     return true;
 }
 
@@ -816,7 +831,7 @@ bool xen::handle_hlt(
     }
 
     guest_interruptibility_state::blocking_by_sti::disable();
-    m_evtchn->inject_virq(VIRQ_TIMER);
+    m_evtchn->queue_virq(VIRQ_TIMER);
     m_vcpu->advance();
     this->stop_timer();
     this->update_runstate(RUNSTATE_blocked);
