@@ -700,6 +700,9 @@ void vcpu::add_hlt_handler(const hlt_handler::handler_delegate_t &d)
 // Interrupt Window
 //--------------------------------------------------------------------------
 
+void vcpu::push_external_interrupt(uint64_t vector)
+{ m_interrupt_window_handler.push_external_interrupt(vector); }
+
 void
 vcpu::queue_external_interrupt(uint64_t vector)
 { m_interrupt_window_handler.queue_external_interrupt(vector); }

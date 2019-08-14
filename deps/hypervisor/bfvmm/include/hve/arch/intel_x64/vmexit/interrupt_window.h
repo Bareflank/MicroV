@@ -22,6 +22,7 @@
 #ifndef VMEXIT_INTERRUPT_WINDOW_INTEL_X64_H
 #define VMEXIT_INTERRUPT_WINDOW_INTEL_X64_H
 
+#include <mutex>
 #include <bfgsl.h>
 #include <bfdelegate.h>
 
@@ -64,7 +65,9 @@ public:
     /// Queue External Interrupt
     ///
     /// Queue an external interrupt at the given vector on the
-    /// next upcoming open interrupt window.
+    /// next upcoming open interrupt window. This does a vmwrite
+    /// to enable interrupt window exiting, which means it acts
+    /// on the loaded vmcs.
     ///
     /// @expects
     /// @ensures
@@ -72,6 +75,19 @@ public:
     /// @param vector the vector to inject into the guest
     ///
     void queue_external_interrupt(uint64_t vector);
+
+    /// Push External Interrupt
+    ///
+    /// Add an interrupt to the queue without accessing the vmcs. This
+    /// function is safe to call from another core without having to
+    /// load the vmcs before (as required by queue_external_interrupt).
+    ///
+    /// @expects
+    /// @ensures
+    ///
+    /// @param vector the vector to inject into the guest
+    ///
+    void push_external_interrupt(uint64_t vector);
 
     /// Inject Exception
     ///
@@ -113,12 +129,10 @@ private:
     void enable_exiting();
     void disable_exiting();
 
-private:
-
     vcpu *m_vcpu;
-
     bool m_enabled{false};
     interrupt_queue m_interrupt_queue;
+    std::mutex m_mutex;
 
 public:
 

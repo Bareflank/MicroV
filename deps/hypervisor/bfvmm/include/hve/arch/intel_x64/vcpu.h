@@ -528,6 +528,19 @@ public:
     ///
     VIRTUAL void queue_external_interrupt(uint64_t vector);
 
+    /// Push External Interrupt
+    ///
+    /// Pushes an external interrupt for injection. The difference between
+    /// this and queue_external_interrupt is that no VMCS access is made, so
+    /// it is safe to call from a different core.
+    ///
+    /// @expects
+    /// @ensures
+    ///
+    /// @param vector the vector to queue for injection
+    ///
+    VIRTUAL void push_external_interrupt(uint64_t vector);
+
     /// Inject Exception
     ///
     /// Inject an exception on the next VM entry. Note that this will overwrite
