@@ -237,6 +237,7 @@ load_start_vm(EFI_HANDLE ParentImage)
     }
 
     BFALERT("Unable to locate EFI bootloader\n");
+    __asm volatile("vmcall" :: "a"(0xBF07000000000000), "b"(1));
     return EFI_ABORTED;
 }
 

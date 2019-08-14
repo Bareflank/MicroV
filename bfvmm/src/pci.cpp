@@ -25,9 +25,11 @@
 #include <acpi.h>
 #include <bfvcpuid.h>
 #include <hve/arch/intel_x64/vcpu.h>
+#include <iommu/iommu.h>
 #include <pci/dev.h>
 #include <pci/msi.h>
 #include <pci/pci.h>
+#include <printv.h>
 
 #define HANDLE_CFG_ACCESS(ptr, memfn, dir) \
 vcpu->add_pci_cfg_handler(ptr->m_cf8, {&pci_dev::memfn, ptr}, dir)
@@ -48,13 +50,13 @@ namespace microv {
  * is a PCI CONFIG_ADDR value with the enable bit (bit 31),
  * bus, device, and function set. All other bits are zero.
  */
-static std::unordered_map<uint32_t, std::unique_ptr<struct pci_dev>> dev_map;
+std::unordered_map<uint32_t, std::unique_ptr<struct pci_dev>> pci_map;
 
 /* List of all PCI devices */
-static std::list<struct pci_dev *> dev_list;
+std::list<struct pci_dev *> pci_list;
 
 /* List of PCI devices to pass through */
-std::list<struct pci_dev *> dev_list_pt;
+std::list<struct pci_dev *> pci_passthru_list;
 
 /* Passthrough vendor/device IDs */
 static constexpr uint32_t passthru_vendor{0xBFBF};
@@ -140,31 +142,33 @@ static void probe_bus(uint32_t b, struct pci_dev *bridge)
                 continue;
             }
 
-            dev_map[addr] = std::make_unique<struct pci_dev>(addr, bridge);
-            auto pdev = dev_map[addr].get();
-            dev_list.push_back(pdev);
+            pci_map[addr] = std::make_unique<struct pci_dev>(addr, bridge);
+            auto pdev = pci_map[addr].get();
+            pci_list.push_back(pdev);
 
             if (pdev->is_pci_bridge()) {
                 auto reg6 = pci_cfg_read_reg(addr, 6);
                 auto next = pci_bridge_sec_bus(reg6);
                 probe_bus(next, pdev);
             } else if (pdev->is_netdev()) {
-                pci_passthru = true;
                 pdev->m_guest_owned = true;
                 pdev->parse_cap_regs();
                 pdev->init_host_vcfg();
                 pdev->remap_ecam();
-                dev_list_pt.push_back(pdev);
+                pci_passthru_list.push_back(pdev);
             }
         }
     }
+
+    pci_passthru = !pci_passthru_list.empty();
 }
 
 static inline void probe_bus()
 {
     auto addr = pci_cfg_bdf_to_addr(0, 0, 0);
-    dev_map[addr] = std::make_unique<struct pci_dev>(addr);
-    probe_bus(0, dev_map[addr].get());
+    pci_map[addr] = std::make_unique<struct pci_dev>(addr);
+    pci_list.push_back(pci_map[addr].get());
+    probe_bus(0, pci_map[addr].get());
 }
 
 void init_pci()
@@ -175,7 +179,7 @@ void init_pci()
 
 void init_pci_on_vcpu(microv::intel_x64::vcpu *vcpu)
 {
-    for (auto pdev : dev_list_pt) {
+    for (auto pdev : pci_passthru_list) {
         if (vcpuid::is_host_vm_vcpu(vcpu->id())) {
             pdev->add_host_handlers(vcpu);
         } else {
@@ -186,8 +190,8 @@ void init_pci_on_vcpu(microv::intel_x64::vcpu *vcpu)
 
 struct pci_dev *find_passthru_dev(uint64_t bdf)
 {
-    for (auto pdev : dev_list_pt) {
-        if (pdev->bdf_matches(bdf)) {
+    for (auto pdev : pci_passthru_list) {
+        if (pdev->matches(bdf)) {
             return pdev;
         }
     }
@@ -358,6 +362,22 @@ void pci_dev::add_guest_handlers(vcpu *vcpu)
     }
 }
 
+void pci_dev::map_dma()
+{
+    if (!m_iommu) {
+        printv("pci %s: m_iommu is NULL\n", this->bdf_str());
+        return;
+    }
+
+    expects(m_guest_vcpu);
+
+    auto dom = m_guest_vcpu->dom();
+    auto bus = pci_cfg_bus(m_cf8);
+    auto devfn = pci_cfg_devfn(m_cf8);
+
+    m_iommu->map_dma(bus, devfn, dom);
+}
+
 bool pci_dev::guest_normal_cfg_in(base_vcpu *vcpu, cfg_info &info)
 {
     uint32_t val = 0;
@@ -419,6 +439,7 @@ bool pci_dev::guest_normal_cfg_out(base_vcpu *vcpu, cfg_info &info)
 
         /* Create a new host->guest MSI mapping */
         m_guest_vcpu->map_msi(&m_host_msi, &m_guest_msi);
+        this->map_dma();
 
         /* Write the host-programmed values to the device */
         pci_cfg_write_reg(m_cf8, info.reg + 1, m_vcfg[m_msi_cap + 1]);

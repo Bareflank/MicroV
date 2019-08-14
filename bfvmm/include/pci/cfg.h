@@ -118,6 +118,11 @@ constexpr uint32_t pci_cfg_devfn(uint32_t dev, uint32_t fn)
     return (dev << 3) | fn;
 }
 
+constexpr uint32_t pci_cfg_devfn(uint32_t addr)
+{
+    return (pci_cfg_dev(addr) << 3) | pci_cfg_fun(addr);
+}
+
 inline uint32_t pci_cfg_read_reg(uint32_t addr, uint32_t reg)
 {
     const auto cf8 = ::x64::portio::ind(0xCF8);

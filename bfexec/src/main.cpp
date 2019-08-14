@@ -330,6 +330,8 @@ create_vm(const args_type &args)
         cmdl.add(args["cmdline"].as<std::string>());
     }
 
+    cmdl.add("idle=halt");
+
     ioctl_args.file_type = vm_file_type(kernel.data(), kernel.size());
     ioctl_args.exec_mode = vm_exec_mode(ioctl_args.file_type);
     ioctl_args.image = kernel.data();

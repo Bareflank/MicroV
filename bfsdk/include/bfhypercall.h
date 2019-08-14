@@ -76,8 +76,20 @@ struct e820_entry_t {
 #define __enum_uart_op 4
 #define __enum_xue_op 5
 #define __enum_event_op 6
+#define __enum_iommu_op 7
 
 #define bfopcode(a) ((a & 0x00FF000000000000) >> 48)
+
+// -----------------------------------------------------------------------------
+// IOMMU Operations
+// -----------------------------------------------------------------------------
+
+#define __enum_iommu_op__dump 0x1UL
+
+static inline status_t __iommu_op__dump(void)
+{
+    return _vmcall(0xBF07000000000000, __enum_iommu_op__dump, 0, 0);
+}
 
 // -----------------------------------------------------------------------------
 // Event Operations

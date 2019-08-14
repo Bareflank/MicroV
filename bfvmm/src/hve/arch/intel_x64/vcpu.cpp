@@ -26,6 +26,7 @@
 #include <bfexports.h>
 #include <bfgpalayout.h>
 #include <bfbuilderinterface.h>
+#include <clflush.h>
 #include <hve/arch/intel_x64/vcpu.h>
 #include <iommu/iommu.h>
 #include <pci/dev.h>
@@ -41,7 +42,7 @@ extern struct xue_ops g_xue_ops;
 void WEAK_SYM vcpu_init_root(bfvmm::intel_x64::vcpu *vcpu);
 
 static bfn::once_flag acpi_ready;
-static bfn::once_flag iommu_ready;
+static bfn::once_flag vtd_ready;
 static bfn::once_flag pci_ready;
 
 //------------------------------------------------------------------------------
@@ -109,6 +110,7 @@ vcpu::vcpu(
     m_vmcall_run_op_handler{this},
     m_vmcall_domain_op_handler{this},
     m_vmcall_event_op_handler{this},
+    m_vmcall_iommu_op_handler{this},
     m_vmcall_vcpu_op_handler{this},
     m_vmcall_xue_op_handler{this},
 
@@ -124,6 +126,7 @@ vcpu::vcpu(
 
         if (vcpu0 == nullptr) {
             vcpu0 = this;
+            init_cache_ops();
         }
     }
     else {
@@ -181,16 +184,14 @@ bool vcpu::handle_0x4BF00010(bfvmm::intel_x64::vcpu *vcpu)
 #endif
 
     m_lapic = std::make_unique<lapic>(this);
-    //m_apicid = m_lapic->id();
-    //printf("APIC: id: 0x%x, dest_mode: %u dest_model: 0x%x\n",
-    //        m_apicid, m_lapic->dest_mode(), m_lapic->dest_model());
 
     if (g_uefi_boot) {
+        /* Order matters with these init functions */
         bfn::call_once(acpi_ready, []{ init_acpi(); });
-        bfn::call_once(iommu_ready, []{ probe_iommu(); });
         bfn::call_once(pci_ready, []{ init_pci(); });
 
         if (pci_passthru) {
+            bfn::call_once(vtd_ready, []{ init_vtd(); });
             m_pci_handler.enable();
             init_pci_on_vcpu(this);
         }
@@ -531,7 +532,7 @@ void vcpu::map_msi(const struct msi_desc *host_msi,
                 auto key = host_vector;
                 auto host = get_vcpu(i);
 
-                expects(host->m_msi_map.count(key) == 0);
+                //expects(host->m_msi_map.count(key) == 0);
                 host->m_msi_map[key] = {host_msi, guest_msi};
                 return;
             }
@@ -555,7 +556,7 @@ void vcpu::map_msi(const struct msi_desc *host_msi,
         auto local_id = host->m_lapic->local_id();
         if (host_destid == local_id) {
              auto key = host_vector;
-             expects(host->m_msi_map.count(key) == 0);
+             //expects(host->m_msi_map.count(key) == 0);
              host->m_msi_map[key] = {host_msi, guest_msi};
              return;
         }

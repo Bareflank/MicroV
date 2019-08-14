@@ -373,9 +373,6 @@ common_load_vmm(void)
         goto failure;
     }
 
-    platform_memset(&g_xue, 0, sizeof(g_xue));
-    platform_memset(&g_xue_ops, 0, sizeof(g_xue_ops));
-
 #ifdef USE_XUE
     if (!g_xue.open) {
         platform_memset(&g_xue, 0, sizeof(g_xue));

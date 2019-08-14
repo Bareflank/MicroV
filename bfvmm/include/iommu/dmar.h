@@ -91,6 +91,11 @@ struct drhd_devscope {
     uint8_t start_bus;
 };
 
+struct devscope_path {
+    uint8_t dev;
+    uint8_t fun;
+};
+
 #pragma pack(pop)
 
 }

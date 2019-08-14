@@ -35,6 +35,8 @@
 
 namespace microv {
 
+struct iommu;
+
 struct pci_dev {
     using vcpu = intel_x64::vcpu;
     using base_vcpu = ::bfvmm::intel_x64::vcpu;
@@ -48,14 +50,14 @@ struct pci_dev {
     uintptr_t m_ecam_gpa{};
     uintptr_t m_ecam_hpa{};
     char m_bdf_str[9]{};
-
     bool m_guest_owned{};
     vcpu *m_guest_vcpu{};
 
     struct msi_desc m_guest_msi{};
     struct msi_desc m_host_msi{};
-
     struct pci_dev *m_bridge{};
+    struct iommu *m_iommu{};
+
     pci_bar_list m_bars{};
     std::array<uint32_t, 4> m_cfg_reg{};
     std::unique_ptr<uint32_t[]> m_vcfg{};
@@ -90,9 +92,14 @@ struct pci_dev {
         return &m_bdf_str[0];
     }
 
-    bool bdf_matches(uint64_t bdf) const
+    bool matches(uint64_t bdf) const
     {
         return (pci_en_mask | bdf) == m_cf8;
+    }
+
+    uint32_t devfn() const
+    {
+        return (m_cf8 & (pci_dev_mask | pci_fun_mask)) >> 8;
     }
 
     void remap_ecam();
@@ -100,6 +107,7 @@ struct pci_dev {
     void init_host_vcfg();
     void add_host_handlers(vcpu *vcpu);
     void add_guest_handlers(vcpu *vcpu);
+    void map_dma();
 
     bool host_cfg_in(base_vcpu *vcpu, cfg_info &info);
     bool host_cfg_out(base_vcpu *vcpu, cfg_info &info);
@@ -113,6 +121,9 @@ struct pci_dev {
     pci_dev &operator=(const pci_dev &) = delete;
     pci_dev &operator=(pci_dev &&) = default;
 };
+
+extern std::unordered_map<uint32_t, std::unique_ptr<struct pci_dev>> pci_map;
+extern std::list<struct pci_dev *> pci_list;
 
 struct pci_dev *find_passthru_dev(uint64_t bdf);
 

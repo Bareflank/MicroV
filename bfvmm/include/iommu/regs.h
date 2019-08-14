@@ -34,6 +34,8 @@ constexpr auto gcmd_offset = 0x18U;
 constexpr auto gsts_offset = 0x1CU;
 constexpr auto rtaddr_offset = 0x20U;
 constexpr auto ccmd_offset = 0x28U;
+constexpr auto fsts_offset = 0x34U;
+constexpr auto fectl_offset = 0x38U;
 
 /*
  * Register fields. Each field has a mask and a "from" value used
@@ -100,6 +102,46 @@ constexpr auto ecap_sc_mask = 0x80U;
 constexpr auto ecap_sc_from = 7U;
 constexpr auto ecap_iro_mask = 0x3FF00U;
 constexpr auto ecap_iro_from = 8U;
+constexpr auto ecap_nest_from = 26U;
+constexpr auto ecap_nest_mask = 1UL << ecap_nest_from;
+constexpr auto ecap_pasid_from = 40;
+constexpr auto ecap_pasid_mask = 1UL << ecap_pasid_from;
+constexpr auto ecap_smts_from = 43;
+constexpr auto ecap_smts_mask = 1UL << ecap_smts_from;
+
+/* Global command register */
+constexpr auto gcmd_te = (1UL << 31);
+constexpr auto gcmd_srtp = (1UL << 30);
+
+/* Global status register */
+constexpr auto gsts_tes = (1UL << 31);
+constexpr auto gsts_rtps = (1UL << 30);
+
+/* Context-cache register */
+constexpr auto ccmd_icc = (1UL << 63);
+constexpr auto ccmd_global = 1UL;
+constexpr auto ccmd_domain = 2UL;
+constexpr auto ccmd_device = 3UL;
+constexpr auto ccmd_cirg_from = 61;
+constexpr auto ccmd_cirg_global = (ccmd_global << ccmd_cirg_from);
+constexpr auto ccmd_cirg_domain = (ccmd_domain << ccmd_cirg_from);
+constexpr auto ccmd_cirg_device = (ccmd_device << ccmd_cirg_from);
+constexpr auto ccmd_caig_from = 59;
+constexpr auto ccmd_caig_mask = 3UL << ccmd_caig_from;
+
+/* IOTLB invalidate register */
+constexpr auto iotlb_ivt = (1UL << 63);
+constexpr auto iotlb_global = 1UL;
+constexpr auto iotlb_domain = 2UL;
+constexpr auto iotlb_page = 3UL;
+constexpr auto iotlb_iirg_from = 60;
+constexpr auto iotlb_iirg_global = (iotlb_global << iotlb_iirg_from);
+constexpr auto iotlb_iirg_domain = (iotlb_domain << iotlb_iirg_from);
+constexpr auto iotlb_iirg_page = (iotlb_page << iotlb_iirg_from);
+constexpr auto iotlb_iaig_from = 57;
+constexpr auto iotlb_iaig_mask = 3UL << iotlb_iaig_from;
+constexpr auto iotlb_dr = (1UL << 49);
+constexpr auto iotlb_dw = (1UL << 48);
 
 }
 
