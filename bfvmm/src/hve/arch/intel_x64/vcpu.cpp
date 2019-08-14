@@ -108,6 +108,7 @@ vcpu::vcpu(
 
     m_vmcall_run_op_handler{this},
     m_vmcall_domain_op_handler{this},
+    m_vmcall_event_op_handler{this},
     m_vmcall_vcpu_op_handler{this},
     m_vmcall_xue_op_handler{this},
 
@@ -542,11 +543,11 @@ void vcpu::map_msi(const struct msi_desc *host_msi,
 
     /*
      * In physical mode, the destid is the local APIC id. Note that the
-     * lapic::local_id member function reads the cached ID from ordinary memory.
-     * No APIC access occurs. This is fine because the ID register is read-only
-     * (although the manual does state that some systems may support changing
-     * its value 0_0 - it also says software shouldn't change it). If that
-     * function did do an APIC access, we would either have to remap each
+     * lapic::local_id member function reads the cached ID from ordinary
+     * memory. No APIC access occurs. This is fine because the ID register is
+     * read-only (although the manual does state that some systems may support
+     * changing its value 0_0 - it also says software shouldn't change it). If
+     * that function did do an APIC access, we would either have to remap each
      * (x)APIC or do an IPI to the proper core.
      */
     for (uint64_t i = 0; i < nr_host_vcpus; i++) {
@@ -562,6 +563,17 @@ void vcpu::map_msi(const struct msi_desc *host_msi,
 
     bfalert_nhex(0, "map_msi: physical mode destid not found", host_destid);
     return;
+}
+
+const struct msi_desc *vcpu::find_guest_msi(msi_key_t key) const
+{
+    const auto itr = m_msi_map.find(key);
+    if (itr == m_msi_map.end()) {
+        return nullptr;
+    }
+
+    const auto msi_pair = itr->second;
+    return msi_pair.second;
 }
 
 }

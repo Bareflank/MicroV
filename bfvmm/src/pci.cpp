@@ -184,6 +184,17 @@ void init_pci_on_vcpu(microv::intel_x64::vcpu *vcpu)
     }
 }
 
+struct pci_dev *find_passthru_dev(uint64_t bdf)
+{
+    for (auto pdev : dev_list_pt) {
+        if (pdev->bdf_matches(bdf)) {
+            return pdev;
+        }
+    }
+
+    return nullptr;
+}
+
 pci_dev::pci_dev(uint32_t addr, struct pci_dev *parent_bridge)
 {
     addr |= pci_en_mask;
@@ -320,7 +331,6 @@ void pci_dev::add_guest_handlers(vcpu *vcpu)
     expects(this->is_normal());
     expects(!this->is_host_bridge());
     expects(vcpuid::is_guest_vm_vcpu(vcpu->id()));
-    expects(!m_guest_vcpu);
 
     m_guest_vcpu = vcpu;
 

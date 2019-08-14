@@ -24,6 +24,7 @@ TARGET_MODULE:=uv-pci
 ifneq ($(KERNELRELEASE),)
 	obj-m := $(TARGET_MODULE).o
 	$(TARGET_MODULE)-objs += pci.o
+	$(TARGET_MODULE)-objs += intrinsics.o
 
 	EXTRA_CFLAGS += -DKERNEL
 	EXTRA_CFLAGS += -I$(SOURCE_ROOT_DIR)/bfsdk/include

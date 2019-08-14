@@ -36,6 +36,7 @@
 #include "vmexit/yield.h"
 
 #include "vmcall/domain_op.h"
+#include "vmcall/event_op.h"
 #include "vmcall/run_op.h"
 #include "vmcall/vcpu_op.h"
 #include "vmcall/xue_op.h"
@@ -287,7 +288,7 @@ public:
     void halt(const std::string &str = {}) override;
 
     //--------------------------------------------------------------------------
-    // APIC
+    // Interrupts
     //--------------------------------------------------------------------------
 
     /// APIC Timer Vector (guest vcpu only)
@@ -299,15 +300,22 @@ public:
     ///
     uint8_t apic_timer_vector();
 
-    /// Map MSI
+    /// Map msi
     ///
-    /// Create a host->guest MSI mapping
+    /// Create a host->guest msi mapping
     ///
     /// @param host_msi the msi info programmed by the host
     /// @param guest_msi the msi info programmed by the guest
     ///
     void map_msi(const struct msi_desc *host_msi,
                  const struct msi_desc *guest_msi);
+
+    /// Find guest msi
+    ///
+    /// @param key the host vector to look for
+    /// @return the guest msi_desc if found, nullptr otherwise
+    ///
+    const struct msi_desc *find_guest_msi(msi_key_t key) const;
 
     /// Queue virq into this vcpu
     void queue_virq(uint32_t virq);
@@ -352,6 +360,7 @@ private:
 
     vmcall_run_op_handler m_vmcall_run_op_handler;
     vmcall_domain_op_handler m_vmcall_domain_op_handler;
+    vmcall_event_op_handler m_vmcall_event_op_handler;
     vmcall_vcpu_op_handler m_vmcall_vcpu_op_handler;
     vmcall_xue_op_handler m_vmcall_xue_op_handler;
 

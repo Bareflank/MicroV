@@ -40,6 +40,7 @@ target_sources(microv_hve PRIVATE
     $<${X64}:arch/intel_x64/vmexit/vmcall.cpp>
     $<${X64}:arch/intel_x64/vmexit/yield.cpp>
     $<${X64}:arch/intel_x64/vmcall/domain_op.cpp>
+    $<${X64}:arch/intel_x64/vmcall/event_op.cpp>
     $<${X64}:arch/intel_x64/vmcall/run_op.cpp>
     $<${X64}:arch/intel_x64/vmcall/vcpu_op.cpp>
     $<${X64}:arch/intel_x64/vmcall/xue_op.cpp>

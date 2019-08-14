@@ -36,7 +36,12 @@ static const struct pci_device_id uv_id_table[] = {
 
 static irqreturn_t uv_handle_irq(int irq, void *data)
 {
-    //struct pci_dev *pdev = data;
+    struct pci_dev *pdev = data;
+
+    uint64_t bdf = ((uint64_t)pdev->bus->number << 16) |
+                   ((uint64_t)pdev->devfn << 8);
+
+    __event_op__send_bdf(bdf);
     return IRQ_HANDLED;
 }
 

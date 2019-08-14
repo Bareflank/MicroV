@@ -90,6 +90,11 @@ struct pci_dev {
         return &m_bdf_str[0];
     }
 
+    bool bdf_matches(uint64_t bdf) const
+    {
+        return (pci_en_mask | bdf) == m_cf8;
+    }
+
     void remap_ecam();
     void parse_cap_regs();
     void init_host_vcfg();
@@ -108,6 +113,8 @@ struct pci_dev {
     pci_dev &operator=(const pci_dev &) = delete;
     pci_dev &operator=(pci_dev &&) = default;
 };
+
+struct pci_dev *find_passthru_dev(uint64_t bdf);
 
 }
 #endif

@@ -75,8 +75,34 @@ struct e820_entry_t {
 #define __enum_vcpu_op 3
 #define __enum_uart_op 4
 #define __enum_xue_op 5
+#define __enum_event_op 6
 
 #define bfopcode(a) ((a & 0x00FF000000000000) >> 48)
+
+// -----------------------------------------------------------------------------
+// Event Operations
+// -----------------------------------------------------------------------------
+
+#define __enum_event_op__send_vector 0x1UL
+#define __enum_event_op__send_bdf 0x2UL
+
+static inline status_t
+__event_op__send_vector(uint64_t vector)
+{
+    return _vmcall(0xBF06000000000000,
+                   __enum_event_op__send_vector,
+                   vector,
+                   0);
+}
+
+static inline status_t
+__event_op__send_bdf(uint64_t bdf)
+{
+    return _vmcall(0xBF06000000000000,
+                   __enum_event_op__send_bdf,
+                   bdf,
+                   0);
+}
 
 // -----------------------------------------------------------------------------
 // Xue Operations

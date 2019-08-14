@@ -60,13 +60,15 @@ vmcall_error(gsl::not_null<vcpu *> vcpu, const std::string &str)
         bferror_info(0, ("vmcall error: " + str).c_str(), msg);
         bferror_brk1(0, msg);
 
-        if ((vcpu->rax() & 0xFFFF000000000000) == 0xBF5C000000000000) {
+        if ((vcpu->rax() & 0xFF00000000000000) == 0xBF00000000000000) {
+            /* Bareflank hypercall */
             bferror_subnhex(0, "rax", vcpu->rax(), msg);
             bferror_subnhex(0, "rbx", vcpu->rbx(), msg);
             bferror_subnhex(0, "rcx", vcpu->rcx(), msg);
             bferror_subnhex(0, "rdx", vcpu->rdx(), msg);
         }
         else {
+            /* Xen hypercall */
             bferror_subnhex(0, "rax", vcpu->rax(), msg);
             bferror_subnhex(0, "rdi", vcpu->rdi(), msg);
         }
