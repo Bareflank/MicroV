@@ -138,8 +138,8 @@ public:
 
     /// @cond
 
-    interrupt_window_handler(interrupt_window_handler &&) = default;
-    interrupt_window_handler &operator=(interrupt_window_handler &&) = default;
+    interrupt_window_handler(interrupt_window_handler &&) = delete;
+    interrupt_window_handler &operator=(interrupt_window_handler &&) = delete;
 
     interrupt_window_handler(const interrupt_window_handler &) = delete;
     interrupt_window_handler &operator=(const interrupt_window_handler &) = delete;

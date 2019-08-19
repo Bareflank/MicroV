@@ -402,7 +402,7 @@ identity_map_convert_2m_to_4k(
     cache = (mmap::memory_type)pd::entry::memory_type::get(entry);
 
     entry = 0;
-    ::intel_x64::barrier::wmb();
+    wmb();
     ept::identity_map_4k(map, addr, addr + pd::page_size, attr, cache);
 }
 

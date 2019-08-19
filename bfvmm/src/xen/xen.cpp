@@ -484,7 +484,7 @@ bool xen::handle_grant_table_op()
 void xen::update_wallclock(const struct xenpf_settime64 *time)
 {
     m_shinfo->wc_version++;
-    ::intel_x64::barrier::wmb();
+    wmb();
 
     uint64_t x = s_to_ns(time->secs) + time->nsecs - time->system_time;
     uint32_t y = do_div(x, 1000000000);
@@ -493,7 +493,7 @@ void xen::update_wallclock(const struct xenpf_settime64 *time)
     m_shinfo->wc_sec_hi = gsl::narrow_cast<uint32_t>(x >> 32);
     m_shinfo->wc_nsec = gsl::narrow_cast<uint32_t>(y);
 
-    ::intel_x64::barrier::wmb();
+    wmb();
     m_shinfo->wc_version++;
 }
 
@@ -670,11 +670,11 @@ void xen::update_runstate(int new_state)
     const uint64_t prev = kvti->tsc_timestamp;
 
     kvti->version++;
-    ::intel_x64::barrier::wmb();
+    wmb();
     const auto next = ::x64::read_tsc::get();
     kvti->system_time += tsc_to_ns(next - prev, shft, mult);
     kvti->tsc_timestamp = next;
-    ::intel_x64::barrier::wmb();
+    wmb();
     kvti->version++;
 
     if (GSL_UNLIKELY(!m_user_vti)) {
@@ -685,10 +685,10 @@ void xen::update_runstate(int new_state)
     auto uvti = m_user_vti.get();
 
     uvti->version++;
-    ::intel_x64::barrier::wmb();
+    wmb();
     uvti->system_time = kvti->system_time;
     uvti->tsc_timestamp = next;
-    ::intel_x64::barrier::wmb();
+    wmb();
     uvti->version++;
 
     if (GSL_UNLIKELY(!m_runstate)) {
@@ -704,11 +704,11 @@ void xen::update_runstate(int new_state)
 
     if (GSL_LIKELY(m_runstate_assist)) {
         m_runstate->state_entry_time = XEN_RUNSTATE_UPDATE;
-        ::intel_x64::barrier::wmb();
+        wmb();
         m_runstate->state_entry_time |= kvti->system_time;
-        ::intel_x64::barrier::wmb();
+        wmb();
         m_runstate->state_entry_time &= ~XEN_RUNSTATE_UPDATE;
-        ::intel_x64::barrier::wmb();
+        wmb();
     } else {
         m_runstate->state_entry_time = kvti->system_time;
     }

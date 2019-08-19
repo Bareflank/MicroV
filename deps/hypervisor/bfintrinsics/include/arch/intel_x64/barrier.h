@@ -22,28 +22,8 @@
 #ifndef BARRIER_INTEL_X64_H
 #define BARRIER_INTEL_X64_H
 
-// -----------------------------------------------------------------------------
-// Definitions
-// -----------------------------------------------------------------------------
-
-extern "C" void _rmb(void) noexcept;
-extern "C" void _wmb(void) noexcept;
-extern "C" void _mb(void) noexcept;
-
-// *INDENT-OFF*
-
-namespace intel_x64::barrier
-{
-    inline void rmb() noexcept
-    { _rmb(); }
-
-    inline void wmb() noexcept
-    { _wmb(); }
-
-    inline void mb() noexcept
-    { _mb(); }
-}
-
-// *INDENT-ON*
+#define rmb() do { __asm volatile("lfence" ::: "memory"); } while (0)
+#define wmb() do { __asm volatile("sfence" ::: "memory"); } while (0)
+#define mb()  do { __asm volatile("mfence" ::: "memory"); } while (0)
 
 #endif

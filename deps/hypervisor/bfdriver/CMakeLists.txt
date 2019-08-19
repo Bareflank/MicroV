@@ -47,12 +47,6 @@ configure_file(
     @ONLY
 )
 
-configure_file(
-    ${XUE_DIR}/include/xue.h
-    ${PROJECT_SOURCE_DIR}/src/platform/windows/
-    COPYONLY
-)
-
 # ------------------------------------------------------------------------------
 # EFI
 # ------------------------------------------------------------------------------

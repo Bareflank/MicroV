@@ -373,7 +373,7 @@ add_config(
 add_config(
     CONFIG_NAME XUE_DIR
     CONFIG_TYPE PATH
-    DEFAULT_VAL $ENV{HOME}/xue
+    DEFAULT_VAL ${CMAKE_SOURCE_DIR}/../xue
     DESCRIPTION "Xue source"
     SKIP_VALIDATION
 )

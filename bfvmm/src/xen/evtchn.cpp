@@ -340,7 +340,7 @@ int evtchn::upcall(chan_t *chan)
 
     this->word_set_pending(word);
     m_ctl_blk->ready |= (1UL << p);
-    ::intel_x64::barrier::wmb();
+    wmb();
 
     return 0;
 }
