@@ -797,7 +797,7 @@ bool xen::handle_interrupt(base_vcpu *vcpu, interrupt_handler::info_t &info)
         auto pdev = guest_msi->dev();
         expects(pdev);
 
-        auto guest = pdev->m_guest_vcpu;
+        auto guest = get_vcpu(pdev->m_guest_vcpuid);
         expects(guest);
 
         if (guest == m_vcpu) {
@@ -830,21 +830,17 @@ bool xen::handle_hlt(
         return false;
     }
 
-    guest_interruptibility_state::blocking_by_sti::disable();
-    m_evtchn->queue_virq(VIRQ_TIMER);
     m_vcpu->advance();
-    this->stop_timer();
+    m_evtchn->queue_virq(VIRQ_TIMER);
     this->update_runstate(RUNSTATE_blocked);
+    guest_interruptibility_state::blocking_by_sti::disable();
 
-    if (auto pet = m_vcpu->get_preemption_timer(); pet > 0) {
-        auto yield = ((pet << m_pet_shift) * 1000) / m_tsc_khz;
+    auto pet = m_vcpu->get_preemption_timer();
+    auto yield = ((pet << m_pet_shift) * 1000) / m_tsc_khz;
 
-        m_vcpu->save_xstate();
-        m_vcpu->parent_vcpu()->load();
-        m_vcpu->parent_vcpu()->return_yield(yield);
-    }
-
-    return true;
+    m_vcpu->save_xstate();
+    m_vcpu->parent_vcpu()->load();
+    m_vcpu->parent_vcpu()->return_yield(yield);
 }
 
 bool xen::hypercall(xen_vcpu *vcpu)

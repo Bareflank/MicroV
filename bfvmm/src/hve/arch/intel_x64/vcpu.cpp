@@ -532,7 +532,7 @@ void vcpu::map_msi(const struct msi_desc *host_msi,
                 auto key = host_vector;
                 auto host = get_vcpu(i);
 
-                //expects(host->m_msi_map.count(key) == 0);
+                expects(host->m_msi_map.count(key) == 0);
                 host->m_msi_map[key] = {host_msi, guest_msi};
                 return;
             }
@@ -556,7 +556,7 @@ void vcpu::map_msi(const struct msi_desc *host_msi,
         auto local_id = host->m_lapic->local_id();
         if (host_destid == local_id) {
              auto key = host_vector;
-             //expects(host->m_msi_map.count(key) == 0);
+             expects(host->m_msi_map.count(key) == 0);
              host->m_msi_map[key] = {host_msi, guest_msi};
              return;
         }

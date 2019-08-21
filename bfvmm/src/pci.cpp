@@ -336,7 +336,7 @@ void pci_dev::add_guest_handlers(vcpu *vcpu)
     expects(!this->is_host_bridge());
     expects(vcpuid::is_guest_vm_vcpu(vcpu->id()));
 
-    m_guest_vcpu = vcpu;
+    m_guest_vcpuid = vcpu->id();
 
     if (m_bars.empty()) {
         this->parse_bars();
@@ -345,7 +345,7 @@ void pci_dev::add_guest_handlers(vcpu *vcpu)
     HANDLE_CFG_ACCESS(this, guest_normal_cfg_in, pci_dir_in);
     HANDLE_CFG_ACCESS(this, guest_normal_cfg_out, pci_dir_out);
 
-    printf("PCI: added handlers @ %s\n", this->bdf_str());
+//    printf("PCI: added handlers @ %s\n", this->bdf_str());
 
     for (const auto &bar : m_bars) {
         if (bar.type == pci_bar_io) {
@@ -362,16 +362,14 @@ void pci_dev::add_guest_handlers(vcpu *vcpu)
     }
 }
 
-void pci_dev::map_dma()
+/* Called from guest handler context */
+void pci_dev::map_dma(domain *dom)
 {
     if (!m_iommu) {
         printv("pci %s: m_iommu is NULL\n", this->bdf_str());
         return;
     }
 
-    expects(m_guest_vcpu);
-
-    auto dom = m_guest_vcpu->dom();
     auto bus = pci_cfg_bus(m_cf8);
     auto devfn = pci_cfg_devfn(m_cf8);
 
@@ -412,6 +410,7 @@ bool pci_dev::guest_normal_cfg_in(base_vcpu *vcpu, cfg_info &info)
 
 bool pci_dev::guest_normal_cfg_out(base_vcpu *vcpu, cfg_info &info)
 {
+    auto guest = vcpu_cast(vcpu);
     auto old = pci_cfg_read_reg(m_cf8, info.reg);
     auto val = cfg_hdlr::read_cfg_info(old, info);
 
@@ -438,8 +437,8 @@ bool pci_dev::guest_normal_cfg_out(base_vcpu *vcpu, cfg_info &info)
         };
 
         /* Create a new host->guest MSI mapping */
-        m_guest_vcpu->map_msi(&m_host_msi, &m_guest_msi);
-        this->map_dma();
+        guest->map_msi(&m_host_msi, &m_guest_msi);
+        this->map_dma(guest->dom());
 
         /* Write the host-programmed values to the device */
         pci_cfg_write_reg(m_cf8, info.reg + 1, m_vcfg[m_msi_cap + 1]);

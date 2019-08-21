@@ -38,6 +38,7 @@ namespace microv {
 struct iommu;
 
 struct pci_dev {
+    using domain = intel_x64::domain;
     using vcpu = intel_x64::vcpu;
     using base_vcpu = ::bfvmm::intel_x64::vcpu;
     using cfg_info = intel_x64::pci_cfg_handler::info;
@@ -51,7 +52,7 @@ struct pci_dev {
     uintptr_t m_ecam_hpa{};
     char m_bdf_str[9]{};
     bool m_guest_owned{};
-    vcpu *m_guest_vcpu{};
+    vcpuid_t m_guest_vcpuid{};
 
     struct msi_desc m_guest_msi{};
     struct msi_desc m_host_msi{};
@@ -107,7 +108,7 @@ struct pci_dev {
     void init_host_vcfg();
     void add_host_handlers(vcpu *vcpu);
     void add_guest_handlers(vcpu *vcpu);
-    void map_dma();
+    void map_dma(domain *dom);
 
     bool host_cfg_in(base_vcpu *vcpu, cfg_info &info);
     bool host_cfg_out(base_vcpu *vcpu, cfg_info &info);

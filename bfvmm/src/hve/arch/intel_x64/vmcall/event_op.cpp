@@ -68,7 +68,7 @@ void vmcall_event_op_handler::send_bdf(uint64_t bdf)
     expects(guest_msi);
     expects(guest_msi->dev() == pdev);
 
-    auto guest = pdev->m_guest_vcpu;
+    auto guest = get_vcpu(pdev->m_guest_vcpuid);
     expects(guest);
 
     guest->push_external_interrupt(guest_msi->vector());
@@ -82,7 +82,7 @@ void vmcall_event_op_handler::send_vector(uint64_t host_vector)
     auto pdev = guest_msi->dev();
     expects(pdev);
 
-    auto guest = pdev->m_guest_vcpu;
+    auto guest = get_vcpu(pdev->m_guest_vcpuid);
     expects(guest);
 
     guest->push_external_interrupt(guest_msi->vector());
