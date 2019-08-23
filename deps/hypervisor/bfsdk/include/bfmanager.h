@@ -74,16 +74,23 @@ public:
     ///
     void create(tid id, bfobject *obj = nullptr)
     {
+        std::lock_guard<std::mutex> guard(m_mutex);
+        expects(m_ts.count(id) == 0);
+
         try {
-            if (auto t = add_t(id, obj)) {
-                t->init(obj);
+            auto t = m_T_factory->make(id, obj);
+            if (!t) {
+                throw std::runtime_error("bfmanager: make failed");
             }
+
+            t->init(obj);
+            m_ts[id] = std::make_pair(
+                           std::move(t),
+                           std::make_unique<refcount>(0));
         }
         catch (...) {
-            std::lock_guard<std::mutex> guard(m_mutex);
             m_ts.erase(id);
-
-            throw;
+            throw std::runtime_error("bfmanager: create failed");
         }
     }
 
@@ -97,12 +104,57 @@ public:
     ///
     void destroy(tid id, bfobject *obj = nullptr)
     {
-        if (auto t = get(id)) {
-            t->fini(obj);
-        }
-
         std::lock_guard<std::mutex> guard(m_mutex);
-        m_ts.erase(id);
+
+        auto ti = m_ts.find(id);
+        if (ti != m_ts.end()) {
+            auto refcount = ti->second.second.get();
+            while (refcount->load() != 0) {
+                asm volatile("pause");
+            }
+
+            m_ts.erase(id);
+            m_refcounts.erase(id);
+            asm volatile("mfence");
+        }
+    }
+
+    T *acquire(tid id)
+    {
+        std::lock_guard<std::mutex> guard(m_mutex);
+
+        auto ti = m_ts.find(id);
+        if (ti != m_ts.end()) {
+            auto refcount = ti->second.second.get();
+            refcount->fetch_add(1);
+
+            {
+                std::lock_guard<std::mutex> refguard(m_ref_mutex);
+                if (m_refcounts.count(id) == 0) {
+                    m_refcounts[id] = refcount;
+                }
+            }
+            asm volatile("mfence");
+
+            return ti->second.first.get();
+        } else {
+            return nullptr;
+        }
+    }
+
+    template<typename U>
+    U *acquire(tid id)
+    { return dynamic_cast<U *>(acquire(id)); }
+
+    void release(tid id)
+    {
+        std::lock_guard<std::mutex> refguard(m_ref_mutex);
+
+        auto itr = m_refcounts.find(id);
+        expects(itr != m_refcounts.end());
+
+        auto refcount = itr->second;
+        refcount->fetch_sub(1);
     }
 
     /// Run T
@@ -155,7 +207,7 @@ public:
         std::lock_guard<std::mutex> guard(m_mutex);
 
         if (auto iter = m_ts.find(id); iter != m_ts.end()) {
-            return iter->second.get();
+            return iter->second.first.get();
         }
 
         if (err != nullptr) {
@@ -185,30 +237,16 @@ private:
         m_T_factory(std::make_unique<T_factory>())
     { }
 
-    gsl::not_null<T *> add_t(tid id, bfobject *obj)
-    {
-        if (auto iter = m_ts.find(id); iter != m_ts.end()) {
-            return iter->second.get();
-        }
-
-        if (auto t = m_T_factory->make(id, obj)) {
-            std::lock_guard<std::mutex> guard(m_mutex);
-
-            auto ptr = t.get();
-            m_ts[id] = std::move(t);
-
-            return ptr;
-        }
-
-        throw std::runtime_error("make returned a nullptr");
-    }
-
 private:
+    using refcount = std::atomic<uint64_t>;
+    using mapped_t = std::pair<std::unique_ptr<T>, std::unique_ptr<refcount>>;
 
     std::unique_ptr<T_factory> m_T_factory;
-    std::unordered_map<tid, std::unique_ptr<T>> m_ts;
+    std::unordered_map<tid, mapped_t> m_ts;
+    std::unordered_map<tid, refcount *> m_refcounts;
 
     mutable std::mutex m_mutex;
+    mutable std::mutex m_ref_mutex;
 
 public:
 
@@ -216,12 +254,6 @@ public:
 
     void set_factory(std::unique_ptr<T_factory> factory)
     { m_T_factory = std::move(factory); }
-
-    /// @endcond
-
-public:
-
-    /// @cond
 
     bfmanager(bfmanager &&) noexcept = delete;
     bfmanager &operator=(bfmanager &&) noexcept = delete;

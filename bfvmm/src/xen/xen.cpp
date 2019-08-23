@@ -797,14 +797,18 @@ bool xen::handle_interrupt(base_vcpu *vcpu, interrupt_handler::info_t &info)
         auto pdev = guest_msi->dev();
         expects(pdev);
 
-        auto guest = get_vcpu(pdev->m_guest_vcpuid);
-        expects(guest);
+        auto guest = get_guest(pdev->m_guest_vcpuid);
+        if (!guest) {
+            return true;
+        }
 
         if (guest == m_vcpu) {
             guest->queue_external_interrupt(guest_msi->vector());
         } else {
             guest->push_external_interrupt(guest_msi->vector());
         }
+
+        put_guest(pdev->m_guest_vcpuid);
     } else {
         m_vcpu->save_xstate();
         this->update_runstate(RUNSTATE_runnable);
@@ -841,6 +845,9 @@ bool xen::handle_hlt(
     m_vcpu->save_xstate();
     m_vcpu->parent_vcpu()->load();
     m_vcpu->parent_vcpu()->return_yield(yield);
+
+    // unreachable
+    return true;
 }
 
 bool xen::hypercall(xen_vcpu *vcpu)

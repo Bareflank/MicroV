@@ -138,6 +138,11 @@ vcpu::vcpu(
     this->add_cpuid_emulator(0x4BF00021, {&vcpu::handle_0x4BF00021, this});
 }
 
+vcpu::~vcpu()
+{
+    bfdebug_nhex(0, "destructing vcpu", this->id());
+}
+
 //------------------------------------------------------------------------------
 // Setup
 //------------------------------------------------------------------------------
@@ -172,6 +177,46 @@ vcpu::write_domU_guest_state(domain *domain)
         }
 
         m_xen = std::make_unique<xen>(this, domain);
+    }
+}
+
+void vcpu::add_child(vcpuid_t child_id)
+{
+    vcpu *child{};
+
+    try {
+        expects(this->is_dom0());
+        expects(vcpuid::is_guest_vm_vcpu(child_id));
+        expects(m_child_vcpus.count(child_id) == 0);
+
+        child = get_guest(child_id);
+        expects(child);
+
+        m_child_vcpus[child_id] = child;
+        ensures(m_child_vcpus.count(child_id) == 1);
+    } catch (...) {
+        if (child) {
+            put_guest(child_id);
+        }
+        throw;
+    }
+}
+
+vcpu *vcpu::find_child(vcpuid_t child_id)
+{
+    auto itr = m_child_vcpus.find(child_id);
+    if (itr != m_child_vcpus.end()) {
+        return itr->second;
+    } else {
+        return nullptr;
+    }
+}
+
+void vcpu::remove_child(vcpuid_t child_id)
+{
+    if (m_child_vcpus.count(child_id) == 1) {
+        put_guest(child_id);
+        m_child_vcpus.erase(child_id);
     }
 }
 
@@ -530,7 +575,7 @@ void vcpu::map_msi(const struct msi_desc *host_msi,
         for (uint64_t i = 0; i < nr_host_vcpus; i++) {
             if (host_destid == (1UL << i)) {
                 auto key = host_vector;
-                auto host = get_vcpu(i);
+                auto host = get_host(i);
 
                 expects(host->m_msi_map.count(key) == 0);
                 host->m_msi_map[key] = {host_msi, guest_msi};
@@ -552,7 +597,7 @@ void vcpu::map_msi(const struct msi_desc *host_msi,
      * (x)APIC or do an IPI to the proper core.
      */
     for (uint64_t i = 0; i < nr_host_vcpus; i++) {
-        auto host = get_vcpu(i);
+        auto host = get_host(i);
         auto local_id = host->m_lapic->local_id();
         if (host_destid == local_id) {
              auto key = host_vector;

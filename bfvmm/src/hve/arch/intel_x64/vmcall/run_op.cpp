@@ -59,19 +59,16 @@ vmcall_run_op_handler::dispatch(vcpu *vcpu)
     }
 
     try {
-        if (m_child_vcpuid != vcpu->rbx()) {
-            m_child_vcpu = get_vcpu(vcpu->rbx());
-            m_child_vcpuid = vcpu->rbx();
-        }
+        auto child = vcpu->find_child(vcpu->rbx());
+        expects(child);
 
-        m_child_vcpu->set_parent_vcpu(vcpu);
-
-        if (m_child_vcpu->is_alive()) {
+        child->set_parent_vcpu(vcpu);
+        if (child->is_alive()) {
             vcpu->save_xstate();
 
-            m_child_vcpu->load_xstate();
-            m_child_vcpu->load();
-            m_child_vcpu->run(&world_switch);
+            child->load_xstate();
+            child->load();
+            child->run(&world_switch);
         }
 
         vcpu->set_rax(__enum_run_op__hlt);

@@ -73,20 +73,16 @@ public:
     ///
     /// @param id the id of this vcpu
     ///
-    /// @cond
-    ///
     explicit vcpu(
         vcpuid::type id,
         gsl::not_null<domain *> domain);
-
-    /// @endcond
 
     /// Destructor
     ///
     /// @expects
     /// @ensures
     ///
-    ~vcpu() = default;
+    ~vcpu();
 
     /// Physical CPU ID
     ///
@@ -110,6 +106,10 @@ public:
     void write_domU_guest_state(domain *domain);
 
 public:
+
+    void add_child(vcpuid_t id);
+    vcpu *find_child(vcpuid_t id);
+    void remove_child(vcpuid_t id);
 
     //--------------------------------------------------------------------------
     // Domain Info
@@ -377,6 +377,7 @@ private:
     std::unique_ptr<microv::intel_x64::xstate> m_xstate{};
 
     msi_map_t m_msi_map{};
+    std::unordered_map<vcpuid_t, vcpu *> m_child_vcpus{};
 };
 
 }
@@ -384,6 +385,63 @@ private:
 //------------------------------------------------------------------------------
 // Helpers
 //------------------------------------------------------------------------------
+
+/// get_guest - acquires a reference to a guest vcpu
+///
+/// A non-null return value is guaranteed to point to a valid object until a
+/// matching put_vcpu is called. Caller's must ensure that they return the
+/// reference after they are done with put_guest.
+///
+/// @expects vcpuid::is_guest_vm_vcpu(id)
+/// @ensures
+///
+/// @param id the id of the guest vcpu to acquire
+/// @return ptr to valid guest vcpu on success, nullptr otherwise
+///
+inline auto get_guest(vcpuid::type id)
+{
+    expects(vcpuid::is_guest_vm_vcpu(id));
+    return g_vcm->acquire<microv::intel_x64::vcpu>(id);
+}
+
+/// put_guest - releases a reference to a guest vcpu
+///
+/// Release a previously acquired reference to the guest vcpu. This must
+/// be called after a successful call to get_guest.
+///
+/// @expects vcpuid::is_guest_vm_vcpu(id)
+/// @ensures
+///
+/// @param id the id of the guest vcpu to release
+///
+inline void put_guest(vcpuid::type id)
+{
+    expects(vcpuid::is_guest_vm_vcpu(id));
+    return g_vcm->release(id);
+}
+
+/// get_host - gets a reference to a host vcpu
+///
+/// A non-null return value is guaranteed to point to a valid
+/// host vcpu. No matching put_host is required since each host
+/// outlives any guest.
+///
+/// @expects vcpuid::is_host_vm_vcpu(id)
+/// @ensures
+///
+/// @param id the id of the host vcpu to acquire
+/// @return ptr to valid host vcpu on success, nullptr otherwise
+///
+inline microv::intel_x64::vcpu *get_host(vcpuid::type id)
+{
+    try {
+        expects(vcpuid::is_host_vm_vcpu(id));
+        auto hv = g_vcm->get<microv::intel_x64::vcpu *>(id);
+        return hv.get();
+    } catch (...) {
+        return nullptr;
+    }
+}
 
 // Note:
 //
@@ -393,29 +451,11 @@ private:
 // vcpu, resulting in compilation errors
 //
 
-#ifdef get_vcpu
-#undef get_vcpu
-#endif
-
 #ifdef vcpu_cast
 #undef vcpu_cast
 #endif
 
-/// Get Guest vCPU
-///
-/// Gets a guest vCPU from the vCPU manager given a vcpuid
-///
-/// @expects
-/// @ensures
-///
-/// @return returns a pointer to the vCPU being queried or throws
-///     and exception.
-///
-#define get_vcpu(v) \
-    g_vcm->get<microv::intel_x64::vcpu *>(v, __FILE__ ": invalid microv vcpuid")
-
-#define vcpu_cast(v) \
-    static_cast<microv::intel_x64::vcpu *>(v)
+#define vcpu_cast(p) static_cast<microv::intel_x64::vcpu *>(p)
 
 inline bfobject world_switch;
 

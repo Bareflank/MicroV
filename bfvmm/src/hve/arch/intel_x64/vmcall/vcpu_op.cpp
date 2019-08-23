@@ -40,10 +40,15 @@ void
 vmcall_vcpu_op_handler::vcpu_op__create_vcpu(vcpu *vcpu)
 {
     try {
+        /* TODO do this once per host vcpu */
         vcpu->init_xstate();
+
+        /* TODO make global vcpuid/domainids SMP safe */
         vcpu->set_rax(bfvmm::vcpu::generate_vcpuid());
+
         bfdebug_nhex(0, "creating guest vcpu", vcpu->rax());
         g_vcm->create(vcpu->rax(), get_domain(vcpu->rbx()));
+        vcpu->add_child(vcpu->rax());
     }
     catchall({
         vcpu->set_rax(INVALID_VCPUID);
@@ -54,10 +59,13 @@ void
 vmcall_vcpu_op_handler::vcpu_op__kill_vcpu(vcpu *vcpu)
 {
     try {
-        auto child_vcpu = get_vcpu(vcpu->rbx());
-        child_vcpu->kill();
-
-        vcpu->set_rax(SUCCESS);
+        auto child = vcpu->find_child(vcpu->rbx());
+        if (child) {
+            child->kill();
+            vcpu->set_rax(SUCCESS);
+        } else {
+            vcpu->set_rax(FAILURE);
+        }
     }
     catchall({
         vcpu->set_rax(FAILURE);
@@ -68,6 +76,7 @@ void
 vmcall_vcpu_op_handler::vcpu_op__destroy_vcpu(vcpu *vcpu)
 {
     try {
+        vcpu->remove_child(vcpu->rbx());
         g_vcm->destroy(vcpu->rbx(), nullptr);
         vcpu->set_rax(SUCCESS);
     }
