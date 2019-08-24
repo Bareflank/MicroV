@@ -223,16 +223,16 @@ TEST_CASE("vcpu: is_not_bootstrap_vcpu")
     CHECK_FALSE(vc->is_bootstrap_vcpu());
 }
 
-TEST_CASE("vcpu: is_host_vm_vcpu")
+TEST_CASE("vcpu: is_host_vcpu")
 {
     auto vc = std::make_unique<bfvmm::vcpu>(1);
-    CHECK(vc->is_host_vm_vcpu());
+    CHECK(vc->is_host_vcpu());
 }
 
-TEST_CASE("vcpu: is_guest_vm_vcpu")
+TEST_CASE("vcpu: is_guest_vcpu")
 {
     auto vc = std::make_unique<bfvmm::vcpu>(0x0000000100000000);
-    CHECK(vc->is_guest_vm_vcpu());
+    CHECK(vc->is_guest_vcpu());
 }
 
 TEST_CASE("vcpu: is_running_vm_vcpu")

@@ -26,7 +26,7 @@ namespace microv
 {
 
 std::unique_ptr<domain>
-domain_factory::make(domain::domainid_type domainid, bfobject *obj)
+domain_factory::make(domain::id_t domainid, bfobject *obj)
 {
     return std::make_unique<microv::intel_x64::domain>(
                domainid,

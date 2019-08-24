@@ -180,7 +180,7 @@ void init_pci()
 void init_pci_on_vcpu(microv::intel_x64::vcpu *vcpu)
 {
     for (auto pdev : pci_passthru_list) {
-        if (vcpuid::is_host_vm_vcpu(vcpu->id())) {
+        if (vcpuid::is_host_vcpu(vcpu->id())) {
             pdev->add_host_handlers(vcpu);
         } else {
             pdev->add_guest_handlers(vcpu);
@@ -323,7 +323,7 @@ void pci_dev::init_host_vcfg()
 
 void pci_dev::add_host_handlers(vcpu *vcpu)
 {
-    expects(vcpuid::is_host_vm_vcpu(vcpu->id()));
+    expects(vcpuid::is_host_vcpu(vcpu->id()));
     expects(m_guest_owned);
 
     HANDLE_CFG_ACCESS(this, host_cfg_in, pci_dir_in);
@@ -334,7 +334,7 @@ void pci_dev::add_guest_handlers(vcpu *vcpu)
 {
     expects(this->is_normal());
     expects(!this->is_host_bridge());
-    expects(vcpuid::is_guest_vm_vcpu(vcpu->id()));
+    expects(vcpuid::is_guest_vcpu(vcpu->id()));
 
     m_guest_vcpuid = vcpu->id();
 

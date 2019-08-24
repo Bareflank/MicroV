@@ -82,7 +82,7 @@ static_assert(header_size == 64);
 
 xstate::xstate(class vcpu *vcpu) : m_vcpu{vcpu}
 {
-    if (vcpu->is_host_vm_vcpu()) {
+    if (vcpu->is_host_vcpu()) {
         expects(::intel_x64::vmcs::guest_cr4::osxsave::is_enabled());
         m_xcr0 = ::intel_x64::xcr0::get();
         m_rfbm = m_xcr0 & ~sse_mask;
@@ -119,7 +119,7 @@ void xstate::load()
 
 bool xstate::handle_xsetbv(base_vcpu *vcpu, xsetbv_info &info)
 {
-    if (vcpu->is_host_vm_vcpu()) {
+    if (vcpu->is_host_vcpu()) {
         expects(::intel_x64::xcr0::get() == m_xcr0);
         bfalert_info(0, "xsetbv attempt");
         bfalert_subnhex(0, "old", m_xcr0);

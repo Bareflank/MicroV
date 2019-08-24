@@ -82,7 +82,7 @@ public:
     /// @expects
     /// @ensures
     ///
-    ~vcpu();
+    ~vcpu() = default;
 
     /// Physical CPU ID
     ///
@@ -140,7 +140,7 @@ public:
     ///
     /// @return the vCPU's domid
     ///
-    domain::domainid_type domid() const;
+    domain::id_t domid() const;
 
     /// Domain pointer
     ///
@@ -392,7 +392,7 @@ private:
 /// matching put_vcpu is called. Caller's must ensure that they return the
 /// reference after they are done with put_guest.
 ///
-/// @expects vcpuid::is_guest_vm_vcpu(id)
+/// @expects vcpuid::is_guest_vcpu(id)
 /// @ensures
 ///
 /// @param id the id of the guest vcpu to acquire
@@ -400,7 +400,7 @@ private:
 ///
 inline auto get_guest(vcpuid::type id)
 {
-    expects(vcpuid::is_guest_vm_vcpu(id));
+    expects(vcpuid::is_guest_vcpu(id));
     return g_vcm->acquire<microv::intel_x64::vcpu>(id);
 }
 
@@ -409,14 +409,14 @@ inline auto get_guest(vcpuid::type id)
 /// Release a previously acquired reference to the guest vcpu. This must
 /// be called after a successful call to get_guest.
 ///
-/// @expects vcpuid::is_guest_vm_vcpu(id)
+/// @expects vcpuid::is_guest_vcpu(id)
 /// @ensures
 ///
 /// @param id the id of the guest vcpu to release
 ///
 inline void put_guest(vcpuid::type id)
 {
-    expects(vcpuid::is_guest_vm_vcpu(id));
+    expects(vcpuid::is_guest_vcpu(id));
     return g_vcm->release(id);
 }
 
@@ -426,7 +426,7 @@ inline void put_guest(vcpuid::type id)
 /// host vcpu. No matching put_host is required since each host
 /// outlives any guest.
 ///
-/// @expects vcpuid::is_host_vm_vcpu(id)
+/// @expects vcpuid::is_host_vcpu(id)
 /// @ensures
 ///
 /// @param id the id of the host vcpu to acquire
@@ -435,7 +435,7 @@ inline void put_guest(vcpuid::type id)
 inline microv::intel_x64::vcpu *get_host(vcpuid::type id)
 {
     try {
-        expects(vcpuid::is_host_vm_vcpu(id));
+        expects(vcpuid::is_host_vcpu(id));
         auto hv = g_vcm->get<microv::intel_x64::vcpu *>(id);
         return hv.get();
     } catch (...) {

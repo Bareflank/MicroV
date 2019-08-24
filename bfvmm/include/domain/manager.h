@@ -40,6 +40,6 @@
     bfmanager<                                                                  \
     microv::domain,                                                             \
     microv::domain_factory,                                                     \
-    microv::domain::domainid_type>::instance()
+    microv::domain::id_t>::instance()
 
 #endif

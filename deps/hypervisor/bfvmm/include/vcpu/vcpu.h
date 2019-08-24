@@ -23,6 +23,7 @@
 #define VCPU_H
 
 #include <any>
+#include <atomic>
 #include <list>
 #include <string>
 #include <memory>
@@ -238,8 +239,8 @@ public:
     ///
     /// @return true if this vCPU belongs to the host VM, false otherwise
     ///
-    VIRTUAL bool is_host_vm_vcpu()
-    { return vcpuid::is_host_vm_vcpu(m_id); }
+    VIRTUAL bool is_host_vcpu()
+    { return vcpuid::is_host_vcpu(m_id); }
 
     /// Is Guest VM vCPU
     ///
@@ -248,20 +249,20 @@ public:
     ///
     /// @return true if this vCPU belongs to a guest VM, false otherwise
     ///
-    VIRTUAL bool is_guest_vm_vcpu()
-    { return vcpuid::is_guest_vm_vcpu(m_id); }
+    VIRTUAL bool is_guest_vcpu()
+    { return vcpuid::is_guest_vcpu(m_id); }
 
     /// Generate vCPU ID
     ///
     /// @expects
     /// @ensures
     ///
-    /// @return Returns a new, unique vcpu id
+    /// @return Returns a new, unique guest vcpu id
     ///
     static vcpuid::type generate_vcpuid()
     {
-        static vcpuid::type s_id = (~vcpuid::guest_mask) + 1;
-        return s_id++;
+        static std::atomic<vcpuid::type> s_id = (~vcpuid::guest_mask) + 1;
+        return s_id.fetch_add(1);
     }
 
     /// Add Run Delegate

@@ -25,7 +25,7 @@
 namespace microv
 {
 
-domain::domain(domainid_type domainid) :
+domain::domain(id_t domainid) :
     m_id{domainid}
 { }
 
@@ -45,7 +45,7 @@ void
 domain::fini(bfobject *obj)
 { bfignored(obj); }
 
-domain::domainid_type
+domain::id_t
 domain::id() const noexcept
 { return m_id; }
 

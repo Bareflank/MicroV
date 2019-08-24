@@ -138,11 +138,6 @@ vcpu::vcpu(
     this->add_cpuid_emulator(0x4BF00021, {&vcpu::handle_0x4BF00021, this});
 }
 
-vcpu::~vcpu()
-{
-    bfdebug_nhex(0, "destructing vcpu", this->id());
-}
-
 //------------------------------------------------------------------------------
 // Setup
 //------------------------------------------------------------------------------
@@ -186,7 +181,7 @@ void vcpu::add_child(vcpuid_t child_id)
 
     try {
         expects(this->is_dom0());
-        expects(vcpuid::is_guest_vm_vcpu(child_id));
+        expects(vcpuid::is_guest_vcpu(child_id));
         expects(m_child_vcpus.count(child_id) == 0);
 
         child = get_guest(child_id);
@@ -277,7 +272,7 @@ bool
 vcpu::is_domU() const
 { return m_domain->id() != 0; }
 
-domain::domainid_type
+domain::id_t
 vcpu::domid() const
 { return m_domain->id(); }
 

@@ -44,20 +44,16 @@ struct domain_info : public bfobject {
 
 /// Domain
 ///
-class domain : public bfobject
-{
+class domain : public bfobject {
 public:
-
-    using domainid_type = domainid_t;
-
-public:
+    using id_t = domainid_t;
 
     /// Constructor
     ///
     /// @expects
     /// @ensures
     ///
-    domain(domainid_type domainid);
+    domain(id_t domainid);
 
     /// Destructor
     ///
@@ -113,7 +109,7 @@ public:
     ///
     /// @return Returns the domain ID
     ///
-    domainid_type id() const noexcept;
+    id_t id() const noexcept;
 
     /// Generate Domain ID
     ///
@@ -129,10 +125,10 @@ public:
     ///
     /// @return Returns a new, unique domain id
     ///
-    static domainid_type generate_domainid() noexcept
+    static id_t generate_domainid() noexcept
     {
-        static domainid_type s_id = 1;
-        return s_id++;
+        static std::atomic<id_t> s_id = 1;
+        return s_id.fetch_add(1);
     }
 
     /// Set Entry
@@ -158,7 +154,7 @@ public:
 
 private:
 
-    domainid_type m_id;
+    id_t m_id;
     uintptr_t m_entry;
 
 public:
@@ -178,8 +174,8 @@ public:
 // Constants
 // -----------------------------------------------------------------------------
 
-constexpr domain::domainid_type invalid_domainid = INVALID_DOMAINID;
-constexpr domain::domainid_type self = SELF;
+constexpr domain::id_t invalid_domainid = INVALID_DOMAINID;
+constexpr domain::id_t self = SELF;
 
 }
 

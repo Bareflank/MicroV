@@ -142,8 +142,8 @@ setup_vcpu(MockRepository &mocks, ::intel_x64::vmcs::value_type reason = 0)
     mocks.OnCall(vcpu, bfvmm::intel_x64::vcpu::is_running).Return(false);
     mocks.OnCall(vcpu, bfvmm::intel_x64::vcpu::is_initialized).Return(false);
     mocks.OnCall(vcpu, bfvmm::intel_x64::vcpu::is_bootstrap_vcpu).Return(true);
-    mocks.OnCall(vcpu, bfvmm::intel_x64::vcpu::is_host_vm_vcpu).Return(true);
-    mocks.OnCall(vcpu, bfvmm::intel_x64::vcpu::is_guest_vm_vcpu).Return(false);
+    mocks.OnCall(vcpu, bfvmm::intel_x64::vcpu::is_host_vcpu).Return(true);
+    mocks.OnCall(vcpu, bfvmm::intel_x64::vcpu::is_guest_vcpu).Return(false);
     mocks.OnCall(vcpu, bfvmm::intel_x64::vcpu::add_run_delegate);
     mocks.OnCall(vcpu, bfvmm::intel_x64::vcpu::add_hlt_delegate);
     mocks.OnCall(vcpu, bfvmm::intel_x64::vcpu::add_init_delegate);

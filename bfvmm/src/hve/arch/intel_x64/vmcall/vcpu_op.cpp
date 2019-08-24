@@ -42,8 +42,6 @@ vmcall_vcpu_op_handler::vcpu_op__create_vcpu(vcpu *vcpu)
     try {
         /* TODO do this once per host vcpu */
         vcpu->init_xstate();
-
-        /* TODO make global vcpuid/domainids SMP safe */
         vcpu->set_rax(bfvmm::vcpu::generate_vcpuid());
 
         bfdebug_nhex(0, "creating guest vcpu", vcpu->rax());

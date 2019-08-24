@@ -62,7 +62,7 @@ public:
     /// @return returns a pointer to a newly created vCPU.
     ///
     virtual std::unique_ptr<domain> make(
-        domain::domainid_type domainid, bfobject *obj = nullptr);
+        domain::id_t domainid, bfobject *obj = nullptr);
 
 public:
 

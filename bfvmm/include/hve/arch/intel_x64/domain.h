@@ -49,7 +49,7 @@ public:
     /// @expects
     /// @ensures
     ///
-    domain(domainid_type domainid, struct domain_info *info);
+    domain(id_t domainid, struct domain_info *info);
 
     /// Destructor
     ///

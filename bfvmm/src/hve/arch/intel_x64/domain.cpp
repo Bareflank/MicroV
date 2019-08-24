@@ -36,7 +36,7 @@ using namespace bfvmm::intel_x64;
 namespace microv::intel_x64
 {
 
-domain::domain(domainid_type domainid, struct domain_info *info) :
+domain::domain(id_t domainid, struct domain_info *info) :
     microv::domain{domainid}
 {
     /* Set start-of-day info */
