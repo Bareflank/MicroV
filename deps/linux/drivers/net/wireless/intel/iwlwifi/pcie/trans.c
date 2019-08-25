@@ -1581,6 +1581,7 @@ static void iwl_pcie_set_interrupt_capa(struct pci_dev *pdev,
 	int max_irqs, num_irqs, i, ret;
 	u16 pci_cmd;
 
+        printk("%s 0", __func__);
 	if (!trans->cfg->mq_rx_supported)
 		goto enable_msi;
 
@@ -1588,10 +1589,12 @@ static void iwl_pcie_set_interrupt_capa(struct pci_dev *pdev,
 	for (i = 0; i < max_irqs; i++)
 		trans_pcie->msix_entries[i].entry = i;
 
+        printk("%s 1", __func__);
 	num_irqs = pci_enable_msix_range(pdev, trans_pcie->msix_entries,
 					 MSIX_MIN_INTERRUPT_VECTORS,
 					 max_irqs);
 	if (num_irqs < 0) {
+        printk("%s 2", __func__);
 		IWL_DEBUG_INFO(trans,
 			       "Failed to enable msi-x mode (ret %d). Moving to msi mode.\n",
 			       num_irqs);
@@ -1611,13 +1614,16 @@ static void iwl_pcie_set_interrupt_capa(struct pci_dev *pdev,
 	 * More than two interrupts: we will use fewer RSS queues.
 	 */
 	if (num_irqs <= max_irqs - 2) {
+        printk("%s 3", __func__);
 		trans_pcie->trans->num_rx_queues = num_irqs + 1;
 		trans_pcie->shared_vec_mask = IWL_SHARED_IRQ_NON_RX |
 			IWL_SHARED_IRQ_FIRST_RSS;
 	} else if (num_irqs == max_irqs - 1) {
+        printk("%s 4", __func__);
 		trans_pcie->trans->num_rx_queues = num_irqs;
 		trans_pcie->shared_vec_mask = IWL_SHARED_IRQ_NON_RX;
 	} else {
+        printk("%s 5", __func__);
 		trans_pcie->trans->num_rx_queues = num_irqs - 1;
 	}
 	WARN_ON(trans_pcie->trans->num_rx_queues > IWL_MAX_RX_HW_QUEUES);
@@ -1627,8 +1633,10 @@ static void iwl_pcie_set_interrupt_capa(struct pci_dev *pdev,
 	return;
 
 enable_msi:
+        printk("%s 6", __func__);
 	ret = pci_enable_msi(pdev);
 	if (ret) {
+        printk("%s 7", __func__);
 		dev_err(&pdev->dev, "pci_enable_msi failed - %d\n", ret);
 		/* enable rfkill interrupt: hw bug w/a */
 		pci_read_config_word(pdev, PCI_COMMAND, &pci_cmd);
@@ -1636,7 +1644,9 @@ enable_msi:
 			pci_cmd &= ~PCI_COMMAND_INTX_DISABLE;
 			pci_write_config_word(pdev, PCI_COMMAND, pci_cmd);
 		}
-	}
+	} else {
+        printk("%s 8", __func__);
+        }
 }
 
 static void iwl_pcie_irq_set_affinity(struct iwl_trans *trans)
@@ -3419,12 +3429,17 @@ struct iwl_trans *iwl_trans_pcie_alloc(struct pci_dev *pdev,
 	if (ret)
 		return ERR_PTR(ret);
 
-	if (cfg->gen2)
+        printk("%s 0", __func__);
+
+	if (cfg->gen2) {
 		trans = iwl_trans_alloc(sizeof(struct iwl_trans_pcie),
 					&pdev->dev, cfg, &trans_ops_pcie_gen2);
-	else
+        printk("%s 1", __func__);
+        } else {
 		trans = iwl_trans_alloc(sizeof(struct iwl_trans_pcie),
 					&pdev->dev, cfg, &trans_ops_pcie);
+        printk("%s 2", __func__);
+        }
 	if (!trans)
 		return ERR_PTR(-ENOMEM);
 
@@ -3439,11 +3454,13 @@ struct iwl_trans *iwl_trans_pcie_alloc(struct pci_dev *pdev,
 	trans_pcie->tso_hdr_page = alloc_percpu(struct iwl_tso_hdr_page);
 	if (!trans_pcie->tso_hdr_page) {
 		ret = -ENOMEM;
+        printk("%s 3", __func__);
 		goto out_no_pci;
 	}
 	trans_pcie->debug_rfkill = -1;
 
 	if (!cfg->base_params->pcie_l1_allowed) {
+        printk("%s 4", __func__);
 		/*
 		 * W/A - seems to solve weird behavior. We need to remove this
 		 * if we don't want to stay in L1 all the time. This wastes a
@@ -3457,10 +3474,12 @@ struct iwl_trans *iwl_trans_pcie_alloc(struct pci_dev *pdev,
 	trans_pcie->def_rx_queue = 0;
 
 	if (cfg->use_tfh) {
+        printk("%s 5", __func__);
 		addr_size = 64;
 		trans_pcie->max_tbs = IWL_TFH_NUM_TBS;
 		trans_pcie->tfd_size = sizeof(struct iwl_tfh_tfd);
 	} else {
+        printk("%s 6", __func__);
 		addr_size = 36;
 		trans_pcie->max_tbs = IWL_NUM_OF_TBS;
 		trans_pcie->tfd_size = sizeof(struct iwl_tfd);
@@ -3470,10 +3489,13 @@ struct iwl_trans *iwl_trans_pcie_alloc(struct pci_dev *pdev,
 	pci_set_master(pdev);
 
 	ret = pci_set_dma_mask(pdev, DMA_BIT_MASK(addr_size));
-	if (!ret)
+	if (!ret) {
 		ret = pci_set_consistent_dma_mask(pdev,
 						  DMA_BIT_MASK(addr_size));
+        printk("%s 7", __func__);
+        }
 	if (ret) {
+        printk("%s 8", __func__);
 		ret = pci_set_dma_mask(pdev, DMA_BIT_MASK(32));
 		if (!ret)
 			ret = pci_set_consistent_dma_mask(pdev,
@@ -3505,6 +3527,7 @@ struct iwl_trans *iwl_trans_pcie_alloc(struct pci_dev *pdev,
 	trans_pcie->pci_dev = pdev;
 	iwl_disable_interrupts(trans);
 
+        printk("%s 9", __func__);
 	trans->hw_rev = iwl_read32(trans, CSR_HW_REV);
 	if (trans->hw_rev == 0xffffffff) {
 		dev_err(&pdev->dev, "HW_REV=0xFFFFFFFF, PCI issues?\n");
@@ -3520,6 +3543,7 @@ struct iwl_trans *iwl_trans_pcie_alloc(struct pci_dev *pdev,
 	 */
 	if (trans->cfg->device_family >= IWL_DEVICE_FAMILY_8000) {
 		unsigned long flags;
+        printk("%s 10", __func__);
 
 		trans->hw_rev = (trans->hw_rev & 0xfff0) |
 				(CSR_HW_REV_STEP(trans->hw_rev << 2) << 2);
@@ -3530,13 +3554,16 @@ struct iwl_trans *iwl_trans_pcie_alloc(struct pci_dev *pdev,
 			goto out_no_pci;
 		}
 
+        printk("%s 11", __func__);
 		/*
 		 * in-order to recognize C step driver should read chip version
 		 * id located at the AUX bus MISC address space.
 		 */
 		ret = iwl_finish_nic_init(trans);
-		if (ret)
+		if (ret) {
+        printk("%s 12", __func__);
 			goto out_no_pci;
+                }
 
 		if (iwl_trans_grab_nic_access(trans, &flags)) {
 			u32 hw_step;
@@ -3556,6 +3583,7 @@ struct iwl_trans *iwl_trans_pcie_alloc(struct pci_dev *pdev,
 		}
 	}
 
+        printk("%s 13", __func__);
 	IWL_DEBUG_INFO(trans, "HW REV: 0x%0x\n", trans->hw_rev);
 
 #if IS_ENABLED(CONFIG_IWLMVM)
@@ -3622,7 +3650,9 @@ struct iwl_trans *iwl_trans_pcie_alloc(struct pci_dev *pdev,
 	}
 #endif
 
+        printk("%s 14", __func__);
 	iwl_pcie_set_interrupt_capa(pdev, trans);
+        printk("%s 15", __func__);
 	trans->hw_id = (pdev->device << 16) + pdev->subsystem_device;
 	snprintf(trans->hw_id_str, sizeof(trans->hw_id_str),
 		 "PCI ID: 0x%04X:0x%04X", pdev->device, pdev->subsystem_device);
@@ -3637,9 +3667,12 @@ struct iwl_trans *iwl_trans_pcie_alloc(struct pci_dev *pdev,
 		if (ret)
 			goto out_no_pci;
 	 } else {
+        printk("%s 16", __func__);
 		ret = iwl_pcie_alloc_ict(trans);
-		if (ret)
+		if (ret) {
+        printk("%s 17", __func__);
 			goto out_no_pci;
+                }
 
 		ret = devm_request_threaded_irq(&pdev->dev, pdev->irq,
 						iwl_pcie_isr,
@@ -3655,6 +3688,7 @@ struct iwl_trans *iwl_trans_pcie_alloc(struct pci_dev *pdev,
 	trans_pcie->rba.alloc_wq = alloc_workqueue("rb_allocator",
 						   WQ_HIGHPRI | WQ_UNBOUND, 1);
 	INIT_WORK(&trans_pcie->rba.rx_alloc, iwl_pcie_rx_allocator_work);
+        printk("%s 18", __func__);
 
 #ifdef CONFIG_IWLWIFI_PCIE_RTPM
 	trans->runtime_pm_mode = IWL_PLAT_PM_MODE_D0I3;
@@ -3672,6 +3706,7 @@ struct iwl_trans *iwl_trans_pcie_alloc(struct pci_dev *pdev,
 out_free_ict:
 	iwl_pcie_free_ict(trans);
 out_no_pci:
+        printk("%s 19 NOPCI!!!!!!", __func__);
 	free_percpu(trans_pcie->tso_hdr_page);
 	iwl_trans_free(trans);
 	return ERR_PTR(ret);

@@ -360,9 +360,11 @@ void pci_dev::add_guest_handlers(vcpu *vcpu)
             dom->map_4k_rw_uc(bar.addr + i, bar.addr + i);
         }
     }
+
+    printv("pci: %s: mapping DMA\n", this->bdf_str());
+    this->map_dma(vcpu->dom());
 }
 
-/* Called from guest handler context */
 void pci_dev::map_dma(domain *dom)
 {
     if (!m_iommu) {
@@ -415,6 +417,9 @@ bool pci_dev::guest_normal_cfg_out(base_vcpu *vcpu, cfg_info &info)
     auto val = cfg_hdlr::read_cfg_info(old, info);
 
     if (info.reg != m_msi_cap) {
+        if (info.reg == 1 && (~val & INTX_DISABLE)) {
+            printv("pci: %s: enabling INTx\n", this->bdf_str());
+        }
         pci_cfg_write_reg(m_cf8, info.reg, val);
         return true;
     }
@@ -438,7 +443,6 @@ bool pci_dev::guest_normal_cfg_out(base_vcpu *vcpu, cfg_info &info)
 
         /* Create a new host->guest MSI mapping */
         guest->map_msi(&m_host_msi, &m_guest_msi);
-        this->map_dma(guest->dom());
 
         /* Write the host-programmed values to the device */
         pci_cfg_write_reg(m_cf8, info.reg + 1, m_vcfg[m_msi_cap + 1]);

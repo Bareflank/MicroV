@@ -31,6 +31,7 @@
 #include <iommu/iommu.h>
 #include <pci/dev.h>
 #include <pci/pci.h>
+#include <printv.h>
 #include <xen/xen.h>
 #include <xue.h>
 
@@ -574,6 +575,10 @@ void vcpu::map_msi(const struct msi_desc *host_msi,
 
                 expects(host->m_msi_map.count(key) == 0);
                 host->m_msi_map[key] = {host_msi, guest_msi};
+                printv("host_msi:  destid:0x%x vector:0x%x\n",
+                        host_msi->destid(), host_msi->vector());
+                printv("guest_msi: destid:0x%x vector:0x%x\n",
+                        guest_msi->destid(), guest_msi->vector());
                 return;
             }
         }
