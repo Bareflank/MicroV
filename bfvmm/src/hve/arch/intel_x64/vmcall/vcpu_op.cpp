@@ -40,10 +40,13 @@ void
 vmcall_vcpu_op_handler::vcpu_op__create_vcpu(vcpu *vcpu)
 {
     try {
-        /* TODO do this once per host vcpu */
-        vcpu->init_xstate();
-        vcpu->set_rax(bfvmm::vcpu::generate_vcpuid());
+        static bool init_xstate = true;
+        if (init_xstate) {
+            vcpu->init_xstate();
+            init_xstate = false;
+        }
 
+        vcpu->set_rax(bfvmm::vcpu::generate_vcpuid());
         bfdebug_nhex(0, "creating guest vcpu", vcpu->rax());
         g_vcm->create(vcpu->rax(), get_domain(vcpu->rbx()));
         vcpu->add_child(vcpu->rax());
