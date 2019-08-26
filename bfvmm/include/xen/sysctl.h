@@ -30,7 +30,7 @@ namespace microv {
 class sysctl {
 private:
     xen *m_xen{};
-    xen_vcpu *m_vcpu{};
+    microv_vcpu *m_vcpu{};
 
 public:
     bool handle(xen_sysctl_t *ctl);

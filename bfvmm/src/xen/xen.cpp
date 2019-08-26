@@ -49,9 +49,6 @@
 #include <public/hvm/params.h>
 #include <public/xsm/flask_op.h>
 
-#define XEN_MAJOR 4UL
-#define XEN_MINOR 13UL
-
 /* Taken from xen/include/asm-x86/div64.h */
 #define do_div(n, base) ({ \
     uint32_t __base = (base); \
@@ -74,7 +71,7 @@ static constexpr auto hcall_page_msr = 0xC0000500;
 static constexpr auto xen_leaf_base = 0x40000100;
 static constexpr auto xen_leaf(int i) { return xen_leaf_base + i; }
 
-static void make_xen_ids(xen_domain *dom, xen *xen)
+static void make_xen_ids(microv_domain *dom, xen *xen)
 {
     if (dom->initdom()) {
         xen->domid = 0;
@@ -860,7 +857,7 @@ bool xen::handle_hlt(
     return true;
 }
 
-bool xen::hypercall(xen_vcpu *vcpu)
+bool xen::hypercall(microv_vcpu *vcpu)
 {
     if (vcpu->rax() != __HYPERVISOR_console_io &&
         !(vcpu->rax() == __HYPERVISOR_vcpu_op &&
@@ -905,7 +902,7 @@ bool xen::hypercall(xen_vcpu *vcpu)
     }
 }
 
-xen::xen(xen_vcpu *vcpu, xen_domain *dom) :
+xen::xen(microv_vcpu *vcpu, microv_domain *dom) :
     m_vcpu{vcpu},
     m_dom{dom},
     m_domctl{std::make_unique<class domctl>(this)},

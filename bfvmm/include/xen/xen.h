@@ -61,7 +61,7 @@ private:
     bool handle_interrupt(base_vcpu *vcpu, interrupt_handler::info_t &);
 
     /* Hypercall handlers */
-    bool hypercall(xen_vcpu *vcpu);
+    bool hypercall(microv_vcpu *vcpu);
     bool handle_memory_op();
     bool handle_xen_version();
     bool handle_hvm_op();
@@ -76,8 +76,8 @@ private:
     bool handle_vcpu_op();
     bool handle_vm_assist();
 
-    xen_vcpu *m_vcpu{};
-    xen_domain *m_dom{};
+    microv_vcpu *m_vcpu{};
+    microv_domain *m_dom{};
 
     friend class domctl;
     friend class gnttab;
@@ -122,7 +122,7 @@ public:
     uint32_t apicid{};
     uint32_t acpiid{};
 
-    xen(xen_vcpu *vcpu, xen_domain *dom);
+    xen(microv_vcpu *vcpu, microv_domain *dom);
     ~xen() = default;
 
     xen(xen &&) = default;

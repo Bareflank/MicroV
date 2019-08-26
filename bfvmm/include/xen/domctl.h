@@ -30,7 +30,7 @@ namespace microv {
 class domctl {
 private:
     xen *m_xen{};
-    xen_vcpu *m_vcpu{};
+    microv_vcpu *m_vcpu{};
 
 public:
     bool handle(xen_domctl_t *ctl);

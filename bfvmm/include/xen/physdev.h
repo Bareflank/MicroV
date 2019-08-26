@@ -29,7 +29,7 @@ namespace microv {
 
 class physdev {
     xen *m_xen{};
-    xen_vcpu *m_vcpu{};
+    microv_vcpu *m_vcpu{};
 
 public:
     bool pci_device_add();

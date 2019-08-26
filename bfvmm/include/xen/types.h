@@ -49,9 +49,9 @@ class evtchn;
 class xenver;
 
 using xen = microv::xen;
-using xen_vcpu = microv::intel_x64::vcpu;
-using xen_domain = microv::intel_x64::domain;
 using base_vcpu = bfvmm::intel_x64::vcpu;
+using microv_vcpu = microv::intel_x64::vcpu;
+using microv_domain = microv::intel_x64::domain;
 using hlt_handler = bfvmm::intel_x64::hlt_handler;
 using interrupt_handler = bfvmm::intel_x64::external_interrupt_handler;
 using wrmsr_handler = bfvmm::intel_x64::wrmsr_handler;

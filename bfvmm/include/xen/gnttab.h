@@ -37,7 +37,7 @@ class gnttab {
 
     uint32_t m_version{};
     xen *m_xen{};
-    xen_vcpu *m_vcpu{};
+    microv_vcpu *m_vcpu{};
     std::vector<page_ptr<shared_entry_t>> m_shared_gnttab;
 
 public:

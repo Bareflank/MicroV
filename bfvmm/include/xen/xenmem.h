@@ -29,7 +29,7 @@ namespace microv {
 
 class xenmem {
     xen *m_xen{};
-    xen_vcpu *m_vcpu{};
+    microv_vcpu *m_vcpu{};
 
 public:
     /* boot */

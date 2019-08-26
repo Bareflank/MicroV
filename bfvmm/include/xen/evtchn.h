@@ -193,7 +193,7 @@ private:
     std::vector<page_ptr<chan_t>> m_event_chans{};
 
     xen *m_xen{};
-    xen_vcpu *m_vcpu{};
+    microv_vcpu *m_vcpu{};
     uint64_t m_cb_via{};
     port_t m_port_end{1};
 
