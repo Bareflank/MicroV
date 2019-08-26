@@ -237,7 +237,7 @@ endfunction(add_vm_targets)
 
 if(BUILD_XEN_GUEST)
     add_custom_target_category("MicroV Guest VMs")
-    add_vm_targets(vm)
     add_vm_targets(xsvm)
     add_vm_targets(ndvm)
+    add_vm_targets(vpnvm)
 endif()
