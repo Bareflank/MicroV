@@ -52,11 +52,6 @@ set(MICROV_SOURCE_UTIL_DIR ${MICROV_SOURCE_ROOT_DIR}/scripts/util
     "MICROV Utility directory"
 )
 
-set(MICROV_SOURCE_BFDRIVER_DIR ${MICROV_SOURCE_ROOT_DIR}/bfdriver
-    CACHE INTERNAL
-    "MICROV bfdriver source dir"
-)
-
 set(MICROV_SOURCE_BFEXEC_DIR ${MICROV_SOURCE_ROOT_DIR}/bfexec
     CACHE INTERNAL
     "MICROV bfexec source dir"
@@ -77,6 +72,7 @@ set(MICROV_SOURCE_BFVMM_DIR ${MICROV_SOURCE_ROOT_DIR}/bfvmm
     "MICROV bfvmm source dir"
 )
 
+set(BR_OVERLAY_DIR ${MICROV_SOURCE_ROOT_DIR}/overlays)
 set(BR_SRC_DIR ${MICROV_SOURCE_ROOT_DIR}/deps/buildroot)
 set(BR_BIN_DIR ${CACHE_DIR}/brbuild)
 

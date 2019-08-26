@@ -1230,7 +1230,6 @@ common_destroy(uint64_t domainid)
     platform_free_rw(vm->dsdt, BAREFLANK_PAGE_SIZE);
     platform_free_rw(vm->addr, vm->size);
 
-    // TODO free PVH specific stuff
     if (vm->exec_mode == VM_EXEC_XENPVH) {
         platform_free_rw(vm->pvh_console, BAREFLANK_PAGE_SIZE);
         platform_free_rw(vm->pvh_store, BAREFLANK_PAGE_SIZE);

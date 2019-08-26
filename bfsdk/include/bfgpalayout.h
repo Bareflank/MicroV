@@ -105,6 +105,9 @@ enum e820_type {
 #define PVH_LOAD_GPA            0x1000000
 #define XAPIC_GPA               0xFEE00000
 
+#define PVH_MAX_MFN             0xFFFFF
+#define PVH_MEM_SIZE            (1UL << 32)
+
 int64_t
 add_e820_entry(void *vm, uint64_t saddr, uint64_t eaddr, uint32_t type);
 
@@ -147,7 +150,7 @@ setup_e820_map(void *vm, uint64_t size, uint32_t load_addr)
     ret |= add_e820_entry(vm, 0x0000000000000000, 0x00000000000E8000, E820_TYPE_RAM);
     ret |= add_e820_entry(vm, 0x00000000000E8000, load_addr, E820_TYPE_RESERVED);
     ret |= add_e820_entry(vm, load_addr, load_addr + size, E820_TYPE_RAM);
-    ret |= add_e820_entry(vm, 0x00000000FEC00000, 0x00000000FFFFFFFF, E820_TYPE_RESERVED);
+    ret |= add_e820_entry(vm, 0x00000000FEC00000, PVH_MEM_SIZE - 1, E820_TYPE_RESERVED);
 
     if (ret != SUCCESS) {
         BFALERT("setup_e820_map: add_e820_entry failed to add E820 entries\n");

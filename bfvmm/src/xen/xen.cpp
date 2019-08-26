@@ -308,6 +308,10 @@ bool xen::handle_memory_op()
             return m_xenmem->add_to_physmap();
         case XENMEM_decrease_reservation:
             return m_xenmem->decrease_reservation();
+        case XENMEM_get_sharing_freed_pages:
+            return m_xenmem->get_sharing_freed_pages();
+        case XENMEM_get_sharing_shared_pages:
+            return m_xenmem->get_sharing_shared_pages();
         default:
             break;
         }
@@ -463,6 +467,12 @@ bool xen::handle_sysctl()
 {
     auto ctl = m_vcpu->map_arg<xen_sysctl_t>(m_vcpu->rdi());
     return m_sysctl->handle(ctl.get());
+}
+
+bool xen::handle_domctl()
+{
+    auto ctl = m_vcpu->map_arg<xen_domctl_t>(m_vcpu->rdi());
+    return m_domctl->handle(ctl.get());
 }
 
 bool xen::handle_grant_table_op()
@@ -852,9 +862,16 @@ bool xen::handle_hlt(
 
 bool xen::hypercall(xen_vcpu *vcpu)
 {
-    //if (vcpu->rax() != __HYPERVISOR_console_io && m_dom->ndvm()) {
-    //    printf("xen: hypercall %lu:%lu\n", vcpu->rax(), vcpu->rdi());
-    //}
+    if (vcpu->rax() != __HYPERVISOR_console_io &&
+        !(vcpu->rax() == __HYPERVISOR_vcpu_op &&
+          vcpu->rdi() == VCPUOP_set_singleshot_timer) && !m_dom->ndvm()) {
+        if (vcpu->rdi() > (1UL << 32)) {
+            /* likely an address in rdi */
+            printf("xen: hypercall %lu:0x%lx\n", vcpu->rax(), vcpu->rdi());
+        } else {
+            printf("xen: hypercall %lu:%lu\n", vcpu->rax(), vcpu->rdi());
+        }
+    }
 
     switch (vcpu->rax()) {
     case __HYPERVISOR_memory_op:
@@ -873,6 +890,8 @@ bool xen::hypercall(xen_vcpu *vcpu)
         return this->handle_console_io();
     case __HYPERVISOR_sysctl:
         return this->handle_sysctl();
+    case __HYPERVISOR_domctl:
+        return this->handle_domctl();
     case __HYPERVISOR_xsm_op:
         return this->handle_xsm_op();
     case __HYPERVISOR_physdev_op:
@@ -889,6 +908,7 @@ bool xen::hypercall(xen_vcpu *vcpu)
 xen::xen(xen_vcpu *vcpu, xen_domain *dom) :
     m_vcpu{vcpu},
     m_dom{dom},
+    m_domctl{std::make_unique<class domctl>(this)},
     m_evtchn{std::make_unique<class evtchn>(this)},
     m_gnttab{std::make_unique<class gnttab>(this)},
     m_physdev{std::make_unique<class physdev>(this)},

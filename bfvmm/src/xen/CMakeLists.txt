@@ -29,6 +29,7 @@ target_include_directories(microv_xen PUBLIC
     $<${BUILD_INCLUDE}:${CMAKE_BINARY_DIR}/include>
 )
 target_sources(microv_xen PRIVATE
+    $<${X64}:domctl.cpp>
     $<${X64}:evtchn.cpp>
     $<${X64}:gnttab.cpp>
     $<${X64}:physdev.cpp>

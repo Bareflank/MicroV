@@ -19,35 +19,31 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#ifndef MICROV_XEN_SYSCTL_H
-#define MICROV_XEN_SYSCTL_H
+#ifndef MICROV_XEN_DOMCTL_H
+#define MICROV_XEN_DOMCTL_H
 
 #include "types.h"
-#include <public/sysctl.h>
+#include <public/domctl.h>
 
 namespace microv {
 
-class sysctl {
+class domctl {
 private:
     xen *m_xen{};
     xen_vcpu *m_vcpu{};
 
 public:
-    bool handle(xen_sysctl_t *ctl);
-    bool getdomaininfolist(xen_sysctl_t *ctl);
+    bool handle(xen_domctl_t *ctl);
+    bool createdomain(xen_domctl_t *ctl);
 
-    /* called from xl create */
-    bool physinfo(xen_sysctl_t *ctl);
-    bool cpupool_op(xen_sysctl_t *ctl);
+    domctl(xen *xen);
+    ~domctl() = default;
 
-    sysctl(xen *xen);
-    ~sysctl() = default;
+    domctl(domctl &&) = default;
+    domctl &operator=(domctl &&) = default;
 
-    sysctl(sysctl &&) = default;
-    sysctl &operator=(sysctl &&) = default;
-
-    sysctl(const sysctl &) = delete;
-    sysctl &operator=(const sysctl &) = delete;
+    domctl(const domctl &) = delete;
+    domctl &operator=(const domctl &) = delete;
 };
 
 }

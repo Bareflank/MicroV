@@ -32,9 +32,14 @@ class xenmem {
     xen_vcpu *m_vcpu{};
 
 public:
+    /* boot */
     bool memory_map();
     bool add_to_physmap();
     bool decrease_reservation();
+
+    /* xl create */
+    bool get_sharing_freed_pages();
+    bool get_sharing_shared_pages();
 
     xenmem(xen *xen);
     ~xenmem() = default;

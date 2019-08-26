@@ -23,6 +23,7 @@
 #define MICROV_XEN_H
 
 #include "types.h"
+#include "domctl.h"
 #include "evtchn.h"
 #include "gnttab.h"
 #include "physdev.h"
@@ -70,6 +71,7 @@ private:
     bool handle_xsm_op();
     bool handle_console_io();
     bool handle_sysctl();
+    bool handle_domctl();
     bool handle_physdev_op();
     bool handle_vcpu_op();
     bool handle_vm_assist();
@@ -77,6 +79,7 @@ private:
     xen_vcpu *m_vcpu{};
     xen_domain *m_dom{};
 
+    friend class domctl;
     friend class gnttab;
     friend class evtchn;
     friend class sysctl;
@@ -84,6 +87,7 @@ private:
     friend class xenver;
     friend class physdev;
 
+    std::unique_ptr<class domctl> m_domctl;
     std::unique_ptr<class gnttab> m_gnttab;
     std::unique_ptr<class evtchn> m_evtchn;
     std::unique_ptr<class sysctl> m_sysctl;

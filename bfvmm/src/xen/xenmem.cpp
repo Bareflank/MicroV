@@ -28,6 +28,20 @@ xenmem::xenmem(xen *xen) : m_xen{xen}, m_vcpu{xen->m_vcpu}
 {
 }
 
+/* Called from xl create path */
+bool xenmem::get_sharing_freed_pages()
+{
+    m_vcpu->set_rax(0);
+    return true;
+}
+
+bool xenmem::get_sharing_shared_pages()
+{
+    m_vcpu->set_rax(0);
+    return true;
+}
+
+/* Called from boot path */
 bool xenmem::memory_map()
 {
     auto map = m_vcpu->map_arg<xen_memory_map_t>(m_vcpu->rsi());
