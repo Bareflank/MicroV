@@ -19,6 +19,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+#include <hve/arch/intel_x64/vcpu.h>
 #include <stdlib.h>
 #include <compiler.h>
 #include <xen/xenver.h>

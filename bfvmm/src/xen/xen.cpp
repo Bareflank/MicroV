@@ -36,6 +36,7 @@
 #include <xen/gnttab.h>
 #include <xen/physdev.h>
 #include <xen/sysctl.h>
+#include <xen/util.h>
 #include <xen/xenmem.h>
 #include <xen/xenver.h>
 #include <xen/xen.h>
@@ -914,6 +915,8 @@ xen::xen(microv_vcpu *vcpu, microv_domain *dom) :
     m_sysctl{std::make_unique<class sysctl>(this)}
 {
     make_xen_ids(dom, this);
+    xen_uuid_t uuid;
+    make_xen_uuid(&uuid);
 
     m_tsc_khz = vcpu->m_yield_handler.m_tsc_freq;
     m_tsc_mul = (1000000000ULL << 32) / m_tsc_khz;

@@ -54,11 +54,17 @@ vmcall_domain_op_handler::domain_op__create_domain(vcpu *vcpu)
         auto arg = vcpu->map_arg<struct dom_info>(vcpu->rbx());
 
         info.flags = arg->flags;
-        info.tsc = arg->tsc;
         info.wc_sec = arg->wc_sec;
         info.wc_nsec = arg->wc_nsec;
+        info.tsc = arg->tsc;
+        info.ram = arg->ram;
 
         vcpu->set_rax(domain::generate_domainid());
+
+        /*
+         * If info.flags indicates XENPVH, a xen_domain will be created here
+         * in addition to a microv domain.
+         */
         g_dm->create(vcpu->rax(), &info);
     }
     catchall({
@@ -90,9 +96,16 @@ void vmcall_domain_op_handler::domain_op__hvc_rx_put(vcpu *vcpu)
         expects(foreign_domain(vcpu));
 
         auto dom = get_domain(vcpu->rbx());
+        auto xen = dom->xen_dom();
+        if (!xen) {
+            bferror_nhex(0, "NULL xen domain for domain = ", vcpu->rbx());
+            vcpu->set_rax(0);
+            return;
+        }
+
         auto len = vcpu->rdx();
         auto buf = vcpu->map_gva_4k<char>(vcpu->rcx(), len);
-        auto num = dom->hvc_rx_put(gsl::span(buf.get(), len));
+        auto num = xen->hvc_rx_put(gsl::span(buf.get(), len));
 
         dom->m_vcpu->load();
         dom->m_vcpu->queue_virq(VIRQ_CONSOLE);
@@ -111,14 +124,21 @@ void vmcall_domain_op_handler::domain_op__hvc_tx_get(vcpu *vcpu)
         expects(foreign_domain(vcpu));
 
         auto dom = get_domain(vcpu->rbx());
+        auto xen = dom->xen_dom();
+        if (!xen) {
+            bferror_nhex(0, "NULL xen domain for domain = ", vcpu->rbx());
+            vcpu->set_rax(0);
+            return;
+        }
+
         auto len = vcpu->rdx();
         auto buf = vcpu->map_gva_4k<char>(vcpu->rcx(), len);
-        auto num = dom->hvc_tx_get(gsl::span(buf.get(), len));
+        auto num = xen->hvc_tx_get(gsl::span(buf.get(), len));
 
         vcpu->set_rax(num);
     }
     catchall({
-        vcpu->set_rax(FAILURE);
+        vcpu->set_rax(0);
     })
 }
 

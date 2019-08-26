@@ -346,10 +346,11 @@ __uart_ndec_op(uint16_t port, uint64_t val)
 #define DOMF_NDVM (1ULL << 5)
 
 struct dom_info {
-    uint64_t flags;   /* DOMF_* bitmask */
-    uint64_t wc_sec;  /* seconds since UNIX epoch */
-    uint64_t wc_nsec; /* nanoseconds since UNIX epoch */
-    uint64_t tsc;     /* TSC value associated with above wc_* times */
+    uint64_t flags;     /* DOMF_* bitmask */
+    uint64_t wc_sec;    /* seconds since UNIX epoch */
+    uint64_t wc_nsec;   /* nanoseconds since UNIX epoch */
+    uint64_t tsc;       /* TSC value associated with above wc_* times */
+    uint64_t ram;       /* bytes of ram */
 };
 
 static inline domainid_t

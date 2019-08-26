@@ -815,6 +815,11 @@ setup_kernel(struct vm_t *vm, struct create_vm_args *args)
         return FAILURE;
     }
 
+    if (args->ram >= UVG_MAX_BYTES) {
+        BFDEBUG("setup_kernel: VM ram exceeds 4G limit\n");
+        return FAILURE;
+    }
+
     switch (args->exec_mode) {
     case VM_EXEC_NATIVE:
         if (args->file_type != VM_FILE_BZIMAGE) {
@@ -1147,6 +1152,7 @@ void init_dom_info(struct dom_info *info, const struct create_vm_args *args)
     info->wc_sec = args->wc_sec;
     info->wc_nsec = args->wc_nsec;
     info->tsc = args->tsc;
+    info->ram = args->ram;
 }
 
 int64_t common_create_vm(struct create_vm_args *args)
@@ -1155,11 +1161,16 @@ int64_t common_create_vm(struct create_vm_args *args)
     struct dom_info info;
     struct vm_t *vm = acquire_vm();
 
-    args->domainid = INVALID_DOMAINID;
-
     if (bfack() == 0) {
         return COMMON_NO_HYPERVISOR;
     }
+
+    /* Set to valid domain id if creation succeeds below */
+    args->domainid = INVALID_DOMAINID;
+
+    /* Round to next 4K page */
+    args->ram &= ~(BAREFLANK_PAGE_SIZE - 1);
+    args->ram += BAREFLANK_PAGE_SIZE;
 
     init_dom_info(&info, args);
     vm->domainid = __domain_op__create_domain(&info);

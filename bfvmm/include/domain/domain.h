@@ -24,6 +24,7 @@
 
 #include <bftypes.h>
 #include <bfobject.h>
+#include <bfgpalayout.h>
 #include <bfhypercall.h>
 
 // -----------------------------------------------------------------------------
@@ -36,10 +37,60 @@ namespace microv
 struct domain_info : public bfobject {
     virtual ~domain_info() = default;
 
+    /* DOMF_* flags (see bfhypercall.h) */
     uint64_t flags{};
-    uint64_t tsc;
+
+    /* Time of domain creation */
     uint64_t wc_sec{};
     uint64_t wc_nsec{};
+    uint64_t tsc;
+
+    /* Bytes of RAM */
+    uint64_t ram{};
+
+    void copy(const domain_info *info)
+    {
+        flags = info->flags;
+        wc_sec = info->wc_sec;
+        wc_nsec = info->wc_nsec;
+        tsc = info->tsc;
+        ram = info->ram;
+    }
+
+    bool is_xen_dom() const noexcept
+    {
+        return flags & DOMF_EXEC_XENPVH;
+    }
+
+    bool is_xenstore() const noexcept
+    {
+        return flags & DOMF_XENSTORE;
+    }
+
+    bool using_hvc() const noexcept
+    {
+        return flags & DOMF_XENHVC;
+    }
+
+    bool is_ndvm() const noexcept
+    {
+        return flags & DOMF_NDVM;
+    }
+
+    uint64_t total_ram() const noexcept
+    {
+        return ram;
+    }
+
+    uint64_t total_ram_pages() const noexcept
+    {
+        return this->total_ram() >> UVG_PAGE_SHIFT;
+    }
+
+    uint64_t max_mfn() const noexcept
+    {
+        return this->total_ram_pages() - 1;
+    }
 };
 
 /// Domain

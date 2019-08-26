@@ -105,8 +105,16 @@ enum e820_type {
 #define PVH_LOAD_GPA            0x1000000
 #define XAPIC_GPA               0xFEE00000
 
-#define PVH_MAX_MFN             0xFFFFF
-#define PVH_MEM_SIZE            (1UL << 32)
+/* Maximum number of bytes allocated to microv guests */
+#define UVG_MAX_BYTES           (1ULL << 32)
+
+/* Microv guests use 4K pages */
+#define UVG_PAGE_SHIFT          12
+#define UVG_PAGE_SIZE           (1ULL << UVG_PAGE_SHIFT)
+
+/* Max number of 4K pages allocated to PVH guests */
+#define UVG_MAX_PAGES           (UVG_MAX_BYTES >> UVG_PAGE_SHIFT)
+#define UVG_MAX_MFN             (UVG_MAX_PAGES - 1)
 
 int64_t
 add_e820_entry(void *vm, uint64_t saddr, uint64_t eaddr, uint32_t type);
@@ -133,10 +141,6 @@ setup_e820_map(void *vm, uint64_t size, uint32_t load_addr)
 {
     status_t ret = 0;
 
-    // Round up to the next 4K page
-    size &= ~0xFFFULL;
-    size += 0x1000ULL;
-
     if (size >= 0xFDC00000) {
         BFALERT("setup_e820_map: unsupported amount of RAM\n");
         return FAILURE;
@@ -147,10 +151,10 @@ setup_e820_map(void *vm, uint64_t size, uint32_t load_addr)
         return FAILURE;
     }
 
-    ret |= add_e820_entry(vm, 0x0000000000000000, 0x00000000000E8000, E820_TYPE_RAM);
-    ret |= add_e820_entry(vm, 0x00000000000E8000, load_addr, E820_TYPE_RESERVED);
+    ret |= add_e820_entry(vm, 0, 0xE8000, E820_TYPE_RAM);
+    ret |= add_e820_entry(vm, 0xE8000, load_addr, E820_TYPE_RESERVED);
     ret |= add_e820_entry(vm, load_addr, load_addr + size, E820_TYPE_RAM);
-    ret |= add_e820_entry(vm, 0x00000000FEC00000, PVH_MEM_SIZE - 1, E820_TYPE_RESERVED);
+    ret |= add_e820_entry(vm, 0xFEC00000, 0xFFFFFFFF, E820_TYPE_RESERVED);
 
     if (ret != SUCCESS) {
         BFALERT("setup_e820_map: add_e820_entry failed to add E820 entries\n");

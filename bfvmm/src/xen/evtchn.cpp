@@ -19,6 +19,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+#include <hve/arch/intel_x64/vcpu.h>
 #include <xen/evtchn.h>
 #include <xen/virq.h>
 #include <xen/xen.h>

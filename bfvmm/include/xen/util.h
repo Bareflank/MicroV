@@ -19,47 +19,16 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#ifndef MICROV_XEN_TYPES_H
-#define MICROV_XEN_TYPES_H
+#ifndef MICROV_XEN_UTIL_H
+#define MICROV_XEN_UTIL_H
 
-#include <atomic>
-#include <bfhypercall.h>
-#include <bfmath.h>
-#include <bfobject.h>
-#include <bftypes.h>
-#include <bfvmm/hve/arch/x64/unmapper.h>
-#include <bfvmm/memory_manager/memory_manager.h>
+#include "types.h"
+#include <public/xen.h>
 
-/* Base hypervisor vcpu */
-namespace bfvmm::intel_x64 {
-    class vcpu;
-    class hlt_handler;
-    class external_interrupt_handler;
-    class wrmsr_handler;
-}
+/* Create a new domain ID */
+domid_t make_xen_domid() noexcept;
 
-/* Microv vcpu and domain */
-namespace microv::intel_x64 {
-    class domain;
-    class vcpu;
-}
-
-namespace microv {
-
-class xen;
-class gnttab;
-class evtchn;
-class xenver;
-
-using xen = microv::xen;
-using microv_vcpu = microv::intel_x64::vcpu;
-using microv_domain = microv::intel_x64::domain;
-
-using base_vcpu = bfvmm::intel_x64::vcpu;
-using hlt_handler = bfvmm::intel_x64::hlt_handler;
-using interrupt_handler = bfvmm::intel_x64::external_interrupt_handler;
-using wrmsr_handler = bfvmm::intel_x64::wrmsr_handler;
-
-}
+/* Create a 16-byte UUID. */
+void make_xen_uuid(xen_uuid_t *uuid);
 
 #endif

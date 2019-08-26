@@ -23,11 +23,11 @@
 #include <bfgpalayout.h>
 #include <bfhypercall.h>
 #include <bfbuilderinterface.h>
-
-#include <ring.h>
 #include <hve/arch/intel_x64/domain.h>
+#include <xen/domain.h>
 
 using namespace bfvmm::intel_x64;
+using namespace microv;
 
 // -----------------------------------------------------------------------------
 // Implementation
@@ -39,17 +39,21 @@ namespace microv::intel_x64
 domain::domain(id_t domainid, struct domain_info *info) :
     microv::domain{domainid}
 {
-    /* Set start-of-day info */
-    m_sod_info.flags = info->flags;
-    m_sod_info.tsc = info->tsc;
-    m_sod_info.wc_sec = info->wc_sec;
-    m_sod_info.wc_nsec = info->wc_nsec;
+    m_sod_info.copy(info);
 
     if (domainid == 0) {
         this->setup_dom0();
     }
     else {
         this->setup_domU();
+    }
+}
+
+domain::~domain()
+{
+    if (m_sod_info.is_xen_dom()) {
+        put_xen_domain(m_xen_domid);
+        destroy_xen_domain(m_xen_domid);
     }
 }
 
@@ -73,9 +77,9 @@ domain::setup_dom0()
 void
 domain::setup_domU()
 {
-    if (m_sod_info.flags & DOMF_XENHVC) {
-        m_hvc_rx_ring = std::make_unique<microv::ring<HVC_RX_SIZE>>();
-        m_hvc_tx_ring = std::make_unique<microv::ring<HVC_TX_SIZE>>();
+    if (m_sod_info.is_xen_dom()) {
+        m_xen_domid = create_xen_domain(sod_info());
+        m_xen_dom = get_xen_domain(m_xen_domid);
     }
 }
 
@@ -155,18 +159,6 @@ domain::set_uart(uart::port_type uart) noexcept
 void
 domain::set_pt_uart(uart::port_type uart) noexcept
 { m_pt_uart_port = uart; }
-
-size_t domain::hvc_rx_put(const gsl::span<char> &span)
-{ return m_hvc_rx_ring->put(span); }
-
-size_t domain::hvc_rx_get(const gsl::span<char> &span)
-{ return m_hvc_rx_ring->get(span); }
-
-size_t domain::hvc_tx_put(const gsl::span<char> &span)
-{ return m_hvc_tx_ring->put(span); }
-
-size_t domain::hvc_tx_get(const gsl::span<char> &span)
-{ return m_hvc_tx_ring->get(span); }
 
 void
 domain::setup_vcpu_uarts(gsl::not_null<vcpu *> vcpu)

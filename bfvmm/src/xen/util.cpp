@@ -19,47 +19,54 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#ifndef MICROV_XEN_TYPES_H
-#define MICROV_XEN_TYPES_H
-
 #include <atomic>
-#include <bfhypercall.h>
-#include <bfmath.h>
-#include <bfobject.h>
-#include <bftypes.h>
-#include <bfvmm/hve/arch/x64/unmapper.h>
-#include <bfvmm/memory_manager/memory_manager.h>
+#include <string.h>
+#include <printv.h>
+#include <xen/util.h>
 
-/* Base hypervisor vcpu */
-namespace bfvmm::intel_x64 {
-    class vcpu;
-    class hlt_handler;
-    class external_interrupt_handler;
-    class wrmsr_handler;
+extern "C" uint64_t _rdrand64(uint64_t *data) noexcept;
+
+static uint64_t rdrand64(uint64_t *data) noexcept
+{
+    constexpr int retries = 8;
+    int i = 0;
+    uint64_t success = 0;
+    uint64_t rand = 0;
+
+    do {
+        success = _rdrand64(&rand);
+    } while (++i < retries && !success);
+
+    if (success) {
+        *data = rand;
+        return 1;
+    }
+
+    return 0;
 }
 
-/* Microv vcpu and domain */
-namespace microv::intel_x64 {
-    class domain;
-    class vcpu;
+domid_t make_xen_domid() noexcept
+{
+    static_assert(std::atomic<domid_t>::is_always_lock_free);
+    static std::atomic<domid_t> domid = 0;
+
+    return domid.fetch_add(1);
 }
 
-namespace microv {
+void make_xen_uuid(xen_uuid_t *uuid)
+{
+    uint64_t low, high, success;
 
-class xen;
-class gnttab;
-class evtchn;
-class xenver;
+    static_assert(sizeof(*uuid) == 16);
+    static_assert(sizeof(*uuid) == sizeof(low) + sizeof(high));
 
-using xen = microv::xen;
-using microv_vcpu = microv::intel_x64::vcpu;
-using microv_domain = microv::intel_x64::domain;
+    success = rdrand64(&low);
+    success &= rdrand64(&high);
 
-using base_vcpu = bfvmm::intel_x64::vcpu;
-using hlt_handler = bfvmm::intel_x64::hlt_handler;
-using interrupt_handler = bfvmm::intel_x64::external_interrupt_handler;
-using wrmsr_handler = bfvmm::intel_x64::wrmsr_handler;
+    if (!success) {
+        throw std::runtime_error("make_xen_uuid: RDRAND failed");
+    }
 
+    memcpy(uuid, &low, sizeof(low));
+    memcpy((uint8_t *)uuid + sizeof(low), &high, sizeof(high));
 }
-
-#endif

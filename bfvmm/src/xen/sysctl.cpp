@@ -19,6 +19,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+#include <hve/arch/intel_x64/vcpu.h>
+
 #include <bfgpalayout.h>
 #include <printv.h>
 #include <xen/sysctl.h>
@@ -41,36 +43,36 @@ sysctl::sysctl(xen *xen) : m_xen{xen}, m_vcpu{xen->m_vcpu}
 
 bool sysctl::getdomaininfolist(xen_sysctl_t *ctl)
 {
-    auto gdil = &ctl->u.getdomaininfolist;
-
-    expects(m_xen->m_dom->initdom());
-    expects(gdil->first_domain == m_xen->domid);
-    expects(gdil->max_domains == 1);
-
-    gdil->num_domains = 1;
-    auto buf = m_vcpu->map_gva_4k<xen_domctl_getdomaininfo_t>(
-                   gdil->buffer.p,
-                   gdil->max_domains);
-
-    auto info = buf.get();
-    info->domain = m_xen->domid;
-    info->flags |= XEN_DOMINF_hvm_guest;
-    info->flags |= XEN_DOMINF_running;
-    info->flags |= XEN_DOMINF_xs_domain;
-    info->flags |= XEN_DOMINF_hap;
-    info->tot_pages = TOTAL_PAGES;
-    info->max_pages = 0;
-    info->outstanding_pages = 0;
-    info->shr_pages = 0;
-    info->paged_pages = 0;
-    info->shared_info_frame = m_xen->m_shinfo_gpfn;
-    info->cpu_time = 0;
-    info->nr_online_vcpus = 1;
-    info->max_vcpu_id = m_xen->vcpuid;
-    info->ssidref = 0;
-    memcpy(&info->handle, &m_xen->xdh, sizeof(xen_domain_handle_t));
-    info->cpupool = -1; /* CPUPOOLID_NONE */
-    info->arch_config.emulation_flags = 0;
+//    auto gdil = &ctl->u.getdomaininfolist;
+//
+//    expects(m_xen->m_dom->initdom());
+//    expects(gdil->first_domain == m_xen->domid);
+//    expects(gdil->max_domains == 1);
+//
+//    gdil->num_domains = 1;
+//    auto buf = m_vcpu->map_gva_4k<xen_domctl_getdomaininfo_t>(
+//                   gdil->buffer.p,
+//                   gdil->max_domains);
+//
+//    auto info = buf.get();
+//    info->domain = m_xen->domid;
+//    info->flags |= XEN_DOMINF_hvm_guest;
+//    info->flags |= XEN_DOMINF_running;
+//    info->flags |= XEN_DOMINF_xs_domain;
+//    info->flags |= XEN_DOMINF_hap;
+//    info->tot_pages = TOTAL_PAGES;
+//    info->max_pages = 0;
+//    info->outstanding_pages = 0;
+//    info->shr_pages = 0;
+//    info->paged_pages = 0;
+//    info->shared_info_frame = m_xen->m_shinfo_gpfn;
+//    info->cpu_time = 0;
+//    info->nr_online_vcpus = 1;
+//    info->max_vcpu_id = m_xen->vcpuid;
+//    info->ssidref = 0;
+//    memcpy(&info->handle, &m_xen->xdh, sizeof(xen_domain_handle_t));
+//    info->cpupool = -1; /* CPUPOOLID_NONE */
+//    info->arch_config.emulation_flags = 0;
 
     m_vcpu->set_rax(0);
     return true;
@@ -79,32 +81,32 @@ bool sysctl::getdomaininfolist(xen_sysctl_t *ctl)
 /* Called from xl create in dom 0 */
 bool sysctl::physinfo(xen_sysctl_t *ctl)
 {
-    auto info = &ctl->u.physinfo;
-
-     /* the core counts may need to be massaged for migrating to bfexec */
-    info->threads_per_core = 1;
-    info->cores_per_socket = 1;
-    info->nr_cpus = 1; /* # online cpus */
-    info->max_cpu_id = 0;
-    info->nr_nodes = 1; /* # numa nodes */
-    info->max_node_id = 0;
-    info->cpu_khz = m_xen->m_tsc_khz;
-    info->capabilities = XEN_SYSCTL_PHYSCAP_hvm;
-    info->capabilities |= XEN_SYSCTL_PHYSCAP_directio;
-    info->max_mfn = PVH_MAX_MFN;
-    info->total_pages = TOTAL_PAGES;
-    info->free_pages = TOTAL_PAGES; /* TODO */
-    info->scrub_pages = 0; /* TODO */
-    info->outstanding_pages = 0; /* TODO */
-
-    m_vcpu->set_rax(0);
-
-    static bool pr_create = true;
-    if (pr_create) {
-        bfdebug_info(0, "BEGIN XL CREATE");
-        pr_create = false;
-    }
-
+//    auto info = &ctl->u.physinfo;
+//
+//     /* the core counts may need to be massaged for migrating to bfexec */
+//    info->threads_per_core = 1;
+//    info->cores_per_socket = 1;
+//    info->nr_cpus = 1; /* # online cpus */
+//    info->max_cpu_id = 0;
+//    info->nr_nodes = 1; /* # numa nodes */
+//    info->max_node_id = 0;
+//    info->cpu_khz = m_xen->m_tsc_khz;
+//    info->capabilities = XEN_SYSCTL_PHYSCAP_hvm;
+//    info->capabilities |= XEN_SYSCTL_PHYSCAP_directio;
+//    info->max_mfn = PVH_MAX_MFN;
+//    info->total_pages = TOTAL_PAGES;
+//    info->free_pages = TOTAL_PAGES; /* TODO */
+//    info->scrub_pages = 0; /* TODO */
+//    info->outstanding_pages = 0; /* TODO */
+//
+//    m_vcpu->set_rax(0);
+//
+//    static bool pr_create = true;
+//    if (pr_create) {
+//        bfdebug_info(0, "BEGIN XL CREATE");
+//        pr_create = false;
+//    }
+//
     return true;
 }
 

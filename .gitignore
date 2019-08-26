@@ -32,6 +32,8 @@ doxygen_warnings.txt
 tags
 *.swp
 
+*.cpio.gz
+*vmlinux
 *.o.*
 *.o.cmd
 *.ko.cmd

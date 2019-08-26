@@ -27,6 +27,7 @@
 
 #include "uart.h"
 #include "../../../ring.h"
+#include "../../../xen/domain.h"
 #include "../../../domain/domain.h"
 #include "../../../domain/manager.h"
 
@@ -56,7 +57,7 @@ public:
     /// @expects
     /// @ensures
     ///
-    ~domain() = default;
+    ~domain();
 
     /// Add E820 Map Entry
     ///
@@ -227,6 +228,7 @@ public:
     ///
     uint64_t exec_mode() noexcept;
 
+    xen_domain *xen_dom() noexcept { return m_xen_dom; }
     bool initdom() noexcept { return m_sod_info.flags & DOMF_XENINIT; }
     bool ndvm() noexcept { return m_sod_info.flags & DOMF_NDVM; }
 
@@ -279,11 +281,6 @@ public:
     /// @return the number of bytes transferred to the buffer
     ///
     uint64_t dump_uart(const gsl::span<char> &buffer);
-
-    size_t hvc_rx_put(const gsl::span<char> &span);
-    size_t hvc_rx_get(const gsl::span<char> &span);
-    size_t hvc_tx_put(const gsl::span<char> &span);
-    size_t hvc_tx_get(const gsl::span<char> &span);
 
     /// Domain Registers
     ///
@@ -430,11 +427,10 @@ public:
     { return &m_sod_info; }
 
 private:
+    friend class microv::xen_domain;
 
     void setup_dom0();
     void setup_domU();
-
-private:
 
     std::vector<e820_entry_t> m_e820;
     bfvmm::intel_x64::ept::mmap m_ept_map;
@@ -510,10 +506,9 @@ private:
 
     struct microv::domain_info m_sod_info{};
 
-    std::unique_ptr<microv::ring<HVC_RX_SIZE>> m_hvc_rx_ring;
-    std::unique_ptr<microv::ring<HVC_TX_SIZE>> m_hvc_tx_ring;
-
 public:
+    microv::xen_domid_t m_xen_domid{};
+    microv::xen_domain *m_xen_dom{};
     microv::intel_x64::vcpu *m_vcpu{};
 
     /// @cond
