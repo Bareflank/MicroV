@@ -37,6 +37,7 @@
 #include <xen/physdev.h>
 #include <xen/sysctl.h>
 #include <xen/util.h>
+#include <xen/time.h>
 #include <xen/xenmem.h>
 #include <xen/xenver.h>
 #include <xen/vcpu.h>
@@ -49,15 +50,6 @@
 #include <public/hvm/hvm_op.h>
 #include <public/hvm/params.h>
 #include <public/xsm/flask_op.h>
-
-/* Taken from xen/include/asm-x86/div64.h */
-#define do_div(n, base) ({ \
-    uint32_t __base = (base); \
-    uint32_t __rem; \
-    __rem = ((uint64_t)(n)) % __base; \
-    (n) = ((uint64_t)(n)) / __base; \
-    __rem; \
-})
 
 namespace microv {
 
@@ -101,38 +93,6 @@ static void make_xen_ids(microv_domain *dom, xen_vcpu *xen)
 
         ensures(xen->vcpuid < XEN_LEGACY_MAX_VCPUS);
     }
-}
-
-/*
- * ns <-> tsc conversion (copied from public/xen.h):
- *
- * ns = ((ticks << tsc_shift) * tsc_to_system_mul) >> 32
- * ns << 32 = (ticks << tsc_shift) * tsc_to_system_mul
- * ((ns << 32) / tsc_to_system_mul) = ticks << tsc_shift
- * ((ns << 32) / tsc_to_system_mul) >> tsc_shift = ticks
- *
- * CPU frequency (Hz):
- *   ((10^9 << 32) / tsc_to_system_mul) >> tsc_shift
- */
-
-static constexpr uint64_t s_to_ns(uint64_t sec)
-{
-    return sec * 1000000000ULL;
-}
-
-static inline uint64_t tsc_to_ns(uint64_t ticks, uint64_t shft, uint64_t mult)
-{
-    return ((ticks << shft) * mult) >> 32;
-}
-
-static inline uint64_t ns_to_tsc(uint64_t ns, uint64_t shft, uint64_t mult)
-{
-    return ((ns << 32) / mult) >> shft;
-}
-
-static inline uint64_t tsc_to_pet(uint64_t tsc, uint64_t pet_shift)
-{
-    return tsc >> pet_shift;
 }
 
 static bool handle_exception(base_vcpu *vcpu)
