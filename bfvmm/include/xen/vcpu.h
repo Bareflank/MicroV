@@ -99,11 +99,11 @@ private:
     std::unique_ptr<class xenver> m_xenver;
     std::unique_ptr<class physdev> m_physdev;
 
-    bfvmm::x64::unique_map<struct shared_info> m_shinfo{};
-    bfvmm::x64::unique_map<struct xencons_interface> m_console{};
-    bfvmm::x64::unique_map<uint8_t> m_store{};
-    bfvmm::x64::unique_map<struct vcpu_time_info> m_user_vti{};
-    bfvmm::x64::unique_map<struct vcpu_runstate_info> m_runstate{};
+    unique_map<struct shared_info> m_shinfo{};
+    unique_map<struct xencons_interface> m_console{};
+    unique_map<uint8_t> m_store{};
+    unique_map<struct vcpu_time_info> m_user_vti{};
+    unique_map<struct vcpu_runstate_info> m_runstate{};
 
     xen_domain_handle_t xdh{};
     struct xen_domctl_getdomaininfo info{};

@@ -184,12 +184,12 @@ private:
     uint64_t m_allocated_words{};
 
     evtchn_fifo_control_block_t *m_ctl_blk{};
-    bfvmm::x64::unique_map<uint8_t> m_ctl_blk_ump{};
+    unique_map<uint8_t> m_ctl_blk_ump{};
 
     std::array<queue_t, EVTCHN_FIFO_MAX_QUEUES> m_queues{};
     std::array<port_t, NR_VIRQS> m_virq_to_port;
 
-    std::vector<bfvmm::x64::unique_map<word_t>> m_event_words{};
+    std::vector<unique_map<word_t>> m_event_words{};
     std::vector<page_ptr<chan_t>> m_event_chans{};
 
     xen_vcpu *m_xen{};

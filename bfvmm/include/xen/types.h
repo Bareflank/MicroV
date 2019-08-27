@@ -60,6 +60,9 @@ using hlt_handler = bfvmm::intel_x64::hlt_handler;
 using interrupt_handler = bfvmm::intel_x64::external_interrupt_handler;
 using wrmsr_handler = bfvmm::intel_x64::wrmsr_handler;
 
+template<typename T>
+using unique_map = bfvmm::x64::unique_map<T>;
+
 }
 
 #endif
