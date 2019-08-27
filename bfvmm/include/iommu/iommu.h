@@ -85,7 +85,7 @@ private:
     size_t m_frcd_reg_bytes{};
     static constexpr size_t frcd_reg_len = 16;
 
-    std::vector<struct pci_dev *> m_host_devs{};
+    std::vector<struct pci_dev *> m_root_devs{};
     std::vector<struct pci_dev *> m_guest_devs{};
     bool m_scope_all{};
     bool m_remapping_dma{};

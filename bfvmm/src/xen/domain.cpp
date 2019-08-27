@@ -40,7 +40,7 @@ static std::mutex xen_ref_mutex;
 static std::unordered_map<xen_domid_t, map_t> xen_dom_map;
 static std::unordered_map<xen_domid_t, ref_t *> xen_ref_map;
 
-/* Construct from the domain_op__create_domain host vcpu path */
+/* Construct from the domain_op__create_domain root vcpu path */
 xen_domain::xen_domain(xen_domid_t id, const microv::domain_info *uv_info)
 {
     this->id = id;

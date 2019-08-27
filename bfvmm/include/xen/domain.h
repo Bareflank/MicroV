@@ -37,8 +37,8 @@ using xen_domid_t = domid_t;
  * This is the primary structure that contains information specific
  * to xen domains. There are two paths from which a xen domain can
  * be created:
- *   - domain_op__create_domain hypercall from a Bareflank host vcpu
- *   - domctl::createdomain hypercall from a Xen guest dom0
+ *   - domain_op__create_domain hypercall from a bareflank root vcpu
+ *   - domctl::createdomain hypercall from a xen guest dom0
  */
 struct xen_domain {
     xen_domid_t id{};

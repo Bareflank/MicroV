@@ -68,8 +68,8 @@ private:
     bool addr_out(base_vcpu *vcpu, base_info &info);
     bool data_out(base_vcpu *vcpu, base_info &info);
 
-    bool host_def_in(base_vcpu *vcpu, struct info &info);
-    bool host_def_out(base_vcpu *vcpu, struct info &info);
+    bool root_def_in(base_vcpu *vcpu, struct info &info);
+    bool root_def_out(base_vcpu *vcpu, struct info &info);
     bool guest_def_in(base_vcpu *vcpu, struct info &info);
     bool guest_def_out(base_vcpu *vcpu, struct info &info);
 

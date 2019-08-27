@@ -263,8 +263,8 @@ yield_handler::handle_hlt(
         auto yield = ((pet << m_pet_shift) * 1000) / m_tsc_freq;
 
         m_vcpu->save_xstate();
-        m_vcpu->parent_vcpu()->load();
-        m_vcpu->parent_vcpu()->return_yield(yield);
+        m_vcpu->root_vcpu()->load();
+        m_vcpu->root_vcpu()->return_yield(yield);
     }
 
     return true;

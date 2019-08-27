@@ -122,7 +122,7 @@ vcpu::vcpu(
     this->set_eptp(domain->ept());
 
     if (this->is_dom0()) {
-        nr_host_vcpus++;
+        nr_root_vcpus++;
         this->write_dom0_guest_state(domain);
 
         if (vcpu0 == nullptr) {
@@ -253,7 +253,7 @@ bool vcpu::handle_0x4BF00021(bfvmm::intel_x64::vcpu *vcpu)
 #endif
 
     vcpu->promote();
-    throw std::runtime_error("unreachable exception - promote failed");
+    throw std::runtime_error("promote failed");
 }
 
 void vcpu::queue_virq(uint32_t virq)
@@ -287,16 +287,16 @@ vcpu::add_vmcall_handler(
 { m_vmcall_handler.add_handler(std::move(d)); }
 
 //------------------------------------------------------------------------------
-// Parent vCPU
+// root vCPU
 //------------------------------------------------------------------------------
 
 void
-vcpu::set_parent_vcpu(gsl::not_null<vcpu *> vcpu)
-{ m_parent_vcpu = vcpu; }
+vcpu::set_root_vcpu(gsl::not_null<vcpu *> vcpu)
+{ m_root_vcpu = vcpu; }
 
 vcpu *
-vcpu::parent_vcpu() const
-{ return m_parent_vcpu; }
+vcpu::root_vcpu() const
+{ return m_root_vcpu; }
 
 void
 vcpu::return_hlt()
@@ -355,7 +355,7 @@ vcpu::halt(const std::string &str)
 {
     this->dump(("halting vcpu: " + str).c_str());
 
-    if (auto parent_vcpu = this->parent_vcpu()) {
+    if (auto root_vcpu = this->root_vcpu()) {
 
         bferror_lnbr(0);
         bferror_info(0, "child vcpu being killed");
@@ -363,8 +363,8 @@ vcpu::halt(const std::string &str)
 
         this->save_xstate();
 
-        parent_vcpu->load();
-        parent_vcpu->return_fault();
+        root_vcpu->load();
+        root_vcpu->return_fault();
     }
     else {
         ::x64::pm::stop();
@@ -526,30 +526,30 @@ uint64_t vcpu::pcpuid()
     if (this->is_dom0()) {
         return this->id();
     } else {
-        expects(m_parent_vcpu);
-        expects(m_parent_vcpu->is_dom0());
-        return m_parent_vcpu->id();
+        expects(m_root_vcpu);
+        expects(m_root_vcpu->is_dom0());
+        return m_root_vcpu->id();
     }
 }
 
-void vcpu::map_msi(const struct msi_desc *host_msi,
+void vcpu::map_msi(const struct msi_desc *root_msi,
                    const struct msi_desc *guest_msi)
 {
     if (this->is_domU()) {
-        expects(this->m_parent_vcpu);
-        expects(this->m_parent_vcpu->is_dom0());
-        m_parent_vcpu->map_msi(host_msi, guest_msi);
+        expects(this->m_root_vcpu);
+        expects(this->m_root_vcpu->is_dom0());
+        m_root_vcpu->map_msi(root_msi, guest_msi);
         return;
     }
 
-    validate_msi(host_msi);
+    validate_msi(root_msi);
     validate_msi(guest_msi);
 
     expects(m_lapic);
     expects(m_lapic->is_xapic());
 
-    const auto host_destid = host_msi->destid();
-    const auto host_vector = host_msi->vector();
+    const auto root_destid = root_msi->destid();
+    const auto root_vector = root_msi->vector();
 
     /*
      * Interpretation of destid depends on the destination mode of the ICR:
@@ -568,22 +568,22 @@ void vcpu::map_msi(const struct msi_desc *host_msi,
      */
 
     if (m_lapic->logical_dest()) {
-        for (uint64_t i = 0; i < nr_host_vcpus; i++) {
-            if (host_destid == (1UL << i)) {
-                auto key = host_vector;
-                auto host = get_host(i);
+        for (uint64_t i = 0; i < nr_root_vcpus; i++) {
+            if (root_destid == (1UL << i)) {
+                auto key = root_vector;
+                auto root = get_root(i);
 
-                expects(host->m_msi_map.count(key) == 0);
-                host->m_msi_map[key] = {host_msi, guest_msi};
-                printv("host_msi:  destid:0x%x vector:0x%x\n",
-                        host_msi->destid(), host_msi->vector());
+                expects(root->m_msi_map.count(key) == 0);
+                root->m_msi_map[key] = {root_msi, guest_msi};
+                printv("root_msi:  destid:0x%x vector:0x%x\n",
+                        root_msi->destid(), root_msi->vector());
                 printv("guest_msi: destid:0x%x vector:0x%x\n",
                         guest_msi->destid(), guest_msi->vector());
                 return;
             }
         }
 
-        bfalert_nhex(0, "map_msi: logical mode destid not found", host_destid);
+        bfalert_nhex(0, "map_msi: logical mode destid not found", root_destid);
         return;
     }
 
@@ -596,18 +596,18 @@ void vcpu::map_msi(const struct msi_desc *host_msi,
      * that function did do an APIC access, we would either have to remap each
      * (x)APIC or do an IPI to the proper core.
      */
-    for (uint64_t i = 0; i < nr_host_vcpus; i++) {
-        auto host = get_host(i);
-        auto local_id = host->m_lapic->local_id();
-        if (host_destid == local_id) {
-             auto key = host_vector;
-             expects(host->m_msi_map.count(key) == 0);
-             host->m_msi_map[key] = {host_msi, guest_msi};
+    for (uint64_t i = 0; i < nr_root_vcpus; i++) {
+        auto root = get_root(i);
+        auto local_id = root->m_lapic->local_id();
+        if (root_destid == local_id) {
+             auto key = root_vector;
+             expects(root->m_msi_map.count(key) == 0);
+             root->m_msi_map[key] = {root_msi, guest_msi};
              return;
         }
     }
 
-    bfalert_nhex(0, "map_msi: physical mode destid not found", host_destid);
+    bfalert_nhex(0, "map_msi: physical mode destid not found", root_destid);
     return;
 }
 

@@ -43,7 +43,7 @@ namespace microv::intel_x64 {
  *
  * Currently, the VMM saves and restores the SSE state component (XMM
  * registers) manually on each vmexit/vmentry. This is why m_rfbm is the value
- * of XCR0 with bit 1 clear. Note if the host and guest vcpu both try to use
+ * of XCR0 with bit 1 clear. Note if the root and guest vcpu both try to use
  * any supervisor state, then we would need to include IA32_XSS_MSR into the
  * m_rfbm calculation. Right now the guest vcpus will not write that MSR
  * because it is blacklisted, so we don't have to worry about saving supervisor
@@ -82,7 +82,7 @@ static_assert(header_size == 64);
 
 xstate::xstate(class vcpu *vcpu) : m_vcpu{vcpu}
 {
-    if (vcpu->is_host_vcpu()) {
+    if (vcpu->is_root_vcpu()) {
         expects(::intel_x64::vmcs::guest_cr4::osxsave::is_enabled());
         m_xcr0 = ::intel_x64::xcr0::get();
         m_rfbm = m_xcr0 & ~sse_mask;
@@ -119,7 +119,7 @@ void xstate::load()
 
 bool xstate::handle_xsetbv(base_vcpu *vcpu, xsetbv_info &info)
 {
-    if (vcpu->is_host_vcpu()) {
+    if (vcpu->is_root_vcpu()) {
         expects(::intel_x64::xcr0::get() == m_xcr0);
         bfalert_info(0, "xsetbv attempt");
         bfalert_subnhex(0, "old", m_xcr0);

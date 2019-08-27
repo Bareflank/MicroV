@@ -758,8 +758,8 @@ bool xen_vcpu::handle_pet(base_vcpu *vcpu)
 
 bool xen_vcpu::handle_interrupt(base_vcpu *vcpu, interrupt_handler::info_t &info)
 {
-    auto parent = m_vcpu->parent_vcpu();
-    auto guest_msi = parent->find_guest_msi(info.vector);
+    auto root = m_vcpu->root_vcpu();
+    auto guest_msi = root->find_guest_msi(info.vector);
 
     if (guest_msi) {
         auto pdev = guest_msi->dev();
@@ -781,9 +781,9 @@ bool xen_vcpu::handle_interrupt(base_vcpu *vcpu, interrupt_handler::info_t &info
         m_vcpu->save_xstate();
         this->update_runstate(RUNSTATE_runnable);
 
-        parent->load();
-        parent->queue_external_interrupt(info.vector);
-        parent->return_resume_after_interrupt();
+        root->load();
+        root->queue_external_interrupt(info.vector);
+        root->return_resume_after_interrupt();
     }
 
     return true;
@@ -811,8 +811,8 @@ bool xen_vcpu::handle_hlt(
     auto yield = ((pet << m_pet_shift) * 1000) / m_tsc_khz;
 
     m_vcpu->save_xstate();
-    m_vcpu->parent_vcpu()->load();
-    m_vcpu->parent_vcpu()->return_yield(yield);
+    m_vcpu->root_vcpu()->load();
+    m_vcpu->root_vcpu()->return_yield(yield);
 
     // unreachable
     return true;

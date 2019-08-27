@@ -239,8 +239,8 @@ public:
     ///
     /// @return true if this vCPU belongs to the host VM, false otherwise
     ///
-    VIRTUAL bool is_host_vcpu()
-    { return vcpuid::is_host_vcpu(m_id); }
+    VIRTUAL bool is_root_vcpu()
+    { return vcpuid::is_root_vcpu(m_id); }
 
     /// Is Guest VM vCPU
     ///

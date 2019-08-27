@@ -41,7 +41,7 @@ private:
 public:
 
     void send_bdf(uint64_t bdf);
-    void send_vector(uint64_t host_vector);
+    void send_vector(uint64_t root_vector);
 
     vmcall_event_op_handler(gsl::not_null<vcpu *> vcpu);
     ~vmcall_event_op_handler() = default;

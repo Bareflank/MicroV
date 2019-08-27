@@ -34,7 +34,7 @@ vcpu_factory::make(vcpuid::type vcpuid, bfobject *obj)
     static microv::domain_info dom0_info{};
     static domain dom0{0, &dom0_info};
 
-    if (vcpuid::is_host_vcpu(vcpuid)) {
+    if (vcpuid::is_root_vcpu(vcpuid)) {
         return
             std::make_unique<microv::intel_x64::vcpu>(
                 vcpuid, dynamic_cast<domain *>(&dom0)

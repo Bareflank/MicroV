@@ -153,7 +153,7 @@ static void probe_bus(uint32_t b, struct pci_dev *bridge)
             } else if (pdev->is_netdev()) {
                 pdev->m_guest_owned = true;
                 pdev->parse_cap_regs();
-                pdev->init_host_vcfg();
+                pdev->init_root_vcfg();
                 pdev->remap_ecam();
                 pci_passthru_list.push_back(pdev);
             }
@@ -180,8 +180,8 @@ void init_pci()
 void init_pci_on_vcpu(microv::intel_x64::vcpu *vcpu)
 {
     for (auto pdev : pci_passthru_list) {
-        if (vcpuid::is_host_vcpu(vcpu->id())) {
-            pdev->add_host_handlers(vcpu);
+        if (vcpuid::is_root_vcpu(vcpu->id())) {
+            pdev->add_root_handlers(vcpu);
         } else {
             pdev->add_guest_handlers(vcpu);
         }
@@ -296,7 +296,7 @@ void pci_dev::parse_cap_regs()
     ensures(msi_64bit(pci_cfg_read_reg(m_cf8, m_msi_cap)));
 }
 
-void pci_dev::init_host_vcfg()
+void pci_dev::init_root_vcfg()
 {
     expects(pci_cfg_is_normal(m_cfg_reg[3]));
     expects(m_guest_owned);
@@ -321,13 +321,13 @@ void pci_dev::init_host_vcfg()
     m_vcfg[m_msi_cap + 3] = pci_cfg_read_reg(m_cf8, m_msi_cap + 3);
 }
 
-void pci_dev::add_host_handlers(vcpu *vcpu)
+void pci_dev::add_root_handlers(vcpu *vcpu)
 {
-    expects(vcpuid::is_host_vcpu(vcpu->id()));
+    expects(vcpuid::is_root_vcpu(vcpu->id()));
     expects(m_guest_owned);
 
-    HANDLE_CFG_ACCESS(this, host_cfg_in, pci_dir_in);
-    HANDLE_CFG_ACCESS(this, host_cfg_out, pci_dir_out);
+    HANDLE_CFG_ACCESS(this, root_cfg_in, pci_dir_in);
+    HANDLE_CFG_ACCESS(this, root_cfg_out, pci_dir_out);
 }
 
 void pci_dev::add_guest_handlers(vcpu *vcpu)
@@ -425,7 +425,7 @@ bool pci_dev::guest_normal_cfg_out(base_vcpu *vcpu, cfg_info &info)
     }
 
     if (msi_enabled(val)) {
-        m_host_msi = {
+        m_root_msi = {
             this,
             m_vcfg[m_msi_cap],
             m_vcfg[m_msi_cap + 3],
@@ -441,10 +441,10 @@ bool pci_dev::guest_normal_cfg_out(base_vcpu *vcpu, cfg_info &info)
             pci_cfg_read_reg(m_cf8, info.reg + 2)
         };
 
-        /* Create a new host->guest MSI mapping */
-        guest->map_msi(&m_host_msi, &m_guest_msi);
+        /* Create a new root->guest MSI mapping */
+        guest->map_msi(&m_root_msi, &m_guest_msi);
 
-        /* Write the host-programmed values to the device */
+        /* Write the root-programmed values to the device */
         pci_cfg_write_reg(m_cf8, info.reg + 1, m_vcfg[m_msi_cap + 1]);
         pci_cfg_write_reg(m_cf8, info.reg + 2, m_vcfg[m_msi_cap + 2]);
         pci_cfg_write_reg(m_cf8, info.reg + 3, m_vcfg[m_msi_cap + 3]);
@@ -455,12 +455,12 @@ bool pci_dev::guest_normal_cfg_out(base_vcpu *vcpu, cfg_info &info)
 }
 
 /*
- * For each pass-through device, we need to get a vector from the host OS. This
- * is done by exposing the MSI capability. We also need the host to comprehend
+ * For each pass-through device, we need to get a vector from the root OS. This
+ * is done by exposing the MSI capability. We also need the root to comprehend
  * and assign memory to the BARs so that we know the region is safe to be
  * remapped later when the the device is actually passed-through
  */
-bool pci_dev::host_cfg_in(base_vcpu *vcpu, cfg_info &info)
+bool pci_dev::root_cfg_in(base_vcpu *vcpu, cfg_info &info)
 {
     expects(m_guest_owned);
     expects(pci_cfg_is_normal(m_cfg_reg[3]));
@@ -485,7 +485,7 @@ bool pci_dev::host_cfg_in(base_vcpu *vcpu, cfg_info &info)
     return true;
 }
 
-bool pci_dev::host_cfg_out(base_vcpu *vcpu, cfg_info &info)
+bool pci_dev::root_cfg_out(base_vcpu *vcpu, cfg_info &info)
 {
     expects(m_guest_owned);
     expects(pci_cfg_is_normal(m_cfg_reg[3]));

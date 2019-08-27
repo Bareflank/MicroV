@@ -42,7 +42,7 @@ x2apic_handler::x2apic_handler(
 {
     using namespace vmcs_n;
 
-    if (vcpuid::is_host_vcpu(vcpu->id())) {
+    if (vcpuid::is_root_vcpu(vcpu->id())) {
         return;
     }
 

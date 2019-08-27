@@ -73,7 +73,7 @@ void
 vmcs::launch()
 {
     try {
-        if (m_vcpu->is_host_vcpu()) {
+        if (m_vcpu->is_root_vcpu()) {
             ::intel_x64::vm::launch_demote();
         }
         else {

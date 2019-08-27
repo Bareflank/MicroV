@@ -169,7 +169,7 @@ void iommu::bind_device(struct pci_dev *pdev)
     if (pdev->m_guest_owned) {
         m_guest_devs.push_back(pdev);
     } else {
-        m_host_devs.push_back(pdev);
+        m_root_devs.push_back(pdev);
     }
 }
 
@@ -237,7 +237,7 @@ void iommu::bind_devices()
             }
         }
 
-        ensures(!m_host_devs.empty() || !m_guest_devs.empty());
+        ensures(!m_root_devs.empty() || !m_guest_devs.empty());
     } else {
         for (auto pdev : pci_list) {
             if (pdev->m_iommu) {
@@ -251,10 +251,10 @@ void iommu::bind_devices()
 void iommu::dump_devices()
 {
     printv("iommu: scopes %lu devices\n",
-            m_host_devs.size() + m_guest_devs.size());
+            m_root_devs.size() + m_guest_devs.size());
 
-    for (const auto pdev : m_host_devs) {
-        printv("iommu:    %s (host)\n", pdev->bdf_str());
+    for (const auto pdev : m_root_devs) {
+        printv("iommu:    %s (root)\n", pdev->bdf_str());
     }
 
     for (const auto pdev : m_guest_devs) {
@@ -468,13 +468,13 @@ iommu::iommu(struct drhd *drhd) : m_root{make_page<entry_t>()}
     this->init_regs();
 
     printv("iommu: nr_devs=%lu nr_doms=0x%lx\n",
-           m_host_devs.size() + m_guest_devs.size(), nr_domains());
+           m_root_devs.size() + m_guest_devs.size(), nr_domains());
     dump_caps(m_cap);
     dump_ecaps(m_ecap);
 
     expects(vcpu0);
 
-    for (auto pdev : m_host_devs) {
+    for (auto pdev : m_root_devs) {
         auto dom = vcpu0->dom();
         auto bus = pci_cfg_bus(pdev->m_cf8);
         auto devfn = pci_cfg_devfn(pdev->m_cf8);

@@ -25,6 +25,6 @@
 TEST_CASE("functions")
 {
     CHECK(vcpuid::is_bootstrap_vcpu(0));
-    CHECK(vcpuid::is_host_vcpu(0));
+    CHECK(vcpuid::is_root_vcpu(0));
     CHECK(vcpuid::is_guest_vcpu(0x10000));
 }

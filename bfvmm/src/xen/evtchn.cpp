@@ -379,12 +379,6 @@ evtchn::chan_t *evtchn::port_to_chan(port_t port) const
     return &chan[port & chan_mask];
 }
 
-// Note:
-//
-// Word arrays are shared between the guest and host. The guest adds a new
-// word array with the EVTCHNOP_expand_array hypercall, so it is possible
-// that a given port doesn't map to an existing event word.
-//
 evtchn::word_t *evtchn::port_to_word(port_t port) const
 {
     const auto size = m_event_words.size();

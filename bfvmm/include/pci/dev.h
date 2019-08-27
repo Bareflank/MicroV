@@ -55,7 +55,7 @@ struct pci_dev {
     vcpuid_t m_guest_vcpuid{};
 
     struct msi_desc m_guest_msi{};
-    struct msi_desc m_host_msi{};
+    struct msi_desc m_root_msi{};
     struct pci_dev *m_bridge{};
     struct iommu *m_iommu{};
 
@@ -105,13 +105,13 @@ struct pci_dev {
 
     void remap_ecam();
     void parse_cap_regs();
-    void init_host_vcfg();
-    void add_host_handlers(vcpu *vcpu);
+    void init_root_vcfg();
+    void add_root_handlers(vcpu *vcpu);
     void add_guest_handlers(vcpu *vcpu);
     void map_dma(domain *dom);
 
-    bool host_cfg_in(base_vcpu *vcpu, cfg_info &info);
-    bool host_cfg_out(base_vcpu *vcpu, cfg_info &info);
+    bool root_cfg_in(base_vcpu *vcpu, cfg_info &info);
+    bool root_cfg_out(base_vcpu *vcpu, cfg_info &info);
     bool guest_normal_cfg_in(base_vcpu *vcpu, cfg_info &info);
     bool guest_normal_cfg_out(base_vcpu *vcpu, cfg_info &info);
 

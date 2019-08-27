@@ -124,7 +124,7 @@ struct msi_desc {
     msi_desc &operator=(msi_desc &&other) = default;
 };
 
-using msi_key_t = uint64_t; /* host_vector */
+using msi_key_t = uint64_t; /* root_vector */
 using msi_val_t = std::pair<const msi_desc *, const msi_desc *>;
 using msi_map_t = std::unordered_map<msi_key_t, msi_val_t>;
 

@@ -36,45 +36,43 @@ vmcall_run_op_handler::vmcall_run_op_handler(
 }
 
 bool
-vmcall_run_op_handler::dispatch(vcpu *vcpu)
+vmcall_run_op_handler::dispatch(vcpu *root)
 {
     // Note:
     //
     // This code executes a lot. For example, every time an interrupt fires,
-    // control is handed back to the parent vCPU, so when it is time to
+    // control is handed back to the root vCPU, so when it is time to
     // execute the guest again, this code has to execute. As a result, the
     // following should be considered:
     // - Keep the code in this function to a minimum. Every line in this
     //   function has been carefully examined to reduce the total overhead of
     //   executing a guest.
-    // - Do no assume that the parent vCPU is always the same. It is possible
-    //   for the host to change the parent vCPU the next time this is executed.
-    //   If this happens, a VMCS migration must take place.
+    // - Once VMCS migration is implemented, the root vcpu may change in between
+    //   calls to this function.
     // - This handler should be the first handler to be called. This way, we
-    //   do no end up looping through the vmcall handlers on every interrupt.
-    //
+    //   dont end up looping through the vmcall handlers on every interrupt.
 
-    if (bfopcode(vcpu->rax()) != __enum_run_op) {
+    if (bfopcode(root->rax()) != __enum_run_op) {
         return false;
     }
 
     try {
-        auto child = vcpu->find_child(vcpu->rbx());
+        auto child = root->find_child(root->rbx());
         expects(child);
 
-        child->set_parent_vcpu(vcpu);
+        child->set_root_vcpu(root);
         if (child->is_alive()) {
-            vcpu->save_xstate();
+            root->save_xstate();
 
             child->load_xstate();
             child->load();
             child->run(&world_switch);
         }
 
-        vcpu->set_rax(__enum_run_op__hlt);
+        root->set_rax(__enum_run_op__hlt);
     }
     catchall({
-        vcpu->set_rax(__enum_run_op__fault);
+        root->set_rax(__enum_run_op__fault);
     })
 
     return true;

@@ -124,9 +124,9 @@ pci_cfg_handler::pci_cfg_handler(vcpu *vcpu) : m_vcpu{vcpu}
 {
     using namespace vmcs_n;
 
-    if (vcpuid::is_host_vcpu(vcpu->id())) {
-        m_default_in = {&pci_cfg_handler::host_def_in, this};
-        m_default_out = {&pci_cfg_handler::host_def_out, this};
+    if (vcpuid::is_root_vcpu(vcpu->id())) {
+        m_default_in = {&pci_cfg_handler::root_def_in, this};
+        m_default_out = {&pci_cfg_handler::root_def_out, this};
         return;
     }
 
@@ -139,7 +139,7 @@ void pci_cfg_handler::enable()
 {
     MEMBER_EMU_IO(0xCF8, addr_in, addr_out);
 
-    if (vcpuid::is_host_vcpu(m_vcpu->id())) {
+    if (vcpuid::is_root_vcpu(m_vcpu->id())) {
         MEMBER_EMU_IO(0xCFC, data_in, data_out);
         MEMBER_EMU_IO(0xCFD, data_in, data_out);
         MEMBER_EMU_IO(0xCFE, data_in, data_out);
@@ -213,13 +213,13 @@ bool pci_cfg_handler::data_out(base_vcpu *vcpu, base_info &info)
     return iter->second(vcpu, ci);
 }
 
-bool pci_cfg_handler::host_def_in(base_vcpu *vcpu, cfg_info &info)
+bool pci_cfg_handler::root_def_in(base_vcpu *vcpu, cfg_info &info)
 {
     phys_in(m_cf8, info);
     return true;
 }
 
-bool pci_cfg_handler::host_def_out(base_vcpu *vcpu, cfg_info &info)
+bool pci_cfg_handler::root_def_out(base_vcpu *vcpu, cfg_info &info)
 {
     phys_out(m_cf8, info);
     return true;

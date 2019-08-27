@@ -52,7 +52,7 @@
 // Definition
 //------------------------------------------------------------------------------
 
-inline vcpuid_t nr_host_vcpus = 0;
+inline vcpuid_t nr_root_vcpus = 0;
 
 namespace microv {
     class xen_vcpu;
@@ -166,36 +166,31 @@ public:
         const vmcall_handler::handler_delegate_t &d);
 
     //--------------------------------------------------------------------------
-    // Parent
+    // Root
     //--------------------------------------------------------------------------
 
-    /// Set Parent vCPU
+    /// Set root vcpu
     ///
-    /// Each vCPU that is executing (not created) must have a parent. The
-    /// only exception to this is the host vCPUs. If a vCPU can no longer
+    /// Each guest vcpu must have a parent. If a guest vcpu can no longer
     /// execute (e.g., from a crash, interrupt, hlt, etc...), the parent
-    /// vCPU is the parent that will be resumed.
+    /// vcpu is the vcpu that will be resumed. Note that only one level of
+    /// descendants is supported, so for every guest vcpu, its parent is
+    /// a root vcpu.
     ///
     /// @expects
     /// @ensures
     ///
-    /// @param id the id of the vCPU to resume
-    ///
-    VIRTUAL void set_parent_vcpu(gsl::not_null<vcpu *> vcpu);
+    VIRTUAL void set_root_vcpu(gsl::not_null<vcpu *> vcpu);
 
-    /// Get Parent vCPU ID
+    /// Get root vcpu
     ///
-    /// Returns the vCPU ID for this vCPU's parent. Note that this ID could
-    /// change on every exit. Specifically when the Host OS moves the
-    /// userspace application associated with a guest vCPU. For this reason,
-    /// don't cache this value. It always needs to be looked up.
+    /// Returns the id for this vcpus parent. Note that this ID could
+    /// change on every exit once VMCS migration is supported.
     ///
     /// @expects
     /// @ensures
     ///
-    /// @return returns the vcpuid for this vCPU's parent vCPU.
-    ///
-    VIRTUAL vcpu *parent_vcpu() const;
+    VIRTUAL vcpu *root_vcpu() const;
 
     /// Return (Hlt)
     ///
@@ -303,17 +298,17 @@ public:
 
     /// Map msi
     ///
-    /// Create a host->guest msi mapping
+    /// Create a root->guest msi mapping
     ///
-    /// @param host_msi the msi info programmed by the host
+    /// @param root_msi the msi info programmed by the root
     /// @param guest_msi the msi info programmed by the guest
     ///
-    void map_msi(const struct msi_desc *host_msi,
+    void map_msi(const struct msi_desc *root_msi,
                  const struct msi_desc *guest_msi);
 
     /// Find guest msi
     ///
-    /// @param key the host vector to look for
+    /// @param key the root vector to look for
     /// @return the guest msi_desc if found, nullptr otherwise
     ///
     const struct msi_desc *find_guest_msi(msi_key_t key) const;
@@ -370,7 +365,7 @@ private:
     pci_cfg_handler m_pci_handler;
 
     bool m_killed{};
-    vcpu *m_parent_vcpu{};
+    vcpu *m_root_vcpu{};
 
     std::unique_ptr<microv::xen_vcpu> m_xen{};
     std::unique_ptr<microv::intel_x64::lapic> m_lapic{};
@@ -389,7 +384,7 @@ private:
 /// get_guest - acquires a reference to a guest vcpu
 ///
 /// A non-null return value is guaranteed to point to a valid object until a
-/// matching put_vcpu is called. Caller's must ensure that they return the
+/// matching put_vcpu is called. Caller must ensure that they return the
 /// reference after they are done with put_guest.
 ///
 /// @expects vcpuid::is_guest_vcpu(id)
@@ -420,22 +415,22 @@ inline void put_guest(vcpuid::type id)
     return g_vcm->release(id);
 }
 
-/// get_host - gets a reference to a host vcpu
+/// get_root - gets a reference to a root vcpu
 ///
 /// A non-null return value is guaranteed to point to a valid
-/// host vcpu. No matching put_host is required since each host
-/// outlives any guest.
+/// root vcpu. No matching put_root is required since each root
+/// vcpu outlives any guest.
 ///
-/// @expects vcpuid::is_host_vcpu(id)
+/// @expects vcpuid::is_root_vcpu(id)
 /// @ensures
 ///
-/// @param id the id of the host vcpu to acquire
-/// @return ptr to valid host vcpu on success, nullptr otherwise
+/// @param id the id of the root vcpu to acquire
+/// @return ptr to valid root vcpu on success, nullptr otherwise
 ///
-inline microv::intel_x64::vcpu *get_host(vcpuid::type id)
+inline microv::intel_x64::vcpu *get_root(vcpuid::type id)
 {
     try {
-        expects(vcpuid::is_host_vcpu(id));
+        expects(vcpuid::is_root_vcpu(id));
         auto hv = g_vcm->get<microv::intel_x64::vcpu *>(id);
         return hv.get();
     } catch (...) {

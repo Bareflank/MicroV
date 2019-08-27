@@ -51,11 +51,11 @@ external_interrupt_handler::handle(
     bfignored(vcpu);
     m_vcpu->save_xstate();
 
-    auto parent_vcpu = m_vcpu->parent_vcpu();
+    auto root_vcpu = m_vcpu->root_vcpu();
 
-    parent_vcpu->load();
-    parent_vcpu->queue_external_interrupt(info.vector);
-    parent_vcpu->return_resume_after_interrupt();
+    root_vcpu->load();
+    root_vcpu->queue_external_interrupt(info.vector);
+    root_vcpu->return_resume_after_interrupt();
 
     // Unreachable
     return true;
