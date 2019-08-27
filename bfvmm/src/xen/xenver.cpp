@@ -23,7 +23,7 @@
 #include <stdlib.h>
 #include <compiler.h>
 #include <xen/xenver.h>
-#include <xen/xen.h>
+#include <xen/vcpu.h>
 #include <public/version.h>
 
 #define XEN_MAJOR 4UL
@@ -31,7 +31,7 @@
 
 namespace microv {
 
-xenver::xenver(xen *xen) : m_xen{xen}, m_vcpu{xen->m_vcpu}
+xenver::xenver(xen_vcpu *xen) : m_xen{xen}, m_vcpu{xen->m_vcpu}
 { }
 
 bool xenver::changeset()

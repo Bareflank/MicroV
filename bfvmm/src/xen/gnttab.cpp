@@ -21,11 +21,11 @@
 
 #include <hve/arch/intel_x64/vcpu.h>
 #include <xen/gnttab.h>
-#include <xen/xen.h>
+#include <xen/vcpu.h>
 
 namespace microv {
 
-gnttab::gnttab(xen *xen) :
+gnttab::gnttab(xen_vcpu *xen) :
     m_xen{xen},
     m_vcpu{xen->m_vcpu},
     m_version{2}

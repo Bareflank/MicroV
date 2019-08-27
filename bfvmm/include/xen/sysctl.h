@@ -29,7 +29,7 @@ namespace microv {
 
 class sysctl {
 private:
-    xen *m_xen{};
+    xen_vcpu *m_xen{};
     microv_vcpu *m_vcpu{};
 
 public:
@@ -40,7 +40,7 @@ public:
     bool physinfo(xen_sysctl_t *ctl);
     bool cpupool_op(xen_sysctl_t *ctl);
 
-    sysctl(xen *xen);
+    sysctl(xen_vcpu *xen);
     ~sysctl() = default;
 
     sysctl(sysctl &&) = default;

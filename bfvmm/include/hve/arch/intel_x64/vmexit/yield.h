@@ -31,7 +31,7 @@
 // -----------------------------------------------------------------------------
 
 namespace microv {
-    class xen;
+    class xen_vcpu;
 }
 
 namespace microv::intel_x64
@@ -65,7 +65,6 @@ public:
 
     bool handle_hlt(vcpu_t *vcpu, bfvmm::intel_x64::hlt_handler::info_t &info);
     bool handle_preemption(vcpu_t *vcpu);
-
     bool handle_rdmsr_0x000006E0(
         vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info);
     bool handle_wrmsr_0x000006E0(
@@ -74,7 +73,7 @@ public:
     /// @endcond
 
 private:
-    friend class microv::xen;
+    friend class microv::xen_vcpu;
     vcpu *m_vcpu;
 
     uint64_t m_tsc_freq;

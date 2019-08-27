@@ -46,12 +46,12 @@ namespace microv::intel_x64 {
 
 namespace microv {
 
-class xen;
+class xen_vcpu;
 class gnttab;
 class evtchn;
 class xenver;
 
-using xen = microv::xen;
+using xen_vcpu = microv::xen_vcpu;
 using microv_vcpu = microv::intel_x64::vcpu;
 using microv_domain = microv::intel_x64::domain;
 

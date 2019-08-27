@@ -28,13 +28,13 @@
 namespace microv {
 
 class physdev {
-    xen *m_xen{};
+    xen_vcpu *m_xen{};
     microv_vcpu *m_vcpu{};
 
 public:
     bool pci_device_add();
 
-    physdev(xen *xen);
+    physdev(xen_vcpu *xen);
     ~physdev() = default;
 
     physdev(physdev &&) = default;

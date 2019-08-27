@@ -38,7 +38,7 @@ target_sources(microv_xen PRIVATE
     $<${X64}:util.cpp>
     $<${X64}:xenmem.cpp>
     $<${X64}:xenver.cpp>
-    $<${X64}:xen.cpp>
+    $<${X64}:vcpu.cpp>
 )
 
 install(TARGETS microv_xen DESTINATION lib EXPORT microv_bfvmm-vmm-targets)

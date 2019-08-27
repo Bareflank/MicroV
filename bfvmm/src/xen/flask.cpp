@@ -20,12 +20,12 @@
 // SOFTWARE.
 
 #include <xen/flask.h>
-#include <xen/xen.h>
+#include <xen/vcpu.h>
 #include <public/xsm/flask_op.h>
 
 namespace microv {
 
-flask::flask(xen *xen) : m_xen{xen}, m_vcpu{xen->m_vcpu}
+flask::flask(xen_vcpu *xen) : m_xen{xen}, m_vcpu{xen->m_vcpu}
 {
 }
 

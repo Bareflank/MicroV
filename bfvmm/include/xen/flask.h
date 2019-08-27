@@ -29,13 +29,13 @@ namespace microv {
 
 class flask {
 private:
-    xen *m_xen{};
+    xen_vcpu *m_xen{};
     microv_vcpu *m_vcpu{};
 
 public:
     bool handle(xen_flask_op_t *fop);
 
-    flask(xen *xen);
+    flask(xen_vcpu *xen);
     ~flask() = default;
 
     flask(flask &&) = default;

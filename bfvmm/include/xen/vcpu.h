@@ -19,8 +19,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#ifndef MICROV_XEN_H
-#define MICROV_XEN_H
+#ifndef MICROV_XEN_VCPU_H
+#define MICROV_XEN_VCPU_H
 
 #include "types.h"
 #include "domctl.h"
@@ -39,7 +39,9 @@
 
 namespace microv {
 
-class xen {
+class xen_domain;
+
+class xen_vcpu {
 public:
     void queue_virq(uint32_t virq);
 
@@ -76,9 +78,7 @@ private:
     bool handle_vcpu_op();
     bool handle_vm_assist();
 
-    microv_vcpu *m_vcpu{};
-    microv_domain *m_dom{};
-
+    friend class xen_domain;
     friend class domctl;
     friend class gnttab;
     friend class evtchn;
@@ -86,6 +86,10 @@ private:
     friend class xenmem;
     friend class xenver;
     friend class physdev;
+
+    microv_vcpu *m_vcpu{};
+    microv_domain *m_dom{};
+    xen_domain *m_xen_dom{};
 
     std::unique_ptr<class domctl> m_domctl;
     std::unique_ptr<class gnttab> m_gnttab;
@@ -122,14 +126,13 @@ public:
     uint32_t apicid{};
     uint32_t acpiid{};
 
-    xen(microv_vcpu *vcpu, microv_domain *dom);
-    ~xen() = default;
+    xen_vcpu(microv_vcpu *vcpu, microv_domain *dom);
+    ~xen_vcpu() = default;
+    xen_vcpu(xen_vcpu &&) = default;
+    xen_vcpu(const xen_vcpu &) = delete;
+    xen_vcpu &operator=(xen_vcpu &&) = default;
+    xen_vcpu &operator=(const xen_vcpu &) = delete;
 
-    xen(xen &&) = default;
-    xen &operator=(xen &&) = default;
-
-    xen(const xen &) = delete;
-    xen &operator=(const xen &) = delete;
 };
 }
 

@@ -24,7 +24,7 @@
 #include <bfgpalayout.h>
 #include <printv.h>
 #include <xen/sysctl.h>
-#include <xen/xen.h>
+#include <xen/vcpu.h>
 
 #include <public/domctl.h>
 #include <public/errno.h>
@@ -36,7 +36,7 @@
 
 namespace microv {
 
-sysctl::sysctl(xen *xen) : m_xen{xen}, m_vcpu{xen->m_vcpu}
+sysctl::sysctl(xen_vcpu *xen) : m_xen{xen}, m_vcpu{xen->m_vcpu}
 {
 
 }

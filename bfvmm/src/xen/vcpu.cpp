@@ -39,7 +39,7 @@
 #include <xen/util.h>
 #include <xen/xenmem.h>
 #include <xen/xenver.h>
-#include <xen/xen.h>
+#include <xen/vcpu.h>
 
 #include <public/arch-x86/cpuid.h>
 #include <public/errno.h>
@@ -72,7 +72,7 @@ static constexpr auto hcall_page_msr = 0xC0000500;
 static constexpr auto xen_leaf_base = 0x40000100;
 static constexpr auto xen_leaf(int i) { return xen_leaf_base + i; }
 
-static void make_xen_ids(microv_domain *dom, xen *xen)
+static void make_xen_ids(microv_domain *dom, xen_vcpu *xen)
 {
     if (dom->initdom()) {
         xen->domid = 0;
@@ -204,7 +204,7 @@ static bool xen_leaf2(base_vcpu *vcpu)
     return true;
 }
 
-bool xen::xen_leaf4(base_vcpu *vcpu)
+bool xen_vcpu::xen_leaf4(base_vcpu *vcpu)
 {
     uint32_t rax = 0;
 
@@ -252,7 +252,7 @@ static bool wrmsr_self_ipi(base_vcpu *vcpu, wrmsr_handler::info_t &info)
     return true;
 }
 
-bool xen::handle_physdev_op()
+bool xen_vcpu::handle_physdev_op()
 {
     try {
         switch (m_vcpu->rdi()) {
@@ -266,7 +266,7 @@ bool xen::handle_physdev_op()
     })
 }
 
-bool xen::handle_console_io()
+bool xen_vcpu::handle_console_io()
 {
     expects(m_dom->initdom());
 
@@ -275,7 +275,7 @@ bool xen::handle_console_io()
 
     switch (m_vcpu->rdi()) {
     case CONSOLEIO_read: {
-        auto n = m_dom->hvc_rx_get(gsl::span(buf.get(), len));
+        auto n = m_xen_dom->hvc_rx_get(gsl::span(buf.get(), len));
         m_vcpu->set_rax(n);
 //        if (n) {
 //            printf("console read: ");
@@ -287,7 +287,7 @@ bool xen::handle_console_io()
         return true;
     }
     case CONSOLEIO_write: {
-        auto n = m_dom->hvc_tx_put(gsl::span(buf.get(), len));
+        auto n = m_xen_dom->hvc_tx_put(gsl::span(buf.get(), len));
         m_vcpu->set_rax(n);
         return true;
     }
@@ -296,7 +296,7 @@ bool xen::handle_console_io()
     }
 }
 
-bool xen::handle_memory_op()
+bool xen_vcpu::handle_memory_op()
 {
     try {
         switch (m_vcpu->rdi()) {
@@ -320,7 +320,7 @@ bool xen::handle_memory_op()
     return false;
 }
 
-bool xen::handle_xen_version()
+bool xen_vcpu::handle_xen_version()
 {
     try {
         switch (m_vcpu->rdi()) {
@@ -369,7 +369,7 @@ static bool valid_cb_via(uint64_t via)
     return true;
 }
 
-bool xen::handle_hvm_op()
+bool xen_vcpu::handle_hvm_op()
 {
     switch (m_vcpu->rdi()) {
     case HVMOP_set_param:
@@ -429,7 +429,7 @@ bool xen::handle_hvm_op()
     }
 }
 
-bool xen::handle_event_channel_op()
+bool xen_vcpu::handle_event_channel_op()
 {
     try {
         switch (m_vcpu->rdi()) {
@@ -461,19 +461,19 @@ bool xen::handle_event_channel_op()
     return false;
 }
 
-bool xen::handle_sysctl()
+bool xen_vcpu::handle_sysctl()
 {
     auto ctl = m_vcpu->map_arg<xen_sysctl_t>(m_vcpu->rdi());
     return m_sysctl->handle(ctl.get());
 }
 
-bool xen::handle_domctl()
+bool xen_vcpu::handle_domctl()
 {
     auto ctl = m_vcpu->map_arg<xen_domctl_t>(m_vcpu->rdi());
     return m_domctl->handle(ctl.get());
 }
 
-bool xen::handle_grant_table_op()
+bool xen_vcpu::handle_grant_table_op()
 {
     try {
         switch (m_vcpu->rdi()) {
@@ -489,7 +489,7 @@ bool xen::handle_grant_table_op()
     })
 }
 
-void xen::update_wallclock(const struct xenpf_settime64 *time)
+void xen_vcpu::update_wallclock(const struct xenpf_settime64 *time)
 {
     m_shinfo->wc_version++;
     wmb();
@@ -505,7 +505,7 @@ void xen::update_wallclock(const struct xenpf_settime64 *time)
     m_shinfo->wc_version++;
 }
 
-bool xen::handle_platform_op()
+bool xen_vcpu::handle_platform_op()
 {
     auto xpf = m_vcpu->map_arg<xen_platform_op_t>(m_vcpu->rdi());
     if (xpf->interface_version != XENPF_INTERFACE_VERSION) {
@@ -540,7 +540,7 @@ bool xen::handle_platform_op()
     }
 }
 
-bool xen::handle_xsm_op()
+bool xen_vcpu::handle_xsm_op()
 {
     expects(m_dom->initdom());
     auto flop = m_vcpu->map_arg<xen_flask_op_t>(m_vcpu->rdi());
@@ -562,18 +562,18 @@ bool xen::handle_xsm_op()
     return true;
 }
 
-struct vcpu_time_info *xen::vcpu_time()
+struct vcpu_time_info *xen_vcpu::vcpu_time()
 {
     return &m_shinfo->vcpu_info[this->vcpuid].time;
 }
 
-void xen::stop_timer()
+void xen_vcpu::stop_timer()
 {
     m_vcpu->disable_preemption_timer();
     m_pet_enabled = false;
 }
 
-int xen::set_timer()
+int xen_vcpu::set_timer()
 {
     auto pet = 0ULL;
     auto vti = this->vcpu_time();
@@ -598,7 +598,7 @@ int xen::set_timer()
     return 0;
 }
 
-bool xen::handle_vcpu_op()
+bool xen_vcpu::handle_vcpu_op()
 {
     expects(m_vcpu->rsi() == vcpuid);
 
@@ -613,9 +613,9 @@ bool xen::handle_vcpu_op()
     case VCPUOP_set_singleshot_timer:
         m_vcpu->set_rax(this->set_timer());
         if (!m_pet_hdlrs_added) {
-            m_vcpu->add_preemption_timer_handler({&xen::handle_pet, this});
-            m_vcpu->add_hlt_handler({&xen::handle_hlt, this});
-            m_vcpu->add_exit_handler({&xen::vmexit_save_tsc, this});
+            m_vcpu->add_preemption_timer_handler({&xen_vcpu::handle_pet, this});
+            m_vcpu->add_hlt_handler({&xen_vcpu::handle_hlt, this});
+            m_vcpu->add_exit_handler({&xen_vcpu::vmexit_save_tsc, this});
             m_vcpu->emulate_wrmsr(0x6E0, {handle_tsc_deadline});
             m_pet_hdlrs_added = true;
         }
@@ -644,7 +644,7 @@ bool xen::handle_vcpu_op()
     }
 }
 
-bool xen::handle_vm_assist()
+bool xen_vcpu::handle_vm_assist()
 {
     if (m_vcpu->rdi() != VMASST_CMD_enable) {
         return false;
@@ -660,12 +660,12 @@ bool xen::handle_vm_assist()
     }
 }
 
-void xen::queue_virq(uint32_t virq)
+void xen_vcpu::queue_virq(uint32_t virq)
 {
     m_evtchn->queue_virq(virq);
 }
 
-void xen::update_runstate(int new_state)
+void xen_vcpu::update_runstate(int new_state)
 {
     if (GSL_UNLIKELY(!m_shinfo)) {
         return;
@@ -723,7 +723,7 @@ void xen::update_runstate(int new_state)
 }
 
 /* Steal ticks from the guest's preemption timer */
-void xen::steal_pet_ticks()
+void xen_vcpu::steal_pet_ticks()
 {
     if (GSL_UNLIKELY(m_tsc_at_exit == 0)) {
         return;
@@ -738,7 +738,7 @@ void xen::steal_pet_ticks()
     m_vcpu->set_preemption_timer(pet);
 }
 
-void xen::resume_update(bfobject *obj)
+void xen_vcpu::resume_update(bfobject *obj)
 {
     bfignored(obj);
 
@@ -749,7 +749,7 @@ void xen::resume_update(bfobject *obj)
     }
 }
 
-void xen::init_shared_info(uintptr_t shinfo_gpfn)
+void xen_vcpu::init_shared_info(uintptr_t shinfo_gpfn)
 {
     using namespace ::intel_x64::msrs;
 
@@ -774,10 +774,10 @@ void xen::init_shared_info(uintptr_t shinfo_gpfn)
     m_shinfo->wc_sec_hi = gsl::narrow_cast<uint32_t>(wc_sec >> 32);
     vti->tsc_timestamp = now;
 
-    m_vcpu->add_resume_delegate({&xen::resume_update, this});
+    m_vcpu->add_resume_delegate({&xen_vcpu::resume_update, this});
 }
 
-bool xen::vmexit_save_tsc(base_vcpu *vcpu)
+bool xen_vcpu::vmexit_save_tsc(base_vcpu *vcpu)
 {
     bfignored(vcpu);
 
@@ -788,7 +788,7 @@ bool xen::vmexit_save_tsc(base_vcpu *vcpu)
     return true;
 }
 
-bool xen::handle_pet(base_vcpu *vcpu)
+bool xen_vcpu::handle_pet(base_vcpu *vcpu)
 {
     this->stop_timer();
     m_evtchn->queue_virq(VIRQ_TIMER);
@@ -796,7 +796,7 @@ bool xen::handle_pet(base_vcpu *vcpu)
     return true;
 }
 
-bool xen::handle_interrupt(base_vcpu *vcpu, interrupt_handler::info_t &info)
+bool xen_vcpu::handle_interrupt(base_vcpu *vcpu, interrupt_handler::info_t &info)
 {
     auto parent = m_vcpu->parent_vcpu();
     auto guest_msi = parent->find_guest_msi(info.vector);
@@ -829,7 +829,7 @@ bool xen::handle_interrupt(base_vcpu *vcpu, interrupt_handler::info_t &info)
     return true;
 }
 
-bool xen::handle_hlt(
+bool xen_vcpu::handle_hlt(
     base_vcpu *vcpu,
     bfvmm::intel_x64::hlt_handler::info_t &info)
 {
@@ -858,7 +858,7 @@ bool xen::handle_hlt(
     return true;
 }
 
-bool xen::hypercall(microv_vcpu *vcpu)
+bool xen_vcpu::hypercall(microv_vcpu *vcpu)
 {
     if (vcpu->rax() != __HYPERVISOR_console_io &&
         !(vcpu->rax() == __HYPERVISOR_vcpu_op &&
@@ -903,17 +903,21 @@ bool xen::hypercall(microv_vcpu *vcpu)
     }
 }
 
-xen::xen(microv_vcpu *vcpu, microv_domain *dom) :
+xen_vcpu::xen_vcpu(microv_vcpu *vcpu, microv_domain *dom) :
     m_vcpu{vcpu},
     m_dom{dom},
-    m_domctl{std::make_unique<class domctl>(this)},
-    m_evtchn{std::make_unique<class evtchn>(this)},
-    m_gnttab{std::make_unique<class gnttab>(this)},
-    m_physdev{std::make_unique<class physdev>(this)},
-    m_xenmem{std::make_unique<class xenmem>(this)},
-    m_xenver{std::make_unique<class xenver>(this)},
-    m_sysctl{std::make_unique<class sysctl>(this)}
+    m_xen_dom{dom->xen_dom()}
 {
+    expects(m_xen_dom);
+
+    m_domctl = std::make_unique<class domctl>(this);
+    m_evtchn = std::make_unique<class evtchn>(this);
+    m_gnttab = std::make_unique<class gnttab>(this);
+    m_xenmem = std::make_unique<class xenmem>(this);
+    m_xenver = std::make_unique<class xenver>(this);
+    m_sysctl = std::make_unique<class sysctl>(this);
+    m_physdev = std::make_unique<class physdev>(this);
+
     make_xen_ids(dom, this);
     xen_uuid_t uuid;
     make_xen_uuid(&uuid);
@@ -931,9 +935,9 @@ xen::xen(microv_vcpu *vcpu, microv_domain *dom) :
     vcpu->add_cpuid_emulator(xen_leaf(0), {xen_leaf0});
     vcpu->add_cpuid_emulator(xen_leaf(2), {xen_leaf2});
     vcpu->emulate_wrmsr(hcall_page_msr, {wrmsr_hcall_page});
-    vcpu->add_vmcall_handler({&xen::hypercall, this});
+    vcpu->add_vmcall_handler({&xen_vcpu::hypercall, this});
     vcpu->add_cpuid_emulator(xen_leaf(1), {xen_leaf1});
-    vcpu->add_cpuid_emulator(xen_leaf(4), {&xen::xen_leaf4, this});
+    vcpu->add_cpuid_emulator(xen_leaf(4), {&xen_vcpu::xen_leaf4, this});
 
     vcpu->add_handler(0, handle_exception);
     vcpu->emulate_wrmsr(self_ipi_msr, {wrmsr_self_ipi});

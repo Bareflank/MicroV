@@ -23,14 +23,14 @@
 #include <bfgpalayout.h>
 #include <printv.h>
 #include <xen/domctl.h>
-#include <xen/xen.h>
+#include <xen/vcpu.h>
 
 #include <public/domctl.h>
 #include <public/errno.h>
 
 namespace microv {
 
-domctl::domctl(xen *xen) : m_xen{xen}, m_vcpu{xen->m_vcpu}
+domctl::domctl(xen_vcpu *xen) : m_xen{xen}, m_vcpu{xen->m_vcpu}
 {
 
 }

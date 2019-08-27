@@ -28,7 +28,7 @@
 namespace microv {
 
 class xenmem {
-    xen *m_xen{};
+    xen_vcpu *m_xen{};
     microv_vcpu *m_vcpu{};
 
 public:
@@ -41,7 +41,7 @@ public:
     bool get_sharing_freed_pages();
     bool get_sharing_shared_pages();
 
-    xenmem(xen *xen);
+    xenmem(xen_vcpu *xen);
     ~xenmem() = default;
 
     xenmem(xenmem &&) = default;

@@ -21,7 +21,7 @@
 
 #include <bfvmm/vcpu/vcpu_factory.h>
 #include <hve/arch/intel_x64/vcpu.h>
-#include <xen/xen.h>
+#include <xen/vcpu.h>
 
 namespace bfvmm
 {

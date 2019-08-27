@@ -55,7 +55,7 @@
 inline vcpuid_t nr_host_vcpus = 0;
 
 namespace microv {
-    class xen;
+    class xen_vcpu;
     struct msi_desc;
 }
 
@@ -342,7 +342,7 @@ public:
                              const pci_cfg_handler::delegate_t &d,
                              int direction);
 private:
-    friend class microv::xen;
+    friend class microv::xen_vcpu;
     friend class microv::intel_x64::vcpu;
 
     void setup_default_controls();
@@ -372,7 +372,7 @@ private:
     bool m_killed{};
     vcpu *m_parent_vcpu{};
 
-    std::unique_ptr<microv::xen> m_xen{};
+    std::unique_ptr<microv::xen_vcpu> m_xen{};
     std::unique_ptr<microv::intel_x64::lapic> m_lapic{};
     std::unique_ptr<microv::intel_x64::xstate> m_xstate{};
 

@@ -29,14 +29,14 @@ namespace microv {
 
 class domctl {
 private:
-    xen *m_xen{};
+    xen_vcpu *m_xen{};
     microv_vcpu *m_vcpu{};
 
 public:
     bool handle(xen_domctl_t *ctl);
     bool createdomain(xen_domctl_t *ctl);
 
-    domctl(xen *xen);
+    domctl(xen_vcpu *xen);
     ~domctl() = default;
 
     domctl(domctl &&) = default;

@@ -32,7 +32,7 @@
 #include <pci/dev.h>
 #include <pci/pci.h>
 #include <printv.h>
-#include <xen/xen.h>
+#include <xen/vcpu.h>
 #include <xue.h>
 
 microv::intel_x64::vcpu *vcpu0{nullptr};
@@ -172,7 +172,7 @@ vcpu::write_domU_guest_state(domain *domain)
             init_pci_on_vcpu(this);
         }
 
-        m_xen = std::make_unique<xen>(this, domain);
+        m_xen = std::make_unique<xen_vcpu>(this, domain);
     }
 }
 

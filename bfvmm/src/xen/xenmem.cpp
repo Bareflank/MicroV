@@ -21,11 +21,11 @@
 
 #include <hve/arch/intel_x64/vcpu.h>
 #include <xen/xenmem.h>
-#include <xen/xen.h>
+#include <xen/vcpu.h>
 
 namespace microv {
 
-xenmem::xenmem(xen *xen) : m_xen{xen}, m_vcpu{xen->m_vcpu}
+xenmem::xenmem(xen_vcpu *xen) : m_xen{xen}, m_vcpu{xen->m_vcpu}
 {
 }
 
