@@ -119,42 +119,61 @@ public:
         }
     }
 
-    T *acquire(tid id)
+    T *acquire(tid id) noexcept
     {
-        std::lock_guard<std::mutex> guard(m_mutex);
+        try {
+            std::lock_guard<std::mutex> guard(m_mutex);
 
-        auto ti = m_ts.find(id);
-        if (ti != m_ts.end()) {
-            auto refcount = ti->second.second.get();
-            refcount->fetch_add(1);
+            auto ti = m_ts.find(id);
+            if (ti != m_ts.end()) {
+                auto refcount = ti->second.second.get();
+                refcount->fetch_add(1);
 
-            {
-                std::lock_guard<std::mutex> refguard(m_ref_mutex);
-                if (m_refcounts.count(id) == 0) {
-                    m_refcounts[id] = refcount;
+                {
+                    std::lock_guard<std::mutex> refguard(m_ref_mutex);
+                    if (m_refcounts.count(id) == 0) {
+                        m_refcounts[id] = refcount;
+                    }
                 }
-            }
-            asm volatile("mfence");
+                asm volatile("mfence");
 
-            return ti->second.first.get();
-        } else {
+                return ti->second.first.get();
+            } else {
+                return nullptr;
+            }
+        } catch (...) {
+            bferror_nhex(0, "bfmanager::acquire threw exception, id =", id);
             return nullptr;
         }
     }
 
     template<typename U>
-    U *acquire(tid id)
-    { return dynamic_cast<U *>(acquire(id)); }
-
-    void release(tid id)
+    U *acquire(tid id) noexcept
     {
-        std::lock_guard<std::mutex> refguard(m_ref_mutex);
+        U *ret = nullptr;
 
-        auto itr = m_refcounts.find(id);
-        expects(itr != m_refcounts.end());
+        try {
+            ret = dynamic_cast<U *>(acquire(id));
+        } catch (...) {
+            bferror_nhex(0, "bfmanager::acquire bad_cast, id =", id);
+            ret = nullptr;
+        }
 
-        auto refcount = itr->second;
-        refcount->fetch_sub(1);
+        return ret;
+    }
+
+    void release(tid id) noexcept
+    {
+        try {
+            std::lock_guard<std::mutex> refguard(m_ref_mutex);
+
+            auto itr = m_refcounts.find(id);
+            if (itr != m_refcounts.end()) {
+                itr->second->fetch_sub(1);
+            }
+        } catch (...) {
+            bferror_nhex(0, "bfmanager::release threw exception, id =", id);
+        }
     }
 
     /// Run T
