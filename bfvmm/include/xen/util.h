@@ -25,10 +25,11 @@
 #include "types.h"
 #include <public/xen.h>
 
-/* Create a new domain ID */
-domid_t make_xen_domid() noexcept;
+namespace microv {
 
 /* Create a 16-byte UUID. */
 void make_xen_uuid(xen_uuid_t *uuid);
+
+}
 
 #endif

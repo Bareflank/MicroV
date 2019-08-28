@@ -49,14 +49,6 @@ domain::domain(id_t domainid, struct domain_info *info) :
     }
 }
 
-domain::~domain()
-{
-    if (m_sod_info.is_xen_dom()) {
-        put_xen_domain(m_xen_domid);
-        destroy_xen_domain(m_xen_domid);
-    }
-}
-
 void
 domain::setup_dom0()
 {
@@ -78,8 +70,7 @@ void
 domain::setup_domU()
 {
     if (m_sod_info.is_xen_dom()) {
-        m_xen_domid = create_xen_domain(sod_info());
-        m_xen_dom = get_xen_domain(m_xen_domid);
+        m_xen_dom = std::make_unique<microv::xen_domain>(this);
     }
 }
 

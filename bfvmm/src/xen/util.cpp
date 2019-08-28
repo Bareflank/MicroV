@@ -45,13 +45,7 @@ static uint64_t rdrand64(uint64_t *data) noexcept
     return 0;
 }
 
-domid_t make_xen_domid() noexcept
-{
-    static_assert(std::atomic<domid_t>::is_always_lock_free);
-    static std::atomic<domid_t> domid = 0;
-
-    return domid.fetch_add(1);
-}
+namespace microv {
 
 void make_xen_uuid(xen_uuid_t *uuid)
 {
@@ -69,4 +63,6 @@ void make_xen_uuid(xen_uuid_t *uuid)
 
     memcpy(uuid, &low, sizeof(low));
     memcpy((uint8_t *)uuid + sizeof(low), &high, sizeof(high));
+}
+
 }

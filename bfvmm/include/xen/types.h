@@ -30,6 +30,8 @@
 #include <bfvmm/hve/arch/x64/unmapper.h>
 #include <bfvmm/memory_manager/memory_manager.h>
 
+#include <public/xen.h>
+
 /* Base hypervisor vcpu */
 namespace bfvmm::intel_x64 {
     class vcpu;
@@ -46,6 +48,7 @@ namespace microv::intel_x64 {
 
 namespace microv {
 
+struct domain_info;
 class xen_vcpu;
 class gnttab;
 class evtchn;
@@ -62,6 +65,9 @@ using wrmsr_handler = bfvmm::intel_x64::wrmsr_handler;
 
 template<typename T>
 using unique_map = bfvmm::x64::unique_map<T>;
+
+using xen_uuid_t = ::xen_uuid_t;
+using xen_domid_t = ::domid_t;
 
 }
 

@@ -41,6 +41,10 @@ using xen_domid_t = domid_t;
  *   - domctl::createdomain hypercall from a xen guest dom0
  */
 struct xen_domain {
+    microv::domain_info *uv_info{};
+    microv::intel_x64::domain *uv_dom{};
+    microv::intel_x64::vcpu *uv_vcpu{};
+
     xen_domid_t id{};
     xen_uuid_t uuid{};
     uint32_t ssid_ref{};     /* flask id */
@@ -67,7 +71,7 @@ struct xen_domain {
     uint32_t cpupool{};
 
     bool ndvm{};             /* is this an NDVM? */
-    uint32_t dominf_flags{}; /* DOMINF_ flags, used for {sys,dom}ctls */
+    uint32_t flags{}; /* DOMINF_ flags, used for {sys,dom}ctls */
     struct xen_arch_domainconfig arch_config{};
 
     /* Console IO */
@@ -79,7 +83,7 @@ struct xen_domain {
     size_t hvc_tx_put(const gsl::span<char> &span);
     size_t hvc_tx_get(const gsl::span<char> &span);
 
-    xen_domain(xen_domid_t id, const microv::domain_info *uv_info);
+    xen_domain(microv::intel_x64::domain *domain);
 
     ~xen_domain() = default;
     xen_domain(xen_domain &&) = delete;
@@ -87,11 +91,6 @@ struct xen_domain {
     xen_domain &operator=(xen_domain &&) = delete;
     xen_domain &operator=(const xen_domain &) = delete;
 };
-
-xen_domid_t create_xen_domain(const microv::domain_info *domain);
-xen_domain *get_xen_domain(xen_domid_t id);
-void put_xen_domain(xen_domid_t id);
-void destroy_xen_domain(xen_domid_t id);
 
 }
 
