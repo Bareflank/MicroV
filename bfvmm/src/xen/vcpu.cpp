@@ -765,7 +765,7 @@ bool xen_vcpu::handle_interrupt(base_vcpu *vcpu, interrupt_handler::info_t &info
         auto pdev = guest_msi->dev();
         expects(pdev);
 
-        auto guest = get_guest(pdev->m_guest_vcpuid);
+        auto guest = get_vcpu(pdev->m_guest_vcpuid);
         if (!guest) {
             return true;
         }
@@ -776,7 +776,7 @@ bool xen_vcpu::handle_interrupt(base_vcpu *vcpu, interrupt_handler::info_t &info
             guest->push_external_interrupt(guest_msi->vector());
         }
 
-        put_guest(pdev->m_guest_vcpuid);
+        put_vcpu(pdev->m_guest_vcpuid);
     } else {
         m_vcpu->save_xstate();
         this->update_runstate(RUNSTATE_runnable);

@@ -382,74 +382,48 @@ private:
 
 }
 
-//------------------------------------------------------------------------------
-// Helpers
-//------------------------------------------------------------------------------
-
-/// get_guest - acquires a reference to a guest vcpu
-///
-/// A non-null return value is guaranteed to point to a valid object until a
-/// matching put_vcpu is called. Caller must ensure that they return the
-/// reference after they are done with put_guest.
-///
-/// @expects vcpuid::is_guest_vcpu(id)
-/// @ensures
-///
-/// @param id the id of the guest vcpu to acquire
-/// @return ptr to valid guest vcpu on success, nullptr otherwise
-///
-inline auto get_guest(vcpuid::type id)
+/**
+ *  get_vcpu - acquires a reference to a microv vcpu
+ *
+ *  A non-null return value is guaranteed to point to a valid object until a
+ *  matching put_vcpu is called. Caller must ensure that they release the
+ *  reference after they are done with put_vcpu.
+ *
+ *  @expects
+ *  @ensures
+ *
+ *  @param id the id of the vcpu to acquire
+ *  @return ptr to valid vcpu on success, nullptr otherwise
+*/
+inline microv::intel_x64::vcpu *get_vcpu(vcpuid::type id) noexcept
 {
-    expects(vcpuid::is_guest_vcpu(id));
     return g_vcm->acquire<microv::intel_x64::vcpu>(id);
 }
 
-/// put_guest - releases a reference to a guest vcpu
-///
-/// Release a previously acquired reference to the guest vcpu. This must
-/// be called after a successful call to get_guest.
-///
-/// @expects vcpuid::is_guest_vcpu(id)
-/// @ensures
-///
-/// @param id the id of the guest vcpu to release
-///
-inline void put_guest(vcpuid::type id)
+/**
+ *  put_vcpu - releases a reference to a microv vcpu
+ *
+ *  Release a previously acquired reference to vcpu. This must
+ *  be called after a successful call to get_vcpu.
+ *
+ *  @expects
+ *  @ensures
+ *
+ *  @param id the id of the vcpu to release
+*/
+inline void put_vcpu(vcpuid::type id) noexcept
 {
-    expects(vcpuid::is_guest_vcpu(id));
     return g_vcm->release(id);
 }
 
-/// get_root - gets a reference to a root vcpu
-///
-/// A non-null return value is guaranteed to point to a valid
-/// root vcpu. No matching put_root is required since each root
-/// vcpu outlives any guest.
-///
-/// @expects vcpuid::is_root_vcpu(id)
-/// @ensures
-///
-/// @param id the id of the root vcpu to acquire
-/// @return ptr to valid root vcpu on success, nullptr otherwise
-///
-inline microv::intel_x64::vcpu *get_root(vcpuid::type id)
-{
-    try {
-        expects(vcpuid::is_root_vcpu(id));
-        auto hv = g_vcm->get<microv::intel_x64::vcpu *>(id);
-        return hv.get();
-    } catch (...) {
-        return nullptr;
-    }
-}
-
-// Note:
-//
-// Undefine previously defined helper macros. Note that these are used by
-// each extension to provide quick access to the vcpu in the extension. If
-// include files are not handled properly, you could end up with the wrong
-// vcpu, resulting in compilation errors
-//
+/**
+ * Note:
+ *
+ * Undefine previously defined helper macros. Note that these are used by
+ * each extension to provide quick access to the vcpu in the extension. If
+ * include files are not handled properly, you could end up with the wrong
+ * vcpu, resulting in compilation errors
+*/
 
 #ifdef vcpu_cast
 #undef vcpu_cast

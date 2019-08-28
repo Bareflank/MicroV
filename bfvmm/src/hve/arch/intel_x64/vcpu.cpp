@@ -185,14 +185,14 @@ void vcpu::add_child_vcpu(vcpuid_t child_id)
         expects(vcpuid::is_guest_vcpu(child_id));
         expects(m_child_vcpus.count(child_id) == 0);
 
-        child = get_guest(child_id);
+        child = get_vcpu(child_id);
         expects(child);
 
         m_child_vcpus[child_id] = child;
         ensures(m_child_vcpus.count(child_id) == 1);
     } catch (...) {
         if (child) {
-            put_guest(child_id);
+            put_vcpu(child_id);
         }
         throw;
     }
@@ -211,7 +211,7 @@ vcpu *vcpu::find_child_vcpu(vcpuid_t child_id)
 void vcpu::remove_child_vcpu(vcpuid_t child_id)
 {
     if (m_child_vcpus.count(child_id) == 1) {
-        put_guest(child_id);
+        put_vcpu(child_id);
         m_child_vcpus.erase(child_id);
     }
 }
@@ -609,14 +609,28 @@ void vcpu::map_msi(const struct msi_desc *root_msi,
         for (uint64_t i = 0; i < nr_root_vcpus; i++) {
             if (root_destid == (1UL << i)) {
                 auto key = root_vector;
-                auto root = get_root(i);
+                auto root = get_vcpu(i);
 
-                expects(root->m_msi_map.count(key) == 0);
-                root->m_msi_map[key] = {root_msi, guest_msi};
-                printv("root_msi:  destid:0x%x vector:0x%x\n",
-                        root_msi->destid(), root_msi->vector());
-                printv("guest_msi: destid:0x%x vector:0x%x\n",
-                        guest_msi->destid(), guest_msi->vector());
+                if (!root) {
+                    bfdebug_nhex(0, "map_msi: failed to get_vcpu:", i);
+                    return;
+                }
+
+                try {
+                    expects(root->m_msi_map.count(key) == 0);
+                    root->m_msi_map[key] = {root_msi, guest_msi};
+
+                    printv("root_msi:  destid:0x%x vector:0x%x\n",
+                            root_msi->destid(), root_msi->vector());
+                    printv("guest_msi: destid:0x%x vector:0x%x\n",
+                            guest_msi->destid(), guest_msi->vector());
+                } catch (...) {
+                    bferror_info(0, "exception mapping msi in logical mode");
+                    put_vcpu(i);
+                    throw;
+                }
+
+                put_vcpu(i);
                 return;
             }
         }
@@ -635,14 +649,28 @@ void vcpu::map_msi(const struct msi_desc *root_msi,
      * (x)APIC or do an IPI to the proper core.
      */
     for (uint64_t i = 0; i < nr_root_vcpus; i++) {
-        auto root = get_root(i);
-        auto local_id = root->m_lapic->local_id();
-        if (root_destid == local_id) {
-             auto key = root_vector;
-             expects(root->m_msi_map.count(key) == 0);
-             root->m_msi_map[key] = {root_msi, guest_msi};
-             return;
+        auto root = get_vcpu(i);
+        if (!root) {
+            bfdebug_nhex(0, "map_msi: failed to get_vcpu:", i);
+            return;
         }
+
+        try {
+            auto local_id = root->m_lapic->local_id();
+            if (root_destid == local_id) {
+                 auto key = root_vector;
+                 expects(root->m_msi_map.count(key) == 0);
+                 root->m_msi_map[key] = {root_msi, guest_msi};
+                 put_vcpu(i);
+                 return;
+            }
+        } catch (...) {
+            bferror_info(0, "exception mapping msi in physical mode");
+            put_vcpu(i);
+            throw;
+        }
+
+        put_vcpu(i);
     }
 
     bfalert_nhex(0, "map_msi: physical mode destid not found", root_destid);
