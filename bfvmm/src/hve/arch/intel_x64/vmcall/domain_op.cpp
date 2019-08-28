@@ -66,6 +66,7 @@ vmcall_domain_op_handler::domain_op__create_domain(vcpu *vcpu)
          * in addition to a microv domain.
          */
         g_dm->create(vcpu->rax(), &info);
+        vcpu->add_child_domain(vcpu->rax());
     }
     catchall({
         vcpu->set_rax(INVALID_DOMAINID);
@@ -77,6 +78,7 @@ vmcall_domain_op_handler::domain_op__destroy_domain(vcpu *vcpu)
 {
     try {
         expects(foreign_domain(vcpu));
+        vcpu->remove_child_domain(vcpu->rbx());
         g_dm->destroy(vcpu->rbx(), nullptr);
         vcpu->set_rax(SUCCESS);
     }
@@ -95,7 +97,13 @@ void vmcall_domain_op_handler::domain_op__hvc_rx_put(vcpu *vcpu)
     try {
         expects(foreign_domain(vcpu));
 
-        auto dom = get_domain(vcpu->rbx());
+        auto dom = vcpu->find_child_domain(vcpu->rbx());
+        if (!dom) {
+            bferror_nhex(0, "child domain not found", vcpu->rbx());
+            vcpu->set_rax(0);
+            return;
+        }
+
         auto xen = dom->xen_dom();
         if (!xen) {
             bferror_nhex(0, "NULL xen domain for domain = ", vcpu->rbx());
@@ -123,7 +131,13 @@ void vmcall_domain_op_handler::domain_op__hvc_tx_get(vcpu *vcpu)
     try {
         expects(foreign_domain(vcpu));
 
-        auto dom = get_domain(vcpu->rbx());
+        auto dom = vcpu->find_child_domain(vcpu->rbx());
+        if (!dom) {
+            bferror_nhex(0, "child domain not found", vcpu->rbx());
+            vcpu->set_rax(0);
+            return;
+        }
+
         auto xen = dom->xen_dom();
         if (!xen) {
             bferror_nhex(0, "NULL xen domain for domain = ", vcpu->rbx());
@@ -152,7 +166,14 @@ vmcall_domain_op_handler::domain_op__add_e820_entry(vcpu *vcpu)
         const auto end = vcpu->rdx() & ~(0xFFULL << 56);
         const auto type = vcpu->rdx() >> 56;
 
-        get_domain(vcpu->rbx())->add_e820_entry(base, end, type);
+        auto dom = vcpu->find_child_domain(vcpu->rbx());
+        if (!dom) {
+            bferror_nhex(0, "child domain not found", vcpu->rbx());
+            vcpu->set_rax(0);
+            return;
+        }
+
+        dom->add_e820_entry(base, end, type);
         vcpu->set_rax(SUCCESS);
     }
     catchall({
@@ -166,10 +187,14 @@ vmcall_domain_op_handler::domain_op__set_uart(vcpu *vcpu)
     try {
         expects(foreign_domain(vcpu));
 
-        get_domain(vcpu->rbx())->set_uart(
-            gsl::narrow_cast<uart::port_type>(vcpu->rcx())
-        );
+        auto dom = vcpu->find_child_domain(vcpu->rbx());
+        if (!dom) {
+            bferror_nhex(0, "child domain not found", vcpu->rbx());
+            vcpu->set_rax(0);
+            return;
+        }
 
+        dom->set_uart(gsl::narrow_cast<uart::port_type>(vcpu->rcx()));
         vcpu->set_rax(SUCCESS);
     }
     catchall({
@@ -183,10 +208,14 @@ vmcall_domain_op_handler::domain_op__set_pt_uart(vcpu *vcpu)
     try {
         expects(foreign_domain(vcpu));
 
-        get_domain(vcpu->rbx())->set_pt_uart(
-            gsl::narrow_cast<uart::port_type>(vcpu->rcx())
-        );
+        auto dom = vcpu->find_child_domain(vcpu->rbx());
+        if (!dom) {
+            bferror_nhex(0, "child domain not found", vcpu->rbx());
+            vcpu->set_rax(0);
+            return;
+        }
 
+        dom->set_pt_uart(gsl::narrow_cast<uart::port_type>(vcpu->rcx()));
         vcpu->set_rax(SUCCESS);
     }
     catchall({
@@ -198,15 +227,17 @@ void
 vmcall_domain_op_handler::domain_op__dump_uart(vcpu *vcpu)
 {
     try {
-        auto buffer =
-            vcpu->map_gva_4k<char>(vcpu->rcx(), UART_MAX_BUFFER);
+        auto buffer = vcpu->map_gva_4k<char>(vcpu->rcx(), UART_MAX_BUFFER);
 
-        auto bytes_transferred =
-            get_domain(vcpu->rbx())->dump_uart(
-                gsl::span(buffer.get(), UART_MAX_BUFFER)
-            );
+        auto dom = vcpu->find_child_domain(vcpu->rbx());
+        if (!dom) {
+            bferror_nhex(0, "child domain not found", vcpu->rbx());
+            vcpu->set_rax(0);
+            return;
+        }
 
-        vcpu->set_rax(bytes_transferred);
+        auto bytes = dom->dump_uart(gsl::span(buffer.get(), UART_MAX_BUFFER));
+        vcpu->set_rax(bytes);
     }
     catchall({
         vcpu->set_rax(0);
@@ -219,10 +250,15 @@ vmcall_domain_op_handler::domain_op__share_page_r(vcpu *vcpu)
     try {
         expects(foreign_domain(vcpu));
 
-        auto [hpa, unused] =
-            vcpu->gpa_to_hpa(vcpu->rcx());
+        auto dom = vcpu->find_child_domain(vcpu->rbx());
+        if (!dom) {
+            bferror_nhex(0, "child domain not found", vcpu->rbx());
+            vcpu->set_rax(FAILURE);
+            return;
+        }
 
-        get_domain(vcpu->rbx())->map_4k_r(vcpu->rdx(), hpa);
+        auto [hpa, unused] = vcpu->gpa_to_hpa(vcpu->rcx());
+        dom->map_4k_r(vcpu->rdx(), hpa);
         vcpu->set_rax(SUCCESS);
     }
     catchall({
@@ -236,8 +272,15 @@ vmcall_domain_op_handler::domain_op__share_page_rw(vcpu *vcpu)
     try {
         expects(foreign_domain(vcpu));
 
+        auto dom = vcpu->find_child_domain(vcpu->rbx());
+        if (!dom) {
+            bferror_nhex(0, "child domain not found", vcpu->rbx());
+            vcpu->set_rax(FAILURE);
+            return;
+        }
+
         auto [hpa, unused] = vcpu->gpa_to_hpa(vcpu->rcx());
-        get_domain(vcpu->rbx())->map_4k_rw(vcpu->rdx(), hpa);
+        dom->map_4k_rw(vcpu->rdx(), hpa);
         vcpu->set_rax(SUCCESS);
     }
     catchall({
@@ -251,8 +294,15 @@ vmcall_domain_op_handler::domain_op__share_page_rwe(vcpu *vcpu)
     try {
         expects(foreign_domain(vcpu));
 
+        auto dom = vcpu->find_child_domain(vcpu->rbx());
+        if (!dom) {
+            bferror_nhex(0, "child domain not found", vcpu->rbx());
+            vcpu->set_rax(FAILURE);
+            return;
+        }
+
         auto [hpa, unused] = vcpu->gpa_to_hpa(vcpu->rcx());
-        get_domain(vcpu->rbx())->map_4k_rwe(vcpu->rdx(), hpa);
+        dom->map_4k_rwe(vcpu->rdx(), hpa);
         vcpu->set_rax(SUCCESS);
     }
     catchall({
@@ -273,9 +323,15 @@ vmcall_domain_op_handler::domain_op__donate_page_r(vcpu *vcpu)
     try {
         expects(foreign_domain(vcpu));
 
-        auto [hpa, unused] = vcpu->gpa_to_hpa(vcpu->rcx());
-        get_domain(vcpu->rbx())->map_4k_r(vcpu->rdx(), hpa);
+        auto dom = vcpu->find_child_domain(vcpu->rbx());
+        if (!dom) {
+            bferror_nhex(0, "child domain not found", vcpu->rbx());
+            vcpu->set_rax(FAILURE);
+            return;
+        }
 
+        auto [hpa, unused] = vcpu->gpa_to_hpa(vcpu->rcx());
+        dom->map_4k_r(vcpu->rdx(), hpa);
         vcpu->set_rax(SUCCESS);
     }
     catchall({
@@ -296,8 +352,15 @@ vmcall_domain_op_handler::domain_op__donate_page_rw(vcpu *vcpu)
     try {
         expects(foreign_domain(vcpu));
 
+        auto dom = vcpu->find_child_domain(vcpu->rbx());
+        if (!dom) {
+            bferror_nhex(0, "child domain not found", vcpu->rbx());
+            vcpu->set_rax(FAILURE);
+            return;
+        }
+
         auto [hpa, unused] = vcpu->gpa_to_hpa(vcpu->rcx());
-        get_domain(vcpu->rbx())->map_4k_rw(vcpu->rdx(), hpa);
+        dom->map_4k_rw(vcpu->rdx(), hpa);
         vcpu->set_rax(SUCCESS);
     }
     catchall({
@@ -318,8 +381,15 @@ vmcall_domain_op_handler::domain_op__donate_page_rwe(vcpu *vcpu)
     try {
         expects(foreign_domain(vcpu));
 
+        auto dom = vcpu->find_child_domain(vcpu->rbx());
+        if (!dom) {
+            bferror_nhex(0, "child domain not found", vcpu->rbx());
+            vcpu->set_rax(FAILURE);
+            return;
+        }
+
         auto [hpa, unused] = vcpu->gpa_to_hpa(vcpu->rcx());
-        get_domain(vcpu->rbx())->map_4k_rwe(vcpu->rdx(), hpa);
+        dom->map_4k_rwe(vcpu->rdx(), hpa);
         vcpu->set_rax(SUCCESS);
     }
     catchall({
@@ -332,7 +402,14 @@ vmcall_domain_op_handler::domain_op__donate_page_rwe(vcpu *vcpu)
     vmcall_domain_op_handler::domain_op__ ## reg(vcpu *vcpu)                    \
     {                                                                           \
         try {                                                                   \
-            vcpu->set_rax(get_domain(vcpu->rbx())->reg());                      \
+            auto dom = vcpu->find_child_domain(vcpu->rbx());                    \
+            if (!dom) {                                                         \
+                bferror_nhex(0, "child domain not found", vcpu->rbx());         \
+                vcpu->set_rax(FAILURE);                                         \
+                return;                                                         \
+            }                                                                   \
+                                                                                \
+            vcpu->set_rax(dom->reg());                                          \
         }                                                                       \
         catchall({                                                              \
             vcpu->set_rax(FAILURE);                                             \
@@ -344,7 +421,14 @@ vmcall_domain_op_handler::domain_op__donate_page_rwe(vcpu *vcpu)
     vmcall_domain_op_handler::domain_op__set_ ## reg(vcpu *vcpu)                \
     {                                                                           \
         try {                                                                   \
-            get_domain(vcpu->rbx())->set_ ## reg(vcpu->rcx());                  \
+            auto dom = vcpu->find_child_domain(vcpu->rbx());                    \
+            if (!dom) {                                                         \
+                bferror_nhex(0, "child domain not found", vcpu->rbx());         \
+                vcpu->set_rax(FAILURE);                                         \
+                return;                                                         \
+            }                                                                   \
+                                                                                \
+            dom->set_ ## reg(vcpu->rcx());                                      \
             vcpu->set_rax(SUCCESS);                                             \
         }                                                                       \
         catchall({                                                              \
@@ -621,7 +705,7 @@ vmcall_domain_op_handler::dispatch(vcpu *vcpu)
 
         default:
             break;
-    };
+    }
 
     throw std::runtime_error("unknown domain opcode");
 }

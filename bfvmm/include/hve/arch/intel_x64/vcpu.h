@@ -107,9 +107,13 @@ public:
 
 public:
 
-    void add_child(vcpuid_t id);
-    vcpu *find_child(vcpuid_t id);
-    void remove_child(vcpuid_t id);
+    void add_child_vcpu(vcpuid_t id);
+    vcpu *find_child_vcpu(vcpuid_t id);
+    void remove_child_vcpu(vcpuid_t id);
+
+    void add_child_domain(domainid_t id);
+    domain *find_child_domain(domainid_t id);
+    void remove_child_domain(domainid_t id);
 
     //--------------------------------------------------------------------------
     // Domain Info
@@ -373,6 +377,7 @@ private:
 
     msi_map_t m_msi_map{};
     std::unordered_map<vcpuid_t, vcpu *> m_child_vcpus{};
+    std::unordered_map<domainid_t, domain *> m_child_doms{};
 };
 
 }

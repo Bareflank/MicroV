@@ -57,7 +57,7 @@ vmcall_run_op_handler::dispatch(vcpu *root)
     }
 
     try {
-        auto child = root->find_child(root->rbx());
+        auto child = root->find_child_vcpu(root->rbx());
         expects(child);
 
         child->set_root_vcpu(root);

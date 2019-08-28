@@ -46,10 +46,17 @@ vmcall_vcpu_op_handler::vcpu_op__create_vcpu(vcpu *vcpu)
             init_xstate = false;
         }
 
+        auto dom = vcpu->find_child_domain(vcpu->rbx());
+        if (!dom) {
+            bferror_nhex(0, "child domain not found", vcpu->rbx());
+            vcpu->set_rax(FAILURE);
+            return;
+        }
+
         vcpu->set_rax(bfvmm::vcpu::generate_vcpuid());
         bfdebug_nhex(0, "creating guest vcpu", vcpu->rax());
-        g_vcm->create(vcpu->rax(), get_domain(vcpu->rbx()));
-        vcpu->add_child(vcpu->rax());
+        g_vcm->create(vcpu->rax(), dom);
+        vcpu->add_child_vcpu(vcpu->rax());
     }
     catchall({
         vcpu->set_rax(INVALID_VCPUID);
@@ -60,7 +67,7 @@ void
 vmcall_vcpu_op_handler::vcpu_op__kill_vcpu(vcpu *vcpu)
 {
     try {
-        auto child = vcpu->find_child(vcpu->rbx());
+        auto child = vcpu->find_child_vcpu(vcpu->rbx());
         if (child) {
             child->kill();
             vcpu->set_rax(SUCCESS);
@@ -77,7 +84,7 @@ void
 vmcall_vcpu_op_handler::vcpu_op__destroy_vcpu(vcpu *vcpu)
 {
     try {
-        vcpu->remove_child(vcpu->rbx());
+        vcpu->remove_child_vcpu(vcpu->rbx());
         g_vcm->destroy(vcpu->rbx(), nullptr);
         vcpu->set_rax(SUCCESS);
     }

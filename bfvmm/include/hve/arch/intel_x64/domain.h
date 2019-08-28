@@ -523,19 +523,40 @@ public:
     /// @endcond
 };
 
+/**
+ * get_domain - acquires a reference to a microv domain
+ *
+ * A non-null return value is guaranteed to point to a valid object until a
+ * matching put_domain is called. Caller must ensure that they return the
+ * reference after they are done with put_domain.
+ *
+ * @expects
+ * @ensures
+ *
+ * @param id the id of the guest domain to acquire
+ * @return ptr to valid guest domain on success, nullptr otherwise
+*/
+inline microv::intel_x64::domain *get_domain(domainid_t id) noexcept
+{
+    return g_dm->acquire<microv::intel_x64::domain>(id);
 }
 
-/// Get Domain
-///
-/// Gets a domain from the domain manager given a domain id
-///
-/// @expects
-/// @ensures
-///
-/// @return returns a pointer to the domain being queried or throws
-///     and exception.
-///
-#define get_domain(a) \
-    g_dm->get<microv::intel_x64::domain *>(a, "invalid domainid: " __FILE__)
+/**
+ * put_domain - releases a reference to a microv domain
+ *
+ * Release a previously acquired reference to the microv domain.
+ * This must be called after a successful call to get_domain.
+ *
+ * @expects
+ * @ensures
+ *
+ * @param id the id of the guest vcpu to release
+*/
+inline void put_domain(domainid_t id) noexcept
+{
+    return g_dm->release(id);
+}
+
+}
 
 #endif

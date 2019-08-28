@@ -176,7 +176,7 @@ vcpu::write_domU_guest_state(domain *domain)
     }
 }
 
-void vcpu::add_child(vcpuid_t child_id)
+void vcpu::add_child_vcpu(vcpuid_t child_id)
 {
     vcpu *child{};
 
@@ -198,7 +198,7 @@ void vcpu::add_child(vcpuid_t child_id)
     }
 }
 
-vcpu *vcpu::find_child(vcpuid_t child_id)
+vcpu *vcpu::find_child_vcpu(vcpuid_t child_id)
 {
     auto itr = m_child_vcpus.find(child_id);
     if (itr != m_child_vcpus.end()) {
@@ -208,7 +208,7 @@ vcpu *vcpu::find_child(vcpuid_t child_id)
     }
 }
 
-void vcpu::remove_child(vcpuid_t child_id)
+void vcpu::remove_child_vcpu(vcpuid_t child_id)
 {
     if (m_child_vcpus.count(child_id) == 1) {
         put_guest(child_id);
@@ -216,6 +216,44 @@ void vcpu::remove_child(vcpuid_t child_id)
     }
 }
 
+void vcpu::add_child_domain(domainid_t child_id)
+{
+    domain *child{};
+
+    try {
+        expects(this->is_dom0());
+        expects(m_child_doms.count(child_id) == 0);
+
+        child = get_domain(child_id);
+        expects(child);
+
+        m_child_doms[child_id] = child;
+        ensures(m_child_doms.count(child_id) == 1);
+    } catch (...) {
+        if (child) {
+            put_domain(child_id);
+        }
+        throw;
+    }
+}
+
+domain *vcpu::find_child_domain(domainid_t child_id)
+{
+    auto itr = m_child_doms.find(child_id);
+    if (itr != m_child_doms.end()) {
+        return itr->second;
+    } else {
+        return nullptr;
+    }
+}
+
+void vcpu::remove_child_domain(domainid_t child_id)
+{
+    if (m_child_doms.count(child_id) == 1) {
+        put_domain(child_id);
+        m_child_doms.erase(child_id);
+    }
+}
 bool vcpu::handle_0x4BF00010(bfvmm::intel_x64::vcpu *vcpu)
 {
 #ifdef USE_XUE
