@@ -882,5 +882,6 @@ xen_vcpu::xen_vcpu(microv_vcpu *vcpu, microv_domain *dom) :
 
     vcpu->add_handler(0, handle_exception);
     vcpu->emulate_wrmsr(self_ipi_msr, {wrmsr_self_ipi});
+    vcpu->add_external_interrupt_handler({&xen_vcpu::handle_interrupt, this});
 }
 }
