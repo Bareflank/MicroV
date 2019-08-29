@@ -23,6 +23,7 @@
 #define MICROV_XEN_VCPU_H
 
 #include "types.h"
+#include "domain.h"
 #include "evtchn.h"
 #include "flask.h"
 #include "gnttab.h"
@@ -100,8 +101,6 @@ private:
     unique_map<struct vcpu_time_info> m_user_vti{};
     unique_map<struct vcpu_runstate_info> m_runstate{};
 
-    xen_domain_handle_t xdh{};
-    struct xen_domctl_getdomaininfo info{};
     uintptr_t m_shinfo_gpfn{};
 
     uint64_t m_tsc_shift{};

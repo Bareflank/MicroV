@@ -25,11 +25,10 @@
 #include "../ring.h"
 #include "../domain/domain.h"
 #include "types.h"
-#include <public/xen.h>
+
+#include <public/domctl.h>
 
 namespace microv {
-
-using xen_domid_t = domid_t;
 
 /**
  * xen_domain
@@ -40,10 +39,28 @@ using xen_domid_t = domid_t;
  *   - domain_op__create_domain hypercall from a bareflank root vcpu
  *   - domctl::createdomain hypercall from a xen guest dom0
  */
-struct xen_domain {
+class xen_domain {
+public:
+    xen_domain(microv_domain *domain);
+
+    void bind_vcpu(xen_vcpu *vcpu);
+    void get_domctl_info(struct xen_domctl_getdomaininfo *info);
+    uint64_t shinfo_gpfn();
+    uint64_t runstate_time(int state);
+    uint32_t nr_online_vcpus();
+    xen_vcpuid_t max_vcpu_id();
+    void get_arch_config(struct xen_arch_domainconfig *cfg);
+
+    size_t hvc_rx_put(const gsl::span<char> &span);
+    size_t hvc_rx_get(const gsl::span<char> &span);
+    size_t hvc_tx_put(const gsl::span<char> &span);
+    size_t hvc_tx_get(const gsl::span<char> &span);
+
+public:
     microv::domain_info *uv_info{};
-    microv::intel_x64::domain *uv_dom{};
-    microv::intel_x64::vcpu *uv_vcpu{};
+    microv_domain *uv_dom{};
+    microv_vcpu *uv_vcpu{};
+    xen_vcpu *xen_vcpu{};
 
     xen_domid_t id{};
     xen_uuid_t uuid{};
@@ -63,14 +80,11 @@ struct xen_domain {
     uint32_t shr_pages{};   /* nr shared pages */
     uint32_t out_pages{};   /* nr claimed-but-not-possessed pages */
     uint32_t paged_pages{}; /* nr paged-out pages */
-    uint64_t shinfo_gmfn{};
 
     /* Scheduling */
-    uint64_t running_time{}; /* time in the RUNNING state */
-    uint32_t nr_online_vcpus{};
     uint32_t cpupool{};
 
-    bool ndvm{};             /* is this an NDVM? */
+    bool ndvm{};      /* is this an NDVM? */
     uint32_t flags{}; /* DOMINF_ flags, used for {sys,dom}ctls */
     struct xen_arch_domainconfig arch_config{};
 
@@ -78,13 +92,7 @@ struct xen_domain {
     std::unique_ptr<microv::ring<HVC_RX_SIZE>> hvc_rx_ring;
     std::unique_ptr<microv::ring<HVC_TX_SIZE>> hvc_tx_ring;
 
-    size_t hvc_rx_put(const gsl::span<char> &span);
-    size_t hvc_rx_get(const gsl::span<char> &span);
-    size_t hvc_tx_put(const gsl::span<char> &span);
-    size_t hvc_tx_get(const gsl::span<char> &span);
-
-    xen_domain(microv::intel_x64::domain *domain);
-
+public:
     ~xen_domain() = default;
     xen_domain(xen_domain &&) = delete;
     xen_domain(const xen_domain &) = delete;

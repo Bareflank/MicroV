@@ -49,12 +49,15 @@ namespace microv::intel_x64 {
 namespace microv {
 
 struct domain_info;
-class xen_vcpu;
-class gnttab;
+class xen_domain;
 class xen_evtchn;
-class xenver;
+class xen_flask;
+class xen_gnttab;
+class xen_memory;
+class xen_physdev;
+class xen_vcpu;
+class xen_version;
 
-using xen_vcpu = microv::xen_vcpu;
 using microv_vcpu = microv::intel_x64::vcpu;
 using microv_domain = microv::intel_x64::domain;
 

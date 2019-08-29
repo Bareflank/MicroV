@@ -26,8 +26,10 @@
 
 #include <hve/arch/intel_x64/domain.h>
 #include <public/domctl.h>
+#include <public/vcpu.h>
 #include <xen/domain.h>
 #include <xen/util.h>
+#include <xen/vcpu.h>
 
 namespace microv {
 
@@ -39,10 +41,10 @@ static xen_domid_t make_domid() noexcept
     return domid.fetch_add(1);
 }
 
-xen_domain::xen_domain(microv::intel_x64::domain *domain)
+xen_domain::xen_domain(microv_domain *domain)
 {
-    uv_dom = domain;
     uv_info = &domain->m_sod_info;
+    uv_dom = domain;
 
     this->id = (uv_info->is_xenstore()) ? 0 : make_domid();
     this->ssid_ref = 0;
@@ -58,7 +60,6 @@ xen_domain::xen_domain(microv::intel_x64::domain *domain)
     this->out_pages = 0;
     this->paged_pages = 0;
 
-    this->nr_online_vcpus = 0;
     this->cpupool = -1; /* CPUPOOLID_NONE */
     this->arch_config.emulation_flags = XEN_X86_EMU_LAPIC;
     this->ndvm = uv_info->is_ndvm();
@@ -74,6 +75,58 @@ xen_domain::xen_domain(microv::intel_x64::domain *domain)
         this->hvc_rx_ring = std::make_unique<microv::ring<HVC_RX_SIZE>>();
         this->hvc_tx_ring = std::make_unique<microv::ring<HVC_TX_SIZE>>();
     }
+}
+
+void xen_domain::bind_vcpu(class xen_vcpu *vcpu)
+{
+    this->xen_vcpu = vcpu;
+    uv_vcpu = vcpu->m_vcpu;
+}
+
+uint64_t xen_domain::shinfo_gpfn()
+{
+    return 0;
+}
+
+uint64_t xen_domain::runstate_time(int state)
+{
+    return 0;
+}
+
+uint32_t xen_domain::nr_online_vcpus()
+{
+    return 0;
+}
+
+xen_vcpuid_t xen_domain::max_vcpu_id()
+{
+    return 0;
+}
+
+void xen_domain::get_arch_config(struct xen_arch_domainconfig *cfg)
+{
+}
+
+void xen_domain::get_domctl_info(struct xen_domctl_getdomaininfo *info)
+{
+    info->domain = id;
+    info->flags = flags;
+    info->tot_pages = total_pages;
+    info->max_pages = max_pages;
+    info->outstanding_pages = out_pages;
+    info->shr_pages = shr_pages;
+    info->paged_pages = paged_pages;
+    info->shared_info_frame = this->shinfo_gpfn();
+    info->cpu_time = this->runstate_time(RUNSTATE_running);
+    info->nr_online_vcpus = this->nr_online_vcpus();
+    info->max_vcpu_id = this->max_vcpu_id();
+    info->ssidref = ssid_ref;
+
+    static_assert(sizeof(uuid) == sizeof(info->handle));
+    memcpy(&info->handle, &uuid, sizeof(uuid));
+
+    info->cpupool = cpupool;
+    this->get_arch_config(&info->arch_config);
 }
 
 size_t xen_domain::hvc_rx_put(const gsl::span<char> &span)

@@ -22,6 +22,7 @@
 #include <hve/arch/intel_x64/vcpu.h>
 #include <stdlib.h>
 #include <compiler.h>
+#include <xen/domain.h>
 #include <xen/vcpu.h>
 #include <xen/version.h>
 
@@ -30,7 +31,10 @@
 
 namespace microv {
 
-xen_version::xen_version(xen_vcpu *xen) : m_xen{xen}, m_vcpu{xen->m_vcpu}
+xen_version::xen_version(xen_vcpu *xen) :
+    m_xen{xen},
+    m_xen_dom{xen->m_xen_dom},
+    m_vcpu{xen->m_vcpu}
 { }
 
 bool xen_version::changeset()
@@ -128,8 +132,8 @@ bool xen_version::guest_handle()
     //bfalert_info(0, "xen_version:guest_handle");
 
     auto hdl = m_vcpu->map_arg<xen_domain_handle_t>(m_vcpu->rsi());
-    expects(sizeof(*hdl.get()) == sizeof(m_xen->xdh));
-    memcpy(hdl.get(), &m_xen->xdh, sizeof(m_xen->xdh));
+    expects(sizeof(*hdl.get()) == sizeof(m_xen_dom->uuid));
+    memcpy(hdl.get(), &m_xen_dom->uuid, sizeof(m_xen_dom->uuid));
     m_vcpu->set_rax(0);
     return true;
 }

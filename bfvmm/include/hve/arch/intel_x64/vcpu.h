@@ -379,7 +379,6 @@ private:
     std::unordered_map<vcpuid_t, vcpu *> m_child_vcpus{};
     std::unordered_map<domainid_t, domain *> m_child_doms{};
 };
-
 }
 
 /**

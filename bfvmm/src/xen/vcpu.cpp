@@ -859,6 +859,8 @@ xen_vcpu::xen_vcpu(microv_vcpu *vcpu, microv_domain *dom) :
 {
     expects(m_xen_dom);
 
+    m_xen_dom->bind_vcpu(this);
+
     m_evtchn = std::make_unique<class xen_evtchn>(this);
     m_flask = std::make_unique<class xen_flask>(this);
     m_gnttab = std::make_unique<class xen_gnttab>(this);

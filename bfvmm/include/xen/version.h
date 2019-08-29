@@ -30,6 +30,7 @@ namespace microv {
 class xen_version {
 private:
     xen_vcpu *m_xen{};
+    xen_domain *m_xen_dom{};
     microv_vcpu *m_vcpu{};
 
 public:
