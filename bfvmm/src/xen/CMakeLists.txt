@@ -31,11 +31,12 @@ target_include_directories(microv_xen PUBLIC
 target_sources(microv_xen PRIVATE
     $<${X64}:domain.cpp>
     $<${X64}:evtchn.cpp>
+    $<${X64}:flask.cpp>
     $<${X64}:gnttab.cpp>
     $<${X64}:physdev.cpp>
     $<${X64}:util.cpp>
-    $<${X64}:xenmem.cpp>
-    $<${X64}:xenver.cpp>
+    $<${X64}:memory.cpp>
+    $<${X64}:version.cpp>
     $<${X64}:vcpu.cpp>
 )
 

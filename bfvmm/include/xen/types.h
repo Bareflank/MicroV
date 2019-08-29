@@ -51,7 +51,7 @@ namespace microv {
 struct domain_info;
 class xen_vcpu;
 class gnttab;
-class evtchn;
+class xen_evtchn;
 class xenver;
 
 using xen_vcpu = microv::xen_vcpu;
@@ -68,6 +68,7 @@ using unique_map = bfvmm::x64::unique_map<T>;
 
 using xen_uuid_t = ::xen_uuid_t;
 using xen_domid_t = ::domid_t;
+using xen_vcpuid_t = uint32_t;
 
 }
 

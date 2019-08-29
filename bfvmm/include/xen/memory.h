@@ -19,38 +19,35 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#ifndef MICROV_XEN_XENVER_H
-#define MICROV_XEN_XENVER_H
+#ifndef MICROV_XEN_MEMORY_H
+#define MICROV_XEN_MEMORY_H
 
 #include "types.h"
-#include <public/xen.h>
+#include <public/memory.h>
 
 namespace microv {
 
-class xenver {
-private:
+class xen_memory {
     xen_vcpu *m_xen{};
     microv_vcpu *m_vcpu{};
 
 public:
-    bool build_id();
-    bool capabilities();
-    bool changeset();
-    bool commandline();
-    bool compile_info();
-    bool extraversion();
-    bool get_features();
-    bool guest_handle();
-    bool pagesize();
-    bool platform_parameters();
-    bool version();
+    /* boot */
+    bool memory_map();
+    bool add_to_physmap();
+    bool decrease_reservation();
 
-    xenver(xen_vcpu *xen);
-    ~xenver() = default;
-    xenver(xenver &&) = default;
-    xenver &operator=(xenver &&) = default;
-    xenver(const xenver &) = delete;
-    xenver &operator=(const xenver &) = delete;
+    /* xl create */
+    bool get_sharing_freed_pages();
+    bool get_sharing_shared_pages();
+
+    xen_memory(xen_vcpu *xen);
+    ~xen_memory() = default;
+
+    xen_memory(xen_memory &&) = default;
+    xen_memory(const xen_memory &) = delete;
+    xen_memory &operator=(xen_memory &&) = default;
+    xen_memory &operator=(const xen_memory &) = delete;
 };
 
 }

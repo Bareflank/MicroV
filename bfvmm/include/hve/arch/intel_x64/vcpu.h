@@ -371,7 +371,7 @@ private:
     bool m_killed{};
     vcpu *m_root_vcpu{};
 
-    std::unique_ptr<microv::xen_vcpu> m_xen{};
+    std::unique_ptr<microv::xen_vcpu> m_xen_vcpu{};
     std::unique_ptr<microv::intel_x64::lapic> m_lapic{};
     std::unique_ptr<microv::intel_x64::xstate> m_xstate{};
 

@@ -24,10 +24,11 @@
 
 #include "types.h"
 #include "evtchn.h"
+#include "flask.h"
 #include "gnttab.h"
 #include "physdev.h"
-#include "xenmem.h"
-#include "xenver.h"
+#include "memory.h"
+#include "version.h"
 
 #include <public/domctl.h>
 #include <public/io/console.h>
@@ -36,8 +37,6 @@
 #include <public/xen.h>
 
 namespace microv {
-
-class xen_domain;
 
 class xen_vcpu {
 public:
@@ -76,22 +75,24 @@ private:
     bool handle_vcpu_op();
     bool handle_vm_assist();
 
+    friend class xen_evtchn;
     friend class xen_domain;
-    friend class gnttab;
-    friend class evtchn;
-    friend class xenmem;
-    friend class xenver;
-    friend class physdev;
+    friend class xen_flask;
+    friend class xen_gnttab;
+    friend class xen_memory;
+    friend class xen_version;
+    friend class xen_physdev;
 
     microv_vcpu *m_vcpu{};
     microv_domain *m_dom{};
     xen_domain *m_xen_dom{};
 
-    std::unique_ptr<class gnttab> m_gnttab;
-    std::unique_ptr<class evtchn> m_evtchn;
-    std::unique_ptr<class xenmem> m_xenmem;
-    std::unique_ptr<class xenver> m_xenver;
-    std::unique_ptr<class physdev> m_physdev;
+    std::unique_ptr<class xen_evtchn> m_evtchn;
+    std::unique_ptr<class xen_flask> m_flask;
+    std::unique_ptr<class xen_gnttab> m_gnttab;
+    std::unique_ptr<class xen_memory> m_xenmem;
+    std::unique_ptr<class xen_version> m_xenver;
+    std::unique_ptr<class xen_physdev> m_physdev;
 
     unique_map<struct shared_info> m_shinfo{};
     unique_map<struct xencons_interface> m_console{};

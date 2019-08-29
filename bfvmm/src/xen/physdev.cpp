@@ -20,23 +20,24 @@
 // SOFTWARE.
 
 #include <hve/arch/intel_x64/vcpu.h>
+#include <printv.h>
 #include <xen/physdev.h>
 #include <xen/vcpu.h>
 
 namespace microv {
 
-physdev::physdev(xen_vcpu *xen) :
+xen_physdev::xen_physdev(xen_vcpu *xen) :
     m_xen{xen},
     m_vcpu{xen->m_vcpu}
 {
 }
 
-bool physdev::pci_device_add()
+bool xen_physdev::pci_device_add()
 {
-//    auto pda = m_vcpu->map_arg<physdev_pci_device_add_t>(m_vcpu->rsi());
+    auto pda = m_vcpu->map_arg<physdev_pci_device_add_t>(m_vcpu->rsi());
 
-//    printf("pci_device_add: %04x:%02x:%02x.%02x, flags: 0x%x\n",
-//        pda->seg, pda->bus, pda->devfn >> 3, pda->devfn & 7, pda->flags);
+    printv("pci_device_add: %04x:%02x:%02x.%02x, flags: 0x%x\n",
+        pda->seg, pda->bus, pda->devfn >> 3, pda->devfn & 7, pda->flags);
 
     m_vcpu->set_rax(0);
     return true;

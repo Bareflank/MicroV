@@ -172,7 +172,7 @@ vcpu::write_domU_guest_state(domain *domain)
             init_pci_on_vcpu(this);
         }
 
-        m_xen = std::make_unique<xen_vcpu>(this, domain);
+        m_xen_vcpu = std::make_unique<xen_vcpu>(this, domain);
     }
 }
 
@@ -296,7 +296,7 @@ bool vcpu::handle_0x4BF00021(bfvmm::intel_x64::vcpu *vcpu)
 
 void vcpu::queue_virq(uint32_t virq)
 {
-    m_xen->queue_virq(virq);
+    m_xen_vcpu->queue_virq(virq);
 }
 
 //------------------------------------------------------------------------------

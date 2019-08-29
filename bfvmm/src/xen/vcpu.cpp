@@ -33,12 +33,13 @@
 #include <pci/dev.h>
 
 #include <xen/evtchn.h>
+#include <xen/flask.h>
 #include <xen/gnttab.h>
 #include <xen/physdev.h>
 #include <xen/util.h>
 #include <xen/time.h>
-#include <xen/xenmem.h>
-#include <xen/xenver.h>
+#include <xen/memory.h>
+#include <xen/version.h>
 #include <xen/vcpu.h>
 
 #include <public/arch-x86/cpuid.h>
@@ -505,23 +506,9 @@ bool xen_vcpu::handle_platform_op()
 bool xen_vcpu::handle_xsm_op()
 {
     expects(m_dom->initdom());
-    auto flop = m_vcpu->map_arg<xen_flask_op_t>(m_vcpu->rdi());
+    auto fop = m_vcpu->map_arg<xen_flask_op_t>(m_vcpu->rdi());
 
-    if (flop->interface_version != XEN_FLASK_INTERFACE_VERSION) {
-        m_vcpu->set_rax(-EACCES);
-        return true;
-    }
-
-    switch (flop->cmd) {
-    case FLASK_SID_TO_CONTEXT:
-        break;
-    default:
-        bfalert_nhex(0, "unhandled flask_op", flop->cmd);
-        break;
-    }
-
-    m_vcpu->set_rax(-EACCES);
-    return true;
+    return m_flask->handle(fop.get());
 }
 
 struct vcpu_time_info *xen_vcpu::vcpu_time()
@@ -872,11 +859,12 @@ xen_vcpu::xen_vcpu(microv_vcpu *vcpu, microv_domain *dom) :
 {
     expects(m_xen_dom);
 
-    m_evtchn = std::make_unique<class evtchn>(this);
-    m_gnttab = std::make_unique<class gnttab>(this);
-    m_xenmem = std::make_unique<class xenmem>(this);
-    m_xenver = std::make_unique<class xenver>(this);
-    m_physdev = std::make_unique<class physdev>(this);
+    m_evtchn = std::make_unique<class xen_evtchn>(this);
+    m_flask = std::make_unique<class xen_flask>(this);
+    m_gnttab = std::make_unique<class xen_gnttab>(this);
+    m_xenmem = std::make_unique<class xen_memory>(this);
+    m_xenver = std::make_unique<class xen_version>(this);
+    m_physdev = std::make_unique<class xen_physdev>(this);
 
     make_xen_ids(dom, this);
 

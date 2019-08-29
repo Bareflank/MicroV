@@ -27,8 +27,6 @@
 
 namespace microv {
 
-#pragma pack(push, 1)
-
 struct event_channel {
     enum state : uint8_t {
         state_free,
@@ -54,17 +52,15 @@ struct event_channel {
     enum state state{state_free};
     uint8_t priority{EVTCHN_FIFO_PRIORITY_DEFAULT};
     uint8_t prev_priority{EVTCHN_FIFO_PRIORITY_DEFAULT};
-    vcpuid_t vcpuid{};
-    vcpuid_t prev_vcpuid{};
+    xen_vcpuid_t vcpuid{};
+    xen_vcpuid_t prev_vcpuid{};
     evtchn_port_t port{};
 
-    uint8_t pad[28];
+    uint8_t pad[36];
     /// TODO mutable std::mutex mutex{};
-};
+} __attribute__((packed));
 
-#pragma pack(pop)
-
-class evtchn {
+class xen_evtchn {
 public:
     using port_t = evtchn_port_t;
     using word_t = std::atomic<event_word_t>;
@@ -100,6 +96,7 @@ public:
     port_t bind_console();
     port_t bind_store();
 
+    static constexpr auto max_channels = EVTCHN_FIFO_NR_CHANNELS;
 private:
 
     port_t bind(chan_t::state_t state);
@@ -107,7 +104,6 @@ private:
     // Static constants
     //
     static constexpr auto bits_per_xen_ulong = sizeof(xen_ulong_t) * 8;
-    static constexpr auto max_channels = EVTCHN_FIFO_NR_CHANNELS;
 
     static constexpr auto words_per_page = ::x64::pt::page_size / sizeof(word_t);
     static constexpr auto chans_per_page = ::x64::pt::page_size / sizeof(chan_t);
@@ -199,14 +195,12 @@ private:
 
 public:
 
-    evtchn(xen_vcpu *xen);
-    ~evtchn() = default;
-
-    evtchn(evtchn &&) = default;
-    evtchn &operator=(evtchn &&) = default;
-
-    evtchn(const evtchn &) = delete;
-    evtchn &operator=(const evtchn &) = delete;
+    xen_evtchn(xen_vcpu *xen);
+    ~xen_evtchn() = default;
+    xen_evtchn(xen_evtchn &&) = default;
+    xen_evtchn(const xen_evtchn &) = delete;
+    xen_evtchn &operator=(xen_evtchn &&) = default;
+    xen_evtchn &operator=(const xen_evtchn &) = delete;
 };
 
 }

@@ -26,13 +26,13 @@
 
 namespace microv {
 
-evtchn::evtchn(xen_vcpu *xen) : m_xen{xen}, m_vcpu{xen->m_vcpu}
+xen_evtchn::xen_evtchn(xen_vcpu *xen) : m_xen{xen}, m_vcpu{xen->m_vcpu}
 {
     m_event_words.reserve(max_word_pages);
     m_event_chans.reserve(max_chan_pages);
 }
 
-bool evtchn::init_control()
+bool xen_evtchn::init_control()
 {
     auto ctl = m_vcpu->map_arg<evtchn_init_control_t>(m_vcpu->rsi());
     expects(ctl->offset <= (0x1000 - sizeof(evtchn_fifo_control_block_t)));
@@ -46,7 +46,7 @@ bool evtchn::init_control()
     return true;
 }
 
-void evtchn::set_callback_via(uint64_t via)
+void xen_evtchn::set_callback_via(uint64_t via)
 {
     // At this point, the guest has initialized the evtchn
     // control structures and has just given us the vector
@@ -55,7 +55,7 @@ void evtchn::set_callback_via(uint64_t via)
     m_cb_via = via;
 }
 
-bool evtchn::expand_array()
+bool xen_evtchn::expand_array()
 {
     bfdebug_info(0, "evtchn expand array");
     auto arg = m_vcpu->map_arg<evtchn_expand_array_t>(m_vcpu->rsi());
@@ -65,7 +65,7 @@ bool evtchn::expand_array()
     return true;
 }
 
-bool evtchn::set_priority()
+bool xen_evtchn::set_priority()
 {
     auto arg = m_vcpu->map_arg<evtchn_set_priority_t>(m_vcpu->rsi());
     auto chan = this->port_to_chan(arg->port);
@@ -75,7 +75,7 @@ bool evtchn::set_priority()
     return true;
 }
 
-bool evtchn::alloc_unbound()
+bool xen_evtchn::alloc_unbound()
 {
     auto arg = m_vcpu->map_arg<evtchn_alloc_unbound_t>(m_vcpu->rsi());
     expects(arg->dom == DOMID_SELF);
@@ -96,7 +96,7 @@ bool evtchn::alloc_unbound()
     return true;
 }
 
-bool evtchn::send()
+bool xen_evtchn::send()
 {
     auto arg = m_vcpu->map_arg<evtchn_send_t>(m_vcpu->rsi());
     this->queue_upcall(this->port_to_chan(arg->port));
@@ -105,7 +105,7 @@ bool evtchn::send()
     return true;
 }
 
-bool evtchn::close()
+bool xen_evtchn::close()
 {
     auto arg = m_vcpu->map_arg<evtchn_close_t>(m_vcpu->rsi());
     expects(arg->port);
@@ -122,14 +122,14 @@ bool evtchn::close()
     return true;
 }
 
-evtchn::port_t evtchn::bind_store()
+xen_evtchn::port_t xen_evtchn::bind_store()
 {
     auto port = this->bind(chan_t::state_reserved);
     bfdebug_nhex(0, "evtchn: bound store:", port);
     return port;
 }
 
-evtchn::port_t evtchn::bind_console()
+xen_evtchn::port_t xen_evtchn::bind_console()
 {
     auto port = this->bind(chan_t::state_reserved);
     bfdebug_nhex(0, "evtchn: bound console:", port);
@@ -137,7 +137,7 @@ evtchn::port_t evtchn::bind_console()
 }
 
 //void
-//evtchn::bind_ipi(evtchn_bind_ipi_t *arg)
+//xen_evtchn::bind_ipi(evtchn_bind_ipi_t *arg)
 //{
 //    expects(arg->vcpu == 0);
 //
@@ -146,7 +146,7 @@ evtchn::port_t evtchn::bind_console()
 //    bfdebug_nhex(0, "bound ipi:", port);
 //}
 
-bool evtchn::bind_interdomain()
+bool xen_evtchn::bind_interdomain()
 {
     auto arg = m_vcpu->map_arg<evtchn_bind_interdomain_t>(m_vcpu->rsi());
 
@@ -168,7 +168,7 @@ bool evtchn::bind_interdomain()
     return true;
 }
 
-bool evtchn::bind_virq()
+bool xen_evtchn::bind_virq()
 {
     auto arg = m_vcpu->map_arg<evtchn_bind_virq_t>(m_vcpu->rsi());
 
@@ -191,7 +191,7 @@ bool evtchn::bind_virq()
     return true;
 }
 
-void evtchn::queue_virq(uint32_t virq)
+void xen_evtchn::queue_virq(uint32_t virq)
 {
     auto port = m_virq_to_port[virq];
     expects(port);
@@ -203,7 +203,7 @@ void evtchn::queue_virq(uint32_t virq)
     this->queue_upcall(chan);
 }
 
-void evtchn::inject_virq(uint32_t virq)
+void xen_evtchn::inject_virq(uint32_t virq)
 {
     auto port = m_virq_to_port[virq];
     expects(port);
@@ -215,7 +215,7 @@ void evtchn::inject_virq(uint32_t virq)
     this->inject_upcall(chan);
 }
 
-bool evtchn::bind_vcpu()
+bool xen_evtchn::bind_vcpu()
 {
     auto arg = m_vcpu->map_arg<evtchn_bind_vcpu_t>(m_vcpu->rsi());
     expects(arg->vcpu == m_xen->vcpuid);
@@ -238,7 +238,7 @@ bool evtchn::bind_vcpu()
 // =============================================================================
 
 void
-evtchn::setup_control_block(uint64_t gfn, uint32_t offset)
+xen_evtchn::setup_control_block(uint64_t gfn, uint32_t offset)
 {
     const auto gpa = gfn << ::x64::pt::page_shift;
     m_ctl_blk_ump = m_vcpu->map_gpa_4k<uint8_t>(gpa);
@@ -253,7 +253,7 @@ evtchn::setup_control_block(uint64_t gfn, uint32_t offset)
 }
 
 void
-evtchn::setup_ports()
+xen_evtchn::setup_ports()
 {
     expects(m_event_words.size() == 0);
     expects(m_event_chans.size() == 0);
@@ -264,7 +264,7 @@ evtchn::setup_ports()
     this->port_to_chan(null_port)->state = chan_t::state_reserved;
 }
 
-evtchn::port_t evtchn::bind(chan_t::state_t state)
+xen_evtchn::port_t xen_evtchn::bind(chan_t::state_t state)
 {
     const auto port = this->make_new_port();
     auto chan = this->port_to_chan(port);
@@ -275,7 +275,7 @@ evtchn::port_t evtchn::bind(chan_t::state_t state)
     return port;
 }
 
-bool evtchn::set_link(word_t *word, event_word_t *val, port_t link)
+bool xen_evtchn::set_link(word_t *word, event_word_t *val, port_t link)
 {
     auto link_bits = (1U << EVTCHN_FIFO_LINKED) | link;
     auto &expect = *val;
@@ -284,21 +284,21 @@ bool evtchn::set_link(word_t *word, event_word_t *val, port_t link)
     return word->compare_exchange_strong(expect, desire);
 }
 
-void evtchn::queue_upcall(chan_t *chan)
+void xen_evtchn::queue_upcall(chan_t *chan)
 {
     if (!this->upcall(chan)) {
         m_vcpu->queue_external_interrupt(m_cb_via);
     }
 }
 
-void evtchn::inject_upcall(chan_t *chan)
+void xen_evtchn::inject_upcall(chan_t *chan)
 {
     if (!this->upcall(chan)) {
         m_vcpu->inject_external_interrupt(m_cb_via);
     }
 }
 
-int evtchn::upcall(chan_t *chan)
+int xen_evtchn::upcall(chan_t *chan)
 {
     expects(m_ctl_blk);
 //    printf("upcall: port: %u ", chan->port);
@@ -352,7 +352,7 @@ int evtchn::upcall(chan_t *chan)
 // Ports use a two-level addressing scheme.
 //
 
-evtchn::port_t evtchn::make_new_port()
+xen_evtchn::port_t xen_evtchn::make_new_port()
 {
     for (port_t p = m_port_end; p < max_channels; p++) {
         if (this->make_port(p) == -EBUSY) {
@@ -366,7 +366,7 @@ evtchn::port_t evtchn::make_new_port()
     return null_port;
 }
 
-evtchn::chan_t *evtchn::port_to_chan(port_t port) const
+xen_evtchn::chan_t *xen_evtchn::port_to_chan(port_t port) const
 {
     const auto size = m_event_chans.size();
     const auto page = (port & chan_page_mask) >> chan_page_shift;
@@ -379,7 +379,7 @@ evtchn::chan_t *evtchn::port_to_chan(port_t port) const
     return &chan[port & chan_mask];
 }
 
-evtchn::word_t *evtchn::port_to_word(port_t port) const
+xen_evtchn::word_t *xen_evtchn::port_to_word(port_t port) const
 {
     const auto size = m_event_words.size();
     const auto page = (port & word_page_mask) >> word_page_shift;
@@ -392,7 +392,7 @@ evtchn::word_t *evtchn::port_to_word(port_t port) const
     return &word[port & word_mask];
 }
 
-int evtchn::make_port(port_t port)
+int xen_evtchn::make_port(port_t port)
 {
     if (port >= max_channels) {
         throw std::invalid_argument("make_port: port out of range" +
@@ -415,7 +415,7 @@ int evtchn::make_port(port_t port)
     return 0;
 }
 
-void evtchn::make_chan_page(port_t port)
+void xen_evtchn::make_chan_page(port_t port)
 {
     const auto indx = (port & chan_page_mask) >> chan_page_shift;
     const auto size = m_event_chans.size();
@@ -445,7 +445,7 @@ void evtchn::make_chan_page(port_t port)
     m_allocated_chans += chans_per_page;
 }
 
-void evtchn::make_word_page(evtchn_expand_array_t *expand)
+void xen_evtchn::make_word_page(evtchn_expand_array_t *expand)
 {
     expects(m_event_words.size() < m_event_words.capacity());
 
@@ -456,32 +456,32 @@ void evtchn::make_word_page(evtchn_expand_array_t *expand)
     m_allocated_words += words_per_page;
 }
 
-bool evtchn::word_is_pending(word_t *word) const
+bool xen_evtchn::word_is_pending(word_t *word) const
 {
     return is_bit_set(word->load(), EVTCHN_FIFO_PENDING);
 }
 
-bool evtchn::word_is_masked(word_t *word) const
+bool xen_evtchn::word_is_masked(word_t *word) const
 {
     return is_bit_set(word->load(), EVTCHN_FIFO_MASKED);
 }
 
-bool evtchn::word_is_linked(word_t *word) const
+bool xen_evtchn::word_is_linked(word_t *word) const
 {
     return is_bit_set(word->load(), EVTCHN_FIFO_LINKED);
 }
 
-bool evtchn::word_is_busy(word_t *word) const
+bool xen_evtchn::word_is_busy(word_t *word) const
 {
     return is_bit_set(word->load(), EVTCHN_FIFO_BUSY);
 }
 
-void evtchn::word_set_pending(word_t *word)
+void xen_evtchn::word_set_pending(word_t *word)
 {
     word->fetch_or(1U << EVTCHN_FIFO_PENDING);
 }
 
-bool evtchn::word_test_and_set_pending(word_t *word)
+bool xen_evtchn::word_test_and_set_pending(word_t *word)
 {
     const auto mask = 1U << EVTCHN_FIFO_PENDING;
     const auto prev = word->fetch_or(mask);
@@ -489,12 +489,12 @@ bool evtchn::word_test_and_set_pending(word_t *word)
     return is_bit_set(prev, EVTCHN_FIFO_PENDING);
 }
 
-void evtchn::word_set_busy(word_t *word)
+void xen_evtchn::word_set_busy(word_t *word)
 {
     word->fetch_or(1U << EVTCHN_FIFO_BUSY);
 }
 
-bool evtchn::word_test_and_set_busy(word_t *word)
+bool xen_evtchn::word_test_and_set_busy(word_t *word)
 {
     const auto mask = 1U << EVTCHN_FIFO_BUSY;
     const auto prev = word->fetch_or(mask);
@@ -502,12 +502,12 @@ bool evtchn::word_test_and_set_busy(word_t *word)
     return is_bit_set(prev, EVTCHN_FIFO_BUSY);
 }
 
-void evtchn::word_set_masked(word_t *word)
+void xen_evtchn::word_set_masked(word_t *word)
 {
     word->fetch_or(1U << EVTCHN_FIFO_MASKED);
 }
 
-bool evtchn::word_test_and_set_masked(word_t *word)
+bool xen_evtchn::word_test_and_set_masked(word_t *word)
 {
     const auto mask = 1U << EVTCHN_FIFO_MASKED;
     const auto prev = word->fetch_or(mask);
@@ -515,12 +515,12 @@ bool evtchn::word_test_and_set_masked(word_t *word)
     return is_bit_set(prev, EVTCHN_FIFO_MASKED);
 }
 
-void evtchn::word_set_linked(word_t *word)
+void xen_evtchn::word_set_linked(word_t *word)
 {
     word->fetch_or(1U << EVTCHN_FIFO_LINKED);
 }
 
-bool evtchn::word_test_and_set_linked(word_t *word)
+bool xen_evtchn::word_test_and_set_linked(word_t *word)
 {
     const auto mask = 1U << EVTCHN_FIFO_LINKED;
     const auto prev = word->fetch_or(mask);
@@ -528,12 +528,12 @@ bool evtchn::word_test_and_set_linked(word_t *word)
     return is_bit_set(prev, EVTCHN_FIFO_LINKED);
 }
 
-void evtchn::word_clear_pending(word_t *word)
+void xen_evtchn::word_clear_pending(word_t *word)
 {
     word->fetch_and(~(1U << EVTCHN_FIFO_PENDING));
 }
 
-bool evtchn::word_test_and_clear_pending(word_t *word)
+bool xen_evtchn::word_test_and_clear_pending(word_t *word)
 {
     const auto mask = ~(1U << EVTCHN_FIFO_PENDING);
     const auto prev = word->fetch_and(mask);
@@ -541,12 +541,12 @@ bool evtchn::word_test_and_clear_pending(word_t *word)
     return is_bit_cleared(prev, EVTCHN_FIFO_PENDING);
 }
 
-void evtchn::word_clear_busy(word_t *word)
+void xen_evtchn::word_clear_busy(word_t *word)
 {
     word->fetch_and(~(1U << EVTCHN_FIFO_BUSY));
 }
 
-bool evtchn::word_test_and_clear_busy(word_t *word)
+bool xen_evtchn::word_test_and_clear_busy(word_t *word)
 {
     const auto mask = ~(1U << EVTCHN_FIFO_BUSY);
     const auto prev = word->fetch_and(mask);
@@ -554,12 +554,12 @@ bool evtchn::word_test_and_clear_busy(word_t *word)
     return is_bit_cleared(prev, EVTCHN_FIFO_BUSY);
 }
 
-void evtchn::word_clear_masked(word_t *word)
+void xen_evtchn::word_clear_masked(word_t *word)
 {
     word->fetch_and(~(1U << EVTCHN_FIFO_MASKED));
 }
 
-bool evtchn::word_test_and_clear_masked(word_t *word)
+bool xen_evtchn::word_test_and_clear_masked(word_t *word)
 {
     const auto mask = ~(1U << EVTCHN_FIFO_MASKED);
     const auto prev = word->fetch_and(mask);
@@ -567,12 +567,12 @@ bool evtchn::word_test_and_clear_masked(word_t *word)
     return is_bit_cleared(prev, EVTCHN_FIFO_MASKED);
 }
 
-void evtchn::word_clear_linked(word_t *word)
+void xen_evtchn::word_clear_linked(word_t *word)
 {
     word->fetch_and(~(1U << EVTCHN_FIFO_LINKED));
 }
 
-bool evtchn::word_test_and_clear_linked(word_t *word)
+bool xen_evtchn::word_test_and_clear_linked(word_t *word)
 {
     const auto mask = ~(1U << EVTCHN_FIFO_LINKED);
     const auto prev = word->fetch_and(mask);

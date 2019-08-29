@@ -27,7 +27,7 @@
 
 namespace microv {
 
-class flask {
+class xen_flask {
 private:
     xen_vcpu *m_xen{};
     microv_vcpu *m_vcpu{};
@@ -35,14 +35,13 @@ private:
 public:
     bool handle(xen_flask_op_t *fop);
 
-    flask(xen_vcpu *xen);
-    ~flask() = default;
+    xen_flask(xen_vcpu *xen);
+    ~xen_flask() = default;
 
-    flask(flask &&) = default;
-    flask &operator=(flask &&) = default;
-
-    flask(const flask &) = delete;
-    flask &operator=(const flask &) = delete;
+    xen_flask(xen_flask &&) = default;
+    xen_flask(const xen_flask &) = delete;
+    xen_flask &operator=(xen_flask &&) = default;
+    xen_flask &operator=(const xen_flask &) = delete;
 };
 
 }

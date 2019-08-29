@@ -25,7 +25,7 @@
 
 namespace microv {
 
-gnttab::gnttab(xen_vcpu *xen) :
+xen_gnttab::xen_gnttab(xen_vcpu *xen) :
     m_xen{xen},
     m_vcpu{xen->m_vcpu},
     m_version{2}
@@ -34,7 +34,7 @@ gnttab::gnttab(xen_vcpu *xen) :
     m_shared_gnttab.push_back(make_page<shared_entry_t>());
 }
 
-bool gnttab::query_size()
+bool xen_gnttab::query_size()
 {
     auto gqs = m_vcpu->map_arg<gnttab_query_size_t>(m_vcpu->rsi());
 
@@ -46,7 +46,7 @@ bool gnttab::query_size()
     return true;
 }
 
-bool gnttab::set_version()
+bool xen_gnttab::set_version()
 {
     auto gsv = m_vcpu->map_arg<gnttab_set_version_t>(m_vcpu->rsi());
     gsv->version = m_version;
@@ -55,7 +55,7 @@ bool gnttab::set_version()
     return true;
 }
 
-bool gnttab::mapspace_grant_table(xen_add_to_physmap_t *atp)
+bool xen_gnttab::mapspace_grant_table(xen_add_to_physmap_t *atp)
 {
     expects((atp->idx & XENMAPIDX_grant_table_status) == 0);
 

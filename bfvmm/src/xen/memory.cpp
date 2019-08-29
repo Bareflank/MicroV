@@ -20,30 +20,31 @@
 // SOFTWARE.
 
 #include <hve/arch/intel_x64/vcpu.h>
-#include <xen/xenmem.h>
+#include <xen/memory.h>
 #include <xen/vcpu.h>
 
 namespace microv {
 
-xenmem::xenmem(xen_vcpu *xen) : m_xen{xen}, m_vcpu{xen->m_vcpu}
-{
-}
+xen_memory::xen_memory(xen_vcpu *xen) :
+    m_xen{xen},
+    m_vcpu{xen->m_vcpu}
+{ }
 
 /* Called from xl create path */
-bool xenmem::get_sharing_freed_pages()
+bool xen_memory::get_sharing_freed_pages()
 {
     m_vcpu->set_rax(0);
     return true;
 }
 
-bool xenmem::get_sharing_shared_pages()
+bool xen_memory::get_sharing_shared_pages()
 {
     m_vcpu->set_rax(0);
     return true;
 }
 
 /* Called from boot path */
-bool xenmem::memory_map()
+bool xen_memory::memory_map()
 {
     auto map = m_vcpu->map_arg<xen_memory_map_t>(m_vcpu->rsi());
     if (map->nr_entries < m_vcpu->dom()->e820().size()) {
@@ -70,7 +71,7 @@ bool xenmem::memory_map()
     return true;
 }
 
-bool xenmem::add_to_physmap()
+bool xen_memory::add_to_physmap()
 {
     auto xatp = m_vcpu->map_arg<xen_add_to_physmap_t>(m_vcpu->rsi());
     if (xatp->domid != DOMID_SELF) {
@@ -95,7 +96,7 @@ bool xenmem::add_to_physmap()
     return false;
 }
 
-bool xenmem::decrease_reservation()
+bool xen_memory::decrease_reservation()
 {
     auto arg = m_vcpu->map_arg<xen_memory_reservation_t>(m_vcpu->rsi());
 

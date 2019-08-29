@@ -22,21 +22,20 @@
 #include <hve/arch/intel_x64/vcpu.h>
 #include <stdlib.h>
 #include <compiler.h>
-#include <xen/xenver.h>
 #include <xen/vcpu.h>
-#include <public/version.h>
+#include <xen/version.h>
 
 #define XEN_MAJOR 4UL
 #define XEN_MINOR 13UL
 
 namespace microv {
 
-xenver::xenver(xen_vcpu *xen) : m_xen{xen}, m_vcpu{xen->m_vcpu}
+xen_version::xen_version(xen_vcpu *xen) : m_xen{xen}, m_vcpu{xen->m_vcpu}
 { }
 
-bool xenver::changeset()
+bool xen_version::changeset()
 {
-    //bfalert_info(0, "xenver:changeset");
+    //bfalert_info(0, "xen_version:changeset");
 
     auto chg = m_vcpu->map_arg<xen_changeset_info_t>(m_vcpu->rsi());
     std::strncpy((char *)chg.get(), MICROV_CHANGESET, XEN_CHANGESET_INFO_LEN);
@@ -44,9 +43,9 @@ bool xenver::changeset()
     return true;
 }
 
-bool xenver::get_features()
+bool xen_version::get_features()
 {
-    //bfalert_info(0, "xenver:get_features");
+    //bfalert_info(0, "xen_version:get_features");
 
     auto info = m_vcpu->map_arg<xen_feature_info_t>(m_vcpu->rsi());
     if (info->submap_idx >= XENFEAT_NR_SUBMAPS) {
@@ -75,17 +74,17 @@ bool xenver::get_features()
     return true;
 }
 
-bool xenver::version()
+bool xen_version::version()
 {
-    //bfalert_info(0, "xenver:version");
+    //bfalert_info(0, "xen_version:version");
 
     m_vcpu->set_rax((XEN_MAJOR << 16) | XEN_MINOR);
     return true;
 }
 
-bool xenver::compile_info()
+bool xen_version::compile_info()
 {
-    //bfalert_info(0, "xenver:compile_info");
+    //bfalert_info(0, "xen_version:compile_info");
 
     static_assert(sizeof(xen_compile_info_t::compiler) == 64);
     static_assert(sizeof(xen_compile_info_t::compile_by) == 16);
@@ -107,9 +106,9 @@ bool xenver::compile_info()
     return true;
 }
 
-bool xenver::extraversion()
+bool xen_version::extraversion()
 {
-    //bfalert_info(0, "xenver:extraversion");
+    //bfalert_info(0, "xen_version:extraversion");
 
     auto extra = m_vcpu->map_arg<xen_extraversion_t>(m_vcpu->rsi());
     std::strncpy((char *)extra.get(), "microv", XEN_EXTRAVERSION_LEN);
@@ -117,16 +116,16 @@ bool xenver::extraversion()
     return true;
 }
 
-bool xenver::pagesize()
+bool xen_version::pagesize()
 {
-    //bfalert_info(0, "xenver:pagesize");
+    //bfalert_info(0, "xen_version:pagesize");
     m_vcpu->set_rax(::x64::pt::page_size);
     return true;
 }
 
-bool xenver::guest_handle()
+bool xen_version::guest_handle()
 {
-    //bfalert_info(0, "xenver:guest_handle");
+    //bfalert_info(0, "xen_version:guest_handle");
 
     auto hdl = m_vcpu->map_arg<xen_domain_handle_t>(m_vcpu->rsi());
     expects(sizeof(*hdl.get()) == sizeof(m_xen->xdh));
@@ -135,9 +134,9 @@ bool xenver::guest_handle()
     return true;
 }
 
-bool xenver::capabilities()
+bool xen_version::capabilities()
 {
-    //bfalert_info(0, "xenver:capabilities");
+    //bfalert_info(0, "xen_version:capabilities");
 
     const char *str = "hvm-3.0-x86_64";
     auto caps = m_vcpu->map_arg<xen_capabilities_info_t>(m_vcpu->rsi());
@@ -146,9 +145,9 @@ bool xenver::capabilities()
     return true;
 }
 
-bool xenver::platform_parameters()
+bool xen_version::platform_parameters()
 {
-    //bfalert_info(0, "xenver:platform_parameters");
+    //bfalert_info(0, "xen_version:platform_parameters");
 
     auto params = m_vcpu->map_arg<xen_platform_parameters_t>(m_vcpu->rsi());
     params->virt_start = HYPERVISOR_VIRT_START;
@@ -156,9 +155,9 @@ bool xenver::platform_parameters()
     return true;
 }
 
-bool xenver::commandline()
+bool xen_version::commandline()
 {
-    //bfalert_info(0, "xenver:commandline");
+    //bfalert_info(0, "xen_version:commandline");
 
     auto cmdline = m_vcpu->map_arg<xen_commandline_t>(m_vcpu->rsi());
     memset((char *)cmdline.get(), 0, sizeof(*cmdline.get()));
@@ -166,9 +165,9 @@ bool xenver::commandline()
     return true;
 }
 
-bool xenver::build_id()
+bool xen_version::build_id()
 {
-//    bfalert_info(0, "xenver:build_id");
+//    bfalert_info(0, "xen_version:build_id");
 //    auto id = m_vcpu->map_arg<xen_build_id_t>(m_vcpu->rsi());
 //    id->len = 0;
     m_vcpu->set_rax(0);
