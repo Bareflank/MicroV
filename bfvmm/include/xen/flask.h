@@ -29,8 +29,7 @@ namespace microv {
 
 class xen_flask {
 private:
-    xen_vcpu *m_xen{};
-    microv_vcpu *m_vcpu{};
+    microv_vcpu *m_uv_vcpu{};
 
 public:
     bool handle(xen_flask_op_t *fop);

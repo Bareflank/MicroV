@@ -216,7 +216,7 @@ static bool wrmsr_self_ipi(base_vcpu *vcpu, wrmsr_handler::info_t &info)
 bool xen_vcpu::handle_physdev_op()
 {
     try {
-        switch (m_vcpu->rdi()) {
+        switch (m_uv_vcpu->rdi()) {
         case PHYSDEVOP_pci_device_add:
             return m_physdev->pci_device_add();
         default:
@@ -229,15 +229,15 @@ bool xen_vcpu::handle_physdev_op()
 
 bool xen_vcpu::handle_console_io()
 {
-    expects(m_dom->initdom());
+    expects(m_uv_dom->initdom());
 
-    uint64_t len = m_vcpu->rsi();
-    auto buf = m_vcpu->map_gva_4k<char>(m_vcpu->rdx(), len);
+    uint64_t len = m_uv_vcpu->rsi();
+    auto buf = m_uv_vcpu->map_gva_4k<char>(m_uv_vcpu->rdx(), len);
 
-    switch (m_vcpu->rdi()) {
+    switch (m_uv_vcpu->rdi()) {
     case CONSOLEIO_read: {
         auto n = m_xen_dom->hvc_rx_get(gsl::span(buf.get(), len));
-        m_vcpu->set_rax(n);
+        m_uv_vcpu->set_rax(n);
 //        if (n) {
 //            printf("console read: ");
 //            for (auto i = 0; i < n; i++) {
@@ -249,7 +249,7 @@ bool xen_vcpu::handle_console_io()
     }
     case CONSOLEIO_write: {
         auto n = m_xen_dom->hvc_tx_put(gsl::span(buf.get(), len));
-        m_vcpu->set_rax(n);
+        m_uv_vcpu->set_rax(n);
         return true;
     }
     default:
@@ -260,7 +260,7 @@ bool xen_vcpu::handle_console_io()
 bool xen_vcpu::handle_memory_op()
 {
     try {
-        switch (m_vcpu->rdi()) {
+        switch (m_uv_vcpu->rdi()) {
         case XENMEM_memory_map:
             return m_xenmem->memory_map();
         case XENMEM_add_to_physmap:
@@ -284,7 +284,7 @@ bool xen_vcpu::handle_memory_op()
 bool xen_vcpu::handle_xen_version()
 {
     try {
-        switch (m_vcpu->rdi()) {
+        switch (m_uv_vcpu->rdi()) {
         case XENVER_version:
             return m_xenver->version();
         case XENVER_extraversion:
@@ -332,17 +332,17 @@ static bool valid_cb_via(uint64_t via)
 
 bool xen_vcpu::handle_hvm_op()
 {
-    switch (m_vcpu->rdi()) {
+    switch (m_uv_vcpu->rdi()) {
     case HVMOP_set_param:
         try {
-            auto arg = m_vcpu->map_arg<xen_hvm_param_t>(m_vcpu->rsi());
+            auto arg = m_uv_vcpu->map_arg<xen_hvm_param_t>(m_uv_vcpu->rsi());
             switch (arg->index) {
             case HVM_PARAM_CALLBACK_IRQ:
                 if (valid_cb_via(arg->value)) {
                     m_evtchn->set_callback_via(arg->value & 0xFF);
-                    m_vcpu->set_rax(0);
+                    m_uv_vcpu->set_rax(0);
                 } else {
-                    m_vcpu->set_rax(-EINVAL);
+                    m_uv_vcpu->set_rax(-EINVAL);
                 }
                 return true;
             default:
@@ -353,23 +353,23 @@ bool xen_vcpu::handle_hvm_op()
             return false;
         })
     case HVMOP_get_param:
-        expects(!m_dom->initdom());
+        expects(!m_uv_dom->initdom());
 //        return false;
 //        try {
-//            auto arg = m_vcpu->map_arg<xen_hvm_param_t>(m_vcpu->rsi());
+//            auto arg = m_uv_vcpu->map_arg<xen_hvm_param_t>(m_uv_vcpu->rsi());
 //            switch (arg->index) {
 //            case HVM_PARAM_CONSOLE_EVTCHN:
 //                arg->value = m_evtchn->bind_console();
 //                break;
 //            case HVM_PARAM_CONSOLE_PFN:
-//                m_console = m_vcpu->map_gpa_4k<struct xencons_interface>(PVH_CONSOLE_GPA);
+//                m_console = m_uv_vcpu->map_gpa_4k<struct xencons_interface>(PVH_CONSOLE_GPA);
 //                arg->value = PVH_CONSOLE_GPA >> 12;
 //                break;
 //            case HVM_PARAM_STORE_EVTCHN:
 //                arg->value = m_evtchn->bind_store();
 //                break;
 //            case HVM_PARAM_STORE_PFN:
-//                m_store = m_vcpu->map_gpa_4k<uint8_t>(PVH_STORE_GPA);
+//                m_store = m_uv_vcpu->map_gpa_4k<uint8_t>(PVH_STORE_GPA);
 //                arg->value = PVH_STORE_GPA >> 12;
 //                break;
 //            default:
@@ -377,13 +377,13 @@ bool xen_vcpu::handle_hvm_op()
 //                return false;
 //            }
 
-            m_vcpu->set_rax(-ENOSYS);
+            m_uv_vcpu->set_rax(-ENOSYS);
             return true;
         //} catchall({
         //    return false;
         //})
     case HVMOP_pagetable_dying:
-        m_vcpu->set_rax(-ENOSYS);
+        m_uv_vcpu->set_rax(-ENOSYS);
         return true;
     default:
        return false;
@@ -393,7 +393,7 @@ bool xen_vcpu::handle_hvm_op()
 bool xen_vcpu::handle_event_channel_op()
 {
     try {
-        switch (m_vcpu->rdi()) {
+        switch (m_uv_vcpu->rdi()) {
         case EVTCHNOP_init_control:
             return m_evtchn->init_control();
         case EVTCHNOP_set_priority:
@@ -424,14 +424,14 @@ bool xen_vcpu::handle_event_channel_op()
 
 bool xen_vcpu::handle_sysctl()
 {
-    auto ctl = m_vcpu->map_arg<xen_sysctl_t>(m_vcpu->rdi());
+    auto ctl = m_uv_vcpu->map_arg<xen_sysctl_t>(m_uv_vcpu->rdi());
     bferror_nhex(0, "sysctl:", ctl->cmd);
     return false;
 }
 
 bool xen_vcpu::handle_domctl()
 {
-    auto ctl = m_vcpu->map_arg<xen_domctl_t>(m_vcpu->rdi());
+    auto ctl = m_uv_vcpu->map_arg<xen_domctl_t>(m_uv_vcpu->rdi());
     bferror_nhex(0, "domctl:", ctl->cmd);
     return false;
 }
@@ -439,7 +439,7 @@ bool xen_vcpu::handle_domctl()
 bool xen_vcpu::handle_grant_table_op()
 {
     try {
-        switch (m_vcpu->rdi()) {
+        switch (m_uv_vcpu->rdi()) {
         case GNTTABOP_query_size:
             return m_gnttab->query_size();
         case GNTTABOP_set_version:
@@ -470,30 +470,30 @@ void xen_vcpu::update_wallclock(const struct xenpf_settime64 *time)
 
 bool xen_vcpu::handle_platform_op()
 {
-    auto xpf = m_vcpu->map_arg<xen_platform_op_t>(m_vcpu->rdi());
+    auto xpf = m_uv_vcpu->map_arg<xen_platform_op_t>(m_uv_vcpu->rdi());
     if (xpf->interface_version != XENPF_INTERFACE_VERSION) {
-        m_vcpu->set_rax(-EACCES);
+        m_uv_vcpu->set_rax(-EACCES);
         return true;
     }
 
     switch (xpf->cmd) {
     case XENPF_get_cpuinfo: {
-        expects(m_dom->initdom());
+        expects(m_uv_dom->initdom());
         struct xenpf_pcpuinfo *info = &xpf->u.pcpu_info;
         info->max_present = 1;
         info->flags = XEN_PCPU_FLAGS_ONLINE;
         info->apic_id = this->apicid;
         info->acpi_id = this->acpiid;
-        m_vcpu->set_rax(0);
+        m_uv_vcpu->set_rax(0);
         return true;
     }
     case XENPF_settime64: {
         const struct xenpf_settime64 *time = &xpf->u.settime64;
         if (time->mbz) {
-            m_vcpu->set_rax(-EINVAL);
+            m_uv_vcpu->set_rax(-EINVAL);
         } else {
             this->update_wallclock(time);
-            m_vcpu->set_rax(0);
+            m_uv_vcpu->set_rax(0);
         }
         return true;
     }
@@ -505,8 +505,8 @@ bool xen_vcpu::handle_platform_op()
 
 bool xen_vcpu::handle_xsm_op()
 {
-    expects(m_dom->initdom());
-    auto fop = m_vcpu->map_arg<xen_flask_op_t>(m_vcpu->rdi());
+    expects(m_uv_dom->initdom());
+    auto fop = m_uv_vcpu->map_arg<xen_flask_op_t>(m_uv_vcpu->rdi());
 
     return m_flask->handle(fop.get());
 }
@@ -518,7 +518,7 @@ struct vcpu_time_info *xen_vcpu::vcpu_time()
 
 void xen_vcpu::stop_timer()
 {
-    m_vcpu->disable_preemption_timer();
+    m_uv_vcpu->disable_preemption_timer();
     m_pet_enabled = false;
 }
 
@@ -526,7 +526,7 @@ int xen_vcpu::set_timer()
 {
     auto pet = 0ULL;
     auto vti = this->vcpu_time();
-    auto sst = m_vcpu->map_arg<vcpu_set_singleshot_timer_t>(m_vcpu->rdx());
+    auto sst = m_uv_vcpu->map_arg<vcpu_set_singleshot_timer_t>(m_uv_vcpu->rdx());
 
     /* Get the preemption timer ticks corresponding to the deadline */
     if (vti->system_time >= sst->timeout_abs_ns) {
@@ -540,8 +540,8 @@ int xen_vcpu::set_timer()
         pet = tsc_to_pet(tsc, m_pet_shift);
     }
 
-    m_vcpu->set_preemption_timer(pet);
-    m_vcpu->enable_preemption_timer();
+    m_uv_vcpu->set_preemption_timer(pet);
+    m_uv_vcpu->enable_preemption_timer();
     m_pet_enabled = true;
 
     return 0;
@@ -549,43 +549,43 @@ int xen_vcpu::set_timer()
 
 bool xen_vcpu::handle_vcpu_op()
 {
-    expects(m_vcpu->rsi() == vcpuid);
+    expects(m_uv_vcpu->rsi() == vcpuid);
 
-    switch (m_vcpu->rdi()) {
+    switch (m_uv_vcpu->rdi()) {
     case VCPUOP_stop_periodic_timer:
-        m_vcpu->set_rax(0);
+        m_uv_vcpu->set_rax(0);
         return true;
     case VCPUOP_stop_singleshot_timer:
         this->stop_timer();
-        m_vcpu->set_rax(0);
+        m_uv_vcpu->set_rax(0);
         return true;
     case VCPUOP_set_singleshot_timer:
-        m_vcpu->set_rax(this->set_timer());
+        m_uv_vcpu->set_rax(this->set_timer());
         if (!m_pet_hdlrs_added) {
-            m_vcpu->add_preemption_timer_handler({&xen_vcpu::handle_pet, this});
-            m_vcpu->add_hlt_handler({&xen_vcpu::handle_hlt, this});
-            m_vcpu->add_exit_handler({&xen_vcpu::vmexit_save_tsc, this});
-            m_vcpu->emulate_wrmsr(0x6E0, {handle_tsc_deadline});
+            m_uv_vcpu->add_preemption_timer_handler({&xen_vcpu::handle_pet, this});
+            m_uv_vcpu->add_hlt_handler({&xen_vcpu::handle_hlt, this});
+            m_uv_vcpu->add_exit_handler({&xen_vcpu::vmexit_save_tsc, this});
+            m_uv_vcpu->emulate_wrmsr(0x6E0, {handle_tsc_deadline});
             m_pet_hdlrs_added = true;
         }
         return true;
     case VCPUOP_register_vcpu_time_memory_area: {
         expects(m_shinfo);
-        auto tma = m_vcpu->map_arg<vcpu_register_time_memory_area_t>(
-            m_vcpu->rdx());
-        m_user_vti = m_vcpu->map_arg<struct vcpu_time_info>(tma->addr.v);
+        auto tma = m_uv_vcpu->map_arg<vcpu_register_time_memory_area_t>(
+            m_uv_vcpu->rdx());
+        m_user_vti = m_uv_vcpu->map_arg<struct vcpu_time_info>(tma->addr.v);
         memcpy(m_user_vti.get(), this->vcpu_time(), sizeof(*this->vcpu_time()));
-        m_vcpu->set_rax(0);
+        m_uv_vcpu->set_rax(0);
         return true;
     }
     case VCPUOP_register_runstate_memory_area: {
-        auto rma = m_vcpu->map_arg<vcpu_register_runstate_memory_area_t>(
-            m_vcpu->rdx());
-        m_runstate = m_vcpu->map_arg<struct vcpu_runstate_info>(rma->addr.v);
+        auto rma = m_uv_vcpu->map_arg<vcpu_register_runstate_memory_area_t>(
+            m_uv_vcpu->rdx());
+        m_runstate = m_uv_vcpu->map_arg<struct vcpu_runstate_info>(rma->addr.v);
         m_runstate->state = RUNSTATE_running;
         m_runstate->state_entry_time = this->vcpu_time()->system_time;
         m_runstate->time[RUNSTATE_running] = m_runstate->state_entry_time;
-        m_vcpu->set_rax(0);
+        m_uv_vcpu->set_rax(0);
         return true;
     }
     default:
@@ -595,14 +595,14 @@ bool xen_vcpu::handle_vcpu_op()
 
 bool xen_vcpu::handle_vm_assist()
 {
-    if (m_vcpu->rdi() != VMASST_CMD_enable) {
+    if (m_uv_vcpu->rdi() != VMASST_CMD_enable) {
         return false;
     }
 
-    switch (m_vcpu->rsi()) {
+    switch (m_uv_vcpu->rsi()) {
     case VMASST_TYPE_runstate_update_flag:
         m_runstate_assist = true;
-        m_vcpu->set_rax(0);
+        m_uv_vcpu->set_rax(0);
         return true;
     default:
         return false;
@@ -678,13 +678,13 @@ void xen_vcpu::steal_pet_ticks()
         return;
     }
 
-    auto pet = m_vcpu->get_preemption_timer();
+    auto pet = m_uv_vcpu->get_preemption_timer();
     auto tsc = this->vcpu_time()->tsc_timestamp;
     auto stolen_tsc = tsc - m_tsc_at_exit;
     auto stolen_pet = stolen_tsc >> m_pet_shift;
 
     pet = (stolen_pet >= pet) ? 0 : pet - stolen_pet;
-    m_vcpu->set_preemption_timer(pet);
+    m_uv_vcpu->set_preemption_timer(pet);
 }
 
 void xen_vcpu::resume_update(bfobject *obj)
@@ -702,7 +702,7 @@ void xen_vcpu::init_shared_info(uintptr_t shinfo_gpfn)
 {
     using namespace ::intel_x64::msrs;
 
-    m_shinfo = m_vcpu->map_gpa_4k<struct shared_info>(shinfo_gpfn << 12);
+    m_shinfo = m_uv_vcpu->map_gpa_4k<struct shared_info>(shinfo_gpfn << 12);
     m_shinfo_gpfn = shinfo_gpfn;
 
     auto vti = this->vcpu_time();
@@ -711,7 +711,7 @@ void xen_vcpu::init_shared_info(uintptr_t shinfo_gpfn)
     vti->tsc_to_system_mul = m_tsc_mul;
 
     /* Set the wallclock from start-of-day info */
-    auto sod = m_dom->sod_info();
+    auto sod = m_uv_dom->sod_info();
     auto now = ::x64::read_tsc::get();
     auto wc_nsec = tsc_to_ns(now - sod->tsc, m_tsc_shift,  m_tsc_mul);
     auto wc_sec = wc_nsec / 1000000000ULL;
@@ -723,7 +723,7 @@ void xen_vcpu::init_shared_info(uintptr_t shinfo_gpfn)
     m_shinfo->wc_sec_hi = gsl::narrow_cast<uint32_t>(wc_sec >> 32);
     vti->tsc_timestamp = now;
 
-    m_vcpu->add_resume_delegate({&xen_vcpu::resume_update, this});
+    m_uv_vcpu->add_resume_delegate({&xen_vcpu::resume_update, this});
 }
 
 bool xen_vcpu::vmexit_save_tsc(base_vcpu *vcpu)
@@ -747,7 +747,7 @@ bool xen_vcpu::handle_pet(base_vcpu *vcpu)
 
 bool xen_vcpu::handle_interrupt(base_vcpu *vcpu, interrupt_handler::info_t &info)
 {
-    auto root = m_vcpu->root_vcpu();
+    auto root = m_uv_vcpu->root_vcpu();
     auto guest_msi = root->find_guest_msi(info.vector);
 
     if (guest_msi) {
@@ -759,7 +759,7 @@ bool xen_vcpu::handle_interrupt(base_vcpu *vcpu, interrupt_handler::info_t &info
             return true;
         }
 
-        if (guest == m_vcpu) {
+        if (guest == m_uv_vcpu) {
             guest->queue_external_interrupt(guest_msi->vector());
         } else {
             guest->push_external_interrupt(guest_msi->vector());
@@ -767,7 +767,7 @@ bool xen_vcpu::handle_interrupt(base_vcpu *vcpu, interrupt_handler::info_t &info
 
         put_vcpu(pdev->m_guest_vcpuid);
     } else {
-        m_vcpu->save_xstate();
+        m_uv_vcpu->save_xstate();
         this->update_runstate(RUNSTATE_runnable);
 
         root->load();
@@ -791,17 +791,17 @@ bool xen_vcpu::handle_hlt(
         return false;
     }
 
-    m_vcpu->advance();
+    m_uv_vcpu->advance();
     m_evtchn->queue_virq(VIRQ_TIMER);
     this->update_runstate(RUNSTATE_blocked);
     guest_interruptibility_state::blocking_by_sti::disable();
 
-    auto pet = m_vcpu->get_preemption_timer();
+    auto pet = m_uv_vcpu->get_preemption_timer();
     auto yield = ((pet << m_pet_shift) * 1000) / m_tsc_khz;
 
-    m_vcpu->save_xstate();
-    m_vcpu->root_vcpu()->load();
-    m_vcpu->root_vcpu()->return_yield(yield);
+    m_uv_vcpu->save_xstate();
+    m_uv_vcpu->root_vcpu()->load();
+    m_uv_vcpu->root_vcpu()->return_yield(yield);
 
     // unreachable
     return true;
@@ -811,7 +811,7 @@ bool xen_vcpu::hypercall(microv_vcpu *vcpu)
 {
     if (vcpu->rax() != __HYPERVISOR_console_io &&
         !(vcpu->rax() == __HYPERVISOR_vcpu_op &&
-          vcpu->rdi() == VCPUOP_set_singleshot_timer) && !m_dom->ndvm()) {
+          vcpu->rdi() == VCPUOP_set_singleshot_timer) && !m_uv_dom->ndvm()) {
         if (vcpu->rdi() > (1UL << 32)) {
             /* likely an address in rdi */
             printf("xen: hypercall %lu:0x%lx\n", vcpu->rax(), vcpu->rdi());
@@ -853,8 +853,8 @@ bool xen_vcpu::hypercall(microv_vcpu *vcpu)
 }
 
 xen_vcpu::xen_vcpu(microv_vcpu *vcpu, microv_domain *dom) :
-    m_vcpu{vcpu},
-    m_dom{dom},
+    m_uv_vcpu{vcpu},
+    m_uv_dom{dom},
     m_xen_dom{dom->xen_dom()}
 {
     expects(m_xen_dom);

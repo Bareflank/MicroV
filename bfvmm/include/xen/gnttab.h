@@ -33,8 +33,7 @@ class xen_gnttab {
     static_assert(is_power_of_2(sizeof(shared_entry_t)));
 
     uint32_t m_version{};
-    xen_vcpu *m_xen{};
-    microv_vcpu *m_vcpu{};
+    microv_vcpu *m_uv_vcpu{};
     std::vector<page_ptr<shared_entry_t>> m_shared_gnttab;
 
 public:

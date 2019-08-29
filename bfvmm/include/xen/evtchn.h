@@ -97,9 +97,8 @@ public:
     port_t bind_store();
 
     static constexpr auto max_channels = EVTCHN_FIFO_NR_CHANNELS;
-private:
 
-    port_t bind(chan_t::state_t state);
+private:
 
     // Static constants
     //
@@ -123,6 +122,7 @@ private:
 
     // Ports
     //
+    port_t bind(chan_t::state_t state);
     chan_t *port_to_chan(port_t port) const;
     word_t *port_to_word(port_t port) const;
 
@@ -188,8 +188,8 @@ private:
     std::vector<unique_map<word_t>> m_event_words{};
     std::vector<page_ptr<chan_t>> m_event_chans{};
 
-    xen_vcpu *m_xen{};
-    microv_vcpu *m_vcpu{};
+    xen_vcpu *m_xen_vcpu{};
+    microv_vcpu *m_uv_vcpu{};
     uint64_t m_cb_via{};
     port_t m_port_end{1};
 

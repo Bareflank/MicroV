@@ -28,8 +28,8 @@
 namespace microv {
 
 class xen_memory {
-    xen_vcpu *m_xen{};
-    microv_vcpu *m_vcpu{};
+    xen_vcpu *m_xen_vcpu{};
+    microv_vcpu *m_uv_vcpu{};
 
 public:
     /* boot */

@@ -26,14 +26,13 @@
 namespace microv {
 
 xen_flask::xen_flask(xen_vcpu *xen) :
-    m_xen{xen},
-    m_vcpu{xen->m_vcpu}
+    m_uv_vcpu{xen->m_uv_vcpu}
 { }
 
 bool xen_flask::handle(xen_flask_op_t *fop)
 {
     if (fop->interface_version != XEN_FLASK_INTERFACE_VERSION) {
-        m_vcpu->set_rax(-EACCES);
+        m_uv_vcpu->set_rax(-EACCES);
         return true;
     }
 
@@ -42,7 +41,7 @@ bool xen_flask::handle(xen_flask_op_t *fop)
         bfalert_nhex(0, "unhandled flask op", fop->cmd);
     }
 
-    m_vcpu->set_rax(-EINVAL);
+    m_uv_vcpu->set_rax(-EINVAL);
     return true;
 }
 }

@@ -26,40 +26,40 @@
 namespace microv {
 
 xen_memory::xen_memory(xen_vcpu *xen) :
-    m_xen{xen},
-    m_vcpu{xen->m_vcpu}
+    m_xen_vcpu{xen},
+    m_uv_vcpu{xen->m_uv_vcpu}
 { }
 
 /* Called from xl create path */
 bool xen_memory::get_sharing_freed_pages()
 {
-    m_vcpu->set_rax(0);
+    m_uv_vcpu->set_rax(0);
     return true;
 }
 
 bool xen_memory::get_sharing_shared_pages()
 {
-    m_vcpu->set_rax(0);
+    m_uv_vcpu->set_rax(0);
     return true;
 }
 
 /* Called from boot path */
 bool xen_memory::memory_map()
 {
-    auto map = m_vcpu->map_arg<xen_memory_map_t>(m_vcpu->rsi());
-    if (map->nr_entries < m_vcpu->dom()->e820().size()) {
+    auto map = m_uv_vcpu->map_arg<xen_memory_map_t>(m_uv_vcpu->rsi());
+    if (map->nr_entries < m_uv_vcpu->dom()->e820().size()) {
         throw std::runtime_error("guest E820 too small");
     }
 
     auto addr = map->buffer.p;
     auto size = map->nr_entries;
 
-    auto e820 = m_vcpu->map_gva_4k<e820_entry_t>(addr, size);
+    auto e820 = m_uv_vcpu->map_gva_4k<e820_entry_t>(addr, size);
     auto e820_view = gsl::span<e820_entry_t>(e820.get(), size);
 
     map->nr_entries = 0;
 
-    for (const auto &entry : m_vcpu->dom()->e820()) {
+    for (const auto &entry : m_uv_vcpu->dom()->e820()) {
         e820_view[map->nr_entries].addr = entry.addr;
         e820_view[map->nr_entries].size = entry.size;
         e820_view[map->nr_entries].type = entry.type;
@@ -67,28 +67,28 @@ bool xen_memory::memory_map()
         map->nr_entries++;
     }
 
-    m_vcpu->set_rax(0);
+    m_uv_vcpu->set_rax(0);
     return true;
 }
 
 bool xen_memory::add_to_physmap()
 {
-    auto xatp = m_vcpu->map_arg<xen_add_to_physmap_t>(m_vcpu->rsi());
+    auto xatp = m_uv_vcpu->map_arg<xen_add_to_physmap_t>(m_uv_vcpu->rsi());
     if (xatp->domid != DOMID_SELF) {
-        m_vcpu->set_rax(-EINVAL);
+        m_uv_vcpu->set_rax(-EINVAL);
         return true;
     }
 
     switch (xatp->space) {
     case XENMAPSPACE_gmfn_foreign:
-        m_vcpu->set_rax(-ENOSYS);
+        m_uv_vcpu->set_rax(-ENOSYS);
         return true;
     case XENMAPSPACE_shared_info:
-        m_xen->init_shared_info(xatp.get()->gpfn);
-        m_vcpu->set_rax(0);
+        m_xen_vcpu->init_shared_info(xatp.get()->gpfn);
+        m_uv_vcpu->set_rax(0);
         return true;
     case XENMAPSPACE_grant_table:
-        return m_xen->m_gnttab->mapspace_grant_table(xatp.get());
+        return m_xen_vcpu->m_gnttab->mapspace_grant_table(xatp.get());
     default:
         return false;
     }
@@ -98,24 +98,24 @@ bool xen_memory::add_to_physmap()
 
 bool xen_memory::decrease_reservation()
 {
-    auto arg = m_vcpu->map_arg<xen_memory_reservation_t>(m_vcpu->rsi());
+    auto arg = m_uv_vcpu->map_arg<xen_memory_reservation_t>(m_uv_vcpu->rsi());
 
     expects(arg->domid == DOMID_SELF);
     expects(arg->extent_order == 0);
 
     auto gva = arg->extent_start.p;
     auto len = arg->nr_extents * sizeof(xen_pfn_t);
-    auto map = m_vcpu->map_gva_4k<xen_pfn_t>(gva, len);
+    auto map = m_uv_vcpu->map_gva_4k<xen_pfn_t>(gva, len);
     auto gfn = map.get();
 
     for (auto i = 0U; i < arg->nr_extents; i++) {
-        auto dom = m_vcpu->dom();
+        auto dom = m_uv_vcpu->dom();
         auto gpa = (gfn[i] << 12);
         dom->unmap(gpa);
         dom->release(gpa);
     }
 
-    m_vcpu->set_rax(arg->nr_extents);
+    m_uv_vcpu->set_rax(arg->nr_extents);
     return true;
 }
 

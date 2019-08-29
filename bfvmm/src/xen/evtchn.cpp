@@ -26,7 +26,7 @@
 
 namespace microv {
 
-xen_evtchn::xen_evtchn(xen_vcpu *xen) : m_xen{xen}, m_vcpu{xen->m_vcpu}
+xen_evtchn::xen_evtchn(xen_vcpu *xen) : m_xen_vcpu{xen}, m_uv_vcpu{xen->m_uv_vcpu}
 {
     m_event_words.reserve(max_word_pages);
     m_event_chans.reserve(max_chan_pages);
@@ -34,7 +34,7 @@ xen_evtchn::xen_evtchn(xen_vcpu *xen) : m_xen{xen}, m_vcpu{xen->m_vcpu}
 
 bool xen_evtchn::init_control()
 {
-    auto ctl = m_vcpu->map_arg<evtchn_init_control_t>(m_vcpu->rsi());
+    auto ctl = m_uv_vcpu->map_arg<evtchn_init_control_t>(m_uv_vcpu->rsi());
     expects(ctl->offset <= (0x1000 - sizeof(evtchn_fifo_control_block_t)));
     expects((ctl->offset & 0x7) == 0);
 
@@ -42,7 +42,7 @@ bool xen_evtchn::init_control()
     this->setup_ports();
     ctl->link_bits = EVTCHN_FIFO_LINK_BITS;
 
-    m_vcpu->set_rax(0);
+    m_uv_vcpu->set_rax(0);
     return true;
 }
 
@@ -58,26 +58,26 @@ void xen_evtchn::set_callback_via(uint64_t via)
 bool xen_evtchn::expand_array()
 {
     bfdebug_info(0, "evtchn expand array");
-    auto arg = m_vcpu->map_arg<evtchn_expand_array_t>(m_vcpu->rsi());
+    auto arg = m_uv_vcpu->map_arg<evtchn_expand_array_t>(m_uv_vcpu->rsi());
     this->make_word_page(arg.get());
 
-    m_vcpu->set_rax(0);
+    m_uv_vcpu->set_rax(0);
     return true;
 }
 
 bool xen_evtchn::set_priority()
 {
-    auto arg = m_vcpu->map_arg<evtchn_set_priority_t>(m_vcpu->rsi());
+    auto arg = m_uv_vcpu->map_arg<evtchn_set_priority_t>(m_uv_vcpu->rsi());
     auto chan = this->port_to_chan(arg->port);
 
     chan->priority = arg->priority;
-    m_vcpu->set_rax(0);
+    m_uv_vcpu->set_rax(0);
     return true;
 }
 
 bool xen_evtchn::alloc_unbound()
 {
-    auto arg = m_vcpu->map_arg<evtchn_alloc_unbound_t>(m_vcpu->rsi());
+    auto arg = m_uv_vcpu->map_arg<evtchn_alloc_unbound_t>(m_uv_vcpu->rsi());
     expects(arg->dom == DOMID_SELF);
     expects(arg->remote_dom == DOMID_SELF);
 
@@ -92,22 +92,22 @@ bool xen_evtchn::alloc_unbound()
     //bfdebug_subnhex(0, "dom", arg->dom);
     //bfdebug_subnhex(0, "remote_dom", arg->remote_dom);
 
-    m_vcpu->set_rax(0);
+    m_uv_vcpu->set_rax(0);
     return true;
 }
 
 bool xen_evtchn::send()
 {
-    auto arg = m_vcpu->map_arg<evtchn_send_t>(m_vcpu->rsi());
+    auto arg = m_uv_vcpu->map_arg<evtchn_send_t>(m_uv_vcpu->rsi());
     this->queue_upcall(this->port_to_chan(arg->port));
 
-    m_vcpu->set_rax(0);
+    m_uv_vcpu->set_rax(0);
     return true;
 }
 
 bool xen_evtchn::close()
 {
-    auto arg = m_vcpu->map_arg<evtchn_close_t>(m_vcpu->rsi());
+    auto arg = m_uv_vcpu->map_arg<evtchn_close_t>(m_uv_vcpu->rsi());
     expects(arg->port);
 
     auto chan = this->port_to_chan(arg->port);
@@ -118,7 +118,7 @@ bool xen_evtchn::close()
         chan->state = chan_t::state_unbound;
     }
 
-    m_vcpu->set_rax(0);
+    m_uv_vcpu->set_rax(0);
     return true;
 }
 
@@ -148,7 +148,7 @@ xen_evtchn::port_t xen_evtchn::bind_console()
 
 bool xen_evtchn::bind_interdomain()
 {
-    auto arg = m_vcpu->map_arg<evtchn_bind_interdomain_t>(m_vcpu->rsi());
+    auto arg = m_uv_vcpu->map_arg<evtchn_bind_interdomain_t>(m_uv_vcpu->rsi());
 
 //    bfdebug_info(0, "evtchn: bound interdomain");
 //    bfdebug_subnhex(0, "remote_dom", arg->remote_dom);
@@ -164,15 +164,15 @@ bool xen_evtchn::bind_interdomain()
 
 //    bfdebug_subnhex(0, "local_port", port);
 
-    m_vcpu->set_rax(0);
+    m_uv_vcpu->set_rax(0);
     return true;
 }
 
 bool xen_evtchn::bind_virq()
 {
-    auto arg = m_vcpu->map_arg<evtchn_bind_virq_t>(m_vcpu->rsi());
+    auto arg = m_uv_vcpu->map_arg<evtchn_bind_virq_t>(m_uv_vcpu->rsi());
 
-    expects(arg->vcpu == m_xen->vcpuid);
+    expects(arg->vcpu == m_xen_vcpu->vcpuid);
     expects(arg->virq < virq_info.size());
     expects(arg->virq < m_virq_to_port.size());
 
@@ -187,7 +187,7 @@ bool xen_evtchn::bind_virq()
     m_virq_to_port[arg->virq] = port;
     arg->port = port;
 
-    m_vcpu->set_rax(0);
+    m_uv_vcpu->set_rax(0);
     return true;
 }
 
@@ -217,8 +217,8 @@ void xen_evtchn::inject_virq(uint32_t virq)
 
 bool xen_evtchn::bind_vcpu()
 {
-    auto arg = m_vcpu->map_arg<evtchn_bind_vcpu_t>(m_vcpu->rsi());
-    expects(arg->vcpu == m_xen->vcpuid);
+    auto arg = m_uv_vcpu->map_arg<evtchn_bind_vcpu_t>(m_uv_vcpu->rsi());
+    expects(arg->vcpu == m_xen_vcpu->vcpuid);
 
     auto chan = this->port_to_chan(arg->port);
     auto prev = chan->vcpuid;
@@ -229,7 +229,7 @@ bool xen_evtchn::bind_vcpu()
     chan->vcpuid = arg->vcpu;
     chan->prev_vcpuid = prev;
 
-    m_vcpu->set_rax(0);
+    m_uv_vcpu->set_rax(0);
     return true;
 }
 
@@ -241,7 +241,7 @@ void
 xen_evtchn::setup_control_block(uint64_t gfn, uint32_t offset)
 {
     const auto gpa = gfn << ::x64::pt::page_shift;
-    m_ctl_blk_ump = m_vcpu->map_gpa_4k<uint8_t>(gpa);
+    m_ctl_blk_ump = m_uv_vcpu->map_gpa_4k<uint8_t>(gpa);
 
     uint8_t *base = m_ctl_blk_ump.get() + offset;
     m_ctl_blk = reinterpret_cast<evtchn_fifo_control_block_t *>(base);
@@ -287,14 +287,14 @@ bool xen_evtchn::set_link(word_t *word, event_word_t *val, port_t link)
 void xen_evtchn::queue_upcall(chan_t *chan)
 {
     if (!this->upcall(chan)) {
-        m_vcpu->queue_external_interrupt(m_cb_via);
+        m_uv_vcpu->queue_external_interrupt(m_cb_via);
     }
 }
 
 void xen_evtchn::inject_upcall(chan_t *chan)
 {
     if (!this->upcall(chan)) {
-        m_vcpu->inject_external_interrupt(m_cb_via);
+        m_uv_vcpu->inject_external_interrupt(m_cb_via);
     }
 }
 
@@ -450,7 +450,7 @@ void xen_evtchn::make_word_page(evtchn_expand_array_t *expand)
     expects(m_event_words.size() < m_event_words.capacity());
 
     auto addr = expand->array_gfn << 12;
-    auto page = m_vcpu->map_gpa_4k<word_t>(addr);
+    auto page = m_uv_vcpu->map_gpa_4k<word_t>(addr);
 
     m_event_words.push_back(std::move(page));
     m_allocated_words += words_per_page;

@@ -43,44 +43,44 @@ static xen_domid_t make_domid() noexcept
 
 xen_domain::xen_domain(microv_domain *domain)
 {
-    uv_info = &domain->m_sod_info;
-    uv_dom = domain;
+    m_uv_info = &domain->m_sod_info;
+    m_uv_dom = domain;
 
-    this->id = (uv_info->is_xenstore()) ? 0 : make_domid();
-    this->ssid_ref = 0;
-    this->max_vcpus = 1;
+    m_id = (m_uv_info->is_xenstore()) ? 0 : make_domid();
+    m_ssid_ref = 0;
+    m_max_vcpus = 1;
 
-    make_xen_uuid(&this->uuid);
+    make_xen_uuid(&m_uuid);
 
-    this->total_ram = uv_info->total_ram();
-    this->total_pages = uv_info->total_ram_pages();
-    this->max_pages = this->total_pages;
-    this->max_mfn = this->max_pages - 1;
-    this->shr_pages = 0;
-    this->out_pages = 0;
-    this->paged_pages = 0;
+    m_total_ram = m_uv_info->total_ram();
+    m_total_pages = m_uv_info->total_ram_pages();
+    m_max_pages = m_total_pages;
+    m_max_mfn = m_max_pages - 1;
+    m_shr_pages = 0;
+    m_out_pages = 0;
+    m_paged_pages = 0;
 
-    this->cpupool = -1; /* CPUPOOLID_NONE */
-    this->arch_config.emulation_flags = XEN_X86_EMU_LAPIC;
-    this->ndvm = uv_info->is_ndvm();
+    m_cpupool = -1; /* CPUPOOLID_NONE */
+    m_arch_config.emulation_flags = XEN_X86_EMU_LAPIC;
+    m_ndvm = m_uv_info->is_ndvm();
 
-    this->flags = XEN_DOMINF_hvm_guest;
-    this->flags |= XEN_DOMINF_hap;
+    m_flags = XEN_DOMINF_hvm_guest;
+    m_flags |= XEN_DOMINF_hap;
 
-    if (uv_info->is_xenstore()) {
-        this->flags |= XEN_DOMINF_xs_domain;
+    if (m_uv_info->is_xenstore()) {
+        m_flags |= XEN_DOMINF_xs_domain;
     }
 
-    if (uv_info->using_hvc()) {
-        this->hvc_rx_ring = std::make_unique<microv::ring<HVC_RX_SIZE>>();
-        this->hvc_tx_ring = std::make_unique<microv::ring<HVC_TX_SIZE>>();
+    if (m_uv_info->using_hvc()) {
+        m_hvc_rx_ring = std::make_unique<microv::ring<HVC_RX_SIZE>>();
+        m_hvc_tx_ring = std::make_unique<microv::ring<HVC_TX_SIZE>>();
     }
 }
 
 void xen_domain::bind_vcpu(class xen_vcpu *vcpu)
 {
-    this->xen_vcpu = vcpu;
-    uv_vcpu = vcpu->m_vcpu;
+    m_xen_vcpu = vcpu;
+    m_uv_vcpu = vcpu->m_uv_vcpu;
 }
 
 uint64_t xen_domain::shinfo_gpfn()
@@ -109,44 +109,44 @@ void xen_domain::get_arch_config(struct xen_arch_domainconfig *cfg)
 
 void xen_domain::get_domctl_info(struct xen_domctl_getdomaininfo *info)
 {
-    info->domain = id;
-    info->flags = flags;
-    info->tot_pages = total_pages;
-    info->max_pages = max_pages;
-    info->outstanding_pages = out_pages;
-    info->shr_pages = shr_pages;
-    info->paged_pages = paged_pages;
+    info->domain = m_id;
+    info->flags = m_flags;
+    info->tot_pages = m_total_pages;
+    info->max_pages = m_max_pages;
+    info->outstanding_pages = m_out_pages;
+    info->shr_pages = m_shr_pages;
+    info->paged_pages = m_paged_pages;
     info->shared_info_frame = this->shinfo_gpfn();
     info->cpu_time = this->runstate_time(RUNSTATE_running);
     info->nr_online_vcpus = this->nr_online_vcpus();
     info->max_vcpu_id = this->max_vcpu_id();
-    info->ssidref = ssid_ref;
+    info->ssidref = m_ssid_ref;
 
-    static_assert(sizeof(uuid) == sizeof(info->handle));
-    memcpy(&info->handle, &uuid, sizeof(uuid));
+    static_assert(sizeof(m_uuid) == sizeof(info->handle));
+    memcpy(&info->handle, &m_uuid, sizeof(m_uuid));
 
-    info->cpupool = cpupool;
+    info->cpupool = m_cpupool;
     this->get_arch_config(&info->arch_config);
 }
 
 size_t xen_domain::hvc_rx_put(const gsl::span<char> &span)
 {
-    return hvc_rx_ring->put(span);
+    return m_hvc_rx_ring->put(span);
 }
 
 size_t xen_domain::hvc_rx_get(const gsl::span<char> &span)
 {
-    return hvc_rx_ring->get(span);
+    return m_hvc_rx_ring->get(span);
 }
 
 size_t xen_domain::hvc_tx_put(const gsl::span<char> &span)
 {
-    return hvc_tx_ring->put(span);
+    return m_hvc_tx_ring->put(span);
 }
 
 size_t xen_domain::hvc_tx_get(const gsl::span<char> &span)
 {
-    return hvc_tx_ring->get(span);
+    return m_hvc_tx_ring->get(span);
 }
 
 }

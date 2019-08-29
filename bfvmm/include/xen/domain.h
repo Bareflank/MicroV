@@ -57,40 +57,40 @@ public:
     size_t hvc_tx_get(const gsl::span<char> &span);
 
 public:
-    microv::domain_info *uv_info{};
-    microv_domain *uv_dom{};
-    microv_vcpu *uv_vcpu{};
-    xen_vcpu *xen_vcpu{};
+    microv::domain_info *m_uv_info{};
+    microv_domain *m_uv_dom{};
+    microv_vcpu *m_uv_vcpu{};
+    xen_vcpu *m_xen_vcpu{};
 
-    xen_domid_t id{};
-    xen_uuid_t uuid{};
-    uint32_t ssid_ref{};     /* flask id */
+    xen_domid_t m_id{};
+    xen_uuid_t m_uuid{};
+    uint32_t m_ssid_ref{};     /* flask id */
 
     /* Tunables */
-    uint32_t max_vcpus{};
-    uint32_t max_evtchns{};
-    uint32_t max_grant_frames{};
-    uint32_t max_maptrack_frames{};
+    uint32_t m_max_vcpus{};
+    uint32_t m_max_evtchns{};
+    uint32_t m_max_grant_frames{};
+    uint32_t m_max_maptrack_frames{};
 
     /* Memory */
-    uint64_t total_ram{};
-    uint32_t total_pages{}; /* nr pages possessed */
-    uint32_t max_pages{};   /* max value for total_pages */
-    uint32_t max_mfn{};
-    uint32_t shr_pages{};   /* nr shared pages */
-    uint32_t out_pages{};   /* nr claimed-but-not-possessed pages */
-    uint32_t paged_pages{}; /* nr paged-out pages */
+    uint64_t m_total_ram{};
+    uint32_t m_total_pages{}; /* nr pages possessed */
+    uint32_t m_max_pages{};   /* max value for total_pages */
+    uint32_t m_max_mfn{};
+    uint32_t m_shr_pages{};   /* nr shared pages */
+    uint32_t m_out_pages{};   /* nr claimed-but-not-possessed pages */
+    uint32_t m_paged_pages{}; /* nr paged-out pages */
 
     /* Scheduling */
-    uint32_t cpupool{};
+    uint32_t m_cpupool{};
 
-    bool ndvm{};      /* is this an NDVM? */
-    uint32_t flags{}; /* DOMINF_ flags, used for {sys,dom}ctls */
-    struct xen_arch_domainconfig arch_config{};
+    bool m_ndvm{};      /* is this an NDVM? */
+    uint32_t m_flags{}; /* DOMINF_ flags, used for {sys,dom}ctls */
+    struct xen_arch_domainconfig m_arch_config{};
 
     /* Console IO */
-    std::unique_ptr<microv::ring<HVC_RX_SIZE>> hvc_rx_ring;
-    std::unique_ptr<microv::ring<HVC_TX_SIZE>> hvc_tx_ring;
+    std::unique_ptr<microv::ring<HVC_RX_SIZE>> m_hvc_rx_ring;
+    std::unique_ptr<microv::ring<HVC_TX_SIZE>> m_hvc_tx_ring;
 
 public:
     ~xen_domain() = default;

@@ -29,9 +29,9 @@ namespace microv {
 
 class xen_version {
 private:
-    xen_vcpu *m_xen{};
+    xen_vcpu *m_xen_vcpu{};
     xen_domain *m_xen_dom{};
-    microv_vcpu *m_vcpu{};
+    microv_vcpu *m_uv_vcpu{};
 
 public:
     bool build_id();

@@ -84,8 +84,8 @@ private:
     friend class xen_version;
     friend class xen_physdev;
 
-    microv_vcpu *m_vcpu{};
-    microv_domain *m_dom{};
+    microv_vcpu *m_uv_vcpu{};
+    microv_domain *m_uv_dom{};
     xen_domain *m_xen_dom{};
 
     std::unique_ptr<class xen_evtchn> m_evtchn;
