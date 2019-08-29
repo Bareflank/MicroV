@@ -41,6 +41,7 @@ namespace microv {
 
 class xen_vcpu {
 public:
+    xen_vcpu(microv_vcpu *vcpu);
     void queue_virq(uint32_t virq);
 
 private:
@@ -118,8 +119,6 @@ private:
     uint32_t m_acpiid{};
 
 public:
-
-    xen_vcpu(microv_vcpu *vcpu, microv_domain *dom);
     ~xen_vcpu() = default;
     xen_vcpu(xen_vcpu &&) = default;
     xen_vcpu(const xen_vcpu &) = delete;

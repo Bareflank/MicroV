@@ -27,6 +27,7 @@ namespace microv {
 
 xen_memory::xen_memory(xen_vcpu *xen) :
     m_xen_vcpu{xen},
+    m_xen_dom{xen->m_xen_dom},
     m_uv_vcpu{xen->m_uv_vcpu}
 { }
 
@@ -76,13 +77,13 @@ bool xen_memory::add_to_physmap()
     auto xatp = m_uv_vcpu->map_arg<xen_add_to_physmap_t>(m_uv_vcpu->rsi());
     if (xatp->domid != DOMID_SELF) {
         m_uv_vcpu->set_rax(-EINVAL);
-        return true;
+        return false;
     }
 
     switch (xatp->space) {
     case XENMAPSPACE_gmfn_foreign:
         m_uv_vcpu->set_rax(-ENOSYS);
-        return true;
+        return false;
     case XENMAPSPACE_shared_info:
         m_xen_vcpu->init_shared_info(xatp.get()->gpfn);
         m_uv_vcpu->set_rax(0);

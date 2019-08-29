@@ -413,22 +413,6 @@ bool xen_vcpu::handle_grant_table_op()
     })
 }
 
-void xen_vcpu::update_wallclock(const struct xenpf_settime64 *time)
-{
-    m_shinfo->wc_version++;
-    wmb();
-
-    uint64_t x = s_to_ns(time->secs) + time->nsecs - time->system_time;
-    uint32_t y = do_div(x, 1000000000);
-
-    m_shinfo->wc_sec = gsl::narrow_cast<uint32_t>(x);
-    m_shinfo->wc_sec_hi = gsl::narrow_cast<uint32_t>(x >> 32);
-    m_shinfo->wc_nsec = gsl::narrow_cast<uint32_t>(y);
-
-    wmb();
-    m_shinfo->wc_version++;
-}
-
 bool xen_vcpu::handle_platform_op()
 {
     auto xpf = m_uv_vcpu->map_arg<xen_platform_op_t>(m_uv_vcpu->rdi());
@@ -452,10 +436,11 @@ bool xen_vcpu::handle_platform_op()
         const struct xenpf_settime64 *time = &xpf->u.settime64;
         if (time->mbz) {
             m_uv_vcpu->set_rax(-EINVAL);
-        } else {
-            this->update_wallclock(time);
-            m_uv_vcpu->set_rax(0);
+            return false;
         }
+
+        m_xen_dom->update_wallclock(this, time);
+        m_uv_vcpu->set_rax(0);
         return true;
     }
     default:
@@ -474,7 +459,7 @@ bool xen_vcpu::handle_xsm_op()
 
 struct vcpu_time_info *xen_vcpu::vcpu_time()
 {
-    return &m_shinfo->vcpu_info[m_id].time;
+    return &m_xen_dom->m_shinfo.get()->vcpu_info[m_id].time;
 }
 
 void xen_vcpu::stop_timer()
@@ -531,7 +516,6 @@ bool xen_vcpu::handle_vcpu_op()
         }
         return true;
     case VCPUOP_register_vcpu_time_memory_area: {
-        expects(m_shinfo);
         auto tma = m_uv_vcpu->map_arg<vcpu_register_time_memory_area_t>(
             m_uv_vcpu->rdx());
         m_user_vti = m_uv_vcpu->map_arg<struct vcpu_time_info>(tma->addr.v);
@@ -577,10 +561,6 @@ void xen_vcpu::queue_virq(uint32_t virq)
 
 void xen_vcpu::update_runstate(int new_state)
 {
-    if (GSL_UNLIKELY(!m_shinfo)) {
-        return;
-    }
-
     /* Update kernel time info */
     auto kvti = this->vcpu_time();
     const uint64_t mult = kvti->tsc_to_system_mul;
@@ -663,26 +643,17 @@ void xen_vcpu::init_shared_info(uintptr_t shinfo_gpfn)
 {
     using namespace ::intel_x64::msrs;
 
-    m_shinfo = m_uv_vcpu->map_gpa_4k<struct shared_info>(shinfo_gpfn << 12);
-    m_shinfo_gpfn = shinfo_gpfn;
+    auto tsc = m_xen_dom->init_shared_info(this, shinfo_gpfn);
+    if (!tsc) {
+        bferror_info(0, "xen_domain::init_shared_info returned 0");
+        return;
+    }
 
     auto vti = this->vcpu_time();
     vti->flags |= XEN_PVCLOCK_TSC_STABLE_BIT;
     vti->tsc_shift = m_tsc_shift;
     vti->tsc_to_system_mul = m_tsc_mul;
-
-    /* Set the wallclock from start-of-day info */
-    auto sod = m_uv_dom->sod_info();
-    auto now = ::x64::read_tsc::get();
-    auto wc_nsec = tsc_to_ns(now - sod->tsc, m_tsc_shift,  m_tsc_mul);
-    auto wc_sec = wc_nsec / 1000000000ULL;
-
-    wc_nsec += sod->wc_nsec;
-    wc_sec += sod->wc_sec;
-    m_shinfo->wc_nsec = gsl::narrow_cast<uint32_t>(wc_nsec);
-    m_shinfo->wc_sec = gsl::narrow_cast<uint32_t>(wc_sec);
-    m_shinfo->wc_sec_hi = gsl::narrow_cast<uint32_t>(wc_sec >> 32);
-    vti->tsc_timestamp = now;
+    vti->tsc_timestamp = tsc;
 
     m_uv_vcpu->add_resume_delegate({&xen_vcpu::resume_update, this});
 }
@@ -813,18 +784,14 @@ bool xen_vcpu::hypercall(microv_vcpu *vcpu)
     }
 }
 
-xen_vcpu::xen_vcpu(microv_vcpu *vcpu, microv_domain *dom) :
+xen_vcpu::xen_vcpu(microv_vcpu *vcpu) :
     m_uv_vcpu{vcpu},
-    m_uv_dom{dom},
-    m_xen_dom{dom->xen_dom()}
+    m_uv_dom{vcpu->dom()},
+    m_xen_dom{m_uv_dom->xen_dom()}
 {
-    expects(m_xen_dom);
-
     m_id = 0;
     m_apicid = 0;
     m_acpiid = 0;
-
-    m_xen_dom->bind_vcpu(m_uv_vcpu->id());
 
     m_evtchn = std::make_unique<class xen_evtchn>(this);
     m_flask = std::make_unique<class xen_flask>(this);
@@ -848,5 +815,7 @@ xen_vcpu::xen_vcpu(microv_vcpu *vcpu, microv_domain *dom) :
     vcpu->add_handler(0, handle_exception);
     vcpu->emulate_wrmsr(self_ipi_msr, {wrmsr_self_ipi});
     vcpu->add_external_interrupt_handler({&xen_vcpu::handle_interrupt, this});
+
+    m_xen_dom->bind_vcpu(this);
 }
 }

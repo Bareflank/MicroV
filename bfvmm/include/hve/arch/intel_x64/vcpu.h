@@ -107,6 +107,8 @@ public:
 
 public:
 
+    microv::xen_vcpu *xen_vcpu() noexcept;
+
     void add_child_vcpu(vcpuid_t id);
     vcpu *find_child_vcpu(vcpuid_t id);
     void remove_child_vcpu(vcpuid_t id);
@@ -340,6 +342,7 @@ public:
                              uint32_t fun,
                              const pci_cfg_handler::delegate_t &d,
                              int direction);
+
 private:
     friend class microv::xen_vcpu;
     friend class microv::intel_x64::vcpu;

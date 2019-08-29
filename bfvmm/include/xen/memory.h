@@ -29,6 +29,7 @@ namespace microv {
 
 class xen_memory {
     xen_vcpu *m_xen_vcpu{};
+    xen_domain *m_xen_dom{};
     microv_vcpu *m_uv_vcpu{};
 
 public:

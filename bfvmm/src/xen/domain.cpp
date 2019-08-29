@@ -24,12 +24,15 @@
 #include <mutex>
 #include <unordered_map>
 
+#include <arch/intel_x64/barrier.h>
 #include <hve/arch/intel_x64/domain.h>
+#include <hve/arch/intel_x64/vcpu.h>
 #include <public/domctl.h>
 #include <public/vcpu.h>
 #include <xen/domain.h>
 #include <xen/evtchn.h>
 #include <xen/gnttab.h>
+#include <xen/time.h>
 #include <xen/util.h>
 #include <xen/vcpu.h>
 
@@ -50,6 +53,7 @@ xen_domain::xen_domain(microv_domain *domain)
 {
     m_uv_info = &domain->m_sod_info;
     m_uv_dom = domain;
+    m_uv_vcpuid = 0; /* the valid ID is bound with bind_vcpu */
 
     m_id = (m_uv_info->is_xenstore()) ? 0 : make_domid();
     make_xen_uuid(&m_uuid);
@@ -85,15 +89,76 @@ xen_domain::xen_domain(microv_domain *domain)
     }
 }
 
-void xen_domain::bind_vcpu(microv_vcpuid uv_vcpuid)
+class xen_vcpu *xen_domain::get_xen_vcpu() noexcept
 {
-    expects(vcpuid::is_guest_vcpu(uv_vcpuid));
-    m_uv_vcpuid = uv_vcpuid;
+    if (!m_uv_vcpuid) {
+        return nullptr;
+    }
+
+    auto uv_vcpu = get_vcpu(m_uv_vcpuid);
+    if (!uv_vcpu) {
+        return nullptr;
+    }
+
+    return uv_vcpu->xen_vcpu();
 }
 
-uint64_t xen_domain::shinfo_gpfn()
+void xen_domain::put_xen_vcpu() noexcept
 {
-    return 0;
+    put_vcpu(m_uv_vcpuid);
+}
+
+/*
+ * N.B. this is called from the xen_vcpu constructor, which is called from the
+ * g_vcm->create() path. This means the bfmanager's m_mutex is already locked,
+ * so doing a get_xen_vcpu() here would cause deadlock.
+ */
+void xen_domain::bind_vcpu(xen_vcpu *xen)
+{
+    m_uv_vcpuid = xen->m_uv_vcpu->id();
+
+    m_tsc_khz = xen->m_tsc_khz;
+    m_tsc_mul = xen->m_tsc_mul;
+    m_tsc_shift = xen->m_tsc_shift;
+}
+
+uint64_t xen_domain::init_shared_info(xen_vcpu *xen, uintptr_t shinfo_gpfn)
+{
+    expects(!m_shinfo);
+
+    m_shinfo = xen->m_uv_vcpu->map_gpa_4k<struct shared_info>(shinfo_gpfn << 12);
+    m_shinfo_gpfn = shinfo_gpfn;
+
+    /* Set wallclock from start-of-day info */
+    auto now = ::x64::read_tsc::get();
+    auto wc_nsec = tsc_to_ns(now - m_uv_info->tsc, m_tsc_shift,  m_tsc_mul);
+    auto wc_sec = wc_nsec / 1000000000ULL;
+
+    wc_nsec += m_uv_info->wc_nsec;
+    wc_sec += m_uv_info->wc_sec;
+    m_shinfo->wc_nsec = gsl::narrow_cast<uint32_t>(wc_nsec);
+    m_shinfo->wc_sec = gsl::narrow_cast<uint32_t>(wc_sec);
+    m_shinfo->wc_sec_hi = gsl::narrow_cast<uint32_t>(wc_sec >> 32);
+
+    return now;
+}
+
+void xen_domain::update_wallclock(
+    xen_vcpu *vcpu,
+    const struct xenpf_settime64 *time) noexcept
+{
+    m_shinfo->wc_version++;
+    wmb();
+
+    uint64_t x = s_to_ns(time->secs) + time->nsecs - time->system_time;
+    uint32_t y = do_div(x, 1000000000);
+
+    m_shinfo->wc_sec = (uint32_t)x;
+    m_shinfo->wc_sec_hi = (uint32_t)(x >> 32);
+    m_shinfo->wc_nsec = (uint32_t)y;
+
+    wmb();
+    m_shinfo->wc_version++;
 }
 
 uint64_t xen_domain::runstate_time(int state)
@@ -124,7 +189,7 @@ void xen_domain::get_domctl_info(struct xen_domctl_getdomaininfo *info)
     info->outstanding_pages = m_out_pages;
     info->shr_pages = m_shr_pages;
     info->paged_pages = m_paged_pages;
-    info->shared_info_frame = this->shinfo_gpfn();
+    info->shared_info_frame = m_shinfo_gpfn;
     info->cpu_time = this->runstate_time(RUNSTATE_running);
     info->nr_online_vcpus = this->nr_online_vcpus();
     info->max_vcpu_id = this->max_vcpu_id();

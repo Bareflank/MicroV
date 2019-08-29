@@ -172,8 +172,13 @@ vcpu::write_domU_guest_state(domain *domain)
             init_pci_on_vcpu(this);
         }
 
-        m_xen_vcpu = std::make_unique<xen_vcpu>(this, domain);
+        m_xen_vcpu = std::make_unique<class xen_vcpu>(this);
     }
+}
+
+microv::xen_vcpu *vcpu::xen_vcpu() noexcept
+{
+    return m_xen_vcpu.get();
 }
 
 void vcpu::add_child_vcpu(vcpuid_t child_id)

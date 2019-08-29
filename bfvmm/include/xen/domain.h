@@ -27,6 +27,7 @@
 #include "types.h"
 
 #include <public/domctl.h>
+#include <public/platform.h>
 
 namespace microv {
 
@@ -43,18 +44,26 @@ class xen_domain {
 public:
     xen_domain(microv_domain *domain);
 
-    void bind_vcpu(microv_vcpuid uv_vcpuid);
+    void bind_vcpu(xen_vcpu *xen);
     void get_domctl_info(struct xen_domctl_getdomaininfo *info);
-    uint64_t shinfo_gpfn();
+    void get_arch_config(struct xen_arch_domainconfig *cfg);
     uint64_t runstate_time(int state);
     uint32_t nr_online_vcpus();
     xen_vcpuid_t max_vcpu_id();
-    void get_arch_config(struct xen_arch_domainconfig *cfg);
 
     size_t hvc_rx_put(const gsl::span<char> &span);
     size_t hvc_rx_get(const gsl::span<char> &span);
     size_t hvc_tx_put(const gsl::span<char> &span);
     size_t hvc_tx_get(const gsl::span<char> &span);
+
+    /* Called from hypercall vcpu context */
+    uint64_t init_shared_info(xen_vcpu *v, uintptr_t shinfo_gpfn);
+    void update_wallclock(xen_vcpu *v,
+                          const struct xenpf_settime64 *time) noexcept;
+
+private:
+    class xen_vcpu *get_xen_vcpu() noexcept;
+    void put_xen_vcpu() noexcept;
 
 public:
     microv::domain_info *m_uv_info{};
@@ -88,8 +97,17 @@ public:
     struct xen_arch_domainconfig m_arch_config{};
 
     /* Console IO */
-    std::unique_ptr<microv::ring<HVC_RX_SIZE>> m_hvc_rx_ring;
-    std::unique_ptr<microv::ring<HVC_TX_SIZE>> m_hvc_tx_ring;
+    std::unique_ptr<microv::ring<HVC_RX_SIZE>> m_hvc_rx_ring{};
+    std::unique_ptr<microv::ring<HVC_TX_SIZE>> m_hvc_tx_ring{};
+
+    /* Shared info page */
+    unique_map<struct shared_info> m_shinfo{};
+    uintptr_t m_shinfo_gpfn{};
+
+    /* TSC params */
+    uint64_t m_tsc_khz;
+    uint64_t m_tsc_mul;
+    uint64_t m_tsc_shift;
 
 public:
     ~xen_domain() = default;
