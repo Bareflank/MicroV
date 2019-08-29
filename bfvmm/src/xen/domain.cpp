@@ -28,8 +28,13 @@
 #include <public/domctl.h>
 #include <public/vcpu.h>
 #include <xen/domain.h>
+#include <xen/evtchn.h>
+#include <xen/gnttab.h>
 #include <xen/util.h>
 #include <xen/vcpu.h>
+
+#define DEFAULT_MAPTRACK_FRAMES 1024
+#define DEFAULT_CPUPOOLID (-1)
 
 namespace microv {
 
@@ -47,10 +52,13 @@ xen_domain::xen_domain(microv_domain *domain)
     m_uv_dom = domain;
 
     m_id = (m_uv_info->is_xenstore()) ? 0 : make_domid();
-    m_ssid_ref = 0;
-    m_max_vcpus = 1;
-
     make_xen_uuid(&m_uuid);
+    m_ssid = 0;
+
+    m_max_vcpus = 1;
+    m_max_evtchns = xen_evtchn::max_channels;
+    m_max_grant_frames = xen_gnttab::max_nr_frames;
+    m_max_maptrack_frames = DEFAULT_MAPTRACK_FRAMES;
 
     m_total_ram = m_uv_info->total_ram();
     m_total_pages = m_uv_info->total_ram_pages();
@@ -60,7 +68,7 @@ xen_domain::xen_domain(microv_domain *domain)
     m_out_pages = 0;
     m_paged_pages = 0;
 
-    m_cpupool = -1; /* CPUPOOLID_NONE */
+    m_cpupool = DEFAULT_CPUPOOLID;
     m_arch_config.emulation_flags = XEN_X86_EMU_LAPIC;
     m_ndvm = m_uv_info->is_ndvm();
 
@@ -77,10 +85,10 @@ xen_domain::xen_domain(microv_domain *domain)
     }
 }
 
-void xen_domain::bind_vcpu(class xen_vcpu *vcpu)
+void xen_domain::bind_vcpu(microv_vcpuid uv_vcpuid)
 {
-    m_xen_vcpu = vcpu;
-    m_uv_vcpu = vcpu->m_uv_vcpu;
+    expects(vcpuid::is_guest_vcpu(uv_vcpuid));
+    m_uv_vcpuid = uv_vcpuid;
 }
 
 uint64_t xen_domain::shinfo_gpfn()
@@ -120,7 +128,7 @@ void xen_domain::get_domctl_info(struct xen_domctl_getdomaininfo *info)
     info->cpu_time = this->runstate_time(RUNSTATE_running);
     info->nr_online_vcpus = this->nr_online_vcpus();
     info->max_vcpu_id = this->max_vcpu_id();
-    info->ssidref = m_ssid_ref;
+    info->ssidref = m_ssid;
 
     static_assert(sizeof(m_uuid) == sizeof(info->handle));
     memcpy(&info->handle, &m_uuid, sizeof(m_uuid));

@@ -43,7 +43,7 @@ class xen_domain {
 public:
     xen_domain(microv_domain *domain);
 
-    void bind_vcpu(xen_vcpu *vcpu);
+    void bind_vcpu(microv_vcpuid uv_vcpuid);
     void get_domctl_info(struct xen_domctl_getdomaininfo *info);
     uint64_t shinfo_gpfn();
     uint64_t runstate_time(int state);
@@ -59,12 +59,11 @@ public:
 public:
     microv::domain_info *m_uv_info{};
     microv_domain *m_uv_dom{};
-    microv_vcpu *m_uv_vcpu{};
-    xen_vcpu *m_xen_vcpu{};
+    microv_vcpuid m_uv_vcpuid{INVALID_VCPUID};
 
     xen_domid_t m_id{};
     xen_uuid_t m_uuid{};
-    uint32_t m_ssid_ref{};     /* flask id */
+    uint32_t m_ssid{};     /* flask id */
 
     /* Tunables */
     uint32_t m_max_vcpus{};

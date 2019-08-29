@@ -113,12 +113,11 @@ private:
     bool m_pet_hdlrs_added{};
     bool m_runstate_assist{};
 
-public:
+    xen_vcpuid_t m_id{};
+    uint32_t m_apicid{};
+    uint32_t m_acpiid{};
 
-    uint32_t domid{};
-    uint32_t vcpuid{};
-    uint32_t apicid{};
-    uint32_t acpiid{};
+public:
 
     xen_vcpu(microv_vcpu *vcpu, microv_domain *dom);
     ~xen_vcpu() = default;

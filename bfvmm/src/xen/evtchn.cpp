@@ -172,7 +172,7 @@ bool xen_evtchn::bind_virq()
 {
     auto arg = m_uv_vcpu->map_arg<evtchn_bind_virq_t>(m_uv_vcpu->rsi());
 
-    expects(arg->vcpu == m_xen_vcpu->vcpuid);
+    expects(arg->vcpu == m_xen_vcpu->m_id);
     expects(arg->virq < virq_info.size());
     expects(arg->virq < m_virq_to_port.size());
 
@@ -218,7 +218,7 @@ void xen_evtchn::inject_virq(uint32_t virq)
 bool xen_evtchn::bind_vcpu()
 {
     auto arg = m_uv_vcpu->map_arg<evtchn_bind_vcpu_t>(m_uv_vcpu->rsi());
-    expects(arg->vcpu == m_xen_vcpu->vcpuid);
+    expects(arg->vcpu == m_xen_vcpu->m_id);
 
     auto chan = this->port_to_chan(arg->port);
     auto prev = chan->vcpuid;

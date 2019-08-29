@@ -54,47 +54,10 @@
 
 namespace microv {
 
-static std::mutex xen_mutex;
-static uint32_t xen_domid = 0;
-static uint32_t xen_vcpuid = 0;
-static uint32_t xen_apicid = 0;
-static uint32_t xen_acpiid = 0;
-
 static constexpr auto self_ipi_msr = 0x83F;
 static constexpr auto hcall_page_msr = 0xC0000500;
 static constexpr auto xen_leaf_base = 0x40000100;
 static constexpr auto xen_leaf(int i) { return xen_leaf_base + i; }
-
-static void make_xen_ids(microv_domain *dom, xen_vcpu *xen)
-{
-    if (dom->initdom()) {
-        xen->domid = 0;
-        xen->vcpuid = 0;
-        xen->apicid = 0;
-        xen->acpiid = 0;
-        return;
-    } else {
-        std::lock_guard<std::mutex> lock(xen_mutex);
-        xen->domid = ++xen_domid;
-
-        /**
-         * Linux uses the vcpuid to index into the vcpu_info array in the
-         * struct shared_info page. However it hardcodes vcpu_info[0] in
-         * xen_tsc_khz which is used to calibrate the TSC at early boot.
-         * This means that we can't index into vcpu_info with vcpuid; it
-         * has to be zero. Otherwise, xen_tsc_khz calls pvclock_tsc_khz,
-         * which ends up doing a div by zero since vcpu_info[0] is 0.
-         */
-        //xen->vcpuid = ++xen_vcpuid;
-        //xen->apicid = ++xen_apicid;
-        //xen->acpiid = ++xen_acpiid;
-        xen->vcpuid = 0;
-        xen->apicid = 0;
-        xen->acpiid = 0;
-
-        ensures(xen->vcpuid < XEN_LEGACY_MAX_VCPUS);
-    }
-}
 
 static bool handle_exception(base_vcpu *vcpu)
 {
@@ -176,10 +139,8 @@ bool xen_vcpu::xen_leaf4(base_vcpu *vcpu)
     rax |= XEN_HVM_CPUID_DOMID_PRESENT;
 
     vcpu->set_rax(rax);
-
-    /* These ID values are *not* the same as the microv ones */
-    vcpu->set_rbx(this->vcpuid);
-    vcpu->set_rcx(this->domid);
+    vcpu->set_rbx(m_id);
+    vcpu->set_rcx(m_xen_dom->m_id);
 
     vcpu->advance();
     return true;
@@ -482,8 +443,8 @@ bool xen_vcpu::handle_platform_op()
         struct xenpf_pcpuinfo *info = &xpf->u.pcpu_info;
         info->max_present = 1;
         info->flags = XEN_PCPU_FLAGS_ONLINE;
-        info->apic_id = this->apicid;
-        info->acpi_id = this->acpiid;
+        info->apic_id = m_apicid;
+        info->acpi_id = m_acpiid;
         m_uv_vcpu->set_rax(0);
         return true;
     }
@@ -513,7 +474,7 @@ bool xen_vcpu::handle_xsm_op()
 
 struct vcpu_time_info *xen_vcpu::vcpu_time()
 {
-    return &m_shinfo->vcpu_info[this->vcpuid].time;
+    return &m_shinfo->vcpu_info[m_id].time;
 }
 
 void xen_vcpu::stop_timer()
@@ -549,7 +510,7 @@ int xen_vcpu::set_timer()
 
 bool xen_vcpu::handle_vcpu_op()
 {
-    expects(m_uv_vcpu->rsi() == vcpuid);
+    expects(m_uv_vcpu->rsi() == m_id);
 
     switch (m_uv_vcpu->rdi()) {
     case VCPUOP_stop_periodic_timer:
@@ -859,7 +820,11 @@ xen_vcpu::xen_vcpu(microv_vcpu *vcpu, microv_domain *dom) :
 {
     expects(m_xen_dom);
 
-    m_xen_dom->bind_vcpu(this);
+    m_id = 0;
+    m_apicid = 0;
+    m_acpiid = 0;
+
+    m_xen_dom->bind_vcpu(m_uv_vcpu->id());
 
     m_evtchn = std::make_unique<class xen_evtchn>(this);
     m_flask = std::make_unique<class xen_flask>(this);
@@ -867,8 +832,6 @@ xen_vcpu::xen_vcpu(microv_vcpu *vcpu, microv_domain *dom) :
     m_xenmem = std::make_unique<class xen_memory>(this);
     m_xenver = std::make_unique<class xen_version>(this);
     m_physdev = std::make_unique<class xen_physdev>(this);
-
-    make_xen_ids(dom, this);
 
     m_tsc_khz = vcpu->m_yield_handler.m_tsc_freq;
     m_tsc_mul = (1000000000ULL << 32) / m_tsc_khz;

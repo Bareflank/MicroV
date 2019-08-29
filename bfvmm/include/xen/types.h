@@ -27,6 +27,7 @@
 #include <bfmath.h>
 #include <bfobject.h>
 #include <bftypes.h>
+#include <bfvcpuid.h>
 #include <bfvmm/hve/arch/x64/unmapper.h>
 #include <bfvmm/memory_manager/memory_manager.h>
 
@@ -59,6 +60,7 @@ class xen_vcpu;
 class xen_version;
 
 using microv_vcpu = microv::intel_x64::vcpu;
+using microv_vcpuid = ::vcpuid::type;
 using microv_domain = microv::intel_x64::domain;
 
 using base_vcpu = bfvmm::intel_x64::vcpu;
