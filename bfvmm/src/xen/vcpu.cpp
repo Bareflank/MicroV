@@ -35,7 +35,6 @@
 #include <xen/evtchn.h>
 #include <xen/gnttab.h>
 #include <xen/physdev.h>
-#include <xen/sysctl.h>
 #include <xen/util.h>
 #include <xen/time.h>
 #include <xen/xenmem.h>
@@ -46,6 +45,7 @@
 #include <public/errno.h>
 #include <public/memory.h>
 #include <public/platform.h>
+#include <public/sysctl.h>
 #include <public/version.h>
 #include <public/hvm/hvm_op.h>
 #include <public/hvm/params.h>
@@ -424,13 +424,15 @@ bool xen_vcpu::handle_event_channel_op()
 bool xen_vcpu::handle_sysctl()
 {
     auto ctl = m_vcpu->map_arg<xen_sysctl_t>(m_vcpu->rdi());
-    return m_sysctl->handle(ctl.get());
+    bferror_nhex(0, "sysctl:", ctl->cmd);
+    return false;
 }
 
 bool xen_vcpu::handle_domctl()
 {
     auto ctl = m_vcpu->map_arg<xen_domctl_t>(m_vcpu->rdi());
-    return m_domctl->handle(ctl.get());
+    bferror_nhex(0, "domctl:", ctl->cmd);
+    return false;
 }
 
 bool xen_vcpu::handle_grant_table_op()
@@ -870,27 +872,18 @@ xen_vcpu::xen_vcpu(microv_vcpu *vcpu, microv_domain *dom) :
 {
     expects(m_xen_dom);
 
-    m_domctl = std::make_unique<class domctl>(this);
     m_evtchn = std::make_unique<class evtchn>(this);
     m_gnttab = std::make_unique<class gnttab>(this);
     m_xenmem = std::make_unique<class xenmem>(this);
     m_xenver = std::make_unique<class xenver>(this);
-    m_sysctl = std::make_unique<class sysctl>(this);
     m_physdev = std::make_unique<class physdev>(this);
 
     make_xen_ids(dom, this);
-    xen_uuid_t uuid;
-    make_xen_uuid(&uuid);
 
     m_tsc_khz = vcpu->m_yield_handler.m_tsc_freq;
     m_tsc_mul = (1000000000ULL << 32) / m_tsc_khz;
     m_tsc_shift = 0;
     m_pet_shift = vcpu->m_yield_handler.m_pet_shift;
-
-    srand(dom->id());
-    for (auto i = 0; i < sizeof(xdh); i++) {
-        xdh[i] = rand() & 0xFF;
-    }
 
     vcpu->add_cpuid_emulator(xen_leaf(0), {xen_leaf0});
     vcpu->add_cpuid_emulator(xen_leaf(2), {xen_leaf2});
