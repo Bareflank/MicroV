@@ -21,12 +21,13 @@
 
 #include <atomic>
 #include <cstring>
+#include <map>
 #include <mutex>
-#include <unordered_map>
 
 #include <arch/intel_x64/barrier.h>
 #include <hve/arch/intel_x64/domain.h>
 #include <hve/arch/intel_x64/vcpu.h>
+#include <printv.h>
 #include <public/domctl.h>
 #include <public/vcpu.h>
 #include <xen/domain.h>
@@ -40,6 +41,90 @@
 #define DEFAULT_CPUPOOLID (-1)
 
 namespace microv {
+
+using ref_t = std::atomic<uint64_t>;
+using dom_t = std::pair<std::unique_ptr<xen_domain>, std::unique_ptr<ref_t>>;
+
+static_assert(ref_t::is_always_lock_free);
+
+std::mutex dom_mutex;
+std::mutex ref_mutex;
+
+std::map<xen_domid_t, dom_t> dom_map;
+std::map<xen_domid_t, ref_t *> ref_map;
+
+xen_domid_t create_xen_domain(microv_domain *uv_dom)
+{
+    std::lock_guard lock(dom_mutex);
+
+    auto dom = std::make_unique<class xen_domain>(uv_dom);
+    auto ref = std::make_unique<ref_t>(0);
+
+    expects(!dom_map.count(dom->m_id));
+
+    auto id = dom->m_id;
+    dom_map[id] = std::make_pair(std::move(dom), std::move(ref));
+
+    return id;
+}
+
+void destroy_xen_domain(xen_domid_t id)
+{
+    std::lock_guard lock(dom_mutex);
+
+    auto itr = dom_map.find(id);
+    if (itr != dom_map.end()) {
+
+        auto ref = itr->second.second.get();
+        while (ref->load() != 0) {
+            asm volatile("pause");
+        }
+
+        dom_map.erase(id);
+        ref_map.erase(id);
+        asm volatile("mfence");
+    }
+}
+
+xen_domain *get_xen_domain(xen_domid_t id) noexcept
+{
+    try {
+        std::lock_guard lock(dom_mutex);
+
+        auto itr = dom_map.find(id);
+        if (itr != dom_map.end()) {
+            auto ref = itr->second.second.get();
+            ref->fetch_add(1);
+            {
+                std::lock_guard lock(ref_mutex);
+                if (!ref_map.count(id)) {
+                    ref_map[id] = ref;
+                }
+            }
+            asm volatile("mfence");
+            return itr->second.first.get();
+        } else {
+            return nullptr;
+        }
+    } catch (...) {
+        printv("%s: threw exception for id 0x%x\n", __func__, id);
+        return nullptr;
+    }
+}
+
+void put_xen_domain(xen_domid_t id) noexcept
+{
+    try {
+        std::lock_guard lock(ref_mutex);
+
+        auto itr = ref_map.find(id);
+        if (itr != ref_map.end()) {
+            itr->second->fetch_sub(1);
+        }
+    } catch (...) {
+        printv("%s: threw exception for id 0x%x\n", __func__, id);
+    }
+}
 
 static xen_domid_t make_domid() noexcept
 {

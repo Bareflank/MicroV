@@ -57,7 +57,7 @@ public:
     /// @expects
     /// @ensures
     ///
-    ~domain() = default;
+    ~domain();
 
     /// Add E820 Map Entry
     ///
@@ -228,7 +228,7 @@ public:
     ///
     uint64_t exec_mode() noexcept;
 
-    xen_domain *xen_dom() noexcept { return m_xen_dom.get(); }
+    xen_domain *xen_dom() noexcept { return m_xen_dom; }
     bool initdom() noexcept { return m_sod_info.flags & DOMF_XENINIT; }
     bool ndvm() noexcept { return m_sod_info.flags & DOMF_NDVM; }
 
@@ -507,9 +507,9 @@ private:
     struct microv::domain_info m_sod_info{};
 
 public:
-    friend struct microv::xen_domain;
 
-    std::unique_ptr<microv::xen_domain> m_xen_dom{};
+    xen_domid_t m_xen_domid{};
+    microv::xen_domain *m_xen_dom{};
     microv::intel_x64::vcpu *m_vcpu{};
 
     /// @cond

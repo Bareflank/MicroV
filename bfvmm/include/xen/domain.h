@@ -31,6 +31,14 @@
 
 namespace microv {
 
+xen_domid_t create_xen_domain(microv_domain *uv_dom);
+xen_domain *get_xen_domain(xen_domid_t id) noexcept;
+void put_xen_domain(xen_domid_t id) noexcept;
+void destroy_xen_domain(xen_domid_t id);
+
+bool xen_domain_getinfolist(xen_vcpu *vcpu,
+                            struct xen_sysctl_getdomaininfolist *gdil);
+
 /**
  * xen_domain
  *

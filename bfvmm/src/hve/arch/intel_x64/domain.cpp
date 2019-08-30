@@ -49,8 +49,16 @@ domain::domain(id_t domainid, struct domain_info *info) :
     }
 }
 
-void
-domain::setup_dom0()
+domain::~domain()
+{
+    if (m_xen_dom) {
+        put_xen_domain(m_xen_domid);
+        destroy_xen_domain(m_xen_domid);
+        m_xen_dom = nullptr;
+    }
+}
+
+void domain::setup_dom0()
 {
     // TODO:
     //
@@ -66,11 +74,11 @@ domain::setup_dom0()
     ept::identity_map(m_ept_map, MAX_PHYS_ADDR);
 }
 
-void
-domain::setup_domU()
+void domain::setup_domU()
 {
     if (m_sod_info.is_xen_dom()) {
-        m_xen_dom = std::make_unique<microv::xen_domain>(this);
+        m_xen_domid = create_xen_domain(this);
+        m_xen_dom = get_xen_domain(m_xen_domid);
     }
 }
 
