@@ -250,6 +250,24 @@ public:
     gsl::not_null<U> get(tid id, const char *err = nullptr)
     { return dynamic_cast<U>(get(id, err).get()); }
 
+    /// Call on each
+    ///
+    /// @expects none
+    /// @ensures none
+    ///
+    template<typename D, typename... Args>
+    void call_on_each(void(*func)(D *, Args...), Args&&... args)
+    {
+        static_assert(std::is_base_of<T, D>::value);
+        std::lock_guard<std::mutex> guard(m_mutex);
+
+        for (const auto &elem : m_ts) {
+            auto t = elem.second.first.get();
+            auto d = dynamic_cast<D *>(t);
+            func(d, std::forward<Args>(args)...);
+        }
+    }
+
 private:
 
     bfmanager() noexcept :
