@@ -19,6 +19,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+#include <algorithm>
 #include <atomic>
 #include <cstring>
 #include <map>
@@ -29,6 +30,7 @@
 #include <hve/arch/intel_x64/vcpu.h>
 #include <printv.h>
 #include <public/domctl.h>
+#include <public/sysctl.h>
 #include <public/vcpu.h>
 #include <xen/domain.h>
 #include <xen/evtchn.h>
@@ -126,6 +128,39 @@ void put_xen_domain(xen_domid_t id) noexcept
     }
 }
 
+bool xen_domain_getinfolist(xen_vcpu *vcpu,
+                            struct xen_sysctl_getdomaininfolist *gdil)
+{
+    expects(vcpu->is_xenstore());
+
+    auto uvv = vcpu->uv_vcpu();
+    auto gva = gdil->buffer.p;
+
+    std::lock_guard lock(dom_mutex);
+
+    /* Actual number to map is min(requested, number of domains) */
+    auto len = std::min((unsigned long)gdil->max_domains, dom_map.size());
+    auto buf = uvv->map_gva_4k<xen_domctl_getdomaininfo_t>(gva, len);
+
+    auto num = 0U;
+    auto id = gdil->first_domain;
+
+    for (auto itr = dom_map.find(id); itr != dom_map.end(); itr++) {
+        if (num == len) {
+            break;
+        }
+
+        auto info = &buf.get()[num];
+        auto dom = itr->second.first.get();
+
+        dom->get_info(info);
+        num++;
+    }
+
+    gdil->num_domains = num;
+    return true;
+}
+
 static xen_domid_t make_domid() noexcept
 {
     static_assert(std::atomic<xen_domid_t>::is_always_lock_free);
@@ -166,6 +201,7 @@ xen_domain::xen_domain(microv_domain *domain)
 
     if (m_uv_info->is_xenstore()) {
         m_flags |= XEN_DOMINF_xs_domain;
+        m_flags |= XEN_DOMINF_running;
     }
 
     if (m_uv_info->using_hvc()) {
@@ -200,6 +236,7 @@ void xen_domain::put_xen_vcpu() noexcept
  */
 void xen_domain::bind_vcpu(xen_vcpu *xen)
 {
+    expects(vcpuid::is_guest_vcpu(xen->m_uv_vcpu->id()));
     m_uv_vcpuid = xen->m_uv_vcpu->id();
 
     m_tsc_khz = xen->m_tsc_khz;
@@ -248,24 +285,43 @@ void xen_domain::update_wallclock(
 
 uint64_t xen_domain::runstate_time(int state)
 {
-    return 0;
+    auto xv = this->get_xen_vcpu();
+
+    if (!xv) {
+        return 0;
+    } else {
+        const auto time = xv->runstate_time(state);
+        this->put_xen_vcpu();
+        return time;
+    }
 }
 
 uint32_t xen_domain::nr_online_vcpus()
 {
-    return 0;
+    auto xv = this->get_xen_vcpu();
+
+    if (!xv) {
+        return 0;
+    } else {
+        this->put_xen_vcpu();
+        return 1;
+    }
 }
 
 xen_vcpuid_t xen_domain::max_vcpu_id()
 {
-    return 0;
+    auto xv = this->get_xen_vcpu();
+
+    if (!xv) {
+        return XEN_INVALID_MAX_VCPU_ID;
+    } else {
+        auto id = xv->m_id;
+        this->put_xen_vcpu();
+        return id;
+    }
 }
 
-void xen_domain::get_arch_config(struct xen_arch_domainconfig *cfg)
-{
-}
-
-void xen_domain::get_domctl_info(struct xen_domctl_getdomaininfo *info)
+void xen_domain::get_info(struct xen_domctl_getdomaininfo *info)
 {
     info->domain = m_id;
     info->flags = m_flags;
@@ -284,7 +340,9 @@ void xen_domain::get_domctl_info(struct xen_domctl_getdomaininfo *info)
     memcpy(&info->handle, &m_uuid, sizeof(m_uuid));
 
     info->cpupool = m_cpupool;
-    this->get_arch_config(&info->arch_config);
+
+    static_assert(sizeof(info->arch_config) == sizeof(m_arch_config));
+    memcpy(&info->arch_config, &m_arch_config, sizeof(m_arch_config));
 }
 
 size_t xen_domain::hvc_rx_put(const gsl::span<char> &span)

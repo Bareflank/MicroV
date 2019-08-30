@@ -385,9 +385,19 @@ bool xen_vcpu::handle_event_channel_op()
 
 bool xen_vcpu::handle_sysctl()
 {
-    auto ctl = m_uv_vcpu->map_arg<xen_sysctl_t>(m_uv_vcpu->rdi());
-    bferror_nhex(0, "sysctl:", ctl->cmd);
-    return false;
+    try {
+        auto ctl = m_uv_vcpu->map_arg<xen_sysctl_t>(m_uv_vcpu->rdi());
+
+        switch (ctl->cmd) {
+        case XEN_SYSCTL_getdomaininfolist:
+            return xen_domain_getinfolist(this, &ctl->u.getdomaininfolist);
+        default:
+            bfalert_nhex(0, "unimplemented sysctl", ctl->cmd);
+            return false;
+        }
+    } catchall({
+        return false;
+    })
 }
 
 bool xen_vcpu::handle_domctl()
@@ -459,6 +469,7 @@ bool xen_vcpu::handle_xsm_op()
 
 struct vcpu_time_info *xen_vcpu::vcpu_time()
 {
+    expects(m_xen_dom->m_shinfo);
     return &m_xen_dom->m_shinfo.get()->vcpu_info[m_id].time;
 }
 
@@ -493,6 +504,12 @@ int xen_vcpu::set_timer()
     return 0;
 }
 
+/*
+ * Note this is protected by expects(rsi() == m_id), which means
+ * the target of the hypercall is *this. Once dom0 starts creating
+ * vcpus itself, the target will be different and this check will fail.
+ * At that point we need to reimplement these to handle that situation.
+ */
 bool xen_vcpu::handle_vcpu_op()
 {
     expects(m_uv_vcpu->rsi() == m_id);
@@ -515,27 +532,41 @@ bool xen_vcpu::handle_vcpu_op()
             m_pet_hdlrs_added = true;
         }
         return true;
-    case VCPUOP_register_vcpu_time_memory_area: {
-        auto tma = m_uv_vcpu->map_arg<vcpu_register_time_memory_area_t>(
-            m_uv_vcpu->rdx());
-        m_user_vti = m_uv_vcpu->map_arg<struct vcpu_time_info>(tma->addr.v);
-        memcpy(m_user_vti.get(), this->vcpu_time(), sizeof(*this->vcpu_time()));
-        m_uv_vcpu->set_rax(0);
-        return true;
-    }
-    case VCPUOP_register_runstate_memory_area: {
-        auto rma = m_uv_vcpu->map_arg<vcpu_register_runstate_memory_area_t>(
-            m_uv_vcpu->rdx());
-        m_runstate = m_uv_vcpu->map_arg<struct vcpu_runstate_info>(rma->addr.v);
-        m_runstate->state = RUNSTATE_running;
-        m_runstate->state_entry_time = this->vcpu_time()->system_time;
-        m_runstate->time[RUNSTATE_running] = m_runstate->state_entry_time;
-        m_uv_vcpu->set_rax(0);
-        return true;
-    }
+    case VCPUOP_register_vcpu_time_memory_area:
+        return this->register_vcpu_time();
+    case VCPUOP_register_runstate_memory_area:
+        return this->register_runstate();
     default:
         return false;
     }
+}
+
+bool xen_vcpu::register_vcpu_time()
+{
+    auto uvv = m_uv_vcpu;
+    auto tma = uvv->map_arg<vcpu_register_time_memory_area_t>(uvv->rdx());
+
+    m_user_vti = uvv->map_arg<struct vcpu_time_info>(tma->addr.v);
+    memcpy(m_user_vti.get(), this->vcpu_time(), sizeof(*this->vcpu_time()));
+
+    uvv->set_rax(0);
+    return true;
+}
+
+bool xen_vcpu::register_runstate()
+{
+    auto uvv = m_uv_vcpu;
+    auto rma = uvv->map_arg<vcpu_register_runstate_memory_area_t>(uvv->rdx());
+
+    std::lock_guard lock(m_runstate_mtx);
+
+    m_runstate = uvv->map_arg<struct vcpu_runstate_info>(rma->addr.v);
+    m_runstate->state = RUNSTATE_running;
+    m_runstate->state_entry_time = this->vcpu_time()->system_time;
+    m_runstate->time[RUNSTATE_running] = m_runstate->state_entry_time;
+
+    uvv->set_rax(0);
+    return true;
 }
 
 bool xen_vcpu::handle_vm_assist()
@@ -554,13 +585,28 @@ bool xen_vcpu::handle_vm_assist()
     }
 }
 
+bool xen_vcpu::is_xenstore()
+{
+    return m_xen_dom->m_uv_info->is_xenstore();
+}
+
 void xen_vcpu::queue_virq(uint32_t virq)
 {
     m_evtchn->queue_virq(virq);
 }
 
+/* Provides raw access; use only when certain pointer is valid */
+microv_vcpu *xen_vcpu::uv_vcpu()
+{
+    return m_uv_vcpu;
+}
+
 void xen_vcpu::update_runstate(int new_state)
 {
+    if (GSL_UNLIKELY(!m_xen_dom->m_shinfo)) {
+        return;
+    }
+
     /* Update kernel time info */
     auto kvti = this->vcpu_time();
     const uint64_t mult = kvti->tsc_to_system_mul;
@@ -581,7 +627,6 @@ void xen_vcpu::update_runstate(int new_state)
 
     /* Update userspace time info */
     auto uvti = m_user_vti.get();
-
     uvti->version++;
     wmb();
     uvti->system_time = kvti->system_time;
@@ -594,6 +639,8 @@ void xen_vcpu::update_runstate(int new_state)
     }
 
     /* Update runstate info */
+    std::lock_guard lock(m_runstate_mtx);
+
     auto old_state = m_runstate->state;
     auto old_entry = m_runstate->state_entry_time;
 
@@ -610,6 +657,20 @@ void xen_vcpu::update_runstate(int new_state)
     } else {
         m_runstate->state_entry_time = kvti->system_time;
     }
+}
+
+uint64_t xen_vcpu::runstate_time(int state)
+{
+    expects(state >= 0);
+    expects(state <= RUNSTATE_offline);
+
+    std::lock_guard lock(m_runstate_mtx);
+
+    if (!m_runstate) {
+        return 0;
+    }
+
+    return m_runstate->time[state];
 }
 
 /* Steal ticks from the guest's preemption timer */
@@ -677,9 +738,22 @@ bool xen_vcpu::handle_pet(base_vcpu *vcpu)
     return true;
 }
 
+/*
+ * This will be called *anytime* an interrupt arrives while the guest is running.
+ * Care must be taken to ensure that all the structures referenced here are
+ * valid. For example, any initialization that depends on guest hypercalls must
+ * be checked because this handler could run before the guest executes its first
+ * instruction.
+ *
+ * TODO: add different handlers as more and more state comes online as an
+ * optmization to save unnecessary branch instructions.
+ */
 bool xen_vcpu::handle_interrupt(base_vcpu *vcpu, interrupt_handler::info_t &info)
 {
     auto root = m_uv_vcpu->root_vcpu();
+
+    /* Note that guests can safely access their root vcpu without synchronization
+     * as long as they are guaranteed to be pinned to the same cpu */
     auto guest_msi = root->find_guest_msi(info.vector);
 
     if (guest_msi) {

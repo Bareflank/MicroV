@@ -27,6 +27,7 @@
 #include "types.h"
 
 #include <public/domctl.h>
+#include <public/sysctl.h>
 #include <public/platform.h>
 
 namespace microv {
@@ -53,7 +54,7 @@ public:
     xen_domain(microv_domain *domain);
 
     void bind_vcpu(xen_vcpu *xen);
-    void get_domctl_info(struct xen_domctl_getdomaininfo *info);
+    void get_info(struct xen_domctl_getdomaininfo *info);
     void get_arch_config(struct xen_arch_domainconfig *cfg);
     uint64_t runstate_time(int state);
     uint32_t nr_online_vcpus();
@@ -76,7 +77,7 @@ private:
 public:
     microv::domain_info *m_uv_info{};
     microv_domain *m_uv_dom{};
-    microv_vcpuid m_uv_vcpuid{INVALID_VCPUID};
+    microv_vcpuid m_uv_vcpuid{};
 
     xen_domid_t m_id{};
     xen_uuid_t m_uuid{};

@@ -43,6 +43,14 @@ class xen_vcpu {
 public:
     xen_vcpu(microv_vcpu *vcpu);
     void queue_virq(uint32_t virq);
+    bool is_xenstore();
+    uint64_t runstate_time(int state);
+
+    /*
+     * Provides raw access. Use only when certain the pointer is
+     * valid (e.g. xen_vcpu hypercall context).
+     */
+    microv_vcpu *uv_vcpu();
 
 private:
     int set_timer();
@@ -53,7 +61,11 @@ private:
 
     bool vmexit_save_tsc(base_vcpu *vcpu);
     void resume_update(bfobject *obj);
+
+    bool register_vcpu_time();
+    bool register_runstate();
     void update_runstate(int new_state);
+
     void update_wallclock(const struct xenpf_settime64 *time);
 
     bool xen_leaf4(base_vcpu *vcpu);
@@ -100,6 +112,8 @@ private:
     unique_map<struct xencons_interface> m_console{};
     unique_map<uint8_t> m_store{};
     unique_map<struct vcpu_time_info> m_user_vti{};
+
+    std::mutex m_runstate_mtx;
     unique_map<struct vcpu_runstate_info> m_runstate{};
 
     uintptr_t m_shinfo_gpfn{};
@@ -120,9 +134,9 @@ private:
 
 public:
     ~xen_vcpu() = default;
-    xen_vcpu(xen_vcpu &&) = default;
+    xen_vcpu(xen_vcpu &&) = delete;
     xen_vcpu(const xen_vcpu &) = delete;
-    xen_vcpu &operator=(xen_vcpu &&) = default;
+    xen_vcpu &operator=(xen_vcpu &&) = delete;
     xen_vcpu &operator=(const xen_vcpu &) = delete;
 
 };
