@@ -37,8 +37,11 @@ bool xen_flask::handle(xen_flask_op_t *fop)
     }
 
     switch (fop->cmd) {
+    case FLASK_SID_TO_CONTEXT:
+        break;
     default:
         bfalert_nhex(0, "unhandled flask op", fop->cmd);
+        break;
     }
 
     m_uv_vcpu->set_rax(-EINVAL);
