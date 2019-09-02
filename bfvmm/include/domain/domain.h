@@ -27,6 +27,9 @@
 #include <bfgpalayout.h>
 #include <bfhypercall.h>
 
+#include "../xen/types.h"
+#include <public/domctl.h>
+
 // -----------------------------------------------------------------------------
 // Definitions
 // -----------------------------------------------------------------------------
@@ -36,6 +39,19 @@ namespace microv
 
 struct domain_info : public bfobject {
     virtual ~domain_info() = default;
+
+    /* TODO: Keep this up to date as this structure changes */
+    void copy(const domain_info *info)
+    {
+        flags = info->flags;
+        wc_sec = info->wc_sec;
+        wc_nsec = info->wc_nsec;
+        tsc = info->tsc;
+        ram = info->ram;
+        xen_info_valid = info->xen_info_valid;
+        xen_domid = info->xen_domid;
+        memcpy(&xen_create_dom, &info->xen_create_dom, sizeof(xen_create_dom));
+    }
 
     /* DOMF_* flags (see bfhypercall.h) */
     uint64_t flags{};
@@ -48,14 +64,10 @@ struct domain_info : public bfobject {
     /* Bytes of RAM */
     uint64_t ram{};
 
-    void copy(const domain_info *info)
-    {
-        flags = info->flags;
-        wc_sec = info->wc_sec;
-        wc_nsec = info->wc_nsec;
-        tsc = info->tsc;
-        ram = info->ram;
-    }
+    /* Xen-specific domain info */
+    bool xen_info_valid{};
+    xen_domid_t xen_domid{};
+    struct xen_domctl_createdomain xen_create_dom{};
 
     bool is_xen_dom() const noexcept
     {
@@ -90,6 +102,14 @@ struct domain_info : public bfobject {
     uint64_t max_mfn() const noexcept
     {
         return this->total_ram_pages() - 1;
+    }
+
+    void dump() const noexcept
+    {
+        bfdebug_info(0, "domain_info:");
+        bfdebug_subnhex(0, "flags:", flags);
+        bfdebug_subbool(0, "xen_info_valid:", xen_info_valid);
+        bfdebug_subnhex(0, "xen_domid:", xen_domid);
     }
 };
 

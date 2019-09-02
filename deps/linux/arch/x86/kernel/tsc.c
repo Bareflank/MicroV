@@ -1388,6 +1388,15 @@ static bool __init determine_cpu_tsc_frequencies(bool early)
 	if (early) {
 		cpu_khz = x86_platform.calibrate_cpu();
 		tsc_khz = x86_platform.calibrate_tsc();
+
+                pr_info("cpu_khz: %lu.%03lu MHz",
+                        (unsigned long)cpu_khz / KHZ,
+                        (unsigned long)cpu_khz % KHZ);
+
+                pr_info("tsc_khz: %lu.%03lu MHz",
+                        (unsigned long)tsc_khz / KHZ,
+                        (unsigned long)tsc_khz % KHZ);
+
 	} else {
 		/* We should not be here with non-native cpu calibration */
 		WARN_ON(x86_platform.calibrate_cpu != native_calibrate_cpu);

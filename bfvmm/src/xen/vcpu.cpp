@@ -229,9 +229,9 @@ bool xen_vcpu::handle_memory_op()
         case XENMEM_decrease_reservation:
             return m_xenmem->decrease_reservation();
         case XENMEM_get_sharing_freed_pages:
-            return m_xenmem->get_sharing_freed_pages();
+            return m_xen_dom->get_sharing_freed_pages(this);
         case XENMEM_get_sharing_shared_pages:
-            return m_xenmem->get_sharing_shared_pages();
+            return m_xen_dom->get_sharing_shared_pages(this);
         default:
             break;
         }
@@ -387,10 +387,21 @@ bool xen_vcpu::handle_sysctl()
 {
     try {
         auto ctl = m_uv_vcpu->map_arg<xen_sysctl_t>(m_uv_vcpu->rdi());
+        if (ctl->interface_version != XEN_SYSCTL_INTERFACE_VERSION) {
+            m_uv_vcpu->set_rax(-EACCES);
+            return true;
+        }
 
         switch (ctl->cmd) {
         case XEN_SYSCTL_getdomaininfolist:
-            return xen_domain_getinfolist(this, &ctl->u.getdomaininfolist);
+            return xen_domain_getinfolist(this, ctl.get());
+
+        /* xl create */
+        case XEN_SYSCTL_physinfo:
+            return m_xen_dom->physinfo(this, ctl.get());
+        case XEN_SYSCTL_cpupool_op:
+            return xen_domain_cpupool_op(this, ctl.get());
+
         default:
             bfalert_nhex(0, "unimplemented sysctl", ctl->cmd);
             return false;
@@ -400,11 +411,27 @@ bool xen_vcpu::handle_sysctl()
     })
 }
 
+/* xl create */
 bool xen_vcpu::handle_domctl()
 {
-    auto ctl = m_uv_vcpu->map_arg<xen_domctl_t>(m_uv_vcpu->rdi());
-    bferror_nhex(0, "domctl:", ctl->cmd);
-    return false;
+    try {
+        auto ctl = m_uv_vcpu->map_arg<xen_domctl_t>(m_uv_vcpu->rdi());
+        if (ctl->interface_version != XEN_DOMCTL_INTERFACE_VERSION) {
+            m_uv_vcpu->set_rax(-EACCES);
+            return true;
+        }
+
+        switch (ctl->cmd) {
+        case XEN_DOMCTL_createdomain:
+            expects(ctl->domain == 0xFFFF);
+            return xen_domain_createdomain(this, ctl.get());
+        default:
+            bfalert_nhex(0, "unimplemented domctl", ctl->cmd);
+            return false;
+        }
+    } catchall({
+        return false;
+    })
 }
 
 bool xen_vcpu::handle_grant_table_op()
@@ -593,12 +620,6 @@ bool xen_vcpu::is_xenstore()
 void xen_vcpu::queue_virq(uint32_t virq)
 {
     m_evtchn->queue_virq(virq);
-}
-
-/* Provides raw access; use only when certain pointer is valid */
-microv_vcpu *xen_vcpu::uv_vcpu()
-{
-    return m_uv_vcpu;
 }
 
 void xen_vcpu::update_runstate(int new_state)
@@ -817,7 +838,8 @@ bool xen_vcpu::hypercall(microv_vcpu *vcpu)
 {
     if (vcpu->rax() != __HYPERVISOR_console_io &&
         !(vcpu->rax() == __HYPERVISOR_vcpu_op &&
-          vcpu->rdi() == VCPUOP_set_singleshot_timer) && !m_uv_dom->ndvm()) {
+          vcpu->rdi() == VCPUOP_set_singleshot_timer) &&
+        this->is_xenstore() && hypercall_debug) {
         if (vcpu->rdi() > (1UL << 32)) {
             /* likely an address in rdi */
             printf("xen: hypercall %lu:0x%lx\n", vcpu->rax(), vcpu->rdi());

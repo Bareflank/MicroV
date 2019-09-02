@@ -97,6 +97,7 @@ public:
     port_t bind_store();
 
     static constexpr auto max_channels = EVTCHN_FIFO_NR_CHANNELS;
+    static constexpr auto max_port = 1023;
 
 private:
 

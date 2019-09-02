@@ -37,8 +37,9 @@ xen_domain *get_xen_domain(xen_domid_t id) noexcept;
 void put_xen_domain(xen_domid_t id) noexcept;
 void destroy_xen_domain(xen_domid_t id);
 
-bool xen_domain_getinfolist(xen_vcpu *vcpu,
-                            struct xen_sysctl_getdomaininfolist *gdil);
+bool xen_domain_getinfolist(xen_vcpu *vcpu, struct xen_sysctl *ctl);
+bool xen_domain_createdomain(xen_vcpu *vcpu, struct xen_domctl *ctl);
+bool xen_domain_cpupool_op(xen_vcpu *vcpu, struct xen_sysctl *ctl);
 
 /**
  * xen_domain
@@ -55,7 +56,6 @@ public:
 
     void bind_vcpu(xen_vcpu *xen);
     void get_info(struct xen_domctl_getdomaininfo *info);
-    void get_arch_config(struct xen_arch_domainconfig *cfg);
     uint64_t runstate_time(int state);
     uint32_t nr_online_vcpus();
     xen_vcpuid_t max_vcpu_id();
@@ -65,7 +65,13 @@ public:
     size_t hvc_tx_put(const gsl::span<char> &span);
     size_t hvc_tx_get(const gsl::span<char> &span);
 
-    /* Called from hypercall vcpu context */
+    /* Hypercalls from xl create path */
+    bool physinfo(xen_vcpu *v, struct xen_sysctl *ctl);
+    bool cpupool_op(xen_vcpu *v, struct xen_sysctl *ctl);
+    bool get_sharing_freed_pages(xen_vcpu *v);
+    bool get_sharing_shared_pages(xen_vcpu *v);
+
+    /* Hypercalls from vcpu boot path */
     uint64_t init_shared_info(xen_vcpu *v, uintptr_t shinfo_gpfn);
     void update_wallclock(xen_vcpu *v,
                           const struct xenpf_settime64 *time) noexcept;
@@ -86,6 +92,7 @@ public:
     /* Tunables */
     uint32_t m_max_vcpus{};
     uint32_t m_max_evtchns{};
+    uint32_t m_max_evtchn_port{};
     uint32_t m_max_grant_frames{};
     uint32_t m_max_maptrack_frames{};
 

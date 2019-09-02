@@ -75,6 +75,7 @@ using xen_uuid_t = ::xen_uuid_t;
 using xen_domid_t = ::domid_t;
 using xen_vcpuid_t = uint32_t;
 
+inline bool hypercall_debug = false;
 }
 
 #endif

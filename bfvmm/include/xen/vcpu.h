@@ -50,7 +50,9 @@ public:
      * Provides raw access. Use only when certain the pointer is
      * valid (e.g. xen_vcpu hypercall context).
      */
-    microv_vcpu *uv_vcpu();
+    microv_vcpu *m_uv_vcpu{};
+    microv_domain *m_uv_dom{};
+    xen_domain *m_xen_dom{};
 
 private:
     int set_timer();
@@ -96,10 +98,6 @@ private:
     friend class xen_memory;
     friend class xen_version;
     friend class xen_physdev;
-
-    microv_vcpu *m_uv_vcpu{};
-    microv_domain *m_uv_dom{};
-    xen_domain *m_xen_dom{};
 
     std::unique_ptr<class xen_evtchn> m_evtchn;
     std::unique_ptr<class xen_flask> m_flask;

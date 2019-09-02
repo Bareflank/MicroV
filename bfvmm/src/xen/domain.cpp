@@ -41,6 +41,7 @@
 
 #define DEFAULT_MAPTRACK_FRAMES 1024
 #define DEFAULT_CPUPOOLID (-1)
+#define DEFAULT_RAM_SIZE (256UL << 20)
 
 namespace microv {
 
@@ -128,12 +129,12 @@ void put_xen_domain(xen_domid_t id) noexcept
     }
 }
 
-bool xen_domain_getinfolist(xen_vcpu *vcpu,
-                            struct xen_sysctl_getdomaininfolist *gdil)
+bool xen_domain_getinfolist(xen_vcpu *vcpu, struct xen_sysctl *ctl)
 {
     expects(vcpu->is_xenstore());
 
-    auto uvv = vcpu->uv_vcpu();
+    auto gdil = &ctl->u.getdomaininfolist;
+    auto uvv = vcpu->m_uv_vcpu;
     auto gva = gdil->buffer.p;
 
     std::lock_guard lock(dom_mutex);
@@ -158,15 +159,79 @@ bool xen_domain_getinfolist(xen_vcpu *vcpu,
     }
 
     gdil->num_domains = num;
+    uvv->set_rax(0);
     return true;
 }
 
-static xen_domid_t make_domid() noexcept
+bool xen_domain_createdomain(xen_vcpu *vcpu, struct xen_domctl *ctl)
 {
-    static_assert(std::atomic<xen_domid_t>::is_always_lock_free);
-    static std::atomic<xen_domid_t> domid = 1;
+    auto cd = &ctl->u.createdomain;
 
-    return domid.fetch_add(1);
+    expects(vcpu->is_xenstore());
+    expects(cd->flags & XEN_DOMCTL_CDF_hvm_guest);
+    expects(cd->flags & XEN_DOMCTL_CDF_hap);
+    expects((cd->flags & XEN_DOMCTL_CDF_s3_integrity) == 0);
+    expects((cd->flags & XEN_DOMCTL_CDF_oos_off) == 0);
+    expects((cd->flags & XEN_DOMCTL_CDF_xs_domain) == 0);
+
+    auto tsc_shift = vcpu->m_xen_dom->m_tsc_shift;
+    auto tsc_mult = vcpu->m_xen_dom->m_tsc_mul;
+    auto uv_info = vcpu->m_xen_dom->m_uv_info;
+
+    auto wc_nsec = uv_info->wc_nsec;
+    auto wc_sec =  uv_info->wc_sec;
+    auto tsc = uv_info->tsc;
+
+    auto now = ::x64::read_tsc::get();
+    auto nsec = tsc_to_ns(now - tsc, tsc_shift, tsc_mult);
+    auto sec = wc_nsec / 1000000000ULL;
+
+    wc_nsec += nsec;
+    wc_sec += sec;
+
+    struct microv::domain_info info{};
+    info.flags = DOMF_EXEC_XENPVH;
+    info.wc_sec = wc_sec;
+    info.wc_nsec = wc_nsec;
+    info.tsc = now;
+    info.ram = DEFAULT_RAM_SIZE;
+    info.xen_info_valid = 1;
+    info.xen_domid = make_xen_domid();
+
+    static_assert(sizeof(*cd) == sizeof(info.xen_create_dom));
+    memcpy(&info.xen_create_dom, cd, sizeof(*cd));
+
+    auto uv_domid = domain::generate_domainid();
+    g_dm->create(uv_domid, &info);
+    ctl->domain = info.xen_domid;
+    vcpu->m_uv_vcpu->set_rax(0);
+
+    printv("createdomain: id:%u flags:0x%x vcpus:%u evtchn:%u grant:%u maptrack:%u\n",
+            ctl->domain, cd->flags, cd->max_vcpus,
+            cd->max_evtchn_port, cd->max_grant_frames,
+            cd->max_maptrack_frames);
+
+    return true;
+}
+
+bool xen_domain_cpupool_op(xen_vcpu *vcpu, struct xen_sysctl *ctl)
+{
+    auto op = &ctl->u.cpupool_op;
+
+    printv("cpupool: op:0x%x poolid:%u schedid:%u domid:%u cpu:%u\n",
+            op->op, op->cpupool_id, op->sched_id, op->domid, op->cpu);
+
+    auto dom = get_xen_domain(op->domid);
+    if (!dom) {
+        bfalert_nhex(0, "xen domid not found", op->domid);
+        vcpu->m_uv_vcpu->set_rax(-EINVAL);
+        return true;
+    }
+
+    auto ret = dom->cpupool_op(vcpu, ctl);
+    put_xen_domain(op->domid);
+
+    return ret;
 }
 
 xen_domain::xen_domain(microv_domain *domain)
@@ -175,14 +240,28 @@ xen_domain::xen_domain(microv_domain *domain)
     m_uv_dom = domain;
     m_uv_vcpuid = 0; /* the valid ID is bound with bind_vcpu */
 
-    m_id = (m_uv_info->is_xenstore()) ? 0 : make_domid();
-    make_xen_uuid(&m_uuid);
-    m_ssid = 0;
+    if (m_uv_info->xen_info_valid) {
+        auto cd = &m_uv_info->xen_create_dom;
+        m_id = m_uv_info->xen_domid;
+        memcpy(&m_uuid, &cd->handle, sizeof(m_uuid));
+        m_ssid = cd->ssidref;
+        m_max_vcpus = cd->max_vcpus;
+        m_max_evtchn_port = cd->max_evtchn_port;
+        m_max_grant_frames = cd->max_grant_frames;
+        m_max_maptrack_frames = cd->max_maptrack_frames;
+        memcpy(&m_arch_config, &cd->arch, sizeof(cd->arch));
+    } else {
+        m_id = (m_uv_info->is_xenstore()) ? 0 : make_xen_domid();
+        make_xen_uuid(&m_uuid);
+        m_ssid = 0;
+        m_max_vcpus = 1;
+        m_max_evtchn_port = xen_evtchn::max_port;
+        m_max_grant_frames = xen_gnttab::max_nr_frames;
+        m_max_maptrack_frames = DEFAULT_MAPTRACK_FRAMES;
+        m_arch_config.emulation_flags = XEN_X86_EMU_LAPIC;
+    }
 
-    m_max_vcpus = 1;
     m_max_evtchns = xen_evtchn::max_channels;
-    m_max_grant_frames = xen_gnttab::max_nr_frames;
-    m_max_maptrack_frames = DEFAULT_MAPTRACK_FRAMES;
 
     m_total_ram = m_uv_info->total_ram();
     m_total_pages = m_uv_info->total_ram_pages();
@@ -193,7 +272,6 @@ xen_domain::xen_domain(microv_domain *domain)
     m_paged_pages = 0;
 
     m_cpupool = DEFAULT_CPUPOOLID;
-    m_arch_config.emulation_flags = XEN_X86_EMU_LAPIC;
     m_ndvm = m_uv_info->is_ndvm();
 
     m_flags = XEN_DOMINF_hvm_guest;
@@ -202,6 +280,8 @@ xen_domain::xen_domain(microv_domain *domain)
     if (m_uv_info->is_xenstore()) {
         m_flags |= XEN_DOMINF_xs_domain;
         m_flags |= XEN_DOMINF_running;
+    } else {
+        m_flags |= XEN_DOMINF_paused;
     }
 
     if (m_uv_info->using_hvc()) {
@@ -343,6 +423,68 @@ void xen_domain::get_info(struct xen_domctl_getdomaininfo *info)
 
     static_assert(sizeof(info->arch_config) == sizeof(m_arch_config));
     memcpy(&info->arch_config, &m_arch_config, sizeof(m_arch_config));
+}
+
+bool xen_domain::cpupool_op(xen_vcpu *v, struct xen_sysctl *ctl)
+{
+    auto op = &ctl->u.cpupool_op;
+
+    expects(op->op == XEN_SYSCTL_CPUPOOL_OP_MOVEDOMAIN);
+    expects(op->domid == m_id);
+
+    m_cpupool = op->cpupool_id;
+    v->m_uv_vcpu->set_rax(0);
+    return true;
+}
+
+bool xen_domain::physinfo(xen_vcpu *v, struct xen_sysctl *ctl)
+{
+    expects(v->is_xenstore());
+
+    auto info = &ctl->u.physinfo;
+
+    static bool print_xl = true;
+    if (print_xl) {
+        printv("XL CREATE BEGIN\n");
+        print_xl = false;
+        hypercall_debug = true;
+    }
+
+    info->threads_per_core = 1;
+    info->cores_per_socket = 1;
+    info->nr_cpus = 1;
+    info->max_cpu_id = 0;
+    info->nr_nodes = 1;
+    info->max_node_id = 0;
+    info->cpu_khz = m_tsc_khz;
+    info->capabilities = XEN_SYSCTL_PHYSCAP_hvm;
+    info->capabilities |= XEN_SYSCTL_PHYSCAP_directio; /* IOMMU support */
+    info->total_pages = m_total_pages; /* domain RAM size */
+    info->free_pages = m_total_pages / 2; /* ??? */
+    info->scrub_pages = 0; /* ??? (appear in calc of free memory) */
+    info->outstanding_pages = m_out_pages;
+    info->max_mfn = m_max_mfn;
+
+    v->m_uv_vcpu->set_rax(0);
+    return true;
+}
+
+/* Called from xl create path */
+bool xen_domain::get_sharing_freed_pages(xen_vcpu *v)
+{
+    expects(v->is_xenstore());
+    v->m_uv_vcpu->set_rax(0);
+
+    return true;
+}
+
+/* Called from xl create path */
+bool xen_domain::get_sharing_shared_pages(xen_vcpu *v)
+{
+    expects(v->is_xenstore());
+    v->m_uv_vcpu->set_rax(m_shr_pages);
+
+    return true;
 }
 
 size_t xen_domain::hvc_rx_put(const gsl::span<char> &span)

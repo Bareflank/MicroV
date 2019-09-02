@@ -27,6 +27,9 @@
 
 namespace microv {
 
+/* Create a xen domain ID. */
+xen_domid_t make_xen_domid() noexcept;
+
 /* Create a 16-byte UUID. */
 void make_xen_uuid(xen_uuid_t *uuid);
 

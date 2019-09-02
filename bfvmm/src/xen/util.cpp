@@ -47,6 +47,14 @@ static uint64_t rdrand64(uint64_t *data) noexcept
 
 namespace microv {
 
+xen_domid_t make_xen_domid() noexcept
+{
+    static_assert(std::atomic<xen_domid_t>::is_always_lock_free);
+    static std::atomic<xen_domid_t> domid = 1;
+
+    return domid.fetch_add(1);
+}
+
 void make_xen_uuid(xen_uuid_t *uuid)
 {
     uint64_t low, high, success;

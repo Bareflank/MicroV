@@ -38,10 +38,6 @@ public:
     bool add_to_physmap();
     bool decrease_reservation();
 
-    /* xl create */
-    bool get_sharing_freed_pages();
-    bool get_sharing_shared_pages();
-
     xen_memory(xen_vcpu *xen);
     ~xen_memory() = default;
 

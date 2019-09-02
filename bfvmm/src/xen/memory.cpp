@@ -31,19 +31,6 @@ xen_memory::xen_memory(xen_vcpu *xen) :
     m_uv_vcpu{xen->m_uv_vcpu}
 { }
 
-/* Called from xl create path */
-bool xen_memory::get_sharing_freed_pages()
-{
-    m_uv_vcpu->set_rax(0);
-    return true;
-}
-
-bool xen_memory::get_sharing_shared_pages()
-{
-    m_uv_vcpu->set_rax(0);
-    return true;
-}
-
 /* Called from boot path */
 bool xen_memory::memory_map()
 {
