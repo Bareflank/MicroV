@@ -456,19 +456,9 @@ void xen_evtchn::make_word_page(evtchn_expand_array_t *expand)
     m_allocated_words += words_per_page;
 }
 
-bool xen_evtchn::word_is_pending(word_t *word) const
-{
-    return is_bit_set(word->load(), EVTCHN_FIFO_PENDING);
-}
-
 bool xen_evtchn::word_is_masked(word_t *word) const
 {
     return is_bit_set(word->load(), EVTCHN_FIFO_MASKED);
-}
-
-bool xen_evtchn::word_is_linked(word_t *word) const
-{
-    return is_bit_set(word->load(), EVTCHN_FIFO_LINKED);
 }
 
 bool xen_evtchn::word_is_busy(word_t *word) const
@@ -479,105 +469,6 @@ bool xen_evtchn::word_is_busy(word_t *word) const
 void xen_evtchn::word_set_pending(word_t *word)
 {
     word->fetch_or(1U << EVTCHN_FIFO_PENDING);
-}
-
-bool xen_evtchn::word_test_and_set_pending(word_t *word)
-{
-    const auto mask = 1U << EVTCHN_FIFO_PENDING;
-    const auto prev = word->fetch_or(mask);
-
-    return is_bit_set(prev, EVTCHN_FIFO_PENDING);
-}
-
-void xen_evtchn::word_set_busy(word_t *word)
-{
-    word->fetch_or(1U << EVTCHN_FIFO_BUSY);
-}
-
-bool xen_evtchn::word_test_and_set_busy(word_t *word)
-{
-    const auto mask = 1U << EVTCHN_FIFO_BUSY;
-    const auto prev = word->fetch_or(mask);
-
-    return is_bit_set(prev, EVTCHN_FIFO_BUSY);
-}
-
-void xen_evtchn::word_set_masked(word_t *word)
-{
-    word->fetch_or(1U << EVTCHN_FIFO_MASKED);
-}
-
-bool xen_evtchn::word_test_and_set_masked(word_t *word)
-{
-    const auto mask = 1U << EVTCHN_FIFO_MASKED;
-    const auto prev = word->fetch_or(mask);
-
-    return is_bit_set(prev, EVTCHN_FIFO_MASKED);
-}
-
-void xen_evtchn::word_set_linked(word_t *word)
-{
-    word->fetch_or(1U << EVTCHN_FIFO_LINKED);
-}
-
-bool xen_evtchn::word_test_and_set_linked(word_t *word)
-{
-    const auto mask = 1U << EVTCHN_FIFO_LINKED;
-    const auto prev = word->fetch_or(mask);
-
-    return is_bit_set(prev, EVTCHN_FIFO_LINKED);
-}
-
-void xen_evtchn::word_clear_pending(word_t *word)
-{
-    word->fetch_and(~(1U << EVTCHN_FIFO_PENDING));
-}
-
-bool xen_evtchn::word_test_and_clear_pending(word_t *word)
-{
-    const auto mask = ~(1U << EVTCHN_FIFO_PENDING);
-    const auto prev = word->fetch_and(mask);
-
-    return is_bit_cleared(prev, EVTCHN_FIFO_PENDING);
-}
-
-void xen_evtchn::word_clear_busy(word_t *word)
-{
-    word->fetch_and(~(1U << EVTCHN_FIFO_BUSY));
-}
-
-bool xen_evtchn::word_test_and_clear_busy(word_t *word)
-{
-    const auto mask = ~(1U << EVTCHN_FIFO_BUSY);
-    const auto prev = word->fetch_and(mask);
-
-    return is_bit_cleared(prev, EVTCHN_FIFO_BUSY);
-}
-
-void xen_evtchn::word_clear_masked(word_t *word)
-{
-    word->fetch_and(~(1U << EVTCHN_FIFO_MASKED));
-}
-
-bool xen_evtchn::word_test_and_clear_masked(word_t *word)
-{
-    const auto mask = ~(1U << EVTCHN_FIFO_MASKED);
-    const auto prev = word->fetch_and(mask);
-
-    return is_bit_cleared(prev, EVTCHN_FIFO_MASKED);
-}
-
-void xen_evtchn::word_clear_linked(word_t *word)
-{
-    word->fetch_and(~(1U << EVTCHN_FIFO_LINKED));
-}
-
-bool xen_evtchn::word_test_and_clear_linked(word_t *word)
-{
-    const auto mask = ~(1U << EVTCHN_FIFO_LINKED);
-    const auto prev = word->fetch_and(mask);
-
-    return is_bit_cleared(prev, EVTCHN_FIFO_LINKED);
 }
 
 }

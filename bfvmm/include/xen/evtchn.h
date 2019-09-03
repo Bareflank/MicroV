@@ -146,34 +146,9 @@ private:
 
     // Interface for atomic accesses to shared memory
     //
-    bool word_is_busy(word_t *word) const;
-    bool word_is_linked(word_t *word) const;
     bool word_is_masked(word_t *word) const;
-    bool word_is_pending(word_t *word) const;
-
+    bool word_is_busy(word_t *word) const;
     void word_set_pending(word_t *word);
-    bool word_test_and_set_pending(word_t *word);
-
-    void word_clear_pending(word_t *word);
-    bool word_test_and_clear_pending(word_t *word);
-
-    void word_set_busy(word_t *word);
-    bool word_test_and_set_busy(word_t *word);
-
-    void word_clear_busy(word_t *word);
-    bool word_test_and_clear_busy(word_t *word);
-
-    void word_set_masked(word_t *word);
-    bool word_test_and_set_masked(word_t *word);
-
-    void word_clear_masked(word_t *word);
-    bool word_test_and_clear_masked(word_t *word);
-
-    void word_set_linked(word_t *word);
-    bool word_test_and_set_linked(word_t *word);
-
-    void word_clear_linked(word_t *word);
-    bool word_test_and_clear_linked(word_t *word);
 
     // Data members
     //
