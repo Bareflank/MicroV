@@ -65,6 +65,7 @@ public:
     xen_domain(microv_domain *domain);
     ~xen_domain();
 
+    void queue_virq(int virq);
     void bind_vcpu(xen_vcpu *xen);
     void get_info(struct xen_domctl_getdomaininfo *info);
     uint64_t runstate_time(int state);
@@ -92,6 +93,7 @@ public:
                           const struct xenpf_settime64 *time) noexcept;
 
 private:
+    friend class xen_evtchn;
     class xen_vcpu *get_xen_vcpu() noexcept;
     void put_xen_vcpu() noexcept;
 
@@ -136,6 +138,9 @@ public:
     /* Shared info page */
     unique_map<struct shared_info> m_shinfo{};
     uintptr_t m_shinfo_gpfn{};
+
+    /* Event channel */
+    std::unique_ptr<xen_evtchn> m_evtchn{};
 
     /* TSC params */
     uint64_t m_tsc_khz;

@@ -43,6 +43,7 @@
 #define PAGE_SIZE 4096UL
 #define DEFAULT_MAPTRACK_FRAMES 1024
 #define DEFAULT_RAM_SIZE (256UL << 20)
+#define DEFAULT_EVTCHN_PORTS 1024
 
 namespace microv {
 
@@ -251,7 +252,7 @@ bool xen_domain_numainfo(xen_vcpu *vcpu, xen_sysctl_t *ctl)
 {
     auto numa = &ctl->u.numainfo;
 
-    printv("numainfo: num_nodes:%u, meminfo.p:0x%p, distance.p:0x%p\n",
+    printv("numainfo: num_nodes:%u, meminfo.p:%p, distance.p:%p\n",
             numa->num_nodes, numa->meminfo.p, numa->distance.p);
 
     auto dom0 = get_xen_domain(0);
@@ -305,12 +306,13 @@ xen_domain::xen_domain(microv_domain *domain)
         m_ssid = 0;
         m_max_pcpus = 1;
         m_max_vcpus = 1;
-        m_max_evtchn_port = xen_evtchn::max_port;
+        m_max_evtchn_port = DEFAULT_EVTCHN_PORTS - 1;
         m_max_grant_frames = xen_gnttab::max_nr_frames;
         m_max_maptrack_frames = DEFAULT_MAPTRACK_FRAMES;
         m_arch_config.emulation_flags = XEN_X86_EMU_LAPIC;
     }
 
+    /* Max supported by the ABI */
     m_max_evtchns = xen_evtchn::max_channels;
 
     m_total_ram = m_uv_info->total_ram();
@@ -340,8 +342,9 @@ xen_domain::xen_domain(microv_domain *domain)
         m_hvc_tx_ring = std::make_unique<microv::ring<HVC_TX_SIZE>>();
     }
 
-    m_ndvm = m_uv_info->is_ndvm();
     m_numa_nodes = 1;
+    m_ndvm = m_uv_info->is_ndvm();
+    m_evtchn = std::make_unique<xen_evtchn>(this);
 }
 
 xen_domain::~xen_domain()
@@ -366,6 +369,11 @@ class xen_vcpu *xen_domain::get_xen_vcpu() noexcept
 void xen_domain::put_xen_vcpu() noexcept
 {
     put_vcpu(m_uv_vcpuid);
+}
+
+void xen_domain::queue_virq(int virq)
+{
+    m_evtchn->queue_virq(virq);
 }
 
 /*

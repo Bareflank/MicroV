@@ -299,11 +299,6 @@ bool vcpu::handle_0x4BF00021(bfvmm::intel_x64::vcpu *vcpu)
     throw std::runtime_error("promote failed");
 }
 
-void vcpu::queue_virq(uint32_t virq)
-{
-    m_xen_vcpu->queue_virq(virq);
-}
-
 //------------------------------------------------------------------------------
 // Domain Info
 //------------------------------------------------------------------------------

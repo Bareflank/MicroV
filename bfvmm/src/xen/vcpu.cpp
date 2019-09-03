@@ -302,7 +302,7 @@ bool xen_vcpu::handle_hvm_op()
             switch (arg->index) {
             case HVM_PARAM_CALLBACK_IRQ:
                 if (valid_cb_via(arg->value)) {
-                    m_evtchn->set_callback_via(arg->value & 0xFF);
+                    m_xen_dom->m_evtchn->set_callback_via(arg->value & 0xFF);
                     m_uv_vcpu->set_rax(0);
                 } else {
                     m_uv_vcpu->set_rax(-EINVAL);
@@ -358,23 +358,23 @@ bool xen_vcpu::handle_event_channel_op()
     try {
         switch (m_uv_vcpu->rdi()) {
         case EVTCHNOP_init_control:
-            return m_evtchn->init_control();
+            return xen_evtchn_init_control(this);
         case EVTCHNOP_set_priority:
-            return m_evtchn->set_priority();
+            return xen_evtchn_set_priority(this);
         case EVTCHNOP_alloc_unbound:
-            return m_evtchn->alloc_unbound();
+            return xen_evtchn_alloc_unbound(this);
         case EVTCHNOP_expand_array:
-            return m_evtchn->expand_array();
+            return xen_evtchn_expand_array(this);
         case EVTCHNOP_bind_virq:
-            return m_evtchn->bind_virq();
+            return xen_evtchn_bind_virq(this);
         case EVTCHNOP_send:
-            return m_evtchn->send();
+            return xen_evtchn_send(this);
         case EVTCHNOP_bind_interdomain:
-            return m_evtchn->bind_interdomain();
+            return xen_evtchn_bind_interdomain(this);
         case EVTCHNOP_close:
-            return m_evtchn->close();
+            return xen_evtchn_close(this);
         case EVTCHNOP_bind_vcpu:
-            return m_evtchn->bind_vcpu();
+            return xen_evtchn_bind_vcpu(this);
         default:
             return false;
         }
@@ -638,7 +638,7 @@ bool xen_vcpu::is_xenstore()
 
 void xen_vcpu::queue_virq(uint32_t virq)
 {
-    m_evtchn->queue_virq(virq);
+    m_xen_dom->m_evtchn->queue_virq(virq);
 }
 
 void xen_vcpu::update_runstate(int new_state)
@@ -773,7 +773,7 @@ bool xen_vcpu::vmexit_save_tsc(base_vcpu *vcpu)
 bool xen_vcpu::handle_pet(base_vcpu *vcpu)
 {
     this->stop_timer();
-    m_evtchn->queue_virq(VIRQ_TIMER);
+    m_xen_dom->m_evtchn->queue_virq(VIRQ_TIMER);
 
     return true;
 }
@@ -838,7 +838,7 @@ bool xen_vcpu::handle_hlt(
     }
 
     m_uv_vcpu->advance();
-    m_evtchn->queue_virq(VIRQ_TIMER);
+    m_xen_dom->m_evtchn->queue_virq(VIRQ_TIMER);
     this->update_runstate(RUNSTATE_blocked);
     guest_interruptibility_state::blocking_by_sti::disable();
 
@@ -925,7 +925,6 @@ xen_vcpu::xen_vcpu(microv_vcpu *vcpu) :
     m_apicid = 0;
     m_acpiid = 0;
 
-    m_evtchn = std::make_unique<class xen_evtchn>(this);
     m_flask = std::make_unique<class xen_flask>(this);
     m_gnttab = std::make_unique<class xen_gnttab>(this);
     m_xenmem = std::make_unique<class xen_memory>(this);

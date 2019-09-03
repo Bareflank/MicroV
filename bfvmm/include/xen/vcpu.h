@@ -24,7 +24,6 @@
 
 #include "types.h"
 #include "domain.h"
-#include "evtchn.h"
 #include "flask.h"
 #include "gnttab.h"
 #include "physdev.h"
@@ -53,6 +52,7 @@ public:
     microv_vcpu *m_uv_vcpu{};
     microv_domain *m_uv_dom{};
     xen_domain *m_xen_dom{};
+    xen_vcpuid_t m_id{};
 
 private:
     bool m_debug_hypercalls{true};
@@ -94,7 +94,6 @@ private:
     bool handle_vcpu_op();
     bool handle_vm_assist();
 
-    friend class xen_evtchn;
     friend class xen_domain;
     friend class xen_flask;
     friend class xen_gnttab;
@@ -102,7 +101,6 @@ private:
     friend class xen_version;
     friend class xen_physdev;
 
-    std::unique_ptr<class xen_evtchn> m_evtchn;
     std::unique_ptr<class xen_flask> m_flask;
     std::unique_ptr<class xen_gnttab> m_gnttab;
     std::unique_ptr<class xen_memory> m_xenmem;
@@ -129,7 +127,6 @@ private:
     bool m_pet_hdlrs_added{};
     bool m_runstate_assist{};
 
-    xen_vcpuid_t m_id{};
     uint32_t m_apicid{};
     uint32_t m_acpiid{};
 

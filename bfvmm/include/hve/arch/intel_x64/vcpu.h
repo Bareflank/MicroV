@@ -319,9 +319,6 @@ public:
     ///
     const struct msi_desc *find_guest_msi(msi_key_t key) const;
 
-    /// Queue virq into this vcpu
-    void queue_virq(uint32_t virq);
-
     /// Start-of-day base cpuid handler overrides
     bool handle_0x4BF00010(bfvmm::intel_x64::vcpu *vcpu);
     bool handle_0x4BF00021(bfvmm::intel_x64::vcpu *vcpu);

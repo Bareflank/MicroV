@@ -27,7 +27,22 @@
 
 namespace microv {
 
+bool xen_evtchn_init_control(xen_vcpu *v);
+bool xen_evtchn_expand_array(xen_vcpu *v);
+bool xen_evtchn_set_priority(xen_vcpu *v);
+bool xen_evtchn_alloc_unbound(xen_vcpu *v);
+bool xen_evtchn_bind_interdomain(xen_vcpu *v);
+bool xen_evtchn_bind_vcpu(xen_vcpu *v);
+bool xen_evtchn_bind_virq(xen_vcpu *v);
+bool xen_evtchn_close(xen_vcpu *v);
+bool xen_evtchn_send(xen_vcpu *v);
+
 struct event_channel {
+    static constexpr auto invalid_virq = 0xFFFFUL;
+    static constexpr auto invalid_pirq = 0xFFFFUL;
+    static constexpr auto invalid_domid = 0xFFFFUL;
+    static constexpr auto invalid_port = 0x0UL;
+
     enum state : uint8_t {
         state_free,
         state_reserved,
@@ -40,36 +55,52 @@ struct event_channel {
 
     using state_t = enum state;
 
-    union {
-        uint32_t virq;
-        struct evtchn_bind_interdomain interdom;
-        // TODO:
-        // unbound-specific data
-        // pirq-specific data
-    } data{};
+    state_t state{state_free};
+    uint32_t virq;
+    uint32_t pirq;
+    xen_domid_t rdomid;
+    evtchn_port_t rport;
 
     bool is_pending{};
-    enum state state{state_free};
     uint8_t priority{EVTCHN_FIFO_PRIORITY_DEFAULT};
     uint8_t prev_priority{EVTCHN_FIFO_PRIORITY_DEFAULT};
     xen_vcpuid_t vcpuid{};
     xen_vcpuid_t prev_vcpuid{};
     evtchn_port_t port{};
 
-    uint8_t pad[36];
-    /// TODO mutable std::mutex mutex{};
+    uint8_t pad[34];
+
+    void free() noexcept
+    {
+        state = state_free;
+        vcpuid = 0;
+    }
+
+    void reset(evtchn_port_t p) noexcept
+    {
+        state = state_free;
+        virq = invalid_virq;
+        pirq = invalid_pirq;
+        rdomid = invalid_domid;
+        rport = invalid_port;
+        is_pending = false;
+        priority = EVTCHN_FIFO_PRIORITY_DEFAULT;
+        prev_priority = EVTCHN_FIFO_PRIORITY_DEFAULT;
+        vcpuid = 0;
+        prev_vcpuid = 0;
+        port = p;
+    }
+
 } __attribute__((packed));
 
 class xen_evtchn {
 public:
     using port_t = evtchn_port_t;
     using word_t = std::atomic<event_word_t>;
-    using chan_t = struct microv::event_channel;
-
+    using chan_t = struct event_channel;
     using queue_t = struct fifo_queue {
         port_t *head;
         uint8_t priority;
-        // std::mutex lock;
     };
 
     static_assert(is_power_of_2(EVTCHN_FIFO_NR_CHANNELS));
@@ -79,41 +110,39 @@ public:
     static_assert(sizeof(chan_t) > sizeof(word_t));
     static_assert(word_t::is_always_lock_free);
 
-    bool init_control();
-    bool expand_array();
-    bool set_priority();
-    bool alloc_unbound();
-    bool bind_interdomain();
-    bool bind_vcpu();
-    bool bind_virq();
-    bool close();
-    bool send();
+    xen_evtchn(xen_domain *dom);
+
+    bool init_control(xen_vcpu *v, evtchn_init_control_t *eic);
+    bool expand_array(xen_vcpu *v, evtchn_expand_array_t *eea);
+    bool set_priority(xen_vcpu *v, evtchn_set_priority_t *esp);
+    bool alloc_unbound(xen_vcpu *v, evtchn_alloc_unbound_t *eau);
+    bool bind_interdomain(xen_vcpu *v, evtchn_bind_interdomain_t *ebi);
+    bool bind_vcpu(xen_vcpu *v, evtchn_bind_vcpu_t *ebv);
+    bool bind_virq(xen_vcpu *v, evtchn_bind_virq_t *ebv);
+    bool close(xen_vcpu *v, evtchn_close_t *ec);
+    bool send(xen_vcpu *v, evtchn_send_t *es);
 
     void set_callback_via(uint64_t via);
     void queue_virq(uint32_t virq);
     void inject_virq(uint32_t virq);
-
-    port_t bind_console();
-    port_t bind_store();
+    void unbind_interdomain(evtchn_port_t port, xen_domid_t remote_domid);
+    int bind_interdomain(evtchn_port_t port,
+                         evtchn_port_t remote_port,
+                         xen_domid_t remote_domid);
 
     static constexpr auto max_channels = EVTCHN_FIFO_NR_CHANNELS;
-    static constexpr auto max_port = 1023;
 
 private:
+    friend class xen_evtchn;
 
     // Static constants
     //
     static constexpr auto bits_per_xen_ulong = sizeof(xen_ulong_t) * 8;
-
     static constexpr auto words_per_page = ::x64::pt::page_size / sizeof(word_t);
     static constexpr auto chans_per_page = ::x64::pt::page_size / sizeof(chan_t);
-    static constexpr auto max_word_pages = max_channels / words_per_page;
-    static constexpr auto max_chan_pages = max_channels / chans_per_page;
-
     static constexpr auto port_mask = max_channels - 1U;
     static constexpr auto word_mask = words_per_page - 1U;
     static constexpr auto chan_mask = chans_per_page - 1U;
-
     static constexpr auto word_page_mask = port_mask & ~word_mask;
     static constexpr auto chan_page_mask = port_mask & ~chan_mask;
     static constexpr auto word_page_shift = log2<words_per_page>();
@@ -133,13 +162,15 @@ private:
     port_t make_new_port();
     int make_port(port_t port);
     void setup_ports();
-    void setup_control_block(uint64_t gfn, uint32_t offset);
+    void setup_ctl_blk(microv_vcpu *uvv, uint64_t gfn, uint32_t offset);
 
     void make_chan_page(port_t port);
-    void make_word_page(evtchn_expand_array_t *expand);
+    void make_word_page(microv_vcpu *uvv, uintptr_t gfn);
 
+    void notify_remote(chan_t *chan);
     void queue_upcall(chan_t *chan);
     void inject_upcall(chan_t *chan);
+    void upcall(evtchn_port_t port);
     int upcall(chan_t *chan);
 
     bool set_link(word_t *word, event_word_t *val, port_t link);
@@ -161,17 +192,16 @@ private:
     std::array<queue_t, EVTCHN_FIFO_MAX_QUEUES> m_queues{};
     std::array<port_t, NR_VIRQS> m_virq_to_port;
 
-    std::vector<unique_map<word_t>> m_event_words{};
-    std::vector<page_ptr<chan_t>> m_event_chans{};
+    std::vector<unique_map<word_t>> m_word_pages{};
+    std::vector<page_ptr<chan_t>> m_chan_pages{};
 
-    xen_vcpu *m_xen_vcpu{};
-    microv_vcpu *m_uv_vcpu{};
+    xen_domain *m_xen_dom{};
     uint64_t m_cb_via{};
+    port_t m_nr_ports{};
     port_t m_port_end{1};
 
 public:
 
-    xen_evtchn(xen_vcpu *xen);
     ~xen_evtchn() = default;
     xen_evtchn(xen_evtchn &&) = default;
     xen_evtchn(const xen_evtchn &) = delete;
