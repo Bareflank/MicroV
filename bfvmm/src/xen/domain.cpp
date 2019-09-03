@@ -182,6 +182,20 @@ bool xen_domain_setvcpuaffinity(xen_vcpu *vcpu, struct xen_domctl *ctl)
     return ret;
 }
 
+bool xen_domain_max_mem(xen_vcpu *vcpu, struct xen_domctl *ctl)
+{
+    auto dom = get_xen_domain(ctl->domain);
+    if (!dom) {
+        bferror_nhex(0, "xen_domain not found:", ctl->domain);
+        return false;
+    }
+
+    auto ret = dom->set_max_mem(vcpu, &ctl->u.max_mem);
+    put_xen_domain(ctl->domain);
+
+    return ret;
+}
+
 bool xen_domain_createdomain(xen_vcpu *vcpu, struct xen_domctl *ctl)
 {
     auto cd = &ctl->u.createdomain;
@@ -512,6 +526,13 @@ bool xen_domain::setvcpuaffinity(xen_vcpu *v,
     }
 
     uvv->set_rax(0);
+    return true;
+}
+
+bool xen_domain::set_max_mem(xen_vcpu *v, struct xen_domctl_max_mem *mem)
+{
+    printv("max_mem: %luKB\n", mem->max_memkb);
+    v->m_uv_vcpu->set_rax(0);
     return true;
 }
 

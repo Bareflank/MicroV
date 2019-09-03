@@ -439,6 +439,11 @@ bool xen_vcpu::handle_domctl()
             return true;
         case XEN_DOMCTL_setvcpuaffinity:
             return xen_domain_setvcpuaffinity(this, ctl.get());
+        case XEN_DOMCTL_setnodeaffinity:
+            uvv->set_rax(0);
+            return true;
+        case XEN_DOMCTL_max_mem:
+            return xen_domain_max_mem(this, ctl.get());
         default:
             bfalert_nhex(0, "unimplemented domctl", ctl->cmd);
             return false;

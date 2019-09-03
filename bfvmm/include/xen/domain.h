@@ -45,6 +45,7 @@ bool xen_domain_getinfolist(xen_vcpu *vcpu, struct xen_sysctl *ctl);
 /* domctls */
 bool xen_domain_createdomain(xen_vcpu *vcpu, struct xen_domctl *ctl);
 bool xen_domain_setvcpuaffinity(xen_vcpu *vcpu, struct xen_domctl *ctl);
+bool xen_domain_max_mem(xen_vcpu *vcpu, struct xen_domctl *ctl);
 
 /**
  * xen_domain
@@ -57,7 +58,7 @@ bool xen_domain_setvcpuaffinity(xen_vcpu *vcpu, struct xen_domctl *ctl);
  *
  * TODO: add locks to protect readers (e.g. get_info) from updates
  * (e.g. move_cpupool). This isn't strictly necessary until we have
- * multiple domains reading writing domain data.
+ * multiple domains reading and writing domain data.
  */
 class xen_domain {
 public:
@@ -79,6 +80,7 @@ public:
     bool numainfo(xen_vcpu *v, struct xen_sysctl_numainfo *numa);
     bool cputopoinfo(xen_vcpu *v, struct xen_sysctl_cputopoinfo *topo);
     bool setvcpuaffinity(xen_vcpu *v, struct xen_domctl_vcpuaffinity *aff);
+    bool set_max_mem(xen_vcpu *v, struct xen_domctl_max_mem *max);
     bool physinfo(xen_vcpu *v, struct xen_sysctl *ctl);
     bool move_cpupool(xen_vcpu *v, struct xen_sysctl *ctl);
     bool get_sharing_freed_pages(xen_vcpu *v);
