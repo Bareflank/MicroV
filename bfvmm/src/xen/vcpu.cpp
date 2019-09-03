@@ -405,6 +405,8 @@ bool xen_vcpu::handle_sysctl()
             return xen_cpupool_op(this, ctl.get());
         case XEN_SYSCTL_numainfo:
             return xen_domain_numainfo(this, ctl.get());
+        case XEN_SYSCTL_cputopoinfo:
+            return xen_domain_cputopoinfo(this, ctl.get());
 
         default:
             bfalert_nhex(0, "unimplemented sysctl", ctl->cmd);

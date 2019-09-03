@@ -38,6 +38,7 @@ void put_xen_domain(xen_domid_t id) noexcept;
 void destroy_xen_domain(xen_domid_t id);
 
 bool xen_domain_numainfo(xen_vcpu *vcpu, struct xen_sysctl *ctl);
+bool xen_domain_cputopoinfo(xen_vcpu *vcpu, struct xen_sysctl *ctl);
 bool xen_domain_getinfolist(xen_vcpu *vcpu, struct xen_sysctl *ctl);
 bool xen_domain_createdomain(xen_vcpu *vcpu, struct xen_domctl *ctl);
 
@@ -72,6 +73,7 @@ public:
 
     /* Hypercalls from xl create path */
     bool numainfo(xen_vcpu *v, struct xen_sysctl_numainfo *numa);
+    bool cputopoinfo(xen_vcpu *v, struct xen_sysctl_cputopoinfo *topo);
     bool physinfo(xen_vcpu *v, struct xen_sysctl *ctl);
     bool move_cpupool(xen_vcpu *v, struct xen_sysctl *ctl);
     bool get_sharing_freed_pages(xen_vcpu *v);
@@ -96,6 +98,7 @@ public:
     uint32_t m_ssid{};     /* flask id */
 
     /* Tunables */
+    uint32_t m_max_pcpus{1};
     uint32_t m_max_vcpus{};
     uint32_t m_max_evtchns{};
     uint32_t m_max_evtchn_port{};

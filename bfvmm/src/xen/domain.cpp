@@ -234,6 +234,21 @@ bool xen_domain_numainfo(xen_vcpu *vcpu, xen_sysctl_t *ctl)
     return ret;
 }
 
+bool xen_domain_cputopoinfo(xen_vcpu *vcpu, xen_sysctl_t *ctl)
+{
+    auto topo = &ctl->u.cputopoinfo;
+    auto dom0 = get_xen_domain(0);
+    if (!dom0) {
+        bferror_info(0, "cputopoinfo: dom0 not found");
+        return false;
+    }
+
+    auto ret = dom0->cputopoinfo(vcpu, topo);
+    put_xen_domain(0);
+
+    return ret;
+}
+
 xen_domain::xen_domain(microv_domain *domain)
 {
     m_uv_info = &domain->m_sod_info;
@@ -245,6 +260,8 @@ xen_domain::xen_domain(microv_domain *domain)
         m_id = m_uv_info->xen_domid;
         memcpy(&m_uuid, &cd->handle, sizeof(m_uuid));
         m_ssid = cd->ssidref;
+        // TODO: m_max_pcpus = cd->max_pcpus;
+        m_max_pcpus = 1;
         m_max_vcpus = cd->max_vcpus;
         m_max_evtchn_port = cd->max_evtchn_port;
         m_max_grant_frames = cd->max_grant_frames;
@@ -254,6 +271,7 @@ xen_domain::xen_domain(microv_domain *domain)
         m_id = (m_uv_info->is_xenstore()) ? 0 : make_xen_domid();
         make_xen_uuid(&m_uuid);
         m_ssid = 0;
+        m_max_pcpus = 1;
         m_max_vcpus = 1;
         m_max_evtchn_port = xen_evtchn::max_port;
         m_max_grant_frames = xen_gnttab::max_nr_frames;
@@ -481,6 +499,31 @@ bool xen_domain::numainfo(xen_vcpu *v, struct xen_sysctl_numainfo *numa)
         auto dist = map.get();
         *dist = 0;
     }
+
+    uvv->set_rax(0);
+    return true;
+}
+
+bool xen_domain::cputopoinfo(xen_vcpu *v, struct xen_sysctl_cputopoinfo *topo)
+{
+    expects(!m_id);
+    auto uvv = v->m_uv_vcpu;
+
+    if (!topo->cputopo.p) {
+        topo->num_cpus = m_max_pcpus;
+        uvv->set_rax(0);
+        return true;
+    }
+
+    /* If this fails, then the mapping below will need to account for it */
+    expects(topo->num_cpus == 1);
+
+    auto map = uvv->map_arg<xen_sysctl_cputopo_t>(topo->cputopo.p);
+    auto cpu = map.get();
+
+    cpu->core = 0;
+    cpu->socket = 0;
+    cpu->node = 0;
 
     uvv->set_rax(0);
     return true;
