@@ -29,6 +29,7 @@ target_include_directories(microv_xen PUBLIC
     $<${BUILD_INCLUDE}:${CMAKE_BINARY_DIR}/include>
 )
 target_sources(microv_xen PRIVATE
+    $<${X64}:cpupool.cpp>
     $<${X64}:domain.cpp>
     $<${X64}:evtchn.cpp>
     $<${X64}:flask.cpp>

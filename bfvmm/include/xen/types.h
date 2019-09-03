@@ -58,6 +58,7 @@ class xen_memory;
 class xen_physdev;
 class xen_vcpu;
 class xen_version;
+class xen_cpupool;
 
 using microv_vcpu = microv::intel_x64::vcpu;
 using microv_vcpuid = ::vcpuid::type;
@@ -74,6 +75,7 @@ using unique_map = bfvmm::x64::unique_map<T>;
 using xen_uuid_t = ::xen_uuid_t;
 using xen_domid_t = ::domid_t;
 using xen_vcpuid_t = uint32_t;
+using xen_cpupoolid_t = uint32_t;
 
 inline bool hypercall_debug = false;
 }

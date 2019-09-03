@@ -39,7 +39,6 @@ void destroy_xen_domain(xen_domid_t id);
 
 bool xen_domain_getinfolist(xen_vcpu *vcpu, struct xen_sysctl *ctl);
 bool xen_domain_createdomain(xen_vcpu *vcpu, struct xen_domctl *ctl);
-bool xen_domain_cpupool_op(xen_vcpu *vcpu, struct xen_sysctl *ctl);
 
 /**
  * xen_domain
@@ -49,10 +48,15 @@ bool xen_domain_cpupool_op(xen_vcpu *vcpu, struct xen_sysctl *ctl);
  * be created:
  *   - domain_op__create_domain hypercall from a bareflank root vcpu
  *   - domctl::createdomain hypercall from a xen guest dom0
+ *
+ * TODO: add locks to protect readers (e.g. get_info) from updates
+ * (e.g. move_cpupool). This isn't strictly necessary until we have
+ * multiple domains reading writing domain data.
  */
 class xen_domain {
 public:
     xen_domain(microv_domain *domain);
+    ~xen_domain();
 
     void bind_vcpu(xen_vcpu *xen);
     void get_info(struct xen_domctl_getdomaininfo *info);
@@ -67,7 +71,7 @@ public:
 
     /* Hypercalls from xl create path */
     bool physinfo(xen_vcpu *v, struct xen_sysctl *ctl);
-    bool cpupool_op(xen_vcpu *v, struct xen_sysctl *ctl);
+    bool move_cpupool(xen_vcpu *v, struct xen_sysctl *ctl);
     bool get_sharing_freed_pages(xen_vcpu *v);
     bool get_sharing_shared_pages(xen_vcpu *v);
 
@@ -106,7 +110,7 @@ public:
     uint32_t m_paged_pages{}; /* nr paged-out pages */
 
     /* Scheduling */
-    uint32_t m_cpupool{};
+    xen_cpupoolid_t m_cpupool_id{};
 
     bool m_ndvm{};      /* is this an NDVM? */
     uint32_t m_flags{}; /* DOMINF_ flags, used for {sys,dom}ctls */
@@ -126,7 +130,6 @@ public:
     uint64_t m_tsc_shift;
 
 public:
-    ~xen_domain() = default;
     xen_domain(xen_domain &&) = delete;
     xen_domain(const xen_domain &) = delete;
     xen_domain &operator=(xen_domain &&) = delete;

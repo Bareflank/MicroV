@@ -32,6 +32,7 @@
 #include <public/domctl.h>
 #include <public/sysctl.h>
 #include <public/vcpu.h>
+#include <xen/cpupool.h>
 #include <xen/domain.h>
 #include <xen/evtchn.h>
 #include <xen/gnttab.h>
@@ -40,7 +41,6 @@
 #include <xen/vcpu.h>
 
 #define DEFAULT_MAPTRACK_FRAMES 1024
-#define DEFAULT_CPUPOOLID (-1)
 #define DEFAULT_RAM_SIZE (256UL << 20)
 
 namespace microv {
@@ -214,26 +214,6 @@ bool xen_domain_createdomain(xen_vcpu *vcpu, struct xen_domctl *ctl)
     return true;
 }
 
-bool xen_domain_cpupool_op(xen_vcpu *vcpu, struct xen_sysctl *ctl)
-{
-    auto op = &ctl->u.cpupool_op;
-
-    printv("cpupool: op:0x%x poolid:%u schedid:%u domid:%u cpu:%u\n",
-            op->op, op->cpupool_id, op->sched_id, op->domid, op->cpu);
-
-    auto dom = get_xen_domain(op->domid);
-    if (!dom) {
-        bfalert_nhex(0, "xen domid not found", op->domid);
-        vcpu->m_uv_vcpu->set_rax(-EINVAL);
-        return true;
-    }
-
-    auto ret = dom->cpupool_op(vcpu, ctl);
-    put_xen_domain(op->domid);
-
-    return ret;
-}
-
 xen_domain::xen_domain(microv_domain *domain)
 {
     m_uv_info = &domain->m_sod_info;
@@ -271,8 +251,8 @@ xen_domain::xen_domain(microv_domain *domain)
     m_out_pages = 0;
     m_paged_pages = 0;
 
-    m_cpupool = DEFAULT_CPUPOOLID;
-    m_ndvm = m_uv_info->is_ndvm();
+    m_cpupool_id = xen_cpupool::id_none;
+    xen_cpupool_add_domain(m_cpupool_id, m_id);
 
     m_flags = XEN_DOMINF_hvm_guest;
     m_flags |= XEN_DOMINF_hap;
@@ -288,6 +268,13 @@ xen_domain::xen_domain(microv_domain *domain)
         m_hvc_rx_ring = std::make_unique<microv::ring<HVC_RX_SIZE>>();
         m_hvc_tx_ring = std::make_unique<microv::ring<HVC_TX_SIZE>>();
     }
+
+    m_ndvm = m_uv_info->is_ndvm();
+}
+
+xen_domain::~xen_domain()
+{
+    xen_cpupool_rm_domain(m_cpupool_id, m_id);
 }
 
 class xen_vcpu *xen_domain::get_xen_vcpu() noexcept
@@ -415,25 +402,34 @@ void xen_domain::get_info(struct xen_domctl_getdomaininfo *info)
     info->nr_online_vcpus = this->nr_online_vcpus();
     info->max_vcpu_id = this->max_vcpu_id();
     info->ssidref = m_ssid;
+    info->cpupool = m_cpupool_id;
 
-    static_assert(sizeof(m_uuid) == sizeof(info->handle));
+    static_assert(sizeof(info->handle) == sizeof(m_uuid));
     memcpy(&info->handle, &m_uuid, sizeof(m_uuid));
-
-    info->cpupool = m_cpupool;
 
     static_assert(sizeof(info->arch_config) == sizeof(m_arch_config));
     memcpy(&info->arch_config, &m_arch_config, sizeof(m_arch_config));
 }
 
-bool xen_domain::cpupool_op(xen_vcpu *v, struct xen_sysctl *ctl)
+bool xen_domain::move_cpupool(xen_vcpu *v, struct xen_sysctl *ctl)
 {
+    auto uvv = v->m_uv_vcpu;
     auto op = &ctl->u.cpupool_op;
 
     expects(op->op == XEN_SYSCTL_CPUPOOL_OP_MOVEDOMAIN);
     expects(op->domid == m_id);
 
-    m_cpupool = op->cpupool_id;
-    v->m_uv_vcpu->set_rax(0);
+    auto old_pool = m_cpupool_id;
+    auto new_pool = op->cpupool_id;
+
+    auto err = xen_cpupool_mv_domain(old_pool, new_pool, m_id);
+    if (err) {
+        uvv->set_rax(err);
+        return true;
+    }
+
+    m_cpupool_id = op->cpupool_id;
+    uvv->set_rax(0);
     return true;
 }
 

@@ -32,6 +32,7 @@
 #include <pci/bar.h>
 #include <pci/dev.h>
 
+#include <xen/cpupool.h>
 #include <xen/evtchn.h>
 #include <xen/flask.h>
 #include <xen/gnttab.h>
@@ -400,7 +401,7 @@ bool xen_vcpu::handle_sysctl()
         case XEN_SYSCTL_physinfo:
             return m_xen_dom->physinfo(this, ctl.get());
         case XEN_SYSCTL_cpupool_op:
-            return xen_domain_cpupool_op(this, ctl.get());
+            return xen_cpupool_op(this, ctl.get());
 
         default:
             bfalert_nhex(0, "unimplemented sysctl", ctl->cmd);
@@ -414,10 +415,12 @@ bool xen_vcpu::handle_sysctl()
 /* xl create */
 bool xen_vcpu::handle_domctl()
 {
+    auto uvv = m_uv_vcpu;
+
     try {
-        auto ctl = m_uv_vcpu->map_arg<xen_domctl_t>(m_uv_vcpu->rdi());
+        auto ctl = uvv->map_arg<xen_domctl_t>(uvv->rdi());
         if (ctl->interface_version != XEN_DOMCTL_INTERFACE_VERSION) {
-            m_uv_vcpu->set_rax(-EACCES);
+            uvv->set_rax(-EACCES);
             return true;
         }
 
@@ -425,6 +428,10 @@ bool xen_vcpu::handle_domctl()
         case XEN_DOMCTL_createdomain:
             expects(ctl->domain == 0xFFFF);
             return xen_domain_createdomain(this, ctl.get());
+        case XEN_DOMCTL_max_vcpus:
+            expects(ctl->u.max_vcpus.max == 1);
+            uvv->set_rax(0);
+            return true;
         default:
             bfalert_nhex(0, "unimplemented domctl", ctl->cmd);
             return false;
