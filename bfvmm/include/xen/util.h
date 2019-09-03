@@ -33,6 +33,9 @@ xen_domid_t make_xen_domid() noexcept;
 /* Create a 16-byte UUID. */
 void make_xen_uuid(xen_uuid_t *uuid);
 
+/* Dump hypercall information */
+void debug_xen_hypercall(xen_vcpu *vcpu);
+
 }
 
 #endif

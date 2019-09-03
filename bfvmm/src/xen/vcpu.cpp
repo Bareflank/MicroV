@@ -834,18 +834,35 @@ bool xen_vcpu::handle_hlt(
     return true;
 }
 
+bool xen_vcpu::debug_hypercall(microv_vcpu *vcpu)
+{
+    if (!this->is_xenstore()) {
+        return true;
+    }
+
+    const auto rax = vcpu->rax();
+    const auto rdi = vcpu->rdi();
+
+    if (rax == __HYPERVISOR_console_io) {
+        return false;
+    }
+
+    if (rax == __HYPERVISOR_vcpu_op &&
+        rdi == VCPUOP_set_singleshot_timer) {
+        return false;
+    }
+
+    return true;
+}
+
 bool xen_vcpu::hypercall(microv_vcpu *vcpu)
 {
-    if (vcpu->rax() != __HYPERVISOR_console_io &&
-        !(vcpu->rax() == __HYPERVISOR_vcpu_op &&
-          vcpu->rdi() == VCPUOP_set_singleshot_timer) &&
-        this->is_xenstore() && hypercall_debug) {
-        if (vcpu->rdi() > (1UL << 32)) {
-            /* likely an address in rdi */
-            printf("xen: hypercall %lu:0x%lx\n", vcpu->rax(), vcpu->rdi());
-        } else {
-            printf("xen: hypercall %lu:%lu\n", vcpu->rax(), vcpu->rdi());
-        }
+    if (!m_debug_hypercalls) {
+        return false;
+    }
+
+    if (this->debug_hypercall(vcpu)) {
+        debug_xen_hypercall(this);
     }
 
     switch (vcpu->rax()) {

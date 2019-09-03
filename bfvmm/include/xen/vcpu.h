@@ -55,6 +55,9 @@ public:
     xen_domain *m_xen_dom{};
 
 private:
+    bool m_debug_hypercalls{true};
+    bool debug_hypercall(microv_vcpu *vcpu);
+
     int set_timer();
     void stop_timer();
     void steal_pet_ticks();
