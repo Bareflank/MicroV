@@ -37,6 +37,7 @@ xen_domain *get_xen_domain(xen_domid_t id) noexcept;
 void put_xen_domain(xen_domid_t id) noexcept;
 void destroy_xen_domain(xen_domid_t id);
 
+bool xen_domain_numainfo(xen_vcpu *vcpu, struct xen_sysctl *ctl);
 bool xen_domain_getinfolist(xen_vcpu *vcpu, struct xen_sysctl *ctl);
 bool xen_domain_createdomain(xen_vcpu *vcpu, struct xen_domctl *ctl);
 
@@ -70,6 +71,7 @@ public:
     size_t hvc_tx_get(const gsl::span<char> &span);
 
     /* Hypercalls from xl create path */
+    bool numainfo(xen_vcpu *v, struct xen_sysctl_numainfo *numa);
     bool physinfo(xen_vcpu *v, struct xen_sysctl *ctl);
     bool move_cpupool(xen_vcpu *v, struct xen_sysctl *ctl);
     bool get_sharing_freed_pages(xen_vcpu *v);
@@ -104,6 +106,7 @@ public:
     uint64_t m_total_ram{};
     uint32_t m_total_pages{}; /* nr pages possessed */
     uint32_t m_max_pages{};   /* max value for total_pages */
+    uint32_t m_free_pages{};
     uint32_t m_max_mfn{};
     uint32_t m_shr_pages{};   /* nr shared pages */
     uint32_t m_out_pages{};   /* nr claimed-but-not-possessed pages */
@@ -128,6 +131,9 @@ public:
     uint64_t m_tsc_khz;
     uint64_t m_tsc_mul;
     uint64_t m_tsc_shift;
+
+    /* NUMA parms */
+    uint32_t m_numa_nodes;
 
 public:
     xen_domain(xen_domain &&) = delete;

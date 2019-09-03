@@ -40,6 +40,7 @@
 #include <xen/util.h>
 #include <xen/vcpu.h>
 
+#define PAGE_SIZE 4096UL
 #define DEFAULT_MAPTRACK_FRAMES 1024
 #define DEFAULT_RAM_SIZE (256UL << 20)
 
@@ -214,6 +215,25 @@ bool xen_domain_createdomain(xen_vcpu *vcpu, struct xen_domctl *ctl)
     return true;
 }
 
+bool xen_domain_numainfo(xen_vcpu *vcpu, xen_sysctl_t *ctl)
+{
+    auto numa = &ctl->u.numainfo;
+
+    printv("numainfo: num_nodes:%u, meminfo.p:0x%p, distance.p:0x%p\n",
+            numa->num_nodes, numa->meminfo.p, numa->distance.p);
+
+    auto dom0 = get_xen_domain(0);
+    if (!dom0) {
+        bferror_info(0, "numainfo: dom0 not found");
+        return false;
+    }
+
+    auto ret = dom0->numainfo(vcpu, numa);
+    put_xen_domain(0);
+
+    return ret;
+}
+
 xen_domain::xen_domain(microv_domain *domain)
 {
     m_uv_info = &domain->m_sod_info;
@@ -246,6 +266,7 @@ xen_domain::xen_domain(microv_domain *domain)
     m_total_ram = m_uv_info->total_ram();
     m_total_pages = m_uv_info->total_ram_pages();
     m_max_pages = m_total_pages;
+    m_free_pages = m_max_pages - m_total_pages; /* ??? */
     m_max_mfn = m_max_pages - 1;
     m_shr_pages = 0;
     m_out_pages = 0;
@@ -270,6 +291,7 @@ xen_domain::xen_domain(microv_domain *domain)
     }
 
     m_ndvm = m_uv_info->is_ndvm();
+    m_numa_nodes = 1;
 }
 
 xen_domain::~xen_domain()
@@ -433,6 +455,37 @@ bool xen_domain::move_cpupool(xen_vcpu *v, struct xen_sysctl *ctl)
     return true;
 }
 
+bool xen_domain::numainfo(xen_vcpu *v, struct xen_sysctl_numainfo *numa)
+{
+    expects(!m_id);
+    auto uvv = v->m_uv_vcpu;
+
+    if (!numa->meminfo.p && !numa->distance.p) {
+        numa->num_nodes = m_numa_nodes;
+        uvv->set_rax(0);
+        return true;
+    }
+
+    /* If this fails, then the mapping below will need to account for it */
+    expects(numa->num_nodes == 1);
+
+    if (numa->meminfo.p) {
+        auto map = uvv->map_arg<xen_sysctl_meminfo_t>(numa->meminfo.p);
+        auto mem = map.get();
+        mem->memsize = m_max_pages * PAGE_SIZE;
+        mem->memfree = m_free_pages * PAGE_SIZE;
+    }
+
+    if (numa->distance.p) {
+        auto map =  uvv->map_arg<uint32_t>(numa->distance.p);
+        auto dist = map.get();
+        *dist = 0;
+    }
+
+    uvv->set_rax(0);
+    return true;
+}
+
 bool xen_domain::physinfo(xen_vcpu *v, struct xen_sysctl *ctl)
 {
     expects(v->is_xenstore());
@@ -450,13 +503,13 @@ bool xen_domain::physinfo(xen_vcpu *v, struct xen_sysctl *ctl)
     info->cores_per_socket = 1;
     info->nr_cpus = 1;
     info->max_cpu_id = 0;
-    info->nr_nodes = 1;
-    info->max_node_id = 0;
+    info->nr_nodes = m_numa_nodes;
+    info->max_node_id = m_numa_nodes -1;
     info->cpu_khz = m_tsc_khz;
     info->capabilities = XEN_SYSCTL_PHYSCAP_hvm;
     info->capabilities |= XEN_SYSCTL_PHYSCAP_directio; /* IOMMU support */
     info->total_pages = m_total_pages; /* domain RAM size */
-    info->free_pages = m_total_pages / 2; /* ??? */
+    info->free_pages = m_free_pages; /* ??? */
     info->scrub_pages = 0; /* ??? (appear in calc of free memory) */
     info->outstanding_pages = m_out_pages;
     info->max_mfn = m_max_mfn;

@@ -31,6 +31,7 @@
 #include <pci/cfg.h>
 #include <pci/bar.h>
 #include <pci/dev.h>
+#include <printv.h>
 
 #include <xen/cpupool.h>
 #include <xen/evtchn.h>
@@ -402,6 +403,8 @@ bool xen_vcpu::handle_sysctl()
             return m_xen_dom->physinfo(this, ctl.get());
         case XEN_SYSCTL_cpupool_op:
             return xen_cpupool_op(this, ctl.get());
+        case XEN_SYSCTL_numainfo:
+            return xen_domain_numainfo(this, ctl.get());
 
         default:
             bfalert_nhex(0, "unimplemented sysctl", ctl->cmd);
