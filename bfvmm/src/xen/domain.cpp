@@ -164,6 +164,24 @@ bool xen_domain_getinfolist(xen_vcpu *vcpu, struct xen_sysctl *ctl)
     return true;
 }
 
+bool xen_domain_setvcpuaffinity(xen_vcpu *vcpu, struct xen_domctl *ctl)
+{
+    auto dom = get_xen_domain(ctl->domain);
+    if (!dom) {
+        bferror_nhex(0, "xen_domain not found:", ctl->domain);
+        return false;
+    }
+
+    auto aff = &ctl->u.vcpuaffinity;
+    expects(aff->vcpu == 0);
+    printv("setvcpuaffinity: vcpu:0x%x flags:0x%x\n", aff->vcpu, aff->flags);
+
+    auto ret = dom->setvcpuaffinity(vcpu, aff);
+    put_xen_domain(ctl->domain);
+
+    return ret;
+}
+
 bool xen_domain_createdomain(xen_vcpu *vcpu, struct xen_domctl *ctl)
 {
     auto cd = &ctl->u.createdomain;
@@ -469,6 +487,30 @@ bool xen_domain::move_cpupool(xen_vcpu *v, struct xen_sysctl *ctl)
     }
 
     m_cpupool_id = op->cpupool_id;
+    uvv->set_rax(0);
+    return true;
+}
+
+bool xen_domain::setvcpuaffinity(xen_vcpu *v,
+                                 struct xen_domctl_vcpuaffinity *aff)
+{
+    auto uvv = v->m_uv_vcpu;
+    auto hard = &aff->cpumap_hard;
+    auto soft = &aff->cpumap_soft;
+
+    expects(hard->nr_bits == 8);
+    expects(soft->nr_bits == 8);
+
+    if (hard->bitmap.p) {
+        auto hard_map = uvv->map_arg<uint8_t>(aff->cpumap_hard.bitmap.p);
+        expects(*hard_map.get() == 1);
+    }
+
+    if (soft->bitmap.p) {
+        auto soft_map = uvv->map_arg<uint8_t>(aff->cpumap_soft.bitmap.p);
+        expects(*soft_map.get() == 1);
+    }
+
     uvv->set_rax(0);
     return true;
 }

@@ -437,6 +437,8 @@ bool xen_vcpu::handle_domctl()
             expects(ctl->u.max_vcpus.max == 1);
             uvv->set_rax(0);
             return true;
+        case XEN_DOMCTL_setvcpuaffinity:
+            return xen_domain_setvcpuaffinity(this, ctl.get());
         default:
             bfalert_nhex(0, "unimplemented domctl", ctl->cmd);
             return false;
