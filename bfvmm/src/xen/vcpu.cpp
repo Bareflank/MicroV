@@ -308,6 +308,9 @@ bool xen_vcpu::handle_hvm_op()
                     m_uv_vcpu->set_rax(-EINVAL);
                 }
                 return true;
+            case HVM_PARAM_PAE_ENABLED:
+                m_uv_vcpu->set_rax(0);
+                return true;
             default:
                 bfalert_info(0, "Unsupported HVM set_param");
                 return false;
