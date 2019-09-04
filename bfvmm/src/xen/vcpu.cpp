@@ -148,8 +148,16 @@ bool xen_vcpu::xen_leaf4(base_vcpu *vcpu)
     return true;
 }
 
-static bool wrmsr_hcall_page(base_vcpu *vcpu, wrmsr_handler::info_t &info)
+bool xen_vcpu::init_hypercall_page(base_vcpu *vcpu, wrmsr_handler::info_t &info)
 {
+    const auto gfn = xen_frame(info.val);
+    const auto err = m_xen_dom->m_memory->map_page(gfn, pg_perm_rwe);
+
+    if (err) {
+        vcpu->set_rax(err);
+        return false;
+    }
+
     auto map = vcpu->map_gpa_4k<uint8_t>(info.val);
     auto buf = gsl::span(map.get(), 0x1000);
 
@@ -225,15 +233,25 @@ bool xen_vcpu::handle_memory_op()
     try {
         switch (m_uv_vcpu->rdi()) {
         case XENMEM_memory_map:
-            return m_xenmem->memory_map();
+            return xenmem_memory_map(this);
+        case XENMEM_set_memory_map:
+            return xenmem_set_memory_map(this);
         case XENMEM_add_to_physmap:
-            return m_xenmem->add_to_physmap();
+            return xenmem_add_to_physmap(this);
+        case XENMEM_add_to_physmap_batch:
+            return xenmem_add_to_physmap_batch(this);
         case XENMEM_decrease_reservation:
-            return m_xenmem->decrease_reservation();
+            return xenmem_decrease_reservation(this);
         case XENMEM_get_sharing_freed_pages:
             return m_xen_dom->get_sharing_freed_pages(this);
         case XENMEM_get_sharing_shared_pages:
             return m_xen_dom->get_sharing_shared_pages(this);
+        case XENMEM_claim_pages:
+            return xenmem_claim_pages(this);
+        case XENMEM_populate_physmap:
+            return xenmem_populate_physmap(this);
+        case XENMEM_remove_from_physmap:
+            return xenmem_remove_from_physmap(this);
         default:
             break;
         }
@@ -310,6 +328,24 @@ bool xen_vcpu::handle_hvm_op()
                 return true;
             case HVM_PARAM_PAE_ENABLED:
                 m_uv_vcpu->set_rax(0);
+                return true;
+            case HVM_PARAM_TIMER_MODE:
+                m_xen_dom->set_timer_mode(arg->value);
+                m_uv_vcpu->set_rax(0);
+                return true;
+            case HVM_PARAM_NESTEDHVM:
+                if (arg->value != 0) {
+                    m_uv_vcpu->set_rax(-EINVAL);
+                } else {
+                    m_uv_vcpu->set_rax(0);
+                }
+                return true;
+            case HVM_PARAM_ALTP2M:
+                if (arg->value != 0) {
+                    m_uv_vcpu->set_rax(-EINVAL);
+                } else {
+                    m_uv_vcpu->set_rax(0);
+                }
                 return true;
             default:
                 bfalert_info(0, "Unsupported HVM set_param");
@@ -447,6 +483,12 @@ bool xen_vcpu::handle_domctl()
             return true;
         case XEN_DOMCTL_max_mem:
             return xen_domain_max_mem(this, ctl.get());
+        case XEN_DOMCTL_settscinfo:
+            return xen_domain_set_tsc_info(this, ctl.get());
+        case XEN_DOMCTL_shadow_op:
+            return xen_domain_shadow_op(this, ctl.get());
+        case XEN_DOMCTL_getdomaininfo:
+            return xen_domain_getdomaininfo(this, ctl.get());
         default:
             bfalert_nhex(0, "unimplemented domctl", ctl->cmd);
             return false;
@@ -518,8 +560,10 @@ bool xen_vcpu::handle_xsm_op()
 
 struct vcpu_time_info *xen_vcpu::vcpu_time()
 {
+    /* TODO make sure this is initialized properly since
+     * the page is available right after construction */
     expects(m_xen_dom->m_shinfo);
-    return &m_xen_dom->m_shinfo.get()->vcpu_info[m_id].time;
+    return &m_xen_dom->m_shinfo->vcpu_info[m_id].time;
 }
 
 void xen_vcpu::stop_timer()
@@ -795,8 +839,10 @@ bool xen_vcpu::handle_interrupt(base_vcpu *vcpu, interrupt_handler::info_t &info
 {
     auto root = m_uv_vcpu->root_vcpu();
 
-    /* Note that guests can safely access their root vcpu without synchronization
-     * as long as they are guaranteed to be pinned to the same cpu */
+    /*
+     * Note that guests can safely access their root vcpu without synchronization
+     * as long as they are guaranteed to be pinned to the same cpu
+     */
     auto guest_msi = root->find_guest_msi(info.vector);
 
     if (guest_msi) {
@@ -869,8 +915,23 @@ bool xen_vcpu::debug_hypercall(microv_vcpu *vcpu)
         return false;
     }
 
-    if (rax == __HYPERVISOR_vcpu_op &&
-        rdi == VCPUOP_set_singleshot_timer) {
+    if (rax == __HYPERVISOR_vcpu_op && rdi == VCPUOP_set_singleshot_timer) {
+        return false;
+    }
+
+    if (rax == __HYPERVISOR_event_channel_op && rdi == EVTCHNOP_send) {
+        return false;
+    }
+
+    if (rax == __HYPERVISOR_memory_op && rdi == XENMEM_populate_physmap) {
+        return false;
+    }
+
+    if (rax == __HYPERVISOR_memory_op && rdi == XENMEM_decrease_reservation) {
+        return false;
+    }
+
+    if (rax == __HYPERVISOR_memory_op && rdi == XENMEM_add_to_physmap_batch) {
         return false;
     }
 
@@ -930,7 +991,6 @@ xen_vcpu::xen_vcpu(microv_vcpu *vcpu) :
 
     m_flask = std::make_unique<class xen_flask>(this);
     m_gnttab = std::make_unique<class xen_gnttab>(this);
-    m_xenmem = std::make_unique<class xen_memory>(this);
     m_xenver = std::make_unique<class xen_version>(this);
     m_physdev = std::make_unique<class xen_physdev>(this);
 
@@ -941,7 +1001,7 @@ xen_vcpu::xen_vcpu(microv_vcpu *vcpu) :
 
     vcpu->add_cpuid_emulator(xen_leaf(0), {xen_leaf0});
     vcpu->add_cpuid_emulator(xen_leaf(2), {xen_leaf2});
-    vcpu->emulate_wrmsr(hcall_page_msr, {wrmsr_hcall_page});
+    vcpu->emulate_wrmsr(hcall_page_msr, {&xen_vcpu::init_hypercall_page, this});
     vcpu->add_vmcall_handler({&xen_vcpu::hypercall, this});
     vcpu->add_cpuid_emulator(xen_leaf(1), {xen_leaf1});
     vcpu->add_cpuid_emulator(xen_leaf(4), {&xen_vcpu::xen_leaf4, this});

@@ -52,7 +52,7 @@ int xc_dom_loginit(xc_interface *xch) {
             return -1;
         }
     }
-    
+
     xch->dombuild_logger = xch->dombuild_logger_tofree =
         (xentoollog_logger*)
         xtl_createlogger_stdiostream(xch->dombuild_logger_file, XTL_DETAIL,
@@ -85,7 +85,7 @@ void xc_dom_panic_func(xc_interface *xch,
     vsnprintf(msg, sizeof(msg), fmt, args);
     va_end(args);
     msg[sizeof(msg)-1] = 0;
-    
+
     xc_report(xch,
               xch->dombuild_logger ? xch->dombuild_logger : xch->error_handler,
               XTL_ERROR, err, "panic: %s:%d: %s",
@@ -584,23 +584,32 @@ int xc_dom_alloc_segment(struct xc_dom_image *dom,
     xen_pfn_t pages;
     void *ptr;
 
+    printf("%s 0\n", __func__);
     if ( start && xc_dom_alloc_pad(dom, start) )
         return -1;
 
+    printf("%s 1\n", __func__);
     pages = (size + page_size - 1) / page_size;
     start = dom->virt_alloc_end;
 
+    printf("%s 2\n", __func__);
     seg->pfn = dom->pfn_alloc_end;
     seg->pages = pages;
 
+    printf("%s 3\n", __func__);
     if ( xc_dom_chk_alloc_pages(dom, name, pages) )
         return -1;
 
     /* map and clear pages */
+    printf("%s 4\n", __func__);
     ptr = xc_dom_seg_to_ptr(dom, seg);
+    printf("%s 5\n", __func__);
     if ( ptr == NULL )
         return -1;
+    printf("%s 6\n", __func__);
+    printf("%s: clearing pages @ gva=%p gfn=%p\n", __func__, ptr, (void *)seg->pfn);
     memset(ptr, 0, pages * page_size);
+    printf("%s 7\n", __func__);
 
     seg->vstart = start;
     seg->vend = dom->virt_alloc_end;
@@ -1185,14 +1194,22 @@ int xc_dom_build_image(struct xc_dom_image *dom)
     if ( dom->parms.virt_base != UNSET_ADDR )
         dom->virt_alloc_end = dom->parms.virt_base;
 
+    printf("%s: page_size:0x%x virt_base:%p\n", __func__, page_size, (void *)dom->parms.virt_base);
+
     /* load kernel */
     if ( xc_dom_alloc_segment(dom, &dom->kernel_seg, "kernel",
                               dom->kernel_seg.vstart,
                               dom->kernel_seg.vend -
-                              dom->kernel_seg.vstart) != 0 )
+                              dom->kernel_seg.vstart) != 0 ) {
+        printf("%s: failed to load kernel\n", __func__);
         goto err;
+    }
+    printf("%s: loaded kernel\n", __func__);
+
     if ( dom->kernel_loader->loader(dom) != 0 )
         goto err;
+
+    printf("%s: 0\n", __func__);
 
     /* Don't load ramdisk / other modules now if no initial mapping required. */
     for ( mod = 0; mod < dom->num_modules; mod++ )
@@ -1200,16 +1217,21 @@ int xc_dom_build_image(struct xc_dom_image *dom)
         unmapped_initrd = (dom->parms.unmapped_initrd &&
                            !dom->modules[mod].seg.vstart);
 
+        printf("%s: mod[%d] unmapped_initrd:%u\n", __func__, mod, unmapped_initrd);
+
         if ( dom->modules[mod].blob && !unmapped_initrd )
         {
-            if ( xc_dom_build_module(dom, mod) != 0 )
+            if ( xc_dom_build_module(dom, mod) != 0 ) {
+                printf("%s: mod[%d] failed to build mod\n", __func__, mod);
                 goto err;
+            }
 
             if ( mod == 0 )
             {
                 dom->initrd_start = dom->modules[mod].seg.vstart;
                 dom->initrd_len =
                     dom->modules[mod].seg.vend - dom->modules[mod].seg.vstart;
+                printf("%s: initrd_start:%p initrd_len:%lu\n", __func__, (void *)dom->initrd_start, dom->initrd_len);
             }
         }
     }
@@ -1232,10 +1254,13 @@ int xc_dom_build_image(struct xc_dom_image *dom)
         }
         memcpy(devicetreemap, dom->devicetree_blob, dom->devicetree_size);
     }
+    printf("%s: devicetree loaded\n", __func__);
 
     /* load ACPI tables */
     if ( xc_dom_load_acpi(dom) != 0 )
         goto err;
+
+    printf("%s: ACPI tables loaded\n", __func__);
 
     /* allocate other pages */
     if ( !dom->arch_hooks->p2m_base_supported ||
@@ -1243,17 +1268,23 @@ int xc_dom_build_image(struct xc_dom_image *dom)
          (dom->parms.p2m_base & (XC_DOM_PAGE_SIZE(dom) - 1)) )
         dom->parms.p2m_base = UNSET_ADDR;
     if ( dom->arch_hooks->alloc_p2m_list && dom->parms.p2m_base == UNSET_ADDR &&
-         dom->arch_hooks->alloc_p2m_list(dom) != 0 )
+         dom->arch_hooks->alloc_p2m_list(dom) != 0 ) {
+        printf("%s: alloc_p2m_list failed\n", __func__);
         goto err;
+    }
+    printf("%s: allocd p2m list\n", __func__);
     if ( dom->arch_hooks->alloc_magic_pages(dom) != 0 )
         goto err;
+    printf("%s: allocd magic pages\n", __func__);
     if ( dom->arch_hooks->alloc_pgtables(dom) != 0 )
         goto err;
+    printf("%s: allocd page tables\n", __func__);
     if ( dom->alloc_bootstack )
     {
         dom->bootstack_pfn = xc_dom_alloc_page(dom, "boot stack");
         if ( dom->bootstack_pfn == INVALID_PFN )
             goto err;
+        printf("%s: allocd bootstack\n", __func__);
     }
 
     DOMPRINTF("%-20s: virt_alloc_end : 0x%" PRIx64 "",
@@ -1261,9 +1292,14 @@ int xc_dom_build_image(struct xc_dom_image *dom)
     DOMPRINTF("%-20s: virt_pgtab_end : 0x%" PRIx64 "",
               __FUNCTION__, dom->virt_pgtab_end);
 
+    printf("%s: virt_alloc_end:%p\n", __func__, (void *)dom->virt_alloc_end);
+    printf("%s: virt_pgtab_end:%p\n", __func__, (void *)dom->virt_pgtab_end);
+
     /* Make sure all memory mapped by initial page tables is available */
     if ( dom->virt_pgtab_end && xc_dom_alloc_pad(dom, dom->virt_pgtab_end) )
         return -1;
+
+    printf("%s: init pgtab mem available:\n", __func__);
 
     for ( mod = 0; mod < dom->num_modules; mod++ )
     {
@@ -1275,6 +1311,8 @@ int xc_dom_build_image(struct xc_dom_image *dom)
         {
             if ( xc_dom_build_module(dom, mod) != 0 )
                 goto err;
+
+            printf("%s: mod[%u] built\n", __func__, mod);
 
             if ( mod == 0 )
             {

@@ -44,8 +44,11 @@ bool xen_domain_getinfolist(xen_vcpu *vcpu, struct xen_sysctl *ctl);
 
 /* domctls */
 bool xen_domain_createdomain(xen_vcpu *vcpu, struct xen_domctl *ctl);
+bool xen_domain_getdomaininfo(xen_vcpu *vcpu, struct xen_domctl *ctl);
 bool xen_domain_setvcpuaffinity(xen_vcpu *vcpu, struct xen_domctl *ctl);
 bool xen_domain_max_mem(xen_vcpu *vcpu, struct xen_domctl *ctl);
+bool xen_domain_set_tsc_info(xen_vcpu *vcpu, struct xen_domctl *ctl);
+bool xen_domain_shadow_op(xen_vcpu *vcpu, struct xen_domctl *ctl);
 
 /**
  * xen_domain
@@ -65,6 +68,10 @@ public:
     xen_domain(microv_domain *domain);
     ~xen_domain();
 
+    void share_root_page(uintptr_t this_gpa, uintptr_t hpa, uint32_t perm,
+                         uint32_t mtype);
+
+    void set_timer_mode(uint64_t mode);
     void queue_virq(int virq);
     void bind_vcpu(xen_vcpu *xen);
     void get_info(struct xen_domctl_getdomaininfo *info);
@@ -82,8 +89,12 @@ public:
     bool cputopoinfo(xen_vcpu *v, struct xen_sysctl_cputopoinfo *topo);
     bool setvcpuaffinity(xen_vcpu *v, struct xen_domctl_vcpuaffinity *aff);
     bool set_max_mem(xen_vcpu *v, struct xen_domctl_max_mem *max);
+    bool set_tsc_info(xen_vcpu *v, struct xen_domctl_tsc_info *info);
+    bool shadow_op(xen_vcpu *v, struct xen_domctl_shadow_op *shadow);
     bool physinfo(xen_vcpu *v, struct xen_sysctl *ctl);
     bool move_cpupool(xen_vcpu *v, struct xen_sysctl *ctl);
+
+    /* TODO: move to memory.cpp */
     bool get_sharing_freed_pages(xen_vcpu *v);
     bool get_sharing_shared_pages(xen_vcpu *v);
 
@@ -121,7 +132,7 @@ public:
     uint32_t m_free_pages{};
     uint32_t m_max_mfn{};
     uint32_t m_shr_pages{};   /* nr shared pages */
-    uint32_t m_out_pages{};   /* nr claimed-but-not-possessed pages */
+    int32_t m_out_pages{};   /* nr claimed-but-not-possessed pages */
     uint32_t m_paged_pages{}; /* nr paged-out pages */
 
     /* Scheduling */
@@ -136,16 +147,18 @@ public:
     std::unique_ptr<microv::ring<HVC_TX_SIZE>> m_hvc_tx_ring{};
 
     /* Shared info page */
-    unique_map<struct shared_info> m_shinfo{};
+    page_ptr<struct shared_info> m_shinfo_page;
+    struct shared_info *m_shinfo{};
     uintptr_t m_shinfo_gpfn{};
 
-    /* Event channel */
     std::unique_ptr<xen_evtchn> m_evtchn{};
+    std::unique_ptr<xen_memory> m_memory{};
 
     /* TSC params */
     uint64_t m_tsc_khz;
     uint64_t m_tsc_mul;
     uint64_t m_tsc_shift;
+    uint64_t m_timer_mode;
 
     /* NUMA parms */
     uint32_t m_numa_nodes;

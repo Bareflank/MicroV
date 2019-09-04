@@ -189,8 +189,8 @@ private:
     evtchn_fifo_control_block_t *m_ctl_blk{};
     unique_map<uint8_t> m_ctl_blk_ump{};
 
-    std::array<queue_t, EVTCHN_FIFO_MAX_QUEUES> m_queues{};
-    std::array<port_t, NR_VIRQS> m_virq_to_port;
+    std::array<queue_t, EVTCHN_FIFO_MAX_QUEUES> m_queues{0};
+    std::array<port_t, NR_VIRQS> m_virq_to_port{0};
 
     std::vector<unique_map<word_t>> m_word_pages{};
     std::vector<page_ptr<chan_t>> m_chan_pages{};

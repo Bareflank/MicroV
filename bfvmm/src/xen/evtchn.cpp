@@ -476,7 +476,17 @@ void xen_evtchn::set_callback_via(uint64_t via)
 void xen_evtchn::queue_virq(uint32_t virq)
 {
     auto port = m_virq_to_port[virq];
-    expects(port);
+
+    /*
+     * If the vcpu faults prior to binding the console virq, we
+     * will arrive here because of the ^C command to kill the vcpu.
+     * In this case we silently return.
+     */
+    if (!port && virq == VIRQ_CONSOLE) {
+        return;
+    } else {
+        expects(port);
+    }
 
     auto chan = this->port_to_chan(port);
     expects(chan);
@@ -503,7 +513,7 @@ void xen_evtchn::inject_virq(uint32_t virq)
 
 void xen_evtchn::setup_ctl_blk(microv_vcpu *uvv, uint64_t gfn, uint32_t offset)
 {
-    const auto gpa = gfn << ::x64::pt::page_shift;
+    const auto gpa = xen_addr(gfn);
     m_ctl_blk_ump = uvv->map_gpa_4k<uint8_t>(gpa);
 
     uint8_t *base = m_ctl_blk_ump.get() + offset;
@@ -729,7 +739,7 @@ void xen_evtchn::make_word_page(microv_vcpu *uvv, uintptr_t gfn)
 {
     expects(m_word_pages.size() < m_word_pages.capacity());
 
-    m_word_pages.push_back(uvv->map_gpa_4k<word_t>(gfn << 12));
+    m_word_pages.push_back(uvv->map_gpa_4k<word_t>(xen_addr(gfn)));
     m_allocated_words += words_per_page;
 }
 

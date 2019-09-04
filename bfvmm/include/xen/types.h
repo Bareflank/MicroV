@@ -37,8 +37,13 @@
 namespace bfvmm::intel_x64 {
     class vcpu;
     class hlt_handler;
+    class ept_violation_handler;
     class external_interrupt_handler;
     class wrmsr_handler;
+
+    namespace ept {
+        class mmap;
+    }
 }
 
 /* Microv vcpu and domain */
@@ -66,12 +71,14 @@ using microv_domain = microv::intel_x64::domain;
 
 using base_vcpu = bfvmm::intel_x64::vcpu;
 using hlt_handler = bfvmm::intel_x64::hlt_handler;
+using ept_violation_handler = bfvmm::intel_x64::ept_violation_handler;
 using interrupt_handler = bfvmm::intel_x64::external_interrupt_handler;
 using wrmsr_handler = bfvmm::intel_x64::wrmsr_handler;
 
 template<typename T>
 using unique_map = bfvmm::x64::unique_map<T>;
 
+using xen_mmap_t = bfvmm::intel_x64::ept::mmap;
 using xen_uuid_t = ::xen_uuid_t;
 using xen_domid_t = ::domid_t;
 using xen_vcpuid_t = uint32_t;

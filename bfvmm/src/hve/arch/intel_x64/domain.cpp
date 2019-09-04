@@ -24,6 +24,7 @@
 #include <bfhypercall.h>
 #include <bfbuilderinterface.h>
 #include <hve/arch/intel_x64/domain.h>
+#include <hve/arch/intel_x64/vcpu.h>
 #include <xen/domain.h>
 
 using namespace bfvmm::intel_x64;
@@ -87,6 +88,22 @@ domain::add_e820_entry(uintptr_t base, uintptr_t end, uint32_t type)
 {
     struct e820_entry_t ent = { base, end - base, type};
     m_e820.push_back(ent);
+}
+
+void
+domain::share_root_page(vcpu *root, uint64_t perm, uint64_t mtype)
+{
+    expects(root->is_root_vcpu());
+
+    auto this_gpa = root->rdx();
+    auto root_gpa = root->rcx();
+    auto [hpa, from] = root->gpa_to_hpa(root_gpa);
+
+    if (m_sod_info.is_xen_dom()) {
+        m_xen_dom->share_root_page(this_gpa, hpa, perm, mtype);
+    } else {
+        m_ept_map.map_4k(this_gpa, hpa, perm, mtype);
+    }
 }
 
 void

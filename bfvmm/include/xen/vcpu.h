@@ -26,8 +26,8 @@
 #include "domain.h"
 #include "flask.h"
 #include "gnttab.h"
-#include "physdev.h"
 #include "memory.h"
+#include "physdev.h"
 #include "version.h"
 
 #include <public/domctl.h>
@@ -41,8 +41,10 @@ namespace microv {
 class xen_vcpu {
 public:
     xen_vcpu(microv_vcpu *vcpu);
-    void queue_virq(uint32_t virq);
+
     bool is_xenstore();
+    void queue_virq(uint32_t virq);
+    void init_shared_info(uintptr_t shinfo_gpfn);
     uint64_t runstate_time(int state);
 
     /*
@@ -55,13 +57,14 @@ public:
     xen_vcpuid_t m_id{};
 
 private:
+    friend class xen_memory;
+
     bool m_debug_hypercalls{true};
     bool debug_hypercall(microv_vcpu *vcpu);
 
     int set_timer();
     void stop_timer();
     void steal_pet_ticks();
-    void init_shared_info(uintptr_t shinfo_gpfn);
     struct vcpu_time_info *vcpu_time();
 
     bool vmexit_save_tsc(base_vcpu *vcpu);
@@ -77,6 +80,7 @@ private:
     bool handle_pet(base_vcpu *vcpu);
     bool handle_hlt(base_vcpu *vcpu, hlt_handler::info_t &);
     bool handle_interrupt(base_vcpu *vcpu, interrupt_handler::info_t &);
+    bool init_hypercall_page(base_vcpu *vcpu, wrmsr_handler::info_t &);
 
     /* Hypercall handlers */
     bool hypercall(microv_vcpu *vcpu);
@@ -97,13 +101,11 @@ private:
     friend class xen_domain;
     friend class xen_flask;
     friend class xen_gnttab;
-    friend class xen_memory;
     friend class xen_version;
     friend class xen_physdev;
 
     std::unique_ptr<class xen_flask> m_flask;
     std::unique_ptr<class xen_gnttab> m_gnttab;
-    std::unique_ptr<class xen_memory> m_xenmem;
     std::unique_ptr<class xen_version> m_xenver;
     std::unique_ptr<class xen_physdev> m_physdev;
 

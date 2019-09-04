@@ -36,11 +36,11 @@
 #include <xen/domain.h>
 #include <xen/evtchn.h>
 #include <xen/gnttab.h>
+#include <xen/memory.h>
 #include <xen/time.h>
 #include <xen/util.h>
 #include <xen/vcpu.h>
 
-#define PAGE_SIZE 4096UL
 #define DEFAULT_MAPTRACK_FRAMES 1024
 #define DEFAULT_RAM_SIZE (256UL << 20)
 #define DEFAULT_EVTCHN_PORTS 1024
@@ -197,6 +197,48 @@ bool xen_domain_max_mem(xen_vcpu *vcpu, struct xen_domctl *ctl)
     return ret;
 }
 
+bool xen_domain_set_tsc_info(xen_vcpu *vcpu, struct xen_domctl *ctl)
+{
+    auto dom = get_xen_domain(ctl->domain);
+    if (!dom) {
+        bferror_nhex(0, "xen_domain not found:", ctl->domain);
+        return false;
+    }
+
+    auto ret = dom->set_tsc_info(vcpu, &ctl->u.tsc_info);
+    put_xen_domain(ctl->domain);
+
+    return ret;
+}
+
+bool xen_domain_shadow_op(xen_vcpu *vcpu, struct xen_domctl *ctl)
+{
+    auto dom = get_xen_domain(ctl->domain);
+    if (!dom) {
+        bferror_nhex(0, "xen_domain not found:", ctl->domain);
+        return false;
+    }
+
+    auto ret = dom->shadow_op(vcpu, &ctl->u.shadow_op);
+    put_xen_domain(ctl->domain);
+
+    return ret;
+}
+
+bool xen_domain_getdomaininfo(xen_vcpu *vcpu, struct xen_domctl *ctl)
+{
+    auto dom = get_xen_domain(ctl->domain);
+    if (!dom) {
+        bferror_nhex(0, "xen_domain not found:", ctl->domain);
+        return false;
+    }
+
+    dom->get_info(&ctl->u.getdomaininfo);
+    put_xen_domain(ctl->domain);
+
+    return true;
+}
+
 bool xen_domain_createdomain(xen_vcpu *vcpu, struct xen_domctl *ctl)
 {
     auto cd = &ctl->u.createdomain;
@@ -282,7 +324,9 @@ bool xen_domain_cputopoinfo(xen_vcpu *vcpu, xen_sysctl_t *ctl)
     return ret;
 }
 
-xen_domain::xen_domain(microv_domain *domain)
+xen_domain::xen_domain(microv_domain *domain) :
+    m_shinfo_page{make_page<struct shared_info>()},
+    m_shinfo{m_shinfo_page.get()}
 {
     m_uv_info = &domain->m_sod_info;
     m_uv_dom = domain;
@@ -324,6 +368,11 @@ xen_domain::xen_domain(microv_domain *domain)
     m_out_pages = 0;
     m_paged_pages = 0;
 
+    if (m_uv_info->xen_info_valid) {
+        m_total_pages = 0;
+        m_free_pages = 0;
+    }
+
     m_cpupool_id = xen_cpupool::id_none;
     xen_cpupool_add_domain(m_cpupool_id, m_id);
 
@@ -345,11 +394,21 @@ xen_domain::xen_domain(microv_domain *domain)
     m_numa_nodes = 1;
     m_ndvm = m_uv_info->is_ndvm();
     m_evtchn = std::make_unique<xen_evtchn>(this);
+    m_memory = std::make_unique<xen_memory>(this);
 }
 
 xen_domain::~xen_domain()
 {
     xen_cpupool_rm_domain(m_cpupool_id, m_id);
+}
+
+void xen_domain::share_root_page(uintptr_t gpa, uintptr_t hpa,
+                                 uint32_t perm, uint32_t mtype)
+{
+    xen_pfn_t gfn = xen_frame(gpa);
+    xen_pfn_t hfn = xen_frame(hpa);
+
+    m_memory->add_root_backed_page(gfn, perm, mtype, hfn);
 }
 
 class xen_vcpu *xen_domain::get_xen_vcpu() noexcept
@@ -371,6 +430,20 @@ void xen_domain::put_xen_vcpu() noexcept
     put_vcpu(m_uv_vcpuid);
 }
 
+void xen_domain::set_timer_mode(uint64_t mode)
+{
+    const char *mode_str[4] = {
+        "delay_for_missed_ticks",
+        "no_delay_for_missed_ticks",
+        "no_missed_ticks_pending",
+        "one_missed_tick_pending",
+    };
+
+    expects(mode < 4);
+    printv("domain: set timer mode to %s\n", mode_str[mode]);
+    m_timer_mode = mode;
+}
+
 void xen_domain::queue_virq(int virq)
 {
     m_evtchn->queue_virq(virq);
@@ -389,13 +462,23 @@ void xen_domain::bind_vcpu(xen_vcpu *xen)
     m_tsc_khz = xen->m_tsc_khz;
     m_tsc_mul = xen->m_tsc_mul;
     m_tsc_shift = xen->m_tsc_shift;
+
+    m_memory->add_ept_handlers(xen);
 }
 
 uint64_t xen_domain::init_shared_info(xen_vcpu *xen, uintptr_t shinfo_gpfn)
 {
-    expects(!m_shinfo);
+    /* Must reimplement this once xl-created doms are running... */
+    expects(!m_uv_info->xen_info_valid);
+    expects(m_shinfo);
 
-    m_shinfo = xen->m_uv_vcpu->map_gpa_4k<struct shared_info>(shinfo_gpfn << 12);
+    auto hpa = g_mm->virtptr_to_physint(m_shinfo);
+    auto gpa = xen_addr(shinfo_gpfn);
+
+    m_uv_dom->unmap(gpa);
+    m_uv_dom->map_4k_rw(gpa, hpa);
+    xen->m_uv_vcpu->invept();
+
     m_shinfo_gpfn = shinfo_gpfn;
 
     /* Set wallclock from start-of-day info */
@@ -411,6 +494,8 @@ uint64_t xen_domain::init_shared_info(xen_vcpu *xen, uintptr_t shinfo_gpfn)
 
     return now;
 }
+
+
 
 void xen_domain::update_wallclock(
     xen_vcpu *vcpu,
@@ -539,7 +624,34 @@ bool xen_domain::setvcpuaffinity(xen_vcpu *v,
 
 bool xen_domain::set_max_mem(xen_vcpu *v, struct xen_domctl_max_mem *mem)
 {
-    printv("max_mem: %luKB\n", mem->max_memkb);
+    printv("domain: max_mem: %lu MB\n", mem->max_memkb >> 8);
+    v->m_uv_vcpu->set_rax(0);
+    return true;
+}
+
+bool xen_domain::set_tsc_info(xen_vcpu *v, struct xen_domctl_tsc_info *info)
+{
+    printv("domain: settscinfo: mode:%u gtsc_khz:%u incarnation:%u elapsed_nsec:%lu\n",
+            info->tsc_mode, info->gtsc_khz, info->incarnation, info->elapsed_nsec);
+
+    /* 0 is the default when TSC is monotonic and guest access tsc directly */
+    expects(!info->tsc_mode);
+    info->gtsc_khz = m_tsc_khz;
+
+    v->m_uv_vcpu->set_rax(0);
+    return true;
+}
+
+bool xen_domain::shadow_op(xen_vcpu *v, struct xen_domctl_shadow_op *shadow)
+{
+    switch (shadow->op) {
+    case XEN_DOMCTL_SHADOW_OP_SET_ALLOCATION:
+        break;
+    default:
+        bferror_nhex(0, "unhandled shadow_op:", shadow->op);
+        return false;
+    }
+
     v->m_uv_vcpu->set_rax(0);
     return true;
 }
@@ -561,8 +673,8 @@ bool xen_domain::numainfo(xen_vcpu *v, struct xen_sysctl_numainfo *numa)
     if (numa->meminfo.p) {
         auto map = uvv->map_arg<xen_sysctl_meminfo_t>(numa->meminfo.p);
         auto mem = map.get();
-        mem->memsize = m_max_pages * PAGE_SIZE;
-        mem->memfree = m_free_pages * PAGE_SIZE;
+        mem->memsize = m_max_pages * XEN_PAGE_SIZE;
+        mem->memfree = m_free_pages * XEN_PAGE_SIZE;
     }
 
     if (numa->distance.p) {

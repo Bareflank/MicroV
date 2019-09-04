@@ -72,6 +72,21 @@ public:
     ///
     void add_e820_entry(uintptr_t base, uintptr_t end, uint32_t type);
 
+    /// Share root page
+    ///
+    /// Map a 4k page from the given root vcpu into this domain. The page
+    /// is not unmapped from the root domain.
+    ///
+    /// @expects root->is_root_vcpu()
+    /// @ensures
+    ///
+    /// @param root->rcx() - gpa that maps to the page to share
+    /// @param root->rdx() - gpa to map into this domain
+    /// @param perm the access permissions for the mapping
+    /// @param mtype the memory type for the mapping
+    ///
+    void share_root_page(vcpu *root, uint64_t perm, uint64_t mtype);
+
     /// Map 1g GPA to HPA (Read-Only)
     ///
     /// Maps a 1g guest physical address to a 1g host physical address
@@ -425,6 +440,8 @@ public:
     /* Start-of-day info */
     struct microv::domain_info *sod_info()
     { return &m_sod_info; }
+
+    std::mutex e820_mtx;
 
 private:
     friend class microv::xen_domain;

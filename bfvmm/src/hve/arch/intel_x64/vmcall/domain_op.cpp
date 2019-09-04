@@ -21,6 +21,7 @@
 
 #include <arch/x64/rdtsc.h>
 #include <bfhypercall.h>
+#include <bfvmm/hve/arch/intel_x64/ept/mmap.h>
 #include <hve/arch/intel_x64/vcpu.h>
 #include <hve/arch/intel_x64/domain.h>
 #include <hve/arch/intel_x64/vmcall/domain_op.h>
@@ -30,6 +31,15 @@
 
 namespace microv::intel_x64
 {
+
+using namespace bfvmm::intel_x64;
+using namespace bfvmm::intel_x64::ept;
+using namespace microv;
+
+static constexpr uint32_t PERM_RWE = mmap::attr_type::read_write_execute;
+static constexpr uint32_t PERM_RW = mmap::attr_type::read_write;
+static constexpr uint32_t PERM_RO = mmap::attr_type::read_only;
+static constexpr uint32_t TYPE_WB = mmap::memory_type::write_back;
 
 static bool foreign_domain(vcpu *vcpu)
 {
@@ -58,6 +68,7 @@ vmcall_domain_op_handler::domain_op__create_domain(vcpu *vcpu)
         info.wc_nsec = arg->wc_nsec;
         info.tsc = arg->tsc;
         info.ram = arg->ram;
+        /* TODO explicitly make xen_info_valid=0 for clarity-sake */
 
         vcpu->set_rax(domain::generate_domainid());
 
@@ -257,8 +268,7 @@ vmcall_domain_op_handler::domain_op__share_page_r(vcpu *vcpu)
             return;
         }
 
-        auto [hpa, unused] = vcpu->gpa_to_hpa(vcpu->rcx());
-        dom->map_4k_r(vcpu->rdx(), hpa);
+        dom->share_root_page(vcpu, PERM_RO, TYPE_WB);
         vcpu->set_rax(SUCCESS);
     }
     catchall({
@@ -279,8 +289,7 @@ vmcall_domain_op_handler::domain_op__share_page_rw(vcpu *vcpu)
             return;
         }
 
-        auto [hpa, unused] = vcpu->gpa_to_hpa(vcpu->rcx());
-        dom->map_4k_rw(vcpu->rdx(), hpa);
+        dom->share_root_page(vcpu, PERM_RW, TYPE_WB);
         vcpu->set_rax(SUCCESS);
     }
     catchall({
@@ -301,8 +310,7 @@ vmcall_domain_op_handler::domain_op__share_page_rwe(vcpu *vcpu)
             return;
         }
 
-        auto [hpa, unused] = vcpu->gpa_to_hpa(vcpu->rcx());
-        dom->map_4k_rwe(vcpu->rdx(), hpa);
+        dom->share_root_page(vcpu, PERM_RWE, TYPE_WB);
         vcpu->set_rax(SUCCESS);
     }
     catchall({
@@ -316,8 +324,9 @@ vmcall_domain_op_handler::domain_op__donate_page_r(vcpu *vcpu)
     // TODO:
     //
     // We need to remove the gpa from the current domain before the gpa is
-    // donated to the other guest. For now, this function is identical to
-    // sharing as both domains have access to the backing page.
+    // donated to the other guest. This requires a TLB shootdown as long
+    // as each vcpu in the root domain shares one EPT. For now, this function
+    // is identical to sharing as both domains have access to the backing page.
     //
 
     try {
@@ -330,8 +339,7 @@ vmcall_domain_op_handler::domain_op__donate_page_r(vcpu *vcpu)
             return;
         }
 
-        auto [hpa, unused] = vcpu->gpa_to_hpa(vcpu->rcx());
-        dom->map_4k_r(vcpu->rdx(), hpa);
+        dom->share_root_page(vcpu, PERM_RO, TYPE_WB);
         vcpu->set_rax(SUCCESS);
     }
     catchall({
@@ -345,8 +353,9 @@ vmcall_domain_op_handler::domain_op__donate_page_rw(vcpu *vcpu)
     // TODO:
     //
     // We need to remove the gpa from the current domain before the gpa is
-    // donated to the other guest. For now, this function is identical to
-    // sharing as both domains have access to the backing page.
+    // donated to the other guest. This requires a TLB shootdown as long
+    // as each vcpu in the root domain shares one EPT. For now, this function
+    // is identical to sharing as both domains have access to the backing page.
     //
 
     try {
@@ -359,8 +368,7 @@ vmcall_domain_op_handler::domain_op__donate_page_rw(vcpu *vcpu)
             return;
         }
 
-        auto [hpa, unused] = vcpu->gpa_to_hpa(vcpu->rcx());
-        dom->map_4k_rw(vcpu->rdx(), hpa);
+        dom->share_root_page(vcpu, PERM_RW, TYPE_WB);
         vcpu->set_rax(SUCCESS);
     }
     catchall({
@@ -374,8 +382,9 @@ vmcall_domain_op_handler::domain_op__donate_page_rwe(vcpu *vcpu)
     // TODO:
     //
     // We need to remove the gpa from the current domain before the gpa is
-    // donated to the other guest. For now, this function is identical to
-    // sharing as both domains have access to the backing page.
+    // donated to the other guest. This requires a TLB shootdown as long
+    // as each vcpu in the root domain shares one EPT. For now, this function
+    // is identical to sharing as both domains have access to the backing page.
     //
 
     try {
@@ -388,8 +397,7 @@ vmcall_domain_op_handler::domain_op__donate_page_rwe(vcpu *vcpu)
             return;
         }
 
-        auto [hpa, unused] = vcpu->gpa_to_hpa(vcpu->rcx());
-        dom->map_4k_rwe(vcpu->rdx(), hpa);
+        dom->share_root_page(vcpu, PERM_RWE, TYPE_WB);
         vcpu->set_rax(SUCCESS);
     }
     catchall({
