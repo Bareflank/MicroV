@@ -75,71 +75,9 @@ private_init_xue(struct xue *xue) noexcept
         return ENTRY_SUCCESS;
     }
 
-    using attr_t = bfvmm::x64::cr3::mmap::attr_type;
-    using mem_t = bfvmm::x64::cr3::mmap::memory_type;
-
-    /*
-     * Copy the kernel's xue instance by value. This invalidates
-     * every pointer field, so we have to remap them into our
-     * address space below.
-     */
     memcpy(&g_xue, xue, sizeof(*xue));
     xue_init_ops(&g_xue, &g_xue_ops);
 
-    auto mmio_hva = g_mm->alloc_map(xue->xhc_mmio_size);
-    for (auto i = 0; i < xue->xhc_mmio_size; i += XUE_PAGE_SIZE) {
-        g_cr3->map_4k(reinterpret_cast<uint64_t>(mmio_hva) + i,
-                      xue->xhc_mmio_phys + i,
-                      attr_t::read_write,
-                      mem_t::uncacheable);
-    }
-
-    g_xue.xhc_mmio = reinterpret_cast<uint8_t *>(mmio_hva);
-
-    const struct xue_dbc_reg *kreg = xue->dbc_reg;
-    const struct xue_dbc_ctx *kctx = xue->dbc_ctx;
-
-    uint64_t ctx_hpa = kreg->cp;
-    uint64_t erst_hpa = kreg->erstba;
-    uint64_t etrb_hpa = kreg->erdp;
-    uint64_t otrb_hpa = ((uint64_t)kctx->ep_out[3] << 32) | kctx->ep_out[2];
-    uint64_t itrb_hpa = ((uint64_t)kctx->ep_in[3] << 32) | kctx->ep_in[2];
-
-    etrb_hpa &= ~0xFFFULL;
-    otrb_hpa &= ~0xFFFULL;
-    itrb_hpa &= ~0xFFFULL;
-
-    static_assert(XUE_PAGE_SIZE == BAREFLANK_PAGE_SIZE);
-
-    auto ctx = g_mm->alloc_map(XUE_PAGE_SIZE);
-    auto erst = g_mm->alloc_map(XUE_PAGE_SIZE);
-    auto etrb = g_mm->alloc_map(XUE_TRB_RING_CAP * sizeof(struct xue_trb));
-    auto otrb = g_mm->alloc_map(XUE_TRB_RING_CAP * sizeof(struct xue_trb));
-    auto itrb = g_mm->alloc_map(XUE_TRB_RING_CAP * sizeof(struct xue_trb));
-
-    g_cr3->map_4k(ctx, ctx_hpa);
-    g_cr3->map_4k(erst, erst_hpa);
-
-    for (auto i = 0; i < XUE_TRB_RING_CAP * sizeof(struct xue_trb); i += 4096) {
-        g_cr3->map_4k((uint64_t)etrb + i, etrb_hpa + i);
-        g_cr3->map_4k((uint64_t)otrb + i, otrb_hpa + i);
-        g_cr3->map_4k((uint64_t)itrb + i, itrb_hpa + i);
-    }
-
-    g_xue.dbc_ctx = (struct xue_dbc_ctx *)ctx;
-    g_xue.dbc_erst = (struct xue_erst_segment *)erst;
-    g_xue.dbc_ering.trb = (struct xue_trb *)etrb;
-    g_xue.dbc_oring.trb = (struct xue_trb *)otrb;
-    g_xue.dbc_iring.trb = (struct xue_trb *)itrb;
-
-    auto out_work = g_mm->alloc_map(XUE_WORK_RING_CAP);
-    for (auto i = 0; i < XUE_WORK_RING_CAP; i += XUE_PAGE_SIZE) {
-        g_cr3->map_4k((uint64_t)out_work + i, g_xue.dbc_owork.dma + i);
-    }
-
-    g_xue.dbc_owork.buf = (uint8_t *)out_work;
-    g_xue.dbc_reg = (struct xue_dbc_reg *)((uint64_t)mmio_hva +
-                                           xue->xhc_dbc_offset);
     return ENTRY_SUCCESS;
 }
 

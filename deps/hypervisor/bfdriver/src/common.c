@@ -179,6 +179,113 @@ private_add_tss_mdl(void)
     return BF_SUCCESS;
 }
 
+#ifdef USE_XUE
+
+static int64_t add_xue_dma_to_mm(uint64_t virt, uint64_t order)
+{
+    int64_t ret = 0;
+    struct memory_descriptor md = {0, 0, 0};
+    uint64_t pages = 1UL << order;
+    uint64_t i = 0;
+
+    for (i = 0; i < pages; i++) {
+        md.virt = virt + (i * XUE_PAGE_SIZE);
+        md.phys = g_xue.ops->virt_to_dma(g_xue.sys, (const void *)md.virt);
+        md.type = MEMORY_TYPE_R | MEMORY_TYPE_W;
+
+        ret = platform_call_vmm_on_core(0, BF_REQUEST_ADD_MDL, (uintptr_t)&md, 0);
+        if (ret != MEMORY_MANAGER_SUCCESS) {
+            return ret;
+        }
+    }
+
+    return BF_SUCCESS;
+}
+
+static int64_t add_xue_mmio_to_mm(struct xue *xue)
+{
+    int64_t ret = 0;
+    struct memory_descriptor md = {0, 0, 0};
+    uint64_t pages = xue->xhc_mmio_size / XUE_PAGE_SIZE;
+    uint64_t i = 0;
+
+    if (xue->xhc_mmio_size & (XUE_PAGE_SIZE - 1)) {
+        pages++;
+    }
+
+    for (; i < pages; i++) {
+        md.virt = (uint64_t)(xue->xhc_mmio) + (i * XUE_PAGE_SIZE);
+        md.phys = xue->xhc_mmio_phys + (i * XUE_PAGE_SIZE);
+        md.type = MEMORY_TYPE_R | MEMORY_TYPE_W | MEMORY_TYPE_UC;
+
+        ret = platform_call_vmm_on_core(0, BF_REQUEST_ADD_MDL, (uintptr_t)&md, 0);
+        if (ret != MEMORY_MANAGER_SUCCESS) {
+            return ret;
+        }
+    }
+
+    return BF_SUCCESS;
+}
+
+static void add_xue_mdl(void)
+{
+    int64_t ret = 0;
+
+    if (!g_xue.open) {
+        return;
+    }
+
+    ret = add_xue_mmio_to_mm(&g_xue);
+    if (ret != BF_SUCCESS) {
+        BFALERT("%s: failed to add mmio\n", __func__);
+        return;
+    }
+
+    ret = add_xue_dma_to_mm((uint64_t)g_xue.dbc_ctx, 0);
+    if (ret != BF_SUCCESS) {
+        BFALERT("%s: failed to add dbc_ctx\n", __func__);
+        return;
+    }
+
+    ret = add_xue_dma_to_mm((uint64_t)g_xue.dbc_erst, 0);
+    if (ret != BF_SUCCESS) {
+        BFALERT("%s: failed to add dbc_erst\n", __func__);
+        return;
+    }
+
+    ret = add_xue_dma_to_mm((uint64_t)g_xue.dbc_ering.trb, XUE_TRB_RING_ORDER);
+    if (ret != BF_SUCCESS) {
+        BFALERT("%s: failed to add dbc_ering.trb\n", __func__);
+        return;
+    }
+
+    ret = add_xue_dma_to_mm((uint64_t)g_xue.dbc_oring.trb, XUE_TRB_RING_ORDER);
+    if (ret != BF_SUCCESS) {
+        BFALERT("%s: failed to add dbc_oring.trb\n", __func__);
+        return;
+    }
+
+    ret = add_xue_dma_to_mm((uint64_t)g_xue.dbc_iring.trb, XUE_TRB_RING_ORDER);
+    if (ret != BF_SUCCESS) {
+        BFALERT("%s: failed to add dbc_iring.trb\n", __func__);
+        return;
+    }
+
+    ret = add_xue_dma_to_mm((uint64_t)g_xue.dbc_owork.buf, XUE_WORK_RING_ORDER);
+    if (ret != BF_SUCCESS) {
+        BFALERT("%s: failed to add dbc_owork.buf\n", __func__);
+        return;
+    }
+
+    ret = add_xue_dma_to_mm((uint64_t)g_xue.dbc_str, 0);
+    if (ret != BF_SUCCESS) {
+        BFALERT("%s: failed to add dbc_str\n", __func__);
+        return;
+    }
+}
+
+#endif
+
 int64_t
 private_add_modules_mdl(void)
 {
@@ -382,6 +489,10 @@ common_load_vmm(void)
         if (g_xue.sysid != xue_sysid_windows) {
             xue_open(&g_xue, &g_xue_ops, NULL);
         }
+    }
+
+    if (g_xue.open) {
+        add_xue_mdl();
     }
 
     ret = platform_call_vmm_on_core(0, BF_REQUEST_INIT_XUE,  (uint64_t)&g_xue, 0);

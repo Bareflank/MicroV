@@ -58,14 +58,19 @@ setup()
 
     using namespace bfvmm::x64;
     using attr_type = bfvmm::x64::cr3::mmap::attr_type;
+    using cache_type = bfvmm::x64::cr3::mmap::memory_type;
 
     for (const auto &md : g_mm->descriptors()) {
+        auto cache = (md.type & MEMORY_TYPE_UC) ?
+                      cache_type::uncacheable   :
+                      cache_type::write_back;
+
         if (md.type == (MEMORY_TYPE_R | MEMORY_TYPE_E)) {
-            g_cr3->map_4k(md.virt, md.phys, attr_type::read_execute);
+            g_cr3->map_4k(md.virt, md.phys, attr_type::read_execute, cache);
             continue;
         }
 
-        g_cr3->map_4k(md.virt, md.phys, attr_type::read_write);
+        g_cr3->map_4k(md.virt, md.phys, attr_type::read_write, cache);
     }
 
     g_ia32_efer_msr |= msrs::ia32_efer::lme::mask;

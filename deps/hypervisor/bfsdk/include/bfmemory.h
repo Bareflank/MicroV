@@ -42,6 +42,7 @@ extern "C" {
 #define MEMORY_TYPE_R 0x1U
 #define MEMORY_TYPE_W 0x2U
 #define MEMORY_TYPE_E 0x4U
+#define MEMORY_TYPE_UC 0x8U
 
 /* @endcond */
 
