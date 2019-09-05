@@ -347,7 +347,7 @@ void iommu::map_dma(uint32_t bus, uint32_t devfn, dom_t *dom)
         flush_slpt = false;
     } else {
         cte_set_tt(cte, CTE_TT_U);
-        cte_set_slptptr(cte, dom->ept().eptp());
+        cte_set_slptptr(cte, dom->ept().pml4_phys());
         cte_set_aw(cte, m_aw);
     }
     cte_set_did(cte, this->did(dom));

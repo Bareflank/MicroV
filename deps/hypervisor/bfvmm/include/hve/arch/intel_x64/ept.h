@@ -47,11 +47,9 @@ public:
     /// @expects
     /// @ensures
     ///
-    /// @param vcpu the vcpu object for this rdmsr handler
+    /// @param vcpu the vcpu object for this EPT handler
     ///
-    ept_handler(
-        gsl::not_null<vcpu *> vcpu);
-
+    ept_handler(gsl::not_null<vcpu *> vcpu);
 
     /// Destructor
     ///
@@ -70,9 +68,21 @@ public:
     ///
     void set_eptp(ept::mmap *map);
 
+    /// invept
+    ///
+    /// Invalidate processor cache entries referenced by the EPTP field
+    /// managed by this class.
+    //
+    /// @expects
+    /// @ensures
+    ///
+    void invept();
+
 private:
 
     vcpu *m_vcpu;
+    uint64_t m_eptp;
+    void (*invept_single)(uintptr_t);
 
 public:
 

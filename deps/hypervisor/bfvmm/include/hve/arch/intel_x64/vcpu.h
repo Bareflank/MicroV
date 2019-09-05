@@ -955,6 +955,16 @@ public:
     ///
     VIRTUAL void disable_ept();
 
+    /// invept
+    ///
+    /// Invalidate processor cache entries referenced by the EPTP vmcs field
+    /// of this vcpu.
+    ///
+    /// @expects
+    /// @ensures
+    ///
+    VIRTUAL void invept();
+
     //==========================================================================
     // VPID
     //==========================================================================

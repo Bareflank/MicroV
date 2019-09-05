@@ -114,14 +114,15 @@ public:
         free_page(m_pml4.virt_addr.data());
     }
 
-    /// EPTP
+    /// PML4 physical address
     ///
     /// @expects
     /// @ensures
     ///
-    /// @return Returns the value that should be written into EPTP
+    /// @return Returns the value that should be written into the physical
+    /// address field of the EPTP vmcs field
     ///
-    uintptr_t eptp()
+    uintptr_t pml4_phys()
     {
         std::lock_guard lock(m_mutex);
 
