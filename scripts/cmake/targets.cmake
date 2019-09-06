@@ -214,7 +214,7 @@ endif()
 # Add xenstore VM targets
 if(VM STREQUAL xsvm)
     add_custom_target(xsvm-xen-recfg
-        COMMAND ${CMAKE_COMMAND} -E chdir ${BR_SRC_DIR} make O=${BR_BIN_DIR} xen-reconfigure
+        COMMAND ${CMAKE_COMMAND} -E chdir ${BR_SRC_DIR} make O=${BR_BIN} xen-reconfigure
         DEPENDS xtools_x86_64-userspace-elf
         USES_TERMINAL
     )
@@ -223,7 +223,7 @@ if(VM STREQUAL xsvm)
         COMMENT "Reconfigure xen tools"
     )
     add_custom_target(xsvm-xen-rebuild
-        COMMAND ${CMAKE_COMMAND} -E chdir ${BR_SRC_DIR} make O=${BR_BIN_DIR} xen-rebuild
+        COMMAND ${CMAKE_COMMAND} -E chdir ${BR_SRC_DIR} make O=${BR_BIN} xen-rebuild
         DEPENDS xtools_x86_64-userspace-elf
         USES_TERMINAL
     )
