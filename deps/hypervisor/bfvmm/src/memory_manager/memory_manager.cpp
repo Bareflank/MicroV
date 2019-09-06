@@ -210,6 +210,7 @@ memory_manager::alloc(size_type size) noexcept
         }
 
         if (size > BAREFLANK_PAGE_SIZE) {
+            huge_pool_bytes -= next_power_2(size);
             return static_cast<pointer>(g_huge_pool.allocate(size));
         }
 
@@ -230,6 +231,7 @@ memory_manager::alloc_page() noexcept
     std::lock_guard<std::mutex> lock(alloc_page_mutex());
 
     try {
+        page_pool_bytes -= BAREFLANK_PAGE_SIZE;
         return static_cast<pointer>(g_page_pool.allocate(BAREFLANK_PAGE_SIZE));
     }
     catch (...)
@@ -295,6 +297,7 @@ memory_manager::free(pointer ptr) noexcept
     }
 
     if (g_huge_pool.contains(ptr)) {
+        huge_pool_bytes += g_huge_pool.size(ptr);
         return g_huge_pool.deallocate(ptr);
     }
 
@@ -305,6 +308,10 @@ void
 memory_manager::free_page(pointer ptr) noexcept
 {
     std::lock_guard<std::mutex> lock(alloc_page_mutex());
+
+    auto size = g_page_pool.contains(ptr) ? g_page_pool.size(ptr) : 0;
+    page_pool_bytes += size;
+
     return g_page_pool.deallocate(ptr);
 }
 
@@ -385,6 +392,18 @@ memory_manager::size_map(pointer ptr) const noexcept
     }
 
     return 0;
+}
+
+uint64_t memory_manager::page_pool_pages() const noexcept
+{
+    std::lock_guard<std::mutex> lock(alloc_page_mutex());
+    return page_pool_bytes >> 12;
+}
+
+uint64_t memory_manager::huge_pool_pages() const noexcept
+{
+    std::lock_guard<std::mutex> lock(alloc_mutex());
+    return huge_pool_bytes >> 12;
 }
 
 memory_manager::integer_pointer
@@ -517,7 +536,9 @@ memory_manager::memory_manager() noexcept :
     slab100(0x100, 0),
     slab200(0x200, 0),
     slab400(0x400, 0),
-    slab800(0x800, 0)
+    slab800(0x800, 0),
+    page_pool_bytes{sizeof(g_page_pool_buffer)},
+    huge_pool_bytes{sizeof(g_huge_pool_buffer)}
 { }
 
 }
