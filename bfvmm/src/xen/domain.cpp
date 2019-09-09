@@ -417,7 +417,7 @@ void xen_domain::update_wallclock(
     const struct xenpf_settime64 *time) noexcept
 {
     m_shinfo->wc_version++;
-    wmb();
+    ::intel_x64::wmb();
 
     uint64_t x = s_to_ns(time->secs) + time->nsecs - time->system_time;
     uint32_t y = do_div(x, 1000000000);
@@ -426,7 +426,7 @@ void xen_domain::update_wallclock(
     m_shinfo->wc_sec_hi = (uint32_t)(x >> 32);
     m_shinfo->wc_nsec = (uint32_t)y;
 
-    wmb();
+    ::intel_x64::wmb();
     m_shinfo->wc_version++;
 }
 

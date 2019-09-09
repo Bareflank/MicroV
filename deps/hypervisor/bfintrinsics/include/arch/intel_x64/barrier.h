@@ -22,8 +22,23 @@
 #ifndef BARRIER_INTEL_X64_H
 #define BARRIER_INTEL_X64_H
 
-#define rmb() do { __asm volatile("lfence" ::: "memory"); } while (0)
-#define wmb() do { __asm volatile("sfence" ::: "memory"); } while (0)
-#define mb()  do { __asm volatile("mfence" ::: "memory"); } while (0)
+namespace intel_x64 {
+
+inline void rmb()
+{
+    __asm volatile("lfence" ::: "memory");
+}
+
+inline void wmb()
+{
+    __asm volatile("sfence" ::: "memory");
+}
+
+inline void mb()
+{
+    __asm volatile("mfence" ::: "memory");
+}
+
+}
 
 #endif

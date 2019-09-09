@@ -145,8 +145,8 @@ extern "C" {
 #endif
 
 static inline int xue_sys_init(void *) { return 1; }
-static inline void xue_sys_sfence(void *) { wmb(); }
-static inline void xue_sys_lfence(void *) { rmb(); }
+static inline void xue_sys_sfence(void *) { ::intel_x64::wmb(); }
+static inline void xue_sys_lfence(void *) { ::intel_x64::rmb(); }
 static inline void xue_sys_pause(void *) { _pause(); }
 static inline void xue_sys_clflush(void *, void *ptr) { _clflush(ptr); }
 

@@ -32,23 +32,23 @@ extern "C" void _clflushopt(void *p) noexcept;
 
 static inline void __clwb(void *p) noexcept
 {
-    mb();
+    ::intel_x64::mb();
     _clwb(p);
-    mb();
+    ::intel_x64::mb();
 }
 
 static inline void __clflush(void *p) noexcept
 {
-    mb();
+    ::intel_x64::mb();
     _clflush(p);
-    mb();
+    ::intel_x64::mb();
 }
 
 static inline void __clflushopt(void *p) noexcept
 {
-    mb();
+    ::intel_x64::mb();
     _clflushopt(p);
-    mb();
+    ::intel_x64::mb();
 }
 
 inline void (*clwb)(void *) noexcept;

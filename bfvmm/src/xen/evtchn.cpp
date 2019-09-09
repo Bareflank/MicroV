@@ -631,7 +631,7 @@ int xen_evtchn::upcall(chan_t *chan)
 
     this->word_set_pending(word);
     m_ctl_blk->ready |= (1UL << p);
-    wmb();
+    ::intel_x64::wmb();
 
     return 0;
 }

@@ -369,13 +369,13 @@ void iommu::map_dma(uint32_t bus, uint32_t devfn, dom_t *dom)
 void iommu::enable_dma_remapping()
 {
     this->write_rtaddr(g_mm->virtptr_to_physint(m_root.get()));
-    wmb();
+    ::intel_x64::wmb();
 
     /* Set the root table pointer */
     uint32_t gsts = this->read_gsts() & 0x96FF'FFFF;
     uint32_t gcmd = gsts | gcmd_srtp;
     this->write_gcmd(gcmd);
-    mb();
+    ::intel_x64::mb();
     while ((this->read_gsts() & gsts_rtps) != gsts_rtps) {
         ::intel_x64::pause();
     }
@@ -383,7 +383,7 @@ void iommu::enable_dma_remapping()
     /* Globally invalidate the context-cache */
     uint64_t ccmd = ccmd_icc | ccmd_cirg_global;
     this->write_ccmd(ccmd);
-    mb();
+    ::intel_x64::mb();
     while ((this->read_ccmd() & ccmd_icc) != 0) {
         ::intel_x64::pause();
     }
@@ -397,7 +397,7 @@ void iommu::enable_dma_remapping()
     iotlb |= iotlb_dr;
     iotlb |= iotlb_dw;
     this->write_iotlb(iotlb);
-    mb();
+    ::intel_x64::mb();
     while ((this->read_iotlb() & iotlb_ivt) != 0) {
         ::intel_x64::pause();
     }
@@ -407,9 +407,9 @@ void iommu::enable_dma_remapping()
     /* Enable DMA translation */
     gsts = this->read_gsts() & 0x96FF'FFFF;
     gcmd = gsts | gcmd_te;
-    mb();
+    ::intel_x64::mb();
     this->write_gcmd(gcmd);
-    mb();
+    ::intel_x64::mb();
     while ((this->read_gsts() & gsts_tes) != gsts_tes) {
         ::intel_x64::pause();
     }
@@ -443,9 +443,9 @@ void iommu::clflush_slpt()
          * clflush any time an entry is changed.
          */
 
-        mb();
+        ::intel_x64::mb();
         ::x64::cache::wbinvd();
-        mb();
+        ::intel_x64::mb();
     }
 }
 

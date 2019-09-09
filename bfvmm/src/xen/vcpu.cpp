@@ -657,11 +657,11 @@ void xen_vcpu::update_runstate(int new_state)
     const uint64_t prev = kvti->tsc_timestamp;
 
     kvti->version++;
-    wmb();
+    ::intel_x64::wmb();
     const auto next = ::x64::read_tsc::get();
     kvti->system_time += tsc_to_ns(next - prev, shft, mult);
     kvti->tsc_timestamp = next;
-    wmb();
+    ::intel_x64::wmb();
     kvti->version++;
 
     if (GSL_UNLIKELY(!m_user_vti)) {
@@ -671,10 +671,10 @@ void xen_vcpu::update_runstate(int new_state)
     /* Update userspace time info */
     auto uvti = m_user_vti.get();
     uvti->version++;
-    wmb();
+    ::intel_x64::wmb();
     uvti->system_time = kvti->system_time;
     uvti->tsc_timestamp = next;
-    wmb();
+    ::intel_x64::wmb();
     uvti->version++;
 
     if (GSL_UNLIKELY(!m_runstate)) {
@@ -692,11 +692,11 @@ void xen_vcpu::update_runstate(int new_state)
 
     if (GSL_LIKELY(m_runstate_assist)) {
         m_runstate->state_entry_time = XEN_RUNSTATE_UPDATE;
-        wmb();
+        ::intel_x64::wmb();
         m_runstate->state_entry_time |= kvti->system_time;
-        wmb();
+        ::intel_x64::wmb();
         m_runstate->state_entry_time &= ~XEN_RUNSTATE_UPDATE;
-        wmb();
+        ::intel_x64::wmb();
     } else {
         m_runstate->state_entry_time = kvti->system_time;
     }

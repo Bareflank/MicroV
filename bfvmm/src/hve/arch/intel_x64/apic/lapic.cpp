@@ -77,7 +77,7 @@ static void xapic_write_icr(uintptr_t base, uint64_t val)
     auto lo_addr = reinterpret_cast<volatile uint32_t *>(base | icr_lo);
 
     *hi_addr = (uint32_t)(val >> 32);
-    wmb();
+    ::intel_x64::wmb();
     *lo_addr = (uint32_t)val;
 }
 
