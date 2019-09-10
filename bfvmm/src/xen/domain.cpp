@@ -45,6 +45,14 @@
 #define DEFAULT_RAM_SIZE (256UL << 20)
 #define DEFAULT_EVTCHN_PORTS 1024
 
+#ifndef typeof
+#define typeof decltype
+#endif
+
+#include <public/arch-x86/hvm/save.h>
+#include <public/hvm/save.h>
+
+
 namespace microv {
 
 using ref_t = std::atomic<uint64_t>;
@@ -163,6 +171,50 @@ bool xen_domain_getinfolist(xen_vcpu *vcpu, struct xen_sysctl *ctl)
     gdil->num_domains = num;
     uvv->set_rax(0);
     return true;
+}
+
+bool xen_domain_gethvmcontext(xen_vcpu *vcpu, struct xen_domctl *ctl)
+{
+    expects(vcpu->is_xenstore());
+
+    auto domid = ctl->domain;
+    if (domid == DOMID_SELF) {
+        domid = vcpu->m_xen_dom->m_id;
+    }
+
+    auto dom = get_xen_domain(domid);
+    if (!dom) {
+        bferror_nhex(0, "xen_domain not found:", domid);
+        return false;
+    }
+
+    auto ctx = &ctl->u.hvmcontext;
+    auto ret = dom->gethvmcontext(vcpu, ctx);
+    put_xen_domain(domid);
+
+    return ret;
+}
+
+bool xen_domain_sethvmcontext(xen_vcpu *vcpu, struct xen_domctl *ctl)
+{
+    expects(vcpu->is_xenstore());
+
+    auto domid = ctl->domain;
+    if (domid == DOMID_SELF) {
+        domid = vcpu->m_xen_dom->m_id;
+    }
+
+    auto dom = get_xen_domain(domid);
+    if (!dom) {
+        bferror_nhex(0, "xen_domain not found:", domid);
+        return false;
+    }
+
+    auto ctx = &ctl->u.hvmcontext;
+    auto ret = dom->sethvmcontext(vcpu, ctx);
+    put_xen_domain(domid);
+
+    return ret;
 }
 
 bool xen_domain_setvcpuaffinity(xen_vcpu *vcpu, struct xen_domctl *ctl)
@@ -594,6 +646,303 @@ bool xen_domain::move_cpupool(xen_vcpu *v, struct xen_sysctl *ctl)
     }
 
     m_cpupool_id = op->cpupool_id;
+    uvv->set_rax(0);
+    return true;
+}
+
+/* Note that the microv_domain and/or vcpu will need this
+ * as well */
+static void init_hvm_hw_cpu(struct hvm_hw_cpu *cpu)
+{
+    memset(cpu, 0, sizeof(*cpu));
+
+    cpu->cr0 = 0x10037;
+    cpu->cr4 = 0x02000;
+
+    cpu->cs_limit = 0xFFFFFFFF;
+    cpu->ds_limit = 0xFFFFFFFF;
+    cpu->es_limit = 0xFFFFFFFF;
+    cpu->ss_limit = 0xFFFFFFFF;
+    cpu->tr_limit = 0x67;
+
+    cpu->cs_arbytes = 0xc09b;
+    cpu->ds_arbytes = 0xc093;
+    cpu->es_arbytes = 0xc093;
+    cpu->ss_arbytes = 0xc093;
+
+    cpu->fs_arbytes = 0x10000;
+    cpu->gs_arbytes = 0x10000;
+    cpu->ldtr_arbytes = 0x10000;
+    cpu->tr_arbytes = 0x008b;
+
+    cpu->tsc = ::x64::read_tsc::get();
+    cpu->rflags = 2;
+}
+
+static void init_hvm_hw_lapic(struct hvm_hw_lapic *lapic)
+{
+    memset(lapic, 0, sizeof(*lapic));
+
+    lapic->apic_base_msr = 0xFEE00000;
+    lapic->apic_base_msr |= (1UL << 11); /* apic enable */
+    lapic->apic_base_msr |= (1UL << 10); /* x2apic enable */
+    lapic->apic_base_msr |= (1UL << 8);  /* BSP */
+}
+
+/* TODO consolidate with mtrr_handler. These are different */
+static void init_hvm_hw_mtrr(struct hvm_hw_mtrr *mtrr)
+{
+    memset(mtrr, 0, sizeof(*mtrr));
+
+    mtrr->msr_pat_cr = 0x0606060606060606;
+
+    /* MTRR caps:
+     *
+     * 1 variable range
+     * disable fixed ranges
+     * disable wc
+     * disable smrr
+     */
+    mtrr->msr_mtrr_cap = 1;
+
+    /* Enable variable range with WB default */
+    mtrr->msr_mtrr_def_type = 0x806;
+}
+
+/*
+ * We need to update our own copy of HVM_SAVE fields in response
+ * to the toolstack sethvmcontext
+ */
+static void dump_hvm_hw_mtrr(struct hvm_hw_mtrr *mtrr)
+{
+    printv("  MTRR: pat:%p\n", mtrr->msr_pat_cr);
+    printv("  MTRR: cap:%p\n", mtrr->msr_mtrr_cap);
+    printv("  MTRR: def:%p\n", mtrr->msr_mtrr_def_type);
+
+    for (auto i = 0; i < MTRR_VCNT; i += 2) {
+        auto base = mtrr->msr_mtrr_var[i];
+        auto mask = mtrr->msr_mtrr_var[i + 1];
+        printv("  MTRR: physbase[%d]:%p physmask[%d]:%p\n", i, base, i, mask);
+    }
+
+    for (auto i = 0; i < NUM_FIXED_MSR; i++) {
+        printv("  MTRR: fixed[%d]:%p\n", i, mtrr->msr_mtrr_fixed[i]);
+    }
+}
+
+static void dump_hvm_hw_cpu(struct hvm_hw_cpu *cpu)
+{
+    printv("  CPU: rax:%p\n", cpu->rax);
+    printv("  CPU: rbx:%p\n", cpu->rbx);
+    printv("  CPU: rcx:%p\n", cpu->rcx);
+    printv("  CPU: rdx:%p\n", cpu->rdx);
+    printv("  CPU: rbp:%p\n", cpu->rbp);
+    printv("  CPU: rsi:%p\n", cpu->rsi);
+    printv("  CPU: rdi:%p\n", cpu->rdi);
+    printv("  CPU: rsp:%p\n", cpu->rsp);
+    printv("  CPU: r8:%p\n", cpu->r8);
+    printv("  CPU: r9:%p\n", cpu->r9);
+    printv("  CPU: r10:%p\n", cpu->r10);
+    printv("  CPU: r11:%p\n", cpu->r11);
+    printv("  CPU: r12:%p\n", cpu->r12);
+    printv("  CPU: r13:%p\n", cpu->r13);
+    printv("  CPU: r14:%p\n", cpu->r14);
+    printv("  CPU: r15:%p\n", cpu->r15);
+
+    printv("  CPU: rip:%p\n", cpu->rip);
+    printv("  CPU: rflags:%p\n", cpu->rflags);
+
+    printv("  CPU: cr0:%p\n", cpu->cr0);
+    printv("  CPU: cr2:%p\n", cpu->cr2);
+    printv("  CPU: cr3:%p\n", cpu->cr3);
+    printv("  CPU: cr4:%p\n", cpu->cr4);
+
+    printv("  CPU: dr0:%p\n", cpu->dr0);
+    printv("  CPU: dr1:%p\n", cpu->dr1);
+    printv("  CPU: dr2:%p\n", cpu->dr2);
+    printv("  CPU: dr3:%p\n", cpu->dr3);
+    printv("  CPU: dr6:%p\n", cpu->dr6);
+    printv("  CPU: dr7:%p\n", cpu->dr7);
+
+    printv("  CPU: cs_sel:%p\n", cpu->cs_sel);
+    printv("  CPU: ds_sel:%p\n", cpu->ds_sel);
+    printv("  CPU: es_sel:%p\n", cpu->es_sel);
+    printv("  CPU: fs_sel:%p\n", cpu->fs_sel);
+    printv("  CPU: gs_sel:%p\n", cpu->gs_sel);
+    printv("  CPU: ss_sel:%p\n", cpu->ss_sel);
+    printv("  CPU: tr_sel:%p\n", cpu->tr_sel);
+    printv("  CPU: ldtr_sel:%p\n", cpu->ldtr_sel);
+
+    printv("  CPU: cs_limit:%p\n", cpu->cs_limit);
+    printv("  CPU: ds_limit:%p\n", cpu->ds_limit);
+    printv("  CPU: es_limit:%p\n", cpu->es_limit);
+    printv("  CPU: fs_limit:%p\n", cpu->fs_limit);
+    printv("  CPU: gs_limit:%p\n", cpu->gs_limit);
+    printv("  CPU: ss_limit:%p\n", cpu->ss_limit);
+    printv("  CPU: tr_limit:%p\n", cpu->tr_limit);
+    printv("  CPU: ldtr_limit:%p\n", cpu->ldtr_limit);
+    printv("  CPU: idtr_limit:%p\n", cpu->idtr_limit);
+    printv("  CPU: gdtr_limit:%p\n", cpu->gdtr_limit);
+
+    printv("  CPU: cs_base:%p\n", cpu->cs_base);
+    printv("  CPU: ds_base:%p\n", cpu->ds_base);
+    printv("  CPU: es_base:%p\n", cpu->es_base);
+    printv("  CPU: fs_base:%p\n", cpu->fs_base);
+    printv("  CPU: gs_base:%p\n", cpu->gs_base);
+    printv("  CPU: ss_base:%p\n", cpu->ss_base);
+    printv("  CPU: tr_base:%p\n", cpu->tr_base);
+    printv("  CPU: ldtr_base:%p\n", cpu->ldtr_base);
+    printv("  CPU: idtr_base:%p\n", cpu->idtr_base);
+    printv("  CPU: gdtr_base:%p\n", cpu->gdtr_base);
+
+    printv("  CPU: cs_arbytes:%p\n", cpu->cs_arbytes);
+    printv("  CPU: ds_arbytes:%p\n", cpu->ds_arbytes);
+    printv("  CPU: es_arbytes:%p\n", cpu->es_arbytes);
+    printv("  CPU: fs_arbytes:%p\n", cpu->fs_arbytes);
+    printv("  CPU: gs_arbytes:%p\n", cpu->gs_arbytes);
+    printv("  CPU: ss_arbytes:%p\n", cpu->ss_arbytes);
+    printv("  CPU: tr_arbytes:%p\n", cpu->tr_arbytes);
+    printv("  CPU: ldtr_arbytes:%p\n", cpu->ldtr_arbytes);
+
+    printv("  CPU: sysenter_cs:%p\n", cpu->sysenter_cs);
+    printv("  CPU: sysenter_esp:%p\n", cpu->sysenter_esp);
+    printv("  CPU: sysenter_eip:%p\n", cpu->sysenter_eip);
+
+    printv("  CPU: shadow_gs:%p\n", cpu->shadow_gs);
+
+    printv("  CPU: msr_flags:%p\n", cpu->msr_flags);
+    printv("  CPU: msr_lstar:%p\n", cpu->msr_lstar);
+    printv("  CPU: msr_star:%p\n", cpu->msr_star);
+    printv("  CPU: msr_cstar:%p\n", cpu->msr_cstar);
+    printv("  CPU: msr_syscall_mask:%p\n", cpu->msr_syscall_mask);
+}
+
+bool xen_domain::gethvmcontext(xen_vcpu *v,
+                               struct xen_domctl_hvmcontext *ctx)
+{
+    auto uvv = v->m_uv_vcpu;
+
+    /* The HVM context we provide is (in order):
+     *
+     * HVM_SAVE_TYPE(HEADER)
+     * HVM_SAVE_TYPE(CPU)
+     * HVM_SAVE_TYPE(LAPIC)
+     * HVM_SAVE_TYPE(MTRR)
+     * HVM_SAVE_TYPE(END)
+     *
+     * We may need to provide XSAVE in the cpu portion but it looks
+     * like that requires XRSTOR exiting to be enabled.
+     */
+
+    constexpr auto DESC_SIZE = sizeof(struct hvm_save_descriptor);
+    auto size = DESC_SIZE + HVM_SAVE_LENGTH(HEADER);
+    size += DESC_SIZE + HVM_SAVE_LENGTH(CPU);
+    size += DESC_SIZE + HVM_SAVE_LENGTH(LAPIC);
+    size += DESC_SIZE + HVM_SAVE_LENGTH(MTRR);
+    size += DESC_SIZE + HVM_SAVE_LENGTH(END);
+
+    /* Asking for the buffer size */
+    if (!ctx->buffer.p) {
+        ctx->size = size;
+        uvv->set_rax(0);
+        return true;
+    }
+
+    if (ctx->size != size) {
+        uvv->set_rax(-ENOSPC);
+        return true;
+    }
+
+    auto map = uvv->map_gva_4k<uint8_t>(ctx->buffer.p, size);
+    auto buf = map.get();
+    auto off = 0UL;
+
+    auto hsd = reinterpret_cast<struct hvm_save_descriptor *>(buf + off);
+    hsd->typecode = HVM_SAVE_CODE(HEADER);
+    hsd->instance = 0;
+    hsd->length = HVM_SAVE_LENGTH(HEADER);
+    off += sizeof(*hsd);
+
+    auto hdr = reinterpret_cast<struct hvm_save_header *>(buf + off);
+    hdr->magic = HVM_FILE_MAGIC;
+    hdr->version = HVM_FILE_VERSION;
+    hdr->changeset = 0xBF000000CAFEBABE;
+    hdr->cpuid = ::x64::cpuid::eax::get(1);
+    hdr->gtsc_khz = m_tsc_khz;
+    off += HVM_SAVE_LENGTH(HEADER);
+
+    hsd = reinterpret_cast<struct hvm_save_descriptor *>(buf + off);
+    hsd->typecode = HVM_SAVE_CODE(CPU);
+    hsd->instance = 0;
+    hsd->length = HVM_SAVE_LENGTH(CPU);
+    off += sizeof(*hsd);
+
+    auto cpu = reinterpret_cast<struct hvm_hw_cpu *>(buf + off);
+    init_hvm_hw_cpu(cpu);
+    off += HVM_SAVE_LENGTH(CPU);
+
+    hsd = reinterpret_cast<struct hvm_save_descriptor *>(buf + off);
+    hsd->typecode = HVM_SAVE_CODE(LAPIC);
+    hsd->instance = 0;
+    hsd->length = HVM_SAVE_LENGTH(LAPIC);
+    off += sizeof(*hsd);
+
+    auto lapic = reinterpret_cast<struct hvm_hw_lapic *>(buf + off);
+    init_hvm_hw_lapic(lapic);
+    off += HVM_SAVE_LENGTH(LAPIC);
+
+    hsd = reinterpret_cast<struct hvm_save_descriptor *>(buf + off);
+    hsd->typecode = HVM_SAVE_CODE(MTRR);
+    hsd->instance = 0;
+    hsd->length = HVM_SAVE_LENGTH(MTRR);
+    off += sizeof(*hsd);
+
+    auto mtrr = reinterpret_cast<struct hvm_hw_mtrr *>(buf + off);
+    init_hvm_hw_mtrr(mtrr);
+    off += HVM_SAVE_LENGTH(MTRR);
+
+    hsd = reinterpret_cast<struct hvm_save_descriptor *>(buf + off);
+    hsd->typecode = HVM_SAVE_CODE(END);
+    hsd->instance = 0;
+    hsd->length = HVM_SAVE_LENGTH(END);
+
+    return true;
+}
+
+bool xen_domain::sethvmcontext(xen_vcpu *v,
+                               struct xen_domctl_hvmcontext *ctx)
+{
+    expects(ctx->size);
+    expects(ctx->buffer.p);
+
+    auto uvv = v->m_uv_vcpu;
+    auto map = uvv->map_gva_4k<uint8_t>(ctx->buffer.p, ctx->size);
+    auto buf = map.get();
+    auto off = 0U;
+
+    auto hsd = reinterpret_cast<struct hvm_save_descriptor *>(buf + off);
+    while (hsd->typecode != HVM_SAVE_CODE(END)) {
+        printv("HVM set type: %d\n", hsd->typecode);
+        printv("HVM set size: %d\n", hsd->length);
+
+        off += sizeof(*hsd);
+        switch (hsd->typecode) {
+        case HVM_SAVE_CODE(MTRR):
+            dump_hvm_hw_mtrr((struct hvm_hw_mtrr *)(buf + off));
+            break;
+        case HVM_SAVE_CODE(CPU):
+            dump_hvm_hw_cpu((struct hvm_hw_cpu *)(buf + off));
+            break;
+        case HVM_SAVE_CODE(HEADER):
+            break;
+        default:
+            return false;
+        }
+
+        off += hsd->length;
+        hsd = reinterpret_cast<struct hvm_save_descriptor *>(buf + off);
+    }
+
     uvv->set_rax(0);
     return true;
 }

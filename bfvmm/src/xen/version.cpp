@@ -142,7 +142,7 @@ bool xen_version::capabilities()
 {
     //bfalert_info(0, "xen_version:capabilities");
 
-    const char *str = "hvm-3.0-x86_64";
+    const char *str = "hvm-3.0-x86_64 hvm-3.0-x86_32";
     auto caps = m_uv_vcpu->map_arg<xen_capabilities_info_t>(m_uv_vcpu->rsi());
     std::strncpy((char *)caps.get(), str, sizeof(*caps.get()));
     m_uv_vcpu->set_rax(0);

@@ -503,6 +503,10 @@ bool xen_vcpu::handle_domctl()
             return xen_domain_shadow_op(this, ctl.get());
         case XEN_DOMCTL_getdomaininfo:
             return xen_domain_getdomaininfo(this, ctl.get());
+        case XEN_DOMCTL_gethvmcontext:
+            return xen_domain_gethvmcontext(this, ctl.get());
+        case XEN_DOMCTL_sethvmcontext:
+            return xen_domain_sethvmcontext(this, ctl.get());
         default:
             bfalert_nhex(0, "unimplemented domctl", ctl->cmd);
             return false;
@@ -946,6 +950,10 @@ bool xen_vcpu::debug_hypercall(microv_vcpu *vcpu)
     }
 
     if (rax == __HYPERVISOR_memory_op && rdi == XENMEM_add_to_physmap_batch) {
+        return false;
+    }
+
+    if (rax == __HYPERVISOR_memory_op && rdi == XENMEM_remove_from_physmap) {
         return false;
     }
 

@@ -45,6 +45,8 @@ bool xen_domain_getinfolist(xen_vcpu *vcpu, struct xen_sysctl *ctl);
 /* domctls */
 bool xen_domain_createdomain(xen_vcpu *vcpu, struct xen_domctl *ctl);
 bool xen_domain_getdomaininfo(xen_vcpu *vcpu, struct xen_domctl *ctl);
+bool xen_domain_gethvmcontext(xen_vcpu *vcpu, struct xen_domctl *ctl);
+bool xen_domain_sethvmcontext(xen_vcpu *vcpu, struct xen_domctl *ctl);
 bool xen_domain_setvcpuaffinity(xen_vcpu *vcpu, struct xen_domctl *ctl);
 bool xen_domain_max_mem(xen_vcpu *vcpu, struct xen_domctl *ctl);
 bool xen_domain_set_tsc_info(xen_vcpu *vcpu, struct xen_domctl *ctl);
@@ -88,6 +90,8 @@ public:
     bool numainfo(xen_vcpu *v, struct xen_sysctl_numainfo *numa);
     bool cputopoinfo(xen_vcpu *v, struct xen_sysctl_cputopoinfo *topo);
     bool setvcpuaffinity(xen_vcpu *v, struct xen_domctl_vcpuaffinity *aff);
+    bool gethvmcontext(xen_vcpu *v, struct xen_domctl_hvmcontext *ctx);
+    bool sethvmcontext(xen_vcpu *v, struct xen_domctl_hvmcontext *ctx);
     bool set_max_mem(xen_vcpu *v, struct xen_domctl_max_mem *max);
     bool set_tsc_info(xen_vcpu *v, struct xen_domctl_tsc_info *info);
     bool shadow_op(xen_vcpu *v, struct xen_domctl_shadow_op *shadow);
