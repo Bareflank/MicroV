@@ -31,6 +31,8 @@
 #include "version.h"
 
 #include <public/domctl.h>
+#include <public/hvm/hvm_op.h>
+#include <public/hvm/params.h>
 #include <public/io/console.h>
 #include <public/platform.h>
 #include <public/vcpu.h>
@@ -81,6 +83,9 @@ private:
     bool handle_hlt(base_vcpu *vcpu, hlt_handler::info_t &);
     bool handle_interrupt(base_vcpu *vcpu, interrupt_handler::info_t &);
     bool init_hypercall_page(base_vcpu *vcpu, wrmsr_handler::info_t &);
+
+    bool hvm_set_param(xen_hvm_param_t *param);
+    bool hvm_get_param(xen_hvm_param_t *param);
 
     /* Hypercall handlers */
     bool hypercall(microv_vcpu *vcpu);

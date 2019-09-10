@@ -296,64 +296,78 @@ bool xen_vcpu::handle_xen_version()
     })
 }
 
-static bool valid_cb_via(uint64_t via)
+bool xen_vcpu::hvm_set_param(xen_hvm_param_t *param)
 {
-    const auto type = (via & HVM_PARAM_CALLBACK_IRQ_TYPE_MASK) >> 56;
-    if (type != HVM_PARAM_CALLBACK_TYPE_VECTOR) {
+    switch (param->index) {
+    case HVM_PARAM_CALLBACK_IRQ:
+        return m_xen_dom->m_evtchn->set_upcall_vector(this, param);
+    case HVM_PARAM_PAE_ENABLED:
+        m_uv_vcpu->set_rax(0);
+        return true;
+    case HVM_PARAM_TIMER_MODE:
+        m_xen_dom->set_timer_mode(param->value);
+        m_uv_vcpu->set_rax(0);
+        return true;
+    case HVM_PARAM_NESTEDHVM:
+        if (param->value != 0) {
+            m_uv_vcpu->set_rax(-EINVAL);
+        } else {
+            m_uv_vcpu->set_rax(0);
+        }
+        return true;
+    case HVM_PARAM_ALTP2M:
+        if (param->value != 0) {
+            m_uv_vcpu->set_rax(-EINVAL);
+        } else {
+            m_uv_vcpu->set_rax(0);
+        }
+        return true;
+    case HVM_PARAM_STORE_PFN:
+        bfdebug_nhex(0, "xenstore pfn", param->value);
+        break;
+    case HVM_PARAM_BUFIOREQ_PFN:
+        bfdebug_nhex(0, "bufioreq pfn", param->value);
+        break;
+    case HVM_PARAM_IOREQ_PFN:
+        bfdebug_nhex(0, "ioreq pfn", param->value);
+        break;
+    case HVM_PARAM_CONSOLE_PFN:
+        bfdebug_nhex(0, "console pfn", param->value);
+        break;
+    case HVM_PARAM_PAGING_RING_PFN:
+        bfdebug_nhex(0, "paging ring pfn", param->value);
+        break;
+    case HVM_PARAM_MONITOR_RING_PFN:
+        bfdebug_nhex(0, "monitor ring pfn", param->value);
+        break;
+    case HVM_PARAM_SHARING_RING_PFN:
+        bfdebug_nhex(0, "sharing ring pfn", param->value);
+        break;
+    case HVM_PARAM_IDENT_PT:
+        /* only needed if unrestricted guest is not available */
+        break;
+    case HVM_PARAM_STORE_EVTCHN:
+        bfdebug_nhex(0, "xenstore evtchn", param->value);
+        break;
+    case HVM_PARAM_CONSOLE_EVTCHN:
+        bfdebug_nhex(0, "console evtchn", param->value);
+        break;
+    default:
+        bferror_nhex(0, "unknown hvm set param", param->index);
         return false;
     }
 
-    const auto vector = via & 0xFFU;
-    if (vector < 0x20U || vector > 0xFFU) {
-        return false;
-    }
-
+    m_uv_vcpu->set_rax(0);
     return true;
 }
 
 bool xen_vcpu::handle_hvm_op()
 {
+    auto param = m_uv_vcpu->map_arg<xen_hvm_param_t>(m_uv_vcpu->rsi());
+
     switch (m_uv_vcpu->rdi()) {
     case HVMOP_set_param:
-        try {
-            auto arg = m_uv_vcpu->map_arg<xen_hvm_param_t>(m_uv_vcpu->rsi());
-            switch (arg->index) {
-            case HVM_PARAM_CALLBACK_IRQ:
-                if (valid_cb_via(arg->value)) {
-                    m_xen_dom->m_evtchn->set_callback_via(arg->value & 0xFF);
-                    m_uv_vcpu->set_rax(0);
-                } else {
-                    m_uv_vcpu->set_rax(-EINVAL);
-                }
-                return true;
-            case HVM_PARAM_PAE_ENABLED:
-                m_uv_vcpu->set_rax(0);
-                return true;
-            case HVM_PARAM_TIMER_MODE:
-                m_xen_dom->set_timer_mode(arg->value);
-                m_uv_vcpu->set_rax(0);
-                return true;
-            case HVM_PARAM_NESTEDHVM:
-                if (arg->value != 0) {
-                    m_uv_vcpu->set_rax(-EINVAL);
-                } else {
-                    m_uv_vcpu->set_rax(0);
-                }
-                return true;
-            case HVM_PARAM_ALTP2M:
-                if (arg->value != 0) {
-                    m_uv_vcpu->set_rax(-EINVAL);
-                } else {
-                    m_uv_vcpu->set_rax(0);
-                }
-                return true;
-            default:
-                bfalert_info(0, "Unsupported HVM set_param");
-                return false;
-            }
-        } catchall({
-            return false;
-        })
+        return this->hvm_set_param(param.get());
     case HVMOP_get_param:
         expects(!m_uv_dom->initdom());
 //        return false;
@@ -379,8 +393,8 @@ bool xen_vcpu::handle_hvm_op()
 //                return false;
 //            }
 
-            m_uv_vcpu->set_rax(-ENOSYS);
-            return true;
+        m_uv_vcpu->set_rax(-ENOSYS);
+        return true;
         //} catchall({
         //    return false;
         //})

@@ -24,6 +24,8 @@
 
 #include "types.h"
 #include <public/event_channel.h>
+#include <public/hvm/hvm_op.h>
+#include <public/hvm/params.h>
 
 namespace microv {
 
@@ -122,7 +124,7 @@ public:
     bool close(xen_vcpu *v, evtchn_close_t *ec);
     bool send(xen_vcpu *v, evtchn_send_t *es);
 
-    void set_callback_via(uint64_t via);
+    bool set_upcall_vector(xen_vcpu *v, xen_hvm_param_t *param);
     void queue_virq(uint32_t virq);
     void inject_virq(uint32_t virq);
     void unbind_interdomain(evtchn_port_t port, xen_domid_t remote_domid);
@@ -196,7 +198,7 @@ private:
     std::vector<page_ptr<chan_t>> m_chan_pages{};
 
     xen_domain *m_xen_dom{};
-    uint64_t m_cb_via{};
+    uint64_t m_upcall_vec{};
     port_t m_nr_ports{};
     port_t m_port_end{1};
 

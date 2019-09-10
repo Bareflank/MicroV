@@ -151,6 +151,25 @@ xen_evtchn::xen_evtchn(xen_domain *dom) : m_xen_dom{dom}
     this->setup_ports();
 }
 
+bool xen_evtchn::set_upcall_vector(xen_vcpu *v, xen_hvm_param_t *param)
+{
+    auto type = (param->value & HVM_PARAM_CALLBACK_IRQ_TYPE_MASK) >> 56;
+    if (type != HVM_PARAM_CALLBACK_TYPE_VECTOR) {
+        v->m_uv_vcpu->set_rax(-EINVAL);
+        return true;
+    }
+
+    auto vector = param->value & 0xFFU;
+    if (vector < 0x20U || vector > 0xFFU) {
+        v->m_uv_vcpu->set_rax(-EINVAL);
+        return true;
+    }
+
+    m_upcall_vec = vector;
+    v->m_uv_vcpu->set_rax(0);
+    return true;
+}
+
 bool xen_evtchn::init_control(xen_vcpu *v, evtchn_init_control_t *eic)
 {
     expects(eic->offset <= (PAGE_SIZE - sizeof(evtchn_fifo_control_block_t)));
@@ -468,11 +487,6 @@ bool xen_evtchn::send(xen_vcpu *v, evtchn_send_t *es)
     return true;
 }
 
-void xen_evtchn::set_callback_via(uint64_t via)
-{
-    m_cb_via = via;
-}
-
 void xen_evtchn::queue_virq(uint32_t virq)
 {
     auto port = m_virq_to_port[virq];
@@ -568,7 +582,7 @@ void xen_evtchn::queue_upcall(chan_t *chan)
             return;
         }
 
-        xenv->m_uv_vcpu->queue_external_interrupt(m_cb_via);
+        xenv->m_uv_vcpu->queue_external_interrupt(m_upcall_vec);
         xend->put_xen_vcpu();
     }
 }
@@ -584,7 +598,7 @@ void xen_evtchn::inject_upcall(chan_t *chan)
             return;
         }
 
-        xenv->m_uv_vcpu->inject_external_interrupt(m_cb_via);
+        xenv->m_uv_vcpu->inject_external_interrupt(m_upcall_vec);
         xend->put_xen_vcpu();
     }
 }
