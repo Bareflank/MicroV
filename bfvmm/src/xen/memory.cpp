@@ -269,6 +269,17 @@ bool xenmem_remove_from_physmap(xen_vcpu *vcpu)
     return vcpu->m_xen_dom->m_memory->remove_from_physmap(vcpu, map.get());
 }
 
+bool xenmem_acquire_resource(xen_vcpu *vcpu)
+{
+    auto uvv = vcpu->m_uv_vcpu;
+    auto res = uvv->map_arg<xen_mem_acquire_resource_t>(uvv->rsi());
+
+    printv("%s: domid:0x%x type:%u id:%u nr_frames:%u\n",
+            __func__, res->domid, res->type, res->id, res->nr_frames);
+
+    return false;
+}
+
 /* class xen_memory */
 xen_memory::xen_memory(xen_domain *dom) :
     m_xen_dom{dom},

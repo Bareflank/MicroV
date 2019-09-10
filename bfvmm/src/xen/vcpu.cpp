@@ -252,6 +252,8 @@ bool xen_vcpu::handle_memory_op()
             return xenmem_populate_physmap(this);
         case XENMEM_remove_from_physmap:
             return xenmem_remove_from_physmap(this);
+        case XENMEM_acquire_resource:
+            return xenmem_acquire_resource(this);
         default:
             break;
         }

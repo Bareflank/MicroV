@@ -174,6 +174,8 @@ int xc_dom_boot_image(struct xc_dom_image *dom)
     if ( (rc = dom->arch_hooks->bootearly(dom)) != 0 )
         return rc;
 
+    printf("bootearly done\n");
+
     /* collect some info */
     rc = xc_domain_getinfo(dom->xch, dom->guest_domid, 1, &info);
     if ( rc < 0 )
@@ -196,25 +198,36 @@ int xc_dom_boot_image(struct xc_dom_image *dom)
     if ( !xc_dom_compat_check(dom) )
         return -1;
 
+    printf("sanity checks done\n");
+
     /* initial mm setup */
     if ( (rc = xc_dom_update_guest_p2m(dom)) != 0 )
         return rc;
+    printf("guest p2m updated\n");
     if ( dom->arch_hooks->setup_pgtables )
         if ( (rc = dom->arch_hooks->setup_pgtables(dom)) != 0 )
             return rc;
+
+    printf("pgtables setup done\n");
 
     /* start info page */
     if ( dom->arch_hooks->start_info )
         dom->arch_hooks->start_info(dom);
 
+    printf("start_info page setup\n");
+
     /* hypercall page */
     if ( (rc = setup_hypercall_page(dom)) != 0 )
         return rc;
+    printf("hypercall page setup\n");
     xc_dom_log_memory_footprint(dom);
 
     /* misc x86 stuff */
     if ( (rc = dom->arch_hooks->bootlate(dom)) != 0 )
         return rc;
+    printf("bootlate done\n");
+
+    printf("running vcpu\n");
 
     /* let the vm run */
     if ( (rc = dom->arch_hooks->vcpu(dom)) != 0 )

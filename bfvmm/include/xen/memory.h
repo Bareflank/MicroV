@@ -39,6 +39,7 @@ bool xenmem_decrease_reservation(xen_vcpu *v);
 bool xenmem_claim_pages(xen_vcpu *v);
 bool xenmem_populate_physmap(xen_vcpu *v);
 bool xenmem_remove_from_physmap(xen_vcpu *v);
+bool xenmem_acquire_resource(xen_vcpu *v);
 
 static inline xen_pfn_t xen_frame(uintptr_t addr) noexcept
 {
