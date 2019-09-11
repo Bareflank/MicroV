@@ -520,18 +520,17 @@ void xen_domain::bind_vcpu(xen_vcpu *xen)
 
 uint64_t xen_domain::init_shared_info(xen_vcpu *xen, uintptr_t shinfo_gpfn)
 {
-    /* Must reimplement this once xl-created doms are running... */
-    expects(!m_uv_info->xen_info_valid);
     expects(m_shinfo);
 
-    auto hpa = g_mm->virtptr_to_physint(m_shinfo);
-    auto gpa = xen_addr(shinfo_gpfn);
+    const auto perms = pg_perm_rw;
+    const auto mtype = pg_mtype_wb;
 
-    m_uv_dom->unmap(gpa);
-    m_uv_dom->map_4k_rw(gpa, hpa);
+    if (m_memory->find_page(shinfo_gpfn)) {
+        m_memory->remove_page(shinfo_gpfn);
+    }
+
+    m_memory->add_vmm_backed_page(shinfo_gpfn, perms, mtype, m_shinfo);
     xen->m_uv_vcpu->invept();
-
-    m_shinfo_gpfn = shinfo_gpfn;
 
     /* Set wallclock from start-of-day info */
     auto now = ::x64::read_tsc::get();
@@ -543,6 +542,7 @@ uint64_t xen_domain::init_shared_info(xen_vcpu *xen, uintptr_t shinfo_gpfn)
     m_shinfo->wc_nsec = gsl::narrow_cast<uint32_t>(wc_nsec);
     m_shinfo->wc_sec = gsl::narrow_cast<uint32_t>(wc_sec);
     m_shinfo->wc_sec_hi = gsl::narrow_cast<uint32_t>(wc_sec >> 32);
+    m_shinfo_gpfn = shinfo_gpfn;
 
     return now;
 }
@@ -715,106 +715,106 @@ static void init_hvm_hw_mtrr(struct hvm_hw_mtrr *mtrr)
  */
 static void dump_hvm_hw_mtrr(struct hvm_hw_mtrr *mtrr)
 {
-    printv("  MTRR: pat:%p\n", mtrr->msr_pat_cr);
-    printv("  MTRR: cap:%p\n", mtrr->msr_mtrr_cap);
-    printv("  MTRR: def:%p\n", mtrr->msr_mtrr_def_type);
+    printv("  MTRR: pat:0x%lx\n", mtrr->msr_pat_cr);
+    printv("  MTRR: cap:0x%lx\n", mtrr->msr_mtrr_cap);
+    printv("  MTRR: def:0x%lx\n", mtrr->msr_mtrr_def_type);
 
     for (auto i = 0; i < MTRR_VCNT; i += 2) {
         auto base = mtrr->msr_mtrr_var[i];
         auto mask = mtrr->msr_mtrr_var[i + 1];
-        printv("  MTRR: physbase[%d]:%p physmask[%d]:%p\n", i, base, i, mask);
+        printv("  MTRR: physbase[%d]:0x%lx physmask[%d]:0x%lx\n", i, base, i, mask);
     }
 
     for (auto i = 0; i < NUM_FIXED_MSR; i++) {
-        printv("  MTRR: fixed[%d]:%p\n", i, mtrr->msr_mtrr_fixed[i]);
+        printv("  MTRR: fixed[%d]:0x%lx\n", i, mtrr->msr_mtrr_fixed[i]);
     }
 }
 
 static void dump_hvm_hw_cpu(struct hvm_hw_cpu *cpu)
 {
-    printv("  CPU: rax:%p\n", cpu->rax);
-    printv("  CPU: rbx:%p\n", cpu->rbx);
-    printv("  CPU: rcx:%p\n", cpu->rcx);
-    printv("  CPU: rdx:%p\n", cpu->rdx);
-    printv("  CPU: rbp:%p\n", cpu->rbp);
-    printv("  CPU: rsi:%p\n", cpu->rsi);
-    printv("  CPU: rdi:%p\n", cpu->rdi);
-    printv("  CPU: rsp:%p\n", cpu->rsp);
-    printv("  CPU: r8:%p\n", cpu->r8);
-    printv("  CPU: r9:%p\n", cpu->r9);
-    printv("  CPU: r10:%p\n", cpu->r10);
-    printv("  CPU: r11:%p\n", cpu->r11);
-    printv("  CPU: r12:%p\n", cpu->r12);
-    printv("  CPU: r13:%p\n", cpu->r13);
-    printv("  CPU: r14:%p\n", cpu->r14);
-    printv("  CPU: r15:%p\n", cpu->r15);
+    printv("  CPU: rax:0x%lx\n", cpu->rax);
+    printv("  CPU: rbx:0x%lx\n", cpu->rbx);
+    printv("  CPU: rcx:0x%lx\n", cpu->rcx);
+    printv("  CPU: rdx:0x%lx\n", cpu->rdx);
+    printv("  CPU: rbp:0x%lx\n", cpu->rbp);
+    printv("  CPU: rsi:0x%lx\n", cpu->rsi);
+    printv("  CPU: rdi:0x%lx\n", cpu->rdi);
+    printv("  CPU: rsp:0x%lx\n", cpu->rsp);
+    printv("  CPU: r8:0x%lx\n", cpu->r8);
+    printv("  CPU: r9:0x%lx\n", cpu->r9);
+    printv("  CPU: r10:0x%lx\n", cpu->r10);
+    printv("  CPU: r11:0x%lx\n", cpu->r11);
+    printv("  CPU: r12:0x%lx\n", cpu->r12);
+    printv("  CPU: r13:0x%lx\n", cpu->r13);
+    printv("  CPU: r14:0x%lx\n", cpu->r14);
+    printv("  CPU: r15:0x%lx\n", cpu->r15);
 
-    printv("  CPU: rip:%p\n", cpu->rip);
-    printv("  CPU: rflags:%p\n", cpu->rflags);
+    printv("  CPU: rip:0x%lx\n", cpu->rip);
+    printv("  CPU: rflags:0x%lx\n", cpu->rflags);
 
-    printv("  CPU: cr0:%p\n", cpu->cr0);
-    printv("  CPU: cr2:%p\n", cpu->cr2);
-    printv("  CPU: cr3:%p\n", cpu->cr3);
-    printv("  CPU: cr4:%p\n", cpu->cr4);
+    printv("  CPU: cr0:0x%lx\n", cpu->cr0);
+    printv("  CPU: cr2:0x%lx\n", cpu->cr2);
+    printv("  CPU: cr3:0x%lx\n", cpu->cr3);
+    printv("  CPU: cr4:0x%lx\n", cpu->cr4);
 
-    printv("  CPU: dr0:%p\n", cpu->dr0);
-    printv("  CPU: dr1:%p\n", cpu->dr1);
-    printv("  CPU: dr2:%p\n", cpu->dr2);
-    printv("  CPU: dr3:%p\n", cpu->dr3);
-    printv("  CPU: dr6:%p\n", cpu->dr6);
-    printv("  CPU: dr7:%p\n", cpu->dr7);
+    printv("  CPU: dr0:0x%lx\n", cpu->dr0);
+    printv("  CPU: dr1:0x%lx\n", cpu->dr1);
+    printv("  CPU: dr2:0x%lx\n", cpu->dr2);
+    printv("  CPU: dr3:0x%lx\n", cpu->dr3);
+    printv("  CPU: dr6:0x%lx\n", cpu->dr6);
+    printv("  CPU: dr7:0x%lx\n", cpu->dr7);
 
-    printv("  CPU: cs_sel:%p\n", cpu->cs_sel);
-    printv("  CPU: ds_sel:%p\n", cpu->ds_sel);
-    printv("  CPU: es_sel:%p\n", cpu->es_sel);
-    printv("  CPU: fs_sel:%p\n", cpu->fs_sel);
-    printv("  CPU: gs_sel:%p\n", cpu->gs_sel);
-    printv("  CPU: ss_sel:%p\n", cpu->ss_sel);
-    printv("  CPU: tr_sel:%p\n", cpu->tr_sel);
-    printv("  CPU: ldtr_sel:%p\n", cpu->ldtr_sel);
+    printv("  CPU: cs_sel:0x%x\n", cpu->cs_sel);
+    printv("  CPU: ds_sel:0x%x\n", cpu->ds_sel);
+    printv("  CPU: es_sel:0x%x\n", cpu->es_sel);
+    printv("  CPU: fs_sel:0x%x\n", cpu->fs_sel);
+    printv("  CPU: gs_sel:0x%x\n", cpu->gs_sel);
+    printv("  CPU: ss_sel:0x%x\n", cpu->ss_sel);
+    printv("  CPU: tr_sel:0x%x\n", cpu->tr_sel);
+    printv("  CPU: ldtr_sel:0x%x\n", cpu->ldtr_sel);
 
-    printv("  CPU: cs_limit:%p\n", cpu->cs_limit);
-    printv("  CPU: ds_limit:%p\n", cpu->ds_limit);
-    printv("  CPU: es_limit:%p\n", cpu->es_limit);
-    printv("  CPU: fs_limit:%p\n", cpu->fs_limit);
-    printv("  CPU: gs_limit:%p\n", cpu->gs_limit);
-    printv("  CPU: ss_limit:%p\n", cpu->ss_limit);
-    printv("  CPU: tr_limit:%p\n", cpu->tr_limit);
-    printv("  CPU: ldtr_limit:%p\n", cpu->ldtr_limit);
-    printv("  CPU: idtr_limit:%p\n", cpu->idtr_limit);
-    printv("  CPU: gdtr_limit:%p\n", cpu->gdtr_limit);
+    printv("  CPU: cs_limit:0x%x\n", cpu->cs_limit);
+    printv("  CPU: ds_limit:0x%x\n", cpu->ds_limit);
+    printv("  CPU: es_limit:0x%x\n", cpu->es_limit);
+    printv("  CPU: fs_limit:0x%x\n", cpu->fs_limit);
+    printv("  CPU: gs_limit:0x%x\n", cpu->gs_limit);
+    printv("  CPU: ss_limit:0x%x\n", cpu->ss_limit);
+    printv("  CPU: tr_limit:0x%x\n", cpu->tr_limit);
+    printv("  CPU: ldtr_limit:0x%x\n", cpu->ldtr_limit);
+    printv("  CPU: idtr_limit:0x%x\n", cpu->idtr_limit);
+    printv("  CPU: gdtr_limit:0x%x\n", cpu->gdtr_limit);
 
-    printv("  CPU: cs_base:%p\n", cpu->cs_base);
-    printv("  CPU: ds_base:%p\n", cpu->ds_base);
-    printv("  CPU: es_base:%p\n", cpu->es_base);
-    printv("  CPU: fs_base:%p\n", cpu->fs_base);
-    printv("  CPU: gs_base:%p\n", cpu->gs_base);
-    printv("  CPU: ss_base:%p\n", cpu->ss_base);
-    printv("  CPU: tr_base:%p\n", cpu->tr_base);
-    printv("  CPU: ldtr_base:%p\n", cpu->ldtr_base);
-    printv("  CPU: idtr_base:%p\n", cpu->idtr_base);
-    printv("  CPU: gdtr_base:%p\n", cpu->gdtr_base);
+    printv("  CPU: cs_base:0x%lx\n", cpu->cs_base);
+    printv("  CPU: ds_base:0x%lx\n", cpu->ds_base);
+    printv("  CPU: es_base:0x%lx\n", cpu->es_base);
+    printv("  CPU: fs_base:0x%lx\n", cpu->fs_base);
+    printv("  CPU: gs_base:0x%lx\n", cpu->gs_base);
+    printv("  CPU: ss_base:0x%lx\n", cpu->ss_base);
+    printv("  CPU: tr_base:0x%lx\n", cpu->tr_base);
+    printv("  CPU: ldtr_base:0x%lx\n", cpu->ldtr_base);
+    printv("  CPU: idtr_base:0x%lx\n", cpu->idtr_base);
+    printv("  CPU: gdtr_base:0x%lx\n", cpu->gdtr_base);
 
-    printv("  CPU: cs_arbytes:%p\n", cpu->cs_arbytes);
-    printv("  CPU: ds_arbytes:%p\n", cpu->ds_arbytes);
-    printv("  CPU: es_arbytes:%p\n", cpu->es_arbytes);
-    printv("  CPU: fs_arbytes:%p\n", cpu->fs_arbytes);
-    printv("  CPU: gs_arbytes:%p\n", cpu->gs_arbytes);
-    printv("  CPU: ss_arbytes:%p\n", cpu->ss_arbytes);
-    printv("  CPU: tr_arbytes:%p\n", cpu->tr_arbytes);
-    printv("  CPU: ldtr_arbytes:%p\n", cpu->ldtr_arbytes);
+    printv("  CPU: cs_arbytes:0x%x\n", cpu->cs_arbytes);
+    printv("  CPU: ds_arbytes:0x%x\n", cpu->ds_arbytes);
+    printv("  CPU: es_arbytes:0x%x\n", cpu->es_arbytes);
+    printv("  CPU: fs_arbytes:0x%x\n", cpu->fs_arbytes);
+    printv("  CPU: gs_arbytes:0x%x\n", cpu->gs_arbytes);
+    printv("  CPU: ss_arbytes:0x%x\n", cpu->ss_arbytes);
+    printv("  CPU: tr_arbytes:0x%x\n", cpu->tr_arbytes);
+    printv("  CPU: ldtr_arbytes:0x%x\n", cpu->ldtr_arbytes);
 
-    printv("  CPU: sysenter_cs:%p\n", cpu->sysenter_cs);
-    printv("  CPU: sysenter_esp:%p\n", cpu->sysenter_esp);
-    printv("  CPU: sysenter_eip:%p\n", cpu->sysenter_eip);
+    printv("  CPU: sysenter_cs:0x%lx\n", cpu->sysenter_cs);
+    printv("  CPU: sysenter_esp:0x%lx\n", cpu->sysenter_esp);
+    printv("  CPU: sysenter_eip:0x%lx\n", cpu->sysenter_eip);
 
-    printv("  CPU: shadow_gs:%p\n", cpu->shadow_gs);
+    printv("  CPU: shadow_gs:0x%lx\n", cpu->shadow_gs);
 
-    printv("  CPU: msr_flags:%p\n", cpu->msr_flags);
-    printv("  CPU: msr_lstar:%p\n", cpu->msr_lstar);
-    printv("  CPU: msr_star:%p\n", cpu->msr_star);
-    printv("  CPU: msr_cstar:%p\n", cpu->msr_cstar);
-    printv("  CPU: msr_syscall_mask:%p\n", cpu->msr_syscall_mask);
+    printv("  CPU: msr_flags:0x%lx\n", cpu->msr_flags);
+    printv("  CPU: msr_lstar:0x%lx\n", cpu->msr_lstar);
+    printv("  CPU: msr_star:0x%lx\n", cpu->msr_star);
+    printv("  CPU: msr_cstar:0x%lx\n", cpu->msr_cstar);
+    printv("  CPU: msr_syscall_mask:0x%lx\n", cpu->msr_syscall_mask);
 }
 
 bool xen_domain::gethvmcontext(xen_vcpu *v,
@@ -909,6 +909,34 @@ bool xen_domain::gethvmcontext(xen_vcpu *v,
     return true;
 }
 
+void xen_domain::set_uv_dom_ctx(struct hvm_hw_cpu *cpu)
+{
+    auto dom = m_uv_dom;
+
+    dom->set_rip(cpu->rip);
+    dom->set_rbx(cpu->rbx);
+
+    dom->set_cr0(0x10037);
+    dom->set_cr4(0x02000);
+
+    dom->set_cs_limit(0xFFFFFFFF);
+    dom->set_ds_limit(0xFFFFFFFF);
+    dom->set_es_limit(0xFFFFFFFF);
+    dom->set_ss_limit(0xFFFFFFFF);
+    dom->set_tr_limit(0x67);
+
+    dom->set_cs_access_rights(0xc09b);
+    dom->set_ds_access_rights(0xc093);
+    dom->set_es_access_rights(0xc093);
+    dom->set_ss_access_rights(0xc093);
+    dom->set_fs_access_rights(0x10000);
+    dom->set_gs_access_rights(0x10000);
+    dom->set_tr_access_rights(0x008b);
+    dom->set_ldtr_access_rights(0x10000);
+
+    dom->set_ia32_pat(0x0606060606060606);
+}
+
 bool xen_domain::sethvmcontext(xen_vcpu *v,
                                struct xen_domctl_hvmcontext *ctx)
 {
@@ -930,9 +958,28 @@ bool xen_domain::sethvmcontext(xen_vcpu *v,
         case HVM_SAVE_CODE(MTRR):
             dump_hvm_hw_mtrr((struct hvm_hw_mtrr *)(buf + off));
             break;
-        case HVM_SAVE_CODE(CPU):
-            dump_hvm_hw_cpu((struct hvm_hw_cpu *)(buf + off));
-            break;
+        case HVM_SAVE_CODE(CPU): {
+            this->set_uv_dom_ctx((struct hvm_hw_cpu *)(buf + off));
+            uvv->set_rax(0);
+            uvv->save_xstate();
+
+            auto root = uvv->root_vcpu();
+            expects(root->is_root_vcpu());
+            put_xen_domain(m_id);
+
+            root->load();
+            root->return_new_domain(m_uv_dom->id());
+
+            /*
+             * This should be unreachable, but if for whatever reason we return
+             * here, we need to get_xen_domain before the corresponding put in
+             * xen_domain_sethvmcontext
+             */
+            bferror_info(0, "returned from return_new_domain");
+            get_xen_domain(m_id);
+
+            return false;
+        }
         case HVM_SAVE_CODE(HEADER):
             break;
         default:

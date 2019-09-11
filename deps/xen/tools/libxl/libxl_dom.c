@@ -1255,6 +1255,8 @@ int libxl__build_hvm(libxl__gc *gc, uint32_t domid,
 
     xc_dom_loginit(ctx->xch);
 
+    printf("%s 0\n", __func__);
+
     /*
      * If PVH and we have a shim override, use the shim cmdline.
      * If PVH and no shim override, use the pv cmdline.
@@ -1293,6 +1295,7 @@ int libxl__build_hvm(libxl__gc *gc, uint32_t domid,
         goto out;
     }
 
+    printf("%s 1\n", __func__);
     if (dom->target_pages == 0)
         dom->target_pages = mem_size >> XC_PAGE_SHIFT;
     if (dom->mmio_size == 0 && device_model)
@@ -1331,10 +1334,13 @@ int libxl__build_hvm(libxl__gc *gc, uint32_t domid,
     dom->console_domid = state->console_domid;
     dom->xenstore_domid = state->store_domid;
 
+    printf("%s 2\n", __func__);
     rc = libxl__domain_device_construct_rdm(gc, d_config,
                                             info->u.hvm.rdm_mem_boundary_memkb*1024,
                                             dom);
+    printf("%s 3\n", __func__);
     if (rc) {
+        printf("%s 4\n", __func__);
         LOG(ERROR, "checking reserved device memory failed");
         goto out;
     }
@@ -1342,6 +1348,7 @@ int libxl__build_hvm(libxl__gc *gc, uint32_t domid,
     if (info->num_vnuma_nodes != 0) {
         int i;
 
+        printf("%s 5\n", __func__);
         rc = libxl__vnuma_build_vmemrange_hvm(gc, domid, info, state, dom);
         if (rc != 0) {
             LOG(ERROR, "hvm build vmemranges failed");
@@ -1370,14 +1377,18 @@ int libxl__build_hvm(libxl__gc *gc, uint32_t domid,
             dom->vnode_to_pnode[i] = info->vnuma_nodes[i].pnode;
     }
 
+    printf("%s 6\n", __func__);
     rc = libxl__build_dom(gc, domid, d_config, state, dom);
+    printf("%s 7\n", __func__);
     if (rc != 0)
         goto out;
 
+    printf("%s 8\n", __func__);
     rc = hvm_build_set_params(ctx->xch, domid, info, state->store_port,
                                &state->store_mfn, state->console_port,
                                &state->console_mfn, state->store_domid,
                                state->console_domid);
+    printf("%s 9\n", __func__);
     if (rc != 0) {
         LOG(ERROR, "hvm build set params failed");
         goto out;

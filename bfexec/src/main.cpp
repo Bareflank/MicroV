@@ -43,111 +43,144 @@
 
 #include <unistd.h>
 
-vcpuid_t g_vcpuid;
-domainid_t g_domainid;
+struct vcpu {
+    vcpuid_t id{INVALID_VCPUID};
+    std::thread run{};
+    bool halt{};
+    bool child{};
+};
 
-auto ctl = std::make_unique<ioctl>();
+struct vm {
+    domainid_t id{INVALID_DOMAINID};
 
-// -----------------------------------------------------------------------------
-// vCPU Thread
-// -----------------------------------------------------------------------------
+    bool enable_uart{};
+    bool enable_hvc{};
 
-void
-vcpu_thread(vcpuid_t vcpuid)
+    std::thread uart_recv{};
+    std::thread hvc_recv{};
+    std::thread hvc_send{};
+
+    struct vcpu vcpu{};
+    std::list<struct vm> children{};
+};
+
+struct vm root_vm{};
+std::unique_ptr<ioctl> ctl{};
+
+static void run_vcpu(struct vcpu *vcpu)
 {
     using namespace std::chrono;
 
+    std::cout << "[0x" << std::hex << vcpu->id << std::dec << "] running\n";
+
     while (true) {
-        auto ret = __run_op(vcpuid, 0, 0);
+        if (vcpu->halt) {
+            return;
+        }
+
+        auto ret = __run_op(vcpu->id, 0, 0);
+
         switch (run_op_ret_op(ret)) {
-            case __enum_run_op__hlt:
-                return;
+        case __enum_run_op__hlt:
+            return;
 
-            case __enum_run_op__fault:
-                std::cerr << "[0x" << std::hex << vcpuid << std::dec << "] ";
-                std::cerr << "vcpu fault: " << run_op_ret_arg(ret) << '\n';
-                return;
+        case __enum_run_op__fault:
+            std::cerr << "[0x" << std::hex << vcpu->id << std::dec << "] ";
+            std::cerr << "vcpu fault: " << run_op_ret_arg(ret) << '\n';
+            return;
 
-            case __enum_run_op__resume_after_interrupt:
+        case __enum_run_op__resume_after_interrupt:
+            continue;
+
+        case __enum_run_op__yield:
+            std::this_thread::sleep_for(microseconds(run_op_ret_arg(ret)));
+            continue;
+
+        case __enum_run_op__new_domain:
+            if (vcpu->child) {
+                std::cerr << "[0x" << std::hex << vcpu->id << "] "
+                          << "vcpu fault: returned with new domain 0x"
+                          << run_op_ret_arg(ret) << std::dec << '\n';
+                return;
+            } else {
+                std::cout << "[0x" << std::hex << vcpu->id << "] "
+                          << "created child domain 0x" << run_op_ret_arg(ret)
+                          << std::dec << '\n';
+
+                struct vm vm{};
+                vm.id = run_op_ret_arg(ret);
+                vm.vcpu.child = true;
+                vm.vcpu.id = __vcpu_op__create_vcpu(vm.id);
+
+                if (vm.vcpu.id == INVALID_VCPUID) {
+                    std::cerr << "[0x" << std::hex << vcpu->id << "] "
+                              << " failed to create vcpu for child domain 0x"
+                              << vm.id << std::dec << '\n';
+                    continue;
+                }
+
+                root_vm.children.push_front(std::move(vm));
+                auto &child = root_vm.children.front();
+                child.vcpu.run = std::thread(run_vcpu, &child.vcpu);
                 continue;
-
-            case __enum_run_op__yield:
-                std::this_thread::sleep_for(microseconds(run_op_ret_arg(ret)));
-                continue;
-
-            default:
-                std::cerr << "[0x" << std::hex << vcpuid << std::dec << "] ";
-                std::cerr << "unknown vcpu ret: " << run_op_ret_op(ret) << '\n';
-                return;
+            }
+        default:
+            std::cerr << "[0x" << std::hex << vcpu->id << std::dec << "] ";
+            std::cerr << "unknown vcpu ret: " << run_op_ret_op(ret) << '\n';
+            return;
         }
     }
 }
 
-// -----------------------------------------------------------------------------
-// UART Thread
-// -----------------------------------------------------------------------------
-
-bool g_process_uart = true;
-
-void
-uart_thread()
+static void recv_from_uart(struct vm *vm)
 {
     using namespace std::chrono;
     std::array<char, UART_MAX_BUFFER> buffer{};
 
-    while (g_process_uart) {
-        auto size = __domain_op__dump_uart(g_domainid, buffer.data());
+    while (vm->enable_uart) {
+        auto size = __domain_op__dump_uart(vm->id, buffer.data());
         std::cout.write(buffer.data(), gsl::narrow_cast<int>(size));
         std::this_thread::sleep_for(milliseconds(100));
     }
 
-    auto size = __domain_op__dump_uart(g_domainid, buffer.data());
+    auto size = __domain_op__dump_uart(vm->id, buffer.data());
     std::cout.write(buffer.data(), gsl::narrow_cast<int>(size));
 }
 
-// -----------------------------------------------------------------------------
-// HVC Threads
-// -----------------------------------------------------------------------------
-
-bool g_hvc_rx = true;
-bool g_hvc_tx = true;
-
-static void hvc_rx_thread()
-{
-    using namespace std::chrono;
-    std::array<char, HVC_RX_SIZE> buf{};
-
-    do {
-        std::cin.getline(buf.data(), buf.size());
-        buf.data()[std::cin.gcount() - 1] = '\n';
-        auto rc = __domain_op__hvc_rx_put(g_domainid,
-                                          buf.data(),
-                                          std::cin.gcount());
-        std::this_thread::sleep_for(milliseconds(100));
-    } while (g_hvc_rx);
-}
-
-static void hvc_tx_thread()
+static void recv_from_hvc(struct vm *vm)
 {
     using namespace std::chrono;
     std::array<char, HVC_TX_SIZE> buf{};
 
-    while (g_hvc_tx) {
-        auto size = __domain_op__hvc_tx_get(g_domainid,
+    while (vm->enable_hvc) {
+        auto size = __domain_op__hvc_tx_get(vm->id,
                                             buf.data(),
                                             HVC_TX_SIZE);
-
         std::cout.write(buf.data(), gsl::narrow_cast<int>(size));
         std::cout.flush();
         std::this_thread::sleep_for(milliseconds(100));
     }
 
-    auto size = __domain_op__hvc_tx_get(g_domainid,
+    auto size = __domain_op__hvc_tx_get(vm->id,
                                         buf.data(),
                                         HVC_TX_SIZE);
-
     std::cout.write(buf.data(), gsl::narrow_cast<int>(size));
     std::cout.flush();
+}
+
+static void send_to_hvc(struct vm *vm)
+{
+    using namespace std::chrono;
+    std::array<char, HVC_RX_SIZE> buf{};
+
+    while (vm->enable_hvc) {
+        std::cin.getline(buf.data(), buf.size());
+        buf.data()[std::cin.gcount() - 1] = '\n';
+        auto rc = __domain_op__hvc_rx_put(vm->id,
+                                          buf.data(),
+                                          std::cin.gcount());
+        std::this_thread::sleep_for(milliseconds(100));
+    }
 }
 
 // -----------------------------------------------------------------------------
@@ -156,99 +189,89 @@ static void hvc_tx_thread()
 
 #include <signal.h>
 
-void
-kill_signal_handler(void)
+static void kill_vm(int sig)
 {
-    status_t ret;
-
-    std::cout << '\n';
-    std::cout << '\n';
-    std::cout << "killing VM: " << g_domainid << '\n';
-
-    ret = __vcpu_op__kill_vcpu(g_vcpuid);
-    if (ret != SUCCESS) {
-        BFALERT("__vcpu_op__kill_vcpu failed\n");
-        return;
-    }
-
-    return;
+    root_vm.vcpu.halt = true;
 }
 
-void
-sig_handler(int sig)
+static void setup_kill_signal_handler(void)
 {
-    bfignored(sig);
-    return kill_signal_handler();
-}
-
-void
-setup_kill_signal_handler(void)
-{
-    signal(SIGINT, sig_handler);
-    signal(SIGTERM, sig_handler);
+    signal(SIGINT, kill_vm);
+    signal(SIGTERM, kill_vm);
 
 #ifdef SIGQUIT
-    signal(SIGQUIT, sig_handler);
+    signal(SIGQUIT, kill_vm);
 #endif
 }
 
-// -----------------------------------------------------------------------------
-// Attach to VM
-// -----------------------------------------------------------------------------
-
-static int
-attach_to_vm(const args_type &args)
+static int start_vm(struct vm *vm)
 {
-    bfignored(args);
-
     if (bfack() == 0) {
         throw std::runtime_error("hypervisor not running");
     }
 
-    g_vcpuid = __vcpu_op__create_vcpu(g_domainid);
-    if (g_vcpuid == INVALID_VCPUID) {
+    /* Create a new vcpu */
+    vm->vcpu.id = __vcpu_op__create_vcpu(vm->id);
+    if (vm->vcpu.id == INVALID_VCPUID) {
         throw std::runtime_error("__vcpu_op__create_vcpu failed");
     }
 
-    std::thread t(vcpu_thread, g_vcpuid);
-    std::thread u;
-    std::thread hvc_rx;
-    std::thread hvc_tx;
+    /* Run it */
+    vm->vcpu.run = std::thread(run_vcpu, &vm->vcpu);
 
-    if (args.count("uart")) {
-        output_vm_uart_verbose();
-    } else if (args.count("hvc")) {
-        hvc_rx = std::thread(hvc_rx_thread);
-        hvc_tx = std::thread(hvc_tx_thread);
+    /* Start up console IO if any */
+    if (vm->enable_hvc) {
+        vm->hvc_recv = std::thread(recv_from_hvc, vm);
+        vm->hvc_send = std::thread(send_to_hvc, vm);
+    } else if (vm->enable_uart) {
+        vm->uart_recv = std::thread(recv_from_uart, vm);
     }
 
-    t.join();
+    /*
+     * Now put this thread to sleep while the vcpu thread runs. Whenever
+     * run_vcpu returns, join() returns, and we disable any console IO and
+     * destroy any child vms that may have spawned from the root_vm.
+     */
+    vm->vcpu.run.join();
 
-    if (verbose && args.count("uart")) {
-        g_process_uart = false;
-        u.join();
+    if (vm->enable_hvc) {
+        vm->enable_hvc = false;
+        vm->hvc_recv.join();
+        vm->hvc_send.join();
+    } else if (vm->enable_uart) {
+        vm->enable_uart = false;
+        vm->uart_recv.join();
     }
 
-    if (args.count("hvc")) {
-        g_hvc_rx = false;
-        g_hvc_tx = false;
-        hvc_rx.join();
-        hvc_tx.join();
+    auto &children = vm->children;
+
+    /* We halt each vm starting with the most-recently created first */
+    for (auto cvm = children.begin(); cvm != children.end(); cvm++) {
+        cvm->vcpu.halt = true;
+        cvm->vcpu.run.join();
     }
 
-    if (__vcpu_op__destroy_vcpu(g_vcpuid) != SUCCESS) {
-        std::cerr << "__vcpu_op__destroy_vcpu failed\n";
+    for (auto cvm = children.begin(); cvm != children.end(); cvm++) {
+        if (__vcpu_op__destroy_vcpu(cvm->vcpu.id) != SUCCESS) {
+            std::cerr << "failed to destroy child vcpu 0x"
+                      << std::hex << cvm->vcpu.id << std::dec << " \n";
+        }
+
+        if (__domain_op__destroy_domain(cvm->id) != SUCCESS) {
+            std::cerr << "failed to destroy child domain 0x"
+                      << std::hex << cvm->id << std::dec << " \n";
+        }
+    }
+
+    /* Now the children are destroyed, we destroy the root and return */
+    if (__vcpu_op__destroy_vcpu(vm->vcpu.id) != SUCCESS) {
+        std::cerr << "failed to destroy root_vm vcpu\n";
     }
 
     return EXIT_SUCCESS;
 }
 
-// -----------------------------------------------------------------------------
-// VM creation
-// -----------------------------------------------------------------------------
-
-static uint64_t
-vm_file_type(const char *data, uint64_t size)
+static uint64_t vm_file_type(const char *data, uint64_t size)
 {
     /**
      * We support ELF (vmlinux) or bzImage. The latter
@@ -280,8 +303,7 @@ vm_exec_mode(uint64_t file_type)
     }
 }
 
-static void
-create_vm(const args_type &args)
+static void create_vm(const args_type &args, struct vm *vm)
 {
     using namespace std::chrono;
 
@@ -351,13 +373,12 @@ create_vm(const args_type &args)
     ioctl_args.wc_nsec = duration_cast<nanoseconds>(now.time_since_epoch()).count();
     ioctl_args.tsc = tsc;
 
-    printf("seconds since epoch: 0x%llx\n", ioctl_args.wc_sec);
-    printf("nanoseconds since epoch: 0x%llx\n", ioctl_args.wc_nsec);
-
     ctl->call_ioctl_create_vm(ioctl_args);
     dump_vm_create_verbose();
 
-    g_domainid = ioctl_args.domainid;
+    vm->id = ioctl_args.domainid;
+    vm->enable_uart = args.count("uart");
+    vm->enable_hvc = args.count("hvc");
 }
 
 // -----------------------------------------------------------------------------
@@ -382,18 +403,19 @@ protected_main(const args_type &args)
         set_affinity(0);
     }
 
-    create_vm(args);
+    create_vm(args, &root_vm);
 
     auto ___ = gsl::finally([&] {
-        ctl->call_ioctl_destroy(g_domainid);
+        ctl->call_ioctl_destroy(root_vm.id);
     });
 
-    return attach_to_vm(args);
+    return start_vm(&root_vm);
 }
 
 int
 main(int argc, char *argv[])
 {
+    ctl = std::make_unique<ioctl>();
     setup_kill_signal_handler();
 
     try {

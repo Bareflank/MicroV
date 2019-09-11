@@ -27,6 +27,8 @@
 #include "types.h"
 
 #include <public/domctl.h>
+#include <public/arch-x86/hvm/save.h>
+#include <public/hvm/save.h>
 #include <public/sysctl.h>
 #include <public/platform.h>
 
@@ -111,6 +113,7 @@ private:
     friend class xen_evtchn;
     class xen_vcpu *get_xen_vcpu() noexcept;
     void put_xen_vcpu() noexcept;
+    void set_uv_dom_ctx(struct hvm_hw_cpu *cpu);
 
 public:
     microv::domain_info *m_uv_info{};

@@ -368,24 +368,17 @@ vcpu::return_yield(uint64_t usec)
     this->run(&world_switch);
 }
 
-//------------------------------------------------------------------------------
-// Control
-//------------------------------------------------------------------------------
-
-bool
-vcpu::is_alive() const
-{ return !m_killed; }
-
-bool
-vcpu::is_killed() const
-{ return m_killed; }
-
 void
-vcpu::kill()
-{ m_killed = true; }
+vcpu::return_new_domain(uint64_t newdomid)
+{
+    this->add_child_domain(newdomid);
+    this->load_xstate();
+    this->set_rax((newdomid << 4) | __enum_run_op__new_domain);
+    this->run(&world_switch);
+}
 
 //------------------------------------------------------------------------------
-// Fault
+// Halt
 //------------------------------------------------------------------------------
 
 void

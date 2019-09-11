@@ -67,13 +67,13 @@ void
 vmcall_vcpu_op_handler::vcpu_op__kill_vcpu(vcpu *vcpu)
 {
     try {
-        auto child = vcpu->find_child_vcpu(vcpu->rbx());
-        if (child) {
-            child->kill();
-            vcpu->set_rax(SUCCESS);
-        } else {
+//        auto child = vcpu->find_child_vcpu(vcpu->rbx());
+//        if (child) {
+//            child->kill();
+//            vcpu->set_rax(SUCCESS);
+//        } else {
             vcpu->set_rax(FAILURE);
-        }
+//        }
     }
     catchall({
         vcpu->set_rax(FAILURE);

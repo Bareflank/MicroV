@@ -61,14 +61,13 @@ vmcall_run_op_handler::dispatch(vcpu *root)
         expects(child);
 
         child->set_root_vcpu(root);
-        if (child->is_alive()) {
-            root->save_xstate();
+        root->save_xstate();
 
-            child->load_xstate();
-            child->load();
-            child->run(&world_switch);
-        }
+        child->load_xstate();
+        child->load();
+        child->run(&world_switch);
 
+        /* unreachable */
         root->set_rax(__enum_run_op__hlt);
     }
     catchall({

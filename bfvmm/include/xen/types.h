@@ -39,6 +39,7 @@ namespace bfvmm::intel_x64 {
     class hlt_handler;
     class ept_violation_handler;
     class external_interrupt_handler;
+    class io_instruction_handler;
     class wrmsr_handler;
 
     namespace ept {
@@ -74,6 +75,7 @@ using hlt_handler = bfvmm::intel_x64::hlt_handler;
 using ept_violation_handler = bfvmm::intel_x64::ept_violation_handler;
 using interrupt_handler = bfvmm::intel_x64::external_interrupt_handler;
 using wrmsr_handler = bfvmm::intel_x64::wrmsr_handler;
+using io_insn_handler = bfvmm::intel_x64::io_instruction_handler;
 
 template<typename T>
 using unique_map = bfvmm::x64::unique_map<T>;

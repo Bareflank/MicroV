@@ -244,40 +244,17 @@ public:
     ///
     VIRTUAL void return_yield(uint64_t usec);
 
-    //--------------------------------------------------------------------------
-    // Control
-    //--------------------------------------------------------------------------
-
-    /// Kill
+    /// Return with a new domain
     ///
-    /// Tells the vCPU to stop execution.
+    /// Resume the parent with a new domain ready to run. The parent uses the
+    /// domain id to create a new vcpu and begin running it.
     ///
     /// @expects
     /// @ensures
     ///
-    VIRTUAL void kill();
-
-    /// Is Alive
+    /// @param the domain id of the new domain
     ///
-    /// @expects
-    /// @ensures
-    ///
-    /// @return returns true if the vCPU has not been killed, false otherwise
-    ///
-    VIRTUAL bool is_alive() const;
-
-    /// Is Killed
-    ///
-    /// @expects
-    /// @ensures
-    ///
-    /// @return returns true if the vCPU has been killed, false otherwise
-    ///
-    VIRTUAL bool is_killed() const;
-
-    //--------------------------------------------------------------------------
-    // Fault
-    //--------------------------------------------------------------------------
+    VIRTUAL void return_new_domain(uint64_t newdomid);
 
     /// Halt the vCPU
     ///
@@ -368,7 +345,6 @@ private:
     x2apic_handler m_x2apic_handler;
     pci_cfg_handler m_pci_handler;
 
-    bool m_killed{};
     vcpu *m_root_vcpu{};
 
     std::unique_ptr<microv::xen_vcpu> m_xen_vcpu{};

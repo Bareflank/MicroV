@@ -61,6 +61,21 @@ static constexpr auto hcall_page_msr = 0xC0000500;
 static constexpr auto xen_leaf_base = 0x40000100;
 static constexpr auto xen_leaf(int i) { return xen_leaf_base + i; }
 
+/* exits specific to xl-created vcpu boot */
+static bool xlboot_io_insn_in(base_vcpu *v, io_insn_handler::info_t &info)
+{
+//    bfdebug_nhex(0, "xl boot: io_insn in", info.port_number);
+    return true;
+}
+
+static bool xlboot_io_insn_out(base_vcpu *v, io_insn_handler::info_t &info)
+{
+//    bfdebug_nhex(0, "xl boot: io_insn out", info.port_number);
+    return true;
+}
+
+/* end xl-created boot exits */
+
 static bool handle_exception(base_vcpu *vcpu)
 {
     namespace int_info = vmcs_n::vm_exit_interruption_information;
@@ -924,12 +939,15 @@ bool xen_vcpu::handle_hlt(
 
 bool xen_vcpu::debug_hypercall(microv_vcpu *vcpu)
 {
-    if (!this->is_xenstore()) {
-        return true;
-    }
-
     const auto rax = vcpu->rax();
     const auto rdi = vcpu->rdi();
+
+    if (!this->is_xenstore()) {
+        if (rax == __HYPERVISOR_vcpu_op && rdi == VCPUOP_set_singleshot_timer) {
+            return false;
+        }
+        return true;
+    }
 
     if (rax == __HYPERVISOR_console_io) {
         return false;
@@ -1035,5 +1053,11 @@ xen_vcpu::xen_vcpu(microv_vcpu *vcpu) :
     vcpu->add_external_interrupt_handler({&xen_vcpu::handle_interrupt, this});
 
     m_xen_dom->bind_vcpu(this);
+
+    vcpu->emulate_io_instruction(0xA1, {xlboot_io_insn_in}, {xlboot_io_insn_out});
+    vcpu->emulate_io_instruction(0x21, {xlboot_io_insn_in}, {xlboot_io_insn_out});
+    vcpu->emulate_io_instruction(0x43, {xlboot_io_insn_in}, {xlboot_io_insn_out});
+    vcpu->emulate_io_instruction(0x80, {xlboot_io_insn_in}, {xlboot_io_insn_out});
+    vcpu->emulate_io_instruction(0x40, {xlboot_io_insn_in}, {xlboot_io_insn_out});
 }
 }
