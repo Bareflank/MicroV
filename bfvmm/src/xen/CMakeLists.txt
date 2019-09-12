@@ -29,13 +29,16 @@ target_include_directories(microv_xen PUBLIC
     $<${BUILD_INCLUDE}:${CMAKE_BINARY_DIR}/include>
 )
 target_sources(microv_xen PRIVATE
+    $<${X64}:cpupool.cpp>
+    $<${X64}:domain.cpp>
     $<${X64}:evtchn.cpp>
+    $<${X64}:flask.cpp>
     $<${X64}:gnttab.cpp>
-    $<${X64}:sysctl.cpp>
-    $<${X64}:xencon.cpp>
-    $<${X64}:xenmem.cpp>
-    $<${X64}:xenver.cpp>
-    $<${X64}:xen.cpp>
+    $<${X64}:physdev.cpp>
+    $<${X64}:util.cpp>
+    $<${X64}:memory.cpp>
+    $<${X64}:version.cpp>
+    $<${X64}:vcpu.cpp>
 )
 
 install(TARGETS microv_xen DESTINATION lib EXPORT microv_bfvmm-vmm-targets)

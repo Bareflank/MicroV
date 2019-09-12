@@ -58,14 +58,19 @@ setup()
 
     using namespace bfvmm::x64;
     using attr_type = bfvmm::x64::cr3::mmap::attr_type;
+    using cache_type = bfvmm::x64::cr3::mmap::memory_type;
 
     for (const auto &md : g_mm->descriptors()) {
+        auto cache = (md.type & MEMORY_TYPE_UC) ?
+                      cache_type::uncacheable   :
+                      cache_type::write_back;
+
         if (md.type == (MEMORY_TYPE_R | MEMORY_TYPE_E)) {
-            g_cr3->map_4k(md.virt, md.phys, attr_type::read_execute);
+            g_cr3->map_4k(md.virt, md.phys, attr_type::read_execute, cache);
             continue;
         }
 
-        g_cr3->map_4k(md.virt, md.phys, attr_type::read_write);
+        g_cr3->map_4k(md.virt, md.phys, attr_type::read_write, cache);
     }
 
     g_ia32_efer_msr |= msrs::ia32_efer::lme::mask;
@@ -129,7 +134,7 @@ vcpu::vcpu(
     m_ist1{std::make_unique<gsl::byte[]>(STACK_SIZE * 2)},
     m_stack{std::make_unique<gsl::byte[]>(STACK_SIZE * 2)},
 
-    m_vmx{is_host_vm_vcpu() ? std::make_unique<vmx>() : nullptr},
+    m_vmx{is_root_vcpu() ? std::make_unique<vmx>() : nullptr},
 
     m_vmcs{this},
     m_exit_handler{this},
@@ -139,6 +144,7 @@ vcpu::vcpu(
     m_ept_misconfiguration_handler{this},
     m_ept_violation_handler{this},
     m_external_interrupt_handler{this},
+    m_hlt_handler{this},
     m_init_signal_handler{this},
     m_interrupt_window_handler{this},
     m_io_instruction_handler{this},
@@ -166,8 +172,6 @@ vcpu::vcpu(
     m_state.exit_handler_ptr =
         reinterpret_cast<uintptr_t>(&m_exit_handler);
 
-    m_state.xsave_ptr = reinterpret_cast<uintptr_t>(thread_context_xsave());
-
     // Note:
     //
     // Up to this point, no modifications to the VMCS have been made. The only
@@ -185,7 +189,7 @@ vcpu::vcpu(
     this->write_host_state();
     this->write_control_state();
 
-    if (this->is_host_vm_vcpu()) {
+    if (this->is_root_vcpu()) {
         this->write_guest_state();
     }
 
@@ -372,7 +376,7 @@ vcpu::write_control_state()
 
     activate_secondary_controls::enable_if_allowed();
 
-    if (this->is_host_vm_vcpu()) {
+    if (this->is_root_vcpu()) {
         enable_rdtscp::enable_if_allowed();
         enable_invpcid::enable_if_allowed();
         enable_xsaves_xrstors::enable_if_allowed();
@@ -518,6 +522,7 @@ vcpu::dump(const char *str)
         bferror_subnhex(0, "cr2", ::intel_x64::cr2::get(), msg);
         bferror_subnhex(0, "cr3", guest_cr3::get(), msg);
         bferror_subnhex(0, "cr4", guest_cr4::get(), msg);
+        bferror_subnhex(0, "xcr0", ::intel_x64::xcr0::get(), msg);
 
         bferror_lnbr(0, msg);
         bferror_info(0, "addressing", msg);
@@ -681,8 +686,27 @@ vcpu::disable_external_interrupts()
 { m_external_interrupt_handler.disable_exiting(); }
 
 //--------------------------------------------------------------------------
+// HLT
+//--------------------------------------------------------------------------
+
+void vcpu::enable_hlt_exiting()
+{ m_hlt_handler.enable_exiting(); }
+
+void vcpu::disable_hlt_exiting()
+{ m_hlt_handler.disable_exiting(); }
+
+void vcpu::add_hlt_handler(const hlt_handler::handler_delegate_t &d)
+{
+    m_hlt_handler.add_handler(d);
+    m_hlt_handler.enable_exiting();
+}
+
+//--------------------------------------------------------------------------
 // Interrupt Window
 //--------------------------------------------------------------------------
+
+void vcpu::push_external_interrupt(uint64_t vector)
+{ m_interrupt_window_handler.push_external_interrupt(vector); }
 
 void
 vcpu::queue_external_interrupt(uint64_t vector)
@@ -918,6 +942,11 @@ vcpu::disable_ept()
 {
     m_ept_handler.set_eptp(nullptr);
     m_mmap = nullptr;
+}
+
+void vcpu::invept()
+{
+    m_ept_handler.invept();
 }
 
 //==========================================================================

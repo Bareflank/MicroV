@@ -62,6 +62,9 @@ mtrr_handler::mtrr_handler(
 // cache type that the actual hardware states for any pass-through devices.
 //
 
+/* 0xFE - mtrr cap */
+/* 0x2FF - mtrr def type */
+
 bool
 mtrr_handler::handle_rdmsr_0x000000FE(
     vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info)

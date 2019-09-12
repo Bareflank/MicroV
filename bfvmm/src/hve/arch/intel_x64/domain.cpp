@@ -23,11 +23,12 @@
 #include <bfgpalayout.h>
 #include <bfhypercall.h>
 #include <bfbuilderinterface.h>
-
-#include <ring.h>
 #include <hve/arch/intel_x64/domain.h>
+#include <hve/arch/intel_x64/vcpu.h>
+#include <xen/domain.h>
 
 using namespace bfvmm::intel_x64;
+using namespace microv;
 
 // -----------------------------------------------------------------------------
 // Implementation
@@ -36,10 +37,10 @@ using namespace bfvmm::intel_x64;
 namespace microv::intel_x64
 {
 
-domain::domain(domainid_type domainid, struct domain_info *info) :
+domain::domain(id_t domainid, struct domain_info *info) :
     microv::domain{domainid}
 {
-    m_info.flags = info->flags;
+    m_sod_info.copy(info);
 
     if (domainid == 0) {
         this->setup_dom0();
@@ -49,8 +50,16 @@ domain::domain(domainid_type domainid, struct domain_info *info) :
     }
 }
 
-void
-domain::setup_dom0()
+domain::~domain()
+{
+    if (m_xen_dom) {
+        put_xen_domain(m_xen_domid);
+        destroy_xen_domain(m_xen_domid);
+        m_xen_dom = nullptr;
+    }
+}
+
+void domain::setup_dom0()
 {
     // TODO:
     //
@@ -63,17 +72,14 @@ domain::setup_dom0()
     //   so we should assume that 1 gig page support is required. Once again,
     //   legacy support is not a focus of this project
     //
-    ept::identity_map(
-        m_ept_map, MAX_PHYS_ADDR
-    );
+    ept::identity_map(m_ept_map, MAX_PHYS_ADDR);
 }
 
-void
-domain::setup_domU()
+void domain::setup_domU()
 {
-    if (m_info.flags & DOMF_XENHVC) {
-        m_hvc_rx_ring = std::make_unique<microv::ring<HVC_RX_SIZE>>();
-        m_hvc_tx_ring = std::make_unique<microv::ring<HVC_TX_SIZE>>();
+    if (m_sod_info.is_xen_dom()) {
+        m_xen_domid = create_xen_domain(this);
+        m_xen_dom = get_xen_domain(m_xen_domid);
     }
 }
 
@@ -82,6 +88,22 @@ domain::add_e820_entry(uintptr_t base, uintptr_t end, uint32_t type)
 {
     struct e820_entry_t ent = { base, end - base, type};
     m_e820.push_back(ent);
+}
+
+void
+domain::share_root_page(vcpu *root, uint64_t perm, uint64_t mtype)
+{
+    expects(root->is_root_vcpu());
+
+    auto this_gpa = root->rdx();
+    auto root_gpa = root->rcx();
+    auto [hpa, from] = root->gpa_to_hpa(root_gpa);
+
+    if (m_sod_info.is_xen_dom()) {
+        m_xen_dom->share_root_page(this_gpa, hpa, perm, mtype);
+    } else {
+        m_ept_map.map_4k(this_gpa, hpa, perm, mtype);
+    }
 }
 
 void
@@ -109,6 +131,14 @@ domain::map_4k_rw(uintptr_t gpa, uintptr_t hpa)
 { m_ept_map.map_4k(gpa, hpa, ept::mmap::attr_type::read_write); }
 
 void
+domain::map_4k_rw_uc(uintptr_t gpa, uintptr_t hpa)
+{
+    m_ept_map.map_4k(gpa, hpa,
+                     ept::mmap::attr_type::read_write,
+                     ept::mmap::memory_type::uncacheable);
+}
+
+void
 domain::map_1g_rwe(uintptr_t gpa, uintptr_t hpa)
 { m_ept_map.map_1g(gpa, hpa, ept::mmap::attr_type::read_write_execute); }
 
@@ -131,7 +161,7 @@ domain::release(uintptr_t gpa)
 uint64_t
 domain::exec_mode() noexcept
 {
-    if (m_info.flags & DOMF_EXEC_XENPVH) {
+    if (m_sod_info.flags & DOMF_EXEC_XENPVH) {
         return VM_EXEC_XENPVH;
     }
 
@@ -145,18 +175,6 @@ domain::set_uart(uart::port_type uart) noexcept
 void
 domain::set_pt_uart(uart::port_type uart) noexcept
 { m_pt_uart_port = uart; }
-
-size_t domain::hvc_rx_put(const gsl::span<char> &span)
-{ return m_hvc_rx_ring->put(span); }
-
-size_t domain::hvc_rx_get(const gsl::span<char> &span)
-{ return m_hvc_rx_ring->get(span); }
-
-size_t domain::hvc_tx_put(const gsl::span<char> &span)
-{ return m_hvc_tx_ring->put(span); }
-
-size_t domain::hvc_tx_get(const gsl::span<char> &span)
-{ return m_hvc_tx_ring->get(span); }
 
 void
 domain::setup_vcpu_uarts(gsl::not_null<vcpu *> vcpu)

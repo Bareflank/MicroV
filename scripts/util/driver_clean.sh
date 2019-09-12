@@ -27,7 +27,7 @@ CYGWIN_NT*)
     rm -Rf $1/bfbuilder/src/platform/windows/x64/
     ;;
 Linux)
-    cd $1/bfbuilder/src/platform/linux
+    cd $1/drivers/$2/linux
     make clean
     ;;
 *)

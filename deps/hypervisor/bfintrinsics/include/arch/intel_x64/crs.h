@@ -45,6 +45,7 @@ extern "C" uint64_t _read_cr8(void) noexcept;
 extern "C" void _write_cr8(uint64_t val) noexcept;
 
 extern "C" void _write_xcr0(uint64_t val) noexcept;
+extern "C" uint64_t _read_xcr0(void) noexcept;
 
 // *INDENT-OFF*
 
@@ -1193,8 +1194,10 @@ namespace xcr0
 
     inline void set(value_type val) noexcept
     { _write_xcr0(val); }
-}
 
+    inline value_type get() noexcept
+    { return _read_xcr0(); }
+}
 
 }
 

@@ -33,19 +33,136 @@
 namespace microv::intel_x64
 {
 
-yield_handler::yield_handler(
-    gsl::not_null<vcpu *> vcpu
-) :
+//
+// The following formula for the TSC frequency (in MHz) is derived from the
+// description of the Max Non-Turbo Ratio field of the MSR_PLATFORM_INFO msr:
+//
+//      tsc_freq_MHz = bus_freq_MHz * MSR_PLATFORM_INFO[15:8]
+//      tsc_freq_MHz = bus_freq_MHz * platform_info::max_nonturbo_ratio::get()
+//
+// Note that, most, if not all, systems that (1) aren't Nehalem
+// and (2) support invariant TSC (i.e. cpuid.80000007:EDX[8] == 1)
+// have a bus_freq_MHz == 100 MHz.
+//
+// There is an alternative method for deriving TSC frequency based strictly
+// on cpuid. If invariant TSC is supported and cpuid.15H:EBX[31:0] != 0, then
+// the following equation holds (note the Hz rather than MHz):
+//
+//      tsc_freq_Hz = (ART frequency) * (TSC / ART ratio)
+//      tsc_freq_Hz = (cpuid.15H:ECX) * (cpuid.15H:EBX / cpuid.15H:EAX)
+//
+// where the ART a.k.a "Always Running Timer" runs at the core crystal clock
+// frequency. But ECX may (and in practice does) return 0, in which case the
+// formula is nonsense. Clearly we have to get the ART frequency somewhere
+// else, but I haven't been able to find it. Section 18.7.3 presents the
+// same formula above and mentions using cpuid.15H with the max turbo ratio,
+// but that doesn't make sense either.
+//
+// For now we just use the MSR_PLATFORM_INFO formula
+//
+
+static uint64_t bus_freq_khz()
+{
+    namespace version = ::intel_x64::cpuid::feature_information::eax;
+
+    uint32_t display_family = 0;
+    uint32_t display_model = 0;
+
+    const auto eax = version::get();
+    const auto fam_id = version::family_id::get(eax);
+
+    /* Set display_family */
+    if (fam_id != 0xF) {
+        display_family = fam_id;
+    } else {
+        display_family = version::extended_family_id::get(eax) + fam_id;
+    }
+
+    /* Set display_model */
+    if (fam_id == 0x6 || fam_id == 0xF) {
+        const auto model = version::model::get(eax);
+        const auto ext_model = version::extended_model_id::get(eax);
+        display_model = (ext_model << 4) | model;
+    } else {
+        display_model = version::model::get(eax);
+    }
+
+    if (display_family != 0x06) {
+        bfalert_info(0, "bus_freq_MHz: unsupported display_family");
+        return 0;
+    }
+
+    switch (display_model) {
+        case 0x4E: // section 2.16
+        case 0x55:
+        case 0x5E:
+        case 0x66:
+        case 0x8E:
+        case 0x9E:
+        case 0x5C: // table 2-12
+        case 0x7A:
+        case 0x2A: // table 2-19
+        case 0x2D:
+        case 0x3A: // table 2-24
+        case 0x3E: // table 2-25
+        case 0x3C: // table 2-28
+        case 0x3F:
+        case 0x45:
+        case 0x46:
+        case 0x3D: // section 2.14
+        case 0x47:
+        case 0x4F: // table 2-35
+        case 0x56:
+        case 0x57: // table 2-43
+        case 0x85:
+            return 100000;
+
+        case 0x1A: // table 2-14
+        case 0x1E:
+        case 0x1F:
+        case 0x2E:
+            return 133330;
+
+        default:
+            bfalert_nhex(0, "Unknown cpuid display_model", display_model);
+            return 0;
+    }
+}
+
+static inline uint64_t tsc_freq_khz(uint64_t bus_freq_khz)
+{
+    using namespace ::intel_x64::msrs;
+
+    const auto platform_info = 0xCE;
+    const auto ratio = (get(platform_info) & 0xFF00) >> 8;
+
+    return bus_freq_khz * ratio;
+}
+
+//
+// According to section 25.5.1, the VMX preemption timer (pet)
+// ticks every time bit X of the TSC changes, where X is the
+// value of IA32_VMX_MISC[4:0]. So
+//
+// pet_freq = tsc_freq >> IA32_VMX_MISC[4:0]
+//
+static inline uint64_t pet_freq_khz(uint64_t tsc_freq_khz)
+{
+    using namespace ::intel_x64::msrs;
+
+    const auto div = ia32_vmx_misc::preemption_timer_decrement::get();
+    return tsc_freq_khz >> div;
+}
+
+static inline bool tsc_supported()
+{ return ::intel_x64::cpuid::feature_information::edx::tsc::is_enabled(); }
+
+static inline bool invariant_tsc_supported()
+{ return ::intel_x64::cpuid::invariant_tsc::edx::available::is_enabled(); }
+
+yield_handler::yield_handler(gsl::not_null<vcpu *> vcpu) :
     m_vcpu{vcpu}
 {
-    // Notes:
-    //
-    // We we the TSC ratio to kHz because the manual states that you take the
-    // value of the ratio and multiply it by 133.33MHz. The issue is that we
-    // don't want to use floating point numbers here, so we have to convert
-    // to kHz to be able to convert this to an integer value.
-    //
-
     using namespace vmcs_n;
     using namespace ::intel_x64::msrs;
 
@@ -53,20 +170,21 @@ yield_handler::yield_handler(
         return;
     }
 
-    m_tsc_freq = ia32_platform_info::max_nonturbo_ratio::get() * 133330;
+    expects(tsc_supported());
+    expects(invariant_tsc_supported());
+
+    m_tsc_freq = tsc_freq_khz(bus_freq_khz());
     m_pet_shift = ia32_vmx_misc::preemption_timer_decrement::get();
 
     if (m_tsc_freq == 0) {
         vcpu->halt("No TSC frequency info available. System unsupported");
     }
 
-    vcpu->add_handler(
-        exit_reason::basic_exit_reason::hlt,
+    vcpu->add_hlt_handler(
         {&yield_handler::handle_hlt, this}
     );
 
-    vcpu->add_handler(
-        exit_reason::basic_exit_reason::preemption_timer_expired,
+    vcpu->add_preemption_timer_handler(
         {&yield_handler::handle_preemption, this}
     );
 
@@ -78,7 +196,9 @@ yield_handler::yield_handler(
 // -----------------------------------------------------------------------------
 
 bool
-yield_handler::handle_hlt(vcpu_t *vcpu)
+yield_handler::handle_hlt(
+    vcpu_t *vcpu,
+    bfvmm::intel_x64::hlt_handler::info_t &info)
 {
     bfignored(vcpu);
 
@@ -142,8 +262,9 @@ yield_handler::handle_hlt(vcpu_t *vcpu)
     if (auto pet = m_vcpu->get_preemption_timer(); pet > 0) {
         auto yield = ((pet << m_pet_shift) * 1000) / m_tsc_freq;
 
-        m_vcpu->parent_vcpu()->load();
-        m_vcpu->parent_vcpu()->return_yield(yield);
+        m_vcpu->save_xstate();
+        m_vcpu->root_vcpu()->load();
+        m_vcpu->root_vcpu()->return_yield(yield);
     }
 
     return true;

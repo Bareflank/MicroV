@@ -48,27 +48,14 @@ vmcs_launch:
     mov rsi, VMCS_GUEST_RIP
     vmwrite rsi, [rdi + 0x078]
 
-    ; Load xsave_info address
-    mov r12, [rdi + 0x0A8]
-    push r12
-
-    ; Store current state to the host area
-    mov rax, [r12 + 0x10]
-    mov rdx, [r12 + 0x10]
-    shr rdx, 32
-    xor rcx, rcx
-    xsetbv
-    mov rcx, [r12 + 0x00]
-    xsave [rcx]
-
-    ; Load state from the guest area
-    mov rax, [r12 + 0x18]
-    mov rdx, [r12 + 0x18]
-    shr rdx, 32
-    xor rcx, rcx
-    xsetbv
-    mov rcx, [r12 + 0x08]
-    xrstor [rcx]
+    movdqa xmm7,  [rdi + 0x1A0]
+    movdqa xmm6,  [rdi + 0x180]
+    movdqa xmm5,  [rdi + 0x160]
+    movdqa xmm4,  [rdi + 0x140]
+    movdqa xmm3,  [rdi + 0x120]
+    movdqa xmm2,  [rdi + 0x100]
+    movdqa xmm1,  [rdi + 0x0E0]
+    movdqa xmm0,  [rdi + 0x0C0]
 
     mov r15, [rdi + 0x070]
     mov r14, [rdi + 0x068]
@@ -88,23 +75,6 @@ vmcs_launch:
     mov rdi, [rdi + 0x030]
 
     vmlaunch
-
-    ; Store state to the guest area
-    pop r12
-    mov rax, [r12 + 0x18]
-    mov rdx, [r12 + 0x18]
-    shr rdx, 32
-    mov rcx, [r12 + 0x08]
-    xsave [rcx]
-
-    ; Load state from the host area
-    mov rax, [r12 + 0x10]
-    mov rdx, [r12 + 0x10]
-    shr rdx, 32
-    xor rcx, rcx
-    xsetbv
-    mov rcx, [r12 + 0x00]
-    xrstor [rcx]
 
     pop rbp
     pop r15

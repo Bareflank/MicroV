@@ -19,72 +19,80 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-# ------------------------------------------------------------------------------
-# Driver
-# ------------------------------------------------------------------------------
-
 if(WIN32)
     return()
 endif()
 
 file(TO_NATIVE_PATH "${SOURCE_ROOT_DIR}" SOURCE_ROOT_DIR_NATIVE)
 
-add_custom_target_category("MicroV Driver")
+# ------------------------------------------------------------------------------
+# Drivers
+# ------------------------------------------------------------------------------
 
-add_custom_target(builder_build
-    COMMAND ${MICROV_SOURCE_UTIL_DIR}/driver_build.sh ${MICROV_SOURCE_ROOT_DIR} ${SOURCE_ROOT_DIR_NATIVE}
-    USES_TERMINAL
-)
-add_custom_target_info(
-    TARGET builder_build
-    COMMENT "Build the microv driver"
-)
+function(add_driver_targets DRV)
+    set(SH_DIR ${MICROV_SOURCE_UTIL_DIR})
+    set(MV_SRC ${MICROV_SOURCE_ROOT_DIR})
+    set(BF_SRC ${SOURCE_ROOT_DIR_NATIVE})
 
-add_custom_target(builder_clean
-    COMMAND ${MICROV_SOURCE_UTIL_DIR}/driver_clean.sh ${MICROV_SOURCE_ROOT_DIR} ${SOURCE_ROOT_DIR_NATIVE}
-    USES_TERMINAL
-)
-add_custom_target_info(
-    TARGET builder_clean
-    COMMENT "Clean the microv driver"
-)
+    add_custom_target(${DRV}_build
+        COMMAND ${SH_DIR}/driver_build.sh ${MV_SRC} ${BF_SRC} ${DRV}
+        USES_TERMINAL
+    )
+    add_custom_target_info(
+        TARGET ${DRV}_build
+        COMMENT "Build the ${DRV} driver"
+    )
 
-add_custom_target(builder_load
-    COMMAND ${MICROV_SOURCE_UTIL_DIR}/driver_load.sh ${MICROV_SOURCE_ROOT_DIR}  ${SOURCE_ROOT_DIR_NATIVE}
-    USES_TERMINAL
-)
-add_custom_target_info(
-    TARGET builder_load
-    COMMENT "Load the microv driver"
-)
+    add_custom_target(${DRV}_clean
+        COMMAND ${SH_DIR}/driver_clean.sh ${MV_SRC} ${DRV}
+        USES_TERMINAL
+    )
+    add_custom_target_info(
+        TARGET ${DRV}_clean
+        COMMENT "Clean the ${DRV} driver"
+    )
 
-add_custom_target(builder_unload
-    COMMAND ${MICROV_SOURCE_UTIL_DIR}/driver_unload.sh ${MICROV_SOURCE_ROOT_DIR} ${SOURCE_ROOT_DIR_NATIVE}
-    USES_TERMINAL
-)
-add_custom_target_info(
-    TARGET builder_unload
-    COMMENT "Unload the microv driver"
-)
+    add_custom_target(${DRV}_load
+        COMMAND ${SH_DIR}/driver_load.sh ${MV_SRC} ${DRV}
+        USES_TERMINAL
+    )
+    add_custom_target_info(
+        TARGET ${DRV}_load
+        COMMENT "Load the ${DRV} driver"
+    )
 
-add_custom_target(
-    builder_quick
-    COMMAND ${CMAKE_COMMAND} --build . --target builder_unload
-    COMMAND ${CMAKE_COMMAND} --build . --target builder_clean
-    COMMAND ${CMAKE_COMMAND} --build . --target builder_build
-    COMMAND ${CMAKE_COMMAND} --build . --target builder_load
-    USES_TERMINAL
-)
-add_custom_target_info(
-    TARGET builder_quick
-    COMMENT "Unload, clean, build, and load the Bareflank driver"
-)
+    add_custom_target(${DRV}_unload
+        COMMAND ${SH_DIR}/driver_unload.sh ${MV_SRC} ${DRV}
+        USES_TERMINAL
+    )
+    add_custom_target_info(
+        TARGET ${DRV}_unload
+        COMMENT "Unload the ${DRV} driver"
+    )
 
-add_dependencies(driver_build builder_build)
-add_dependencies(driver_clean builder_clean)
-add_dependencies(driver_load builder_load)
-add_dependencies(driver_unload builder_unload)
-add_dependencies(driver_quick builder_quick)
+    add_custom_target(
+        ${DRV}_quick
+        COMMAND ${CMAKE_COMMAND} --build . --target ${DRV}_unload
+        COMMAND ${CMAKE_COMMAND} --build . --target ${DRV}_clean
+        COMMAND ${CMAKE_COMMAND} --build . --target ${DRV}_build
+        COMMAND ${CMAKE_COMMAND} --build . --target ${DRV}_load
+        USES_TERMINAL
+    )
+    add_custom_target_info(
+        TARGET ${DRV}_quick
+        COMMENT "Unload, clean, build, and load the ${DRV} driver"
+    )
+
+    add_dependencies(driver_unload ${DRV}_unload)
+    add_dependencies(driver_clean ${DRV}_clean)
+    add_dependencies(driver_build ${DRV}_build)
+    add_dependencies(driver_load ${DRV}_load)
+    add_dependencies(driver_quick ${DRV}_quick)
+endfunction(add_driver_targets)
+
+add_custom_target_category("MicroV Drivers")
+add_driver_targets(builder)
+#add_driver_targets(pci)
 
 # ------------------------------------------------------------------------------
 # Guest VMs
@@ -206,7 +214,7 @@ endif()
 # Add xenstore VM targets
 if(VM STREQUAL xsvm)
     add_custom_target(xsvm-xen-recfg
-        COMMAND ${CMAKE_COMMAND} -E chdir ${BR_SRC_DIR} make O=${BR_BIN_DIR} xen-reconfigure
+        COMMAND ${CMAKE_COMMAND} -E chdir ${BR_SRC_DIR} make O=${BR_BIN} xen-reconfigure
         DEPENDS xtools_x86_64-userspace-elf
         USES_TERMINAL
     )
@@ -215,7 +223,7 @@ if(VM STREQUAL xsvm)
         COMMENT "Reconfigure xen tools"
     )
     add_custom_target(xsvm-xen-rebuild
-        COMMAND ${CMAKE_COMMAND} -E chdir ${BR_SRC_DIR} make O=${BR_BIN_DIR} xen-rebuild
+        COMMAND ${CMAKE_COMMAND} -E chdir ${BR_SRC_DIR} make O=${BR_BIN} xen-rebuild
         DEPENDS xtools_x86_64-userspace-elf
         USES_TERMINAL
     )
@@ -229,8 +237,7 @@ endfunction(add_vm_targets)
 
 if(BUILD_XEN_GUEST)
     add_custom_target_category("MicroV Guest VMs")
-
-    add_vm_targets(vm)
     add_vm_targets(xsvm)
     add_vm_targets(ndvm)
+    add_vm_targets(vpnvm)
 endif()

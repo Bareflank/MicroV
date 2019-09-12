@@ -510,6 +510,8 @@ int libxl__build_pre(libxl__gc *gc, uint32_t domid,
         return ERROR_FAIL;
     }
 
+    printf("set maxmem\n");
+
     xs_domid = xs_read(ctx->xsh, XBT_NULL, "/tool/xenstored/domid", NULL);
     state->store_domid = xs_domid ? atoi(xs_domid) : 0;
     free(xs_domid);
@@ -520,6 +522,8 @@ int libxl__build_pre(libxl__gc *gc, uint32_t domid,
 
     state->store_port = xc_evtchn_alloc_unbound(ctx->xch, domid, state->store_domid);
     state->console_port = xc_evtchn_alloc_unbound(ctx->xch, domid, state->console_domid);
+
+    printf("allocated store and console evtchn unbound\n");
 
     if (info->type != LIBXL_DOMAIN_TYPE_PV)
         hvm_set_conf_params(ctx->xch, domid, info);
@@ -556,6 +560,7 @@ int libxl__build_pre(libxl__gc *gc, uint32_t domid,
     }
 
     rc = libxl__arch_domain_create(gc, d_config, domid);
+    printf("arch_domain_create done\n");
 
     return rc;
 }
@@ -736,6 +741,9 @@ static int libxl__build_dom(libxl__gc *gc, uint32_t domid,
         LOGE(ERROR, "xc_dom_boot_xen_init failed");
         goto out;
     }
+
+    printf("boot_xen_init done\n");
+
 #ifdef GUEST_RAM_BASE
     if ( (ret = xc_dom_rambase_init(dom, GUEST_RAM_BASE)) != 0 ) {
         LOGE(ERROR, "xc_dom_rambase failed");
@@ -746,6 +754,9 @@ static int libxl__build_dom(libxl__gc *gc, uint32_t domid,
         LOG(ERROR, "xc_dom_parse_image failed");
         goto out;
     }
+
+    printf("parse_image done\n");
+
     if ( (ret = libxl__arch_domain_init_hw_description(gc, info, state, dom)) != 0 ) {
         LOGE(ERROR, "libxl__arch_domain_init_hw_description failed");
         goto out;
@@ -757,30 +768,49 @@ static int libxl__build_dom(libxl__gc *gc, uint32_t domid,
         LOGE(ERROR, "xc_dom_mem_init failed");
         goto out;
     }
+
+    printf("mem_init done\n");
+
     if ( (ret = xc_dom_boot_mem_init(dom)) != 0 ) {
         LOGE(ERROR, "xc_dom_boot_mem_init failed");
         goto out;
     }
+
+    printf("boot_mem_init done\n");
+
     if ( (ret = libxl__arch_domain_finalise_hw_description(gc, domid, d_config, dom)) != 0 ) {
         LOGE(ERROR, "libxl__arch_domain_finalise_hw_description failed");
         goto out;
     }
+
+    printf("finalise_hw_desc done\n");
+
     if ( (ret = xc_dom_build_image(dom)) != 0 ) {
         LOGE(ERROR, "xc_dom_build_image failed");
         goto out;
     }
+
+    printf("build_image done\n");
+
     if ( (ret = xc_dom_boot_image(dom)) != 0 ) {
         LOGE(ERROR, "xc_dom_boot_image failed");
         goto out;
     }
+
+    printf("boot_image done\n");
+
     if ( (ret = xc_dom_gnttab_init(dom)) != 0 ) {
         LOGE(ERROR, "xc_dom_gnttab_init failed");
         goto out;
     }
+
+    printf("gnttab_init done\n");
+
     if ((ret = libxl__arch_build_dom_finish(gc, info, dom, state)) != 0) {
         LOGE(ERROR, "libxl__arch_build_dom_finish failed");
         goto out;
     }
+    printf("build_dom_finish done\n");
 
 out:
     return ret != 0 ? ERROR_FAIL : 0;
@@ -961,7 +991,7 @@ static int hvm_build_set_xs_values(libxl__gc *gc,
     }
 
     /* Only one module can be passed. PVHv2 guests do not support this. */
-    if (dom->acpi_modules[0].guest_addr_out && 
+    if (dom->acpi_modules[0].guest_addr_out &&
         info->type == LIBXL_DOMAIN_TYPE_HVM) {
         path = GCSPRINTF("/local/domain/%d/"HVM_XS_ACPI_PT_ADDRESS, domid);
 
@@ -1225,6 +1255,8 @@ int libxl__build_hvm(libxl__gc *gc, uint32_t domid,
 
     xc_dom_loginit(ctx->xch);
 
+    printf("%s 0\n", __func__);
+
     /*
      * If PVH and we have a shim override, use the shim cmdline.
      * If PVH and no shim override, use the pv cmdline.
@@ -1263,6 +1295,7 @@ int libxl__build_hvm(libxl__gc *gc, uint32_t domid,
         goto out;
     }
 
+    printf("%s 1\n", __func__);
     if (dom->target_pages == 0)
         dom->target_pages = mem_size >> XC_PAGE_SHIFT;
     if (dom->mmio_size == 0 && device_model)
@@ -1301,10 +1334,13 @@ int libxl__build_hvm(libxl__gc *gc, uint32_t domid,
     dom->console_domid = state->console_domid;
     dom->xenstore_domid = state->store_domid;
 
+    printf("%s 2\n", __func__);
     rc = libxl__domain_device_construct_rdm(gc, d_config,
                                             info->u.hvm.rdm_mem_boundary_memkb*1024,
                                             dom);
+    printf("%s 3\n", __func__);
     if (rc) {
+        printf("%s 4\n", __func__);
         LOG(ERROR, "checking reserved device memory failed");
         goto out;
     }
@@ -1312,6 +1348,7 @@ int libxl__build_hvm(libxl__gc *gc, uint32_t domid,
     if (info->num_vnuma_nodes != 0) {
         int i;
 
+        printf("%s 5\n", __func__);
         rc = libxl__vnuma_build_vmemrange_hvm(gc, domid, info, state, dom);
         if (rc != 0) {
             LOG(ERROR, "hvm build vmemranges failed");
@@ -1340,14 +1377,18 @@ int libxl__build_hvm(libxl__gc *gc, uint32_t domid,
             dom->vnode_to_pnode[i] = info->vnuma_nodes[i].pnode;
     }
 
+    printf("%s 6\n", __func__);
     rc = libxl__build_dom(gc, domid, d_config, state, dom);
+    printf("%s 7\n", __func__);
     if (rc != 0)
         goto out;
 
+    printf("%s 8\n", __func__);
     rc = hvm_build_set_params(ctx->xch, domid, info, state->store_port,
                                &state->store_mfn, state->console_port,
                                &state->console_mfn, state->store_domid,
                                state->console_domid);
+    printf("%s 9\n", __func__);
     if (rc != 0) {
         LOG(ERROR, "hvm build set params failed");
         goto out;

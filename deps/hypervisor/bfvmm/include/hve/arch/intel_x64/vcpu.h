@@ -27,6 +27,7 @@
 #include "vmexit/ept_misconfiguration.h"
 #include "vmexit/ept_violation.h"
 #include "vmexit/external_interrupt.h"
+#include "vmexit/hlt.h"
 #include "vmexit/init_signal.h"
 #include "vmexit/interrupt_window.h"
 #include "vmexit/io_instruction.h"
@@ -506,6 +507,13 @@ public:
     VIRTUAL void disable_external_interrupts();
 
     //--------------------------------------------------------------------------
+    // HLT
+    //--------------------------------------------------------------------------
+    VIRTUAL void enable_hlt_exiting();
+    VIRTUAL void disable_hlt_exiting();
+    VIRTUAL void add_hlt_handler(const hlt_handler::handler_delegate_t &d);
+
+    //--------------------------------------------------------------------------
     // Interrupt Window
     //--------------------------------------------------------------------------
 
@@ -519,6 +527,19 @@ public:
     /// @param vector the vector to queue for injection
     ///
     VIRTUAL void queue_external_interrupt(uint64_t vector);
+
+    /// Push External Interrupt
+    ///
+    /// Pushes an external interrupt for injection. The difference between
+    /// this and queue_external_interrupt is that no VMCS access is made, so
+    /// it is safe to call from a different core.
+    ///
+    /// @expects
+    /// @ensures
+    ///
+    /// @param vector the vector to queue for injection
+    ///
+    VIRTUAL void push_external_interrupt(uint64_t vector);
 
     /// Inject Exception
     ///
@@ -933,6 +954,16 @@ public:
     /// @ensures
     ///
     VIRTUAL void disable_ept();
+
+    /// invept
+    ///
+    /// Invalidate processor cache entries referenced by the EPTP vmcs field
+    /// of this vcpu.
+    ///
+    /// @expects
+    /// @ensures
+    ///
+    VIRTUAL void invept();
 
     //==========================================================================
     // VPID
@@ -1887,10 +1918,6 @@ public:
     VIRTUAL uint64_t gr4() const noexcept;
     VIRTUAL void set_gr4(uint64_t val) noexcept;
 
-    /// Stacks
-    std::unique_ptr<gsl::byte[]> m_ist1;
-    std::unique_ptr<gsl::byte[]> m_stack;
-
     /// @endcond
 
 private:
@@ -1909,6 +1936,9 @@ private:
     page_ptr<uint8_t> m_io_bitmap_a;
     page_ptr<uint8_t> m_io_bitmap_b;
 
+    std::unique_ptr<gsl::byte[]> m_ist1;
+    std::unique_ptr<gsl::byte[]> m_stack;
+
     x64::tss m_host_tss{};
     x64::gdt m_host_gdt{512};
     x64::idt m_host_idt{256};
@@ -1925,6 +1955,7 @@ private:
     ept_misconfiguration_handler m_ept_misconfiguration_handler;
     ept_violation_handler m_ept_violation_handler;
     external_interrupt_handler m_external_interrupt_handler;
+    hlt_handler m_hlt_handler;
     init_signal_handler m_init_signal_handler;
     interrupt_window_handler m_interrupt_window_handler;
     io_instruction_handler m_io_instruction_handler;

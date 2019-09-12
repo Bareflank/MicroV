@@ -237,6 +237,7 @@ load_start_vm(EFI_HANDLE ParentImage)
     }
 
     BFALERT("Unable to locate EFI bootloader\n");
+    __asm volatile("vmcall" :: "a"(0xBF07000000000000), "b"(1));
     return EFI_ABORTED;
 }
 
@@ -262,11 +263,15 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *systab)
         return EFI_ABORTED;
     }
 
+#ifdef USE_XUE
     xue_mset(&g_xue, 0, sizeof(g_xue));
     xue_mset(&g_xue_ops, 0, sizeof(g_xue_ops));
     xue_mset(&g_xue_efi, 0, sizeof(g_xue_efi));
 
     g_xue_efi.img_hand = image;
+    g_xue.sysid = xue_sysid_efi;
+    xue_open(&g_xue, &g_xue_ops, &g_xue_efi);
+#endif
 
     ioctl_add_module((char *)vmm, vmm_len);
     ioctl_load_vmm();

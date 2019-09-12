@@ -27,8 +27,9 @@
 
 #include "uart.h"
 #include "../../../ring.h"
+#include "../../../xen/domain.h"
 #include "../../../domain/domain.h"
-#include "../../../domain/domain_manager.h"
+#include "../../../domain/manager.h"
 
 #include <bfvmm/hve/arch/intel_x64/vcpu.h>
 
@@ -49,14 +50,14 @@ public:
     /// @expects
     /// @ensures
     ///
-    domain(domainid_type domainid, struct domain_info *info);
+    domain(id_t domainid, struct domain_info *info);
 
     /// Destructor
     ///
     /// @expects
     /// @ensures
     ///
-    ~domain() = default;
+    ~domain();
 
     /// Add E820 Map Entry
     ///
@@ -70,6 +71,21 @@ public:
     /// @param entry the E820 map entry to add
     ///
     void add_e820_entry(uintptr_t base, uintptr_t end, uint32_t type);
+
+    /// Share root page
+    ///
+    /// Map a 4k page from the given root vcpu into this domain. The page
+    /// is not unmapped from the root domain.
+    ///
+    /// @expects root->is_root_vcpu()
+    /// @ensures
+    ///
+    /// @param root->rcx() - gpa that maps to the page to share
+    /// @param root->rdx() - gpa to map into this domain
+    /// @param perm the access permissions for the mapping
+    /// @param mtype the memory type for the mapping
+    ///
+    void share_root_page(vcpu *root, uint64_t perm, uint64_t mtype);
 
     /// Map 1g GPA to HPA (Read-Only)
     ///
@@ -148,6 +164,7 @@ public:
     /// @param hpa the host physical address
     ///
     void map_4k_rw(uintptr_t gpa, uintptr_t hpa);
+    void map_4k_rw_uc(uintptr_t gpa, uintptr_t hpa);
 
     /// Map 1g GPA to HPA (Read/Write/Execute)
     ///
@@ -226,7 +243,9 @@ public:
     ///
     uint64_t exec_mode() noexcept;
 
-    bool initdom() noexcept { return m_info.flags & DOMF_XENINIT; }
+    xen_domain *xen_dom() noexcept { return m_xen_dom; }
+    bool initdom() noexcept { return m_sod_info.flags & DOMF_XENINIT; }
+    bool ndvm() noexcept { return m_sod_info.flags & DOMF_NDVM; }
 
     /// Set UART
     ///
@@ -277,11 +296,6 @@ public:
     /// @return the number of bytes transferred to the buffer
     ///
     uint64_t dump_uart(const gsl::span<char> &buffer);
-
-    size_t hvc_rx_put(const gsl::span<char> &span);
-    size_t hvc_rx_get(const gsl::span<char> &span);
-    size_t hvc_tx_put(const gsl::span<char> &span);
-    size_t hvc_tx_get(const gsl::span<char> &span);
 
     /// Domain Registers
     ///
@@ -423,12 +437,17 @@ public:
     global_state()
     { return &m_vcpu_global_state; }
 
+    /* Start-of-day info */
+    struct microv::domain_info *sod_info()
+    { return &m_sod_info; }
+
+    std::mutex e820_mtx;
+
 private:
+    friend class microv::xen_domain;
 
     void setup_dom0();
     void setup_domU();
-
-private:
 
     std::vector<e820_entry_t> m_e820;
     bfvmm::intel_x64::ept::mmap m_ept_map;
@@ -502,13 +521,12 @@ private:
     uint64_t m_ldtr_limit{};
     uint64_t m_ldtr_access_rights{};
 
-    uint64_t m_did{};
-    struct microv::domain_info m_info{};
-
-    std::unique_ptr<microv::ring<HVC_RX_SIZE>> m_hvc_rx_ring;
-    std::unique_ptr<microv::ring<HVC_TX_SIZE>> m_hvc_tx_ring;
+    struct microv::domain_info m_sod_info{};
 
 public:
+
+    xen_domid_t m_xen_domid{};
+    microv::xen_domain *m_xen_dom{};
     microv::intel_x64::vcpu *m_vcpu{};
 
     /// @cond
@@ -522,19 +540,40 @@ public:
     /// @endcond
 };
 
+/**
+ * get_domain - acquires a reference to a microv domain
+ *
+ * A non-null return value is guaranteed to point to a valid object until a
+ * matching put_domain is called. Caller must ensure that they return the
+ * reference after they are done with put_domain.
+ *
+ * @expects
+ * @ensures
+ *
+ * @param id the id of the guest domain to acquire
+ * @return ptr to valid guest domain on success, nullptr otherwise
+*/
+inline microv::intel_x64::domain *get_domain(domainid_t id) noexcept
+{
+    return g_dm->acquire<microv::intel_x64::domain>(id);
 }
 
-/// Get Domain
-///
-/// Gets a domain from the domain manager given a domain id
-///
-/// @expects
-/// @ensures
-///
-/// @return returns a pointer to the domain being queried or throws
-///     and exception.
-///
-#define get_domain(a) \
-    g_dm->get<microv::intel_x64::domain *>(a, "invalid domainid: " __FILE__)
+/**
+ * put_domain - releases a reference to a microv domain
+ *
+ * Release a previously acquired reference to the microv domain.
+ * This must be called after a successful call to get_domain.
+ *
+ * @expects
+ * @ensures
+ *
+ * @param id the id of the guest vcpu to release
+*/
+inline void put_domain(domainid_t id) noexcept
+{
+    return g_dm->release(id);
+}
+
+}
 
 #endif

@@ -29,22 +29,27 @@ target_include_directories(microv_hve PUBLIC
     $<${XEN}:${PROJECT_SOURCE_DIR}/../deps/xen/xen/include>
 )
 target_sources(microv_hve PRIVATE
+    $<${X64}:arch/intel_x64/apic/lapic.cpp>
     $<${X64}:arch/intel_x64/apic/x2apic.cpp>
-    $<${X64}:arch/intel_x64/pci/pci_configuration_space.cpp>
     $<${X64}:arch/intel_x64/vmexit/cpuid.cpp>
     $<${X64}:arch/intel_x64/vmexit/external_interrupt.cpp>
     $<${X64}:arch/intel_x64/vmexit/io_instruction.cpp>
     $<${X64}:arch/intel_x64/vmexit/msr.cpp>
     $<${X64}:arch/intel_x64/vmexit/mtrr.cpp>
+    $<${X64}:arch/intel_x64/vmexit/pci_cfg.cpp>
     $<${X64}:arch/intel_x64/vmexit/vmcall.cpp>
     $<${X64}:arch/intel_x64/vmexit/yield.cpp>
     $<${X64}:arch/intel_x64/vmcall/domain_op.cpp>
+    $<${X64}:arch/intel_x64/vmcall/event_op.cpp>
+    $<${X64}:arch/intel_x64/vmcall/iommu_op.cpp>
     $<${X64}:arch/intel_x64/vmcall/run_op.cpp>
     $<${X64}:arch/intel_x64/vmcall/vcpu_op.cpp>
+    $<${X64}:arch/intel_x64/vmcall/xue_op.cpp>
     $<${X64}:arch/intel_x64/domain.cpp>
     $<${X64}:arch/intel_x64/uart.cpp>
+    $<${X64}:arch/intel_x64/xsave.asm>
+    $<${X64}:arch/intel_x64/xstate.cpp>
     $<${X64}:arch/intel_x64/vcpu.cpp>
-    $<${X64}:arch/intel_x64/xsave.cpp>
 )
 
 install(TARGETS microv_hve DESTINATION lib EXPORT microv_bfvmm-vmm-targets)

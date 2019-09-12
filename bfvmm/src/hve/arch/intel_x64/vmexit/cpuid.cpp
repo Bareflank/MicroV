@@ -19,7 +19,6 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#include <bfthreadcontext.h>
 #include <hve/arch/intel_x64/vcpu.h>
 #include <hve/arch/intel_x64/vmexit/cpuid.h>
 
@@ -29,8 +28,6 @@
 // -----------------------------------------------------------------------------
 // Implementation
 // -----------------------------------------------------------------------------
-
-extern "C" void _cpuid(void *eax, void *ebx, void *ecx, void *edx) noexcept;
 
 namespace microv::intel_x64
 {
@@ -95,8 +92,7 @@ cpuid_handler::handle_0x00000001(vcpu_t *vcpu)
 {
     vcpu->execute_cpuid();
 
-    //vcpu->set_rcx(vcpu->rcx() & 0x21FC3203);
-    vcpu->set_rcx(vcpu->rcx() & 0x3DFC3203); /* enable xsave and AVX */
+    vcpu->set_rcx(vcpu->rcx() & 0x21FC3203);
     vcpu->set_rdx(vcpu->rdx() & 0x1FCBFBFB);
 
     // Note:
@@ -105,6 +101,18 @@ cpuid_handler::handle_0x00000001(vcpu_t *vcpu)
     //
 
     vcpu->set_rcx(vcpu->rcx() | 0x80000000);
+
+    // Enable xsave and avx
+    vcpu->set_rcx(vcpu->rcx() | (1UL << 26));
+    vcpu->set_rcx(vcpu->rcx() | (1UL << 28));
+
+    // Set osxsave based on current cr4 value
+    auto osxsave = vcpu->cr4() & (1UL << 18);
+    if (osxsave) {
+        vcpu->set_rcx(vcpu->rcx() | (1UL << 18));
+    } else {
+        vcpu->set_rcx(vcpu->rcx() & ~(1UL << 18));
+    }
 
     return vcpu->advance();
 }
@@ -149,7 +157,7 @@ cpuid_handler::handle_0x00000007(vcpu_t *vcpu)
     vcpu->execute_cpuid();
 
     vcpu->set_rax(0);
-    vcpu->set_rbx(vcpu->rbx() & 0x019C23D9);
+    vcpu->set_rbx(vcpu->rbx() & 0x019D23F9);
     vcpu->set_rcx(0);
     vcpu->set_rdx(0);
 
@@ -180,57 +188,9 @@ cpuid_handler::handle_0x0000000B(vcpu_t *vcpu)
     return vcpu->advance();
 }
 
-static uint64_t get_xsave_size(uint64_t xcr0)
+bool
+cpuid_handler::handle_0x0000000D(vcpu_t *vcpu)
 {
-    uint64_t size = XSAVE_LEGACY_SIZE + XSAVE_HEADER_SIZE;
-
-    for (auto i = (uint32_t)xstate_bit_avx; i <= xstate_bit_last; i++) {
-        uint32_t eax = 0xD;
-        uint32_t ebx = 0;
-        uint32_t ecx = i;
-        uint32_t edx = 0;
-
-        _cpuid(&eax, &ebx, &ecx, &edx);
-        size += eax;
-    }
-
-    return size;
-}
-
-/*FIXME: look into enabling more in leaf 1.ecx,edx */
-bool cpuid_handler::handle_0x0000000D(vcpu_t *vcpu)
-{
-//    auto xsave = thread_context_xsave();
-//    auto xcr0 = xsave->cpuid_xcr0 & XSAVE_LEGACY_MASK;
-//
-//    switch (vcpu->rcx()) {
-//    case 0:
-//        vcpu->set_rax(xcr0 & 0xFFFFFFFFULL);
-//        vcpu->set_rdx(xcr0 >> 32);
-//        vcpu->set_rcx(get_xsave_size(xcr0));
-//        vcpu->set_rbx(get_xsave_size(xsave->guest_xcr0));
-//        break;
-//
-//    case 1:
-//        vcpu->execute_cpuid();
-//        vcpu->set_rax(vcpu->rax() & 0x7); /* disable xsaves */
-//        vcpu->set_rbx(0);
-//        vcpu->set_rcx(0);
-//        vcpu->set_rdx(0);
-//        break;
-//
-//    default:
-//        if (vcpu->rcx() > xstate_bit_last || (xcr0 & (1ULL << vcpu->rcx()))) {
-//            vcpu->execute_cpuid();
-//            break;
-//        }
-//        vcpu->set_rax(0);
-//        vcpu->set_rbx(0);
-//        vcpu->set_rcx(0);
-//        vcpu->set_rdx(0);
-//        break;
-//    }
-
     vcpu->execute_cpuid();
     return vcpu->advance();
 }

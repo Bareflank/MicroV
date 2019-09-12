@@ -34,7 +34,6 @@
 EFI_MP_SERVICES_PROTOCOL *g_mp_services = nullptr;
 
 void _set_ne(void);
-void _cpuid(uint32_t *eax, uint32_t *ebx, uint32_t *ecx, uint32_t *edx);
 
 int64_t
 platform_init(void)
@@ -230,8 +229,10 @@ platform_call_vmm_on_core(
 
 void *
 platform_get_rsdp(void)
-{ return 0; }
+{
+    VOID *rsdp = NULL;
+    EFI_GUID guid = ACPI_20_TABLE_GUID;
+    LibGetSystemConfigurationTable(&guid, &rsdp);
 
-void
-platform_cpuid(uint32_t *eax, uint32_t *ebx, uint32_t *ecx, uint32_t *edx)
-{ _cpuid(eax, ebx, ecx, edx); }
+    return rsdp;
+}

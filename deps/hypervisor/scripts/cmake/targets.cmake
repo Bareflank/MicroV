@@ -59,9 +59,15 @@ endif()
 if(NOT WIN32)
     add_custom_target_category("Bareflank Driver")
 
+    if(CYGWIN)
+        set(DRV_PREFIX pe)
+    else()
+        set(DRV_PREFIX elf)
+    endif()
+
     add_custom_target(driver_build
         COMMAND ${SOURCE_UTIL_DIR}/driver_build.sh ${SOURCE_BFDRIVER_DIR}
-        DEPENDS bfdriver_x86_64-userspace-elf
+        DEPENDS bfdriver_x86_64-userspace-${DRV_PREFIX}
         USES_TERMINAL
     )
     add_custom_target_info(
@@ -71,7 +77,7 @@ if(NOT WIN32)
 
     add_custom_target(driver_clean
         COMMAND ${SOURCE_UTIL_DIR}/driver_clean.sh ${SOURCE_BFDRIVER_DIR}
-        DEPENDS bfdriver_x86_64-userspace-elf
+        DEPENDS bfdriver_x86_64-userspace-${DRV_PREFIX}
         USES_TERMINAL
     )
     add_custom_target_info(
@@ -81,7 +87,7 @@ if(NOT WIN32)
 
     add_custom_target(driver_load
         COMMAND ${SOURCE_UTIL_DIR}/driver_load.sh ${SOURCE_BFDRIVER_DIR}
-        DEPENDS bfdriver_x86_64-userspace-elf
+        DEPENDS bfdriver_x86_64-userspace-${DRV_PREFIX}
         USES_TERMINAL
     )
     add_custom_target_info(
@@ -91,7 +97,7 @@ if(NOT WIN32)
 
     add_custom_target(driver_unload
         COMMAND ${SOURCE_UTIL_DIR}/driver_unload.sh ${SOURCE_BFDRIVER_DIR}
-        DEPENDS bfdriver_x86_64-userspace-elf
+        DEPENDS bfdriver_x86_64-userspace-${DRV_PREFIX}
         USES_TERMINAL
     )
     add_custom_target_info(

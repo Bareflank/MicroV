@@ -74,8 +74,59 @@ struct e820_entry_t {
 #define __enum_domain_op 2
 #define __enum_vcpu_op 3
 #define __enum_uart_op 4
+#define __enum_xue_op 5
+#define __enum_event_op 6
+#define __enum_iommu_op 7
 
 #define bfopcode(a) ((a & 0x00FF000000000000) >> 48)
+
+// -----------------------------------------------------------------------------
+// IOMMU Operations
+// -----------------------------------------------------------------------------
+
+#define __enum_iommu_op__dump 0x1UL
+
+static inline status_t __iommu_op__dump(void)
+{
+    return _vmcall(0xBF07000000000000, __enum_iommu_op__dump, 0, 0);
+}
+
+// -----------------------------------------------------------------------------
+// Event Operations
+// -----------------------------------------------------------------------------
+
+#define __enum_event_op__send_vector 0x1UL
+#define __enum_event_op__send_bdf 0x2UL
+
+static inline status_t
+__event_op__send_vector(uint64_t vector)
+{
+    return _vmcall(0xBF06000000000000,
+                   __enum_event_op__send_vector,
+                   vector,
+                   0);
+}
+
+static inline status_t
+__event_op__send_bdf(uint64_t bdf)
+{
+    return _vmcall(0xBF06000000000000,
+                   __enum_event_op__send_bdf,
+                   bdf,
+                   0);
+}
+
+// -----------------------------------------------------------------------------
+// Xue Operations
+// -----------------------------------------------------------------------------
+
+#define __enum_xue_op__reset 1
+
+static inline status_t
+__xue_op(uint64_t arg1, uint64_t arg2, uint64_t arg3)
+{
+    return _vmcall(0xBF05000000000000, arg1, arg2, arg3);
+}
 
 // -----------------------------------------------------------------------------
 // Run Operations
@@ -85,6 +136,7 @@ struct e820_entry_t {
 #define __enum_run_op__fault 2
 #define __enum_run_op__resume_after_interrupt 3
 #define __enum_run_op__yield 4
+#define __enum_run_op__new_domain 5
 
 #define run_op_ret_op(a) ((0x000000000000000FULL & a) >> 0)
 #define run_op_ret_arg(a) ((0xFFFFFFFFFFFFFFF0ULL & a) >> 4)
@@ -135,6 +187,7 @@ __uart_ndec_op(uint16_t port, uint64_t val)
 
 #define __enum_domain_op__create_domain 0xBF02000000000100
 #define __enum_domain_op__destroy_domain 0xBF02000000000101
+#define __enum_domain_op__read_tsc 0xBF02000000000102
 
 #define __enum_domain_op__set_uart 0xBF02000000000200
 #define __enum_domain_op__set_pt_uart 0xBF02000000000201
@@ -290,13 +343,23 @@ __uart_ndec_op(uint16_t port, uint64_t val)
 /* Does this domain run with native microv exec mode? */
 #define DOMF_EXEC_NATIVE (1ULL << 4)
 
+/* Is this domain an NDVM? */
+#define DOMF_NDVM (1ULL << 5)
+
+struct dom_info {
+    uint64_t flags;     /* DOMF_* bitmask */
+    uint64_t wc_sec;    /* seconds since UNIX epoch */
+    uint64_t wc_nsec;   /* nanoseconds since UNIX epoch */
+    uint64_t tsc;       /* TSC value associated with above wc_* times */
+    uint64_t ram;       /* bytes of ram */
+};
 
 static inline domainid_t
-__domain_op__create_domain(uint64_t flags)
+__domain_op__create_domain(struct dom_info *info)
 {
     return _vmcall(
         __enum_domain_op__create_domain,
-        flags,
+        (uint64_t)info,
         0,
         0
     );
@@ -313,6 +376,12 @@ __domain_op__destroy_domain(domainid_t foreign_domainid)
     );
 
     return ret == 0 ? SUCCESS : FAILURE;
+}
+
+static inline uint64_t
+__domain_op__read_tsc(void)
+{
+    return _vmcall(__enum_domain_op__read_tsc, 0, 0, 0);
 }
 
 static inline uint64_t

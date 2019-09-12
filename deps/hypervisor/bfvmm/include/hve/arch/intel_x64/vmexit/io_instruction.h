@@ -273,8 +273,8 @@ private:
     bool handle_in(vcpu *vcpu, info_t &info);
     bool handle_out(vcpu *vcpu, info_t &info);
 
-    void emulate_in(info_t &info);
-    void emulate_out(info_t &info);
+    void phys_in(info_t &info);
+    void phys_out(info_t &info);
 
     void load_operand(vcpu *vcpu, info_t &info);
     void store_operand(vcpu *vcpu, info_t &info);

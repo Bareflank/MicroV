@@ -81,5 +81,12 @@ _write_xcr0:
     shr rdx, 32
     mov rcx, 0
     xsetbv
+    ret
 
+global _read_xcr0
+_read_xcr0:
+    mov rcx, 0
+    xgetbv
+    shl rdx, 32
+    or rax, rdx
     ret

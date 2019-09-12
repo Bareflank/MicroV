@@ -381,6 +381,18 @@ public:
     ///
     virtual memory_descriptor_list descriptors() const;
 
+    /// Page pool pages
+    ///
+    /// @return the number of free 4KB pages in the page pool
+    ///
+    uint64_t page_pool_pages() const noexcept;
+
+    /// Huge pool pages
+    ///
+    /// @return the number of free 4KB pages in the huge pool
+    ///
+    uint64_t huge_pool_pages() const noexcept;
+
 private:
 
     memory_manager() noexcept;
@@ -413,6 +425,9 @@ private:
     object_allocator slab200;
     object_allocator slab400;
     object_allocator slab800;
+
+    uint64_t page_pool_bytes;
+    uint64_t huge_pool_bytes;
 
 public:
 

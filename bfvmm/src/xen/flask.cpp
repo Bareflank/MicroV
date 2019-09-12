@@ -19,29 +19,32 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+#include <hve/arch/intel_x64/vcpu.h>
 #include <xen/flask.h>
-#include <xen/xen.h>
-#include <public/xsm/flask_op.h>
+#include <xen/vcpu.h>
 
 namespace microv {
 
-flask::flask(xen *xen) : m_xen{xen}, m_vcpu{xen->m_vcpu}
-{
-}
+xen_flask::xen_flask(xen_vcpu *xen) :
+    m_uv_vcpu{xen->m_uv_vcpu}
+{ }
 
-bool flask::handle(xen_flask_op_t *fop)
+bool xen_flask::handle(xen_flask_op_t *fop)
 {
     if (fop->interface_version != XEN_FLASK_INTERFACE_VERSION) {
-        m_vcpu->set_rax(-EACCES);
+        m_uv_vcpu->set_rax(-EACCES);
         return true;
     }
 
     switch (fop->cmd) {
+    case FLASK_SID_TO_CONTEXT:
+        break;
     default:
         bfalert_nhex(0, "unhandled flask op", fop->cmd);
+        break;
     }
 
-    m_vcpu->set_rax(-EINVAL);
+    m_uv_vcpu->set_rax(-EINVAL);
     return true;
 }
 }

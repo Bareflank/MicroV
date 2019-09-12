@@ -373,7 +373,7 @@ add_config(
 add_config(
     CONFIG_NAME XUE_DIR
     CONFIG_TYPE PATH
-    DEFAULT_VAL $ENV{HOME}/xue
+    DEFAULT_VAL ${CMAKE_SOURCE_DIR}/../xue
     DESCRIPTION "Xue source"
     SKIP_VALIDATION
 )
@@ -443,7 +443,7 @@ set(CMAKE_BUILD_TYPE "Release"
     "Defines the build type"
 )
 
-set(CMAKE_VERBOSE_MAKEFILE ON
+set(CMAKE_VERBOSE_MAKEFILE OFF
     CACHE INTERNAL
     "Enables verbose output"
 )
@@ -579,20 +579,6 @@ add_config(
     CONFIG_TYPE BOOL
     DEFAULT_VAL OFF
     DESCRIPTION "Build efi boot-time loader components"
-)
-
-add_config(
-    CONFIG_NAME ENABLE_VMM_AVX
-    CONFIG_TYPE BOOL
-    DEFAULT_VAL OFF
-    DESCRIPTION "Build VMM components with AVX"
-)
-
-add_config(
-    CONFIG_NAME ENABLE_VMM_AVX512
-    CONFIG_TYPE BOOL
-    DEFAULT_VAL OFF
-    DESCRIPTION "Build VMM components with AVX512"
 )
 
 # ------------------------------------------------------------------------------
@@ -927,6 +913,19 @@ add_config(
     DESCRIPTION "Path to xue debugger"
     SKIP_VALIDATION
 )
+
+# ------------------------------------------------------------------------------
+# Default Flags
+# ------------------------------------------------------------------------------
+
+include(scripts/cmake/flags/asan_flags.cmake)
+include(scripts/cmake/flags/codecov_flags.cmake)
+include(scripts/cmake/flags/efi_flags.cmake)
+include(scripts/cmake/flags/test_flags.cmake)
+include(scripts/cmake/flags/usan_flags.cmake)
+include(scripts/cmake/flags/userspace_flags.cmake)
+include(scripts/cmake/flags/vmm_flags.cmake)
+include(scripts/cmake/flags/warning_flags.cmake)
 
 # ------------------------------------------------------------------------------
 # set_bfm_vmm

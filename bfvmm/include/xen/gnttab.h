@@ -23,36 +23,33 @@
 #define MICROV_XEN_GNTTAB_H
 
 #include "types.h"
-
 #include <public/grant_table.h>
 #include <public/memory.h>
 
 namespace microv {
 
-class gnttab {
+class xen_gnttab {
     using shared_entry_t = grant_entry_v2_t;
     static_assert(is_power_of_2(sizeof(shared_entry_t)));
 
-    static constexpr auto max_nr_frames = 64;
-
     uint32_t m_version{};
-    xen *m_xen{};
-    xen_vcpu *m_vcpu{};
+    microv_vcpu *m_uv_vcpu{};
     std::vector<page_ptr<shared_entry_t>> m_shared_gnttab;
 
 public:
+    static constexpr auto max_nr_frames = 64;
+
     bool query_size();
     bool set_version();
     bool mapspace_grant_table(xen_add_to_physmap_t *arg);
 
-    gnttab(xen *xen);
-    ~gnttab() = default;
+    xen_gnttab(xen_vcpu *xen);
+    ~xen_gnttab() = default;
 
-    gnttab(gnttab &&) = default;
-    gnttab &operator=(gnttab &&) = default;
-
-    gnttab(const gnttab &) = delete;
-    gnttab &operator=(const gnttab &) = delete;
+    xen_gnttab(xen_gnttab &&) = default;
+    xen_gnttab(const xen_gnttab &) = delete;
+    xen_gnttab &operator=(xen_gnttab &&) = default;
+    xen_gnttab &operator=(const xen_gnttab &) = delete;
 };
 
 }

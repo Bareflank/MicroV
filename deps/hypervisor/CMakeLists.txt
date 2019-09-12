@@ -37,19 +37,6 @@ include(${CMAKE_CURRENT_LIST_DIR}/scripts/cmake/config/default.cmake)
 include_external_config()
 
 # ------------------------------------------------------------------------------
-# Default Flags
-# ------------------------------------------------------------------------------
-
-include(scripts/cmake/flags/asan_flags.cmake)
-include(scripts/cmake/flags/codecov_flags.cmake)
-include(scripts/cmake/flags/efi_flags.cmake)
-include(scripts/cmake/flags/test_flags.cmake)
-include(scripts/cmake/flags/usan_flags.cmake)
-include(scripts/cmake/flags/userspace_flags.cmake)
-include(scripts/cmake/flags/vmm_flags.cmake)
-include(scripts/cmake/flags/warning_flags.cmake)
-
-# ------------------------------------------------------------------------------
 # Macros
 # ------------------------------------------------------------------------------
 

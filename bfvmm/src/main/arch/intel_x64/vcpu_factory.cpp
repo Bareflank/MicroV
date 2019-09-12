@@ -19,32 +19,37 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+#include <bfcallonce.h>
 #include <bfvmm/vcpu/vcpu_factory.h>
+#include <hve/arch/intel_x64/domain.h>
 #include <hve/arch/intel_x64/vcpu.h>
-#include <xen/xen.h>
+#include <xen/vcpu.h>
 
 namespace bfvmm
 {
+
+static bfn::once_flag dom0_init;
+static microv::intel_x64::domain *dom0{};
 
 std::unique_ptr<vcpu>
 vcpu_factory::make(vcpuid::type vcpuid, bfobject *obj)
 {
     using namespace microv::intel_x64;
 
-    static microv::domain_info dom0_info{};
-    static domain dom0{0, &dom0_info};
+    bfn::call_once(dom0_init, [&]() {
+        microv::domain_info dom0_info{};
+        g_dm->create(0, &dom0_info);
+        dom0 = get_domain(0);
+    });
 
-    if (vcpuid::is_host_vm_vcpu(vcpuid)) {
-        return
-            std::make_unique<microv::intel_x64::vcpu>(
-                vcpuid, dynamic_cast<domain *>(&dom0)
-            );
-    }
-    else {
-        return
-            std::make_unique<microv::intel_x64::vcpu>(
-                vcpuid, dynamic_cast<domain *>(obj)
-            );
+    if (vcpuid::is_root_vcpu(vcpuid)) {
+        return std::make_unique<microv::intel_x64::vcpu>(
+                vcpuid,
+                dynamic_cast<domain *>(dom0));
+    } else {
+        return std::make_unique<microv::intel_x64::vcpu>(
+                vcpuid,
+                dynamic_cast<domain *>(obj));
     }
 }
 

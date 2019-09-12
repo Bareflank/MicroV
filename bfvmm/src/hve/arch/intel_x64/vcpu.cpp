@@ -20,20 +20,31 @@
 // SOFTWARE.
 
 #include <intrinsics.h>
+
+#include <acpi.h>
+#include <bfcallonce.h>
 #include <bfexports.h>
 #include <bfgpalayout.h>
-#include <bfxsave.h>
-#include <bfthreadcontext.h>
 #include <bfbuilderinterface.h>
+#include <clflush.h>
 #include <hve/arch/intel_x64/vcpu.h>
-#include <hve/arch/intel_x64/xsave.h>
-#include <xen/xen.h>
+#include <iommu/iommu.h>
+#include <pci/dev.h>
+#include <pci/pci.h>
+#include <printv.h>
+#include <xen/vcpu.h>
 #include <xue.h>
+
+microv::intel_x64::vcpu *vcpu0{nullptr};
 
 extern struct xue g_xue;
 extern struct xue_ops g_xue_ops;
 
 void WEAK_SYM vcpu_init_root(bfvmm::intel_x64::vcpu *vcpu);
+
+static bfn::once_flag acpi_ready;
+static bfn::once_flag vtd_ready;
+static bfn::once_flag pci_ready;
 
 //------------------------------------------------------------------------------
 // Fault Handlers
@@ -82,23 +93,6 @@ ept_violation_handler(vcpu_t *vcpu)
 namespace microv::intel_x64
 {
 
-/*
- * Disable Intel MPX. GCC 9 dropped support for MPX, and Linux is
- * in the process of dropping support as well. Windows doesn't use MPX at all.
- * Leaving this on triggers a bug when booting Linux from EFI when the xsave
- * features are used in the VMM.
- */
-static bool handle_cpuid_disable_mpx(bfvmm::intel_x64::vcpu *vcpu)
-{
-    constexpr auto mpx_bit = 1UL << 14;
-
-    if (vcpu->rcx() == 0) {
-        vcpu->set_rbx(vcpu->rbx() & ~mpx_bit);
-    }
-
-    return false;
-}
-
 vcpu::vcpu(
     vcpuid::type id,
     gsl::not_null<domain *> domain
@@ -116,57 +110,44 @@ vcpu::vcpu(
 
     m_vmcall_run_op_handler{this},
     m_vmcall_domain_op_handler{this},
+    m_vmcall_event_op_handler{this},
+    m_vmcall_iommu_op_handler{this},
     m_vmcall_vcpu_op_handler{this},
+    m_vmcall_xue_op_handler{this},
 
     m_x2apic_handler{this},
-    m_pci_configuration_space_handler{this}
+    m_pci_handler{this}
 {
     domain->m_vcpu = this;
     this->set_eptp(domain->ept());
 
     if (this->is_dom0()) {
+        nr_root_vcpus++;
         this->write_dom0_guest_state(domain);
+
+        if (vcpu0 == nullptr) {
+            vcpu0 = this;
+            init_cache_ops();
+        }
     }
     else {
-        uint64_t top;
-        struct thread_context_t *ctx;
-        struct xsave_info *old_xsave;
-        struct xsave_info *new_xsave;
-
         this->write_domU_guest_state(domain);
-
-        m_xsave = std::make_unique<struct xsave_info>();
-        top = reinterpret_cast<uint64_t>(m_stack.get()) + STACK_SIZE * 2;
-        top = (top & ~(STACK_SIZE - 1)) - 1;
-        ctx = reinterpret_cast<thread_context_t *>(top - sizeof(*ctx));
-
-        old_xsave = ctx->xsave_info;
-        new_xsave = m_xsave.get();
-        memcpy(new_xsave, old_xsave, sizeof(*new_xsave));
-
-        new_xsave->vcpuid = ctx->cpuid;
-        new_xsave->guest_xcr0 = XSAVE_LEGACY_MASK;
-        m_guest_area = std::make_unique<uint8_t[]>(new_xsave->guest_size);
-        new_xsave->guest_area = m_guest_area.get();
-        memset(new_xsave->guest_area, 0, new_xsave->guest_size);
-        ctx->xsave_info = new_xsave;
-
-        top = reinterpret_cast<uint64_t>(m_ist1.get()) + STACK_SIZE * 2;
-        top = (top & ~(STACK_SIZE - 1)) - 1;
-        ctx = reinterpret_cast<thread_context_t *>(top - sizeof(*ctx));
-        ctx->xsave_info = new_xsave;
-
-        this->state()->xsave_ptr = reinterpret_cast<uint64_t>(new_xsave);
+        this->init_xstate();
     }
 
     this->add_cpuid_emulator(0x4BF00010, {&vcpu::handle_0x4BF00010, this});
     this->add_cpuid_emulator(0x4BF00021, {&vcpu::handle_0x4BF00021, this});
-    this->add_cpuid_handler(0x7, {handle_cpuid_disable_mpx});
 }
 
 //------------------------------------------------------------------------------
 // Setup
 //------------------------------------------------------------------------------
+
+static inline void trap_exceptions()
+{
+    /* Only used for guest debugging of invalid opcodes */
+    ::intel_x64::vmcs::exception_bitmap::set(1UL << 6);
+}
 
 void
 vcpu::write_dom0_guest_state(domain *domain)
@@ -185,12 +166,99 @@ vcpu::write_domU_guest_state(domain *domain)
         using namespace vmcs_n::secondary_processor_based_vm_execution_controls;
 
         enable_rdtscp::enable();
-        ::intel_x64::vmcs::exception_bitmap::set(1UL << 6);
+        trap_exceptions();
 
-        m_xen = std::make_unique<xen>(this, m_domain);
+        if (domain->ndvm()) {
+            init_pci_on_vcpu(this);
+        }
+
+        m_xen_vcpu = std::make_unique<class xen_vcpu>(this);
     }
 }
 
+microv::xen_vcpu *vcpu::xen_vcpu() noexcept
+{
+    return m_xen_vcpu.get();
+}
+
+void vcpu::add_child_vcpu(vcpuid_t child_id)
+{
+    vcpu *child{};
+
+    try {
+        expects(this->is_dom0());
+        expects(vcpuid::is_guest_vcpu(child_id));
+        expects(m_child_vcpus.count(child_id) == 0);
+
+        child = get_vcpu(child_id);
+        expects(child);
+
+        m_child_vcpus[child_id] = child;
+        ensures(m_child_vcpus.count(child_id) == 1);
+    } catch (...) {
+        if (child) {
+            put_vcpu(child_id);
+        }
+        throw;
+    }
+}
+
+vcpu *vcpu::find_child_vcpu(vcpuid_t child_id)
+{
+    auto itr = m_child_vcpus.find(child_id);
+    if (itr != m_child_vcpus.end()) {
+        return itr->second;
+    } else {
+        return nullptr;
+    }
+}
+
+void vcpu::remove_child_vcpu(vcpuid_t child_id)
+{
+    if (m_child_vcpus.count(child_id) == 1) {
+        put_vcpu(child_id);
+        m_child_vcpus.erase(child_id);
+    }
+}
+
+void vcpu::add_child_domain(domainid_t child_id)
+{
+    domain *child{};
+
+    try {
+        expects(this->is_dom0());
+        expects(m_child_doms.count(child_id) == 0);
+
+        child = get_domain(child_id);
+        expects(child);
+
+        m_child_doms[child_id] = child;
+        ensures(m_child_doms.count(child_id) == 1);
+    } catch (...) {
+        if (child) {
+            put_domain(child_id);
+        }
+        throw;
+    }
+}
+
+domain *vcpu::find_child_domain(domainid_t child_id)
+{
+    auto itr = m_child_doms.find(child_id);
+    if (itr != m_child_doms.end()) {
+        return itr->second;
+    } else {
+        return nullptr;
+    }
+}
+
+void vcpu::remove_child_domain(domainid_t child_id)
+{
+    if (m_child_doms.count(child_id) == 1) {
+        put_domain(child_id);
+        m_child_doms.erase(child_id);
+    }
+}
 bool vcpu::handle_0x4BF00010(bfvmm::intel_x64::vcpu *vcpu)
 {
 #ifdef USE_XUE
@@ -198,6 +266,20 @@ bool vcpu::handle_0x4BF00010(bfvmm::intel_x64::vcpu *vcpu)
         xue_open(&g_xue, &g_xue_ops, NULL);
     }
 #endif
+
+    m_lapic = std::make_unique<lapic>(this);
+
+    if (g_uefi_boot) {
+        /* Order matters with these init functions */
+        bfn::call_once(acpi_ready, []{ init_acpi(); });
+        bfn::call_once(pci_ready, []{ init_pci(); });
+
+        if (pci_passthru) {
+            bfn::call_once(vtd_ready, []{ init_vtd(); });
+            m_pci_handler.enable();
+            init_pci_on_vcpu(this);
+        }
+    }
 
     vcpu_init_root(vcpu);
     return vcpu->advance();
@@ -214,18 +296,7 @@ bool vcpu::handle_0x4BF00021(bfvmm::intel_x64::vcpu *vcpu)
 #endif
 
     vcpu->promote();
-    throw std::runtime_error("unreachable exception - promote failed");
-}
-
-void vcpu::queue_virq(uint32_t virq)
-{
-    m_xen->queue_virq(virq);
-}
-
-void vcpu::notify_hvc()
-{
-    expects(m_domain->exec_mode() == VM_EXEC_XENPVH);
-    m_xen->notify_hvc();
+    throw std::runtime_error("promote failed");
 }
 
 //------------------------------------------------------------------------------
@@ -240,7 +311,7 @@ bool
 vcpu::is_domU() const
 { return m_domain->id() != 0; }
 
-domain::domainid_type
+domain::id_t
 vcpu::domid() const
 { return m_domain->id(); }
 
@@ -254,20 +325,21 @@ vcpu::add_vmcall_handler(
 { m_vmcall_handler.add_handler(std::move(d)); }
 
 //------------------------------------------------------------------------------
-// Parent vCPU
+// root vCPU
 //------------------------------------------------------------------------------
 
 void
-vcpu::set_parent_vcpu(gsl::not_null<vcpu *> vcpu)
-{ m_parent_vcpu = vcpu; }
+vcpu::set_root_vcpu(gsl::not_null<vcpu *> vcpu)
+{ m_root_vcpu = vcpu; }
 
 vcpu *
-vcpu::parent_vcpu() const
-{ return m_parent_vcpu; }
+vcpu::root_vcpu() const
+{ return m_root_vcpu; }
 
 void
 vcpu::return_hlt()
 {
+    this->load_xstate();
     this->set_rax(__enum_run_op__hlt);
     this->run(&world_switch);
 }
@@ -275,6 +347,7 @@ vcpu::return_hlt()
 void
 vcpu::return_fault(uint64_t error)
 {
+    this->load_xstate();
     this->set_rax((error << 4) | __enum_run_op__fault);
     this->run(&world_switch);
 }
@@ -282,6 +355,7 @@ vcpu::return_fault(uint64_t error)
 void
 vcpu::return_resume_after_interrupt()
 {
+    this->load_xstate();
     this->set_rax(__enum_run_op__resume_after_interrupt);
     this->run(&world_switch);
 }
@@ -289,28 +363,22 @@ vcpu::return_resume_after_interrupt()
 void
 vcpu::return_yield(uint64_t usec)
 {
+    this->load_xstate();
     this->set_rax((usec << 4) | __enum_run_op__yield);
     this->run(&world_switch);
 }
 
-//------------------------------------------------------------------------------
-// Control
-//------------------------------------------------------------------------------
-
-bool
-vcpu::is_alive() const
-{ return !m_killed; }
-
-bool
-vcpu::is_killed() const
-{ return m_killed; }
-
 void
-vcpu::kill()
-{ m_killed = true; }
+vcpu::return_new_domain(uint64_t newdomid)
+{
+    this->add_child_domain(newdomid);
+    this->load_xstate();
+    this->set_rax((newdomid << 4) | __enum_run_op__new_domain);
+    this->run(&world_switch);
+}
 
 //------------------------------------------------------------------------------
-// Fault
+// Halt
 //------------------------------------------------------------------------------
 
 void
@@ -318,14 +386,16 @@ vcpu::halt(const std::string &str)
 {
     this->dump(("halting vcpu: " + str).c_str());
 
-    if (auto parent_vcpu = this->parent_vcpu()) {
+    if (auto root_vcpu = this->root_vcpu()) {
 
         bferror_lnbr(0);
         bferror_info(0, "child vcpu being killed");
         bferror_lnbr(0);
 
-        parent_vcpu->load();
-        parent_vcpu->return_fault();
+        this->save_xstate();
+
+        root_vcpu->load();
+        root_vcpu->return_fault();
     }
     else {
         ::x64::pm::stop();
@@ -443,6 +513,172 @@ vcpu::setup_default_register_state()
 
     guest_rflags::set(2);
     vmcs_link_pointer::set(0xFFFFFFFFFFFFFFFF);
+}
+
+void vcpu::init_xstate()
+{
+    m_xstate = std::make_unique<xstate>(this);
+}
+
+void vcpu::save_xstate()
+{
+    m_xstate->save();
+}
+
+void vcpu::load_xstate()
+{
+    m_xstate->load();
+}
+
+void vcpu::add_pci_cfg_handler(uint64_t cfg_addr,
+                               const pci_cfg_handler::delegate_t &d,
+                               int direction)
+{
+    if (direction == pci_dir_in) {
+        m_pci_handler.add_in_handler(cfg_addr, d);
+        return;
+    }
+
+    m_pci_handler.add_out_handler(cfg_addr, d);
+}
+
+void vcpu::add_pci_cfg_handler(uint32_t bus,
+                               uint32_t dev,
+                               uint32_t fun,
+                               const pci_cfg_handler::delegate_t &d,
+                               int direction)
+{
+    auto addr = pci_cfg_bdf_to_addr(bus, dev, fun);
+    this->add_pci_cfg_handler(addr, d, direction);
+}
+
+uint64_t vcpu::pcpuid()
+{
+    if (this->is_dom0()) {
+        return this->id();
+    } else {
+        expects(m_root_vcpu);
+        expects(m_root_vcpu->is_dom0());
+        return m_root_vcpu->id();
+    }
+}
+
+void vcpu::map_msi(const struct msi_desc *root_msi,
+                   const struct msi_desc *guest_msi)
+{
+    if (this->is_domU()) {
+        expects(this->m_root_vcpu);
+        expects(this->m_root_vcpu->is_dom0());
+        m_root_vcpu->map_msi(root_msi, guest_msi);
+        return;
+    }
+
+    validate_msi(root_msi);
+    validate_msi(guest_msi);
+
+    expects(m_lapic);
+    expects(m_lapic->is_xapic());
+
+    const auto root_destid = root_msi->destid();
+    const auto root_vector = root_msi->vector();
+
+    /*
+     * Interpretation of destid depends on the destination mode of the ICR:
+     *
+     *    logical_mode() -> destid is from LDR (logical APIC ID)
+     *   !logical_mode() -> destid is from ID register (local APIC ID)
+     *
+     * Note we are reading the mode of the local APIC of the CPU we are
+     * currently running on; it's possible the local APIC implied by destid
+     * is different than the current one. However, it should be safe to
+     * assume that the destination mode of every local APIC is the same
+     * because
+     *
+     *   1) the manual states that it must be the same and
+     *   2) any sane OS will ensure that identitical modes are being used
+     */
+
+    if (m_lapic->logical_dest()) {
+        for (uint64_t i = 0; i < nr_root_vcpus; i++) {
+            if (root_destid == (1UL << i)) {
+                auto key = root_vector;
+                auto root = get_vcpu(i);
+
+                if (!root) {
+                    bfdebug_nhex(0, "map_msi: failed to get_vcpu:", i);
+                    return;
+                }
+
+                try {
+                    expects(root->m_msi_map.count(key) == 0);
+                    root->m_msi_map[key] = {root_msi, guest_msi};
+
+                    printv("root_msi:  destid:0x%x vector:0x%x\n",
+                            root_msi->destid(), root_msi->vector());
+                    printv("guest_msi: destid:0x%x vector:0x%x\n",
+                            guest_msi->destid(), guest_msi->vector());
+                } catch (...) {
+                    bferror_info(0, "exception mapping msi in logical mode");
+                    put_vcpu(i);
+                    throw;
+                }
+
+                put_vcpu(i);
+                return;
+            }
+        }
+
+        bfalert_nhex(0, "map_msi: logical mode destid not found", root_destid);
+        return;
+    }
+
+    /*
+     * In physical mode, the destid is the local APIC id. Note that the
+     * lapic::local_id member function reads the cached ID from ordinary
+     * memory. No APIC access occurs. This is fine because the ID register is
+     * read-only (although the manual does state that some systems may support
+     * changing its value 0_0 - it also says software shouldn't change it). If
+     * that function did do an APIC access, we would either have to remap each
+     * (x)APIC or do an IPI to the proper core.
+     */
+    for (uint64_t i = 0; i < nr_root_vcpus; i++) {
+        auto root = get_vcpu(i);
+        if (!root) {
+            bfdebug_nhex(0, "map_msi: failed to get_vcpu:", i);
+            return;
+        }
+
+        try {
+            auto local_id = root->m_lapic->local_id();
+            if (root_destid == local_id) {
+                 auto key = root_vector;
+                 expects(root->m_msi_map.count(key) == 0);
+                 root->m_msi_map[key] = {root_msi, guest_msi};
+                 put_vcpu(i);
+                 return;
+            }
+        } catch (...) {
+            bferror_info(0, "exception mapping msi in physical mode");
+            put_vcpu(i);
+            throw;
+        }
+
+        put_vcpu(i);
+    }
+
+    bfalert_nhex(0, "map_msi: physical mode destid not found", root_destid);
+    return;
+}
+
+const struct msi_desc *vcpu::find_guest_msi(msi_key_t key) const
+{
+    const auto itr = m_msi_map.find(key);
+    if (itr == m_msi_map.end()) {
+        return nullptr;
+    }
+
+    const auto msi_pair = itr->second;
+    return msi_pair.second;
 }
 
 }

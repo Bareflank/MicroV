@@ -24,12 +24,27 @@
 
 #include "types.h"
 #include <public/event_channel.h>
+#include <public/hvm/hvm_op.h>
+#include <public/hvm/params.h>
 
 namespace microv {
 
-#pragma pack(push, 1)
+bool xen_evtchn_init_control(xen_vcpu *v);
+bool xen_evtchn_expand_array(xen_vcpu *v);
+bool xen_evtchn_set_priority(xen_vcpu *v);
+bool xen_evtchn_alloc_unbound(xen_vcpu *v);
+bool xen_evtchn_bind_interdomain(xen_vcpu *v);
+bool xen_evtchn_bind_vcpu(xen_vcpu *v);
+bool xen_evtchn_bind_virq(xen_vcpu *v);
+bool xen_evtchn_close(xen_vcpu *v);
+bool xen_evtchn_send(xen_vcpu *v);
 
 struct event_channel {
+    static constexpr auto invalid_virq = 0xFFFFUL;
+    static constexpr auto invalid_pirq = 0xFFFFUL;
+    static constexpr auto invalid_domid = 0xFFFFUL;
+    static constexpr auto invalid_port = 0x0UL;
+
     enum state : uint8_t {
         state_free,
         state_reserved,
@@ -42,38 +57,52 @@ struct event_channel {
 
     using state_t = enum state;
 
-    union {
-        uint32_t virq;
-        struct evtchn_bind_interdomain interdom;
-        // TODO:
-        // unbound-specific data
-        // pirq-specific data
-    } data{};
+    state_t state{state_free};
+    uint32_t virq;
+    uint32_t pirq;
+    xen_domid_t rdomid;
+    evtchn_port_t rport;
 
     bool is_pending{};
-    enum state state{state_free};
     uint8_t priority{EVTCHN_FIFO_PRIORITY_DEFAULT};
     uint8_t prev_priority{EVTCHN_FIFO_PRIORITY_DEFAULT};
-    vcpuid_t vcpuid{};
-    vcpuid_t prev_vcpuid{};
+    xen_vcpuid_t vcpuid{};
+    xen_vcpuid_t prev_vcpuid{};
     evtchn_port_t port{};
 
-    uint8_t pad[28];
-    /// TODO mutable std::mutex mutex{};
-};
+    uint8_t pad[34];
 
-#pragma pack(pop)
+    void free() noexcept
+    {
+        state = state_free;
+        vcpuid = 0;
+    }
 
-class evtchn {
+    void reset(evtchn_port_t p) noexcept
+    {
+        state = state_free;
+        virq = invalid_virq;
+        pirq = invalid_pirq;
+        rdomid = invalid_domid;
+        rport = invalid_port;
+        is_pending = false;
+        priority = EVTCHN_FIFO_PRIORITY_DEFAULT;
+        prev_priority = EVTCHN_FIFO_PRIORITY_DEFAULT;
+        vcpuid = 0;
+        prev_vcpuid = 0;
+        port = p;
+    }
+
+} __attribute__((packed));
+
+class xen_evtchn {
 public:
     using port_t = evtchn_port_t;
     using word_t = std::atomic<event_word_t>;
-    using chan_t = class microv::event_channel;
-
+    using chan_t = struct event_channel;
     using queue_t = struct fifo_queue {
         port_t *head;
         uint8_t priority;
-        // std::mutex lock;
     };
 
     static_assert(is_power_of_2(EVTCHN_FIFO_NR_CHANNELS));
@@ -83,41 +112,41 @@ public:
     static_assert(sizeof(chan_t) > sizeof(word_t));
     static_assert(word_t::is_always_lock_free);
 
-    bool init_control();
-    bool alloc_unbound();
-    bool expand_array();
-    bool bind_interdomain();
-    bool bind_vcpu();
-    bool bind_virq();
-    bool close();
-    bool send();
+    xen_evtchn(xen_domain *dom);
 
-    void set_callback_via(uint64_t via);
+    bool init_control(xen_vcpu *v, evtchn_init_control_t *eic);
+    bool expand_array(xen_vcpu *v, evtchn_expand_array_t *eea);
+    bool set_priority(xen_vcpu *v, evtchn_set_priority_t *esp);
+    bool alloc_unbound(xen_vcpu *v, evtchn_alloc_unbound_t *eau);
+    bool bind_interdomain(xen_vcpu *v, evtchn_bind_interdomain_t *ebi);
+    bool bind_vcpu(xen_vcpu *v, evtchn_bind_vcpu_t *ebv);
+    bool bind_virq(xen_vcpu *v, evtchn_bind_virq_t *ebv);
+    bool close(xen_vcpu *v, evtchn_close_t *ec);
+    bool send(xen_vcpu *v, evtchn_send_t *es);
+
+    bool set_upcall_vector(xen_vcpu *v, xen_hvm_param_t *param);
     void queue_virq(uint32_t virq);
+    void inject_virq(uint32_t virq);
+    void unbind_interdomain(evtchn_port_t port, xen_domid_t remote_domid);
+    int bind_interdomain(evtchn_port_t port,
+                         evtchn_port_t remote_port,
+                         xen_domid_t remote_domid);
 
-    port_t bind_console();
-    port_t bind_store();
+    void upcall(evtchn_port_t port);
 
-    void upcall(port_t port);
+    static constexpr auto max_channels = EVTCHN_FIFO_NR_CHANNELS;
 
 private:
-
-    port_t bind(chan_t::state_t state);
+    friend class xen_evtchn;
 
     // Static constants
     //
     static constexpr auto bits_per_xen_ulong = sizeof(xen_ulong_t) * 8;
-    static constexpr auto max_channels = EVTCHN_FIFO_NR_CHANNELS;
-
     static constexpr auto words_per_page = ::x64::pt::page_size / sizeof(word_t);
     static constexpr auto chans_per_page = ::x64::pt::page_size / sizeof(chan_t);
-    static constexpr auto max_word_pages = max_channels / words_per_page;
-    static constexpr auto max_chan_pages = max_channels / chans_per_page;
-
     static constexpr auto port_mask = max_channels - 1U;
     static constexpr auto word_mask = words_per_page - 1U;
     static constexpr auto chan_mask = chans_per_page - 1U;
-
     static constexpr auto word_page_mask = port_mask & ~word_mask;
     static constexpr auto chan_page_mask = port_mask & ~chan_mask;
     static constexpr auto word_page_shift = log2<words_per_page>();
@@ -127,6 +156,7 @@ private:
 
     // Ports
     //
+    port_t bind(chan_t::state_t state);
     chan_t *port_to_chan(port_t port) const;
     word_t *port_to_word(port_t port) const;
 
@@ -136,46 +166,23 @@ private:
     port_t make_new_port();
     int make_port(port_t port);
     void setup_ports();
-    void setup_control_block(uint64_t gfn, uint32_t offset);
+    void setup_ctl_blk(microv_vcpu *uvv, uint64_t gfn, uint32_t offset);
 
     void make_chan_page(port_t port);
-    void make_word_page(evtchn_expand_array_t *expand);
+    void make_word_page(microv_vcpu *uvv, uintptr_t gfn);
 
-    // Links
-    //
+    void notify_remote(chan_t *chan);
+    void queue_upcall(chan_t *chan);
+    void inject_upcall(chan_t *chan);
+    int upcall(chan_t *chan);
+
     bool set_link(word_t *word, event_word_t *val, port_t link);
-    void upcall(chan_t *chan);
 
     // Interface for atomic accesses to shared memory
     //
-    bool word_is_busy(word_t *word) const;
-    bool word_is_linked(word_t *word) const;
     bool word_is_masked(word_t *word) const;
-    bool word_is_pending(word_t *word) const;
-
+    bool word_is_busy(word_t *word) const;
     void word_set_pending(word_t *word);
-    bool word_test_and_set_pending(word_t *word);
-
-    void word_clear_pending(word_t *word);
-    bool word_test_and_clear_pending(word_t *word);
-
-    void word_set_busy(word_t *word);
-    bool word_test_and_set_busy(word_t *word);
-
-    void word_clear_busy(word_t *word);
-    bool word_test_and_clear_busy(word_t *word);
-
-    void word_set_masked(word_t *word);
-    bool word_test_and_set_masked(word_t *word);
-
-    void word_clear_masked(word_t *word);
-    bool word_test_and_clear_masked(word_t *word);
-
-    void word_set_linked(word_t *word);
-    bool word_test_and_set_linked(word_t *word);
-
-    void word_clear_linked(word_t *word);
-    bool word_test_and_clear_linked(word_t *word);
 
     // Data members
     //
@@ -183,29 +190,26 @@ private:
     uint64_t m_allocated_words{};
 
     evtchn_fifo_control_block_t *m_ctl_blk{};
-    bfvmm::x64::unique_map<uint8_t> m_ctl_blk_ump{};
+    unique_map<uint8_t> m_ctl_blk_ump{};
 
-    std::array<queue_t, EVTCHN_FIFO_MAX_QUEUES> m_queues{};
-    std::array<port_t, NR_VIRQS> m_virq_to_port;
+    std::array<queue_t, EVTCHN_FIFO_MAX_QUEUES> m_queues{0};
+    std::array<port_t, NR_VIRQS> m_virq_to_port{0};
 
-    std::vector<bfvmm::x64::unique_map<word_t>> m_event_words{};
-    std::vector<page_ptr<chan_t>> m_event_chans{};
+    std::vector<unique_map<word_t>> m_word_pages{};
+    std::vector<page_ptr<chan_t>> m_chan_pages{};
 
-    xen *m_xen{};
-    xen_vcpu *m_vcpu{};
-    uint64_t m_cb_via{};
+    xen_domain *m_xen_dom{};
+    uint64_t m_upcall_vec{};
+    port_t m_nr_ports{};
     port_t m_port_end{1};
 
 public:
 
-    evtchn(xen *xen);
-    ~evtchn() = default;
-
-    evtchn(evtchn &&) = default;
-    evtchn &operator=(evtchn &&) = default;
-
-    evtchn(const evtchn &) = delete;
-    evtchn &operator=(const evtchn &) = delete;
+    ~xen_evtchn() = default;
+    xen_evtchn(xen_evtchn &&) = default;
+    xen_evtchn(const xen_evtchn &) = delete;
+    xen_evtchn &operator=(xen_evtchn &&) = default;
+    xen_evtchn &operator=(const xen_evtchn &) = delete;
 };
 
 }

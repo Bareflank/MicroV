@@ -22,25 +22,28 @@
 #ifndef VCPU_INTEL_X64_MICROV_H
 #define VCPU_INTEL_X64_MICROV_H
 
-#include <bfxsave.h>
-
+#include "apic/lapic.h"
 #include "apic/x2apic.h"
-#include "pci/pci_configuration_space.h"
+#include "../../../pci/msi.h"
 
 #include "vmexit/cpuid.h"
 #include "vmexit/external_interrupt.h"
 #include "vmexit/io_instruction.h"
 #include "vmexit/msr.h"
 #include "vmexit/mtrr.h"
+#include "vmexit/pci_cfg.h"
 #include "vmexit/vmcall.h"
 #include "vmexit/yield.h"
 
 #include "vmcall/domain_op.h"
+#include "vmcall/event_op.h"
+#include "vmcall/iommu_op.h"
 #include "vmcall/run_op.h"
 #include "vmcall/vcpu_op.h"
+#include "vmcall/xue_op.h"
 
 #include "domain.h"
-#include "xsave.h"
+#include "xstate.h"
 
 #include <bfvmm/vcpu/vcpu_manager.h>
 #include <bfvmm/hve/arch/intel_x64/vcpu.h>
@@ -49,8 +52,11 @@
 // Definition
 //------------------------------------------------------------------------------
 
+inline vcpuid_t nr_root_vcpus = 0;
+
 namespace microv {
-    class xen;
+    class xen_vcpu;
+    struct msi_desc;
 }
 
 namespace microv::intel_x64
@@ -67,13 +73,9 @@ public:
     ///
     /// @param id the id of this vcpu
     ///
-    /// @cond
-    ///
     explicit vcpu(
         vcpuid::type id,
         gsl::not_null<domain *> domain);
-
-    /// @endcond
 
     /// Destructor
     ///
@@ -81,6 +83,13 @@ public:
     /// @ensures
     ///
     ~vcpu() = default;
+
+    /// Physical CPU ID
+    ///
+    /// @expects
+    /// @ensures
+    ///
+    uint64_t pcpuid();
 
     /// Write Dom0 Guest State
     ///
@@ -97,6 +106,16 @@ public:
     void write_domU_guest_state(domain *domain);
 
 public:
+
+    microv::xen_vcpu *xen_vcpu() noexcept;
+
+    void add_child_vcpu(vcpuid_t id);
+    vcpu *find_child_vcpu(vcpuid_t id);
+    void remove_child_vcpu(vcpuid_t id);
+
+    void add_child_domain(domainid_t id);
+    domain *find_child_domain(domainid_t id);
+    void remove_child_domain(domainid_t id);
 
     //--------------------------------------------------------------------------
     // Domain Info
@@ -127,7 +146,7 @@ public:
     ///
     /// @return the vCPU's domid
     ///
-    domain::domainid_type domid() const;
+    domain::id_t domid() const;
 
     /// Domain pointer
     ///
@@ -153,36 +172,31 @@ public:
         const vmcall_handler::handler_delegate_t &d);
 
     //--------------------------------------------------------------------------
-    // Parent
+    // Root
     //--------------------------------------------------------------------------
 
-    /// Set Parent vCPU
+    /// Set root vcpu
     ///
-    /// Each vCPU that is executing (not created) must have a parent. The
-    /// only exception to this is the host vCPUs. If a vCPU can no longer
+    /// Each guest vcpu must have a parent. If a guest vcpu can no longer
     /// execute (e.g., from a crash, interrupt, hlt, etc...), the parent
-    /// vCPU is the parent that will be resumed.
+    /// vcpu is the vcpu that will be resumed. Note that only one level of
+    /// descendants is supported, so for every guest vcpu, its parent is
+    /// a root vcpu.
     ///
     /// @expects
     /// @ensures
     ///
-    /// @param id the id of the vCPU to resume
-    ///
-    VIRTUAL void set_parent_vcpu(gsl::not_null<vcpu *> vcpu);
+    VIRTUAL void set_root_vcpu(gsl::not_null<vcpu *> vcpu);
 
-    /// Get Parent vCPU ID
+    /// Get root vcpu
     ///
-    /// Returns the vCPU ID for this vCPU's parent. Note that this ID could
-    /// change on every exit. Specifically when the Host OS moves the
-    /// userspace application associated with a guest vCPU. For this reason,
-    /// don't cache this value. It always needs to be looked up.
+    /// Returns the id for this vcpus parent. Note that this ID could
+    /// change on every exit once VMCS migration is supported.
     ///
     /// @expects
     /// @ensures
     ///
-    /// @return returns the vcpuid for this vCPU's parent vCPU.
-    ///
-    VIRTUAL vcpu *parent_vcpu() const;
+    VIRTUAL vcpu *root_vcpu() const;
 
     /// Return (Hlt)
     ///
@@ -230,40 +244,17 @@ public:
     ///
     VIRTUAL void return_yield(uint64_t usec);
 
-    //--------------------------------------------------------------------------
-    // Control
-    //--------------------------------------------------------------------------
-
-    /// Kill
+    /// Return with a new domain
     ///
-    /// Tells the vCPU to stop execution.
+    /// Resume the parent with a new domain ready to run. The parent uses the
+    /// domain id to create a new vcpu and begin running it.
     ///
     /// @expects
     /// @ensures
     ///
-    VIRTUAL void kill();
-
-    /// Is Alive
+    /// @param the domain id of the new domain
     ///
-    /// @expects
-    /// @ensures
-    ///
-    /// @return returns true if the vCPU has not been killed, false otherwise
-    ///
-    VIRTUAL bool is_alive() const;
-
-    /// Is Killed
-    ///
-    /// @expects
-    /// @ensures
-    ///
-    /// @return returns true if the vCPU has been killed, false otherwise
-    ///
-    VIRTUAL bool is_killed() const;
-
-    //--------------------------------------------------------------------------
-    // Fault
-    //--------------------------------------------------------------------------
+    VIRTUAL void return_new_domain(uint64_t newdomid);
 
     /// Halt the vCPU
     ///
@@ -276,10 +267,10 @@ public:
     void halt(const std::string &str = {}) override;
 
     //--------------------------------------------------------------------------
-    // APIC
+    // Interrupts
     //--------------------------------------------------------------------------
 
-    /// APIC Timer Vector
+    /// APIC Timer Vector (guest vcpu only)
     ///
     /// @expects
     /// @ensures
@@ -288,28 +279,52 @@ public:
     ///
     uint8_t apic_timer_vector();
 
-    /// Queue virq into this vcpu
+    /// Map msi
     ///
-    /// @param virq the id of the virq to queue
+    /// Create a root->guest msi mapping
     ///
-    void queue_virq(uint32_t virq);
+    /// @param root_msi the msi info programmed by the root
+    /// @param guest_msi the msi info programmed by the guest
+    ///
+    void map_msi(const struct msi_desc *root_msi,
+                 const struct msi_desc *guest_msi);
 
-    /// Notify the guest that data is ready on the HVC
+    /// Find guest msi
     ///
-    /// @expects m_domain->exec_mode() == VM_EXEC_XENPVH
+    /// @param key the root vector to look for
+    /// @return the guest msi_desc if found, nullptr otherwise
     ///
-    void notify_hvc();
+    const struct msi_desc *find_guest_msi(msi_key_t key) const;
 
+    /// Start-of-day base cpuid handler overrides
     bool handle_0x4BF00010(bfvmm::intel_x64::vcpu *vcpu);
     bool handle_0x4BF00021(bfvmm::intel_x64::vcpu *vcpu);
 
+    /// xstate management
+    void init_xstate();
+    void save_xstate();
+    void load_xstate();
+
+    /// Add a config space handler for the PCI device given by cfg_addr
+    void add_pci_cfg_handler(uint64_t cfg_addr,
+                             const pci_cfg_handler::delegate_t &d,
+                             int direction);
+
+    /// Add a config space handler for the PCI device given by bus/dev/fun
+    void add_pci_cfg_handler(uint32_t bus,
+                             uint32_t dev,
+                             uint32_t fun,
+                             const pci_cfg_handler::delegate_t &d,
+                             int direction);
+
 private:
+    friend class microv::xen_vcpu;
+    friend class microv::intel_x64::vcpu;
 
     void setup_default_controls();
     void setup_default_handlers();
     void setup_default_register_state();
 
-private:
     domain *m_domain{};
 
     cpuid_handler m_cpuid_handler;
@@ -322,56 +337,74 @@ private:
 
     vmcall_run_op_handler m_vmcall_run_op_handler;
     vmcall_domain_op_handler m_vmcall_domain_op_handler;
+    vmcall_event_op_handler m_vmcall_event_op_handler;
+    vmcall_iommu_op_handler m_vmcall_iommu_op_handler;
     vmcall_vcpu_op_handler m_vmcall_vcpu_op_handler;
+    vmcall_xue_op_handler m_vmcall_xue_op_handler;
 
     x2apic_handler m_x2apic_handler;
-    pci_configuration_space_handler m_pci_configuration_space_handler;
+    pci_cfg_handler m_pci_handler;
 
-    bool m_killed{};
-    vcpu *m_parent_vcpu{};
+    vcpu *m_root_vcpu{};
 
-    std::unique_ptr<microv::xen> m_xen;
-    std::unique_ptr<struct xsave_info> m_xsave;
-    std::unique_ptr<uint8_t[]> m_guest_area;
+    std::unique_ptr<microv::xen_vcpu> m_xen_vcpu{};
+    std::unique_ptr<microv::intel_x64::lapic> m_lapic{};
+    std::unique_ptr<microv::intel_x64::xstate> m_xstate{};
+
+    msi_map_t m_msi_map{};
+    std::unordered_map<vcpuid_t, vcpu *> m_child_vcpus{};
+    std::unordered_map<domainid_t, domain *> m_child_doms{};
 };
-
 }
 
-//------------------------------------------------------------------------------
-// Helpers
-//------------------------------------------------------------------------------
+/**
+ *  get_vcpu - acquires a reference to a microv vcpu
+ *
+ *  A non-null return value is guaranteed to point to a valid object until a
+ *  matching put_vcpu is called. Caller must ensure that they release the
+ *  reference after they are done with put_vcpu.
+ *
+ *  @expects
+ *  @ensures
+ *
+ *  @param id the id of the vcpu to acquire
+ *  @return ptr to valid vcpu on success, nullptr otherwise
+*/
+inline microv::intel_x64::vcpu *get_vcpu(vcpuid::type id) noexcept
+{
+    return g_vcm->acquire<microv::intel_x64::vcpu>(id);
+}
 
-// Note:
-//
-// Undefine previously defined helper macros. Note that these are used by
-// each extension to provide quick access to the vcpu in the extension. If
-// include files are not handled properly, you could end up with the wrong
-// vcpu, resulting in compilation errors
-//
+/**
+ *  put_vcpu - releases a reference to a microv vcpu
+ *
+ *  Release a previously acquired reference to vcpu. This must
+ *  be called after a successful call to get_vcpu.
+ *
+ *  @expects
+ *  @ensures
+ *
+ *  @param id the id of the vcpu to release
+*/
+inline void put_vcpu(vcpuid::type id) noexcept
+{
+    return g_vcm->release(id);
+}
 
-#ifdef get_vcpu
-#undef get_vcpu
-#endif
+/**
+ * Note:
+ *
+ * Undefine previously defined helper macros. Note that these are used by
+ * each extension to provide quick access to the vcpu in the extension. If
+ * include files are not handled properly, you could end up with the wrong
+ * vcpu, resulting in compilation errors
+*/
 
 #ifdef vcpu_cast
 #undef vcpu_cast
 #endif
 
-/// Get Guest vCPU
-///
-/// Gets a guest vCPU from the vCPU manager given a vcpuid
-///
-/// @expects
-/// @ensures
-///
-/// @return returns a pointer to the vCPU being queried or throws
-///     and exception.
-///
-#define get_vcpu(v) \
-    g_vcm->get<microv::intel_x64::vcpu *>(v, __FILE__ ": invalid microv vcpuid")
-
-#define vcpu_cast(v) \
-    static_cast<microv::intel_x64::vcpu *>(v)
+#define vcpu_cast(p) static_cast<microv::intel_x64::vcpu *>(p)
 
 inline bfobject world_switch;
 

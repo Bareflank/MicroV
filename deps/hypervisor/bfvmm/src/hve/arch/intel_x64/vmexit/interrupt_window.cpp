@@ -74,8 +74,17 @@ interrupt_window_handler::queue_external_interrupt(uint64_t vector)
     // which once again, will not attempt to inject an exception at the same
     // time since that code is managed here, and is very small.
     //
+    // Since interrupt window exiting is enabled, the caller must be sure that
+    // the proper VMCS is loaded prior to the call.
+    //
 
     this->enable_exiting();
+    this->push_external_interrupt(vector);
+}
+
+inline void interrupt_window_handler::push_external_interrupt(uint64_t vector)
+{
+    std::lock_guard<std::mutex> lock(m_mutex);
     m_interrupt_queue.push(vector);
 }
 
@@ -133,6 +142,8 @@ bool
 interrupt_window_handler::handle(vcpu *vcpu)
 {
     bfignored(vcpu);
+
+    std::lock_guard<std::mutex> lock(m_mutex);
     this->inject_external_interrupt(m_interrupt_queue.pop());
 
     if (m_interrupt_queue.empty()) {

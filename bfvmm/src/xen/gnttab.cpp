@@ -21,41 +21,40 @@
 
 #include <hve/arch/intel_x64/vcpu.h>
 #include <xen/gnttab.h>
-#include <xen/xen.h>
+#include <xen/vcpu.h>
 
 namespace microv {
 
-gnttab::gnttab(xen *xen) :
-    m_xen{xen},
-    m_vcpu{xen->m_vcpu},
+xen_gnttab::xen_gnttab(xen_vcpu *xen) :
+    m_uv_vcpu{xen->m_uv_vcpu},
     m_version{2}
 {
     m_shared_gnttab.reserve(max_nr_frames);
     m_shared_gnttab.push_back(make_page<shared_entry_t>());
 }
 
-bool gnttab::query_size()
+bool xen_gnttab::query_size()
 {
-    auto gqs = m_vcpu->map_arg<gnttab_query_size_t>(m_vcpu->rsi());
+    auto gqs = m_uv_vcpu->map_arg<gnttab_query_size_t>(m_uv_vcpu->rsi());
 
     gqs->nr_frames = gsl::narrow_cast<uint32_t>(m_shared_gnttab.size());
     gqs->max_nr_frames = max_nr_frames;
     gqs->status = GNTST_okay;
 
-    m_vcpu->set_rax(0);
+    m_uv_vcpu->set_rax(0);
     return true;
 }
 
-bool gnttab::set_version()
+bool xen_gnttab::set_version()
 {
-    auto gsv = m_vcpu->map_arg<gnttab_set_version_t>(m_vcpu->rsi());
+    auto gsv = m_uv_vcpu->map_arg<gnttab_set_version_t>(m_uv_vcpu->rsi());
     gsv->version = m_version;
 
-    m_vcpu->set_rax(0);
+    m_uv_vcpu->set_rax(0);
     return true;
 }
 
-bool gnttab::mapspace_grant_table(xen_add_to_physmap_t *atp)
+bool xen_gnttab::mapspace_grant_table(xen_add_to_physmap_t *atp)
 {
     expects((atp->idx & XENMAPIDX_grant_table_status) == 0);
 
@@ -73,8 +72,8 @@ bool gnttab::mapspace_grant_table(xen_add_to_physmap_t *atp)
         m_shared_gnttab.push_back(std::move(map));
     }
 
-    m_vcpu->map_4k_rw(atp->gpfn << x64::pt::page_shift, hpa);
-    m_vcpu->set_rax(0);
+    m_uv_vcpu->map_4k_rw(atp->gpfn << x64::pt::page_shift, hpa);
+    m_uv_vcpu->set_rax(0);
     return true;
 }
 }

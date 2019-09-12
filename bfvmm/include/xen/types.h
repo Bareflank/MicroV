@@ -25,14 +25,26 @@
 #include <atomic>
 #include <bfhypercall.h>
 #include <bfmath.h>
+#include <bfobject.h>
 #include <bftypes.h>
+#include <bfvcpuid.h>
 #include <bfvmm/hve/arch/x64/unmapper.h>
 #include <bfvmm/memory_manager/memory_manager.h>
-#include <hve/arch/intel_x64/vcpu.h>
+
+#include <public/xen.h>
 
 /* Base hypervisor vcpu */
 namespace bfvmm::intel_x64 {
     class vcpu;
+    class hlt_handler;
+    class ept_violation_handler;
+    class external_interrupt_handler;
+    class io_instruction_handler;
+    class wrmsr_handler;
+
+    namespace ept {
+        class mmap;
+    }
 }
 
 /* Microv vcpu and domain */
@@ -43,16 +55,38 @@ namespace microv::intel_x64 {
 
 namespace microv {
 
-class xen;
-class gnttab;
-class evtchn;
-class xenver;
+struct domain_info;
+class xen_domain;
+class xen_evtchn;
+class xen_flask;
+class xen_gnttab;
+class xen_memory;
+class xen_physdev;
+class xen_vcpu;
+class xen_version;
+class xen_cpupool;
 
-using xen = microv::xen;
-using xen_vcpu = microv::intel_x64::vcpu;
-using xen_domain = microv::intel_x64::domain;
+using microv_vcpu = microv::intel_x64::vcpu;
+using microv_vcpuid = ::vcpuid::type;
+using microv_domain = microv::intel_x64::domain;
+
 using base_vcpu = bfvmm::intel_x64::vcpu;
+using hlt_handler = bfvmm::intel_x64::hlt_handler;
+using ept_violation_handler = bfvmm::intel_x64::ept_violation_handler;
+using interrupt_handler = bfvmm::intel_x64::external_interrupt_handler;
+using wrmsr_handler = bfvmm::intel_x64::wrmsr_handler;
+using io_insn_handler = bfvmm::intel_x64::io_instruction_handler;
 
+template<typename T>
+using unique_map = bfvmm::x64::unique_map<T>;
+
+using xen_mmap_t = bfvmm::intel_x64::ept::mmap;
+using xen_uuid_t = ::xen_uuid_t;
+using xen_domid_t = ::domid_t;
+using xen_vcpuid_t = uint32_t;
+using xen_cpupoolid_t = uint32_t;
+
+inline bool hypercall_debug = false;
 }
 
 #endif

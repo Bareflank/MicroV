@@ -24,11 +24,25 @@
 namespace bfvmm::intel_x64
 {
 
-ept_handler::ept_handler(
-    gsl::not_null<vcpu *> vcpu
-) :
-    m_vcpu{vcpu}
-{ }
+ept_handler::ept_handler(gsl::not_null<vcpu *> vcpu) :
+    m_vcpu{vcpu},
+    m_eptp{0}
+{
+    using namespace ::intel_x64::msrs::ia32_vmx_ept_vpid_cap;
+
+    const auto ept_caps = get();
+
+    expects(invept_support::is_enabled(ept_caps));
+    expects(invept_all_context_support::is_enabled(ept_caps));
+    expects(invept_single_context_support::is_enabled(ept_caps));
+
+    invept_single = ::intel_x64::vmx::invept_single_context;
+}
+
+void ept_handler::invept()
+{
+    this->invept_single(m_eptp);
+}
 
 void ept_handler::set_eptp(ept::mmap *map)
 {
@@ -40,30 +54,32 @@ void ept_handler::set_eptp(ept::mmap *map)
             m_vcpu->global_state()->ia32_vmx_cr0_fixed0 &= ~::intel_x64::cr0::paging::mask;
             m_vcpu->global_state()->ia32_vmx_cr0_fixed0 &= ~::intel_x64::cr0::protection_enable::mask;
 
-            ept_pointer::memory_type::set(ept_pointer::memory_type::write_back);
-            ept_pointer::accessed_and_dirty_flags::disable();
-            ept_pointer::page_walk_length_minus_one::set(3U);
+            ept_pointer::memory_type::set(m_eptp, ept_pointer::memory_type::write_back);
+            ept_pointer::accessed_and_dirty_flags::disable(m_eptp);
+            ept_pointer::page_walk_length_minus_one::set(m_eptp, 3U);
 
             enable_ept::enable();
             unrestricted_guest::enable();
         }
 
-        ept_pointer::phys_addr::set(map->eptp());
+        ept_pointer::phys_addr::set(m_eptp, map->pml4_phys());
+        ept_pointer::set(m_eptp);
     }
     else {
         if (ept_pointer::phys_addr::get() != 0) {
             m_vcpu->global_state()->ia32_vmx_cr0_fixed0 |= ::intel_x64::cr0::paging::mask;
             m_vcpu->global_state()->ia32_vmx_cr0_fixed0 |= ::intel_x64::cr0::protection_enable::mask;
 
-            ept_pointer::memory_type::set(0);
-            ept_pointer::accessed_and_dirty_flags::disable();
-            ept_pointer::page_walk_length_minus_one::set(0);
+            ept_pointer::memory_type::set(m_eptp, 0);
+            ept_pointer::accessed_and_dirty_flags::disable(m_eptp);
+            ept_pointer::page_walk_length_minus_one::set(m_eptp, 0);
 
             enable_ept::disable();
             unrestricted_guest::disable();
         }
 
-        ept_pointer::phys_addr::set(0);
+        ept_pointer::phys_addr::set(m_eptp, 0);
+        ept_pointer::set(m_eptp);
     }
 }
 

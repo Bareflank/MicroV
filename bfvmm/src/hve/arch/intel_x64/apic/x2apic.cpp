@@ -42,7 +42,7 @@ x2apic_handler::x2apic_handler(
 {
     using namespace vmcs_n;
 
-    if (vcpuid::is_host_vm_vcpu(vcpu->id())) {
+    if (vcpuid::is_root_vcpu(vcpu->id())) {
         return;
     }
 
@@ -634,7 +634,7 @@ x2apic_handler::handle_wrmsr_0x00000835(
 {
     bfignored(vcpu);
 
-    bfalert_nhex(0, "unimplemented write to LINT0", info.val);
+//    bfalert_nhex(0, "unimplemented write to LINT0", info.val);
 
     m_0x00000835 = info.val & 0xFFFFFFFF;
     return true;
@@ -656,7 +656,7 @@ x2apic_handler::handle_wrmsr_0x00000836(
 {
     bfignored(vcpu);
 
-    bfalert_nhex(0, "unimplemented write to LINT1", info.val);
+//    bfalert_nhex(0, "unimplemented write to LINT1", info.val);
 
     m_0x00000836 = info.val & 0xFFFFFFFF;
     return true;

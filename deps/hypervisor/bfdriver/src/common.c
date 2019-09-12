@@ -30,7 +30,6 @@
 #include <bfconstants.h>
 #include <bfthreadcontext.h>
 #include <bfdriverinterface.h>
-#include <bfxsave.h>
 
 /* -------------------------------------------------------------------------- */
 /* Global                                                                     */
@@ -48,7 +47,6 @@ _start_t _start_func = 0;
 struct crt_info_t g_info;
 struct bfelf_loader_t g_loader;
 
-uint64_t g_num_cpus = 0;
 int64_t g_num_cpus_started = 0;
 int64_t g_vmm_status = VMM_UNLOADED;
 
@@ -61,91 +59,9 @@ uint64_t g_stack_top = 0;
 
 void *g_rsdp = 0;
 
-struct xsave_info *g_xsi = 0;
-uint64_t g_xsi_size = 0;
-uint64_t g_xcr0_supported = 0;
-
 /* -------------------------------------------------------------------------- */
 /* Helpers                                                                    */
 /* -------------------------------------------------------------------------- */
-
-static int valid_xsave_area(uint8_t *area, int size)
-{
-    if (!area) {
-        return 0;
-    }
-
-    if ((uint64_t)area & 0x3FU) {
-        BFERROR("Invalid XSAVE area alignment: %llx", (uint64_t)area);
-        platform_free_rw(area, size);
-        return 0;
-    }
-
-    if (((uint64_t)area >> 12) != ((uint64_t)area + size - 1) >> 12) {
-        BFERROR("Invalid XSAVE area must be on one 4K page: %llx", (uint64_t)area);
-        platform_free_rw(area, size);
-        return 0;
-    }
-
-    return 1;
-}
-
-/*
- * Note that the xsave size is likely less than 4K, but we add
- * the mdl to the vmm as 4K below
- */
-static int64_t private_setup_xsave(void)
-{
-    uint64_t i;
-
-    uint32_t eax = 1;
-    uint32_t ebx = 0;
-    uint32_t ecx = 0;
-    uint32_t edx = 0;
-
-    platform_cpuid(&eax, &ebx, &ecx, &edx);
-    if ((ecx & (1UL << 26)) == 0) {
-        return BF_ERROR_NO_XSAVE;
-    }
-
-    eax = 0xD;
-    ecx = 0x0;
-    platform_cpuid(&eax, &ebx, &ecx, &edx);
-
-    /* Allocate an xsave_info for each cpu */
-    g_num_cpus = (int)platform_num_cpus();
-    g_xsi_size = g_num_cpus * sizeof(*g_xsi);
-    g_xsi = (struct xsave_info *)platform_alloc_rw(g_xsi_size);
-    if (!g_xsi) {
-        return BF_ERROR_OUT_OF_MEMORY;
-    }
-
-    platform_memset(g_xsi, 0, g_xsi_size);
-
-    for (i = 0; i < g_num_cpus; i++) {
-        struct xsave_info *info = &g_xsi[i];
-        info->host_area = platform_alloc_rw(ecx);
-        platform_memset(info->host_area, 0, ecx);
-        if (!valid_xsave_area(info->host_area, ecx)) {
-            return BF_ERROR_XSAVE_AREA;
-        }
-
-        info->guest_area = platform_alloc_rw(ecx);
-        platform_memset(info->guest_area, 0, ecx);
-        if (!valid_xsave_area(info->guest_area, ecx)) {
-            return BF_ERROR_XSAVE_AREA;
-        }
-
-        info->pcpuid = i;
-        info->vcpuid = i;
-        info->host_size = ecx;
-        info->host_xcr0 = XSAVE_BUILD_XCR0;
-        info->guest_size = ecx;
-        info->cpuid_xcr0 = ((uint64_t)edx << 32) | eax;
-    }
-
-    return BF_SUCCESS;
-}
 
 int64_t
 private_setup_stack(void)
@@ -245,47 +161,8 @@ private_add_md_to_memory_manager(struct bfelf_binary_t *module)
     return BF_SUCCESS;
 }
 
-static int64_t private_add_xsave_mdl(void)
-{
-    uint64_t i;
-    int64_t ret;
-    const uint64_t type = MEMORY_TYPE_R | MEMORY_TYPE_W;
-
-    for (i = 0; i < g_xsi_size; i += BAREFLANK_PAGE_SIZE) {
-        ret = private_add_raw_md_to_memory_manager((uint64_t)g_xsi + i, type);
-        if (ret != BF_SUCCESS) {
-            return ret;
-        }
-    }
-
-    for (i = 0; i < g_num_cpus; i++) {
-        struct xsave_info *info = &g_xsi[i];
-        uint64_t size = info->host_size;
-        uint64_t j = 0;
-
-        for (; j < size; j += BAREFLANK_PAGE_SIZE) {
-            uint64_t virt = (uint64_t)info->host_area + j;
-            ret = private_add_raw_md_to_memory_manager(virt, type);
-            if (ret != BF_SUCCESS) {
-                return ret;
-            }
-        }
-
-        size = info->guest_size;
-        for (j = 0; j < size; j += BAREFLANK_PAGE_SIZE) {
-            uint64_t virt = (uint64_t)info->guest_area + j;
-            ret = private_add_raw_md_to_memory_manager(virt, type);
-            if (ret != BF_SUCCESS) {
-                return ret;
-            }
-        }
-    }
-
-    return BF_SUCCESS;
-}
-
 int64_t
-private_add_tls_mdl(void)
+private_add_tss_mdl(void)
 {
     uint64_t i = 0;
 
@@ -301,6 +178,113 @@ private_add_tls_mdl(void)
 
     return BF_SUCCESS;
 }
+
+#ifdef USE_XUE
+
+static int64_t add_xue_dma_to_mm(uint64_t virt, uint64_t order)
+{
+    int64_t ret = 0;
+    struct memory_descriptor md = {0, 0, 0};
+    uint64_t pages = 1UL << order;
+    uint64_t i = 0;
+
+    for (i = 0; i < pages; i++) {
+        md.virt = virt + (i * XUE_PAGE_SIZE);
+        md.phys = g_xue.ops->virt_to_dma(g_xue.sys, (const void *)md.virt);
+        md.type = MEMORY_TYPE_R | MEMORY_TYPE_W;
+
+        ret = platform_call_vmm_on_core(0, BF_REQUEST_ADD_MDL, (uintptr_t)&md, 0);
+        if (ret != MEMORY_MANAGER_SUCCESS) {
+            return ret;
+        }
+    }
+
+    return BF_SUCCESS;
+}
+
+static int64_t add_xue_mmio_to_mm(struct xue *xue)
+{
+    int64_t ret = 0;
+    struct memory_descriptor md = {0, 0, 0};
+    uint64_t pages = xue->xhc_mmio_size / XUE_PAGE_SIZE;
+    uint64_t i = 0;
+
+    if (xue->xhc_mmio_size & (XUE_PAGE_SIZE - 1)) {
+        pages++;
+    }
+
+    for (; i < pages; i++) {
+        md.virt = (uint64_t)(xue->xhc_mmio) + (i * XUE_PAGE_SIZE);
+        md.phys = xue->xhc_mmio_phys + (i * XUE_PAGE_SIZE);
+        md.type = MEMORY_TYPE_R | MEMORY_TYPE_W | MEMORY_TYPE_UC;
+
+        ret = platform_call_vmm_on_core(0, BF_REQUEST_ADD_MDL, (uintptr_t)&md, 0);
+        if (ret != MEMORY_MANAGER_SUCCESS) {
+            return ret;
+        }
+    }
+
+    return BF_SUCCESS;
+}
+
+static void add_xue_mdl(void)
+{
+    int64_t ret = 0;
+
+    if (!g_xue.open) {
+        return;
+    }
+
+    ret = add_xue_mmio_to_mm(&g_xue);
+    if (ret != BF_SUCCESS) {
+        BFALERT("%s: failed to add mmio\n", __func__);
+        return;
+    }
+
+    ret = add_xue_dma_to_mm((uint64_t)g_xue.dbc_ctx, 0);
+    if (ret != BF_SUCCESS) {
+        BFALERT("%s: failed to add dbc_ctx\n", __func__);
+        return;
+    }
+
+    ret = add_xue_dma_to_mm((uint64_t)g_xue.dbc_erst, 0);
+    if (ret != BF_SUCCESS) {
+        BFALERT("%s: failed to add dbc_erst\n", __func__);
+        return;
+    }
+
+    ret = add_xue_dma_to_mm((uint64_t)g_xue.dbc_ering.trb, XUE_TRB_RING_ORDER);
+    if (ret != BF_SUCCESS) {
+        BFALERT("%s: failed to add dbc_ering.trb\n", __func__);
+        return;
+    }
+
+    ret = add_xue_dma_to_mm((uint64_t)g_xue.dbc_oring.trb, XUE_TRB_RING_ORDER);
+    if (ret != BF_SUCCESS) {
+        BFALERT("%s: failed to add dbc_oring.trb\n", __func__);
+        return;
+    }
+
+    ret = add_xue_dma_to_mm((uint64_t)g_xue.dbc_iring.trb, XUE_TRB_RING_ORDER);
+    if (ret != BF_SUCCESS) {
+        BFALERT("%s: failed to add dbc_iring.trb\n", __func__);
+        return;
+    }
+
+    ret = add_xue_dma_to_mm((uint64_t)g_xue.dbc_owork.buf, XUE_WORK_RING_ORDER);
+    if (ret != BF_SUCCESS) {
+        BFALERT("%s: failed to add dbc_owork.buf\n", __func__);
+        return;
+    }
+
+    ret = add_xue_dma_to_mm((uint64_t)g_xue.dbc_str, 0);
+    if (ret != BF_SUCCESS) {
+        BFALERT("%s: failed to add dbc_str\n", __func__);
+        return;
+    }
+}
+
+#endif
 
 int64_t
 private_add_modules_mdl(void)
@@ -330,22 +314,6 @@ common_reset(void)
 {
     int64_t i;
 
-    if (g_xsi != 0) {
-        for (i = 0; i < (int64_t)g_num_cpus; i++) {
-            struct xsave_info *info = &g_xsi[i];
-            if (info->host_area) {
-                platform_free_rw(info->host_area, info->host_size);
-            }
-            if (info->guest_area) {
-                platform_free_rw(info->guest_area, info->guest_size);
-            }
-        }
-        platform_free_rw(g_xsi, g_xsi_size);
-        g_xsi = 0;
-        g_xsi_size = 0;
-        g_num_cpus = 0;
-    }
-
     for (i = 0; i < g_num_modules; i++) {
         if (g_modules[i].exec != 0) {
             platform_free_rwe(g_modules[i].exec, g_modules[i].exec_size);
@@ -371,11 +339,10 @@ common_reset(void)
         platform_free_rw(g_stack, g_stack_size);
     }
 
-
     g_tls = 0;
     g_stack = 0;
     g_stack_top = 0;
-    g_uefi_boot = 0;
+
     g_rsdp = 0;
 }
 
@@ -473,11 +440,6 @@ common_load_vmm(void)
         goto failure;
     }
 
-    ret = private_setup_xsave();
-    if (ret != BF_SUCCESS) {
-        goto failure;
-    }
-
     ret = private_setup_tls();
     if (ret != BF_SUCCESS) {
         goto failure;
@@ -513,23 +475,24 @@ common_load_vmm(void)
         goto failure;
     }
 
-    ret = private_add_tls_mdl();
-    if (ret != BF_SUCCESS) {
-        goto failure;
-    }
-
-    ret = private_add_xsave_mdl();
+    ret = private_add_tss_mdl();
     if (ret != BF_SUCCESS) {
         goto failure;
     }
 
 #ifdef USE_XUE
-    platform_memset(&g_xue, 0, sizeof(g_xue));
-    platform_memset(&g_xue_ops, 0, sizeof(g_xue_ops));
-    g_xue.sysid = XUE_SYSID;
+    if (!g_xue.open) {
+        platform_memset(&g_xue, 0, sizeof(g_xue));
+        platform_memset(&g_xue_ops, 0, sizeof(g_xue_ops));
+        g_xue.sysid = XUE_SYSID;
 
-    if (g_xue.sysid != xue_sysid_windows) {
-        xue_open(&g_xue, &g_xue_ops, NULL);
+        if (g_xue.sysid != xue_sysid_windows) {
+            xue_open(&g_xue, &g_xue_ops, NULL);
+        }
+    }
+
+    if (g_xue.open) {
+        add_xue_mdl();
     }
 
     ret = platform_call_vmm_on_core(0, BF_REQUEST_INIT_XUE,  (uint64_t)&g_xue, 0);
@@ -701,7 +664,6 @@ common_call_vmm(
 
     tc->cpuid = cpuid;
     tc->tlsptr = (uint64_t *)((uint64_t)g_tls + (THREAD_LOCAL_STORAGE_SIZE * (uint64_t)cpuid));
-    tc->xsave_info = &g_xsi[cpuid];
 
     return _start_func((void *)(g_stack_top - sizeof(tc_t) - 1), &g_info);
 }

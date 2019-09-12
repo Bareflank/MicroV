@@ -32,24 +32,6 @@ section .text
 ; Note: If the constants.h file changes, or the thread_context structure
 ;       changes, this code might also have to change as well.
 
-global _thread_context_xsave:function
-_thread_context_xsave:
-
-    mov rdx, 0x8000
-    sub rdx, 0x1
-
-    mov rax, rsp
-    mov rcx, rdx
-    not rcx
-    and rax, rcx
-
-    add rax, rdx
-
-    sub rax, 16
-
-    mov rax, [rax]
-    ret
-
 global _thread_context_tlsptr:function
 _thread_context_tlsptr:
 

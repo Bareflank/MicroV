@@ -51,6 +51,7 @@ private:
 
     void domain_op__create_domain(vcpu *vcpu);
     void domain_op__destroy_domain(vcpu *vcpu);
+    void domain_op__read_tsc(vcpu *vcpu) noexcept;
 
     void domain_op__hvc_rx_put(vcpu *vcpu);
     void domain_op__hvc_tx_get(vcpu *vcpu);

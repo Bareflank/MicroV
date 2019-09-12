@@ -158,7 +158,7 @@ cpuid_handler::cpuid_handler(
     this->add_emulator(0x4BF00010, handle_cpuid_0x4BF00010);
     this->add_emulator(0x4BF00020, handle_cpuid_0x4BF00020);
 
-    if (vcpu->is_guest_vm_vcpu()) {
+    if (vcpu->is_guest_vcpu()) {
         return;
     }
 
