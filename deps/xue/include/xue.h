@@ -1237,14 +1237,12 @@ static inline void xue_trb_ring_init(const struct xue *xue,
 
 static inline int xue_trb_ring_full(const struct xue_trb_ring *ring)
 {
-//    return ((ring->enq + 1) & (XUE_TRB_RING_CAP - 1)) == ring->deq;
-    return 0;
+    return ((ring->enq + 1) & (XUE_TRB_RING_CAP - 1)) == ring->deq;
 }
 
 static inline int xue_work_ring_full(const struct xue_work_ring *ring)
 {
-//    return ((ring->enq + 1) & (XUE_WORK_RING_CAP - 1)) == ring->deq;
-    return 0;
+    return ((ring->enq + 1) & (XUE_WORK_RING_CAP - 1)) == ring->deq;
 }
 
 static inline uint64_t xue_work_ring_size(const struct xue_work_ring *ring)
