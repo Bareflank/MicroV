@@ -114,7 +114,7 @@ add_config(
 add_config(
     CONFIG_NAME BUILD_XEN_GUEST
     CONFIG_TYPE BOOL
-    DEFAULT_VAL ON
+    DEFAULT_VAL OFF
     DESCRIPTION "Build a Xen PVH guest"
 )
 
