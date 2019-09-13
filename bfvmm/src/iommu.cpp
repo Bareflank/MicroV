@@ -45,25 +45,6 @@ static struct acpi_table *dmar{};
 static std::list<std::unique_ptr<class iommu>> iommu_list;
 static std::list<class iommu *> iommu_view;
 
-static void hide_dmar(const struct acpi_table *dmar)
-{
-    auto gpa_4k = bfn::upper(dmar->gpa, 12);
-    auto hva_4k = reinterpret_cast<const char *>(bfn::upper(dmar->hva, 12));
-    auto offset = reinterpret_cast<uintptr_t>(dmar->gpa - gpa_4k);
-
-    static auto copy = make_page<char>();
-    memcpy(copy.get(), hva_4k, PAGE_SIZE_4K);
-
-    ensures(!memcmp(copy.get() + offset, "DMAR", 4));
-    memset(copy.get() + offset, 0, ACPI_SIG_SIZE);
-
-    auto dom = vcpu0->dom();
-    dom->unmap(gpa_4k);
-    dom->map_4k_rw(gpa_4k, g_mm->virtptr_to_physint(copy.get()));
-
-    ::intel_x64::vmx::invept_global();
-}
-
 static void make_iommus(const struct acpi_table *dmar)
 {
     auto drs = dmar->hva + drs_offset;
@@ -105,7 +86,7 @@ void init_vtd()
         bferror_info(0, "init_vtd: Invalid DMAR signature");
     }
 
-    hide_dmar(dmar);
+    hide_acpi_table(dmar);
     make_iommus(dmar);
     /* TODO: RMRR structures */
 }

@@ -34,11 +34,13 @@ struct acpi_table {
     uintptr_t gpa;
     size_t len;
     char *hva;
+    bool hidden;
 };
 
 int init_acpi();
 struct acpi_table *find_acpi_table(const acpi_sig_t &sig);
 struct acpi_table *find_acpi_table(const char sig[4]);
+void hide_acpi_table(struct acpi_table *tab);
 
 }
 

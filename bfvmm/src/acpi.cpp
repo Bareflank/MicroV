@@ -27,6 +27,7 @@
 #include <bfacpi.h>
 #include <hve/arch/intel_x64/vcpu.h>
 
+#define PAGE_SIZE_4K 0x1000UL
 #define XSDT_ENTRY_SIZE 8
 #define HDR_SIZE sizeof(acpi_header_t)
 
@@ -36,6 +37,7 @@ namespace microv {
 
 using namespace bfvmm::x64;
 
+static std::unordered_map<uintptr_t, page_ptr<char>> hidden_tables;
 static std::vector<struct acpi_table> table_list;
 static bfvmm::x64::unique_map<char> table_region_map;
 static uintptr_t table_region_gpa;
@@ -63,11 +65,13 @@ static void parse_xsdt(uintptr_t gpa, size_t len)
     tab.gpa = gpa;
     tab.len = len;
     tab.hva = 0;
+    tab.hidden = false;
     table_list.push_back(tab);
 
     for (auto i = 0; i < nr_entries; i++) {
         memset(&tab, 0, sizeof(tab));
         tab.gpa = entry[i];
+        tab.hidden = false;
         table_list.push_back(tab);
     }
 }
@@ -156,6 +160,39 @@ int init_acpi()
     table_region_map = vcpu0->map_gpa_4k<char>(table_region_gpa,
                                                table_region_len);
     return 0;
+}
+
+void hide_acpi_table(struct acpi_table *tab)
+{
+    auto gpa_4k = bfn::upper(tab->gpa, 12);
+    auto hva_4k = reinterpret_cast<const char *>(bfn::upper(tab->hva, 12));
+    auto offset = reinterpret_cast<uintptr_t>(tab->gpa - gpa_4k);
+
+    expects(offset <= PAGE_SIZE_4K - ACPI_SIG_SIZE);
+
+    if (hidden_tables.count(gpa_4k)) {
+        auto iter = hidden_tables.find(gpa_4k);
+        char *copy = iter->second.get();
+        char *sig = copy + offset;
+        expects(!memcmp(sig, tab->sig.data(), ACPI_SIG_SIZE));
+        memset(sig, 0, ACPI_SIG_SIZE);
+    } else {
+        auto iter = hidden_tables.try_emplace(gpa_4k, make_page<char>()).first;
+        char *copy = iter->second.get();
+        memcpy(copy, hva_4k, PAGE_SIZE_4K);
+
+        char *sig = copy + offset;
+        expects(!memcmp(sig, tab->sig.data(), ACPI_SIG_SIZE));
+        memset(sig, 0, ACPI_SIG_SIZE);
+
+        auto dom0 = vcpu0->dom();
+        dom0->unmap(gpa_4k);
+        dom0->map_4k_rw(gpa_4k, g_mm->virtptr_to_physint(copy));
+
+        ::intel_x64::vmx::invept_global();
+    }
+
+    tab->hidden = true;
 }
 
 }

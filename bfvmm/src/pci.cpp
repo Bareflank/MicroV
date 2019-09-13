@@ -130,6 +130,8 @@ static void init_mcfg()
     constexpr auto mca_offset = 44;
     mca_list_size = (mcfg->len - mca_offset) / sizeof(struct mcfg_alloc);
     mca_list = reinterpret_cast<struct mcfg_alloc *>(mcfg->hva + mca_offset);
+
+    hide_acpi_table(mcfg);
 }
 
 static void probe_bus(uint32_t b, struct pci_dev *bridge)
@@ -154,7 +156,11 @@ static void probe_bus(uint32_t b, struct pci_dev *bridge)
                 pdev->m_guest_owned = true;
                 pdev->parse_cap_regs();
                 pdev->init_root_vcfg();
-                pdev->remap_ecam();
+
+                if (!mcfg->hidden) {
+                    pdev->remap_ecam();
+                }
+
                 pci_passthru_list.push_back(pdev);
             }
         }
