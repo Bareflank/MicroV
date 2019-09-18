@@ -25,7 +25,7 @@
 #include "../ring.h"
 #include "../domain/domain.h"
 #include "types.h"
-
+#include <page.h>
 #include <public/domctl.h>
 #include <public/arch-x86/hvm/save.h>
 #include <public/hvm/save.h>
@@ -87,6 +87,9 @@ public:
     size_t hvc_rx_get(const gsl::span<char> &span);
     size_t hvc_tx_put(const gsl::span<char> &span);
     size_t hvc_tx_get(const gsl::span<char> &span);
+
+    int acquire_gnttab_pages(xen_mem_acquire_resource_t *res,
+                             gsl::span<class page *> pages);
 
     /* Hypercalls from xl create path */
     bool numainfo(xen_vcpu *v, struct xen_sysctl_numainfo *numa);
@@ -158,8 +161,8 @@ public:
     struct shared_info *m_shinfo{};
     uintptr_t m_shinfo_gpfn{};
 
-    std::unique_ptr<xen_evtchn> m_evtchn{};
     std::unique_ptr<xen_memory> m_memory{};
+    std::unique_ptr<xen_evtchn> m_evtchn{};
     std::unique_ptr<xen_gnttab> m_gnttab{};
 
     /* TSC params */

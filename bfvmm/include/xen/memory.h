@@ -31,6 +31,13 @@ namespace microv {
 inline constexpr size_t XEN_PAGE_SIZE = 0x1000;
 inline constexpr size_t XEN_PAGE_FROM = 12;
 
+class page *alloc_unbacked_page();
+class page *alloc_root_backed_page(xen_pfn_t hfn);
+class page *alloc_vmm_backed_page(void *ptr);
+void free_unbacked_page(class page *pg);
+void free_root_page(class page *pg);
+void free_vmm_page(class page *pg);
+
 bool xenmem_memory_map(xen_vcpu *v);
 bool xenmem_set_memory_map(xen_vcpu *v);
 bool xenmem_add_to_physmap(xen_vcpu *v);
@@ -79,6 +86,8 @@ public:
                              void *ptr);
     void add_foreign_page(xen_pfn_t gfn, uint32_t perms, uint32_t mtype,
                           class page *fpg);
+    void add_local_page(xen_pfn_t gfn, uint32_t perms, uint32_t mtype,
+                        class page *pg);
 
     void map_page(class xen_page *pg);
     void unmap_page(class xen_page *pg);

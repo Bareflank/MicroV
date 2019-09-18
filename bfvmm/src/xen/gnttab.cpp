@@ -59,18 +59,95 @@ bool xen_gnttab_set_version(xen_vcpu *vcpu)
     return vcpu->m_xen_dom->m_gnttab->set_version(vcpu, gsv.get());
 }
 
-xen_gnttab::xen_gnttab(xen_domain *dom)
+xen_gnttab::xen_gnttab(xen_domain *dom, xen_memory *mem)
 {
-    this->version = 2;
-    this->dom = dom;
+    version = 1;
+    xen_dom = dom;
+    xen_mem = mem;
 
-    this->shared_gnttab.reserve(max_nr_frames);
-    this->shared_gnttab.push_back(make_page<shared_entry_t>());
+    shrtab_raw.reserve(max_nr_frames);
+    ststab_raw.reserve(max_nr_frames);
+
+    shrtab_pages.reserve(max_nr_frames);
+    ststab_pages.reserve(max_nr_frames);
 }
 
+int xen_gnttab::get_pages(int tabid, size_t base, size_t count,
+                          gsl::span<class page *> pages)
+{
+    expects(base < max_nr_frames);
+    expects(count <= pages.size());
+
+    raw_tab_t *raw_tab{};
+    page_tab_t *pg_tab{};
+
+    switch (tabid) {
+    case tabid_shared:
+        raw_tab = &shrtab_raw;
+        pg_tab = &shrtab_pages;
+        break;
+    case tabid_status:
+        raw_tab = &ststab_raw;
+        pg_tab = &ststab_pages;
+        break;
+    default:
+        bferror_nhex(0, "xen_gnttab::get_pages: unknown tabid:", tabid);
+        return -EINVAL;
+    }
+
+    const auto last = base + count - 1;
+    const auto size = raw_tab->size();
+    const auto cpty = raw_tab->capacity();
+
+    /*
+     * If the last requested index is greater than the
+     * last possible index, return error
+     */
+    if (last >= cpty) {
+        return -EINVAL;
+    }
+
+    /* Grow if we need to */
+    if (last >= size) {
+        size_t new_pages = last + 1 - size;
+
+        while (new_pages-- > 0) {
+            auto raw_page = make_page<uint8_t>();
+            auto dom_page = alloc_vmm_backed_page(raw_page.get());
+
+            raw_tab->emplace_back(std::move(raw_page));
+            pg_tab->emplace_back(dom_page);
+        }
+    }
+
+    /* Populate the page list */
+    for (auto i = 0; i < count; i++) {
+        pages[i] = (*pg_tab)[base + i];
+    }
+
+    return 0;
+}
+
+int xen_gnttab::get_page(int tabid, size_t idx, class page **pg)
+{
+    class page *list[1]{};
+
+    auto rc = this->get_pages(tabid, idx, 1, list);
+    if (rc) {
+        return rc;
+    }
+
+    *pg = list[0];
+    return 0;
+}
+
+/*
+ * The guest calls query_size to determine the number of shared
+ * frames it has with the VMM
+ */
 bool xen_gnttab::query_size(xen_vcpu *vcpu, gnttab_query_size_t *gqs)
 {
-    gqs->nr_frames = gsl::narrow_cast<uint32_t>(shared_gnttab.size());
+    gqs->nr_frames = gsl::narrow_cast<uint32_t>(shrtab_raw.size());
     gqs->max_nr_frames = max_nr_frames;
     gqs->status = GNTST_okay;
 
@@ -78,38 +155,55 @@ bool xen_gnttab::query_size(xen_vcpu *vcpu, gnttab_query_size_t *gqs)
     return true;
 }
 
+/* TODO: complete me, setup reserved entries etc. */
 bool xen_gnttab::set_version(xen_vcpu *vcpu, gnttab_set_version_t *gsv)
 {
-    bfdebug_ndec(0, "gnttab: set version to", gsv->version);
+    auto uvv = vcpu->m_uv_vcpu;
 
-    this->version = gsv->version;
-    vcpu->m_uv_vcpu->set_rax(0);
+    if (gsv->version != 1 && gsv->version != 2) {
+        uvv->set_rax(-EINVAL);
+        return true;
+    }
 
+    if (gsv->version == 2) {
+        bferror_info(0, "gnttab::set_version to 2 unimplemented");
+        return false;
+    }
+
+    uvv->set_rax(0);
     return true;
 }
 
 bool xen_gnttab::mapspace_grant_table(xen_vcpu *vcpu, xen_add_to_physmap_t *atp)
 {
-    expects((atp->idx & XENMAPIDX_grant_table_status) == 0);
-
-    auto hpa = 0ULL;
+    auto uvv = vcpu->m_uv_vcpu;
     auto idx = atp->idx;
-    auto size = shared_gnttab.size();
+    class page *page{};
 
-    printv("gnttab: mapspace idx:%lx nr_pages:%u\n", idx, atp->size);
+    if (idx & XENMAPIDX_grant_table_status) {
+        if (version != 2) {
+            bferror_ndec(0, "mapspace gnttab status but version is", version);
+            uvv->set_rax(-EINVAL);
+            return true;
+        }
 
-    if (idx < size) {
-        auto hva = shared_gnttab[idx].get();
-        hpa = g_mm->virtptr_to_physint(hva);
+        idx &= ~XENMAPIDX_grant_table_status;
+        auto rc = this->get_status_page(idx, &page);
+        if (rc) {
+            bferror_nhex(0, "get_status_page failed, idx=", idx);
+            return rc;
+        }
     } else {
-        expects(size < shared_gnttab.capacity());
-        auto map = make_page<shared_entry_t>();
-        hpa = g_mm->virtptr_to_physint(map.get());
-        shared_gnttab.push_back(std::move(map));
+        expects(version != 0);
+        auto rc = this->get_shared_page(idx, &page);
+        if (rc) {
+            bferror_nhex(0, "get_shared_page failed, idx=", idx);
+            return rc;
+        }
     }
 
-    vcpu->m_uv_vcpu->map_4k_rw(atp->gpfn << x64::pt::page_shift, hpa);
-    vcpu->m_uv_vcpu->set_rax(0);
+    xen_mem->add_local_page(atp->gpfn, pg_perm_rw, pg_mtype_wb, page);
+    uvv->set_rax(0);
 
     return true;
 }

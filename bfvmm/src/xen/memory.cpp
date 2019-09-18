@@ -31,9 +31,9 @@
 
 namespace microv {
 
-static std::mutex dom_page_mtx;
+static std::mutex dom_pool_mtx;
+static std::unordered_map<uint64_t, class page> dom_pool;
 static uint64_t dom_page_id{};
-static std::unordered_map<uint64_t, class page> dom_page_pool;
 
 static std::mutex root_pool_mtx;
 static std::list<xen_pfn_t> root_pool;
@@ -51,37 +51,67 @@ static inline size_t vmm_pool_pages()
     return g_mm->page_pool_pages();
 }
 
-static void free_unbacked_page(class page *pg)
+class page *alloc_unbacked_page()
+{
+    std::lock_guard lock(dom_pool_mtx);
+
+    auto id = dom_page_id++;
+    auto it = dom_pool.try_emplace(id, page(id)).first;
+
+    return &it->second;
+}
+
+class page *alloc_root_backed_page(xen_pfn_t hfn)
+{
+    std::lock_guard lock(dom_pool_mtx);
+
+    auto id = dom_page_id++;
+    auto it = dom_pool.try_emplace(id, page(id, hfn)).first;
+
+    return &it->second;
+}
+
+class page *alloc_vmm_backed_page(void *ptr)
+{
+    std::lock_guard lock(dom_pool_mtx);
+
+    auto id = dom_page_id++;
+    auto it = dom_pool.try_emplace(id, page(id, ptr)).first;
+
+    return &it->second;
+}
+
+void free_unbacked_page(class page *pg)
 {
     expects(!pg->refcnt);
     expects(pg->src == pg_src_none);
 
-    std::lock_guard page_lock(dom_page_mtx);
-    dom_page_pool.erase(pg->id);
+    std::lock_guard page_lock(dom_pool_mtx);
+    dom_pool.erase(pg->id);
 }
 
-static void free_root_page(class page *pg)
+void free_root_page(class page *pg)
 {
     expects(!pg->refcnt);
     expects(pg->src == pg_src_root);
 
-    std::lock_guard page_lock(dom_page_mtx);
+    std::lock_guard page_lock(dom_pool_mtx);
     std::lock_guard root_lock(root_pool_mtx);
 
     root_pool.emplace_back(pg->hfn);
-    dom_page_pool.erase(pg->id);
+    dom_pool.erase(pg->id);
 }
 
-static void free_vmm_page(class page *pg)
+void free_vmm_page(class page *pg)
 {
     expects(!pg->refcnt);
     expects(pg->src == pg_src_vmm);
     expects(pg->mapped_in_vmm());
 
-    std::lock_guard page_lock(dom_page_mtx);
+    std::lock_guard page_lock(dom_pool_mtx);
 
     g_mm->free_page(pg->ptr);
-    dom_page_pool.erase(pg->id);
+    dom_pool.erase(pg->id);
 }
 
 const char *e820_type_str(int type)
@@ -269,15 +299,84 @@ bool xenmem_remove_from_physmap(xen_vcpu *vcpu)
     return vcpu->m_xen_dom->m_memory->remove_from_physmap(vcpu, map.get());
 }
 
+/*
+ * This implementation is very similar to acquire_resource in
+ * xen/xen/common/memory.c
+ */
 bool xenmem_acquire_resource(xen_vcpu *vcpu)
 {
     auto uvv = vcpu->m_uv_vcpu;
     auto res = uvv->map_arg<xen_mem_acquire_resource_t>(uvv->rsi());
 
-    printv("%s: domid:0x%x type:%u id:%u nr_frames:%u\n",
-            __func__, res->domid, res->type, res->id, res->nr_frames);
+    constexpr auto MAX_RESOURCE_PAGES = 32;
+    std::array<class page *, MAX_RESOURCE_PAGES> pages{};
 
-    return false;
+    /* Flags must be zero on entry */
+    if (res->flags) {
+        uvv->set_rax(-EINVAL);
+        return true;
+    }
+
+    if (!res->frame_list.p) {
+        if (res->nr_frames != 0) {
+            uvv->set_rax(-EINVAL);
+            return true;
+        }
+
+        /* Tell the caller the max # frames we can do at a time */
+        res->nr_frames = pages.size();
+        uvv->set_rax(0);
+        return true;
+    }
+
+    if (res->nr_frames > pages.size()) {
+        uvv->set_rax(-E2BIG);
+        return true;
+    }
+
+    auto dom = get_xen_domain(res->domid);
+    if (!dom) {
+        printv("%s: domid 0x%x not found\n", __func__, res->domid);
+        uvv->set_rax(-ESRCH);
+        return true;
+    }
+
+    int rc = 0;
+
+    switch (res->type) {
+    case XENMEM_resource_grant_table:
+        rc = dom->acquire_gnttab_pages(res.get(), pages);
+        if (rc) {
+            uvv->set_rax(rc);
+            bferror_nhex(0, "xenmem: acquire_gnttab failed:", rc);
+            put_xen_domain(res->domid);
+            return true;
+        }
+        break;
+    case XENMEM_resource_ioreq_server:
+        bferror_nhex(0, "xenmem: acquire IOREQ frame:", res->frame);
+        put_xen_domain(res->domid);
+        return false;
+    default:
+        printv("xenmem: unsupported resource acquire type: %u\n", res->type);
+        put_xen_domain(res->domid);
+        uvv->set_rax(-EINVAL);
+        return true;
+    }
+
+    auto map = uvv->map_gva_4k<xen_pfn_t>(res->frame_list.p, res->nr_frames);
+    auto gfn = map.get();
+
+    /* Now we add the pages into the caller's map */
+    for (auto i = 0; i < res->nr_frames; i++) {
+        auto mem = vcpu->m_xen_dom->m_memory.get();
+        mem->add_foreign_page(gfn[i], pg_perm_rw, pg_mtype_wb, pages[i]);
+    }
+
+    put_xen_domain(res->domid);
+    uvv->set_rax(0);
+
+    return true;
 }
 
 /* class xen_memory */
@@ -461,12 +560,8 @@ void xen_memory::add_unbacked_page(xen_pfn_t gfn, uint32_t perms,
                                    uint32_t mtype)
 {
     expects(m_page_map.count(gfn) == 0);
-    std::lock_guard lock(dom_page_mtx);
 
-    auto id = dom_page_id++;
-    auto it = dom_page_pool.try_emplace(id, page(id)).first;
-    auto pg = &it->second;
-
+    auto pg = alloc_unbacked_page();
     m_page_map.try_emplace(gfn, xen_page(gfn, perms, mtype, pg));
 }
 
@@ -475,12 +570,8 @@ void xen_memory::add_root_backed_page(xen_pfn_t gfn, uint32_t perms,
                                       uint32_t mtype, xen_pfn_t hfn)
 {
     expects(m_page_map.count(gfn) == 0);
-    std::lock_guard lock(dom_page_mtx);
 
-    auto id = dom_page_id++;
-    auto it = dom_page_pool.try_emplace(id, page(id, hfn)).first;
-    auto pg = &it->second;
-
+    auto pg = alloc_root_backed_page(hfn);
     m_page_map.try_emplace(gfn, xen_page(gfn, perms, mtype, pg));
 }
 
@@ -489,12 +580,8 @@ void xen_memory::add_vmm_backed_page(xen_pfn_t gfn, uint32_t perms,
                                      uint32_t mtype, void *ptr)
 {
     expects(m_page_map.count(gfn) == 0);
-    std::lock_guard lock(dom_page_mtx);
 
-    auto id = dom_page_id++;
-    auto it = dom_page_pool.try_emplace(id, page(id, ptr)).first;
-    auto pg = &it->second;
-
+    auto pg = alloc_vmm_backed_page(ptr);
     m_page_map.try_emplace(gfn, xen_page(gfn, perms, mtype, pg));
 }
 
@@ -506,6 +593,14 @@ void xen_memory::add_foreign_page(xen_pfn_t gfn, uint32_t perms,
 
     fpg->refcnt++;
     m_page_map.try_emplace(gfn, xen_page(gfn, perms, mtype, fpg));
+}
+
+/* Add a page already created from this domain */
+void xen_memory::add_local_page(xen_pfn_t gfn, uint32_t perms, uint32_t mtype,
+                                class page *pg)
+{
+    expects(m_page_map.count(gfn) == 0);
+    m_page_map.try_emplace(gfn, xen_page(gfn, perms, mtype, pg));
 }
 
 class xen_page *xen_memory::find_page(xen_pfn_t gfn)

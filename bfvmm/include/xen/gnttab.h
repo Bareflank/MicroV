@@ -23,6 +23,7 @@
 #define MICROV_XEN_GNTTAB_H
 
 #include "types.h"
+#include "../page.h"
 #include <public/grant_table.h>
 #include <public/memory.h>
 
@@ -32,21 +33,59 @@ bool xen_gnttab_query_size(xen_vcpu *vcpu);
 bool xen_gnttab_set_version(xen_vcpu *vcpu);
 
 class xen_gnttab {
-    using shared_entry_t = grant_entry_v2_t;
-    static_assert(is_power_of_2(sizeof(shared_entry_t)));
+//    using shared_entry_t = grant_entry_v2_t;
+//    static_assert(is_power_of_2(sizeof(shared_entry_t)));
+
+    using tabid_t = enum { tabid_shared, tabid_status };
+    using raw_tab_t = std::vector<page_ptr<uint8_t>>;
+    using page_tab_t = std::vector<class page *>;
 
     uint32_t version{};
-    xen_domain *dom{};
-    std::vector<page_ptr<shared_entry_t>> shared_gnttab;
+    xen_domain *xen_dom{};
+    xen_memory *xen_mem{};
+
+    raw_tab_t shrtab_raw;
+    raw_tab_t ststab_raw;
+
+    page_tab_t shrtab_pages;
+    page_tab_t ststab_pages;
 
 public:
     static constexpr auto max_nr_frames = 64;
+
+    int get_page(int tabid, size_t idx, class page **page);
+    int get_pages(int tabid, size_t base, size_t count,
+                  gsl::span<class page *> pages);
+
+    int get_shared_page(size_t idx, class page **page)
+    {
+        return get_page(tabid_shared, idx, page);
+    }
+
+    int get_status_page(size_t idx, class page **page)
+    {
+        return get_page(tabid_status, idx, page);
+    }
+
+    int get_shared_pages(size_t base,
+                         size_t count,
+                         gsl::span<class page *> pages)
+    {
+        return get_pages(tabid_shared, base, count, pages);
+    }
+
+    int get_status_pages(size_t base,
+                         size_t count,
+                         gsl::span<class page *> pages)
+    {
+        return get_pages(tabid_status, base, count, pages);
+    }
 
     bool query_size(xen_vcpu *vcpu, gnttab_query_size_t *gqs);
     bool set_version(xen_vcpu *vcpu, gnttab_set_version_t *gsv);
     bool mapspace_grant_table(xen_vcpu *vcpu, xen_add_to_physmap_t *atp);
 
-    xen_gnttab(xen_domain *dom);
+    xen_gnttab(xen_domain *dom, xen_memory *mem);
     ~xen_gnttab() = default;
 
     xen_gnttab(xen_gnttab &&) = default;

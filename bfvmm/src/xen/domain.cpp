@@ -445,14 +445,29 @@ xen_domain::xen_domain(microv_domain *domain) :
 
     m_numa_nodes = 1;
     m_ndvm = m_uv_info->is_ndvm();
-    m_evtchn = std::make_unique<xen_evtchn>(this);
     m_memory = std::make_unique<xen_memory>(this);
-    m_gnttab = std::make_unique<xen_gnttab>(this);
+    m_evtchn = std::make_unique<xen_evtchn>(this);
+    m_gnttab = std::make_unique<xen_gnttab>(this, m_memory.get());
 }
 
 xen_domain::~xen_domain()
 {
     xen_cpupool_rm_domain(m_cpupool_id, m_id);
+}
+
+int xen_domain::acquire_gnttab_pages(xen_mem_acquire_resource_t *res,
+                                     gsl::span<class page *> pages)
+{
+    switch (res->id) {
+    case XENMEM_resource_grant_table_id_shared:
+        return m_gnttab->get_shared_pages(res->frame, res->nr_frames, pages);
+    case XENMEM_resource_grant_table_id_status:
+        bferror_info(0, "acquire_gnttab: ID status unsupported");
+        return -EINVAL;
+    default:
+        bferror_nhex(0, "acquire_gnttab: unknown ID:", res->id);
+        return -EINVAL;
+    }
 }
 
 void xen_domain::share_root_page(uintptr_t gpa, uintptr_t hpa,
