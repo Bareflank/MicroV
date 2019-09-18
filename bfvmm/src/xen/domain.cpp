@@ -723,10 +723,16 @@ static void dump_hvm_hw_mtrr(struct hvm_hw_mtrr *mtrr)
     for (auto i = 0; i < MTRR_VCNT; i += 2) {
         auto base = mtrr->msr_mtrr_var[i];
         auto mask = mtrr->msr_mtrr_var[i + 1];
+        if (!base && !mask) {
+            continue;
+        }
         printv("  MTRR: physbase[%d]:0x%lx physmask[%d]:0x%lx\n", i, base, i, mask);
     }
 
     for (auto i = 0; i < NUM_FIXED_MSR; i++) {
+        if (!mtrr->msr_mtrr_fixed[i]) {
+            continue;
+        }
         printv("  MTRR: fixed[%d]:0x%lx\n", i, mtrr->msr_mtrr_fixed[i]);
     }
 }
@@ -951,8 +957,8 @@ bool xen_domain::sethvmcontext(xen_vcpu *v,
 
     auto hsd = reinterpret_cast<struct hvm_save_descriptor *>(buf + off);
     while (hsd->typecode != HVM_SAVE_CODE(END)) {
-        printv("HVM set type: %d\n", hsd->typecode);
-        printv("HVM set size: %d\n", hsd->length);
+//        printv("HVM set type: %d\n", hsd->typecode);
+//        printv("HVM set size: %d\n", hsd->length);
 
         off += sizeof(*hsd);
         switch (hsd->typecode) {
@@ -962,24 +968,25 @@ bool xen_domain::sethvmcontext(xen_vcpu *v,
         case HVM_SAVE_CODE(CPU): {
             this->set_uv_dom_ctx((struct hvm_hw_cpu *)(buf + off));
             uvv->set_rax(0);
-            uvv->save_xstate();
+            return true;
+//            uvv->save_xstate();
+//
+//            auto root = uvv->root_vcpu();
+//            expects(root->is_root_vcpu());
+//            put_xen_domain(m_id);
+//
+//            root->load();
+//            root->return_new_domain(m_uv_dom->id());
+//
+//            /*
+//             * This should be unreachable, but if for whatever reason we return
+//             * here, we need to get_xen_domain before the corresponding put in
+//             * xen_domain_sethvmcontext
+//             */
+//            bferror_info(0, "returned from return_new_domain");
+//            get_xen_domain(m_id);
 
-            auto root = uvv->root_vcpu();
-            expects(root->is_root_vcpu());
-            put_xen_domain(m_id);
-
-            root->load();
-            root->return_new_domain(m_uv_dom->id());
-
-            /*
-             * This should be unreachable, but if for whatever reason we return
-             * here, we need to get_xen_domain before the corresponding put in
-             * xen_domain_sethvmcontext
-             */
-            bferror_info(0, "returned from return_new_domain");
-            get_xen_domain(m_id);
-
-            return false;
+//            return false;
         }
         case HVM_SAVE_CODE(HEADER):
             break;
