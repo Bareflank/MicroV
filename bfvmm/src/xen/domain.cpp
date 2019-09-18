@@ -447,6 +447,7 @@ xen_domain::xen_domain(microv_domain *domain) :
     m_ndvm = m_uv_info->is_ndvm();
     m_evtchn = std::make_unique<xen_evtchn>(this);
     m_memory = std::make_unique<xen_memory>(this);
+    m_gnttab = std::make_unique<xen_gnttab>(this);
 }
 
 xen_domain::~xen_domain()

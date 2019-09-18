@@ -19,61 +19,98 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+#include <printv.h>
 #include <hve/arch/intel_x64/vcpu.h>
 #include <xen/gnttab.h>
+#include <xen/domain.h>
 #include <xen/vcpu.h>
 
 namespace microv {
 
-xen_gnttab::xen_gnttab(xen_vcpu *xen) :
-    m_uv_vcpu{xen->m_uv_vcpu},
-    m_version{2}
+bool xen_gnttab_query_size(xen_vcpu *vcpu)
 {
-    m_shared_gnttab.reserve(max_nr_frames);
-    m_shared_gnttab.push_back(make_page<shared_entry_t>());
+    auto uvv = vcpu->m_uv_vcpu;
+    auto gqs = uvv->map_arg<gnttab_query_size_t>(uvv->rsi());
+    auto domid = gqs->dom;
+
+    if (domid == DOMID_SELF) {
+        domid = vcpu->m_xen_dom->m_id;
+    }
+
+    auto dom = get_xen_domain(domid);
+    if (!dom) {
+        bfalert_nhex(0, "xen_domain not found:", domid);
+        gqs->status = GNTST_bad_domain;
+        uvv->set_rax(-ESRCH);
+        return true;
+    }
+
+    auto ret = dom->m_gnttab->query_size(vcpu, gqs.get());
+    put_xen_domain(domid);
+
+    return ret;
 }
 
-bool xen_gnttab::query_size()
+bool xen_gnttab_set_version(xen_vcpu *vcpu)
 {
-    auto gqs = m_uv_vcpu->map_arg<gnttab_query_size_t>(m_uv_vcpu->rsi());
+    auto uvv = vcpu->m_uv_vcpu;
+    auto gsv = uvv->map_arg<gnttab_set_version_t>(uvv->rsi());
 
-    gqs->nr_frames = gsl::narrow_cast<uint32_t>(m_shared_gnttab.size());
+    return vcpu->m_xen_dom->m_gnttab->set_version(vcpu, gsv.get());
+}
+
+xen_gnttab::xen_gnttab(xen_domain *dom)
+{
+    this->version = 2;
+    this->dom = dom;
+
+    this->shared_gnttab.reserve(max_nr_frames);
+    this->shared_gnttab.push_back(make_page<shared_entry_t>());
+}
+
+bool xen_gnttab::query_size(xen_vcpu *vcpu, gnttab_query_size_t *gqs)
+{
+    gqs->nr_frames = gsl::narrow_cast<uint32_t>(shared_gnttab.size());
     gqs->max_nr_frames = max_nr_frames;
     gqs->status = GNTST_okay;
 
-    m_uv_vcpu->set_rax(0);
+    vcpu->m_uv_vcpu->set_rax(0);
     return true;
 }
 
-bool xen_gnttab::set_version()
+bool xen_gnttab::set_version(xen_vcpu *vcpu, gnttab_set_version_t *gsv)
 {
-    auto gsv = m_uv_vcpu->map_arg<gnttab_set_version_t>(m_uv_vcpu->rsi());
-    gsv->version = m_version;
+    bfdebug_ndec(0, "gnttab: set version to", gsv->version);
 
-    m_uv_vcpu->set_rax(0);
+    this->version = gsv->version;
+    vcpu->m_uv_vcpu->set_rax(0);
+
     return true;
 }
 
-bool xen_gnttab::mapspace_grant_table(xen_add_to_physmap_t *atp)
+bool xen_gnttab::mapspace_grant_table(xen_vcpu *vcpu, xen_add_to_physmap_t *atp)
 {
     expects((atp->idx & XENMAPIDX_grant_table_status) == 0);
 
     auto hpa = 0ULL;
     auto idx = atp->idx;
-    auto size = m_shared_gnttab.size();
+    auto size = shared_gnttab.size();
+
+    printv("gnttab: mapspace idx:%lx nr_pages:%u\n", idx, atp->size);
 
     if (idx < size) {
-        auto hva = m_shared_gnttab[idx].get();
+        auto hva = shared_gnttab[idx].get();
         hpa = g_mm->virtptr_to_physint(hva);
     } else {
-        expects(size < m_shared_gnttab.capacity());
+        expects(size < shared_gnttab.capacity());
         auto map = make_page<shared_entry_t>();
         hpa = g_mm->virtptr_to_physint(map.get());
-        m_shared_gnttab.push_back(std::move(map));
+        shared_gnttab.push_back(std::move(map));
     }
 
-    m_uv_vcpu->map_4k_rw(atp->gpfn << x64::pt::page_shift, hpa);
-    m_uv_vcpu->set_rax(0);
+    vcpu->m_uv_vcpu->map_4k_rw(atp->gpfn << x64::pt::page_shift, hpa);
+    vcpu->m_uv_vcpu->set_rax(0);
+
     return true;
 }
 }

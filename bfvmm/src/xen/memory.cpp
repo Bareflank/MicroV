@@ -531,7 +531,7 @@ bool xen_memory::add_to_physmap(xen_vcpu *vcpu, xen_add_to_physmap_t *atp)
         vcpu->m_uv_vcpu->set_rax(0);
         return true;
     case XENMAPSPACE_grant_table:
-        return vcpu->m_gnttab->mapspace_grant_table(atp);
+        return m_xen_dom->m_gnttab->mapspace_grant_table(vcpu, atp);
     default:
         return false;
     }

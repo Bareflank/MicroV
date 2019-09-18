@@ -538,9 +538,9 @@ bool xen_vcpu::handle_grant_table_op()
     try {
         switch (m_uv_vcpu->rdi()) {
         case GNTTABOP_query_size:
-            return m_gnttab->query_size();
+            return xen_gnttab_query_size(this);
         case GNTTABOP_set_version:
-            return m_gnttab->set_version();
+            return xen_gnttab_set_version(this);
         default:
             return false;
         }
@@ -1032,7 +1032,6 @@ xen_vcpu::xen_vcpu(microv_vcpu *vcpu) :
     m_acpiid = 0;
 
     m_flask = std::make_unique<class xen_flask>(this);
-    m_gnttab = std::make_unique<class xen_gnttab>(this);
     m_xenver = std::make_unique<class xen_version>(this);
     m_physdev = std::make_unique<class xen_physdev>(this);
 

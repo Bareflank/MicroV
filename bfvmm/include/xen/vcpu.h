@@ -110,7 +110,6 @@ private:
     friend class xen_physdev;
 
     std::unique_ptr<class xen_flask> m_flask;
-    std::unique_ptr<class xen_gnttab> m_gnttab;
     std::unique_ptr<class xen_version> m_xenver;
     std::unique_ptr<class xen_physdev> m_physdev;
 

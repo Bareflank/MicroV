@@ -160,6 +160,7 @@ public:
 
     std::unique_ptr<xen_evtchn> m_evtchn{};
     std::unique_ptr<xen_memory> m_memory{};
+    std::unique_ptr<xen_gnttab> m_gnttab{};
 
     /* TSC params */
     uint64_t m_tsc_khz;

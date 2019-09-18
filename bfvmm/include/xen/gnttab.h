@@ -28,22 +28,25 @@
 
 namespace microv {
 
+bool xen_gnttab_query_size(xen_vcpu *vcpu);
+bool xen_gnttab_set_version(xen_vcpu *vcpu);
+
 class xen_gnttab {
     using shared_entry_t = grant_entry_v2_t;
     static_assert(is_power_of_2(sizeof(shared_entry_t)));
 
-    uint32_t m_version{};
-    microv_vcpu *m_uv_vcpu{};
-    std::vector<page_ptr<shared_entry_t>> m_shared_gnttab;
+    uint32_t version{};
+    xen_domain *dom{};
+    std::vector<page_ptr<shared_entry_t>> shared_gnttab;
 
 public:
     static constexpr auto max_nr_frames = 64;
 
-    bool query_size();
-    bool set_version();
-    bool mapspace_grant_table(xen_add_to_physmap_t *arg);
+    bool query_size(xen_vcpu *vcpu, gnttab_query_size_t *gqs);
+    bool set_version(xen_vcpu *vcpu, gnttab_set_version_t *gsv);
+    bool mapspace_grant_table(xen_vcpu *vcpu, xen_add_to_physmap_t *atp);
 
-    xen_gnttab(xen_vcpu *xen);
+    xen_gnttab(xen_domain *dom);
     ~xen_gnttab() = default;
 
     xen_gnttab(xen_gnttab &&) = default;
