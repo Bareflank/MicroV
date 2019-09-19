@@ -29,57 +29,71 @@
 
 namespace microv {
 
+bool xen_gnttab_map_grant_ref(xen_vcpu *vcpu);
 bool xen_gnttab_query_size(xen_vcpu *vcpu);
 bool xen_gnttab_set_version(xen_vcpu *vcpu);
 
 class xen_gnttab {
-//    using shared_entry_t = grant_entry_v2_t;
-//    static_assert(is_power_of_2(sizeof(shared_entry_t)));
 
-    using tabid_t = enum { tabid_shared, tabid_status };
-    using raw_tab_t = std::vector<page_ptr<uint8_t>>;
-    using page_tab_t = std::vector<class page *>;
+    using shr_v1_gte_t = grant_entry_v1_t;
+    using shr_v2_gte_t = grant_entry_v2_t;
+    using status_gte_t = grant_status_t;
 
-    uint32_t version{};
+    static_assert(is_power_of_2(sizeof(shr_v1_gte_t)));
+    static_assert(is_power_of_2(sizeof(shr_v2_gte_t)));
+    static_assert(is_power_of_2(sizeof(status_gte_t)));
+
+    static constexpr auto shr_v1_gte_per_page = 4096 / sizeof(shr_v1_gte_t);
+    static constexpr auto shr_v2_gte_per_page = 4096 / sizeof(shr_v2_gte_t);
+    static constexpr auto status_gte_per_page = 4096 / sizeof(status_gte_t);
+
+    static constexpr auto shr_v1_gte_page_shift = log2<shr_v1_gte_per_page>();
+    static constexpr auto shr_v2_gte_page_shift = log2<shr_v2_gte_per_page>();
+    static constexpr auto status_gte_page_shift = log2<status_gte_per_page>();
+
+    static constexpr uint32_t max_status_gte_pages();
+
+    uint32_t shared_to_status_pages(uint32_t shr_pages) const noexcept;
+    uint32_t status_to_shared_pages(uint32_t sts_pages) const noexcept;
+
+    shr_v1_gte_t *shr_v1_entry(grant_ref_t ref);
+    shr_v2_gte_t *shr_v2_entry(grant_ref_t ref);
+
+    int grow(uint32_t shr_pages);
+
+    uint32_t version{1};
+
     xen_domain *xen_dom{};
     xen_memory *xen_mem{};
 
-    raw_tab_t shrtab_raw;
-    raw_tab_t ststab_raw;
+    /* List of dom pages used to implement XENMEM_acquire_resource */
+    std::vector<class page *> shared_rsrc_pages{};
+    std::vector<class page *> status_rsrc_pages{};
 
-    page_tab_t shrtab_pages;
-    page_tab_t ststab_pages;
+    /* Tables of various entry types */
+    std::vector<page_ptr<uint8_t>> shared_tab{};
+    std::vector<page_ptr<status_gte_t>> status_tab{};
 
 public:
-    static constexpr auto max_nr_frames = 64;
+    static constexpr uint32_t max_shared_gte_pages() { return 64; }
 
-    int get_page(int tabid, size_t idx, class page **page);
-    int get_pages(int tabid, size_t base, size_t count,
+    status_gte_t *status_entry(grant_ref_t ref);
+    grant_entry_header_t *shared_header(grant_ref_t ref);
+    uintptr_t shared_gfn(grant_ref_t ref);
+
+    bool invalid_ref(grant_ref_t ref) const noexcept;
+    void dump_shared_entry(grant_ref_t ref);
+
+    int get_page(int tabid, size_t pg_idx, class page **page);
+    int get_shared_page(size_t pg_idx, class page **page);
+    int get_status_page(size_t pg_idx, class page **page);
+
+    int get_pages(int tabid, size_t pg_idx, size_t count,
                   gsl::span<class page *> pages);
-
-    int get_shared_page(size_t idx, class page **page)
-    {
-        return get_page(tabid_shared, idx, page);
-    }
-
-    int get_status_page(size_t idx, class page **page)
-    {
-        return get_page(tabid_status, idx, page);
-    }
-
-    int get_shared_pages(size_t base,
-                         size_t count,
-                         gsl::span<class page *> pages)
-    {
-        return get_pages(tabid_shared, base, count, pages);
-    }
-
-    int get_status_pages(size_t base,
-                         size_t count,
-                         gsl::span<class page *> pages)
-    {
-        return get_pages(tabid_status, base, count, pages);
-    }
+    int get_shared_pages(size_t pg_idx, size_t count,
+                         gsl::span<class page *> pages);
+    int get_status_pages(size_t pg_idx, size_t count,
+                         gsl::span<class page *> pages);
 
     bool query_size(xen_vcpu *vcpu, gnttab_query_size_t *gqs);
     bool set_version(xen_vcpu *vcpu, gnttab_set_version_t *gsv);
@@ -87,7 +101,6 @@ public:
 
     xen_gnttab(xen_domain *dom, xen_memory *mem);
     ~xen_gnttab() = default;
-
     xen_gnttab(xen_gnttab &&) = default;
     xen_gnttab(const xen_gnttab &) = delete;
     xen_gnttab &operator=(xen_gnttab &&) = default;

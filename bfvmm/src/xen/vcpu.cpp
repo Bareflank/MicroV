@@ -473,6 +473,8 @@ bool xen_vcpu::handle_grant_table_op()
 {
     try {
         switch (m_uv_vcpu->rdi()) {
+        case GNTTABOP_map_grant_ref:
+            return xen_gnttab_map_grant_ref(this);
         case GNTTABOP_query_size:
             return xen_gnttab_query_size(this);
         case GNTTABOP_set_version:

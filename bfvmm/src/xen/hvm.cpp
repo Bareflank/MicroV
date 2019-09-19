@@ -92,7 +92,9 @@ bool xen_hvm_pagetable_dying(xen_vcpu *vcpu)
     return true;
 }
 
-xen_hvm::xen_hvm(xen_domain *dom) : xen_dom{dom}
+xen_hvm::xen_hvm(xen_domain *dom, xen_memory *mem) :
+    xen_dom{dom},
+    xen_mem{mem}
 {
 }
 
@@ -114,7 +116,8 @@ bool xen_hvm::set_param(xen_vcpu *vcpu, xen_hvm_param_t *p)
         }
         break;
     case HVM_PARAM_PAE_ENABLED:
-    /* TODO: when do we map the frame numbers? */
+    case HVM_PARAM_IDENT_PT:
+        break;
     case HVM_PARAM_STORE_PFN:
     case HVM_PARAM_BUFIOREQ_PFN:
     case HVM_PARAM_IOREQ_PFN:
@@ -122,8 +125,10 @@ bool xen_hvm::set_param(xen_vcpu *vcpu, xen_hvm_param_t *p)
     case HVM_PARAM_PAGING_RING_PFN:
     case HVM_PARAM_MONITOR_RING_PFN:
     case HVM_PARAM_SHARING_RING_PFN:
-    case HVM_PARAM_IDENT_PT:
-    /* TODO: what about these? */
+        if (!xen_mem->find_page(p->value)) {
+            xen_mem->add_unbacked_page(p->value, pg_perm_rw, pg_mtype_wb);
+        }
+        break;
     case HVM_PARAM_STORE_EVTCHN:
     case HVM_PARAM_CONSOLE_EVTCHN:
         break;

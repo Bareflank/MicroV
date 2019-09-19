@@ -466,7 +466,7 @@ xen_domain::xen_domain(microv_domain *domain) :
         m_max_pcpus = 1;
         m_max_vcpus = 1;
         m_max_evtchn_port = DEFAULT_EVTCHN_PORTS - 1;
-        m_max_grant_frames = xen_gnttab::max_nr_frames;
+        m_max_grant_frames = xen_gnttab::max_shared_gte_pages();
         m_max_maptrack_frames = DEFAULT_MAPTRACK_FRAMES;
         m_arch_config.emulation_flags = XEN_X86_EMU_LAPIC;
     }
@@ -508,10 +508,11 @@ xen_domain::xen_domain(microv_domain *domain) :
 
     m_numa_nodes = 1;
     m_ndvm = m_uv_info->is_ndvm();
+
     m_memory = std::make_unique<xen_memory>(this);
     m_evtchn = std::make_unique<xen_evtchn>(this);
     m_gnttab = std::make_unique<xen_gnttab>(this, m_memory.get());
-    hvm = std::make_unique<xen_hvm>(this);
+    hvm = std::make_unique<xen_hvm>(this, m_memory.get());
 }
 
 xen_domain::~xen_domain()

@@ -87,6 +87,9 @@ using xen_domid_t = ::domid_t;
 using xen_vcpuid_t = uint32_t;
 using xen_cpupoolid_t = uint32_t;
 
+constexpr xen_domid_t xen_invl_domid = ~0;
+constexpr xen_vcpuid_t xen_invl_vcpuid = ~0;
+
 inline bool hypercall_debug = false;
 }
 

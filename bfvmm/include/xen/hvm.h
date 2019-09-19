@@ -33,7 +33,7 @@ bool xen_hvm_pagetable_dying(xen_vcpu *vcpu);
 
 class xen_hvm {
 public:
-    xen_hvm(xen_domain *dom);
+    xen_hvm(xen_domain *dom, xen_memory *mem);
 
     bool set_param(xen_vcpu *vcpu, xen_hvm_param_t *param);
     bool get_param(xen_vcpu *vcpu, xen_hvm_param_t *param) const;
@@ -46,6 +46,7 @@ public:
     xen_hvm &operator=(const xen_hvm &) = delete;
 
     xen_domain *xen_dom{};
+    xen_memory *xen_mem{};
     std::array<uint64_t, HVM_NR_PARAMS> params{};
 };
 
