@@ -153,6 +153,8 @@ bool xen_hvm::get_param(xen_vcpu *vcpu, xen_hvm_param_t *p) const
     switch (p->index) {
     case HVM_PARAM_STORE_PFN:
     case HVM_PARAM_CONSOLE_PFN:
+    case HVM_PARAM_PAE_ENABLED:
+    case HVM_PARAM_NESTEDHVM:
         break;
     default:
         bferror_nhex(0, "hvm get_param:", p->index);
