@@ -109,9 +109,9 @@ cpuid_handler::handle_0x00000001(vcpu_t *vcpu)
     // Set osxsave based on current cr4 value
     auto osxsave = vcpu->cr4() & (1UL << 18);
     if (osxsave) {
-        vcpu->set_rcx(vcpu->rcx() | (1UL << 18));
+        vcpu->set_rcx(vcpu->rcx() | (1UL << 27));
     } else {
-        vcpu->set_rcx(vcpu->rcx() & ~(1UL << 18));
+        vcpu->set_rcx(vcpu->rcx() & ~(1UL << 27));
     }
 
     return vcpu->advance();

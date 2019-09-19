@@ -32,6 +32,7 @@
 #include <public/domctl.h>
 #include <public/sysctl.h>
 #include <public/vcpu.h>
+#include <xen/cpuid.h>
 #include <xen/cpupool.h>
 #include <xen/domain.h>
 #include <xen/evtchn.h>
@@ -138,6 +139,36 @@ void put_xen_domain(xen_domid_t id) noexcept
     } catch (...) {
         printv("%s: threw exception for id 0x%x\n", __func__, id);
     }
+}
+
+bool xen_domain_get_cpu_featureset(xen_vcpu *vcpu, struct xen_sysctl *ctl)
+{
+    expects(vcpu->is_xenstore());
+
+    auto uvv = vcpu->m_uv_vcpu;
+    auto fs = &ctl->u.cpu_featureset;
+
+    expects(fs->index == XEN_SYSCTL_cpu_featureset_hvm);
+
+    /* Asking for max number of feature words */
+    if (!fs->features.p) {
+        fs->nr_features = xen_cpufeat_words;
+        uvv->set_rax(0);
+        return true;
+    }
+
+    uint32_t pvh_feats[xen_cpufeat_words]{};
+    xen_get_pvh_cpufeatures(pvh_feats);
+
+    auto num = std::min(fs->nr_features, xen_cpufeat_words);
+    auto map = uvv->map_gva_4k<uint32_t>(fs->features.p, num);
+
+    for (auto i = 0; i < num; i++) {
+        map.get()[i] = pvh_feats[i];
+    }
+
+    uvv->set_rax(0);
+    return true;
 }
 
 bool xen_domain_getinfolist(xen_vcpu *vcpu, struct xen_sysctl *ctl)
@@ -384,6 +415,8 @@ xen_domain::xen_domain(microv_domain *domain) :
     m_uv_info = &domain->m_sod_info;
     m_uv_dom = domain;
     m_uv_vcpuid = 0; /* the valid ID is bound with bind_vcpu */
+
+    xen_init_cpufeatures();
 
     if (m_uv_info->xen_info_valid) {
         auto cd = &m_uv_info->xen_create_dom;
