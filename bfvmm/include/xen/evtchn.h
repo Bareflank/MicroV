@@ -124,7 +124,7 @@ public:
     bool close(xen_vcpu *v, evtchn_close_t *ec);
     bool send(xen_vcpu *v, evtchn_send_t *es);
 
-    bool set_upcall_vector(xen_vcpu *v, xen_hvm_param_t *param);
+    int set_upcall_vector(xen_vcpu *v, xen_hvm_param_t *param);
     void queue_virq(uint32_t virq);
     void inject_virq(uint32_t virq);
     void unbind_interdomain(evtchn_port_t port, xen_domid_t remote_domid);

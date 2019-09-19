@@ -151,23 +151,21 @@ xen_evtchn::xen_evtchn(xen_domain *dom) : m_xen_dom{dom}
     this->setup_ports();
 }
 
-bool xen_evtchn::set_upcall_vector(xen_vcpu *v, xen_hvm_param_t *param)
+/* TODO: check if this vector should be made per-vcpu */
+int xen_evtchn::set_upcall_vector(xen_vcpu *v, xen_hvm_param_t *param)
 {
     auto type = (param->value & HVM_PARAM_CALLBACK_IRQ_TYPE_MASK) >> 56;
     if (type != HVM_PARAM_CALLBACK_TYPE_VECTOR) {
-        v->m_uv_vcpu->set_rax(-EINVAL);
-        return true;
+        return -EINVAL;
     }
 
     auto vector = param->value & 0xFFU;
     if (vector < 0x20U || vector > 0xFFU) {
-        v->m_uv_vcpu->set_rax(-EINVAL);
-        return true;
+        return -EINVAL;
     }
 
     m_upcall_vec = vector;
-    v->m_uv_vcpu->set_rax(0);
-    return true;
+    return 0;
 }
 
 bool xen_evtchn::init_control(xen_vcpu *v, evtchn_init_control_t *eic)

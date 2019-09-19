@@ -35,6 +35,7 @@
 #include <public/memory.h>
 #include <public/physdev.h>
 #include <public/platform.h>
+#include <public/sched.h>
 #include <public/sysctl.h>
 #include <public/vcpu.h>
 #include <public/version.h>
@@ -374,6 +375,18 @@ static const char *sysctl_str[SYSCTL_MAX] = {
     [XEN_SYSCTL_get_cpu_policy] = "get_cpu_policy"
 };
 
+#define SCHED_MAX (SCHEDOP_pin_override + 1)
+static const char *sched_str[SCHED_MAX] = {
+    [SCHEDOP_yield] = "yield",
+    [SCHEDOP_block] = "block",
+    [SCHEDOP_shutdown] = "shutdown",
+    [SCHEDOP_poll] = "poll",
+    [SCHEDOP_remote_shutdown] = "remote_shutdown",
+    [SCHEDOP_shutdown_code] = "shutdown_code",
+    [SCHEDOP_watchdog] = "watchdog",
+    [SCHEDOP_pin_override] = "pin_override"
+};
+
 #define DOMCTL_MAX (XEN_DOMCTL_get_cpu_policy + 1)
 static const char *domctl_str[DOMCTL_MAX] = {
     [XEN_DOMCTL_createdomain] = "createdomain",
@@ -586,6 +599,11 @@ static void debug_domctl(microv_vcpu *vcpu)
     }
 }
 
+static void debug_sched(microv_vcpu *vcpu)
+{
+    printf("%s", sched_str[vcpu->rdi()]);
+}
+
 void debug_xen_hypercall(xen_vcpu *xenv)
 {
     auto vcpu = xenv->m_uv_vcpu;
@@ -631,6 +649,10 @@ void debug_xen_hypercall(xen_vcpu *xenv)
     case __HYPERVISOR_domctl:
         debug_domctl(vcpu);
         break;
+    case __HYPERVISOR_sched_op:
+        debug_sched(vcpu);
+        break;
+
     default:
         printf("UNIMPLEMENTED");
     }

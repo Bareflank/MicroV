@@ -37,6 +37,7 @@
 #include <xen/evtchn.h>
 #include <xen/flask.h>
 #include <xen/gnttab.h>
+#include <xen/hvm.h>
 #include <xen/physdev.h>
 #include <xen/util.h>
 #include <xen/time.h>
@@ -313,113 +314,17 @@ bool xen_vcpu::handle_xen_version()
     })
 }
 
-bool xen_vcpu::hvm_set_param(xen_hvm_param_t *param)
-{
-    switch (param->index) {
-    case HVM_PARAM_CALLBACK_IRQ:
-        return m_xen_dom->m_evtchn->set_upcall_vector(this, param);
-    case HVM_PARAM_PAE_ENABLED:
-        m_uv_vcpu->set_rax(0);
-        return true;
-    case HVM_PARAM_TIMER_MODE:
-        m_xen_dom->set_timer_mode(param->value);
-        m_uv_vcpu->set_rax(0);
-        return true;
-    case HVM_PARAM_NESTEDHVM:
-        if (param->value != 0) {
-            m_uv_vcpu->set_rax(-EINVAL);
-        } else {
-            m_uv_vcpu->set_rax(0);
-        }
-        return true;
-    case HVM_PARAM_ALTP2M:
-        if (param->value != 0) {
-            m_uv_vcpu->set_rax(-EINVAL);
-        } else {
-            m_uv_vcpu->set_rax(0);
-        }
-        return true;
-    case HVM_PARAM_STORE_PFN:
-        bfdebug_nhex(0, "xenstore pfn", param->value);
-        break;
-    case HVM_PARAM_BUFIOREQ_PFN:
-        bfdebug_nhex(0, "bufioreq pfn", param->value);
-        break;
-    case HVM_PARAM_IOREQ_PFN:
-        bfdebug_nhex(0, "ioreq pfn", param->value);
-        break;
-    case HVM_PARAM_CONSOLE_PFN:
-        bfdebug_nhex(0, "console pfn", param->value);
-        break;
-    case HVM_PARAM_PAGING_RING_PFN:
-        bfdebug_nhex(0, "paging ring pfn", param->value);
-        break;
-    case HVM_PARAM_MONITOR_RING_PFN:
-        bfdebug_nhex(0, "monitor ring pfn", param->value);
-        break;
-    case HVM_PARAM_SHARING_RING_PFN:
-        bfdebug_nhex(0, "sharing ring pfn", param->value);
-        break;
-    case HVM_PARAM_IDENT_PT:
-        /* only needed if unrestricted guest is not available */
-        break;
-    case HVM_PARAM_STORE_EVTCHN:
-        bfdebug_nhex(0, "xenstore evtchn", param->value);
-        break;
-    case HVM_PARAM_CONSOLE_EVTCHN:
-        bfdebug_nhex(0, "console evtchn", param->value);
-        break;
-    default:
-        bferror_nhex(0, "unknown hvm set param", param->index);
-        return false;
-    }
-
-    m_uv_vcpu->set_rax(0);
-    return true;
-}
-
 bool xen_vcpu::handle_hvm_op()
 {
-    auto param = m_uv_vcpu->map_arg<xen_hvm_param_t>(m_uv_vcpu->rsi());
-
     switch (m_uv_vcpu->rdi()) {
     case HVMOP_set_param:
-        return this->hvm_set_param(param.get());
+        return xen_hvm_set_param(this);
     case HVMOP_get_param:
-        expects(!m_uv_dom->initdom());
-//        return false;
-//        try {
-//            auto arg = m_uv_vcpu->map_arg<xen_hvm_param_t>(m_uv_vcpu->rsi());
-//            switch (arg->index) {
-//            case HVM_PARAM_CONSOLE_EVTCHN:
-//                arg->value = m_evtchn->bind_console();
-//                break;
-//            case HVM_PARAM_CONSOLE_PFN:
-//                m_console = m_uv_vcpu->map_gpa_4k<struct xencons_interface>(PVH_CONSOLE_GPA);
-//                arg->value = PVH_CONSOLE_GPA >> 12;
-//                break;
-//            case HVM_PARAM_STORE_EVTCHN:
-//                arg->value = m_evtchn->bind_store();
-//                break;
-//            case HVM_PARAM_STORE_PFN:
-//                m_store = m_uv_vcpu->map_gpa_4k<uint8_t>(PVH_STORE_GPA);
-//                arg->value = PVH_STORE_GPA >> 12;
-//                break;
-//            default:
-//                bfalert_nhex(0, "Unsupported HVM get_param:", arg->index);
-//                return false;
-//            }
-
-        m_uv_vcpu->set_rax(-ENOSYS);
-        return true;
-        //} catchall({
-        //    return false;
-        //})
+        return xen_hvm_get_param(this);
     case HVMOP_pagetable_dying:
-        m_uv_vcpu->set_rax(-ENOSYS);
-        return true;
+        return xen_hvm_pagetable_dying(this);
     default:
-       return false;
+        return false;
     }
 }
 

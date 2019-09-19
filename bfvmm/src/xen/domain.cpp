@@ -36,6 +36,7 @@
 #include <xen/domain.h>
 #include <xen/evtchn.h>
 #include <xen/gnttab.h>
+#include <xen/hvm.h>
 #include <xen/memory.h>
 #include <xen/time.h>
 #include <xen/util.h>
@@ -448,6 +449,7 @@ xen_domain::xen_domain(microv_domain *domain) :
     m_memory = std::make_unique<xen_memory>(this);
     m_evtchn = std::make_unique<xen_evtchn>(this);
     m_gnttab = std::make_unique<xen_gnttab>(this, m_memory.get());
+    hvm = std::make_unique<xen_hvm>(this);
 }
 
 xen_domain::~xen_domain()
@@ -498,7 +500,7 @@ void xen_domain::put_xen_vcpu() noexcept
     put_vcpu(m_uv_vcpuid);
 }
 
-void xen_domain::set_timer_mode(uint64_t mode)
+int xen_domain::set_timer_mode(uint64_t mode)
 {
     const char *mode_str[4] = {
         "delay_for_missed_ticks",
@@ -507,9 +509,14 @@ void xen_domain::set_timer_mode(uint64_t mode)
         "one_missed_tick_pending",
     };
 
-    expects(mode < 4);
+    if (mode >= 4) {
+        return -EINVAL;
+    }
+
     printv("domain: set timer mode to %s\n", mode_str[mode]);
     m_timer_mode = mode;
+
+    return 0;
 }
 
 void xen_domain::queue_virq(int virq)

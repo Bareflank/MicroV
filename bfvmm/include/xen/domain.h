@@ -75,7 +75,7 @@ public:
     void share_root_page(uintptr_t this_gpa, uintptr_t hpa, uint32_t perm,
                          uint32_t mtype);
 
-    void set_timer_mode(uint64_t mode);
+    int set_timer_mode(uint64_t mode);
     void queue_virq(int virq);
     void bind_vcpu(xen_vcpu *xen);
     void get_info(struct xen_domctl_getdomaininfo *info);
@@ -164,6 +164,7 @@ public:
     std::unique_ptr<xen_memory> m_memory{};
     std::unique_ptr<xen_evtchn> m_evtchn{};
     std::unique_ptr<xen_gnttab> m_gnttab{};
+    std::unique_ptr<xen_hvm> hvm{};
 
     /* TSC params */
     uint64_t m_tsc_khz;

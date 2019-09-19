@@ -34,6 +34,7 @@ target_sources(microv_xen PRIVATE
     $<${X64}:evtchn.cpp>
     $<${X64}:flask.cpp>
     $<${X64}:gnttab.cpp>
+    $<${X64}:hvm.cpp>
     $<${X64}:physdev.cpp>
     $<${X64}:util.cpp>
     $<${X64}:memory.cpp>

@@ -60,6 +60,7 @@ class xen_domain;
 class xen_evtchn;
 class xen_flask;
 class xen_gnttab;
+class xen_hvm;
 class xen_memory;
 class xen_physdev;
 class xen_vcpu;
