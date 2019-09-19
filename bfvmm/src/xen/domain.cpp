@@ -310,6 +310,20 @@ bool xen_domain_shadow_op(xen_vcpu *vcpu, struct xen_domctl *ctl)
     return ret;
 }
 
+bool xen_domain_set_cpuid(xen_vcpu *vcpu, struct xen_domctl *ctl)
+{
+    auto dom = get_xen_domain(ctl->domain);
+    if (!dom) {
+        bferror_nhex(0, "xen_domain not found:", ctl->domain);
+        return false;
+    }
+
+    auto ret = dom->set_cpuid(vcpu, &ctl->u.cpuid);
+    put_xen_domain(ctl->domain);
+
+    return ret;
+}
+
 bool xen_domain_getvcpuextstate(xen_vcpu *vcpu, struct xen_domctl *ctl)
 {
     auto dom = get_xen_domain(ctl->domain);
@@ -1125,6 +1139,21 @@ bool xen_domain::shadow_op(xen_vcpu *v, struct xen_domctl_shadow_op *shadow)
         bferror_nhex(0, "unhandled shadow_op:", shadow->op);
         return false;
     }
+
+    v->m_uv_vcpu->set_rax(0);
+    return true;
+}
+
+bool xen_domain::set_cpuid(xen_vcpu *v, struct xen_domctl_cpuid *cpuid)
+{
+    printv("%s: leaf:%x subleaf:%x eax:%x ebx:%x ecx:%x edx:%x\n",
+            __func__,
+            cpuid->input[0],
+            cpuid->input[1],
+            cpuid->eax,
+            cpuid->ebx,
+            cpuid->ecx,
+            cpuid->edx);
 
     v->m_uv_vcpu->set_rax(0);
     return true;

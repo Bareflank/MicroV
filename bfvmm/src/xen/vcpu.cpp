@@ -146,6 +146,33 @@ static bool xen_leaf2(base_vcpu *vcpu)
     return true;
 }
 
+constexpr auto PSN_LEAF = 3;
+constexpr auto MWAIT_LEAF = 5;
+constexpr auto DCA_LEAF = 9;
+
+static bool cpuid_zeros(base_vcpu *vcpu)
+{
+    vcpu->set_rax(0);
+    vcpu->set_rbx(0);
+    vcpu->set_rcx(0);
+    vcpu->set_rdx(0);
+
+    vcpu->advance();
+    return true;
+}
+
+constexpr auto CLSIZE_LEAF = 0x80000006;
+constexpr auto INVARIANT_TSC_LEAF = 0x80000007;
+constexpr auto ADDR_SIZE_LEAF = 0x80000008;
+
+static bool cpuid_passthrough(base_vcpu *vcpu)
+{
+    vcpu->execute_cpuid();
+    vcpu->advance();
+
+    return true;
+}
+
 bool xen_vcpu::xen_leaf4(base_vcpu *vcpu)
 {
     uint32_t rax = 0;
@@ -412,6 +439,8 @@ bool xen_vcpu::handle_domctl()
             expects(ctl->u.max_vcpus.max == 1);
             uvv->set_rax(0);
             return true;
+        case XEN_DOMCTL_set_cpuid:
+            return xen_domain_set_cpuid(this, ctl.get());
         case XEN_DOMCTL_setvcpuaffinity:
             return xen_domain_setvcpuaffinity(this, ctl.get());
         case XEN_DOMCTL_getvcpuextstate:
@@ -965,5 +994,16 @@ xen_vcpu::xen_vcpu(microv_vcpu *vcpu) :
     vcpu->emulate_io_instruction(0x43, {xlboot_io_insn_in}, {xlboot_io_insn_out});
     vcpu->emulate_io_instruction(0x80, {xlboot_io_insn_in}, {xlboot_io_insn_out});
     vcpu->emulate_io_instruction(0x40, {xlboot_io_insn_in}, {xlboot_io_insn_out});
+
+    /* Toolstack cpuid accesses */
+    vcpu->add_cpuid_emulator(PSN_LEAF, {cpuid_zeros});
+    vcpu->add_cpuid_emulator(MWAIT_LEAF, {cpuid_zeros});
+    vcpu->add_cpuid_emulator(0x8, {cpuid_zeros});
+    vcpu->add_cpuid_emulator(DCA_LEAF, {cpuid_zeros});
+    vcpu->add_cpuid_emulator(0xC, {cpuid_zeros});
+    vcpu->add_cpuid_emulator(0x80000005, {cpuid_zeros});
+    vcpu->add_cpuid_emulator(CLSIZE_LEAF, {cpuid_passthrough});
+    vcpu->add_cpuid_emulator(INVARIANT_TSC_LEAF, {cpuid_passthrough});
+    vcpu->add_cpuid_emulator(ADDR_SIZE_LEAF, {cpuid_passthrough});
 }
 }
