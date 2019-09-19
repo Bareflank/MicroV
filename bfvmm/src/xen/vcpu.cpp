@@ -414,6 +414,8 @@ bool xen_vcpu::handle_domctl()
             return true;
         case XEN_DOMCTL_setvcpuaffinity:
             return xen_domain_setvcpuaffinity(this, ctl.get());
+        case XEN_DOMCTL_getvcpuextstate:
+            return xen_domain_getvcpuextstate(this, ctl.get());
         case XEN_DOMCTL_setnodeaffinity:
             uvv->set_rax(0);
             return true;

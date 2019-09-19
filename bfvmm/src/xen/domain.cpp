@@ -25,6 +25,7 @@
 #include <map>
 #include <mutex>
 
+#include <arch/x64/cpuid.h>
 #include <arch/intel_x64/barrier.h>
 #include <hve/arch/intel_x64/domain.h>
 #include <hve/arch/intel_x64/vcpu.h>
@@ -304,6 +305,20 @@ bool xen_domain_shadow_op(xen_vcpu *vcpu, struct xen_domctl *ctl)
     }
 
     auto ret = dom->shadow_op(vcpu, &ctl->u.shadow_op);
+    put_xen_domain(ctl->domain);
+
+    return ret;
+}
+
+bool xen_domain_getvcpuextstate(xen_vcpu *vcpu, struct xen_domctl *ctl)
+{
+    auto dom = get_xen_domain(ctl->domain);
+    if (!dom) {
+        bferror_nhex(0, "xen_domain not found:", ctl->domain);
+        return false;
+    }
+
+    auto ret = dom->getvcpuextstate(vcpu, &ctl->u.vcpuextstate);
     put_xen_domain(ctl->domain);
 
     return ret;
@@ -1112,6 +1127,29 @@ bool xen_domain::shadow_op(xen_vcpu *v, struct xen_domctl_shadow_op *shadow)
     }
 
     v->m_uv_vcpu->set_rax(0);
+    return true;
+}
+
+/*
+ * TODO: The ABI used here is wonky...if the tools ever ask for more than the
+ * feature mask, we need to do more digging into the implementation
+ */
+bool xen_domain::getvcpuextstate(xen_vcpu *v, struct xen_domctl_vcpuextstate *ext)
+{
+    expects(ext->vcpu == 0);
+
+    constexpr uint32_t xstate_leaf = 0xD;
+    constexpr uint64_t xstate_mask = 0x7; /* x87, SSE, AVX */
+
+    static const uint64_t xstate_size = ::x64::cpuid::ecx::get(xstate_leaf);
+    auto uvv = v->m_uv_vcpu;
+
+    expects(ext->size == 0);
+    expects(ext->buffer.p == 0);
+
+    ext->xfeature_mask = xstate_mask;
+    uvv->set_rax(0);
+
     return true;
 }
 

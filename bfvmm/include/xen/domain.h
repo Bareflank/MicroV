@@ -54,6 +54,7 @@ bool xen_domain_setvcpuaffinity(xen_vcpu *vcpu, struct xen_domctl *ctl);
 bool xen_domain_max_mem(xen_vcpu *vcpu, struct xen_domctl *ctl);
 bool xen_domain_set_tsc_info(xen_vcpu *vcpu, struct xen_domctl *ctl);
 bool xen_domain_shadow_op(xen_vcpu *vcpu, struct xen_domctl *ctl);
+bool xen_domain_getvcpuextstate(xen_vcpu *vcpu, struct xen_domctl *ctl);
 
 /**
  * xen_domain
@@ -101,6 +102,7 @@ public:
     bool set_max_mem(xen_vcpu *v, struct xen_domctl_max_mem *max);
     bool set_tsc_info(xen_vcpu *v, struct xen_domctl_tsc_info *info);
     bool shadow_op(xen_vcpu *v, struct xen_domctl_shadow_op *shadow);
+    bool getvcpuextstate(xen_vcpu *v, struct xen_domctl_vcpuextstate *ext);
     bool physinfo(xen_vcpu *v, struct xen_sysctl *ctl);
     bool move_cpupool(xen_vcpu *v, struct xen_sysctl *ctl);
 
