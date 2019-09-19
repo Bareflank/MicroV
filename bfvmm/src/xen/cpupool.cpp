@@ -34,11 +34,6 @@ std::mutex cpupool_mutex;
 std::unordered_map<xen_cpupoolid_t,
                    std::unique_ptr<class xen_cpupool>> cpupool_map;
 
-static void __add_domain(xen_cpupoolid_t id, xen_domid_t domid)
-{
-
-}
-
 void xen_cpupool_add_domain(xen_cpupoolid_t id, xen_domid_t domid)
 {
     std::lock_guard lock(cpupool_mutex);
@@ -170,7 +165,7 @@ bool xen_cpupool_op(xen_vcpu *vcpu, struct xen_sysctl *ctl)
 xen_cpupool::xen_cpupool(xen_cpupoolid_t id)
 {
     m_id = id;
-    m_sched_id = 0;
+    m_sched_id = 9; /* NULL scheduler */
 }
 
 uint32_t xen_cpupool::nr_domains() const
