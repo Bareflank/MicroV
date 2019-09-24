@@ -57,6 +57,28 @@ bool xen_evtchn_set_priority(xen_vcpu *v)
     return v->m_xen_dom->m_evtchn->set_priority(v, esp.get());
 }
 
+bool xen_evtchn_status(xen_vcpu *v)
+{
+    auto uvv = v->m_uv_vcpu;
+    auto sts = uvv->map_arg<evtchn_status_t>(uvv->rsi());
+    auto domid = sts->dom;
+
+    if (domid == DOMID_SELF) {
+        return v->m_xen_dom->m_evtchn->status(v, sts.get());
+    }
+
+    auto dom = get_xen_domain(domid);
+    if (!dom) {
+        printv("%s: dom:0x%x not found\n", __func__, domid);
+        uvv->set_rax(-ESRCH);
+        return true;
+    }
+
+    auto ret = dom->m_evtchn->status(v, sts.get());
+    put_xen_domain(domid);
+    return ret;
+}
+
 bool xen_evtchn_alloc_unbound(xen_vcpu *v)
 {
     expects(v->m_xen_dom);
@@ -201,6 +223,49 @@ bool xen_evtchn::set_priority(xen_vcpu *v, evtchn_set_priority_t *esp)
 
     printv("evtchn: set_priority\n");
     v->m_uv_vcpu->set_rax(0);
+    return true;
+}
+
+bool xen_evtchn::status(xen_vcpu *v, evtchn_status_t *sts)
+{
+    auto uvv = v->m_uv_vcpu;
+    auto chan = this->port_to_chan(sts->port);
+
+    expects(chan);
+
+    switch (chan->state) {
+    case event_channel::state_free:
+        sts->status = EVTCHNSTAT_closed;
+        break;
+    case event_channel::state_reserved:
+        printv("%s: port:%x is reserved\n", __func__, sts->port);
+        uvv->set_rax(-EINVAL);
+        return true;
+    case event_channel::state_unbound:
+        sts->status = EVTCHNSTAT_unbound;
+        sts->u.unbound.dom = chan->rdomid;
+        break;
+    case event_channel::state_interdomain:
+        sts->status = EVTCHNSTAT_interdomain;
+        sts->u.interdomain.dom = chan->rdomid;
+        sts->u.interdomain.port = chan->rport;
+        break;
+    case event_channel::state_pirq:
+        sts->status = EVTCHNSTAT_pirq;
+        sts->u.pirq = chan->pirq;
+        break;
+    case event_channel::state_virq:
+        sts->status = EVTCHNSTAT_virq;
+        sts->u.virq = chan->virq;
+        break;
+    case event_channel::state_ipi:
+        sts->status = EVTCHNSTAT_ipi;
+        break;
+    }
+
+    sts->vcpu = chan->vcpuid;
+    uvv->set_rax(0);
+
     return true;
 }
 

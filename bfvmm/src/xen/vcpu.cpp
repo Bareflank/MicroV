@@ -359,6 +359,8 @@ bool xen_vcpu::handle_event_channel_op()
 {
     try {
         switch (m_uv_vcpu->rdi()) {
+        case EVTCHNOP_status:
+            return xen_evtchn_status(this);
         case EVTCHNOP_init_control:
             return xen_evtchn_init_control(this);
         case EVTCHNOP_set_priority:
@@ -472,6 +474,8 @@ bool xen_vcpu::handle_domctl()
 bool xen_vcpu::handle_grant_table_op()
 {
     try {
+        expects(m_uv_vcpu->rdx() == 1);
+
         switch (m_uv_vcpu->rdi()) {
         case GNTTABOP_map_grant_ref:
             return xen_gnttab_map_grant_ref(this);
@@ -896,6 +900,10 @@ bool xen_vcpu::debug_hypercall(microv_vcpu *vcpu)
     }
 
     if (rax == __HYPERVISOR_event_channel_op && rdi == EVTCHNOP_send) {
+        return false;
+    }
+
+    if (rax == __HYPERVISOR_event_channel_op && rdi == EVTCHNOP_status) {
         return false;
     }
 

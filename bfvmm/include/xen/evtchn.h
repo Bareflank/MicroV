@@ -38,6 +38,7 @@ bool xen_evtchn_bind_vcpu(xen_vcpu *v);
 bool xen_evtchn_bind_virq(xen_vcpu *v);
 bool xen_evtchn_close(xen_vcpu *v);
 bool xen_evtchn_send(xen_vcpu *v);
+bool xen_evtchn_status(xen_vcpu *v);
 
 struct event_channel {
     static constexpr auto invalid_virq = 0xFFFFUL;
@@ -117,6 +118,7 @@ public:
     bool init_control(xen_vcpu *v, evtchn_init_control_t *eic);
     bool expand_array(xen_vcpu *v, evtchn_expand_array_t *eea);
     bool set_priority(xen_vcpu *v, evtchn_set_priority_t *esp);
+    bool status(xen_vcpu *v, evtchn_status *sts);
     bool alloc_unbound(xen_vcpu *v, evtchn_alloc_unbound_t *eau);
     bool bind_interdomain(xen_vcpu *v, evtchn_bind_interdomain_t *ebi);
     bool bind_vcpu(xen_vcpu *v, evtchn_bind_vcpu_t *ebv);
