@@ -444,6 +444,35 @@ bool xen_domain_createdomain(xen_vcpu *vcpu, struct xen_domctl *ctl)
     return true;
 }
 
+bool xen_domain_destroydomain(xen_vcpu *vcpu, struct xen_domctl *ctl)
+{
+    auto uvv = vcpu->m_uv_vcpu;
+    auto domid = ctl->domain;
+    auto dom = get_xen_domain(domid);
+
+    if (!dom) {
+        printv("%s: dom:0x%x not found\n", __func__, domid);
+        uvv->set_rax(-ESRCH);
+        return true;
+    }
+
+    auto uv_domid = dom->m_uv_dom->id();
+    put_xen_domain(domid);
+
+    uvv->set_rax(0);
+    uvv->save_xstate();
+
+    auto root = uvv->root_vcpu();
+    expects(root->is_root_vcpu());
+
+    root->load();
+    root->return_destroy_domain(uv_domid);
+
+    /* unreachable */
+    uvv->set_rax(-EFAULT);
+    return false;
+}
+
 bool xen_domain_numainfo(xen_vcpu *vcpu, xen_sysctl_t *ctl)
 {
     auto numa = &ctl->u.numainfo;

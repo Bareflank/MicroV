@@ -200,7 +200,7 @@ public:
 
     /// Return pause
     ///
-    /// Return the the parent vcpu and pause the domain identified with domid
+    /// Return to the parent vcpu and pause the domain identified with domid
     ///
     /// @param domid the id of the domain to pause
     ///
@@ -208,11 +208,19 @@ public:
 
     /// Return unpause
     ///
-    /// Return the the parent vcpu and unpause the domain identified with domid
+    /// Return to the parent vcpu and unpause the domain identified with domid
     ///
     /// @param domid the id of the domain to unpause
     ///
     VIRTUAL void return_unpause(uint64_t domid);
+
+    /// Return destroy
+    ///
+    /// Return to the parent vcpu and destroy the domain identified with domid
+    ///
+    /// @param domid the id of the domain to destroy
+    ///
+    VIRTUAL void return_destroy_domain(uint64_t domid);
 
     /// Return (Hlt)
     ///

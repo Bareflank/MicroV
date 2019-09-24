@@ -47,6 +47,7 @@ bool xen_domain_get_cpu_featureset(xen_vcpu *vcpu, struct xen_sysctl *ctl);
 
 /* domctls */
 bool xen_domain_createdomain(xen_vcpu *vcpu, struct xen_domctl *ctl);
+bool xen_domain_destroydomain(xen_vcpu *vcpu, struct xen_domctl *ctl);
 bool xen_domain_unpausedomain(xen_vcpu *vcpu, struct xen_domctl *ctl);
 bool xen_domain_pausedomain(xen_vcpu *vcpu, struct xen_domctl *ctl);
 bool xen_domain_getdomaininfo(xen_vcpu *vcpu, struct xen_domctl *ctl);

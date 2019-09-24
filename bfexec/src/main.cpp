@@ -166,6 +166,38 @@ static void run_vcpu(struct vcpu *vcpu)
 
                 break;
             }
+        case __enum_run_op__destroy:
+            if (vcpu->child) {
+                std::cerr << "[0x" << std::hex << vcpu->id << std::dec << "] "
+                          << " returned destroy; returning\n";
+                return;
+            } else {
+                auto domid = run_op_ret_arg(ret);
+                for (auto &child : root_vm.children) {
+                    if (child.id == domid) {
+                        std::cout << "[0x" << std::hex << vcpu->id << "] "
+                                  << "destroying child 0x"
+                                  << child.id << std::dec << ": ";
+
+                        child.vcpu.halt = true;
+                        child.vcpu.run.join();
+
+                        if (__vcpu_op__destroy_vcpu(child.vcpu.id) != SUCCESS) {
+                            std::cerr << " destroy vcpu failed\n";
+                        } else if (__domain_op__destroy_domain(child.id) != SUCCESS) {
+                            std::cerr << " destroy domain failed\n";
+                        } else {
+                            std::cout << "done\n";
+                        }
+                    }
+                }
+
+                root_vm.children.remove_if([domid](const struct vm &child) {
+                    return child.id == domid;
+                });
+
+                break;
+            }
         default:
             std::cerr << "[0x" << std::hex << vcpu->id << std::dec << "] ";
             std::cerr << "unknown vcpu ret: " << run_op_ret_op(ret) << '\n';

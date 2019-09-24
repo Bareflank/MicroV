@@ -440,6 +440,8 @@ bool xen_vcpu::handle_domctl()
         case XEN_DOMCTL_createdomain:
             expects(ctl->domain == 0xFFFF);
             return xen_domain_createdomain(this, ctl.get());
+        case XEN_DOMCTL_destroydomain:
+            return xen_domain_destroydomain(this, ctl.get());
         case XEN_DOMCTL_unpausedomain:
             return xen_domain_unpausedomain(this, ctl.get());
         case XEN_DOMCTL_pausedomain:
