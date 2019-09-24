@@ -342,8 +342,9 @@ bool xen_domain_getdomaininfo(xen_vcpu *vcpu, struct xen_domctl *ctl)
 {
     auto dom = get_xen_domain(ctl->domain);
     if (!dom) {
-        bferror_nhex(0, "xen_domain not found:", ctl->domain);
-        return false;
+        printv("%s: dom 0x%x not found\n", __func__, ctl->domain);
+        vcpu->m_uv_vcpu->set_rax(-ESRCH);
+        return true;
     }
 
     dom->get_info(&ctl->u.getdomaininfo);
