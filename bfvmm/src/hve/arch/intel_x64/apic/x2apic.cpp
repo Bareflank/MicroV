@@ -75,6 +75,7 @@ x2apic_handler::x2apic_handler(
     EMULATE_MSR(0x00000827, handle_rdmsr_0x00000827, handle_wrmsr_0x00000827);
 
     EMULATE_MSR(0x00000832, handle_rdmsr_0x00000832, handle_wrmsr_0x00000832);
+    EMULATE_MSR(0x00000834, handle_rdmsr_0x00000834, handle_wrmsr_0x00000834);
     EMULATE_MSR(0x00000835, handle_rdmsr_0x00000835, handle_wrmsr_0x00000835);
     EMULATE_MSR(0x00000836, handle_rdmsr_0x00000836, handle_wrmsr_0x00000836);
     EMULATE_MSR(0x00000837, handle_rdmsr_0x00000837, handle_wrmsr_0x00000837);
@@ -615,6 +616,25 @@ x2apic_handler::handle_wrmsr_0x00000832(
     bfignored(vcpu);
 
     m_0x00000832 = info.val & 0xFFFFFFFF;
+    return true;
+}
+
+bool
+x2apic_handler::handle_rdmsr_0x00000834(
+    vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info)
+{
+    bfignored(vcpu);
+
+    info.val = 1UL << 16;
+    return true;
+}
+
+bool
+x2apic_handler::handle_wrmsr_0x00000834(
+    vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info)
+{
+    bfignored(vcpu);
+
     return true;
 }
 
