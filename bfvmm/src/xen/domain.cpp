@@ -226,6 +226,26 @@ bool xen_domain_unpausedomain(xen_vcpu *vcpu, struct xen_domctl *ctl)
     return ret;
 }
 
+bool xen_domain_pausedomain(xen_vcpu *vcpu, struct xen_domctl *ctl)
+{
+    auto uvv = vcpu->m_uv_vcpu;
+    auto domid = ctl->domain;
+
+    expects(domid != DOMID_SELF);
+
+    auto dom = get_xen_domain(domid);
+    if (!dom) {
+        printv("%s: dom:0x%x not found\n", __func__, domid);
+        uvv->set_rax(-ESRCH);
+        return true;
+    }
+
+    auto ret = dom->pause(vcpu);
+    put_xen_domain(domid);
+
+    return ret;
+}
+
 bool xen_domain_gethvmcontext(xen_vcpu *vcpu, struct xen_domctl *ctl)
 {
     expects(vcpu->is_xenstore());
@@ -714,15 +734,55 @@ xen_vcpuid_t xen_domain::max_vcpu_id()
 
 bool xen_domain::unpause(xen_vcpu *vcpu)
 {
-    if (m_returned_new) {
-        return false;
-    }
+    auto uvv = vcpu->m_uv_vcpu;
+    uvv->set_rax(0);
+    uvv->save_xstate();
 
-    m_returned_new = true;
+    auto root = uvv->root_vcpu();
+    expects(root->is_root_vcpu());
+
     m_flags &= ~XEN_DOMINF_paused;
     m_flags |= XEN_DOMINF_running;
 
+    put_xen_domain(m_id);
+
+    if (!m_returned_new) {
+        m_returned_new = true;
+        root->load();
+        root->return_new_domain(m_uv_dom->id());
+    } else {
+        root->load();
+        root->return_unpause(m_uv_dom->id());
+    }
+
+    /*
+     * This should be unreachable, but if for whatever reason we return
+     * here, we need to get_xen_domain before the corresponding put in
+     * xen_domain_unpausedomain
+     */
+    get_xen_domain(m_id);
+    uvv->set_rax(-EFAULT);
+
+    return false;
+}
+
+bool xen_domain::pause(xen_vcpu *vcpu)
+{
     auto uvv = vcpu->m_uv_vcpu;
+
+    m_flags |= XEN_DOMINF_paused;
+    m_flags &= ~XEN_DOMINF_running;
+
+    auto xv = this->get_xen_vcpu();
+    if (!xv) {
+        printv("%s: NULL vcpu for domain:0x%x\n", __func__, m_id);
+        uvv->set_rax(0);
+        return true;
+    }
+
+    xv->update_runstate(RUNSTATE_offline);
+    put_xen_vcpu();
+
     uvv->set_rax(0);
     uvv->save_xstate();
 
@@ -731,7 +791,7 @@ bool xen_domain::unpause(xen_vcpu *vcpu)
     put_xen_domain(m_id);
 
     root->load();
-    root->return_new_domain(m_uv_dom->id());
+    root->return_pause(m_uv_dom->id());
 
     /*
      * This should be unreachable, but if for whatever reason we return

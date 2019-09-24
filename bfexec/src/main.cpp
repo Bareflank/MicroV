@@ -46,6 +46,7 @@
 struct vcpu {
     vcpuid_t id{INVALID_VCPUID};
     std::thread run{};
+    bool paused{};
     bool halt{};
     bool child{};
 };
@@ -76,6 +77,11 @@ static void run_vcpu(struct vcpu *vcpu)
     while (true) {
         if (vcpu->halt) {
             return;
+        }
+
+        if (vcpu->paused) {
+            std::this_thread::sleep_for(microseconds(200));
+            continue;
         }
 
         auto ret = __run_op(vcpu->id, 0, 0);
@@ -123,6 +129,42 @@ static void run_vcpu(struct vcpu *vcpu)
                 auto &child = root_vm.children.front();
                 child.vcpu.run = std::thread(run_vcpu, &child.vcpu);
                 continue;
+            }
+        case __enum_run_op__pause:
+            if (vcpu->child) {
+                std::cerr << "[0x" << std::hex << vcpu->id << std::dec << "] "
+                          << " returned pause; returning\n";
+                return;
+            } else {
+                auto domid = run_op_ret_arg(ret);
+                for (auto &child : root_vm.children) {
+                    if (child.id == domid) {
+                        child.vcpu.paused = true;
+                        std::cout << "[0x" << std::hex << vcpu->id << "] "
+                                  << "pausing child 0x"
+                                  << child.id << std::dec << "\n";
+                    }
+                }
+
+                break;
+            }
+        case __enum_run_op__unpause:
+            if (vcpu->child) {
+                std::cerr << "[0x" << std::hex << vcpu->id << std::dec << "] "
+                          << " returned unpause; returning\n";
+                return;
+            } else {
+                auto domid = run_op_ret_arg(ret);
+                for (auto &child : root_vm.children) {
+                    if (child.id == domid) {
+                        child.vcpu.paused = false;
+                        std::cout << "[0x" << std::hex << vcpu->id << "] "
+                                  << "unpausing child 0x"
+                                  << child.id << std::dec << "\n";
+                    }
+                }
+
+                break;
             }
         default:
             std::cerr << "[0x" << std::hex << vcpu->id << std::dec << "] ";

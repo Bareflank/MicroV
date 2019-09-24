@@ -345,6 +345,22 @@ vcpu::return_hlt()
 }
 
 void
+vcpu::return_pause(uint64_t domid)
+{
+    this->load_xstate();
+    this->set_rax((domid << 4) | __enum_run_op__pause);
+    this->run(&world_switch);
+}
+
+void
+vcpu::return_unpause(uint64_t domid)
+{
+    this->load_xstate();
+    this->set_rax((domid << 4) | __enum_run_op__unpause);
+    this->run(&world_switch);
+}
+
+void
 vcpu::return_fault(uint64_t error)
 {
     this->load_xstate();

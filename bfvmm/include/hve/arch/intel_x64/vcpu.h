@@ -198,6 +198,22 @@ public:
     ///
     VIRTUAL vcpu *root_vcpu() const;
 
+    /// Return pause
+    ///
+    /// Return the the parent vcpu and pause the domain identified with domid
+    ///
+    /// @param domid the id of the domain to pause
+    ///
+    VIRTUAL void return_pause(uint64_t domid);
+
+    /// Return unpause
+    ///
+    /// Return the the parent vcpu and unpause the domain identified with domid
+    ///
+    /// @param domid the id of the domain to unpause
+    ///
+    VIRTUAL void return_unpause(uint64_t domid);
+
     /// Return (Hlt)
     ///
     /// Return to the parent vCPU (i.e. resume the parent), and tell the parent

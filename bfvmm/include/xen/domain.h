@@ -48,6 +48,7 @@ bool xen_domain_get_cpu_featureset(xen_vcpu *vcpu, struct xen_sysctl *ctl);
 /* domctls */
 bool xen_domain_createdomain(xen_vcpu *vcpu, struct xen_domctl *ctl);
 bool xen_domain_unpausedomain(xen_vcpu *vcpu, struct xen_domctl *ctl);
+bool xen_domain_pausedomain(xen_vcpu *vcpu, struct xen_domctl *ctl);
 bool xen_domain_getdomaininfo(xen_vcpu *vcpu, struct xen_domctl *ctl);
 bool xen_domain_gethvmcontext(xen_vcpu *vcpu, struct xen_domctl *ctl);
 bool xen_domain_sethvmcontext(xen_vcpu *vcpu, struct xen_domctl *ctl);
@@ -107,6 +108,7 @@ public:
     bool getvcpuextstate(xen_vcpu *v, struct xen_domctl_vcpuextstate *ext);
     bool set_cpuid(xen_vcpu *v, struct xen_domctl_cpuid *cpuid);
     bool unpause(xen_vcpu *v);
+    bool pause(xen_vcpu *v);
 
     bool physinfo(xen_vcpu *v, struct xen_sysctl *ctl);
     bool move_cpupool(xen_vcpu *v, struct xen_sysctl *ctl);
