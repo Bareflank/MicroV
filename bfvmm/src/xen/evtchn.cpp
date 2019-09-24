@@ -39,6 +39,14 @@ bool xen_evtchn_init_control(xen_vcpu *v)
     return v->m_xen_dom->m_evtchn->init_control(v, eic.get());
 }
 
+bool xen_evtchn_unmask(xen_vcpu *v)
+{
+    auto uvv = v->m_uv_vcpu;
+    auto arg = uvv->map_arg<evtchn_unmask_t>(uvv->rsi());
+
+    return v->m_xen_dom->m_evtchn->unmask(v, arg.get());
+}
+
 bool xen_evtchn_expand_array(xen_vcpu *v)
 {
     auto uvv = v->m_uv_vcpu;
@@ -265,6 +273,31 @@ bool xen_evtchn::status(xen_vcpu *v, evtchn_status_t *sts)
 
     sts->vcpu = chan->vcpuid;
     uvv->set_rax(0);
+
+    return true;
+}
+
+void xen_evtchn::word_clr_mask(word_t *word)
+{
+    word->fetch_and(~(1U << EVTCHN_FIFO_MASKED));
+}
+
+bool xen_evtchn::unmask(xen_vcpu *v, evtchn_unmask_t *unmask)
+{
+    auto uvv = v->m_uv_vcpu;
+
+    auto chan = this->port_to_chan(unmask->port);
+    expects(chan);
+
+    auto word = this->port_to_word(unmask->port);
+    expects(word);
+
+    word_clr_mask(word);
+
+    if (chan->is_pending) {
+        this->queue_upcall(chan);
+        chan->is_pending = false;
+    }
 
     return true;
 }

@@ -359,6 +359,8 @@ bool xen_vcpu::handle_event_channel_op()
 {
     try {
         switch (m_uv_vcpu->rdi()) {
+        case EVTCHNOP_unmask:
+            return xen_evtchn_unmask(this);
         case EVTCHNOP_status:
             return xen_evtchn_status(this);
         case EVTCHNOP_init_control:
