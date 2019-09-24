@@ -102,6 +102,7 @@ private:
     bool handle_physdev_op();
     bool handle_vcpu_op();
     bool handle_vm_assist();
+    bool handle_sched_op();
 
     friend class xen_domain;
     friend class xen_flask;

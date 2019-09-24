@@ -49,6 +49,7 @@
 #include <public/errno.h>
 #include <public/memory.h>
 #include <public/platform.h>
+#include <public/sched.h>
 #include <public/sysctl.h>
 #include <public/version.h>
 #include <public/hvm/hvm_op.h>
@@ -659,6 +660,36 @@ bool xen_vcpu::handle_vm_assist()
     }
 }
 
+bool xen_vcpu::handle_sched_op()
+{
+    const auto cmd = m_uv_vcpu->rdi();
+
+    switch (cmd) {
+    case SCHEDOP_yield: {
+        uint64_t usec = 50; /* default yield time ?? */
+
+        if (m_pet_enabled) {
+            auto pet = m_uv_vcpu->get_preemption_timer();
+            usec = ((pet << m_pet_shift) * 1000) / m_tsc_khz;
+        }
+
+        this->update_runstate(RUNSTATE_runnable);
+
+        m_uv_vcpu->set_rax(0);
+        m_uv_vcpu->save_xstate();
+        m_uv_vcpu->root_vcpu()->load();
+        m_uv_vcpu->root_vcpu()->return_yield(usec);
+
+        /* unreachable */
+        return false;
+    }
+
+    default:
+        printv("%s: cmd=%lu unhandled\n", __func__, cmd);
+        return false;
+    }
+}
+
 bool xen_vcpu::is_xenstore()
 {
     return m_xen_dom->m_uv_info->is_xenstore();
@@ -888,6 +919,14 @@ bool xen_vcpu::debug_hypercall(microv_vcpu *vcpu)
     const auto rax = vcpu->rax();
     const auto rdi = vcpu->rdi();
 
+    if (rax == __HYPERVISOR_sched_op && rdi == SCHEDOP_yield) {
+        return false;
+    }
+
+    if (rax == __HYPERVISOR_event_channel_op && rdi == EVTCHNOP_send) {
+        return false;
+    }
+
     if (!this->is_xenstore()) {
         if (rax == __HYPERVISOR_vcpu_op && rdi == VCPUOP_set_singleshot_timer) {
             return false;
@@ -900,10 +939,6 @@ bool xen_vcpu::debug_hypercall(microv_vcpu *vcpu)
     }
 
     if (rax == __HYPERVISOR_vcpu_op && rdi == VCPUOP_set_singleshot_timer) {
-        return false;
-    }
-
-    if (rax == __HYPERVISOR_event_channel_op && rdi == EVTCHNOP_send) {
         return false;
     }
 
@@ -967,6 +1002,8 @@ bool xen_vcpu::hypercall(microv_vcpu *vcpu)
         return this->handle_vcpu_op();
     case __HYPERVISOR_vm_assist:
         return this->handle_vm_assist();
+    case __HYPERVISOR_sched_op:
+        return this->handle_sched_op();
     default:
         return false;
     }
