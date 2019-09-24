@@ -206,6 +206,26 @@ bool xen_domain_getinfolist(xen_vcpu *vcpu, struct xen_sysctl *ctl)
     return true;
 }
 
+bool xen_domain_unpausedomain(xen_vcpu *vcpu, struct xen_domctl *ctl)
+{
+    auto uvv = vcpu->m_uv_vcpu;
+    auto domid = ctl->domain;
+
+    expects(domid != DOMID_SELF);
+
+    auto dom = get_xen_domain(domid);
+    if (!dom) {
+        printv("%s: dom:0x%x not found\n", __func__, domid);
+        uvv->set_rax(-ESRCH);
+        return true;
+    }
+
+    auto ret = dom->unpause(vcpu);
+    put_xen_domain(domid);
+
+    return ret;
+}
+
 bool xen_domain_gethvmcontext(xen_vcpu *vcpu, struct xen_domctl *ctl)
 {
     expects(vcpu->is_xenstore());
@@ -690,6 +710,38 @@ xen_vcpuid_t xen_domain::max_vcpu_id()
         this->put_xen_vcpu();
         return id;
     }
+}
+
+bool xen_domain::unpause(xen_vcpu *vcpu)
+{
+    if (m_returned_new) {
+        return false;
+    }
+
+    m_returned_new = true;
+    m_flags &= ~XEN_DOMINF_paused;
+    m_flags |= XEN_DOMINF_running;
+
+    auto uvv = vcpu->m_uv_vcpu;
+    uvv->set_rax(0);
+    uvv->save_xstate();
+
+    auto root = uvv->root_vcpu();
+    expects(root->is_root_vcpu());
+    put_xen_domain(m_id);
+
+    root->load();
+    root->return_new_domain(m_uv_dom->id());
+
+    /*
+     * This should be unreachable, but if for whatever reason we return
+     * here, we need to get_xen_domain before the corresponding put in
+     * xen_domain_sethvmcontext
+     */
+    bferror_info(0, "returned from return_new_domain");
+    get_xen_domain(m_id);
+
+    return false;
 }
 
 void xen_domain::get_info(struct xen_domctl_getdomaininfo *info)

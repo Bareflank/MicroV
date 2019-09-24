@@ -47,6 +47,7 @@ bool xen_domain_get_cpu_featureset(xen_vcpu *vcpu, struct xen_sysctl *ctl);
 
 /* domctls */
 bool xen_domain_createdomain(xen_vcpu *vcpu, struct xen_domctl *ctl);
+bool xen_domain_unpausedomain(xen_vcpu *vcpu, struct xen_domctl *ctl);
 bool xen_domain_getdomaininfo(xen_vcpu *vcpu, struct xen_domctl *ctl);
 bool xen_domain_gethvmcontext(xen_vcpu *vcpu, struct xen_domctl *ctl);
 bool xen_domain_sethvmcontext(xen_vcpu *vcpu, struct xen_domctl *ctl);
@@ -105,6 +106,7 @@ public:
     bool shadow_op(xen_vcpu *v, struct xen_domctl_shadow_op *shadow);
     bool getvcpuextstate(xen_vcpu *v, struct xen_domctl_vcpuextstate *ext);
     bool set_cpuid(xen_vcpu *v, struct xen_domctl_cpuid *cpuid);
+    bool unpause(xen_vcpu *v);
 
     bool physinfo(xen_vcpu *v, struct xen_sysctl *ctl);
     bool move_cpupool(xen_vcpu *v, struct xen_sysctl *ctl);
@@ -153,6 +155,7 @@ public:
 
     /* Scheduling */
     xen_cpupoolid_t m_cpupool_id{};
+    bool m_returned_new{};
 
     bool m_ndvm{};      /* is this an NDVM? */
     uint32_t m_flags{}; /* DOMINF_ flags, used for {sys,dom}ctls */

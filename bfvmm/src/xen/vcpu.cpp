@@ -437,6 +437,8 @@ bool xen_vcpu::handle_domctl()
         case XEN_DOMCTL_createdomain:
             expects(ctl->domain == 0xFFFF);
             return xen_domain_createdomain(this, ctl.get());
+        case XEN_DOMCTL_unpausedomain:
+            return xen_domain_unpausedomain(this, ctl.get());
         case XEN_DOMCTL_max_vcpus:
             expects(ctl->u.max_vcpus.max == 1);
             uvv->set_rax(0);
