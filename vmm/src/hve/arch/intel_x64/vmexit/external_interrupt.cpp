@@ -55,7 +55,7 @@ external_interrupt_handler::handle(
 
     root_vcpu->load();
     root_vcpu->queue_external_interrupt(info.vector);
-    root_vcpu->return_resume_after_interrupt();
+    root_vcpu->return_interrupted();
 
     // Unreachable
     return true;

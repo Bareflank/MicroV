@@ -95,14 +95,14 @@ static void run_vcpu(struct vcpu *vcpu)
             std::cerr << "vcpu fault: " << run_op_ret_arg(ret) << '\n';
             return;
 
-        case __enum_run_op__resume_after_interrupt:
+        case __enum_run_op__interrupted:
             continue;
 
         case __enum_run_op__yield:
             std::this_thread::sleep_for(microseconds(run_op_ret_arg(ret)));
             continue;
 
-        case __enum_run_op__new_domain:
+        case __enum_run_op__create_domain:
             if (vcpu->child) {
                 std::cerr << "[0x" << std::hex << vcpu->id << "] "
                           << "vcpu fault: returned with new domain 0x"
@@ -130,7 +130,7 @@ static void run_vcpu(struct vcpu *vcpu)
                 child.vcpu.run = std::thread(run_vcpu, &child.vcpu);
                 continue;
             }
-        case __enum_run_op__pause:
+        case __enum_run_op__pause_domain:
             if (vcpu->child) {
                 std::cerr << "[0x" << std::hex << vcpu->id << std::dec << "] "
                           << " returned pause; returning\n";
@@ -148,7 +148,7 @@ static void run_vcpu(struct vcpu *vcpu)
 
                 break;
             }
-        case __enum_run_op__unpause:
+        case __enum_run_op__unpause_domain:
             if (vcpu->child) {
                 std::cerr << "[0x" << std::hex << vcpu->id << std::dec << "] "
                           << " returned unpause; returning\n";
@@ -166,7 +166,7 @@ static void run_vcpu(struct vcpu *vcpu)
 
                 break;
             }
-        case __enum_run_op__destroy:
+        case __enum_run_op__destroy_domain:
             if (vcpu->child) {
                 std::cerr << "[0x" << std::hex << vcpu->id << std::dec << "] "
                           << " returned destroy; returning\n";

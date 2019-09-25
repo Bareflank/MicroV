@@ -101,9 +101,9 @@ void uvc_vcpu::run()
         case __enum_run_op__yield:
             this->usleep(microseconds(arg));
             break;
-        case __enum_run_op__resume_after_interrupt:
+        case __enum_run_op__interrupted:
             break;
-        case __enum_run_op__new_domain:
+        case __enum_run_op__create_domain:
             this->create_domain(arg);
             break;
         }

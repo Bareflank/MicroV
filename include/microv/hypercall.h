@@ -134,12 +134,12 @@ __xue_op(uint64_t arg1, uint64_t arg2, uint64_t arg3)
 
 #define __enum_run_op__hlt 1
 #define __enum_run_op__fault 2
-#define __enum_run_op__resume_after_interrupt 3
+#define __enum_run_op__interrupted 3
 #define __enum_run_op__yield 4
-#define __enum_run_op__new_domain 5
-#define __enum_run_op__pause 6
-#define __enum_run_op__unpause 7
-#define __enum_run_op__destroy 8
+#define __enum_run_op__create_domain 5
+#define __enum_run_op__pause_domain 6
+#define __enum_run_op__unpause_domain 7
+#define __enum_run_op__destroy_domain 8
 
 #define run_op_ret_op(a) ((0x000000000000000FULL & a) >> 0)
 #define run_op_ret_arg(a) ((0xFFFFFFFFFFFFFFF0ULL & a) >> 4)

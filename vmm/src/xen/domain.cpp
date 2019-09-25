@@ -778,10 +778,10 @@ bool xen_domain::unpause(xen_vcpu *vcpu)
     if (!m_returned_new) {
         m_returned_new = true;
         root->load();
-        root->return_new_domain(m_uv_dom->id());
+        root->return_create_domain(m_uv_dom->id());
     } else {
         root->load();
-        root->return_unpause(m_uv_dom->id());
+        root->return_unpause_domain(m_uv_dom->id());
     }
 
     /*
@@ -820,7 +820,7 @@ bool xen_domain::pause(xen_vcpu *vcpu)
     put_xen_domain(m_id);
 
     root->load();
-    root->return_pause(m_uv_dom->id());
+    root->return_pause_domain(m_uv_dom->id());
 
     /*
      * This should be unreachable, but if for whatever reason we return
