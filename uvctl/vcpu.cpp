@@ -63,9 +63,8 @@ void uvc_vcpu::usleep(const microseconds &us)
     std::this_thread::sleep_for(us);
 }
 
-void uvc_vcpu::create_domain(domainid_t domid)
+void uvc_vcpu::notify_create_domain(domainid_t domid)
 {
-
 }
 
 void uvc_vcpu::run()
@@ -75,9 +74,7 @@ void uvc_vcpu::run()
         /* Respond to the current runstate */
         switch (state) {
         case runstate::running:
-            break;
         case runstate::runable:
-            state = runstate::running;
             break;
         case runstate::paused:
             this->usleep(pause_duration);
@@ -85,6 +82,8 @@ void uvc_vcpu::run()
         case runstate::halted:
             return;
         }
+
+        state = runstate::running;
 
         auto ret = __run_op(id, 0, 0);
         auto arg = run_op_ret_arg(ret);
@@ -104,7 +103,7 @@ void uvc_vcpu::run()
         case __enum_run_op__interrupted:
             break;
         case __enum_run_op__create_domain:
-            this->create_domain(arg);
+            this->notify_create_domain(arg);
             break;
         }
     }

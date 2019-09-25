@@ -52,7 +52,8 @@ struct uvc_vcpu {
     void halt();
     void fault(uint64_t err);
     void usleep(const std::chrono::microseconds &us);
-    void create_domain(domainid_t domid);
+
+    void notify_create_domain(domainid_t domid);
 };
 
 #endif

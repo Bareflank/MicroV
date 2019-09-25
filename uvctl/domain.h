@@ -49,6 +49,8 @@ struct uvc_domain {
     void launch_vcpu(vcpuid_t id);
     void destroy_vcpu(vcpuid_t id);
 
+    void create_child(domainid_t domid);
+
     void kill();
     void kill_vcpus();
     void kill_children();
