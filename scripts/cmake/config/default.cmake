@@ -69,13 +69,6 @@ set(BR_SRC_DIR ${MICROV_SOURCE_ROOT_DIR}/deps/buildroot)
 set(BR_BIN_DIR ${CACHE_DIR}/brbuild)
 
 add_config(
-    CONFIG_NAME BUILD_NATIVE_GUEST
-    CONFIG_TYPE BOOL
-    DEFAULT_VAL OFF
-    DESCRIPTION "Build a minimal Linux guest"
-)
-
-add_config(
     CONFIG_NAME BUILD_XENPVH_GUEST
     CONFIG_TYPE BOOL
     DEFAULT_VAL OFF

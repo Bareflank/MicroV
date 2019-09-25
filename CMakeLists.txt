@@ -22,10 +22,6 @@
 include(${CMAKE_CURRENT_LIST_DIR}/scripts/cmake/config/default.cmake)
 include(${MICROV_SOURCE_CMAKE_DIR}/targets.cmake)
 
-if(BUILD_NATIVE_GUEST)
-    include_dependency(MICROV_SOURCE_DEPENDS_DIR linux)
-endif()
-
 if(BUILD_XENPVH_GUEST)
     include_dependency(MICROV_SOURCE_DEPENDS_DIR xtools)
 endif()
