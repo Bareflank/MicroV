@@ -20,11 +20,11 @@
  * SOFTWARE.
  */
 
-#ifndef BFACPI_MICROV_H
-#define BFACPI_MICROV_H
+#ifndef MICROV_ACPI_H
+#define MICROV_ACPI_H
 
 #include <bftypes.h>
-#include <bfgpalayout.h>
+#include "gpalayout.h"
 
 #pragma pack(push, 1)
 

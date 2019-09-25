@@ -24,8 +24,8 @@
 
 #include <array>
 #include <bfgsl.h>
-#include <bfmath.h>
 #include <bftypes.h>
+#include <microv/math.h>
 
 // -----------------------------------------------------------------------------
 // Definitions

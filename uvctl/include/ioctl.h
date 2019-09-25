@@ -25,7 +25,7 @@
 #include <memory>
 
 #include <bfgsl.h>
-#include <bfbuilderinterface.h>
+#include <microv/builderinterface.h>
 
 #ifdef _MSC_VER
 #pragma warning(push)

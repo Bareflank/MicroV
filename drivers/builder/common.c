@@ -23,14 +23,15 @@
 #include "common.h"
 
 #include <bfack.h>
-#include <bfacpi.h>
-#include <bfbootparams.h>
 #include <bfdebug.h>
 #include <bfplatform.h>
 #include <bfconstants.h>
-#include <bfgpalayout.h>
-#include <bfhypercall.h>
 #include <bfelf_loader.h>
+
+#include <microv/acpi.h>
+#include <microv/bootparams.h>
+#include <microv/gpalayout.h>
+#include <microv/hypercall.h>
 
 #include <xen.h>
 #include <arch-x86/hvm/start_info.h>

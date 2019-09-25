@@ -24,8 +24,8 @@
 
 #include <bftypes.h>
 #include <bfobject.h>
-#include <bfgpalayout.h>
-#include <bfhypercall.h>
+#include <microv/gpalayout.h>
+#include <microv/hypercall.h>
 
 #include "../xen/types.h"
 #include <public/domctl.h>

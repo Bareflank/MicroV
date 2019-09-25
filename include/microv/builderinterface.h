@@ -20,11 +20,11 @@
  * SOFTWARE.
  */
 
-#ifndef BUILDERINTERFACE_H
-#define BUILDERINTERFACE_H
+#ifndef MICROV_BUILDERINTERFACE_H
+#define MICROV_BUILDERINTERFACE_H
 
 #include <bftypes.h>
-#include "bfhypercall.h"
+#include "hypercall.h"
 
 #ifdef __cplusplus
 extern "C" {

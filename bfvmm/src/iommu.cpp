@@ -24,7 +24,7 @@
 #include <errno.h>
 
 #include <acpi.h>
-#include <bfacpi.h>
+#include <microv/acpi.h>
 #include <clflush.h>
 #include <iommu/dmar.h>
 #include <iommu/iommu.h>

@@ -23,7 +23,7 @@
 #define UVCTL_ARGS_H
 
 #include "cxxopts.hpp"
-#include <bfhypercall.h>
+#include <microv/hypercall.h>
 
 using args_type = cxxopts::ParseResult;
 

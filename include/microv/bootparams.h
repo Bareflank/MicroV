@@ -20,8 +20,8 @@
  * SOFTWARE.
  */
 
-#ifndef BOOTPARAMS_H
-#define BOOTPARAMS_H
+#ifndef MICROV_BOOTPARAMS_H
+#define MICROV_BOOTPARAMS_H
 
 #include <bftypes.h>
 

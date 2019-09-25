@@ -24,7 +24,7 @@
 
 #include <bfgsl.h>
 #include <bftypes.h>
-#include <bfhypercall.h>
+#include <microv/hypercall.h>
 
 #include <array>
 #include <mutex>

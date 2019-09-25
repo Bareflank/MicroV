@@ -24,8 +24,8 @@
 #include <acpi.h>
 #include <bfcallonce.h>
 #include <bfexports.h>
-#include <bfgpalayout.h>
-#include <bfbuilderinterface.h>
+#include <microv/gpalayout.h>
+#include <microv/builderinterface.h>
 #include <clflush.h>
 #include <hve/arch/intel_x64/vcpu.h>
 #include <iommu/iommu.h>

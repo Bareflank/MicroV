@@ -22,7 +22,7 @@
 #ifndef VMCALL_RUN_INTEL_X64_MICROV_H
 #define VMCALL_RUN_INTEL_X64_MICROV_H
 
-#include <bfhypercall.h>
+#include <microv/hypercall.h>
 #include <bfvmm/hve/arch/intel_x64/vcpu.h>
 
 // -----------------------------------------------------------------------------

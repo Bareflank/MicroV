@@ -24,7 +24,7 @@
 #include <memory>
 
 #include <acpi.h>
-#include <bfacpi.h>
+#include <microv/acpi.h>
 #include <hve/arch/intel_x64/vcpu.h>
 
 #define PAGE_SIZE_4K 0x1000UL

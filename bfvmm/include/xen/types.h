@@ -23,13 +23,14 @@
 #define MICROV_XEN_TYPES_H
 
 #include <atomic>
-#include <bfhypercall.h>
-#include <bfmath.h>
 #include <bfobject.h>
 #include <bftypes.h>
 #include <bfvcpuid.h>
 #include <bfvmm/hve/arch/x64/unmapper.h>
 #include <bfvmm/memory_manager/memory_manager.h>
+
+#include <microv/hypercall.h>
+#include <microv/math.h>
 
 #include <public/xen.h>
 

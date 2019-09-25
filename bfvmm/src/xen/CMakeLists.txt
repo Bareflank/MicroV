@@ -24,7 +24,7 @@ add_library(microv_xen)
 target_link_libraries(microv_xen PUBLIC microv_hve microv_domain)
 target_include_directories(microv_xen PUBLIC
     $<${BUILD_INCLUDE}:${PROJECT_SOURCE_DIR}/include>
-    $<${BUILD_INCLUDE}:${PROJECT_SOURCE_DIR}/../bfsdk/include>
+    $<${BUILD_INCLUDE}:${PROJECT_SOURCE_DIR}/../include>
     $<${BUILD_INCLUDE}:${PROJECT_SOURCE_DIR}/../deps/xen/xen/include>
     $<${BUILD_INCLUDE}:${CMAKE_BINARY_DIR}/include>
 )

@@ -20,8 +20,8 @@
  * SOFTWARE.
  */
 
-#ifndef BFGPALAYOUT_H
-#define BFGPALAYOUT_H
+#ifndef MICROV_GPALAYOUT_H
+#define MICROV_GPALAYOUT_H
 
 #include <bftypes.h>
 #include <bfdebug.h>

@@ -20,7 +20,7 @@
 // SOFTWARE.
 
 #include <arch/x64/rdtsc.h>
-#include <bfhypercall.h>
+#include <microv/hypercall.h>
 #include <bfvmm/hve/arch/intel_x64/ept/mmap.h>
 #include <hve/arch/intel_x64/vcpu.h>
 #include <hve/arch/intel_x64/domain.h>

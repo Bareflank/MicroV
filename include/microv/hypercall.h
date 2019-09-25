@@ -20,8 +20,8 @@
  * SOFTWARE.
  */
 
-#ifndef HYPERCALL_H
-#define HYPERCALL_H
+#ifndef MICROV_HYPERCALL_H
+#define MICROV_HYPERCALL_H
 
 #include <bftypes.h>
 #include <bfmemory.h>

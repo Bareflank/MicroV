@@ -24,9 +24,10 @@
 #include <bfdebug.h>
 #include <bfstring.h>
 #include <bfaffinity.h>
-#include <bfbootparams.h>
-#include <bfbuilderinterface.h>
-#include <bfhypercall.h>
+
+#include <microv/bootparams.h>
+#include <microv/builderinterface.h>
+#include <microv/hypercall.h>
 
 #include <list>
 #include <memory>

@@ -23,7 +23,7 @@
 #include <driver.h>
 
 #include <common.h>
-#include <bfbuilderinterface.h>
+#include <microv/builderinterface.h>
 
 #include <bfdebug.h>
 #include <bftypes.h>

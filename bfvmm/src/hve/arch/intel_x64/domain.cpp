@@ -20,9 +20,9 @@
 // SOFTWARE.
 
 #include <bfdebug.h>
-#include <bfgpalayout.h>
-#include <bfhypercall.h>
-#include <bfbuilderinterface.h>
+#include <microv/gpalayout.h>
+#include <microv/hypercall.h>
+#include <microv/builderinterface.h>
 #include <hve/arch/intel_x64/domain.h>
 #include <hve/arch/intel_x64/vcpu.h>
 #include <xen/domain.h>
