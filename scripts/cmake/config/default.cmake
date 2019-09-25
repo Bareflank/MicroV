@@ -19,66 +19,30 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-# ------------------------------------------------------------------------------
-# Source Tree
-# ------------------------------------------------------------------------------
 set(MICROV_SOURCE_ROOT_DIR ${CMAKE_CURRENT_LIST_DIR}/../../..
     CACHE INTERNAL
-    "MICROV Source root direfctory"
+    "Microv root directory"
 )
 
 set(MICROV_SOURCE_CMAKE_DIR ${MICROV_SOURCE_ROOT_DIR}/scripts/cmake
     CACHE INTERNAL
-    "MICROV Cmake directory"
-)
-
-set(MICROV_SOURCE_CONFIG_DIR ${MICROV_SOURCE_ROOT_DIR}/scripts/cmake/config
-    CACHE INTERNAL
-    "MICROV Cmake configurations directory"
+    "Microv cmake scripts directory"
 )
 
 set(MICROV_SOURCE_DEPS_DIR ${MICROV_SOURCE_ROOT_DIR}/deps
     CACHE INTERNAL
-    "MICROV concurrently-developed dependencies directory"
+    "Microv concurrently-developed dependencies directory"
 )
 
 set(MICROV_SOURCE_DEPENDS_DIR ${MICROV_SOURCE_ROOT_DIR}/scripts/cmake/depends
     CACHE INTERNAL
-    "MICROV Cmake dependencies directory"
+    "Microv static dependencies directory"
 )
 
 set(MICROV_SOURCE_UTIL_DIR ${MICROV_SOURCE_ROOT_DIR}/scripts/util
     CACHE INTERNAL
-    "MICROV Utility directory"
+    "Microv utility scripts directory"
 )
-
-set(MICROV_SOURCE_BFEXEC_DIR ${MICROV_SOURCE_ROOT_DIR}/bfexec
-    CACHE INTERNAL
-    "MICROV bfexec source dir"
-)
-
-set(MICROV_SOURCE_BFLINUX_DIR ${MICROV_SOURCE_ROOT_DIR}/bflinux
-    CACHE INTERNAL
-    "MICROV bflinux source dir"
-)
-
-set(MICROV_SOURCE_BFSDK_DIR ${MICROV_SOURCE_ROOT_DIR}/bfsdk
-    CACHE INTERNAL
-    "MICROV bfsdk source dir"
-)
-
-set(MICROV_SOURCE_BFVMM_DIR ${MICROV_SOURCE_ROOT_DIR}/bfvmm
-    CACHE INTERNAL
-    "MICROV bfvmm source dir"
-)
-
-set(BR_OVERLAY_DIR ${MICROV_SOURCE_ROOT_DIR}/overlays)
-set(BR_SRC_DIR ${MICROV_SOURCE_ROOT_DIR}/deps/buildroot)
-set(BR_BIN_DIR ${CACHE_DIR}/brbuild)
-
-# ------------------------------------------------------------------------------
-# Links
-# ------------------------------------------------------------------------------
 
 set(LINUX_URL "https://github.com/Bareflank/linux/archive/boxy_1.zip"
     CACHE INTERNAL FORCE
@@ -100,19 +64,19 @@ set(XTOOLS_URL_MD5 "d025f4ad293a51ed77831d3e1245af62"
     "xtools URL MD5"
 )
 
-# ------------------------------------------------------------------------------
-# MicroV guest
-# ------------------------------------------------------------------------------
+set(BR_OVERLAY_DIR ${MICROV_SOURCE_ROOT_DIR}/overlays)
+set(BR_SRC_DIR ${MICROV_SOURCE_ROOT_DIR}/deps/buildroot)
+set(BR_BIN_DIR ${CACHE_DIR}/brbuild)
 
 add_config(
-    CONFIG_NAME ENABLE_BUILD_GUEST
+    CONFIG_NAME BUILD_NATIVE_GUEST
     CONFIG_TYPE BOOL
     DEFAULT_VAL OFF
-    DESCRIPTION "Build a minimal Linux guest along with the VMM"
+    DESCRIPTION "Build a minimal Linux guest"
 )
 
 add_config(
-    CONFIG_NAME BUILD_XEN_GUEST
+    CONFIG_NAME BUILD_XENPVH_GUEST
     CONFIG_TYPE BOOL
     DEFAULT_VAL OFF
     DESCRIPTION "Build a Xen PVH guest"

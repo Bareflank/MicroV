@@ -19,8 +19,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#ifndef BFEXEC_VERBOSE_H
-#define BFEXEC_VERBOSE_H
+#ifndef UVCTL_VERBOSE_H
+#define UVCTL_VERBOSE_H
 
 #define dump_vm_create_verbose()                                                                                                             \
     do { \

@@ -19,8 +19,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#ifndef BFEXEC_ARGS_H
-#define BFEXEC_ARGS_H
+#ifndef UVCTL_ARGS_H
+#define UVCTL_ARGS_H
 
 #include "cxxopts.hpp"
 #include <bfhypercall.h>
@@ -28,7 +28,7 @@
 using args_type = cxxopts::ParseResult;
 
 inline bool verbose = false;
-inline cxxopts::Options options("bfexec", "execute a virtual machine");
+inline cxxopts::Options options("uvctl", "control a microv virtual machine");
 
 inline args_type
 parse_args(int argc, char *argv[])

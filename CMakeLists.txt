@@ -19,33 +19,16 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-# ------------------------------------------------------------------------------
-# Project includes
-# ------------------------------------------------------------------------------
-
 include(${CMAKE_CURRENT_LIST_DIR}/scripts/cmake/config/default.cmake)
-
-# ------------------------------------------------------------------------------
-# Targets
-# ------------------------------------------------------------------------------
-
 include(${MICROV_SOURCE_CMAKE_DIR}/targets.cmake)
 
-# ------------------------------------------------------------------------------
-# General Dependencies
-# ------------------------------------------------------------------------------
-
-if(ENABLE_BUILD_GUEST)
+if(BUILD_NATIVE_GUEST)
     include_dependency(MICROV_SOURCE_DEPENDS_DIR linux)
 endif()
 
-if(BUILD_XEN_GUEST)
+if(BUILD_XENPVH_GUEST)
     include_dependency(MICROV_SOURCE_DEPENDS_DIR xtools)
 endif()
-
-# ------------------------------------------------------------------------------
-# VMM
-# ------------------------------------------------------------------------------
 
 if(ENABLE_BUILD_VMM)
     add_subproject(
@@ -55,26 +38,10 @@ if(ENABLE_BUILD_VMM)
     )
 endif()
 
-# ------------------------------------------------------------------------------
-# bfexec
-# ------------------------------------------------------------------------------
-
 add_subproject(
-    bfexec userspace
-    SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}/bfexec
+    uvctl userspace
+    SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}/uvctl
     DEPENDS bfintrinsics
     DEPENDS bfsdk
     DEPENDS cxxopts
 )
-
-# ------------------------------------------------------------------------------
-# bflinux
-# ------------------------------------------------------------------------------
-
-if(NOT WIN32 AND NOT CYGWIN)
-    add_subproject(
-        bflinux userspace
-        SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}/bflinux
-        DEPENDS bfintrinsics
-    )
-endif()

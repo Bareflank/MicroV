@@ -41,7 +41,7 @@ Source: "Input\bareflank.efi"; DestDir: "P:\EFI\Boot\"
 Source: "Input\bzImage"; DestDir: "{app}"
 Source: "Input\initrd.cpio.gz"; DestDir: "{app}"
 Source: "Input\bfack.exe"; DestDir: "{app}"
-Source: "Input\bfexec.exe"; DestDir: "{app}"
+Source: "Input\uvctl.exe"; DestDir: "{app}"
 Source: "Input\bareflank.inf"; Flags: dontcopy
 Source: "Input\bareflank.sys"; Flags: dontcopy
 Source: "Input\bareflank.cat"; Flags: dontcopy

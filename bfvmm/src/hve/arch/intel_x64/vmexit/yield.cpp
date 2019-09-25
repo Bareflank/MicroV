@@ -213,7 +213,7 @@ yield_handler::handle_hlt(
     //   triggers this flag. Since we have a VM exit, the flag is meaningless
     //   but it will trigger a VM entry failure when we attempt to inject.
     // - The TSC ratio is in kHz. The TSC Deadline is in ticks, and we need
-    //   to convert to microseconds, which is what bfexec accepts. To do this,
+    //   to convert to microseconds, which is what uvctl accepts. To do this,
     //   we use the following formula (remember that Hz == ticks per second)
     //
     //   ticks = TSC Deadline - current TSC;

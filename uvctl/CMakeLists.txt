@@ -20,26 +20,25 @@
 # SOFTWARE.
 
 cmake_minimum_required(VERSION 3.13)
-project(bfexec C CXX)
+project(uvctl C CXX)
 
-init_project(bfexec BINARY)
+init_project(uvctl BINARY)
 
 string(TOLOWER ${BUILD_TARGET_OS} OS)
 
-target_link_libraries(bfexec PUBLIC
+target_link_libraries(uvctl PUBLIC
     userspace::bfroot
     userspace::bfintrinsics
     $<$<BOOL:${UNIX}>:pthread>
     $<$<OR:$<BOOL:${CYGWIN}>,$<BOOL:${WIN32}>>:setupapi>
 )
-target_include_directories(bfexec PUBLIC
+target_include_directories(uvctl PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/../bfsdk/include>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/../bfvmm/include>
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/../bfbuilder/include>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/src/platform/${OS}>
 )
-target_sources(bfexec PRIVATE
+target_sources(uvctl PRIVATE
     src/main.cpp
     src/platform/${OS}/ioctl.cpp
     src/platform/${OS}/ioctl_private.cpp
