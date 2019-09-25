@@ -20,31 +20,92 @@
 // SOFTWARE.
 
 #include <chrono>
+#include <functional>
 #include <stdio.h>
 
 #include "vcpu.h"
 
 using namespace std::chrono;
+using namespace std::chrono_literals;
 
-static void run_vcpu(struct uvc_vcpu *vcpu)
-{
-    while (true) {
-
-    }
-}
+/* Each pause iteration is 200 microseconds */
+static constexpr auto pause_duration = 200us;
 
 uvc_vcpu::uvc_vcpu(vcpuid_t id, struct uvc_domain *dom) noexcept
 {
     this->id = id;
-    this->state = state_runnable;
+    this->state = runstate::halted;
     this->domain = dom;
+}
+
+/* ensures(state <= runstate::runable) */
+void uvc_vcpu::launch()
+{
+    state = runstate::runable;
+    run_thread = std::thread(std::bind(&uvc_vcpu::run, this));
+}
+
+/* ensures(state == runstate::halted) */
+void uvc_vcpu::halt()
+{
+    state = runstate::halted;
+}
+
+/* ensures(state == runstate::halted) */
+void uvc_vcpu::fault(uint64_t err)
+{
+    printf("[0x%x]: vcpu fault: 0x%x\n", id, err);
+    this->halt();
+}
+
+void uvc_vcpu::usleep(const microseconds &us)
+{
+    std::this_thread::sleep_for(us);
+}
+
+void uvc_vcpu::create_domain(domainid_t domid)
+{
+
 }
 
 void uvc_vcpu::run()
 {
-    run_thread = std::thread(run_vcpu, this);
+    while (true) {
 
-    if (run_thread.joinable()) {
-        state = state_running;
+        /* Respond to the current runstate */
+        switch (state) {
+        case runstate::running:
+            break;
+        case runstate::runable:
+            state = runstate::running;
+            break;
+        case runstate::paused:
+            this->usleep(pause_duration);
+            continue;
+        case runstate::halted:
+            return;
+        }
+
+        auto ret = __run_op(id, 0, 0);
+        auto arg = run_op_ret_arg(ret);
+        auto rc = run_op_ret_op(ret);
+
+        /* Handle the return code */
+        switch (rc) {
+        case __enum_run_op__hlt:
+            this->halt();
+            break;
+        case __enum_run_op__fault:
+            this->fault(arg);
+            break;
+        case __enum_run_op__yield:
+            this->usleep(microseconds(arg));
+            break;
+        case __enum_run_op__resume_after_interrupt:
+            break;
+        case __enum_run_op__new_domain:
+            this->create_domain(arg);
+            break;
+        }
     }
 }

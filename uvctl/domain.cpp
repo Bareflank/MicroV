@@ -37,13 +37,13 @@ vcpuid_t uvc_domain::create_vcpu()
     return newid;
 }
 
-void uvc_domain::run_vcpu(vcpuid_t vcpuid)
+void uvc_domain::launch_vcpu(vcpuid_t vcpuid)
 {
     std::lock_guard lock(vcpu_mtx);
 
     for (auto v = vcpu_list.begin(); v != vcpu_list.end(); v++) {
-        if (v->id == vcpuid && v->state == uvc_vcpu::state_runnable) {
-            v->run();
+        if (v->id == vcpuid) {
+            v->launch();
             return;
         }
     }

@@ -22,8 +22,8 @@
 #ifndef UVCTL_VCPU_H
 #define UVCTL_VCPU_H
 
-#include <stdint.h>
-
+#include <chrono>
+#include <cstdint>
 #include <mutex>
 #include <thread>
 
@@ -32,20 +32,27 @@
 struct uvc_domain;
 
 struct uvc_vcpu {
-    enum {
-        state_runnable,
-        state_running,
-        state_halted,
-        state_paused
+    /* Ordered runstate */
+    enum runstate {
+        running,
+        runable,
+        paused,
+        halted
     };
 
     vcpuid_t id{INVALID_VCPUID};
-    uint64_t state{};
+    enum runstate state{halted};
     struct uvc_domain *domain{};
     std::thread run_thread{};
 
     uvc_vcpu(vcpuid_t id, struct uvc_domain *dom) noexcept;
+
+    void launch();
     void run();
+    void halt();
+    void fault(uint64_t err);
+    void usleep(const std::chrono::microseconds &us);
+    void create_domain(domainid_t domid);
 };
 
 #endif

@@ -46,7 +46,7 @@ struct uvc_domain {
     std::list<struct uvc_domain> child_list{};
 
     vcpuid_t create_vcpu();
-    void run_vcpu(vcpuid_t id);
+    void launch_vcpu(vcpuid_t id);
     void destroy_vcpu(vcpuid_t id);
 
     void kill();
