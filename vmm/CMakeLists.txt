@@ -20,9 +20,9 @@
 # SOFTWARE.
 
 cmake_minimum_required(VERSION 3.13)
-project(microv_bfvmm LANGUAGES C CXX VERSION 1.1.0)
+project(uvvmm LANGUAGES C CXX VERSION 1.1.0)
 
-init_project(microv_bfvmm INTERFACE)
+init_project(uvvmm INTERFACE)
 
 string(TIMESTAMP MICROV_COMPILE_DATE "%b %d, %Y")
 string(TIMESTAMP MICROV_COMPILE_TIME "%H:%M")
@@ -55,8 +55,8 @@ set(BUILD_INCLUDE $<AND:$<COMPILE_LANGUAGE:CXX>,${BUILD}>)
 # VMM
 # -----------------------------------------------------------------------------
 
-target_compile_definitions(microv_bfvmm INTERFACE $<${XEN}:__XEN__>)
-target_compile_definitions(microv_bfvmm INTERFACE $<${X64}:__x86_64__>)
+target_compile_definitions(uvvmm INTERFACE $<${XEN}:__XEN__>)
+target_compile_definitions(uvvmm INTERFACE $<${X64}:__x86_64__>)
 
 add_subdirectory(src)
 add_subdirectory(src/hve)
@@ -69,14 +69,14 @@ add_executable(microv_vmm)
 target_sources(microv_vmm PRIVATE $<${X64}:src/main/arch/intel_x64/vcpu_factory.cpp>)
 target_sources(microv_vmm PRIVATE $<${X64}:src/main/arch/intel_x64/domain_factory.cpp>)
 
-target_link_libraries(microv_bfvmm INTERFACE microv_domain microv_hve microv_xen)
-target_link_libraries(microv_vmm PRIVATE microv_bfvmm)
+target_link_libraries(uvvmm INTERFACE uvvmm_domain uvvmm_hve uvvmm_xen)
+target_link_libraries(microv_vmm PRIVATE uvvmm)
 
 # -----------------------------------------------------------------------------
 # Install
 # -----------------------------------------------------------------------------
 
 install(DIRECTORY include/ DESTINATION include/microv)
-install(TARGETS microv_vmm DESTINATION bin EXPORT microv-vmm-targets)
+install(TARGETS microv_vmm DESTINATION bin EXPORT uvvmm-vmm-targets)
 
 fini_project()

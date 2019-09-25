@@ -19,7 +19,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-add_library(microv_domain
+add_library(uvvmm_domain
     domain.cpp
     iommu.cpp
     pci.cpp
@@ -28,11 +28,11 @@ add_library(microv_domain
     rand.asm
 )
 
-target_link_libraries(microv_domain PUBLIC vmm::bfvmm microv_bfvmm)
-target_include_directories(microv_domain PUBLIC
+target_link_libraries(uvvmm_domain PUBLIC vmm::bfvmm uvvmm)
+target_include_directories(uvvmm_domain PUBLIC
     $<${BUILD_INCLUDE}:${PROJECT_SOURCE_DIR}/include>
     $<${BUILD_INCLUDE}:${PROJECT_SOURCE_DIR}/../include>
     $<${BUILD_INCLUDE}:${PROJECT_SOURCE_DIR}/../deps/xen/xen/include>
 )
 
-install(TARGETS microv_domain DESTINATION lib EXPORT microv_bfvmm-vmm-targets)
+install(TARGETS uvvmm_domain DESTINATION lib EXPORT uvvmm-vmm-targets)

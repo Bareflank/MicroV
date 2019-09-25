@@ -28,16 +28,18 @@ endif()
 
 if(ENABLE_BUILD_VMM)
     add_subproject(
-        microv_bfvmm vmm
+        uvvmm vmm
         DEPENDS bfvmm
-        SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}/bfvmm
+        SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}/vmm
     )
 endif()
 
-add_subproject(
-    uvctl userspace
-    SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}/uvctl
-    DEPENDS bfintrinsics
-    DEPENDS bfsdk
-    DEPENDS cxxopts
-)
+if(ENABLE_BUILD_USERSPACE)
+    add_subproject(
+        uvctl userspace
+        SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}/uvctl
+        DEPENDS bfintrinsics
+        DEPENDS bfsdk
+        DEPENDS cxxopts
+    )
+endif()

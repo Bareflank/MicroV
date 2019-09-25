@@ -19,16 +19,16 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-add_library(microv_xen)
+add_library(uvvmm_xen)
 
-target_link_libraries(microv_xen PUBLIC microv_hve microv_domain)
-target_include_directories(microv_xen PUBLIC
+target_link_libraries(uvvmm_xen PUBLIC uvvmm_hve uvvmm_domain)
+target_include_directories(uvvmm_xen PUBLIC
     $<${BUILD_INCLUDE}:${PROJECT_SOURCE_DIR}/include>
     $<${BUILD_INCLUDE}:${PROJECT_SOURCE_DIR}/../include>
     $<${BUILD_INCLUDE}:${PROJECT_SOURCE_DIR}/../deps/xen/xen/include>
     $<${BUILD_INCLUDE}:${CMAKE_BINARY_DIR}/include>
 )
-target_sources(microv_xen PRIVATE
+target_sources(uvvmm_xen PRIVATE
     $<${X64}:cpuid.cpp>
     $<${X64}:cpupool.cpp>
     $<${X64}:domain.cpp>
@@ -43,4 +43,4 @@ target_sources(microv_xen PRIVATE
     $<${X64}:vcpu.cpp>
 )
 
-install(TARGETS microv_xen DESTINATION lib EXPORT microv_bfvmm-vmm-targets)
+install(TARGETS uvvmm_xen DESTINATION lib EXPORT uvvmm-vmm-targets)

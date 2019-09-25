@@ -19,16 +19,16 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-add_library(microv_hve)
+add_library(uvvmm_hve)
 
-target_link_libraries(microv_hve PUBLIC vmm::bfvmm microv_domain)
-target_include_directories(microv_hve PUBLIC
+target_link_libraries(uvvmm_hve PUBLIC vmm::bfvmm uvvmm_domain)
+target_include_directories(uvvmm_hve PUBLIC
     $<${BUILD_INCLUDE}:${XUE_DIR}/include>
     $<${BUILD_INCLUDE}:${PROJECT_SOURCE_DIR}/include>
     $<${BUILD_INCLUDE}:${PROJECT_SOURCE_DIR}/../include>
     $<${XEN}:${PROJECT_SOURCE_DIR}/../deps/xen/xen/include>
 )
-target_sources(microv_hve PRIVATE
+target_sources(uvvmm_hve PRIVATE
     $<${X64}:arch/intel_x64/apic/lapic.cpp>
     $<${X64}:arch/intel_x64/apic/x2apic.cpp>
     $<${X64}:arch/intel_x64/vmexit/cpuid.cpp>
@@ -52,4 +52,4 @@ target_sources(microv_hve PRIVATE
     $<${X64}:arch/intel_x64/vcpu.cpp>
 )
 
-install(TARGETS microv_hve DESTINATION lib EXPORT microv_bfvmm-vmm-targets)
+install(TARGETS uvvmm_hve DESTINATION lib EXPORT uvvmm-vmm-targets)
