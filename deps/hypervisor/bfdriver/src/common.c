@@ -193,6 +193,13 @@ static int64_t add_xue_dma_to_mm(uint64_t virt, uint64_t order)
         md.phys = g_xue.ops->virt_to_dma(g_xue.sys, (const void *)md.virt);
         md.type = MEMORY_TYPE_R | MEMORY_TYPE_W;
 
+        if (!md.phys) {
+            BFALERT("%s: NULL DMA translation for virt 0x%llx\n",
+                    __func__,
+                    md.virt);
+            return FAILURE;
+        }
+
         ret = platform_call_vmm_on_core(0, BF_REQUEST_ADD_MDL, (uintptr_t)&md, 0);
         if (ret != MEMORY_MANAGER_SUCCESS) {
             return ret;

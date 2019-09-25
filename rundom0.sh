@@ -1,6 +1,6 @@
 #!/bin/bash
 
-sudo ./prefixes/x86_64-userspace-elf/bin/bfexec \
+sudo ./prefixes/x86_64-userspace-elf/bin/uvctl \
     --hvc \
     --ram 380000000 \
     --initdom \

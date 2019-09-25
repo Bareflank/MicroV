@@ -66,7 +66,7 @@
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <PropertyGroup>
-      <IncludePath>$(SOURCE_ROOT_DIR)\bfsdk\include;$(SOURCE_ROOT_DIR)\bfelf_loader\include;..\..\..\include;..\..\..\..\bfsdk\include;..\..\..\..\deps\xen\xen\include\public;.;$(IncludePath)</IncludePath>
+      <IncludePath>$(SOURCE_ROOT_DIR)\bfsdk\include;$(SOURCE_ROOT_DIR)\bfelf_loader\include;..\..\..\include;..\..\..\..\deps\xen\xen\include\public;.;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>

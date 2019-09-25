@@ -548,6 +548,7 @@ static inline void xue_sys_free_dma(void *sys, void *addr, uint64_t order)
 static inline uint64_t xue_sys_virt_to_dma(void *sys, const void *virt)
 {
     UINTN i = 0;
+    UINTN offset = 0;
     UINTN needed = 0;
     UINTN mapped = 0;
     struct xue_efi *efi = (struct xue_efi *)sys;
@@ -557,11 +558,18 @@ static inline uint64_t xue_sys_virt_to_dma(void *sys, const void *virt)
     EFI_STATUS rc = 0;
     VOID *mapping = NULL;
 
-    for (i = 0; i < XUE_DMA_DESC_CAP; i++) {
+    for (; i < XUE_DMA_DESC_CAP; i++) {
         dma = &efi->dma_desc[i];
-        if (dma->cpu_addr == virt) {
-            break;
+        UINTN p = 0;
+
+        for (; p < dma->pages; p++) {
+            UINTN addr = (UINTN)dma->cpu_addr + (p * XUE_PAGE_SIZE);
+            if ((UINTN)virt == addr) {
+                offset = addr - (UINTN)dma->cpu_addr;
+                goto found;
+            }
         }
+
         dma = NULL;
     }
 
@@ -570,8 +578,9 @@ static inline uint64_t xue_sys_virt_to_dma(void *sys, const void *virt)
         return 0;
     }
 
+found:
     if (dma->dma_addr && dma->mapping) {
-        return dma->dma_addr;
+        return dma->dma_addr + offset;
     }
 
     needed = dma->pages << EFI_PAGE_SHIFT;
@@ -1433,11 +1442,15 @@ static inline void xue_enable_dbc(struct xue *xue)
 
     ops->sfence(sys);
     reg->ctrl |= (1UL << XUE_CTRL_DCE);
+    ops->sfence(sys);
+
     while ((reg->ctrl & (1UL << XUE_CTRL_DCE)) == 0) {
         ops->pause(sys);
     }
 
+    ops->sfence(sys);
     reg->portsc |= (1UL << XUE_PSC_PED);
+    ops->sfence(sys);
 
     /*
      * TODO:

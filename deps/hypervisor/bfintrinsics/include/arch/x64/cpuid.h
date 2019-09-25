@@ -58,6 +58,17 @@ struct cpuid_regs {
     uint64_t rdx;
 };
 
+inline auto get(field_type leaf, field_type subleaf = 0) noexcept
+{
+    uint32_t eax = leaf;
+    uint32_t ebx = 0;
+    uint32_t ecx = subleaf;
+    uint32_t edx = 0;
+
+    _cpuid(&eax, &ebx, &ecx, &edx);
+    return cpuid_regs{eax, ebx, ecx, edx};
+}
+
 inline auto get(field_type eax, field_type ebx, field_type ecx, field_type edx) noexcept
 {
     _cpuid(&eax, &ebx, &ecx, &edx);

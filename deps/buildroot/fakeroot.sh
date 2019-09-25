@@ -13,6 +13,8 @@ rm -rf usr/lib/systemd/system/sysinit.target.wants/systemd-update-utmp-runlevel.
 rm -rf etc/systemd/system/network.service
 rm -rf etc/systemd/system/multi-user.target.wants/network.service
 
+ln -s ../../../lib/systemd/system/xenconsoled.service \
+      etc/systemd/system/multi-user.target.wants/xenconsoled.service
 ln -s ../../../lib/systemd/system/xenstored.service \
       etc/systemd/system/multi-user.target.wants/xenstored.service
 ln -s ../../../lib/systemd/system/xen-init-dom0.service \

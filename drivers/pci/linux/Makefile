@@ -28,7 +28,7 @@ ifneq ($(KERNELRELEASE),)
 
 	EXTRA_CFLAGS += -DKERNEL
 	EXTRA_CFLAGS += -I$(SOURCE_ROOT_DIR)/bfsdk/include
-	EXTRA_CFLAGS += -I$(src)/../../../bfsdk/include
+	EXTRA_CFLAGS += -I$(src)/../../../include
 
 else
 	BUILDSYSTEM_DIR:=/lib/modules/$(shell uname -r)/build

@@ -23,8 +23,8 @@
 #include <linux/module.h>
 #include <linux/pci.h>
 
-#include <bfhypercall.h>
-#include <bfpci.h>
+#include <microv/hypercall.h>
+#include <microv/pci.h>
 
 #define MODULENAME "uv-pci"
 #define IRQ_FLAGS (PCI_IRQ_MSI)

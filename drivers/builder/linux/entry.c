@@ -27,11 +27,12 @@
 
 #include "../common.h"
 
-#include <bfbuilderinterface.h>
 #include <bfconstants.h>
 #include <bfdebug.h>
 #include <bfplatform.h>
 #include <bftypes.h>
+
+#include <microv/builderinterface.h>
 
 /* -------------------------------------------------------------------------- */
 /* Misc Device                                                                */
