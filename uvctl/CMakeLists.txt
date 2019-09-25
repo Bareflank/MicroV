@@ -33,15 +33,16 @@ target_link_libraries(uvctl PUBLIC
     $<$<OR:$<BOOL:${CYGWIN}>,$<BOOL:${WIN32}>>:setupapi>
 )
 target_include_directories(uvctl PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/../include>
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/../bfvmm/include>
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/src/platform/${OS}>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/${OS}>
 )
 target_sources(uvctl PRIVATE
-    src/main.cpp
-    src/platform/${OS}/ioctl.cpp
-    src/platform/${OS}/ioctl_private.cpp
+    main.cpp
+    domain.cpp
+    vcpu.cpp
+    ${OS}/ioctl.cpp
+    ${OS}/ioctl_private.cpp
 )
 
 fini_project()

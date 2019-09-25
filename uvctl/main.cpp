@@ -19,6 +19,14 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+#include <list>
+#include <memory>
+#include <chrono>
+#include <thread>
+#include <fstream>
+#include <iostream>
+#include <unistd.h>
+
 #include <bfack.h>
 #include <bfgsl.h>
 #include <bfdebug.h>
@@ -29,20 +37,11 @@
 #include <microv/builderinterface.h>
 #include <microv/hypercall.h>
 
-#include <list>
-#include <memory>
-#include <chrono>
-#include <thread>
-#include <fstream>
-#include <iostream>
-
-#include <args.h>
-#include <cmdl.h>
-#include <file.h>
-#include <ioctl.h>
-#include <verbose.h>
-
-#include <unistd.h>
+#include "args.h"
+#include "cmdl.h"
+#include "file.h"
+#include "ioctl.h"
+#include "verbose.h"
 
 struct vcpu {
     vcpuid_t id{INVALID_VCPUID};
