@@ -25,6 +25,7 @@
 #include <list>
 #include <mutex>
 #include <thread>
+#include <condition_variable>
 #include <microv/hypercall.h>
 
 struct uvc_vcpu;
@@ -45,10 +46,14 @@ struct uvc_domain {
     std::mutex child_mtx{};
     std::list<struct uvc_domain> child_list{};
 
+    std::mutex event_mtx{};
+    std::condition_variable event_cond{};
+    uint64_t event_code{};
+    uint64_t event_data{};
+
     vcpuid_t create_vcpu();
     void launch_vcpu(vcpuid_t id);
     void destroy_vcpu(vcpuid_t id);
-
     void create_child(domainid_t domid);
 
     void kill();

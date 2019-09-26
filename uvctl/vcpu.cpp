@@ -23,6 +23,7 @@
 #include <functional>
 #include <stdio.h>
 
+#include "domain.h"
 #include "vcpu.h"
 
 using namespace std::chrono;
@@ -36,6 +37,7 @@ uvc_vcpu::uvc_vcpu(vcpuid_t id, struct uvc_domain *dom) noexcept
     this->id = id;
     this->state = runstate::halted;
     this->domain = dom;
+    this->event_lock = std::unique_lock(dom->event_mtx, std::defer_lock);
 }
 
 /* ensures(state <= runstate::runable) */
@@ -46,13 +48,13 @@ void uvc_vcpu::launch()
 }
 
 /* ensures(state == runstate::halted) */
-void uvc_vcpu::halt()
+void uvc_vcpu::halt() noexcept
 {
     state = runstate::halted;
 }
 
 /* ensures(state == runstate::halted) */
-void uvc_vcpu::fault(uint64_t err)
+void uvc_vcpu::fault(uint64_t err) noexcept
 {
     printf("[0x%x]: vcpu fault: 0x%x\n", id, err);
     this->halt();
@@ -63,15 +65,20 @@ void uvc_vcpu::usleep(const microseconds &us)
     std::this_thread::sleep_for(us);
 }
 
-void uvc_vcpu::notify_create_domain(domainid_t domid)
+void uvc_vcpu::notify(uint64_t event_code, uint64_t event_data)
 {
+    event_lock.lock();
+    domain->event_code = event_code;
+    domain->event_data = event_data;
+    event_lock.unlock();
+
+    domain->event_cond.notify_one();
 }
 
 void uvc_vcpu::run()
 {
     while (true) {
-
-        /* Respond to the current runstate */
+        /* Handle the current runstate */
         switch (state) {
         case runstate::running:
         case runstate::runable:
@@ -85,9 +92,9 @@ void uvc_vcpu::run()
 
         state = runstate::running;
 
-        auto ret = __run_op(id, 0, 0);
-        auto arg = run_op_ret_arg(ret);
-        auto rc = run_op_ret_op(ret);
+        const auto ret = __run_op(id, 0, 0);
+        const auto arg = run_op_ret_arg(ret);
+        const auto rc = run_op_ret_op(ret);
 
         /* Handle the return code */
         switch (rc) {
@@ -103,7 +110,10 @@ void uvc_vcpu::run()
         case __enum_run_op__interrupted:
             break;
         case __enum_run_op__create_domain:
-            this->notify_create_domain(arg);
+        case __enum_run_op__pause_domain:
+        case __enum_run_op__unpause_domain:
+        case __enum_run_op__destroy_domain:
+            this->notify(rc, arg);
             break;
         }
     }

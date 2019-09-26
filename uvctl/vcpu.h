@@ -43,17 +43,17 @@ struct uvc_vcpu {
     vcpuid_t id{INVALID_VCPUID};
     enum runstate state{halted};
     struct uvc_domain *domain{};
+    std::unique_lock<std::mutex> event_lock{};
     std::thread run_thread{};
 
     uvc_vcpu(vcpuid_t id, struct uvc_domain *dom) noexcept;
 
     void launch();
     void run();
-    void halt();
-    void fault(uint64_t err);
+    void halt() noexcept;
+    void fault(uint64_t err) noexcept;
     void usleep(const std::chrono::microseconds &us);
-
-    void notify_create_domain(domainid_t domid);
+    void notify(uint64_t event_code, uint64_t event_data);
 };
 
 #endif

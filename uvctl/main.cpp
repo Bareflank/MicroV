@@ -25,6 +25,7 @@
 #include <thread>
 #include <fstream>
 #include <iostream>
+#include <signal.h>
 #include <unistd.h>
 
 #include <bfack.h>
@@ -257,12 +258,10 @@ static void send_to_hvc(struct vm *vm)
     }
 }
 
-// -----------------------------------------------------------------------------
-// Signal Handling
-// -----------------------------------------------------------------------------
-
-#include <signal.h>
-
+/*
+ * NB.1: this can't do anything fancy
+ * NB.2: using this is technically undefined on Linux (see man signal)
+ */
 static void kill_vm(int sig)
 {
     root_vm.vcpu.halt = true;
