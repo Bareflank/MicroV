@@ -66,7 +66,7 @@ struct vm {
     std::list<struct vm> children{};
 };
 
-struct vm root_vm{};
+struct vm root_domain{};
 std::unique_ptr<ioctl> ctl{};
 
 static void run_vcpu(struct vcpu *vcpu)
@@ -126,8 +126,8 @@ static void run_vcpu(struct vcpu *vcpu)
                     continue;
                 }
 
-                root_vm.children.push_front(std::move(vm));
-                auto &child = root_vm.children.front();
+                root_domain.children.push_front(std::move(vm));
+                auto &child = root_domain.children.front();
                 child.vcpu.run = std::thread(run_vcpu, &child.vcpu);
                 continue;
             }
@@ -138,7 +138,7 @@ static void run_vcpu(struct vcpu *vcpu)
                 return;
             } else {
                 auto domid = run_op_ret_arg(ret);
-                for (auto &child : root_vm.children) {
+                for (auto &child : root_domain.children) {
                     if (child.id == domid) {
                         child.vcpu.paused = true;
                         std::cout << "[0x" << std::hex << vcpu->id << "] "
@@ -156,7 +156,7 @@ static void run_vcpu(struct vcpu *vcpu)
                 return;
             } else {
                 auto domid = run_op_ret_arg(ret);
-                for (auto &child : root_vm.children) {
+                for (auto &child : root_domain.children) {
                     if (child.id == domid) {
                         child.vcpu.paused = false;
                         std::cout << "[0x" << std::hex << vcpu->id << "] "
@@ -174,7 +174,7 @@ static void run_vcpu(struct vcpu *vcpu)
                 return;
             } else {
                 auto domid = run_op_ret_arg(ret);
-                for (auto &child : root_vm.children) {
+                for (auto &child : root_domain.children) {
                     if (child.id == domid) {
                         std::cout << "[0x" << std::hex << vcpu->id << "] "
                                   << "destroying child 0x"
@@ -193,7 +193,7 @@ static void run_vcpu(struct vcpu *vcpu)
                     }
                 }
 
-                root_vm.children.remove_if([domid](const struct vm &child) {
+                root_domain.children.remove_if([domid](const struct vm &child) {
                     return child.id == domid;
                 });
 
@@ -264,7 +264,7 @@ static void send_to_hvc(struct vm *vm)
  */
 static void kill_vm(int sig)
 {
-    root_vm.vcpu.halt = true;
+    root_domain.vcpu.halt = true;
 }
 
 static void setup_kill_signal_handler(void)
@@ -303,7 +303,7 @@ static int start_vm(struct vm *vm)
     /*
      * Now put this thread to sleep while the vcpu thread runs. Whenever
      * run_vcpu returns, join() returns, and we disable any console IO and
-     * destroy any child vms that may have spawned from the root_vm.
+     * destroy any child vms that may have spawned from the root_domain.
      */
     vm->vcpu.run.join();
 
@@ -338,7 +338,7 @@ static int start_vm(struct vm *vm)
 
     /* Now the children are destroyed, we destroy the root and return */
     if (__vcpu_op__destroy_vcpu(vm->vcpu.id) != SUCCESS) {
-        std::cerr << "failed to destroy root_vm vcpu\n";
+        std::cerr << "failed to destroy root_domain vcpu\n";
     }
 
     return EXIT_SUCCESS;
@@ -476,13 +476,13 @@ protected_main(const args_type &args)
         set_affinity(0);
     }
 
-    create_vm(args, &root_vm);
+    create_vm(args, &root_domain);
 
     auto ___ = gsl::finally([&] {
-        ctl->call_ioctl_destroy(root_vm.id);
+        ctl->call_ioctl_destroy(root_domain.id);
     });
 
-    return start_vm(&root_vm);
+    return start_vm(&root_domain);
 }
 
 int
