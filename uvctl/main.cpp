@@ -43,305 +43,33 @@
 #include "file.h"
 #include "ioctl.h"
 #include "verbose.h"
+#include "domain.h"
+#include "vcpu.h"
 
-struct vcpu {
-    vcpuid_t id{INVALID_VCPUID};
-    std::thread run{};
-    bool paused{};
-    bool halt{};
-    bool child{};
-};
+using namespace std::chrono;
+using namespace std::chrono_literals;
 
-struct vm {
-    domainid_t id{INVALID_DOMAINID};
-
-    bool enable_uart{};
-    bool enable_hvc{};
-
-    std::thread uart_recv{};
-    std::thread hvc_recv{};
-    std::thread hvc_send{};
-
-    struct vcpu vcpu{};
-    std::list<struct vm> children{};
-};
-
-struct vm root_domain{};
 std::unique_ptr<ioctl> ctl{};
-
-static void run_vcpu(struct vcpu *vcpu)
-{
-    using namespace std::chrono;
-
-    std::cout << "[0x" << std::hex << vcpu->id << std::dec << "] running\n";
-
-    while (true) {
-        if (vcpu->halt) {
-            return;
-        }
-
-        if (vcpu->paused) {
-            std::this_thread::sleep_for(microseconds(200));
-            continue;
-        }
-
-        auto ret = __run_op(vcpu->id, 0, 0);
-
-        switch (run_op_ret_op(ret)) {
-        case __enum_run_op__hlt:
-            return;
-
-        case __enum_run_op__fault:
-            std::cerr << "[0x" << std::hex << vcpu->id << std::dec << "] ";
-            std::cerr << "vcpu fault: " << run_op_ret_arg(ret) << '\n';
-            return;
-
-        case __enum_run_op__interrupted:
-            continue;
-
-        case __enum_run_op__yield:
-            std::this_thread::sleep_for(microseconds(run_op_ret_arg(ret)));
-            continue;
-
-        case __enum_run_op__create_domain:
-            if (vcpu->child) {
-                std::cerr << "[0x" << std::hex << vcpu->id << "] "
-                          << "vcpu fault: returned with new domain 0x"
-                          << run_op_ret_arg(ret) << std::dec << '\n';
-                return;
-            } else {
-                std::cout << "[0x" << std::hex << vcpu->id << "] "
-                          << "created child domain 0x" << run_op_ret_arg(ret)
-                          << std::dec << '\n';
-
-                struct vm vm{};
-                vm.id = run_op_ret_arg(ret);
-                vm.vcpu.child = true;
-                vm.vcpu.id = __vcpu_op__create_vcpu(vm.id);
-
-                if (vm.vcpu.id == INVALID_VCPUID) {
-                    std::cerr << "[0x" << std::hex << vcpu->id << "] "
-                              << " failed to create vcpu for child domain 0x"
-                              << vm.id << std::dec << '\n';
-                    continue;
-                }
-
-                root_domain.children.push_front(std::move(vm));
-                auto &child = root_domain.children.front();
-                child.vcpu.run = std::thread(run_vcpu, &child.vcpu);
-                continue;
-            }
-        case __enum_run_op__pause_domain:
-            if (vcpu->child) {
-                std::cerr << "[0x" << std::hex << vcpu->id << std::dec << "] "
-                          << " returned pause; returning\n";
-                return;
-            } else {
-                auto domid = run_op_ret_arg(ret);
-                for (auto &child : root_domain.children) {
-                    if (child.id == domid) {
-                        child.vcpu.paused = true;
-                        std::cout << "[0x" << std::hex << vcpu->id << "] "
-                                  << "pausing child 0x"
-                                  << child.id << std::dec << "\n";
-                    }
-                }
-
-                break;
-            }
-        case __enum_run_op__unpause_domain:
-            if (vcpu->child) {
-                std::cerr << "[0x" << std::hex << vcpu->id << std::dec << "] "
-                          << " returned unpause; returning\n";
-                return;
-            } else {
-                auto domid = run_op_ret_arg(ret);
-                for (auto &child : root_domain.children) {
-                    if (child.id == domid) {
-                        child.vcpu.paused = false;
-                        std::cout << "[0x" << std::hex << vcpu->id << "] "
-                                  << "unpausing child 0x"
-                                  << child.id << std::dec << "\n";
-                    }
-                }
-
-                break;
-            }
-        case __enum_run_op__destroy_domain:
-            if (vcpu->child) {
-                std::cerr << "[0x" << std::hex << vcpu->id << std::dec << "] "
-                          << " returned destroy; returning\n";
-                return;
-            } else {
-                auto domid = run_op_ret_arg(ret);
-                for (auto &child : root_domain.children) {
-                    if (child.id == domid) {
-                        std::cout << "[0x" << std::hex << vcpu->id << "] "
-                                  << "destroying child 0x"
-                                  << child.id << std::dec << ": ";
-
-                        child.vcpu.halt = true;
-                        child.vcpu.run.join();
-
-                        if (__vcpu_op__destroy_vcpu(child.vcpu.id) != SUCCESS) {
-                            std::cerr << " destroy vcpu failed\n";
-                        } else if (__domain_op__destroy_domain(child.id) != SUCCESS) {
-                            std::cerr << " destroy domain failed\n";
-                        } else {
-                            std::cout << "done\n";
-                        }
-                    }
-                }
-
-                root_domain.children.remove_if([domid](const struct vm &child) {
-                    return child.id == domid;
-                });
-
-                break;
-            }
-        default:
-            std::cerr << "[0x" << std::hex << vcpu->id << std::dec << "] ";
-            std::cerr << "unknown vcpu ret: " << run_op_ret_op(ret) << '\n';
-            return;
-        }
-    }
-}
-
-static void recv_from_uart(struct vm *vm)
-{
-    using namespace std::chrono;
-    std::array<char, UART_MAX_BUFFER> buffer{};
-
-    while (vm->enable_uart) {
-        auto size = __domain_op__dump_uart(vm->id, buffer.data());
-        std::cout.write(buffer.data(), gsl::narrow_cast<int>(size));
-        std::this_thread::sleep_for(milliseconds(100));
-    }
-
-    auto size = __domain_op__dump_uart(vm->id, buffer.data());
-    std::cout.write(buffer.data(), gsl::narrow_cast<int>(size));
-}
-
-static void recv_from_hvc(struct vm *vm)
-{
-    using namespace std::chrono;
-    std::array<char, HVC_TX_SIZE> buf{};
-
-    while (vm->enable_hvc) {
-        auto size = __domain_op__hvc_tx_get(vm->id,
-                                            buf.data(),
-                                            HVC_TX_SIZE);
-        std::cout.write(buf.data(), gsl::narrow_cast<int>(size));
-        std::cout.flush();
-        std::this_thread::sleep_for(milliseconds(100));
-    }
-
-    auto size = __domain_op__hvc_tx_get(vm->id,
-                                        buf.data(),
-                                        HVC_TX_SIZE);
-    std::cout.write(buf.data(), gsl::narrow_cast<int>(size));
-    std::cout.flush();
-}
-
-static void send_to_hvc(struct vm *vm)
-{
-    using namespace std::chrono;
-    std::array<char, HVC_RX_SIZE> buf{};
-
-    while (vm->enable_hvc) {
-        std::cin.getline(buf.data(), buf.size());
-        buf.data()[std::cin.gcount() - 1] = '\n';
-        auto rc = __domain_op__hvc_rx_put(vm->id,
-                                          buf.data(),
-                                          std::cin.gcount());
-        std::this_thread::sleep_for(milliseconds(100));
-    }
-}
+uint64_t nuke_vm = 0;
 
 /*
- * NB.1: this can't do anything fancy
- * NB.2: using this is technically undefined on Linux (see man signal)
+ * TODO: man 2 signal states that using signal() for registering
+ * a custom handler in a multithreaded program is undefined. We could
+ * use sigaction but that is not available on Windows.
  */
-static void kill_vm(int sig)
+static void drop_nuke(int sig)
 {
-    root_domain.vcpu.halt = true;
+    nuke_vm = 1;
 }
 
-static void setup_kill_signal_handler(void)
+static inline void setup_kill_signal_handler(void)
 {
-    signal(SIGINT, kill_vm);
-    signal(SIGTERM, kill_vm);
+    signal(SIGINT, drop_nuke);
+    signal(SIGTERM, drop_nuke);
 
 #ifdef SIGQUIT
-    signal(SIGQUIT, kill_vm);
+    signal(SIGQUIT, drop_nuke);
 #endif
-}
-
-static int start_vm(struct vm *vm)
-{
-    if (bfack() == 0) {
-        throw std::runtime_error("hypervisor not running");
-    }
-
-    /* Create a new vcpu */
-    vm->vcpu.id = __vcpu_op__create_vcpu(vm->id);
-    if (vm->vcpu.id == INVALID_VCPUID) {
-        throw std::runtime_error("__vcpu_op__create_vcpu failed");
-    }
-
-    /* Run it */
-    vm->vcpu.run = std::thread(run_vcpu, &vm->vcpu);
-
-    /* Start up console IO if any */
-    if (vm->enable_hvc) {
-        vm->hvc_recv = std::thread(recv_from_hvc, vm);
-        vm->hvc_send = std::thread(send_to_hvc, vm);
-    } else if (vm->enable_uart) {
-        vm->uart_recv = std::thread(recv_from_uart, vm);
-    }
-
-    /*
-     * Now put this thread to sleep while the vcpu thread runs. Whenever
-     * run_vcpu returns, join() returns, and we disable any console IO and
-     * destroy any child vms that may have spawned from the root_domain.
-     */
-    vm->vcpu.run.join();
-
-    if (vm->enable_hvc) {
-        vm->enable_hvc = false;
-        vm->hvc_recv.join();
-        vm->hvc_send.join();
-    } else if (vm->enable_uart) {
-        vm->enable_uart = false;
-        vm->uart_recv.join();
-    }
-
-    auto &children = vm->children;
-
-    /* We halt each vm starting with the most-recently created first */
-    for (auto cvm = children.begin(); cvm != children.end(); cvm++) {
-        cvm->vcpu.halt = true;
-        cvm->vcpu.run.join();
-    }
-
-    for (auto cvm = children.begin(); cvm != children.end(); cvm++) {
-        if (__vcpu_op__destroy_vcpu(cvm->vcpu.id) != SUCCESS) {
-            std::cerr << "failed to destroy child vcpu 0x"
-                      << std::hex << cvm->vcpu.id << std::dec << " \n";
-        }
-
-        if (__domain_op__destroy_domain(cvm->id) != SUCCESS) {
-            std::cerr << "failed to destroy child domain 0x"
-                      << std::hex << cvm->id << std::dec << " \n";
-        }
-    }
-
-    /* Now the children are destroyed, we destroy the root and return */
-    if (__vcpu_op__destroy_vcpu(vm->vcpu.id) != SUCCESS) {
-        std::cerr << "failed to destroy root_domain vcpu\n";
-    }
-
-    return EXIT_SUCCESS;
 }
 
 static uint64_t vm_file_type(const char *data, uint64_t size)
@@ -358,16 +86,16 @@ static uint64_t vm_file_type(const char *data, uint64_t size)
         return VM_FILE_VMLINUX;
     }
 
+    const int bz_magic = 0x53726448;
     const struct setup_header *hdr = (struct setup_header *)(data + 0x1f1);
-    if (hdr->header == 0x53726448) {
+    if (hdr->header == bz_magic) {
         return VM_FILE_BZIMAGE;
     }
 
     throw std::invalid_argument("Unknown VM file type");
 }
 
-static uint64_t
-vm_exec_mode(uint64_t file_type)
+static uint64_t vm_exec_mode(uint64_t file_type)
 {
     switch (file_type) {
         case VM_FILE_VMLINUX: return VM_EXEC_XENPVH;
@@ -376,11 +104,11 @@ vm_exec_mode(uint64_t file_type)
     }
 }
 
-static void create_vm(const args_type &args, struct vm *vm)
+static void create_vm(const args_type &args, struct uvc_domain *dom)
 {
     using namespace std::chrono;
 
-    create_vm_args ioctl_args {};
+    create_vm_args ioctl_args{};
 
     bfn::cmdl cmdl;
     bfn::file kernel(args["kernel"].as<std::string>());
@@ -449,18 +177,18 @@ static void create_vm(const args_type &args, struct vm *vm)
     ctl->call_ioctl_create_vm(ioctl_args);
     dump_vm_create_verbose();
 
-    vm->id = ioctl_args.domainid;
-    vm->enable_uart = args.count("uart");
-    vm->enable_hvc = args.count("hvc");
+    dom->id = ioctl_args.domainid;
+    dom->parent = nullptr;
+    dom->enable_uart = args.count("uart");
+    dom->enable_hvc = args.count("hvc");
 }
 
-// -----------------------------------------------------------------------------
-// Main Functions
-// -----------------------------------------------------------------------------
-
-static int
-protected_main(const args_type &args)
+static int protected_main(const args_type &args)
 {
+    if (bfack() == 0) {
+        throw std::runtime_error("vmm not running");
+    }
+
     if (args.count("affinity")) {
         set_affinity(args["affinity"].as<uint64_t>());
     }
@@ -476,17 +204,25 @@ protected_main(const args_type &args)
         set_affinity(0);
     }
 
+    struct uvc_domain root_domain;
     create_vm(args, &root_domain);
+    root_domain.launch();
 
-    auto ___ = gsl::finally([&] {
-        ctl->call_ioctl_destroy(root_domain.id);
-    });
+    while (!nuke_vm) {
+        std::this_thread::sleep_for(200ms);
+    }
 
-    return start_vm(&root_domain);
+    try {
+        root_domain.destroy();
+    } catch (const std::exception &e) {
+        printf("root_domain.destroy threw: what = %s\n", e.what());
+    }
+
+    ctl->call_ioctl_destroy(root_domain.id);
+    return EXIT_SUCCESS;
 }
 
-int
-main(int argc, char *argv[])
+int main(int argc, char *argv[])
 {
     ctl = std::make_unique<ioctl>();
     setup_kill_signal_handler();

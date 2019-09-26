@@ -32,10 +32,8 @@
 struct uvc_domain;
 
 struct uvc_vcpu {
-    /* Ordered runstate */
     enum runstate {
         running,
-        runable,
         paused,
         halted
     };
@@ -43,17 +41,20 @@ struct uvc_vcpu {
     vcpuid_t id{INVALID_VCPUID};
     enum runstate state{halted};
     struct uvc_domain *domain{};
-    std::unique_lock<std::mutex> event_lock{};
+    mutable std::unique_lock<std::mutex> event_lock{};
     std::thread run_thread{};
 
     uvc_vcpu(vcpuid_t id, struct uvc_domain *dom) noexcept;
-
     void launch();
-    void run();
     void halt() noexcept;
-    void fault(uint64_t err) noexcept;
-    void usleep(const std::chrono::microseconds &us);
-    void notify(uint64_t event_code, uint64_t event_data);
+    void pause() noexcept;
+    void unpause() noexcept;
+
+private:
+    void run() const;
+    void fault(uint64_t err) const noexcept;
+    void usleep(const std::chrono::microseconds &us) const;
+    void notify(uint64_t event_code, uint64_t event_data) const;
 };
 
 #endif

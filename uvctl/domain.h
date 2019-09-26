@@ -32,9 +32,11 @@ struct uvc_vcpu;
 
 struct uvc_domain {
     domainid_t id{INVALID_DOMAINID};
+    struct uvc_domain *parent{};
 
     bool enable_uart{};
     bool enable_hvc{};
+    bool enable_events{};
 
     std::thread uart_recv{};
     std::thread hvc_recv{};
@@ -42,23 +44,36 @@ struct uvc_domain {
 
     std::mutex vcpu_mtx{};
     std::list<struct uvc_vcpu> vcpu_list{};
-
-    std::mutex child_mtx{};
     std::list<struct uvc_domain> child_list{};
 
     std::mutex event_mtx{};
+    std::thread event_thread{};
     std::condition_variable event_cond{};
     uint64_t event_code{};
     uint64_t event_data{};
 
-    vcpuid_t create_vcpu();
-    void launch_vcpu(vcpuid_t id);
-    void destroy_vcpu(vcpuid_t id);
-    void create_child(domainid_t domid);
+    uvc_domain();
+    uvc_domain(domainid_t id, struct uvc_domain *parent);
 
-    void kill();
-    void kill_vcpus();
-    void kill_children();
+    void create_vcpu();
+    void destroy_vcpus();
+    void launch();
+
+    void handle_events();
+    void create_child(domainid_t domid);
+    void pause_child(domainid_t domid);
+    void unpause_child(domainid_t domid);
+    void destroy_child(domainid_t domid);
+
+    void pause();
+    void unpause();
+    void destroy();
+
+    void recv_uart();
+    void recv_hvc();
+    void send_hvc();
+
+    bool is_root() const noexcept;
 };
 
 #endif

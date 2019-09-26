@@ -29,7 +29,6 @@
 using namespace std::chrono;
 using namespace std::chrono_literals;
 
-/* Each pause iteration is 200 microseconds */
 static constexpr auto pause_duration = 200us;
 
 uvc_vcpu::uvc_vcpu(vcpuid_t id, struct uvc_domain *dom) noexcept
@@ -37,51 +36,73 @@ uvc_vcpu::uvc_vcpu(vcpuid_t id, struct uvc_domain *dom) noexcept
     this->id = id;
     this->state = runstate::halted;
     this->domain = dom;
-    this->event_lock = std::unique_lock(dom->event_mtx, std::defer_lock);
 }
 
-/* ensures(state <= runstate::runable) */
 void uvc_vcpu::launch()
 {
-    state = runstate::runable;
+    state = runstate::running;
     run_thread = std::thread(std::bind(&uvc_vcpu::run, this));
 }
 
-/* ensures(state == runstate::halted) */
 void uvc_vcpu::halt() noexcept
 {
     state = runstate::halted;
 }
 
-/* ensures(state == runstate::halted) */
-void uvc_vcpu::fault(uint64_t err) noexcept
+void uvc_vcpu::pause() noexcept
 {
-    printf("[0x%x]: vcpu fault: 0x%x\n", id, err);
-    this->halt();
+    state = runstate::paused;
 }
 
-void uvc_vcpu::usleep(const microseconds &us)
+void uvc_vcpu::unpause() noexcept
+{
+    state = runstate::running;
+}
+
+void uvc_vcpu::fault(uint64_t err) const noexcept
+{
+    printf("[0x%x]: vcpu fault: 0x%x\n", id, err);
+}
+
+void uvc_vcpu::usleep(const microseconds &us) const
 {
     std::this_thread::sleep_for(us);
 }
 
-void uvc_vcpu::notify(uint64_t event_code, uint64_t event_data)
+void uvc_vcpu::notify(uint64_t event_code, uint64_t event_data) const
 {
-    event_lock.lock();
+    std::lock_guard lock(domain->event_mtx);
+
     domain->event_code = event_code;
     domain->event_data = event_data;
-    event_lock.unlock();
 
+    /*
+     * Since each vcpu is a potential notifier, we need to notify_one()
+     * with the lock held. Otherwise events could be dropped since the
+     * domain's event thread is essentially a one-element work queue.
+     * If this lock becomes a bottleneck, we could use a bonafide
+     * queue and/or schedule std::async tasks from the event thread.
+     */
     domain->event_cond.notify_one();
 }
 
-void uvc_vcpu::run()
+/*
+ * This is the primary thread that runs a vcpu. The function is marked const to
+ * ensure that it doesn't modify the uvc_vcpu::state; any modification must be
+ * done by the vcpu's domain. The domain modifies the state to exert control
+ * over the runtime given to the vcpu. This can be in response to some external
+ * factor like a kill signal, or a parent domain that wants to modify the
+ * runstate (e.g. pause) in some way.
+ *
+ * Enforcing read-only access to the state member from run() eliminates any
+ * possibility of races and thus no locking or atomic access is required.
+ */
+void uvc_vcpu::run() const
 {
     while (true) {
         /* Handle the current runstate */
         switch (state) {
         case runstate::running:
-        case runstate::runable:
             break;
         case runstate::paused:
             this->usleep(pause_duration);
@@ -90,8 +111,7 @@ void uvc_vcpu::run()
             return;
         }
 
-        state = runstate::running;
-
+        /* Run the vcpu */
         const auto ret = __run_op(id, 0, 0);
         const auto arg = run_op_ret_arg(ret);
         const auto rc = run_op_ret_op(ret);
@@ -99,11 +119,10 @@ void uvc_vcpu::run()
         /* Handle the return code */
         switch (rc) {
         case __enum_run_op__hlt:
-            this->halt();
-            break;
+            return;
         case __enum_run_op__fault:
-            this->fault(arg);
-            break;
+            printf("[0x%x]: vcpu fault: 0x%x\n", id, arg);
+            return;
         case __enum_run_op__yield:
             this->usleep(microseconds(arg));
             break;
