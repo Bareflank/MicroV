@@ -29,6 +29,8 @@
 #include <arch/intel_x64/barrier.h>
 #include <hve/arch/intel_x64/domain.h>
 #include <hve/arch/intel_x64/vcpu.h>
+#include <pci/bar.h>
+#include <pci/dev.h>
 #include <printv.h>
 #include <public/domctl.h>
 #include <public/sysctl.h>
@@ -54,7 +56,6 @@
 
 #include <public/arch-x86/hvm/save.h>
 #include <public/hvm/save.h>
-
 
 namespace microv {
 
@@ -359,6 +360,56 @@ bool xen_domain_set_cpuid(xen_vcpu *vcpu, struct xen_domctl *ctl)
     }
 
     auto ret = dom->set_cpuid(vcpu, &ctl->u.cpuid);
+    put_xen_domain(ctl->domain);
+
+    return ret;
+}
+
+bool xen_domain_ioport_perm(xen_vcpu *vcpu, struct xen_domctl *ctl)
+{
+    auto dom = get_xen_domain(ctl->domain);
+    if (!dom) {
+        bferror_nhex(0, "xen_domain not found:", ctl->domain);
+        return false;
+    }
+
+    auto ret = dom->ioport_perm(vcpu, &ctl->u.ioport_permission);
+    put_xen_domain(ctl->domain);
+
+    return ret;
+}
+
+bool xen_domain_iomem_perm(xen_vcpu *vcpu, struct xen_domctl *ctl)
+{
+    auto dom = get_xen_domain(ctl->domain);
+    if (!dom) {
+        bferror_nhex(0, "xen_domain not found:", ctl->domain);
+        return false;
+    }
+
+    auto ret = dom->iomem_perm(vcpu, &ctl->u.iomem_permission);
+    put_xen_domain(ctl->domain);
+
+    return ret;
+}
+
+bool xen_domain_assign_device(xen_vcpu *vcpu, struct xen_domctl *ctl)
+{
+    auto dev = &ctl->u.assign_device;
+
+    /* Device tree not supported */
+    expects(dev->dev == XEN_DOMCTL_DEV_PCI);
+
+    /* Segment > 0 not supported */
+    expects((dev->u.pci.machine_sbdf & 0xFFFF0000) == 0);
+
+    auto dom = get_xen_domain(ctl->domain);
+    if (!dom) {
+        bferror_nhex(0, "xen_domain not found:", ctl->domain);
+        return false;
+    }
+
+    auto ret = dom->assign_device(vcpu, dev);
     put_xen_domain(ctl->domain);
 
     return ret;
@@ -1297,6 +1348,119 @@ bool xen_domain::set_cpuid(xen_vcpu *v, struct xen_domctl_cpuid *cpuid)
             cpuid->ebx,
             cpuid->ecx,
             cpuid->edx);
+
+    v->m_uv_vcpu->set_rax(0);
+    return true;
+}
+
+bool xen_domain::ioport_perm(xen_vcpu *v,
+                             struct xen_domctl_ioport_permission *perm)
+{
+    printv("%s: [0x%x-0x%x] (%s)\n",
+            __func__,
+            perm->first_port,
+            perm->first_port + perm->nr_ports - 1,
+            (perm->allow_access) ? "allow" : "deny");
+
+    const struct io_region pmio = {
+        .base = perm->first_port,
+        .size = perm->nr_ports,
+        .type = io_region::pmio_t
+    };
+
+    assigned_pmio.push_back(pmio);
+    v->m_uv_vcpu->set_rax(0);
+
+    return true;
+}
+
+bool xen_domain::iomem_perm(xen_vcpu *v,
+                            struct xen_domctl_iomem_permission *perm)
+{
+    printv("%s: [0x%lx-0x%lx] (%s)\n",
+            __func__,
+            xen_addr(perm->first_mfn),
+            xen_addr(perm->first_mfn + perm->nr_mfns) - 1,
+            (perm->allow_access) ? "allow" : "deny");
+
+    const struct io_region mmio = {
+        .base = xen_addr(perm->first_mfn),
+        .size = perm->nr_mfns * UV_PAGE_SIZE,
+        .type = io_region::mmio_t
+    };
+
+    assigned_mmio.push_back(mmio);
+    v->m_uv_vcpu->set_rax(0);
+
+    return true;
+}
+
+bool xen_domain::assign_device(xen_vcpu *v,
+                               struct xen_domctl_assign_device *assign)
+{
+    printv("%s: sbdf:0x%x flags:0x%x\n",
+           __func__,
+           assign->u.pci.machine_sbdf,
+           assign->flags);
+
+    /* Caller ensures segment is 0 */
+    const auto bdf = assign->u.pci.machine_sbdf << 8;
+    assigned_devs.push_back(bdf);
+
+    auto dev = find_passthru_dev(bdf);
+    if (!dev) {
+        printv("%s: assigned non-passthru device %02x:%02x.%02x\n",
+               __func__, pci_cfg_bus(bdf), pci_cfg_dev(bdf), pci_cfg_fun(bdf));
+        return true;
+    }
+
+    if (dev->m_bars.empty()) {
+        dev->parse_bars();
+    }
+
+    /* Check BARs against assigned IO regions */
+    for (const auto &bar : dev->m_bars) {
+        bool found = false;
+
+        if (bar.type == pci_bar_io) {
+            auto beg = assigned_pmio.begin();
+            auto end = assigned_pmio.end();
+
+            for (auto r = beg; r != end; r++) {
+                if (r->base == bar.addr && r->size == bar.size) {
+                    found = true;
+                    break;
+                }
+            }
+
+            if (!found) {
+                printv("%s: no matching region found ", __func__);
+                printf("for PMIO BAR [0x%x-0x%x]\n",
+                        bar.addr, bar.addr + bar.size - 1);
+                return false;
+            }
+        } else {
+            auto beg = assigned_mmio.begin();
+            auto end = assigned_mmio.end();
+
+            for (auto r = beg; r != end; r++) {
+                if (r->base == bar.addr && r->size == bar.size) {
+                    found = true;
+                    break;
+                }
+            }
+
+            if (!found) {
+                printv("%s: no matching region found ", __func__);
+                printf("for MMIO BAR [0x%x-0x%x]\n",
+                        bar.addr, bar.addr + bar.size - 1);
+                return false;
+            }
+        }
+    }
+
+    /* Set the domain as the NDVM */
+    m_uv_dom->sod_info()->flags |= DOMF_NDVM;
 
     v->m_uv_vcpu->set_rax(0);
     return true;

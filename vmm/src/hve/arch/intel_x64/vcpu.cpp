@@ -603,6 +603,9 @@ void vcpu::map_msi(const struct msi_desc *root_msi,
     validate_msi(root_msi);
     validate_msi(guest_msi);
 
+    printv("%s: root_msi:  destid:0x%x\n", __func__, root_msi->destid());
+    printv("%s: guest_msi: destid:0x%x\n", __func__, guest_msi->destid());
+
     expects(m_lapic);
     expects(m_lapic->is_xapic());
 

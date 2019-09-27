@@ -51,6 +51,20 @@ static inline size_t vmm_pool_pages()
     return g_mm->page_pool_pages();
 }
 
+xen_pfn_t alloc_root_frame()
+{
+    std::lock_guard lock(root_pool_mtx);
+
+    xen_pfn_t pfn = XEN_INVALID_PFN;
+
+    if (root_pool.size()) {
+        pfn = root_pool.back();
+        root_pool.pop_back();
+    }
+
+    return pfn;
+}
+
 class page *alloc_unbacked_page()
 {
     std::lock_guard lock(dom_pool_mtx);
@@ -162,6 +176,17 @@ bool xenmem_memory_map(xen_vcpu *vcpu)
     }
 
     uvv->set_rax(0);
+    return true;
+}
+
+bool xenmem_reserved_device_memory_map(xen_vcpu *vcpu)
+{
+    auto uvv = vcpu->m_uv_vcpu;
+    auto map = uvv->map_arg<xen_reserved_device_memory_map_t>(uvv->rsi());
+
+    map->nr_entries = 0;
+    uvv->set_rax(0);
+
     return true;
 }
 

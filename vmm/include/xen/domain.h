@@ -25,6 +25,7 @@
 #include "../ring.h"
 #include "../domain/domain.h"
 #include "types.h"
+
 #include <page.h>
 #include <public/domctl.h>
 #include <public/arch-x86/hvm/save.h>
@@ -59,6 +60,9 @@ bool xen_domain_set_tsc_info(xen_vcpu *vcpu, struct xen_domctl *ctl);
 bool xen_domain_shadow_op(xen_vcpu *vcpu, struct xen_domctl *ctl);
 bool xen_domain_getvcpuextstate(xen_vcpu *vcpu, struct xen_domctl *ctl);
 bool xen_domain_set_cpuid(xen_vcpu *vcpu, struct xen_domctl *ctl);
+bool xen_domain_ioport_perm(xen_vcpu *vcpu, struct xen_domctl *ctl);
+bool xen_domain_iomem_perm(xen_vcpu *vcpu, struct xen_domctl *ctl);
+bool xen_domain_assign_device(xen_vcpu *vcpu, struct xen_domctl *ctl);
 
 /**
  * xen_domain
@@ -108,6 +112,9 @@ public:
     bool shadow_op(xen_vcpu *v, struct xen_domctl_shadow_op *shadow);
     bool getvcpuextstate(xen_vcpu *v, struct xen_domctl_vcpuextstate *ext);
     bool set_cpuid(xen_vcpu *v, struct xen_domctl_cpuid *cpuid);
+    bool ioport_perm(xen_vcpu *v, struct xen_domctl_ioport_permission *perm);
+    bool iomem_perm(xen_vcpu *v, struct xen_domctl_iomem_permission *perm);
+    bool assign_device(xen_vcpu *v, struct xen_domctl_assign_device *perm);
     bool unpause(xen_vcpu *v);
     bool pause(xen_vcpu *v);
 
@@ -186,6 +193,19 @@ public:
 
     /* NUMA parms */
     uint32_t m_numa_nodes;
+
+    /* Assigned PCI devices and IO regions */
+    struct io_region {
+        static constexpr auto pmio_t = 0;
+        static constexpr auto mmio_t = 1;
+        uint64_t base;
+        uint64_t size;
+        int type;
+    };
+
+    std::list<struct io_region> assigned_pmio{};
+    std::list<struct io_region> assigned_mmio{};
+    std::list<uint32_t> assigned_devs{};
 
 public:
     xen_domain(xen_domain &&) = delete;

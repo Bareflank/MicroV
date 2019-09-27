@@ -280,6 +280,8 @@ bool xen_vcpu::handle_memory_op()
             return xenmem_memory_map(this);
         case XENMEM_set_memory_map:
             return xenmem_set_memory_map(this);
+        case XENMEM_reserved_device_memory_map:
+            return xenmem_reserved_device_memory_map(this);
         case XENMEM_add_to_physmap:
             return xenmem_add_to_physmap(this);
         case XENMEM_add_to_physmap_batch:
@@ -471,6 +473,12 @@ bool xen_vcpu::handle_domctl()
             return xen_domain_gethvmcontext(this, ctl.get());
         case XEN_DOMCTL_sethvmcontext:
             return xen_domain_sethvmcontext(this, ctl.get());
+        case XEN_DOMCTL_ioport_permission:
+            return xen_domain_ioport_perm(this, ctl.get());
+        case XEN_DOMCTL_iomem_permission:
+            return xen_domain_iomem_perm(this, ctl.get());
+        case XEN_DOMCTL_assign_device:
+            return xen_domain_assign_device(this, ctl.get());
         default:
             bfalert_nhex(0, "unimplemented domctl", ctl->cmd);
             return false;
@@ -483,7 +491,7 @@ bool xen_vcpu::handle_domctl()
 bool xen_vcpu::handle_grant_table_op()
 {
     try {
-        expects(m_uv_vcpu->rdx() == 1);
+        expects(m_uv_vcpu->rdx() > 0);
 
         switch (m_uv_vcpu->rdi()) {
         case GNTTABOP_map_grant_ref:

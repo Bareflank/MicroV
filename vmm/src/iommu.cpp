@@ -29,6 +29,7 @@
 #include <iommu/dmar.h>
 #include <iommu/iommu.h>
 #include <hve/arch/intel_x64/vcpu.h>
+#include <hve/arch/intel_x64/domain.h>
 #include <pci/dev.h>
 #include <printv.h>
 

@@ -137,7 +137,7 @@ inline void validate_msi(const struct msi_desc *msid)
     expects(vector >= 0x20);
     expects(vector <= 0xFF);
     expects(destid <= 0xFF);
-    expects((destid & (destid - 1)) == 0);
+//    expects((destid & (destid - 1)) == 0);
 }
 
 }
