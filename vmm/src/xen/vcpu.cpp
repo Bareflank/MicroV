@@ -883,7 +883,7 @@ bool xen_vcpu::handle_interrupt(base_vcpu *vcpu, interrupt_handler::info_t &info
 
         root->load();
         root->queue_external_interrupt(info.vector);
-        root->return_resume_after_interrupt();
+        root->return_interrupted();
     }
 
     return true;

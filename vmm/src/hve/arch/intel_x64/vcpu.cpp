@@ -345,18 +345,27 @@ vcpu::return_hlt()
 }
 
 void
-vcpu::return_pause(uint64_t domid)
+vcpu::return_create_domain(uint64_t newdomid)
 {
+    this->add_child_domain(newdomid);
     this->load_xstate();
-    this->set_rax((domid << 4) | __enum_run_op__pause);
+    this->set_rax((newdomid << 4) | __enum_run_op__create_domain);
     this->run(&world_switch);
 }
 
 void
-vcpu::return_unpause(uint64_t domid)
+vcpu::return_pause_domain(uint64_t domid)
 {
     this->load_xstate();
-    this->set_rax((domid << 4) | __enum_run_op__unpause);
+    this->set_rax((domid << 4) | __enum_run_op__pause_domain);
+    this->run(&world_switch);
+}
+
+void
+vcpu::return_unpause_domain(uint64_t domid)
+{
+    this->load_xstate();
+    this->set_rax((domid << 4) | __enum_run_op__unpause_domain);
     this->run(&world_switch);
 }
 
@@ -364,7 +373,7 @@ void
 vcpu::return_destroy_domain(uint64_t domid)
 {
     this->load_xstate();
-    this->set_rax((domid << 4) | __enum_run_op__destroy);
+    this->set_rax((domid << 4) | __enum_run_op__destroy_domain);
     this->run(&world_switch);
 }
 
@@ -377,10 +386,10 @@ vcpu::return_fault(uint64_t error)
 }
 
 void
-vcpu::return_resume_after_interrupt()
+vcpu::return_interrupted()
 {
     this->load_xstate();
-    this->set_rax(__enum_run_op__resume_after_interrupt);
+    this->set_rax(__enum_run_op__interrupted);
     this->run(&world_switch);
 }
 
@@ -389,15 +398,6 @@ vcpu::return_yield(uint64_t usec)
 {
     this->load_xstate();
     this->set_rax((usec << 4) | __enum_run_op__yield);
-    this->run(&world_switch);
-}
-
-void
-vcpu::return_new_domain(uint64_t newdomid)
-{
-    this->add_child_domain(newdomid);
-    this->load_xstate();
-    this->set_rax((newdomid << 4) | __enum_run_op__new_domain);
     this->run(&world_switch);
 }
 

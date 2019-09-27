@@ -198,21 +198,21 @@ public:
     ///
     VIRTUAL vcpu *root_vcpu() const;
 
-    /// Return pause
+    /// Return pause domain
     ///
     /// Return to the parent vcpu and pause the domain identified with domid
     ///
     /// @param domid the id of the domain to pause
     ///
-    VIRTUAL void return_pause(uint64_t domid);
+    VIRTUAL void return_pause_domain(uint64_t domid);
 
-    /// Return unpause
+    /// Return unpause domain
     ///
     /// Return to the parent vcpu and unpause the domain identified with domid
     ///
     /// @param domid the id of the domain to unpause
     ///
-    VIRTUAL void return_unpause(uint64_t domid);
+    VIRTUAL void return_unpause_domain(uint64_t domid);
 
     /// Return destroy
     ///
@@ -254,7 +254,7 @@ public:
     /// @expects
     /// @ensures
     ///
-    VIRTUAL void return_resume_after_interrupt();
+    VIRTUAL void return_interrupted();
 
     /// Return (Yield)
     ///
@@ -278,7 +278,7 @@ public:
     ///
     /// @param the domain id of the new domain
     ///
-    VIRTUAL void return_new_domain(uint64_t newdomid);
+    VIRTUAL void return_create_domain(uint64_t newdomid);
 
     /// Halt the vCPU
     ///

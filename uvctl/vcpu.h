@@ -19,46 +19,42 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#include <hve/arch/intel_x64/vcpu.h>
-#include <hve/arch/intel_x64/vmexit/external_interrupt.h>
+#ifndef UVCTL_VCPU_H
+#define UVCTL_VCPU_H
 
-namespace microv::intel_x64
-{
+#include <chrono>
+#include <cstdint>
+#include <mutex>
+#include <thread>
 
-external_interrupt_handler::external_interrupt_handler(
-    gsl::not_null<vcpu *> vcpu
-) :
-    m_vcpu{vcpu}
-{
-    using namespace vmcs_n;
+#include <microv/hypercall.h>
 
-    if (vcpu->is_dom0()) {
-        return;
-    }
+struct uvc_domain;
 
-    m_vcpu->add_external_interrupt_handler(
-        {&external_interrupt_handler::handle, this});
-}
+struct uvc_vcpu {
+    enum runstate {
+        running,
+        paused,
+        halted
+    };
 
-// -----------------------------------------------------------------------------
-// Handlers
-// -----------------------------------------------------------------------------
+    vcpuid_t id{INVALID_VCPUID};
+    enum runstate state{halted};
+    struct uvc_domain *domain{};
+    mutable std::unique_lock<std::mutex> event_lock{};
+    std::thread run_thread{};
 
-bool
-external_interrupt_handler::handle(
-    vcpu_t *vcpu, bfvmm::intel_x64::external_interrupt_handler::info_t &info)
-{
-    bfignored(vcpu);
-    m_vcpu->save_xstate();
+    uvc_vcpu(vcpuid_t id, struct uvc_domain *dom) noexcept;
+    void launch();
+    void halt() noexcept;
+    void pause() noexcept;
+    void unpause() noexcept;
 
-    auto root_vcpu = m_vcpu->root_vcpu();
+private:
+    void run() const;
+    void fault(uint64_t err) const noexcept;
+    void usleep(const std::chrono::microseconds &us) const;
+    void notify(uint64_t event_code, uint64_t event_data) const;
+};
 
-    root_vcpu->load();
-    root_vcpu->queue_external_interrupt(info.vector);
-    root_vcpu->return_interrupted();
-
-    // Unreachable
-    return true;
-}
-
-}
+#endif

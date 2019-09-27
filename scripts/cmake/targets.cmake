@@ -235,7 +235,7 @@ endif()
 
 endfunction(add_vm_targets)
 
-if(BUILD_XEN_GUEST)
+if(BUILD_XENPVH_GUEST)
     add_custom_target_category("MicroV Guest VMs")
     add_vm_targets(xsvm)
     add_vm_targets(ndvm)
