@@ -630,7 +630,7 @@ static uint32_t pvh_sifs(struct create_vm_args *args)
 {
     uint32_t flags = 0;
 
-    if (args->initdom) {
+    if (args->xsvm) {
         flags = SIF_PRIVILEGED | SIF_INITDOMAIN;
     }
 
@@ -1132,7 +1132,7 @@ static uint64_t make_dom_flags(const struct create_vm_args *args)
      * initial and privileged flags map to SIF_PRIVILEGED and SIF_INITDOMAIN
      * defined in deps/xen/xen/include/public/xen.h
      */
-    if (args->initdom) {
+    if (args->xsvm) {
         flags |= DOMF_XENSTORE;
     }
 

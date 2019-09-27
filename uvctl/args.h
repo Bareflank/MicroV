@@ -45,8 +45,8 @@ parse_args(int argc, char *argv[])
     ("cmdline", "Additional Linux command line arguments", value<std::string>(), "[text]")
     ("uart", "Give the VM an emulated UART", value<uint64_t>(), "[port #]")
     ("pt_uart", "Pass-through a host UART to the VM", value<uint64_t>(), "[port #]")
-    ("initdom", "The VM is an initial domain")
-    ("ndvm", "The VM is an NDVM")
+    ("xsvm", "The VM is a xenstore VM")
+    ("ndvm", "The VM is a network device VM")
     ("hvc", "Use the hvc console")
     ("reset-xue", "Reset the xue debugger");
 

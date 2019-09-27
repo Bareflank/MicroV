@@ -168,7 +168,10 @@ vcpu::write_domU_guest_state(domain *domain)
         enable_rdtscp::enable();
         trap_exceptions();
 
-        if (domain->is_ndvm()) {
+        bfdebug_bool(0, "domain is_xsvm:", domain->is_xsvm());
+        bfdebug_bool(0, "domain is_ndvm:", domain->is_ndvm());
+
+        if (domain->is_xsvm() || domain->is_ndvm()) {
             init_pci_on_vcpu(this);
         }
 

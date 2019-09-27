@@ -351,7 +351,10 @@ void pci_dev::add_guest_handlers(vcpu *vcpu)
     HANDLE_CFG_ACCESS(this, guest_normal_cfg_in, pci_dir_in);
     HANDLE_CFG_ACCESS(this, guest_normal_cfg_out, pci_dir_out);
 
-//    printf("PCI: added handlers @ %s\n", this->bdf_str());
+    auto dom = vcpu->dom();
+    if (!dom->is_ndvm()) {
+        return;
+    }
 
     for (const auto &bar : m_bars) {
         if (bar.type == pci_bar_io) {
@@ -361,14 +364,14 @@ void pci_dev::add_guest_handlers(vcpu *vcpu)
             continue;
         }
 
+        /* TODO: map prefetch regions as WB and non-prefetch as WC */
         for (auto i = 0; i < bar.size; i += 4096) {
-            auto dom = vcpu->dom();
             dom->map_4k_rw_uc(bar.addr + i, bar.addr + i);
         }
     }
 
     printv("pci: %s: mapping DMA\n", this->bdf_str());
-    this->map_dma(vcpu->dom());
+    this->map_dma(dom);
 }
 
 void pci_dev::map_dma(domain *dom)

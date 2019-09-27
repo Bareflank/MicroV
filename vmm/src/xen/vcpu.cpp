@@ -966,6 +966,10 @@ bool xen_vcpu::debug_hypercall(microv_vcpu *vcpu)
         return false;
     }
 
+    if (rax == __HYPERVISOR_physdev_op && rdi == PHYSDEVOP_pci_device_add) {
+        return false;
+    }
+
     return true;
 }
 
