@@ -241,11 +241,34 @@ public:
     ///
     /// @return the mode this domain is running with
     ///
-    uint64_t exec_mode() noexcept;
+    uint64_t exec_mode() const noexcept;
 
-    xen_domain *xen_dom() noexcept { return m_xen_dom; }
-    bool initdom() noexcept { return m_sod_info.flags & DOMF_XENINIT; }
-    bool ndvm() noexcept { return m_sod_info.flags & DOMF_NDVM; }
+    /// Xen domain pointer
+    ///
+    /// @return the pointer to this domain's xen_domain
+    ///
+    xen_domain *xen_dom() const noexcept
+    {
+        return m_xen_dom;
+    }
+
+    /// Xenstore VM
+    ///
+    /// @return true if xenstore VM
+    ///
+    bool is_xsvm() const noexcept
+    {
+        return (m_sod_info.flags & DOMF_XENSTORE) == DOMF_XENSTORE;
+    }
+
+    /// Network device VM
+    ///
+    /// @return true if NDVM
+    ///
+    bool is_ndvm() const noexcept
+    {
+        return m_sod_info.flags & DOMF_NDVM;
+    }
 
     /// Set UART
     ///

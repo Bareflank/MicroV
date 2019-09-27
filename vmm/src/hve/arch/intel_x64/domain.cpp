@@ -159,7 +159,7 @@ domain::release(uintptr_t gpa)
 { m_ept_map.release(gpa); }
 
 uint64_t
-domain::exec_mode() noexcept
+domain::exec_mode() const noexcept
 {
     if (m_sod_info.flags & DOMF_EXEC_XENPVH) {
         return VM_EXEC_XENPVH;

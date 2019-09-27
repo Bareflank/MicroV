@@ -244,7 +244,7 @@ bool xen_vcpu::handle_physdev_op()
 
 bool xen_vcpu::handle_console_io()
 {
-    expects(m_uv_dom->initdom());
+    expects(m_uv_dom->is_xsvm());
 
     uint64_t len = m_uv_vcpu->rsi();
     auto buf = m_uv_vcpu->map_gva_4k<char>(m_uv_vcpu->rdx(), len);
@@ -510,7 +510,7 @@ bool xen_vcpu::handle_platform_op()
 
     switch (xpf->cmd) {
     case XENPF_get_cpuinfo: {
-        expects(m_uv_dom->initdom());
+        expects(m_uv_dom->is_xsvm());
         struct xenpf_pcpuinfo *info = &xpf->u.pcpu_info;
         info->max_present = 1;
         info->flags = XEN_PCPU_FLAGS_ONLINE;
@@ -538,7 +538,7 @@ bool xen_vcpu::handle_platform_op()
 
 bool xen_vcpu::handle_xsm_op()
 {
-    expects(m_uv_dom->initdom());
+    expects(m_uv_dom->is_xsvm());
     auto fop = m_uv_vcpu->map_arg<xen_flask_op_t>(m_uv_vcpu->rdi());
 
     return m_flask->handle(fop.get());

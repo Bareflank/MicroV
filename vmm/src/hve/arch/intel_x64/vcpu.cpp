@@ -168,7 +168,7 @@ vcpu::write_domU_guest_state(domain *domain)
         enable_rdtscp::enable();
         trap_exceptions();
 
-        if (domain->ndvm()) {
+        if (domain->is_ndvm()) {
             init_pci_on_vcpu(this);
         }
 

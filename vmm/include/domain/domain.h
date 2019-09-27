@@ -76,7 +76,7 @@ struct domain_info : public bfobject {
 
     bool is_xenstore() const noexcept
     {
-        return flags & DOMF_XENSTORE;
+        return (flags & DOMF_XENSTORE) == DOMF_XENSTORE;
     }
 
     bool using_hvc() const noexcept
