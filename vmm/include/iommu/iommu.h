@@ -51,7 +51,7 @@ public:
     using dom_t = class microv::intel_x64::domain;
     using bus_t = uint32_t;
 
-    void dump_faults() const;
+    void dump_faults();
     void map_dma(bus_t bus, uint32_t devfn, dom_t *dom);
 
     ~iommu() = default;
@@ -65,7 +65,7 @@ private:
     page_ptr<entry_t> m_root;
     std::unordered_map<bus_t, page_ptr<entry_t>> m_ctxt_map;
     struct drhd *m_drhd{};
-    struct drhd_devscope *m_scope{};
+    struct dmar_devscope *m_scope{};
     uintptr_t m_reg_hva{};
     uint32_t m_ver{};
     uint64_t m_cap{};

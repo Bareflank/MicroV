@@ -154,7 +154,7 @@ static void probe_bus(uint32_t b, struct pci_dev *bridge)
                 probe_bus(next, pdev);
             } else if (pdev->is_netdev()) {
                 pdev->m_guest_owned = true;
-                pdev->parse_cap_regs();
+                pdev->parse_capabilities();
                 pdev->init_root_vcfg();
 
                 if (!mcfg->hidden) {
@@ -264,7 +264,7 @@ void pci_dev::remap_ecam()
     ::intel_x64::vmx::invept_global();
 }
 
-void pci_dev::parse_cap_regs()
+void pci_dev::parse_capabilities()
 {
     if (m_msi_cap) {
         return;
@@ -273,6 +273,7 @@ void pci_dev::parse_cap_regs()
     constexpr auto CAP_PTR_REG = 0xDUL;
     constexpr auto CAP_ID_MSI = 0x05UL;
     constexpr auto CAP_ID_PCIE = 0x10UL;
+    constexpr auto CAP_ID_MSIX = 0x11UL;
 
     expects(pci_cfg_is_normal(m_cfg_reg[3]));
     expects(pci_cfg_has_caps(m_cfg_reg[1]));
@@ -291,6 +292,8 @@ void pci_dev::parse_cap_regs()
         case CAP_ID_PCIE:
             m_pcie_cap = reg;
             break;
+        case CAP_ID_MSIX:
+            m_msix_cap = reg;
         default:
             break;
         }
@@ -310,21 +313,19 @@ void pci_dev::init_root_vcfg()
 
     m_vcfg = std::make_unique<uint32_t[]>(vcfg_size);
     ensures(bfn::lower(m_vcfg.get(), 12) == 0);
-    memset(m_vcfg.get(), 0, vcfg_size * sizeof(*m_vcfg.get()));
 
     auto ven = passthru_vendor;
     auto dev = passthru_device++;
 
-    m_vcfg[0] = (dev << 16) | ven;
-    m_vcfg[1] = m_cfg_reg[1] | INTX_DISABLE;
-    m_vcfg[2] = m_cfg_reg[2];
-    m_vcfg[3] = m_cfg_reg[3];
-    m_vcfg[0xD] = m_msi_cap << 2;
+    for (auto i = 0; i < 0x40; i++) {
+        m_vcfg[i] = pci_cfg_read_reg(m_cf8, i);
+    }
+
+    m_vcfg[0x0] = (dev << 16) | ven;
+    m_vcfg[0x1] |= INTX_DISABLE;
+    m_vcfg[0xD] = m_msi_cap * 4;
     m_vcfg[0xF] = 0xFF;
-    m_vcfg[m_msi_cap] = pci_cfg_read_reg(m_cf8, m_msi_cap) & 0xFFFF00FF;
-    m_vcfg[m_msi_cap + 1] = pci_cfg_read_reg(m_cf8, m_msi_cap + 1);
-    m_vcfg[m_msi_cap + 2] = pci_cfg_read_reg(m_cf8, m_msi_cap + 2);
-    m_vcfg[m_msi_cap + 3] = pci_cfg_read_reg(m_cf8, m_msi_cap + 3);
+    m_vcfg[m_msi_cap] &= 0xFFFF00FF;
 }
 
 void pci_dev::add_root_handlers(vcpu *vcpu)
@@ -400,7 +401,7 @@ bool pci_dev::guest_normal_cfg_in(base_vcpu *vcpu, cfg_info &info)
         val = 0;
         break;
     case 0xD:
-        val = m_msi_cap << 2;
+        val = m_msi_cap * 4;
         break;
     case 0xF:
         val = 0xFF;
@@ -410,7 +411,7 @@ bool pci_dev::guest_normal_cfg_in(base_vcpu *vcpu, cfg_info &info)
         break;
     }
 
-    /* Expose the MSI capability only */
+    /* Only expose MSI capability */
     if (info.reg == m_msi_cap) {
         val &= 0xFFFF00FF;
     }
@@ -425,15 +426,7 @@ bool pci_dev::guest_normal_cfg_out(base_vcpu *vcpu, cfg_info &info)
     auto old = pci_cfg_read_reg(m_cf8, info.reg);
     auto val = cfg_hdlr::read_cfg_info(old, info);
 
-    if (info.reg != m_msi_cap) {
-        if (info.reg == 1 && (~val & INTX_DISABLE)) {
-            printv("pci: %s: enabling INTx\n", this->bdf_str());
-        }
-        pci_cfg_write_reg(m_cf8, info.reg, val);
-        return true;
-    }
-
-    if (msi_enabled(val)) {
+    if (info.reg == m_msi_cap && msi_enabled(val)) {
         m_root_msi = {
             this,
             m_vcfg[m_msi_cap],

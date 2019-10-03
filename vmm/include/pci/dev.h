@@ -47,6 +47,7 @@ struct pci_dev {
 
     uint32_t m_cf8{};
     uint32_t m_msi_cap{};
+    uint32_t m_msix_cap{};
     uint32_t m_pcie_cap{};
     uintptr_t m_ecam_gpa{};
     uintptr_t m_ecam_hpa{};
@@ -104,7 +105,7 @@ struct pci_dev {
     }
 
     void remap_ecam();
-    void parse_cap_regs();
+    void parse_capabilities();
     void init_root_vcfg();
     void add_root_handlers(vcpu *vcpu);
     void add_guest_handlers(vcpu *vcpu);

@@ -122,7 +122,7 @@ bool xen_gnttab_map_grant_ref(xen_vcpu *vcpu)
     auto uvv = vcpu->m_uv_vcpu;
 
     /* Multiple map_grant_refs are unsupported ATM */
-    expects(uvv->rdx() == 0);
+    expects(uvv->rdx() == 1);
 
     int rc = GNTST_okay;
     auto map = uvv->map_arg<gnttab_map_grant_ref_t>(uvv->rsi());
@@ -444,7 +444,7 @@ bool xen_gnttab_query_size(xen_vcpu *vcpu)
     auto uvv = vcpu->m_uv_vcpu;
 
     /* Multiple query_size are unsupported ATM */
-    expects(uvv->rdx() == 0);
+    expects(uvv->rdx() == 1);
 
     auto gqs = uvv->map_arg<gnttab_query_size_t>(uvv->rsi());
     auto domid = gqs->dom;
@@ -472,7 +472,7 @@ bool xen_gnttab_set_version(xen_vcpu *vcpu)
     auto uvv = vcpu->m_uv_vcpu;
 
     /* Multiple set_version are unsupported ATM */
-    expects(uvv->rdx() == 0);
+    expects(uvv->rdx() == 1);
 
     auto gsv = uvv->map_arg<gnttab_set_version_t>(uvv->rsi());
     return vcpu->m_xen_dom->m_gnttab->set_version(vcpu, gsv.get());

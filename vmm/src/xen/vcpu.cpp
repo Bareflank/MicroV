@@ -1039,7 +1039,7 @@ xen_vcpu::xen_vcpu(microv_vcpu *vcpu) :
     m_physdev = std::make_unique<class xen_physdev>(this);
 
     m_tsc_khz = vcpu->m_yield_handler.m_tsc_freq;
-    m_tsc_mul = (1000000000ULL << 32) / m_tsc_khz;
+    m_tsc_mul = (1000000ULL << 32) / m_tsc_khz;
     m_tsc_shift = 0;
     m_pet_shift = vcpu->m_yield_handler.m_pet_shift;
 

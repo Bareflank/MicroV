@@ -75,6 +75,63 @@ static void make_iommus(const struct acpi_table *dmar)
     }
 }
 
+void parse_rmrrs(const struct acpi_table *dmar)
+{
+    auto drs = dmar->hva + drs_offset;
+    auto end = dmar->hva + dmar->len;
+
+    while (drs < end) {
+        /* Read the type and size of the DMAR remapping structure */
+        auto drs_hdr = reinterpret_cast<const struct drs_hdr *>(drs);
+
+        /* Skip over non-RMRR structures */
+        if (drs_hdr->type != drs_rmrr) {
+            drs += drs_hdr->length;
+            continue;
+        }
+
+        auto rmrr = reinterpret_cast<const struct rmrr *>(drs);
+        printv("RMRR: [0x%lx-0x%lx] (segment 0x%04x)\n",
+               rmrr->base, rmrr->limit, rmrr->seg_nr);
+
+        const auto rmrr_len = rmrr->hdr.length;
+        const auto rmrr_end = drs + rmrr_len;
+
+        /* Get the address of the first device scope */
+        auto ds = drs + sizeof(*rmrr);
+
+        /* Iterate over each device scope */
+        while (ds + sizeof(struct dmar_devscope) < rmrr_end) {
+            auto scope = reinterpret_cast<struct dmar_devscope *>(ds);
+            if (ds + scope->length > rmrr_end) {
+                break;
+            }
+
+            auto path_len = (scope->length - sizeof(*scope)) / 2;
+            auto path = reinterpret_cast<struct dmar_devscope_path *>(
+                            ds + sizeof(*scope));
+
+            auto bus = scope->start_bus;
+            auto dev = path[0].dev;
+            auto fun = path[0].fun;
+
+            for (auto i = 1; i < path_len; i++) {
+                const auto addr = pci_cfg_bdf_to_addr(bus, dev, fun);
+                const auto reg6 = pci_cfg_read_reg(addr, 6);
+
+                bus = pci_bridge_sec_bus(reg6);
+                dev = path[i].dev;
+                fun = path[i].fun;
+            }
+
+            printv("   -> %02x:%02x.%02x\n", bus, dev, fun);
+            ds += scope->length;
+        }
+
+        drs += rmrr_len;
+    }
+}
+
 void init_vtd()
 {
     dmar = find_acpi_table("DMAR");
@@ -89,7 +146,7 @@ void init_vtd()
 
     hide_acpi_table(dmar);
     make_iommus(dmar);
-    /* TODO: RMRR structures */
+    parse_rmrrs(dmar);
 }
 
 void iommu_dump()
@@ -183,40 +240,54 @@ void iommu::bind_devices()
     m_scope_all = (m_drhd->flags & DRHD_FLAG_PCI_ALL) != 0;
 
     if (!m_scope_all) {
-        const auto path_int = reinterpret_cast<uintptr_t>(m_scope);
-        const auto path_len =
-            (m_scope->length - 6) / sizeof(struct devscope_path);
-        const auto path =
-            reinterpret_cast<struct devscope_path *>(path_int + 6);
+        auto drhd_end = reinterpret_cast<uint8_t *>(m_drhd) +
+                        m_drhd->hdr.length;
 
-        auto bus = m_scope->start_bus;
-        auto dev = path[0].dev;
-        auto fun = path[0].fun;
+        /* First device scope entry */
+        uint8_t *ds = reinterpret_cast<uint8_t *>(m_scope);
 
-        for (auto i = 1; i < path_len; i++) {
-            const auto addr = pci_cfg_bdf_to_addr(bus, dev, fun);
-            const auto reg6 = pci_cfg_read_reg(addr, 6);
-
-            bus = pci_bridge_sec_bus(reg6);
-            dev = path[i].dev;
-            fun = path[i].fun;
-        }
-
-        for (auto pdev : pci_list) {
-            if (pdev->m_iommu) {
-                continue;
+        /* Iterate over each device scope */
+        while (ds + sizeof(struct dmar_devscope) < drhd_end) {
+            auto scope = reinterpret_cast<struct dmar_devscope *>(ds);
+            if (ds + scope->length > drhd_end) {
+                break;
             }
 
-            const auto addr = pci_cfg_bdf_to_addr(bus, dev, fun);
-            if (pdev->matches(addr)) {
-                this->bind_device(pdev);
+            auto path_len = (scope->length - sizeof(*scope)) / 2;
+            auto path = reinterpret_cast<struct dmar_devscope_path *>(
+                            ds + sizeof(*scope));
 
-                if (m_scope->type == drhd_pci_subhierarchy) {
-                    expects(pdev->is_pci_bridge());
-                    const auto reg6 = pci_cfg_read_reg(addr, 6);
-                    this->bind_bus(pci_bridge_sec_bus(reg6));
+            auto bus = scope->start_bus;
+            auto dev = path[0].dev;
+            auto fun = path[0].fun;
+
+            for (auto i = 1; i < path_len; i++) {
+                const auto addr = pci_cfg_bdf_to_addr(bus, dev, fun);
+                const auto reg6 = pci_cfg_read_reg(addr, 6);
+
+                bus = pci_bridge_sec_bus(reg6);
+                dev = path[i].dev;
+                fun = path[i].fun;
+            }
+
+            for (auto pdev : pci_list) {
+                if (pdev->m_iommu) {
+                    continue;
+                }
+
+                const auto addr = pci_cfg_bdf_to_addr(bus, dev, fun);
+                if (pdev->matches(addr)) {
+                    this->bind_device(pdev);
+
+                    if (scope->type == ds_pci_subhierarchy) {
+                        expects(pdev->is_pci_bridge());
+                        const auto reg6 = pci_cfg_read_reg(addr, 6);
+                        this->bind_bus(pci_bridge_sec_bus(reg6));
+                    }
                 }
             }
+
+            ds += scope->length;
         }
 
         ensures(!m_root_devs.empty() || !m_guest_devs.empty());
@@ -277,23 +348,85 @@ static void dump_ecaps(uint64_t ecaps)
            (ecaps & ecap_smts_mask) >> ecap_smts_from);
 }
 
-void iommu::dump_faults() const
+#define FSTS_FRI (0xFF00UL)
+#define FSTS_ERR (0x7FUL)
+#define FSTS_PPF (1UL << 1)
+
+#define FRCD_F (1UL << 63)
+#define FRCD_T1 (1UL << 62)
+#define FRCD_T2 (1UL << 28)
+#define FRCD_FR (0xFFUL << 32)
+#define FRCD_BUS (0xFF00UL)
+#define FRCD_DEV (0x00F8UL)
+#define FRCD_FUN (0x0007UL)
+
+static inline const char *fault_name(int t1t2)
+{
+    switch (t1t2) {
+    case 0:
+        return "write";
+    case 1:
+        return "page";
+    case 2:
+        return "read";
+    case 3:
+        return "atomicop";
+    default:
+        return "UNKNOWN";
+    }
+}
+
+void iommu::dump_faults()
 {
     if (!m_reg_hva) {
         return;
     }
 
     auto fsts = this->read32(fsts_offset);
-    auto fri = (fsts & 0xFF00) >> 8;
 
-    printv("iommu: fsts=0x%x fectl=0x%x fri=%u\n",
-           fsts, this->read32(fectl_offset), fri);
-
-    volatile auto frcd = (struct iommu_entry *)(m_reg_hva + m_frcd_reg_off);
-    for (auto i = 0U; i < m_frcd_reg_num; i++) {
-        printv("iommu: frcd[%u] %lx:%lx\n",
-               i, frcd[i].data[1], frcd[i].data[0]);
+    /* Check the first byte for any error indicators, return if 0 */
+    if ((fsts & FSTS_ERR) == 0) {
+        return;
     }
+
+    /* Dump primary pending faults */
+    if (fsts & FSTS_PPF) {
+        /* Grab the head of the fault record queue */
+        auto fri = (fsts & FSTS_FRI) >> 8;
+        expects(fri < m_frcd_reg_num);
+
+        auto frcd_base = (struct iommu_entry *)(m_reg_hva + m_frcd_reg_off);
+        volatile auto frcd = &frcd_base[fri];
+
+        /* Process each fault record */
+        while (frcd->data[1] & FRCD_F) {
+            auto bus = (frcd->data[1] & FRCD_BUS) >> 8;
+            auto dev = (frcd->data[1] & FRCD_DEV) >> 3;
+            auto fun = (frcd->data[1] & FRCD_FUN);
+            auto t1 = (frcd->data[1] & FRCD_T1) >> 62;
+            auto t2 = (frcd->data[1] & FRCD_T2) >> 28;
+            auto reason = (frcd->data[1] & FRCD_FR) >> 32;
+            auto addr = frcd->data[0];
+            const char *str = fault_name((t1 << 1) | t2);
+
+            printv("iommu: fault: %02lx:%02lx.%02lx addr:0x%lx reason:0x%lx (%s)\n",
+                    bus, dev, fun, addr, reason, str);
+
+            /* Ack the fault */
+            frcd->data[1] |= FRCD_F;
+
+            /* Update the index in circular fashion */
+            fri = (fri == m_frcd_reg_num - 1) ? 0 : fri + 1;
+            frcd = &frcd_base[fri];
+        }
+    }
+
+    if (fsts & 0xFC) {
+        bferror_nhex(0, "iommu: unsupported errors pending: fsts=", fsts);
+    }
+
+    /* Ack all faults */
+    this->write32(fsts_offset, fsts);
 }
 
 void iommu::map_dma(uint32_t bus, uint32_t devfn, dom_t *dom)
@@ -437,9 +570,9 @@ iommu::iommu(struct drhd *drhd) : m_root{make_page<entry_t>()}
     this->m_drhd = drhd;
 
     auto scope = reinterpret_cast<uintptr_t>(drhd) + sizeof(*drhd);
-    this->m_scope = reinterpret_cast<struct drhd_devscope *>(scope);
+    this->m_scope = reinterpret_cast<struct dmar_devscope *>(scope);
     this->bind_devices();
-//    this->dump_devices();
+    this->dump_devices();
 
     /* Leave early if this doesn't scope a passthrough device */
     if (!m_guest_devs.size()) {

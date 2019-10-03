@@ -407,7 +407,8 @@ bool xenmem_acquire_resource(xen_vcpu *vcpu)
 /* class xen_memory */
 xen_memory::xen_memory(xen_domain *dom) :
     m_xen_dom{dom},
-    m_ept{&dom->m_uv_dom->ept()}
+    m_ept{&dom->m_uv_dom->ept()},
+    m_incoherent_iommu{true}
 {
 }
 
@@ -570,10 +571,10 @@ int xen_memory::map_page(xen_pfn_t gfn, uint32_t perms)
         return -ENXIO;
     }
 
-    if (pg->perms != perms && pg->present) {
-        printv("%s: warning: changing perms 0x%lx -> 0x%x\n",
-                __func__, pg->perms, perms);
-        pg->perms = perms;
+    if (pg->present) {
+        printv("%s: warning: gfn 0x%0lx already present, returning\n",
+                __func__, gfn);
+        return 0;
     }
 
     this->map_page(pg);
@@ -598,6 +599,8 @@ void xen_memory::add_root_backed_page(xen_pfn_t gfn, uint32_t perms,
 
     auto pg = alloc_root_backed_page(hfn);
     m_page_map.try_emplace(gfn, xen_page(gfn, perms, mtype, pg));
+
+    this->map_page(this->find_page(gfn));
 }
 
 /* Add a page with vmm backing */

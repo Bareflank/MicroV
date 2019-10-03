@@ -61,10 +61,36 @@ struct drs_hdr {
     uint16_t length;
 };
 
+/* Device scope types */
+enum dmar_devscope_type {
+    ds_pci_device = 1,
+    ds_pci_subhierarchy = 2,
+    ds_ioapic = 3,
+    ds_msi_hpet = 4,
+    ds_acpi_dev = 5
+};
+
+/* Device scope structure */
+struct dmar_devscope {
+    uint8_t type;
+    uint8_t length;
+    uint16_t rsvd;
+    uint8_t enum_id;
+    uint8_t start_bus;
+};
+
+struct dmar_devscope_path {
+    uint8_t dev;
+    uint8_t fun;
+};
+
 /*
  * Each DRHD structure defines one hardware remapping unit (IOMMU).
  * There must be at least one per PCI segment on the platform.
  */
+
+#define DRHD_FLAG_PCI_ALL (1U << 0)
+
 struct drhd {
     struct drs_hdr hdr;
     uint8_t flags;
@@ -73,27 +99,12 @@ struct drhd {
     uint64_t base_gpa;
 };
 
-#define DRHD_FLAG_PCI_ALL (1U << 0)
-
-enum drhd_devscope_type {
-    drhd_pci_device = 1,
-    drhd_pci_subhierarchy = 2,
-    drhd_ioapic = 3,
-    drhd_msi_hpet = 4,
-    drhd_acpi_dev = 5
-};
-
-struct drhd_devscope {
-    uint8_t type;
-    uint8_t length;
+struct rmrr {
+    struct drs_hdr hdr;
     uint16_t rsvd;
-    uint8_t enum_id;
-    uint8_t start_bus;
-};
-
-struct devscope_path {
-    uint8_t dev;
-    uint8_t fun;
+    uint16_t seg_nr;
+    uint64_t base;
+    uint64_t limit;
 };
 
 #pragma pack(pop)

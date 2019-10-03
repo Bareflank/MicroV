@@ -1581,7 +1581,6 @@ static void iwl_pcie_set_interrupt_capa(struct pci_dev *pdev,
 	int max_irqs, num_irqs, i, ret;
 	u16 pci_cmd;
 
-        printk("%s 0", __func__);
 	if (!trans->cfg->mq_rx_supported)
 		goto enable_msi;
 
@@ -1589,12 +1588,10 @@ static void iwl_pcie_set_interrupt_capa(struct pci_dev *pdev,
 	for (i = 0; i < max_irqs; i++)
 		trans_pcie->msix_entries[i].entry = i;
 
-        printk("%s 1", __func__);
 	num_irqs = pci_enable_msix_range(pdev, trans_pcie->msix_entries,
 					 MSIX_MIN_INTERRUPT_VECTORS,
 					 max_irqs);
 	if (num_irqs < 0) {
-        printk("%s 2", __func__);
 		IWL_DEBUG_INFO(trans,
 			       "Failed to enable msi-x mode (ret %d). Moving to msi mode.\n",
 			       num_irqs);
@@ -1614,29 +1611,38 @@ static void iwl_pcie_set_interrupt_capa(struct pci_dev *pdev,
 	 * More than two interrupts: we will use fewer RSS queues.
 	 */
 	if (num_irqs <= max_irqs - 2) {
-        printk("%s 3", __func__);
 		trans_pcie->trans->num_rx_queues = num_irqs + 1;
 		trans_pcie->shared_vec_mask = IWL_SHARED_IRQ_NON_RX |
 			IWL_SHARED_IRQ_FIRST_RSS;
 	} else if (num_irqs == max_irqs - 1) {
-        printk("%s 4", __func__);
 		trans_pcie->trans->num_rx_queues = num_irqs;
 		trans_pcie->shared_vec_mask = IWL_SHARED_IRQ_NON_RX;
 	} else {
-        printk("%s 5", __func__);
 		trans_pcie->trans->num_rx_queues = num_irqs - 1;
 	}
 	WARN_ON(trans_pcie->trans->num_rx_queues > IWL_MAX_RX_HW_QUEUES);
 
 	trans_pcie->alloc_vecs = num_irqs;
 	trans_pcie->msix_enabled = true;
+
+        printk("MSI-X enabled with %u vectors (max=%u, min=%u)",
+                num_irqs, max_irqs, MSIX_MIN_INTERRUPT_VECTORS);
+
+        printk("Default IRQ: %u", trans_pcie->def_irq);
+        printk("Num RX queues: %u", trans_pcie->trans->num_rx_queues);
+        printk("Shared vec mask: 0x%x", trans_pcie->shared_vec_mask);
+
+        for (i = 0; i < max_irqs; i++) {
+            printk("  msix_entry[%u]: vector=%u entry=%u",
+                    i, trans_pcie->msix_entries[i].vector,
+                    trans_pcie->msix_entries[i].entry);
+        }
+
 	return;
 
 enable_msi:
-        printk("%s 6", __func__);
 	ret = pci_enable_msi(pdev);
 	if (ret) {
-        printk("%s 7", __func__);
 		dev_err(&pdev->dev, "pci_enable_msi failed - %d\n", ret);
 		/* enable rfkill interrupt: hw bug w/a */
 		pci_read_config_word(pdev, PCI_COMMAND, &pci_cmd);
@@ -1644,9 +1650,7 @@ enable_msi:
 			pci_cmd &= ~PCI_COMMAND_INTX_DISABLE;
 			pci_write_config_word(pdev, PCI_COMMAND, pci_cmd);
 		}
-	} else {
-        printk("%s 8", __func__);
-        }
+	}
 }
 
 static void iwl_pcie_irq_set_affinity(struct iwl_trans *trans)
@@ -1657,6 +1661,10 @@ static void iwl_pcie_irq_set_affinity(struct iwl_trans *trans)
 	i = trans_pcie->shared_vec_mask & IWL_SHARED_IRQ_FIRST_RSS ? 0 : 1;
 	iter_rx_q = trans_pcie->trans->num_rx_queues - 1 + i;
 	offset = 1 + i;
+
+        printk("IRQ set affinity: i=%d iter_rx_q=%d offset=%d",
+                i, iter_rx_q, offset);
+
 	for (; i < iter_rx_q ; i++) {
 		/*
 		 * Get the cpu prior to the place to search

@@ -48,7 +48,8 @@ parse_args(int argc, char *argv[])
     ("xsvm", "The VM is a xenstore VM")
     ("ndvm", "The VM is a network device VM")
     ("hvc", "Use the hvc console")
-    ("reset-xue", "Reset the xue debugger");
+    ("reset-xue", "Reset the xue debugger")
+    ("dump-iommu", "Dump IOMMU faults");
 
     auto args = options.parse(argc, argv);
 
@@ -63,6 +64,11 @@ parse_args(int argc, char *argv[])
 
     if (args.count("reset-xue")) {
         __xue_op(__enum_xue_op__reset, 0, 0);
+        exit(EXIT_SUCCESS);
+    }
+
+    if (args.count("dump-iommu")) {
+        __iommu_op__dump();
         exit(EXIT_SUCCESS);
     }
 

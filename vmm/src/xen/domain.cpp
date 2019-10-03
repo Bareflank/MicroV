@@ -29,6 +29,7 @@
 #include <arch/intel_x64/barrier.h>
 #include <hve/arch/intel_x64/domain.h>
 #include <hve/arch/intel_x64/vcpu.h>
+#include <iommu/iommu.h>
 #include <pci/bar.h>
 #include <pci/dev.h>
 #include <printv.h>
@@ -638,6 +639,7 @@ xen_domain::xen_domain(microv_domain *domain) :
 
 xen_domain::~xen_domain()
 {
+    iommu_dump();
     xen_cpupool_rm_domain(m_cpupool_id, m_id);
 }
 
