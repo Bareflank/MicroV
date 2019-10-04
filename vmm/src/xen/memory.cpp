@@ -408,7 +408,7 @@ bool xenmem_acquire_resource(xen_vcpu *vcpu)
 xen_memory::xen_memory(xen_domain *dom) :
     m_xen_dom{dom},
     m_ept{&dom->m_uv_dom->ept()},
-    m_incoherent_iommu{true}
+    m_incoherent_iommu{true} /* TODO: pass this in from domain */
 {
 }
 
@@ -581,14 +581,21 @@ int xen_memory::map_page(xen_pfn_t gfn, uint32_t perms)
     return 0;
 }
 
-/* Add a page with no backing */
-void xen_memory::add_unbacked_page(xen_pfn_t gfn, uint32_t perms,
-                                   uint32_t mtype)
+void xen_memory::add_page(xen_pfn_t gfn, uint32_t perms, uint32_t mtype)
 {
     expects(m_page_map.count(gfn) == 0);
 
     auto pg = alloc_unbacked_page();
     m_page_map.try_emplace(gfn, xen_page(gfn, perms, mtype, pg));
+
+    auto xenpg = this->find_page(gfn);
+    auto rc = this->back_page(xenpg);
+    if (rc) {
+        printv("%s: failed to back gfn 0x%lx, rc=%d\n", __func__, gfn, rc);
+        return;
+    }
+
+    this->map_page(xenpg);
 }
 
 /* Add a page with root backing */
@@ -611,6 +618,8 @@ void xen_memory::add_vmm_backed_page(xen_pfn_t gfn, uint32_t perms,
 
     auto pg = alloc_vmm_backed_page(ptr);
     m_page_map.try_emplace(gfn, xen_page(gfn, perms, mtype, pg));
+
+    this->map_page(this->find_page(gfn));
 }
 
 /* Add a page from another domain */
@@ -621,6 +630,17 @@ void xen_memory::add_foreign_page(xen_pfn_t gfn, uint32_t perms,
 
     fpg->refcnt++;
     m_page_map.try_emplace(gfn, xen_page(gfn, perms, mtype, fpg));
+
+    auto xenpg = this->find_page(gfn);
+    if (!xenpg->backed()) {
+        if (auto rc = this->back_page(xenpg); rc) {
+            printv("%s: failed to back foreign page at gfn 0x%lx, rc=%d\n",
+                   __func__, gfn, rc);
+            return;
+        }
+    }
+
+    this->map_page(xenpg);
 }
 
 /* Add a page already created from this domain */
@@ -629,6 +649,17 @@ void xen_memory::add_local_page(xen_pfn_t gfn, uint32_t perms, uint32_t mtype,
 {
     expects(m_page_map.count(gfn) == 0);
     m_page_map.try_emplace(gfn, xen_page(gfn, perms, mtype, pg));
+
+    auto xenpg = this->find_page(gfn);
+    if (!xenpg->backed()) {
+        if (auto rc = this->back_page(xenpg); rc) {
+            printv("%s: failed to back local page at gfn 0x%lx, rc=%d\n",
+                   __func__, gfn, rc);
+            return;
+        }
+    }
+
+    this->map_page(xenpg);
 }
 
 class xen_page *xen_memory::find_page(xen_pfn_t gfn)
@@ -764,9 +795,10 @@ bool xen_memory::decrease_reservation(xen_vcpu *v,
         nr_done++;
     }
 
-//    printv("%s: decreased by %u pages\n", __func__, nr_done);
-//    printv("%s: root frames: %lu\n", __func__, root_frames());
-
+    /*
+     * TODO: EPT for *this* domain needs invalidation, which is not
+     * necessarily the calling domain
+     */
     uvv->invept();
     uvv->set_rax(nr_done);
 
@@ -816,7 +848,7 @@ bool xen_memory::populate_physmap(xen_vcpu *v, xen_memory_reservation_t *rsv)
         auto gfn = ext.get()[i];
 
         for (auto j = 0; j < pages_per_ext; j++) {
-            this->add_unbacked_page(gfn + j, pg_perm_rwe, pg_mtype_wb);
+            this->add_page(gfn + j, pg_perm_rwe, pg_mtype_wb);
         }
     }
 
@@ -827,7 +859,9 @@ bool xen_memory::populate_physmap(xen_vcpu *v, xen_memory_reservation_t *rsv)
         m_xen_dom->m_out_pages = 0;
     }
 
+    uvv->invept();
     uvv->set_rax(rsv->nr_extents);
+
     return true;
 }
 

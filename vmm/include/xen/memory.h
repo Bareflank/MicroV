@@ -83,7 +83,8 @@ public:
 
     /* Page management */
     class xen_page *find_page(xen_pfn_t gfn);
-    void add_unbacked_page(xen_pfn_t gfn, uint32_t perms, uint32_t mtype);
+
+    void add_page(xen_pfn_t gfn, uint32_t perms, uint32_t mtype);
     void add_root_backed_page(xen_pfn_t gfn, uint32_t perms, uint32_t mtype,
                               xen_pfn_t hfn);
     void add_vmm_backed_page(xen_pfn_t gfn, uint32_t perms, uint32_t mtype,

@@ -1437,7 +1437,7 @@ bool xen_domain::assign_device(xen_vcpu *v,
 
             if (!found) {
                 printv("%s: no matching region found ", __func__);
-                printf("for PMIO BAR [0x%x-0x%x]\n",
+                printf("for PMIO BAR [0x%lx-0x%lx]\n",
                         bar.addr, bar.addr + bar.size - 1);
                 return false;
             }
@@ -1454,7 +1454,7 @@ bool xen_domain::assign_device(xen_vcpu *v,
 
             if (!found) {
                 printv("%s: no matching region found ", __func__);
-                printf("for MMIO BAR [0x%x-0x%x]\n",
+                printf("for MMIO BAR [0x%lx-0x%lx]\n",
                         bar.addr, bar.addr + bar.size - 1);
                 return false;
             }
