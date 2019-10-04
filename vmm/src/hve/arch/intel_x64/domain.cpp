@@ -37,10 +37,40 @@ using namespace microv;
 namespace microv::intel_x64
 {
 
+/*
+ * Note a domain is not a per-cpu structure, but this code is using the EPT
+ * capability MSR of the CPU it happens to run on. However the value of this
+ * MSR is likely to be the same for each CPU. One way to be certain would be to
+ * have each vcpu that belongs to this domain check the value from its CPU
+ * against this one.
+ */
+static uint64_t init_eptp(uint64_t pml4_phys)
+{
+    expects(pml4_phys);
+
+    using namespace ::intel_x64::msrs::ia32_vmx_ept_vpid_cap;
+    const auto ept_caps = get();
+
+    expects(invept_support::is_enabled(ept_caps));
+    expects(invept_all_context_support::is_enabled(ept_caps));
+    expects(invept_single_context_support::is_enabled(ept_caps));
+
+    using namespace vmcs_n::ept_pointer;
+    uint64_t eptp = 0;
+
+    memory_type::set(eptp, memory_type::write_back);
+    accessed_and_dirty_flags::disable(eptp);
+    page_walk_length_minus_one::set(eptp, 3U);
+    phys_addr::set(eptp, pml4_phys);
+
+    return eptp;
+}
+
 domain::domain(id_t domainid, struct domain_info *info) :
     microv::domain{domainid}
 {
     m_sod_info.copy(info);
+    m_eptp = init_eptp(m_ept_map.pml4_phys());
 
     if (domainid == 0) {
         this->setup_dom0();

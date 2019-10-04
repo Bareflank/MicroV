@@ -67,6 +67,7 @@ public:
     xen_memory(xen_domain *xen);
 
     /* EPT handling */
+    void invept() const;
     void add_ept_handlers(xen_vcpu *v);
     bool handle_ept_read(base_vcpu *vcpu, ept_violation_handler::info_t &info);
     bool handle_ept_write(base_vcpu *vcpu, ept_violation_handler::info_t &info);

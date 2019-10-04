@@ -778,6 +778,11 @@ int xen_memory::remove_page(xen_pfn_t gfn)
     return 0;
 }
 
+void xen_memory::invept() const
+{
+    m_xen_dom->m_uv_dom->invept();
+}
+
 bool xen_memory::decrease_reservation(xen_vcpu *v,
                                       xen_memory_reservation_t *rsv)
 {
@@ -795,11 +800,7 @@ bool xen_memory::decrease_reservation(xen_vcpu *v,
         nr_done++;
     }
 
-    /*
-     * TODO: EPT for *this* domain needs invalidation, which is not
-     * necessarily the calling domain
-     */
-    uvv->invept();
+    this->invept();
     uvv->set_rax(nr_done);
 
     return true;
@@ -859,7 +860,7 @@ bool xen_memory::populate_physmap(xen_vcpu *v, xen_memory_reservation_t *rsv)
         m_xen_dom->m_out_pages = 0;
     }
 
-    uvv->invept();
+    this->invept();
     uvv->set_rax(rsv->nr_extents);
 
     return true;
@@ -903,7 +904,7 @@ bool xen_memory::remove_from_physmap(xen_vcpu *v, xen_remove_from_physmap_t *rma
     auto uvv = uvd->m_vcpu;
 
     this->remove_page(rmap->gpfn);
-    uvv->invept();
+    this->invept();
 
     v->m_uv_vcpu->set_rax(0);
     return true;
