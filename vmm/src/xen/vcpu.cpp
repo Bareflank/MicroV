@@ -496,6 +496,10 @@ bool xen_vcpu::handle_grant_table_op()
         switch (m_uv_vcpu->rdi()) {
         case GNTTABOP_map_grant_ref:
             return xen_gnttab_map_grant_ref(this);
+        case GNTTABOP_unmap_grant_ref:
+            return xen_gnttab_unmap_grant_ref(this);
+        case GNTTABOP_copy:
+            return xen_gnttab_copy(this);
         case GNTTABOP_query_size:
             return xen_gnttab_query_size(this);
         case GNTTABOP_set_version:
@@ -941,6 +945,10 @@ bool xen_vcpu::debug_hypercall(microv_vcpu *vcpu)
 
     if (!this->is_xenstore()) {
         if (rax == __HYPERVISOR_vcpu_op && rdi == VCPUOP_set_singleshot_timer) {
+            return false;
+        }
+
+        if (rax == __HYPERVISOR_grant_table_op && rdi == GNTTABOP_copy) {
             return false;
         }
         return true;

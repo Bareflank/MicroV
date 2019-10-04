@@ -105,7 +105,67 @@ static inline bool has_read_access(xen_domid_t domid,
 static inline bool has_write_access(xen_domid_t domid,
                                     const grant_entry_header_t *hdr)
 {
-    return domid == hdr->domid && !(hdr->flags & GTF_readonly);
+    const bool access = hdr->flags & GTF_permit_access;
+    const bool readonly = hdr->flags & GTF_readonly;
+
+    return domid == hdr->domid && access && !readonly;
+}
+
+void xen_gnttab_unmap_grant_ref(xen_vcpu *vcpu, gnttab_unmap_grant_ref_t *unmap)
+{
+    const auto hdl = unmap->handle;
+    const auto fref = hdl & 0xFFFF;
+    const auto fdomid = hdl >> 16;
+
+    printv("%s: fdom:%x fref:%x lgpa:%lx\n",
+           __func__, fdomid, fref, unmap->host_addr);
+
+    auto ldom = vcpu->m_xen_dom;
+    auto lgnt = ldom->m_gnttab.get();
+
+    auto itr = lgnt->map_handles.find(hdl);
+    if (itr == lgnt->map_handles.end()) {
+        printv("%s: handle:%x not found\n", __func__, hdl);
+        unmap->status = GNTST_bad_handle;
+        return;
+    } else if (itr->second != unmap->host_addr) {
+        printv("%s: hdl.addr=0x%lx != unmap.addr=0x%lx\n",
+                __func__, itr->second, unmap->host_addr);
+        unmap->status = GNTST_bad_virt_addr;
+        return;
+    }
+
+    auto fdom = get_xen_domain(fdomid);
+    if (!fdom) {
+        printv("%s: fdom:%x not found\n", __func__, fdomid);
+        unmap->status = GNTST_bad_handle;
+        return;
+    }
+
+    auto fgnt = fdom->m_gnttab.get();
+    if (fgnt->invalid_ref(fref)) {
+        printv("%s: bad fref:%x\n", __func__, fref);
+        unmap->status = GNTST_bad_handle;
+        put_xen_domain(fdomid);
+        return;
+    }
+
+    auto fhdr = fgnt->shared_header(fref);
+    fhdr->flags &= ~(GTF_reading | GTF_writing);
+
+    auto lmem = ldom->m_memory.get();
+    auto lgfn = xen_frame(unmap->host_addr);
+    if (auto rc = lmem->remove_page(lgfn); rc) {
+        printv("%s: failed to remove gfn:%lx, rc=%d\n", __func__, lgfn, rc);
+        unmap->status = GNTST_general_error;
+        put_xen_domain(fdomid);
+        return;
+    }
+
+    lmem->invept();
+    lgnt->map_handles.erase(hdl);
+    unmap->status = GNTST_okay;
+    put_xen_domain(fdomid);
 }
 
 bool xen_gnttab_map_grant_ref(xen_vcpu *vcpu)
@@ -115,7 +175,6 @@ bool xen_gnttab_map_grant_ref(xen_vcpu *vcpu)
     uint16_t new_flags;
     xen_pfn_t fgfn, lgfn;
     class xen_memory *fmem, *lmem;
-    class xen_gnttab *lgnt;
     class xen_page *fpg;
     uint32_t perm;
 
@@ -135,8 +194,29 @@ bool xen_gnttab_map_grant_ref(xen_vcpu *vcpu)
         return false;
     }
 
+    const auto fref = map->ref;
+    if (fref & 0xFFFF0000) {
+        printv("%s: OOB fref 0x%x would overflow map handle\n",
+               __func__, fref);
+        return false;
+    }
+
     const auto map_ro = (map->flags & GNTMAP_readonly) != 0;
     const auto fdomid = map->dom;
+    auto lgnt = vcpu->m_xen_dom->m_gnttab.get();
+    grant_handle_t new_hdl = ((uint32_t)fdomid << 16) | fref;
+
+    /*
+     * Check if the address is already mapped. It is conceivable for a
+     * guest to update an existing mapping (e.g. to change permissions)
+     * but for now we don't allow this.
+     */
+    if (lgnt->map_handles.count(new_hdl)) {
+        printv("%s: handle 0x%x already maps to 0x%lx\n",
+                __func__, fdomid, lgnt->map_handles[new_hdl]);
+        map->status = GNTST_bad_virt_addr;
+        return true;
+    }
 
     auto fdom = get_xen_domain(fdomid);
     if (!fdom) {
@@ -146,7 +226,6 @@ bool xen_gnttab_map_grant_ref(xen_vcpu *vcpu)
     }
 
     auto fgnt = fdom->m_gnttab.get();
-    auto fref = map->ref;
     if (fgnt->invalid_ref(fref)) {
         printv("%s: OOB ref:0x%x for dom:0x%x\n", __func__, fref, fdomid);
         rc = GNTST_bad_gntref;
@@ -195,10 +274,8 @@ bool xen_gnttab_map_grant_ref(xen_vcpu *vcpu)
     lgfn = xen_frame(map->host_addr);
     lmem->add_foreign_page(lgfn, perm, pg_mtype_wb, fpg->page);
 
-    map->handle = ((uint32_t)fdomid << 16) | fref;
-    lgnt = vcpu->m_xen_dom->m_gnttab.get();
-    expects(lgnt->map_handles.count(map->handle) == 0);
-    lgnt->map_handles.emplace(map->handle);
+    map->handle = new_hdl;
+    lgnt->map_handles.try_emplace(new_hdl, map->host_addr);
 
     map->dev_bus_addr = 0;
     rc = GNTST_okay;
@@ -241,7 +318,7 @@ static uint8_t *map_xen_page(class xen_page *pg)
 
     if (pg->backed()) {
         ptr = g_mm->alloc_map(UV_PAGE_SIZE);
-        g_cr3->map_4k(ptr, pg->page->hfn);
+        g_cr3->map_4k(ptr, xen_addr(pg->page->hfn));
         pg->page->ptr = ptr;
     } else {
         auto hfn = alloc_root_frame();
@@ -250,7 +327,7 @@ static uint8_t *map_xen_page(class xen_page *pg)
             pg->page->src = pg_src_root;
             pg->page->ptr = g_mm->alloc_map(UV_PAGE_SIZE);
             pg->page->hfn = hfn;
-            g_cr3->map_4k(ptr, hfn);
+            g_cr3->map_4k(ptr, xen_addr(hfn));
         } else {
             pg->page->src = pg_src_vmm;
             pg->page->ptr = alloc_page();
@@ -267,29 +344,43 @@ static uint8_t *map_xen_page(class xen_page *pg)
     return reinterpret_cast<uint8_t *>(ptr);
 }
 
+static class xen_domain *get_copy_dom(const xen_vcpu *curv,
+                                      xen_domid_t domid) noexcept
+{
+    if (domid == DOMID_SELF || domid == curv->m_xen_dom->m_id) {
+        return curv->m_xen_dom;
+    }
+
+    /* If the source domain isn't the current domain, take out a reference */
+    return get_xen_domain(domid);
+}
+
+static void put_copy_dom(const xen_vcpu *curv,
+                         xen_domid_t domid) noexcept
+{
+    if (domid == DOMID_SELF || domid == curv->m_xen_dom->m_id) {
+        return;
+    }
+
+    put_xen_domain(domid);
+}
+
 static void xen_gnttab_copy(xen_vcpu *vcpu, gnttab_copy_t *copy)
 {
+    auto rc = GNTST_okay;
     auto src = &copy->source;
     auto dst = &copy->dest;
-
-    /* Dest of copy must be current domain; other cases unsupported */
-    expects(dst->domid == DOMID_SELF);
-
-    /* Source of copy must be someone else; other cases unsupported */
-    expects(src->domid != DOMID_SELF);
 
     const bool src_use_gfn = (copy->flags & GNTCOPY_source_gref) == 0;
     if (src_use_gfn && src->domid != DOMID_SELF) {
         copy->status = GNTST_permission_denied;
+        printv("%s: src: only DOMID_SELF can use gfn-based copy", __func__);
         return;
     }
 
-    /*
-     * This check will need to be here once the first expects
-     * above is removed
-     */
     const bool dst_use_gfn = (copy->flags & GNTCOPY_dest_gref) == 0;
     if (dst_use_gfn && dst->domid != DOMID_SELF) {
+        printv("%s: dst: only DOMID_SELF can use gfn-based copy", __func__);
         copy->status = GNTST_permission_denied;
         return;
     }
@@ -297,124 +388,131 @@ static void xen_gnttab_copy(xen_vcpu *vcpu, gnttab_copy_t *copy)
     /* Check bounds */
     if (src->offset + copy->len > XEN_PAGE_SIZE) {
         copy->status = GNTST_bad_copy_arg;
+        return;
     }
 
     if (dst->offset + copy->len > XEN_PAGE_SIZE) {
         copy->status = GNTST_bad_copy_arg;
+        return;
     }
 
-    xen_pfn_t lgfn, fgfn;
-    grant_ref_t lref, fref;
+    class xen_domain *src_dom, *dst_dom;
+    class xen_gnttab *src_gnt, *dst_gnt;
+    class xen_page *src_pg, *dst_pg;
+    uint8_t *src_buf, *dst_buf;
+    xen_pfn_t src_gfn, dst_gfn;
+    grant_ref_t src_ref, dst_ref;
 
-    auto fdomid = src->domid;
-    auto ldomid = vcpu->m_xen_dom->m_id;
-
-    auto ldom = vcpu->m_xen_dom;
-    auto lgnt = ldom->m_gnttab.get();
-    auto lmem = ldom->m_memory.get();
-
-    /* Get the local frame */
-    if (dst_use_gfn) {
-        lgfn = dst->u.gmfn;
-    } else {
-        lref = dst->u.ref;
-        if (lgnt->invalid_ref(lref)) {
-            printv("%s: bad lref:0x%x\n", __func__, lref);
-            copy->status = GNTST_bad_gntref;
-            return;
-        }
-
-        /* Ensure fdom can write to the dest frame */
-        if (!has_write_access(fdomid, lgnt->shared_header(lref))) {
-            printv("%s: fdom:0x%x cant write lref:0x%x\n",
-                   __func__, fdomid, lref);
-            copy->status = GNTST_permission_denied;
-            return;
-        }
-
-        lgfn = lgnt->shared_gfn(lref);
-    }
-
-    auto fdom = get_xen_domain(fdomid);
-    if (!fdom) {
-        printv("%s: fdom:0x%x not found\n", __func__, fdomid);
+    /* Get domains */
+    src_dom = get_copy_dom(vcpu, src->domid);
+    if (!src_dom) {
+        printv("%s: failed to get src dom 0x%0x\n", __func__, src->domid);
         copy->status = GNTST_bad_domain;
         return;
     }
 
-    auto fgnt = fdom->m_gnttab.get();
-    auto fmem = fdom->m_memory.get();
+    dst_dom = get_copy_dom(vcpu, dst->domid);
+    if (!dst_dom) {
+        printv("%s: failed to get dst dom 0x%0x\n", __func__, dst->domid);
+        rc = GNTST_bad_domain;
+        goto put_src_dom;
+    }
 
-    /* Get the foreign frame */
+    /* Resolve source frame */
     if (src_use_gfn) {
-        fgfn = src->u.gmfn;
+        src_gfn = src->u.gmfn;
     } else {
-        fref = src->u.ref;
-        if (fgnt->invalid_ref(fref)) {
-            printv("%s: bad fref:0x%x\n", __func__, fref);
-            copy->status = GNTST_bad_gntref;
-            put_xen_domain(fdomid);
-            return;
+        src_gnt = src_dom->m_gnttab.get();
+        src_ref = src->u.ref;
+
+        if (src_gnt->invalid_ref(src_ref)) {
+            printv("%s: bad src ref:0x%x\n", __func__, src_ref);
+            rc = GNTST_bad_gntref;
+            goto put_dst_dom;
         }
 
-        /* Ensure ldom can read the source frame */
-        if (!has_read_access(ldomid, fgnt->shared_header(fref))) {
-            printv("%s: ldom:0x%x cant read fref:0x%x\n",
-                   __func__, ldomid, fref);
-            copy->status = GNTST_permission_denied;
-            put_xen_domain(fdomid);
-            return;
+// FIXME
+//        if (!has_read_access(dst->domid, src_gnt->shared_header(src_ref))) {
+//            printv("%s: dst:0x%x doesn't have read access to src_ref:%x\n",
+//                   __func__, dst->domid, src_ref);
+//            rc = GNTST_permission_denied;
+//            goto put_dst_dom;
+//        }
+
+        src_gfn = src_gnt->shared_gfn(src_ref);
+    }
+
+    /* Resolve destination frame */
+    if (dst_use_gfn) {
+        dst_gfn = dst->u.gmfn;
+    } else {
+        dst_gnt = dst_dom->m_gnttab.get();
+        dst_ref = dst->u.ref;
+
+        if (dst_gnt->invalid_ref(dst_ref)) {
+            printv("%s: bad dst ref:0x%x\n", __func__, dst_ref);
+            rc = GNTST_bad_gntref;
+            goto put_dst_dom;
         }
 
-        fgfn = fgnt->shared_gfn(fref);
+// FIXME
+//        if (!has_write_access(src->domid, dst_gnt->shared_header(dst_ref))) {
+//            printv("%s: src:0x%x doesn't have write access to dst_ref:%x\n",
+//                   __func__, src->domid, dst_ref);
+//            rc = GNTST_permission_denied;
+//            goto put_dst_dom;
+//        }
+
+        dst_gfn = dst_gnt->shared_gfn(dst_ref);
     }
 
-    /* Now get the xen_page's of each gfn */
-    auto lpg = lmem->find_page(lgfn);
-    if (!lpg) {
-        printv("%s: lgfn:0x%lx doesnt map to page\n", __func__, lgfn);
-        put_xen_domain(fdomid);
-        copy->status = GNTST_general_error;
-        return;
+    src_pg = src_dom->m_memory.get()->find_page(src_gfn);
+    if (!src_pg) {
+        printv("%s: src_gfn:0x%lx doesnt map to page\n", __func__, src_gfn);
+        rc = GNTST_general_error;
+        goto put_dst_dom;
     }
 
-    auto fpg = fmem->find_page(fgfn);
-    if (!fpg) {
-        printv("%s: fgfn:0x%lx doesnt map to page\n", __func__, fgfn);
-        put_xen_domain(fdomid);
-        copy->status = GNTST_general_error;
-        return;
+    dst_pg = dst_dom->m_memory.get()->find_page(dst_gfn);
+    if (!dst_pg) {
+        printv("%s: dst_gfn:0x%lx doesnt map to page\n", __func__, dst_gfn);
+        rc = GNTST_general_error;
+        goto put_dst_dom;
     }
 
-    /* Obtain a pointer to the xen_pages' underlying hfn */
-    uint8_t *lbase = map_xen_page(lpg);
-    if (lbase == nullptr) {
-        printv("%s: failed to map lpg\n", __func__);
-        put_xen_domain(fdomid);
-        copy->status = GNTST_general_error;
-        return;
+    src_buf = map_xen_page(src_pg);
+    if (!src_buf) {
+        printv("%s: failed to map src_pg\n", __func__);
+        rc = GNTST_general_error;
+        goto put_dst_dom;
     }
 
-    uint8_t *fbase = map_xen_page(fpg);
-    if (fbase == nullptr) {
-        printv("%s: failed to map fpg\n", __func__);
-        put_xen_domain(fdomid);
-        copy->status = GNTST_general_error;
-        return;
+    dst_buf = map_xen_page(dst_pg);
+    if (!dst_buf) {
+        printv("%s: failed to map dst_pg\n", __func__);
+        rc = GNTST_general_error;
+        goto put_dst_dom;
     }
 
-    /* Do the copy */
-    uint8_t *lptr = lbase + dst->offset;
-    uint8_t *fptr = fbase + src->offset;
+    /* Finally, do the copy */
+    src_buf += src->offset;
+    dst_buf += dst->offset;
 
-    memcpy(lptr, fptr, copy->len);
-    copy->status = GNTST_okay;
-    put_xen_domain(fdomid);
+    memcpy(dst_buf, src_buf, copy->len);
+    rc = GNTST_okay;
 
     /* Debugging info */
-    printv("%s: %u bytes from (dom:0x%x,gfn:0x%lx) -> \n",
-           __func__, copy->len, fdomid, fgfn);
-    printv("(dom:0x%x,gfn:0x%lx)\n", ldomid, lgfn);
+    printv("%s: %03u bytes from (dom:0x%x,gfn:0x%lx) to ",
+           __func__, copy->len, src_dom->m_id, src_gfn);
+    printf("(dom:0x%x,gfn:0x%lx)\n", dst_dom->m_id, dst_gfn);
+
+put_dst_dom:
+    put_copy_dom(vcpu, dst->domid);
+put_src_dom:
+    put_copy_dom(vcpu, src->domid);
+
+    copy->status = rc;
+    return;
 }
 
 bool xen_gnttab_copy(xen_vcpu *vcpu)
@@ -429,7 +527,29 @@ bool xen_gnttab_copy(xen_vcpu *vcpu)
         const auto rc = cop[i].status;
 
         if (rc != GNTST_okay) {
-            printv("%s: op[%u] failed, rc=%u\n", __func__, i, rc);
+            printv("%s: op[%u] failed, rc=%d\n", __func__, i, rc);
+            uvv->set_rax(rc);
+            return false;
+        }
+    }
+
+    uvv->set_rax(0);
+    return true;
+}
+
+bool xen_gnttab_unmap_grant_ref(xen_vcpu *vcpu)
+{
+    auto uvv = vcpu->m_uv_vcpu;
+    auto num = uvv->rdx();
+    auto map = uvv->map_gva_4k<gnttab_unmap_grant_ref_t>(uvv->rsi(), num);
+    auto ops = map.get();
+
+    for (auto i = 0; i < num; i++) {
+        xen_gnttab_unmap_grant_ref(vcpu, &ops[i]);
+        const auto rc = ops[i].status;
+
+        if (rc != GNTST_okay) {
+            printv("%s: op[%u] failed, rc=%d\n", __func__, i, rc);
             uvv->set_rax(rc);
             return false;
         }

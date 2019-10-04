@@ -22,7 +22,7 @@
 #ifndef MICROV_XEN_GNTTAB_H
 #define MICROV_XEN_GNTTAB_H
 
-#include <unordered_set>
+#include <unordered_map>
 #include "types.h"
 #include "../page.h"
 #include <public/grant_table.h>
@@ -32,6 +32,7 @@ namespace microv {
 
 bool xen_gnttab_copy(xen_vcpu *vcpu);
 bool xen_gnttab_map_grant_ref(xen_vcpu *vcpu);
+bool xen_gnttab_unmap_grant_ref(xen_vcpu *vcpu);
 bool xen_gnttab_query_size(xen_vcpu *vcpu);
 bool xen_gnttab_set_version(xen_vcpu *vcpu);
 
@@ -80,7 +81,7 @@ public:
     static constexpr uint32_t max_shared_gte_pages() { return 64; }
 
     /* Used for debug purposes to ensure maps are unique for a given domain */
-    std::unordered_set<grant_handle_t> map_handles{};
+    std::unordered_map<grant_handle_t, uint64_t> map_handles{};
 
     status_gte_t *status_entry(grant_ref_t ref);
     grant_entry_header_t *shared_header(grant_ref_t ref);
