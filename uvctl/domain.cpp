@@ -83,6 +83,15 @@ void uvc_domain::send_hvc()
     while (enable_hvc) {
         std::cin.getline(buf.data(), buf.size());
         buf.data()[std::cin.gcount() - 1] = '\n';
+
+        /*
+         * Remap ^S to ^C before sending to the guest. This kills the program
+         * running in the guest without killing the guest entirely.
+         */
+        if (std::cin.gcount() == 2 && buf.data()[0] == 0x13) {
+            buf.data()[0] = 0x03;
+        }
+
         __domain_op__hvc_rx_put(id, buf.data(), std::cin.gcount());
         std::this_thread::sleep_for(hvc_sleep);
     }
