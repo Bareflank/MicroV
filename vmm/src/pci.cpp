@@ -302,7 +302,24 @@ void pci_dev::parse_capabilities()
     }
 
     ensures(m_msi_cap);
+
+    /*
+     * If this doesn't hold, the layout of the capability changes
+     * and the m_vcfg offsets would need to modified to support 32-bit
+     */
     ensures(msi_64bit(pci_cfg_read_reg(m_cf8, m_msi_cap)));
+
+    auto msi = pci_cfg_read_reg(m_cf8, m_msi_cap);
+    auto nr_vectors = msi_nr_msg_capable(msi);
+    auto per_vector_mask = msi_per_vector_masking(msi);
+
+    printv("pci: %s: MSI 64-bit, %u vectors, per-vector mask capable:%u\n",
+            bdf_str(), nr_vectors, per_vector_mask);
+
+    if (msi_enabled(msi)) {
+        printv("pci: %s: MSI is enabled...disabling\n", bdf_str());
+        pci_cfg_write_reg(m_cf8, m_msi_cap, msi_disable(msi));
+    }
 }
 
 void pci_dev::init_root_vcfg()
@@ -365,7 +382,6 @@ void pci_dev::add_guest_handlers(vcpu *vcpu)
             continue;
         }
 
-        /* TODO: map prefetch regions as WB and non-prefetch as WC */
         for (auto i = 0; i < bar.size; i += 4096) {
             dom->map_4k_rw_uc(bar.addr + i, bar.addr + i);
         }
@@ -443,6 +459,8 @@ bool pci_dev::guest_normal_cfg_out(base_vcpu *vcpu, cfg_info &info)
             pci_cfg_read_reg(m_cf8, info.reg + 2)
         };
 
+        expects(msi_nr_msg_enabled(val) == 1);
+
         /* Create a new root->guest MSI mapping */
         guest->map_msi(&m_root_msi, &m_guest_msi);
 
@@ -450,6 +468,21 @@ bool pci_dev::guest_normal_cfg_out(base_vcpu *vcpu, cfg_info &info)
         pci_cfg_write_reg(m_cf8, info.reg + 1, m_vcfg[m_msi_cap + 1]);
         pci_cfg_write_reg(m_cf8, info.reg + 2, m_vcfg[m_msi_cap + 2]);
         pci_cfg_write_reg(m_cf8, info.reg + 3, m_vcfg[m_msi_cap + 3]);
+
+        printv("pci: %s: enabling MSI:\n", bdf_str());
+        printv("pci: %s:    ctrl: 0x%04x\n", bdf_str(), val >> 16);
+
+        const uint64_t low = m_vcfg[m_msi_cap + 1];
+        const uint64_t high = m_vcfg[m_msi_cap + 2];
+        const uint64_t addr = (high << 32) | low;
+        const uint32_t data = m_vcfg[m_msi_cap + 3];
+
+        printv("pci: %s:    addr: 0x%lx\n", bdf_str(), addr);
+        printv("pci: %s:    data: 0x%08x\n", bdf_str(), data);
+
+        expects(msi_rh(low) == 0); /* no redirection hint */
+        expects(msi_trig_mode(data) == 0); /* edge triggered */
+        expects(msi_deliv_mode(data) == 0); /* fixed delivery mode */
     }
 
     pci_cfg_write_reg(m_cf8, info.reg, val);

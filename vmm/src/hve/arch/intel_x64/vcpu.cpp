@@ -603,9 +603,6 @@ void vcpu::map_msi(const struct msi_desc *root_msi,
     validate_msi(root_msi);
     validate_msi(guest_msi);
 
-    printv("%s: root_msi:  destid:0x%x\n", __func__, root_msi->destid());
-    printv("%s: guest_msi: destid:0x%x\n", __func__, guest_msi->destid());
-
     expects(m_lapic);
     expects(m_lapic->is_xapic());
 
@@ -643,9 +640,9 @@ void vcpu::map_msi(const struct msi_desc *root_msi,
                     expects(root->m_msi_map.count(key) == 0);
                     root->m_msi_map[key] = {root_msi, guest_msi};
 
-                    printv("root_msi:  destid:0x%x vector:0x%x\n",
-                            root_msi->destid(), root_msi->vector());
-                    printv("guest_msi: destid:0x%x vector:0x%x\n",
+                    printv("%s: root (dest:0x%x,vec:0x%x) -> ",
+                            __func__, root_destid, root_vector);
+                    printf("guest (dest:0x%x,vec:0x%x)\n",
                             guest_msi->destid(), guest_msi->vector());
                 } catch (...) {
                     bferror_info(0, "exception mapping msi in logical mode");
