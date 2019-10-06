@@ -142,6 +142,7 @@ constexpr auto iotlb_iaig_from = 57;
 constexpr auto iotlb_iaig_mask = 3UL << iotlb_iaig_from;
 constexpr auto iotlb_dr = (1UL << 49);
 constexpr auto iotlb_dw = (1UL << 48);
+constexpr auto iotlb_did_from = 32;
 
 }
 

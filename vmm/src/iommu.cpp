@@ -200,6 +200,9 @@ void iommu::init_regs()
 
     /* CM = 1 is not supported right now */
     ensures(((m_cap & cap_cm_mask) >> cap_cm_from) == 0);
+
+    /* Required write-buffer flushing is not supported */
+    ensures(((m_cap & cap_rwbf_mask) >> cap_rwbf_mask) == 0);
 }
 
 void iommu::bind_device(struct pci_dev *pdev)
@@ -431,7 +434,6 @@ void iommu::dump_faults()
 
 void iommu::map_dma(uint32_t bus, uint32_t devfn, dom_t *dom)
 {
-
     expects(bus < table_size);
     expects(devfn < table_size);
     expects(this->did(dom) < nr_domains());
@@ -481,6 +483,81 @@ void iommu::map_dma(uint32_t bus, uint32_t devfn, dom_t *dom)
     }
 }
 
+/* Global invalidation of the context-cache */
+void iommu::invalidate_ctx_cache()
+{
+    const uint64_t ccmd = ccmd_icc | ccmd_cirg_global;
+    this->write_ccmd(ccmd);
+
+    while ((this->read_ccmd() & ccmd_icc) != 0) {
+        ::intel_x64::pause();
+    }
+}
+
+/* Domain-selective invalidation of context-cache */
+void iommu::invalidate_ctx_cache(const dom_t *dom)
+{
+    const uint64_t domid = this->did(dom);
+
+    /* Fallback to global invalidation if domain is out of range */
+    if (domid >= nr_domains()) {
+        printv("%s: WARNING: did:0x%lx out of range\n", __func__, domid);
+        this->invalidate_ctx_cache();
+        return;
+    }
+
+    const uint64_t ccmd = ccmd_icc | ccmd_cirg_domain | domid;
+    this->write_ccmd(ccmd);
+
+    while ((this->read_ccmd() & ccmd_icc) != 0) {
+        ::intel_x64::pause();
+    }
+}
+
+/* Global invalidation of IOTLB */
+void iommu::invalidate_iotlb()
+{
+    uint64_t iotlb = this->read_iotlb() & 0xFFFFFFFF;
+
+    iotlb |= iotlb_ivt;
+    iotlb |= iotlb_iirg_global;
+    iotlb |= iotlb_dr;
+    iotlb |= iotlb_dw;
+
+    this->write_iotlb(iotlb);
+
+    while ((this->read_iotlb() & iotlb_ivt) != 0) {
+        ::intel_x64::pause();
+    }
+}
+
+/* Domain-selective invalidation of IOTLB */
+void iommu::invalidate_iotlb(const dom_t *dom)
+{
+    const uint64_t domid = this->did(dom);
+
+    /* Fallback to global invalidation if domain is out of range */
+    if (domid >= nr_domains()) {
+        printv("%s: WARNING: did:0x%lx out of range\n", __func__, domid);
+        this->invalidate_iotlb();
+        return;
+    }
+
+    uint64_t iotlb = this->read_iotlb() & 0xFFFFFFFF;
+
+    iotlb |= iotlb_ivt;
+    iotlb |= iotlb_iirg_domain;
+    iotlb |= iotlb_dr;
+    iotlb |= iotlb_dw;
+    iotlb |= (domid << iotlb_did_from);
+
+    this->write_iotlb(iotlb);
+
+    while ((this->read_iotlb() & iotlb_ivt) != 0) {
+        ::intel_x64::pause();
+    }
+}
+
 void iommu::enable_dma_remapping()
 {
     this->write_rtaddr(g_mm->virtptr_to_physint(m_root.get()));
@@ -495,29 +572,8 @@ void iommu::enable_dma_remapping()
         ::intel_x64::pause();
     }
 
-    /* Globally invalidate the context-cache */
-    uint64_t ccmd = ccmd_icc | ccmd_cirg_global;
-    this->write_ccmd(ccmd);
-    ::intel_x64::mb();
-    while ((this->read_ccmd() & ccmd_icc) != 0) {
-        ::intel_x64::pause();
-    }
-    auto caig = (this->read_ccmd() & ccmd_caig_mask) >> ccmd_caig_from;
-    expects(caig == ccmd_global);
-
-    /* Globally invalidate the IOTLB */
-    uint64_t iotlb = this->read_iotlb() & 0xFFFFFFFF;
-    iotlb |= iotlb_ivt;
-    iotlb |= iotlb_iirg_global;
-    iotlb |= iotlb_dr;
-    iotlb |= iotlb_dw;
-    this->write_iotlb(iotlb);
-    ::intel_x64::mb();
-    while ((this->read_iotlb() & iotlb_ivt) != 0) {
-        ::intel_x64::pause();
-    }
-    auto iaig = (this->read_iotlb() & iotlb_iaig_mask) >> iotlb_iaig_from;
-    expects(iaig == iotlb_global);
+    this->invalidate_ctx_cache();
+    this->invalidate_iotlb();
 
     /* Enable DMA translation */
     gsts = this->read_gsts() & 0x96FF'FFFF;

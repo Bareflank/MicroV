@@ -53,6 +53,7 @@ public:
 
     void dump_faults();
     void map_dma(bus_t bus, uint32_t devfn, dom_t *dom);
+    void unmap_dma(bus_t bus, uint32_t devfn, dom_t *dom);
 
     ~iommu() = default;
     iommu(struct drhd *drhd);
@@ -147,6 +148,12 @@ private:
     void clflush(void *p);
     void clflush_range(void *p, unsigned int bytes);
     void clflush_slpt();
+
+    /* These invalidation routines use the register-based interface. */
+    void invalidate_ctx_cache();
+    void invalidate_ctx_cache(const dom_t *dom);
+    void invalidate_iotlb();
+    void invalidate_iotlb(const dom_t *dom);
 };
 
 extern char *mcfg_hva;
