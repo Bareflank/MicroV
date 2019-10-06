@@ -76,6 +76,10 @@ void uvc_domain::recv_hvc()
     }
 }
 
+
+#define HVC_CTRL_STOP_PROCESS 0x13 /* ^S - stop in-guest process */
+#define HVC_CTRL_EXIT_CONSOLE 0x1D /* ^] - exit domU console */
+
 void uvc_domain::send_hvc()
 {
     std::array<char, HVC_RX_SIZE> buf{};
@@ -83,16 +87,26 @@ void uvc_domain::send_hvc()
     while (enable_hvc) {
         std::cin.getline(buf.data(), buf.size());
         buf.data()[std::cin.gcount() - 1] = '\n';
+        auto count = std::cin.gcount();
 
-        /*
-         * Remap ^S to ^C before sending to the guest. This kills the program
-         * running in the guest without killing the guest entirely.
-         */
-        if (std::cin.gcount() == 2 && buf.data()[0] == 0x13) {
-            buf.data()[0] = 0x03;
+        if (count == 2) {
+            const char ctrl_code = buf.data()[0];
+
+            switch (ctrl_code) {
+            case HVC_CTRL_STOP_PROCESS:
+                /* Remap to ^C */
+                buf.data()[0] = 0x03;
+                break;
+            case HVC_CTRL_EXIT_CONSOLE:
+                /* Only 1 char must be sent */
+                count = 1;
+                break;
+            default:
+                break;
+            }
         }
 
-        __domain_op__hvc_rx_put(id, buf.data(), std::cin.gcount());
+        __domain_op__hvc_rx_put(id, buf.data(), count);
         std::this_thread::sleep_for(hvc_sleep);
     }
 }
