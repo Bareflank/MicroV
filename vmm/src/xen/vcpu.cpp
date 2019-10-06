@@ -911,6 +911,11 @@ bool xen_vcpu::handle_hlt(
     using namespace vmcs_n;
 
     if (guest_rflags::interrupt_enable_flag::is_disabled()) {
+        auto root = m_uv_vcpu->root_vcpu();
+        root->load();
+        root->return_hlt();
+
+        /* unreachable */
         return false;
     }
 
