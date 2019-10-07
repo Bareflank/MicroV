@@ -23,6 +23,7 @@
 #include <mutex>
 #include <unordered_set>
 
+#include <clflush.h>
 #include <hve/arch/intel_x64/vcpu.h>
 #include <iommu/iommu.h>
 #include <printv.h>
@@ -562,6 +563,28 @@ void xen_memory::bind_iommu(class iommu *new_iommu)
     }
 
     m_iommu = new_iommu;
+
+    if (!iommu_snoop_ctl()) {
+        return;
+    }
+
+    for (const auto &itr : m_page_map) {
+        const class xen_page *page = &itr.second;
+        if (page->mtype == pg_mtype_uc) {
+            continue;
+        }
+
+        uint64_t *epte = page->epte;
+        expects(epte);
+
+        /* Enable snoop control */
+        *epte |= 1UL << 11;
+
+        /* Flush the entry */
+        if (iommu_incoherent()) {
+            clflush(epte);
+        }
+    }
 }
 
 bool xen_memory::iommu_incoherent() const noexcept
@@ -589,7 +612,7 @@ void xen_memory::map_page(class xen_page *pg)
     const bool flush = iommu_incoherent();
     const bool snoop = iommu_snoop_ctl() && pg->mtype != pg_mtype_uc;
 
-    m_ept->map_4k(gpa, hpa, pg->perms, pg->mtype, flush, snoop);
+    pg->epte = &m_ept->map_4k(gpa, hpa, pg->perms, pg->mtype, flush, snoop);
     pg->present = true;
 }
 
