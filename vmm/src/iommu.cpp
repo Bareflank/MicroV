@@ -203,6 +203,18 @@ void iommu::init_regs()
 
     /* Required write-buffer flushing is not supported */
     ensures(((m_cap & cap_rwbf_mask) >> cap_rwbf_mask) == 0);
+
+    if (this->snoop_ctl()) {
+        printv("iommu: enabling snoop control\n");
+    } else {
+        printv("iommu: disabling snoop control\n");
+    }
+
+    if (this->coherent_page_walk()) {
+        printv("iommu: coherent page walk supported\n");
+    } else {
+        printv("iommu: coherent page walk not supported\n");
+    }
 }
 
 void iommu::bind_device(struct pci_dev *pdev)

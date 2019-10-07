@@ -55,6 +55,16 @@ public:
     void map_dma(bus_t bus, uint32_t devfn, dom_t *dom);
     void unmap_dma(bus_t bus, uint32_t devfn, dom_t *dom);
 
+    bool coherent_page_walk() const noexcept
+    {
+        return (m_ecap & ecap_c_mask) >> ecap_c_from;
+    }
+
+    bool snoop_ctl() const noexcept
+    {
+        return (m_ecap & ecap_sc_mask) >> ecap_sc_from;
+    }
+
     ~iommu() = default;
     iommu(struct drhd *drhd);
     iommu(iommu &&) = default;

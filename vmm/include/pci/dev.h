@@ -126,6 +126,7 @@ struct pci_dev {
 
 extern std::unordered_map<uint32_t, std::unique_ptr<struct pci_dev>> pci_map;
 extern std::list<struct pci_dev *> pci_list;
+extern std::list<struct pci_dev *> pci_passthru_list;
 
 struct pci_dev *find_passthru_dev(uint64_t bdf);
 

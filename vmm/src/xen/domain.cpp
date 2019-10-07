@@ -71,11 +71,11 @@ std::mutex ref_mutex;
 std::map<xen_domid_t, dom_t> dom_map;
 std::map<xen_domid_t, ref_t *> ref_map;
 
-xen_domid_t create_xen_domain(microv_domain *uv_dom)
+xen_domid_t create_xen_domain(microv_domain *uv_dom, class iommu *iommu)
 {
     std::lock_guard lock(dom_mutex);
 
-    auto dom = std::make_unique<class xen_domain>(uv_dom);
+    auto dom = std::make_unique<class xen_domain>(uv_dom, iommu);
     auto ref = std::make_unique<ref_t>(0);
 
     expects(!dom_map.count(dom->m_id));
@@ -559,7 +559,7 @@ bool xen_domain_cputopoinfo(xen_vcpu *vcpu, xen_sysctl_t *ctl)
     return ret;
 }
 
-xen_domain::xen_domain(microv_domain *domain) :
+xen_domain::xen_domain(microv_domain *domain, class iommu *iommu) :
     m_shinfo_page{make_page<struct shared_info>()},
     m_shinfo{m_shinfo_page.get()}
 {
@@ -631,7 +631,7 @@ xen_domain::xen_domain(microv_domain *domain) :
     m_numa_nodes = 1;
     m_ndvm = m_uv_info->is_ndvm();
 
-    m_memory = std::make_unique<xen_memory>(this);
+    m_memory = std::make_unique<xen_memory>(this, iommu);
     m_evtchn = std::make_unique<xen_evtchn>(this);
     m_gnttab = std::make_unique<xen_gnttab>(this, m_memory.get());
     hvm = std::make_unique<xen_hvm>(this, m_memory.get());
@@ -1461,8 +1461,8 @@ bool xen_domain::assign_device(xen_vcpu *v,
         }
     }
 
-    /* Set the domain as the NDVM */
     m_uv_dom->sod_info()->flags |= DOMF_NDVM;
+    m_memory->bind_iommu(dev->m_iommu);
 
     v->m_uv_vcpu->set_rax(0);
     return true;

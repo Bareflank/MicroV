@@ -24,6 +24,7 @@
 #include <unordered_set>
 
 #include <hve/arch/intel_x64/vcpu.h>
+#include <iommu/iommu.h>
 #include <printv.h>
 #include <xen/domain.h>
 #include <xen/memory.h>
@@ -405,11 +406,11 @@ bool xenmem_acquire_resource(xen_vcpu *vcpu)
 }
 
 /* class xen_memory */
-xen_memory::xen_memory(xen_domain *dom) :
+xen_memory::xen_memory(xen_domain *dom, class iommu *iommu) :
     m_xen_dom{dom},
-    m_ept{&dom->m_uv_dom->ept()},
-    m_incoherent_iommu{true} /* TODO: pass this in from domain */
+    m_ept{&dom->m_uv_dom->ept()}
 {
+    this->bind_iommu(iommu);
 }
 
 void xen_memory::add_ept_handlers(xen_vcpu *v)
@@ -554,13 +555,41 @@ bool xen_memory::handle_ept_exec(base_vcpu *vcpu,
     return true;
 }
 
+void xen_memory::bind_iommu(class iommu *new_iommu)
+{
+    if (m_iommu && m_iommu != new_iommu) {
+        throw std::runtime_error("xen_memory: only one IOMMU supported");
+    }
+
+    m_iommu = new_iommu;
+}
+
+bool xen_memory::iommu_incoherent() const noexcept
+{
+    if (m_iommu) {
+        return !m_iommu->coherent_page_walk();
+    } else {
+        return true;
+    }
+}
+
+bool xen_memory::iommu_snoop_ctl() const noexcept
+{
+    if (m_iommu) {
+        return m_iommu->snoop_ctl();
+    } else {
+        return false;
+    }
+}
+
 void xen_memory::map_page(class xen_page *pg)
 {
     const auto gpa = xen_addr(pg->gfn);
     const auto hpa = xen_addr(pg->page->hfn);
-    const bool flush = m_incoherent_iommu;
+    const bool flush = iommu_incoherent();
+    const bool snoop = iommu_snoop_ctl() && pg->mtype != pg_mtype_uc;
 
-    m_ept->map_4k(gpa, hpa, pg->perms, pg->mtype, flush);
+    m_ept->map_4k(gpa, hpa, pg->perms, pg->mtype, flush, snoop);
     pg->present = true;
 }
 
@@ -737,8 +766,8 @@ bool xen_memory::add_to_physmap_batch(xen_vcpu *v,
 
 void xen_memory::unmap_page(class xen_page *pg)
 {
-    m_ept->unmap(xen_addr(pg->gfn), m_incoherent_iommu);
-    m_ept->release(xen_addr(pg->gfn), m_incoherent_iommu);
+    m_ept->unmap(xen_addr(pg->gfn), iommu_incoherent());
+    m_ept->release(xen_addr(pg->gfn), iommu_incoherent());
     pg->present = false;
 }
 
