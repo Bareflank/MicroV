@@ -241,11 +241,34 @@ public:
     ///
     /// @return the mode this domain is running with
     ///
-    uint64_t exec_mode() noexcept;
+    uint64_t exec_mode() const noexcept;
 
-    xen_domain *xen_dom() noexcept { return m_xen_dom; }
-    bool initdom() noexcept { return m_sod_info.flags & DOMF_XENINIT; }
-    bool ndvm() noexcept { return m_sod_info.flags & DOMF_NDVM; }
+    /// Xen domain pointer
+    ///
+    /// @return the pointer to this domain's xen_domain
+    ///
+    xen_domain *xen_dom() const noexcept
+    {
+        return m_xen_dom;
+    }
+
+    /// Xenstore VM
+    ///
+    /// @return true if xenstore VM
+    ///
+    bool is_xsvm() const noexcept
+    {
+        return (m_sod_info.flags & DOMF_XENSTORE) == DOMF_XENSTORE;
+    }
+
+    /// Network device VM
+    ///
+    /// @return true if NDVM
+    ///
+    bool is_ndvm() const noexcept
+    {
+        return m_sod_info.flags & DOMF_NDVM;
+    }
 
     /// Set UART
     ///
@@ -441,6 +464,9 @@ public:
     struct microv::domain_info *sod_info()
     { return &m_sod_info; }
 
+    void invept() const
+    { ::intel_x64::vmx::invept_single_context(m_eptp); }
+
     std::mutex e820_mtx;
 
 private:
@@ -449,6 +475,7 @@ private:
     void setup_dom0();
     void setup_domU();
 
+    uint64_t m_eptp;
     std::vector<e820_entry_t> m_e820;
     bfvmm::intel_x64::ept::mmap m_ept_map;
     bfvmm::intel_x64::vcpu_global_state_t m_vcpu_global_state;

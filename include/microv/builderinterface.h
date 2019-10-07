@@ -121,8 +121,8 @@ struct create_vm_args {
     uint64_t wc_sec;
     uint64_t wc_nsec;
     uint64_t tsc;
-    char initdom;
     char hvc;
+    char xsvm;
     char ndvm;
 };
 

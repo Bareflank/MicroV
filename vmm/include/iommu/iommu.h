@@ -46,13 +46,25 @@ using namespace iommu_regs;
 
 class iommu {
 public:
-    static constexpr auto table_size = page_size / sizeof(struct iommu_entry);
+    static constexpr auto table_size = UV_PAGE_SIZE /
+                                       sizeof(struct iommu_entry);
     using entry_t = struct iommu_entry;
     using dom_t = class microv::intel_x64::domain;
     using bus_t = uint32_t;
 
-    void dump_faults() const;
+    void dump_faults();
     void map_dma(bus_t bus, uint32_t devfn, dom_t *dom);
+    void unmap_dma(bus_t bus, uint32_t devfn, dom_t *dom);
+
+    bool coherent_page_walk() const noexcept
+    {
+        return (m_ecap & ecap_c_mask) >> ecap_c_from;
+    }
+
+    bool snoop_ctl() const noexcept
+    {
+        return (m_ecap & ecap_sc_mask) >> ecap_sc_from;
+    }
 
     ~iommu() = default;
     iommu(struct drhd *drhd);
@@ -65,7 +77,7 @@ private:
     page_ptr<entry_t> m_root;
     std::unordered_map<bus_t, page_ptr<entry_t>> m_ctxt_map;
     struct drhd *m_drhd{};
-    struct drhd_devscope *m_scope{};
+    struct dmar_devscope *m_scope{};
     uintptr_t m_reg_hva{};
     uint32_t m_ver{};
     uint64_t m_cap{};
@@ -120,6 +132,7 @@ private:
     void write_rtaddr(uint64_t val) { write64(rtaddr_offset, val); }
     void write_ccmd(uint64_t val) { write64(ccmd_offset, val); }
     void write_iotlb(uint64_t val) { write64(m_iotlb_reg_off + 8, val); }
+    void write_iva(uint64_t val) { write64(m_iotlb_reg_off, val); }
 
     void map_regs();
     void init_regs();
@@ -147,6 +160,17 @@ private:
     void clflush(void *p);
     void clflush_range(void *p, unsigned int bytes);
     void clflush_slpt();
+
+    void flush_ctx_cache();
+    void flush_ctx_cache(const dom_t *dom);
+    void flush_ctx_cache(const dom_t *dom,
+                         uint32_t bus,
+                         uint32_t dev,
+                         uint32_t fun);
+
+    void flush_iotlb();
+    void flush_iotlb(const dom_t *dom);
+    void flush_iotlb_4k(const dom_t *dom, uint64_t addr, bool flush_nonleaf);
 };
 
 extern char *mcfg_hva;

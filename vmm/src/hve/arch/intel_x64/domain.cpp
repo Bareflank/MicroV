@@ -25,6 +25,7 @@
 #include <microv/builderinterface.h>
 #include <hve/arch/intel_x64/domain.h>
 #include <hve/arch/intel_x64/vcpu.h>
+#include <pci/dev.h>
 #include <xen/domain.h>
 
 using namespace bfvmm::intel_x64;
@@ -37,10 +38,40 @@ using namespace microv;
 namespace microv::intel_x64
 {
 
+/*
+ * Note a domain is not a per-cpu structure, but this code is using the EPT
+ * capability MSR of the CPU it happens to run on. However the value of this
+ * MSR is likely to be the same for each CPU. One way to be certain would be to
+ * have each vcpu that belongs to this domain check the value from its CPU
+ * against this one.
+ */
+static uint64_t init_eptp(uint64_t pml4_phys)
+{
+    expects(pml4_phys);
+
+    using namespace ::intel_x64::msrs::ia32_vmx_ept_vpid_cap;
+    const auto ept_caps = get();
+
+    expects(invept_support::is_enabled(ept_caps));
+    expects(invept_all_context_support::is_enabled(ept_caps));
+    expects(invept_single_context_support::is_enabled(ept_caps));
+
+    using namespace vmcs_n::ept_pointer;
+    uint64_t eptp = 0;
+
+    memory_type::set(eptp, memory_type::write_back);
+    accessed_and_dirty_flags::disable(eptp);
+    page_walk_length_minus_one::set(eptp, 3U);
+    phys_addr::set(eptp, pml4_phys);
+
+    return eptp;
+}
+
 domain::domain(id_t domainid, struct domain_info *info) :
     microv::domain{domainid}
 {
     m_sod_info.copy(info);
+    m_eptp = init_eptp(m_ept_map.pml4_phys());
 
     if (domainid == 0) {
         this->setup_dom0();
@@ -78,7 +109,28 @@ void domain::setup_dom0()
 void domain::setup_domU()
 {
     if (m_sod_info.is_xen_dom()) {
-        m_xen_domid = create_xen_domain(this);
+        class iommu *iommu{};
+
+        if (m_sod_info.is_ndvm()) {
+            for (auto pdev : pci_passthru_list) {
+                if (!pdev->is_netdev()) {
+                    continue;
+                }
+
+                if (!iommu) {
+                    iommu = pdev->m_iommu;
+                } else {
+                    /* Every net device should have the same IOMMU */
+                    expects(pdev->m_iommu == iommu);
+                }
+            }
+
+            if (!iommu) {
+                bfalert_info(0, "No passthrough network devices found");
+            }
+        }
+
+        m_xen_domid = create_xen_domain(this, iommu);
         m_xen_dom = get_xen_domain(m_xen_domid);
     }
 }
@@ -159,7 +211,7 @@ domain::release(uintptr_t gpa)
 { m_ept_map.release(gpa); }
 
 uint64_t
-domain::exec_mode() noexcept
+domain::exec_mode() const noexcept
 {
     if (m_sod_info.flags & DOMF_EXEC_XENPVH) {
         return VM_EXEC_XENPVH;

@@ -29,11 +29,9 @@
 #include <iommu/dmar.h>
 #include <iommu/iommu.h>
 #include <hve/arch/intel_x64/vcpu.h>
+#include <hve/arch/intel_x64/domain.h>
 #include <pci/dev.h>
 #include <printv.h>
-
-constexpr auto PAGE_SIZE_4K = (1UL << 12);
-constexpr auto PAGE_SIZE_2M = (1UL << 21);
 
 extern microv::intel_x64::vcpu *vcpu0;
 using namespace bfvmm::x64;
@@ -74,6 +72,63 @@ static void make_iommus(const struct acpi_table *dmar)
     }
 }
 
+void parse_rmrrs(const struct acpi_table *dmar)
+{
+    auto drs = dmar->hva + drs_offset;
+    auto end = dmar->hva + dmar->len;
+
+    while (drs < end) {
+        /* Read the type and size of the DMAR remapping structure */
+        auto drs_hdr = reinterpret_cast<const struct drs_hdr *>(drs);
+
+        /* Skip over non-RMRR structures */
+        if (drs_hdr->type != drs_rmrr) {
+            drs += drs_hdr->length;
+            continue;
+        }
+
+        auto rmrr = reinterpret_cast<const struct rmrr *>(drs);
+        printv("RMRR: [0x%lx-0x%lx] (segment 0x%04x)\n",
+               rmrr->base, rmrr->limit, rmrr->seg_nr);
+
+        const auto rmrr_len = rmrr->hdr.length;
+        const auto rmrr_end = drs + rmrr_len;
+
+        /* Get the address of the first device scope */
+        auto ds = drs + sizeof(*rmrr);
+
+        /* Iterate over each device scope */
+        while (ds + sizeof(struct dmar_devscope) < rmrr_end) {
+            auto scope = reinterpret_cast<struct dmar_devscope *>(ds);
+            if (ds + scope->length > rmrr_end) {
+                break;
+            }
+
+            auto path_len = (scope->length - sizeof(*scope)) / 2;
+            auto path = reinterpret_cast<struct dmar_devscope_path *>(
+                            ds + sizeof(*scope));
+
+            auto bus = scope->start_bus;
+            auto dev = path[0].dev;
+            auto fun = path[0].fun;
+
+            for (auto i = 1; i < path_len; i++) {
+                const auto addr = pci_cfg_bdf_to_addr(bus, dev, fun);
+                const auto reg6 = pci_cfg_read_reg(addr, 6);
+
+                bus = pci_bridge_sec_bus(reg6);
+                dev = path[i].dev;
+                fun = path[i].fun;
+            }
+
+            printv("   -> %02x:%02x.%02x\n", bus, dev, fun);
+            ds += scope->length;
+        }
+
+        drs += rmrr_len;
+    }
+}
+
 void init_vtd()
 {
     dmar = find_acpi_table("DMAR");
@@ -88,7 +143,7 @@ void init_vtd()
 
     hide_acpi_table(dmar);
     make_iommus(dmar);
-    /* TODO: RMRR structures */
+    parse_rmrrs(dmar);
 }
 
 void iommu_dump()
@@ -101,7 +156,7 @@ void iommu_dump()
 void iommu::map_regs()
 {
     auto base_hpa = vcpu0->gpa_to_hpa(m_drhd->base_gpa).first;
-    auto base_hva = g_mm->alloc_map(page_size);
+    auto base_hva = g_mm->alloc_map(UV_PAGE_SIZE);
 
     g_cr3->map_4k(base_hva,
                   base_hpa,
@@ -126,8 +181,8 @@ void iommu::init_regs()
     auto ioreg_end = m_reg_hva + m_iotlb_reg_off + iotlb_reg_bytes - 1;
     auto frreg_end = m_reg_hva + m_frcd_reg_off + m_frcd_reg_bytes - 1;
 
-    auto ioreg_end_4k = ioreg_end & ~(page_size - 1);
-    auto frreg_end_4k = frreg_end & ~(page_size - 1);
+    auto ioreg_end_4k = ioreg_end & ~(UV_PAGE_SIZE - 1);
+    auto frreg_end_4k = frreg_end & ~(UV_PAGE_SIZE - 1);
 
     expects(m_reg_hva == ioreg_end_4k);
     expects(m_reg_hva == frreg_end_4k);
@@ -142,6 +197,24 @@ void iommu::init_regs()
 
     /* CM = 1 is not supported right now */
     ensures(((m_cap & cap_cm_mask) >> cap_cm_from) == 0);
+
+    /* Required write-buffer flushing is not supported */
+    ensures(((m_cap & cap_rwbf_mask) >> cap_rwbf_from) == 0);
+
+    /* Do not support IOMMUs without page-selective invalidation */
+    ensures(((m_cap & cap_psi_mask) >> cap_psi_from) == 1);
+
+    if (this->snoop_ctl()) {
+        printv("iommu: enabling snoop control\n");
+    } else {
+        printv("iommu: disabling snoop control\n");
+    }
+
+    if (this->coherent_page_walk()) {
+        printv("iommu: coherent page walk supported\n");
+    } else {
+        printv("iommu: coherent page walk not supported\n");
+    }
 }
 
 void iommu::bind_device(struct pci_dev *pdev)
@@ -182,40 +255,54 @@ void iommu::bind_devices()
     m_scope_all = (m_drhd->flags & DRHD_FLAG_PCI_ALL) != 0;
 
     if (!m_scope_all) {
-        const auto path_int = reinterpret_cast<uintptr_t>(m_scope);
-        const auto path_len =
-            (m_scope->length - 6) / sizeof(struct devscope_path);
-        const auto path =
-            reinterpret_cast<struct devscope_path *>(path_int + 6);
+        auto drhd_end = reinterpret_cast<uint8_t *>(m_drhd) +
+                        m_drhd->hdr.length;
 
-        auto bus = m_scope->start_bus;
-        auto dev = path[0].dev;
-        auto fun = path[0].fun;
+        /* First device scope entry */
+        uint8_t *ds = reinterpret_cast<uint8_t *>(m_scope);
 
-        for (auto i = 1; i < path_len; i++) {
-            const auto addr = pci_cfg_bdf_to_addr(bus, dev, fun);
-            const auto reg6 = pci_cfg_read_reg(addr, 6);
-
-            bus = pci_bridge_sec_bus(reg6);
-            dev = path[i].dev;
-            fun = path[i].fun;
-        }
-
-        for (auto pdev : pci_list) {
-            if (pdev->m_iommu) {
-                continue;
+        /* Iterate over each device scope */
+        while (ds + sizeof(struct dmar_devscope) < drhd_end) {
+            auto scope = reinterpret_cast<struct dmar_devscope *>(ds);
+            if (ds + scope->length > drhd_end) {
+                break;
             }
 
-            const auto addr = pci_cfg_bdf_to_addr(bus, dev, fun);
-            if (pdev->matches(addr)) {
-                this->bind_device(pdev);
+            auto path_len = (scope->length - sizeof(*scope)) / 2;
+            auto path = reinterpret_cast<struct dmar_devscope_path *>(
+                            ds + sizeof(*scope));
 
-                if (m_scope->type == drhd_pci_subhierarchy) {
-                    expects(pdev->is_pci_bridge());
-                    const auto reg6 = pci_cfg_read_reg(addr, 6);
-                    this->bind_bus(pci_bridge_sec_bus(reg6));
+            auto bus = scope->start_bus;
+            auto dev = path[0].dev;
+            auto fun = path[0].fun;
+
+            for (auto i = 1; i < path_len; i++) {
+                const auto addr = pci_cfg_bdf_to_addr(bus, dev, fun);
+                const auto reg6 = pci_cfg_read_reg(addr, 6);
+
+                bus = pci_bridge_sec_bus(reg6);
+                dev = path[i].dev;
+                fun = path[i].fun;
+            }
+
+            for (auto pdev : pci_list) {
+                if (pdev->m_iommu) {
+                    continue;
+                }
+
+                const auto addr = pci_cfg_bdf_to_addr(bus, dev, fun);
+                if (pdev->matches(addr)) {
+                    this->bind_device(pdev);
+
+                    if (scope->type == ds_pci_subhierarchy) {
+                        expects(pdev->is_pci_bridge());
+                        const auto reg6 = pci_cfg_read_reg(addr, 6);
+                        this->bind_bus(pci_bridge_sec_bus(reg6));
+                    }
                 }
             }
+
+            ds += scope->length;
         }
 
         ensures(!m_root_devs.empty() || !m_guest_devs.empty());
@@ -276,28 +363,89 @@ static void dump_ecaps(uint64_t ecaps)
            (ecaps & ecap_smts_mask) >> ecap_smts_from);
 }
 
-void iommu::dump_faults() const
+#define FSTS_FRI (0xFF00UL)
+#define FSTS_ERR (0x7FUL)
+#define FSTS_PPF (1UL << 1)
+
+#define FRCD_F (1UL << 63)
+#define FRCD_T1 (1UL << 62)
+#define FRCD_T2 (1UL << 28)
+#define FRCD_FR (0xFFUL << 32)
+#define FRCD_BUS (0xFF00UL)
+#define FRCD_DEV (0x00F8UL)
+#define FRCD_FUN (0x0007UL)
+
+static inline const char *fault_name(int t1t2)
+{
+    switch (t1t2) {
+    case 0:
+        return "write";
+    case 1:
+        return "page";
+    case 2:
+        return "read";
+    case 3:
+        return "atomicop";
+    default:
+        return "UNKNOWN";
+    }
+}
+
+void iommu::dump_faults()
 {
     if (!m_reg_hva) {
         return;
     }
 
     auto fsts = this->read32(fsts_offset);
-    auto fri = (fsts & 0xFF00) >> 8;
 
-    printv("iommu: fsts=0x%x fectl=0x%x fri=%u\n",
-           fsts, this->read32(fectl_offset), fri);
-
-    volatile auto frcd = (struct iommu_entry *)(m_reg_hva + m_frcd_reg_off);
-    for (auto i = 0U; i < m_frcd_reg_num; i++) {
-        printv("iommu: frcd[%u] %lx:%lx\n",
-               i, frcd[i].data[1], frcd[i].data[0]);
+    /* Check the first byte for any error indicators, return if 0 */
+    if ((fsts & FSTS_ERR) == 0) {
+        return;
     }
+
+    /* Dump primary pending faults */
+    if (fsts & FSTS_PPF) {
+        /* Grab the head of the fault record queue */
+        auto fri = (fsts & FSTS_FRI) >> 8;
+        expects(fri < m_frcd_reg_num);
+
+        auto frcd_base = (struct iommu_entry *)(m_reg_hva + m_frcd_reg_off);
+        volatile auto frcd = &frcd_base[fri];
+
+        /* Process each fault record */
+        while (frcd->data[1] & FRCD_F) {
+            auto bus = (frcd->data[1] & FRCD_BUS) >> 8;
+            auto dev = (frcd->data[1] & FRCD_DEV) >> 3;
+            auto fun = (frcd->data[1] & FRCD_FUN);
+            auto t1 = (frcd->data[1] & FRCD_T1) >> 62;
+            auto t2 = (frcd->data[1] & FRCD_T2) >> 28;
+            auto reason = (frcd->data[1] & FRCD_FR) >> 32;
+            auto addr = frcd->data[0];
+            const char *str = fault_name((t1 << 1) | t2);
+
+            printv("iommu: fault: %02lx:%02lx.%02lx addr:0x%lx reason:0x%lx (%s)\n",
+                    bus, dev, fun, addr, reason, str);
+
+            /* Ack the fault */
+            frcd->data[1] |= FRCD_F;
+
+            /* Update the index in circular fashion */
+            fri = (fri == m_frcd_reg_num - 1) ? 0 : fri + 1;
+            frcd = &frcd_base[fri];
+        }
+    }
+
+    if (fsts & 0xFC) {
+        bferror_nhex(0, "iommu: unsupported errors pending: fsts=", fsts);
+    }
+
+    /* Ack all faults */
+    this->write32(fsts_offset, fsts);
 }
 
 void iommu::map_dma(uint32_t bus, uint32_t devfn, dom_t *dom)
 {
-
     expects(bus < table_size);
     expects(devfn < table_size);
     expects(this->did(dom) < nr_domains());
@@ -312,7 +460,7 @@ void iommu::map_dma(uint32_t bus, uint32_t devfn, dom_t *dom)
         itr = m_ctxt_map.find(bus);
         ctx_hva = itr->second.get();
         ctx_hpa = g_mm->virtptr_to_physint(ctx_hva);
-        this->clflush_range(ctx_hva, page_size);
+        this->clflush_range(ctx_hva, UV_PAGE_SIZE);
     } else {
         ctx_hva = itr->second.get();
         ctx_hpa = rte_ctp(&m_root.get()[bus]);
@@ -347,6 +495,137 @@ void iommu::map_dma(uint32_t bus, uint32_t devfn, dom_t *dom)
     }
 }
 
+/* Global invalidation of the context-cache */
+void iommu::flush_ctx_cache()
+{
+    const uint64_t ccmd = ccmd_icc | ccmd_cirg_global;
+    this->write_ccmd(ccmd);
+
+    while ((this->read_ccmd() & ccmd_icc) != 0) {
+        ::intel_x64::pause();
+    }
+}
+
+/* Domain-selective invalidation of context-cache */
+void iommu::flush_ctx_cache(const dom_t *dom)
+{
+    const uint64_t domid = this->did(dom);
+
+    /* Fallback to global invalidation if domain is out of range */
+    if (domid >= nr_domains()) {
+        printv("%s: WARNING: did:0x%lx out of range\n", __func__, domid);
+        this->flush_ctx_cache();
+        return;
+    }
+
+    const uint64_t ccmd = ccmd_icc | ccmd_cirg_domain | domid;
+    this->write_ccmd(ccmd);
+
+    while ((this->read_ccmd() & ccmd_icc) != 0) {
+        ::intel_x64::pause();
+    }
+}
+
+/* Device-selective invalidation of context-cache */
+void iommu::flush_ctx_cache(const dom_t *dom,
+                          uint32_t bus,
+                          uint32_t dev,
+                          uint32_t fun)
+{
+    const uint64_t domid = this->did(dom);
+
+    /* Fallback to global invalidation if domain is out of range */
+    if (domid >= nr_domains()) {
+        printv("%s: WARNING: did:0x%lx out of range\n", __func__, domid);
+        this->flush_ctx_cache();
+        return;
+    }
+
+    uint64_t sid = bus << 8 | dev << 3 | fun;
+    uint64_t ccmd = ccmd_icc | ccmd_cirg_device | (sid << 16) | domid;
+    this->write_ccmd(ccmd);
+
+    while ((this->read_ccmd() & ccmd_icc) != 0) {
+        ::intel_x64::pause();
+    }
+}
+
+/* Global invalidation of IOTLB */
+void iommu::flush_iotlb()
+{
+    uint64_t iotlb = this->read_iotlb() & 0xFFFFFFFF;
+
+    iotlb |= iotlb_ivt;
+    iotlb |= iotlb_iirg_global;
+    iotlb |= iotlb_dr;
+    iotlb |= iotlb_dw;
+
+    this->write_iotlb(iotlb);
+
+    while ((this->read_iotlb() & iotlb_ivt) != 0) {
+        ::intel_x64::pause();
+    }
+}
+
+/* Domain-selective invalidation of IOTLB */
+void iommu::flush_iotlb(const dom_t *dom)
+{
+    const uint64_t domid = this->did(dom);
+
+    /* Fallback to global invalidation if domain is out of range */
+    if (domid >= nr_domains()) {
+        printv("%s: WARNING: did:0x%lx out of range\n", __func__, domid);
+        this->flush_iotlb();
+        return;
+    }
+
+    uint64_t iotlb = this->read_iotlb() & 0xFFFFFFFF;
+
+    iotlb |= iotlb_ivt;
+    iotlb |= iotlb_iirg_domain;
+    iotlb |= iotlb_dr;
+    iotlb |= iotlb_dw;
+    iotlb |= (domid << iotlb_did_from);
+
+    this->write_iotlb(iotlb);
+
+    while ((this->read_iotlb() & iotlb_ivt) != 0) {
+        ::intel_x64::pause();
+    }
+}
+
+/* Page-selective invalidation of IOTLB */
+void iommu::flush_iotlb_4k(const dom_t *dom, uint64_t addr, bool flush_nonleaf)
+{
+    const uint64_t domid = this->did(dom);
+
+    /* Fallback to global invalidation if domain is out of range */
+    if (domid >= nr_domains()) {
+        printv("%s: WARNING: did:0x%lx out of range\n", __func__, domid);
+        this->flush_iotlb();
+        return;
+    }
+
+    uint64_t iotlb = this->read_iotlb() & 0xFFFFFFFF;
+
+    iotlb |= iotlb_ivt;
+    iotlb |= iotlb_iirg_page;
+    iotlb |= iotlb_dr;
+    iotlb |= iotlb_dw;
+    iotlb |= (domid << iotlb_did_from);
+
+    const uint64_t ih = flush_nonleaf ? 0 : (1UL << 6);
+    const uint64_t iva = uv_align_page(addr) | ih;
+
+    this->write_iva(iva);
+    ::intel_x64::wmb();
+    this->write_iotlb(iotlb);
+
+    while ((this->read_iotlb() & iotlb_ivt) != 0) {
+        ::intel_x64::pause();
+    }
+}
+
 void iommu::enable_dma_remapping()
 {
     this->write_rtaddr(g_mm->virtptr_to_physint(m_root.get()));
@@ -361,29 +640,8 @@ void iommu::enable_dma_remapping()
         ::intel_x64::pause();
     }
 
-    /* Globally invalidate the context-cache */
-    uint64_t ccmd = ccmd_icc | ccmd_cirg_global;
-    this->write_ccmd(ccmd);
-    ::intel_x64::mb();
-    while ((this->read_ccmd() & ccmd_icc) != 0) {
-        ::intel_x64::pause();
-    }
-    auto caig = (this->read_ccmd() & ccmd_caig_mask) >> ccmd_caig_from;
-    expects(caig == ccmd_global);
-
-    /* Globally invalidate the IOTLB */
-    uint64_t iotlb = this->read_iotlb() & 0xFFFFFFFF;
-    iotlb |= iotlb_ivt;
-    iotlb |= iotlb_iirg_global;
-    iotlb |= iotlb_dr;
-    iotlb |= iotlb_dw;
-    this->write_iotlb(iotlb);
-    ::intel_x64::mb();
-    while ((this->read_iotlb() & iotlb_ivt) != 0) {
-        ::intel_x64::pause();
-    }
-    auto iaig = (this->read_iotlb() & iotlb_iaig_mask) >> iotlb_iaig_from;
-    expects(iaig == iotlb_global);
+    this->flush_ctx_cache();
+    this->flush_iotlb();
 
     /* Enable DMA translation */
     gsts = this->read_gsts() & 0x96FF'FFFF;
@@ -432,13 +690,13 @@ void iommu::clflush_slpt()
 
 iommu::iommu(struct drhd *drhd) : m_root{make_page<entry_t>()}
 {
-    this->clflush_range(m_root.get(), page_size);
+    this->clflush_range(m_root.get(), UV_PAGE_SIZE);
     this->m_drhd = drhd;
 
     auto scope = reinterpret_cast<uintptr_t>(drhd) + sizeof(*drhd);
-    this->m_scope = reinterpret_cast<struct drhd_devscope *>(scope);
+    this->m_scope = reinterpret_cast<struct dmar_devscope *>(scope);
     this->bind_devices();
-//    this->dump_devices();
+    this->dump_devices();
 
     /* Leave early if this doesn't scope a passthrough device */
     if (!m_guest_devs.size()) {

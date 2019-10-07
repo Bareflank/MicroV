@@ -40,6 +40,11 @@ static inline uint64_t uv_addr(uint64_t frame)
     return frame << UV_PAGE_FROM;
 }
 
+static inline uint64_t uv_align_page(uint64_t addr)
+{
+    return addr & ~(UV_PAGE_SIZE - 1);
+}
+
 /* uv_pg_src - who allocated the page? */
 enum uv_pg_src : uint64_t {
     pg_src_none,

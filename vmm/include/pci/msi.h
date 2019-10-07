@@ -27,24 +27,36 @@
 namespace microv {
 
 /* MSI message control fields*/
-inline uint32_t msi_mult_capable(uint32_t cap)
+inline uint32_t msi_nr_msg_capable(uint32_t cap)
 {
-    return (cap >> 17) & 0x7;
+    const auto pow = (cap & 0x000E'0000) >> 17;
+    return 1UL << pow;
 }
 
-inline uint32_t msi_mult_enable(uint32_t cap)
+inline uint32_t msi_nr_msg_enabled(uint32_t cap)
 {
-    return (cap >> 20) & 0x7;
+    const auto pow = (cap & 0x0070'0000) >> 20;
+    return 1UL << pow;
 }
 
 inline bool msi_64bit(uint32_t cap)
 {
-    return cap & 0x80'0000;
+    return (cap & 0x0080'0000) != 0;
+}
+
+inline bool msi_per_vector_masking(uint32_t cap)
+{
+    return (cap & 0x0100'0000) != 0;
 }
 
 inline bool msi_enabled(uint32_t cap)
 {
-    return cap & 0x01'0000;
+    return (cap & 0x0001'0000) != 0;
+}
+
+inline uint32_t msi_disable(uint32_t cap)
+{
+    return cap & ~0x0001'0000;
 }
 
 /* MSI addr fields */
@@ -137,7 +149,7 @@ inline void validate_msi(const struct msi_desc *msid)
     expects(vector >= 0x20);
     expects(vector <= 0xFF);
     expects(destid <= 0xFF);
-    expects((destid & (destid - 1)) == 0);
+//    expects((destid & (destid - 1)) == 0);
 }
 
 }

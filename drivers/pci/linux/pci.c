@@ -47,23 +47,39 @@ static irqreturn_t uv_handle_irq(int irq, void *data)
 
 static int uv_pci_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 {
-    int rc = pcim_enable_device(pdev);
+    int rc, i;
+    int nr_vecs;
+
+    int bus = pdev->bus->number;
+    int dev = pdev->devfn >> 3;
+    int fun = pdev->devfn & 0x7;
+
+    rc = pcim_enable_device(pdev);
     if (rc < 0) {
-        printk("uv-pci: failed to enable device");
+        printk("uv-pci %02x:%02x.%02x: failed to enable device",
+                bus, dev, fun);
     }
 
-    rc = pci_alloc_irq_vectors(pdev, 1, 1, IRQ_FLAGS);
-    if (rc != 1) {
-        printk("uv-pci: failed to alloc irq vectors");
+    nr_vecs = 1;
+    rc = pci_alloc_irq_vectors(pdev, nr_vecs, nr_vecs, IRQ_FLAGS);
+    if (rc < nr_vecs) {
+        printk("uv-pci %02x:%02x.%02x: failed to alloc irq vectors, rc=%d",
+                bus, dev, fun, rc);
         return -ENODEV;
     }
 
-    rc = pci_request_irq(pdev, 0, uv_handle_irq, NULL, pdev, MODULENAME);
-    if (rc < 0) {
-        printk("uv-pci: pci_request_irq failed");
+    printk("uv-pci %02x:%02x.%02x: allocated %u vectors\n",
+           bus, dev, fun, rc);
+
+    for (i = 0; i < rc; i++) {
+        if (pci_request_irq(pdev, i, uv_handle_irq, NULL, pdev, MODULENAME)) {
+            printk("uv-pci %02x:%02x.%02x: pci_request_irq failed",
+                   bus, dev, fun);
+            return -ENODEV;
+        }
     }
 
-    return rc;
+    return 0;
 }
 
 static void uv_pci_remove(struct pci_dev *pdev)

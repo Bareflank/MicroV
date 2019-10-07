@@ -244,7 +244,7 @@ bool xen_vcpu::handle_physdev_op()
 
 bool xen_vcpu::handle_console_io()
 {
-    expects(m_uv_dom->initdom());
+    expects(m_uv_dom->is_xsvm());
 
     uint64_t len = m_uv_vcpu->rsi();
     auto buf = m_uv_vcpu->map_gva_4k<char>(m_uv_vcpu->rdx(), len);
@@ -280,6 +280,8 @@ bool xen_vcpu::handle_memory_op()
             return xenmem_memory_map(this);
         case XENMEM_set_memory_map:
             return xenmem_set_memory_map(this);
+        case XENMEM_reserved_device_memory_map:
+            return xenmem_reserved_device_memory_map(this);
         case XENMEM_add_to_physmap:
             return xenmem_add_to_physmap(this);
         case XENMEM_add_to_physmap_batch:
@@ -471,6 +473,12 @@ bool xen_vcpu::handle_domctl()
             return xen_domain_gethvmcontext(this, ctl.get());
         case XEN_DOMCTL_sethvmcontext:
             return xen_domain_sethvmcontext(this, ctl.get());
+        case XEN_DOMCTL_ioport_permission:
+            return xen_domain_ioport_perm(this, ctl.get());
+        case XEN_DOMCTL_iomem_permission:
+            return xen_domain_iomem_perm(this, ctl.get());
+        case XEN_DOMCTL_assign_device:
+            return xen_domain_assign_device(this, ctl.get());
         default:
             bfalert_nhex(0, "unimplemented domctl", ctl->cmd);
             return false;
@@ -483,11 +491,15 @@ bool xen_vcpu::handle_domctl()
 bool xen_vcpu::handle_grant_table_op()
 {
     try {
-        expects(m_uv_vcpu->rdx() == 1);
+        expects(m_uv_vcpu->rdx() > 0);
 
         switch (m_uv_vcpu->rdi()) {
         case GNTTABOP_map_grant_ref:
             return xen_gnttab_map_grant_ref(this);
+        case GNTTABOP_unmap_grant_ref:
+            return xen_gnttab_unmap_grant_ref(this);
+        case GNTTABOP_copy:
+            return xen_gnttab_copy(this);
         case GNTTABOP_query_size:
             return xen_gnttab_query_size(this);
         case GNTTABOP_set_version:
@@ -510,7 +522,7 @@ bool xen_vcpu::handle_platform_op()
 
     switch (xpf->cmd) {
     case XENPF_get_cpuinfo: {
-        expects(m_uv_dom->initdom());
+        expects(m_uv_dom->is_xsvm());
         struct xenpf_pcpuinfo *info = &xpf->u.pcpu_info;
         info->max_present = 1;
         info->flags = XEN_PCPU_FLAGS_ONLINE;
@@ -538,7 +550,7 @@ bool xen_vcpu::handle_platform_op()
 
 bool xen_vcpu::handle_xsm_op()
 {
-    expects(m_uv_dom->initdom());
+    expects(m_uv_dom->is_xsvm());
     auto fop = m_uv_vcpu->map_arg<xen_flask_op_t>(m_uv_vcpu->rdi());
 
     return m_flask->handle(fop.get());
@@ -899,6 +911,11 @@ bool xen_vcpu::handle_hlt(
     using namespace vmcs_n;
 
     if (guest_rflags::interrupt_enable_flag::is_disabled()) {
+        auto root = m_uv_vcpu->root_vcpu();
+        root->load();
+        root->return_hlt();
+
+        /* unreachable */
         return false;
     }
 
@@ -935,6 +952,10 @@ bool xen_vcpu::debug_hypercall(microv_vcpu *vcpu)
         if (rax == __HYPERVISOR_vcpu_op && rdi == VCPUOP_set_singleshot_timer) {
             return false;
         }
+
+        if (rax == __HYPERVISOR_grant_table_op && rdi == GNTTABOP_copy) {
+            return false;
+        }
         return true;
     }
 
@@ -963,6 +984,10 @@ bool xen_vcpu::debug_hypercall(microv_vcpu *vcpu)
     }
 
     if (rax == __HYPERVISOR_memory_op && rdi == XENMEM_remove_from_physmap) {
+        return false;
+    }
+
+    if (rax == __HYPERVISOR_physdev_op && rdi == PHYSDEVOP_pci_device_add) {
         return false;
     }
 
@@ -1027,7 +1052,7 @@ xen_vcpu::xen_vcpu(microv_vcpu *vcpu) :
     m_physdev = std::make_unique<class xen_physdev>(this);
 
     m_tsc_khz = vcpu->m_yield_handler.m_tsc_freq;
-    m_tsc_mul = (1000000000ULL << 32) / m_tsc_khz;
+    m_tsc_mul = (1000000ULL << 32) / m_tsc_khz;
     m_tsc_shift = 0;
     m_pet_shift = vcpu->m_yield_handler.m_pet_shift;
 

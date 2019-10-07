@@ -149,6 +149,11 @@ static void create_vm(const args_type &args, struct uvc_domain *dom)
         cmdl.add("pci=nocrs,lastbus=0xff");
     }
 
+    if (args.count("xsvm")) {
+        ioctl_args.xsvm = 1;
+        cmdl.add("pci=nocrs,lastbus=0xff");
+    }
+
     if (args.count("cmdline")) {
         cmdl.add(args["cmdline"].as<std::string>());
     }
@@ -166,7 +171,6 @@ static void create_vm(const args_type &args, struct uvc_domain *dom)
     ioctl_args.uart = uart;
     ioctl_args.pt_uart = pt_uart;
     ioctl_args.ram = ram;
-    ioctl_args.initdom = args.count("initdom");
 
     auto now = system_clock::now();
     auto tsc = __domain_op__read_tsc();

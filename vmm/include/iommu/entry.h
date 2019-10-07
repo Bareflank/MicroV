@@ -23,7 +23,8 @@
 #define MICROV_IOMMU_ENTRY_H
 
 #include <bfgsl.h>
-#include <types.h>
+#include <cstdint>
+#include "../page.h"
 
 namespace microv {
 
@@ -48,13 +49,13 @@ inline void rte_clear_present(struct iommu_entry *rte)
 
 inline void rte_set_ctp(struct iommu_entry *rte, uintptr_t ctp)
 {
-    expects(align_page(ctp) == ctp);
+    expects(uv_align_page(ctp) == ctp);
     rte->data[0] |= ctp;
 }
 
 inline uintptr_t rte_ctp(struct iommu_entry *rte)
 {
-    return align_page(rte->data[0]);
+    return uv_align_page(rte->data[0]);
 }
 
 inline bool cte_present(const struct iommu_entry *cte)
@@ -85,13 +86,13 @@ inline void cte_set_tt(struct iommu_entry *cte, unsigned int tt)
 
 inline void cte_set_slptptr(struct iommu_entry *cte, uintptr_t slptptr)
 {
-    expects(align_page(slptptr) == slptptr);
+    expects(uv_align_page(slptptr) == slptptr);
     cte->data[0] |= slptptr;
 }
 
 inline uintptr_t cte_slptptr(struct iommu_entry *cte)
 {
-    return align_page(cte->data[0]);
+    return uv_align_page(cte->data[0]);
 }
 
 inline void cte_set_aw(struct iommu_entry *cte, unsigned int aw)

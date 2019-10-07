@@ -154,7 +154,7 @@ public:
         phys_addr_t phys_addr,
         uint64_t attr = attr_type::read_write_execute,
         uint64_t cache = memory_type::write_back,
-        bool flush = false)
+        bool flush = false, bool snoop = false)
     {
         std::lock_guard lock(m_mutex);
         using namespace ::intel_x64::ept;
@@ -163,7 +163,7 @@ public:
         expects(bfn::lower(phys_addr, pdpt::from) == 0);
 
         this->map_pdpt(pml4::index(virt_addr), flush);
-        return this->map_pdpte(virt_addr, phys_addr, attr, cache, flush);
+        return this->map_pdpte(virt_addr, phys_addr, attr, cache, flush, snoop);
     }
 
     /// Map 1g Virt Address to Phys Address
@@ -184,10 +184,10 @@ public:
         phys_addr_t phys_addr,
         uint64_t attr = attr_type::read_write_execute,
         uint64_t cache = memory_type::write_back,
-        bool flush = false)
+        bool flush = false, bool snoop = false)
     {
         return map_1g(reinterpret_cast<void *>(virt_addr), phys_addr, attr,
-                      cache, flush);
+                      cache, flush, snoop);
     }
 
     /// Map 2m Virt Address to Phys Address
@@ -208,7 +208,7 @@ public:
         phys_addr_t phys_addr,
         uint64_t attr = attr_type::read_write_execute,
         uint64_t cache = memory_type::write_back,
-        bool flush = false)
+        bool flush = false, bool snoop = false)
     {
         std::lock_guard lock(m_mutex);
         using namespace ::intel_x64::ept;
@@ -219,7 +219,7 @@ public:
         this->map_pdpt(pml4::index(virt_addr), flush);
         this->map_pd(pdpt::index(virt_addr), flush);
 
-        return this->map_pde(virt_addr, phys_addr, attr, cache, flush);
+        return this->map_pde(virt_addr, phys_addr, attr, cache, flush, snoop);
     }
 
     /// Map 2m Virt Address to Phys Address
@@ -240,10 +240,10 @@ public:
         phys_addr_t phys_addr,
         uint64_t attr = attr_type::read_write_execute,
         uint64_t cache = memory_type::write_back,
-        bool flush = false)
+        bool flush = false, bool snoop = false)
     {
         return map_2m(reinterpret_cast<void *>(virt_addr), phys_addr, attr,
-                      cache, flush);
+                      cache, flush, snoop);
     }
 
     /// Map 4k Virt Address to Phys Address
@@ -265,7 +265,8 @@ public:
         phys_addr_t phys_addr,
         uint64_t attr = attr_type::read_write_execute,
         uint64_t cache = memory_type::write_back,
-        bool flush = false)
+        bool flush = false,
+        bool snoop = false)
     {
         std::lock_guard lock(m_mutex);
         using namespace ::intel_x64::ept;
@@ -277,7 +278,7 @@ public:
         this->map_pd(pdpt::index(virt_addr), flush);
         this->map_pt(pd::index(virt_addr), flush);
 
-        return this->map_pte(virt_addr, phys_addr, attr, cache, flush);
+        return this->map_pte(virt_addr, phys_addr, attr, cache, flush, snoop);
     }
 
     /// Map 4k Virt Address to Phys Address
@@ -298,10 +299,10 @@ public:
         phys_addr_t phys_addr,
         uint64_t attr = attr_type::read_write_execute,
         uint64_t cache = memory_type::write_back,
-        bool flush = false)
+        bool flush = false, bool snoop = false)
     {
         return map_4k(reinterpret_cast<void *>(virt_addr), phys_addr, attr,
-                      cache, flush);
+                      cache, flush, snoop);
     }
 
     /// Unmap Virtual Address
@@ -884,7 +885,7 @@ private:
     entry_type &
     map_pdpte(
         void *virt_addr, phys_addr_t phys_addr,
-        uint64_t attr, uint64_t cache, bool flush = false)
+        uint64_t attr, uint64_t cache, bool flush = false, bool snoop = false)
     {
         using namespace ::intel_x64::ept;
         auto &entry = m_pdpt.virt_addr.at(pdpt::index(virt_addr));
@@ -897,6 +898,10 @@ private:
         }
 
         pdpt::entry::phys_addr::set(entry, phys_addr);
+
+        if (snoop) {
+            entry |= (1UL << 11);
+        }
 
         switch (attr) {
             case attr_type::none:
@@ -981,7 +986,7 @@ private:
     entry_type &
     map_pde(
         void *virt_addr, phys_addr_t phys_addr,
-        uint64_t attr, uint64_t cache, bool flush = false)
+        uint64_t attr, uint64_t cache, bool flush = false, bool snoop = false)
     {
         using namespace ::intel_x64::ept;
         auto &entry = m_pd.virt_addr.at(pd::index(virt_addr));
@@ -994,6 +999,10 @@ private:
         }
 
         pd::entry::phys_addr::set(entry, phys_addr);
+
+        if (snoop) {
+            entry |= (1UL << 11);
+        }
 
         switch (attr) {
             case attr_type::none:
@@ -1078,7 +1087,7 @@ private:
     entry_type &
     map_pte(
         void *virt_addr, phys_addr_t phys_addr,
-        uint64_t attr, uint64_t cache, bool flush = false)
+        uint64_t attr, uint64_t cache, bool flush = false, bool snoop = false)
     {
         using namespace ::intel_x64::ept;
         auto &entry = m_pt.virt_addr.at(pt::index(virt_addr));
@@ -1091,6 +1100,11 @@ private:
         }
 
         pt::entry::phys_addr::set(entry, phys_addr);
+
+        /* Set bit 11 used by IOMMU for snoop control */
+        if (snoop) {
+            entry |= (1U << 11);
+        }
 
         switch (attr) {
             case attr_type::none:

@@ -168,7 +168,10 @@ vcpu::write_domU_guest_state(domain *domain)
         enable_rdtscp::enable();
         trap_exceptions();
 
-        if (domain->ndvm()) {
+        bfdebug_bool(0, "domain is_xsvm:", domain->is_xsvm());
+        bfdebug_bool(0, "domain is_ndvm:", domain->is_ndvm());
+
+        if (domain->is_xsvm() || domain->is_ndvm()) {
             init_pci_on_vcpu(this);
         }
 
@@ -637,9 +640,9 @@ void vcpu::map_msi(const struct msi_desc *root_msi,
                     expects(root->m_msi_map.count(key) == 0);
                     root->m_msi_map[key] = {root_msi, guest_msi};
 
-                    printv("root_msi:  destid:0x%x vector:0x%x\n",
-                            root_msi->destid(), root_msi->vector());
-                    printv("guest_msi: destid:0x%x vector:0x%x\n",
+                    printv("%s: root (dest:0x%x,vec:0x%x) -> ",
+                            __func__, root_destid, root_vector);
+                    printf("guest (dest:0x%x,vec:0x%x)\n",
                             guest_msi->destid(), guest_msi->vector());
                 } catch (...) {
                     bferror_info(0, "exception mapping msi in logical mode");

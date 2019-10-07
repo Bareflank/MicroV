@@ -5,11 +5,20 @@ also install the build dependencies for creating PVH guest images.
 The available targets can be listed with `make info`. Currently, the
 xsvm is configured to build the xen toolstack so it is treated as dom0.
 
-To run the xenstore VM (i.e. xsvm), copy the `rundom0.sh` script into
-the root of the cmake build directory then run the following:
+The following instructions assume the following directory structure:
+
+workspace/microv
+workspace/cache
+workspace/build
+
+Where 'microv' is the cloned repo, 'cache' is the bareflank depends
+CACHE_DIR, and 'build' is the cmake build directory. With this layout,
+microv can be built with the following commands:
 
 ```bash
-$ cmake ... # configure cmake with CONFIG=path/to/microv/config.cmake
+$ cd build
+$ cp ../microv/rundom0.sh .
+$ cmake ../microv/deps/hypervisor -DCACHE_DIR=../cache -DCONFIG=../microv/config.cmake
 $ make driver_quick
 $ make
 $ make quick

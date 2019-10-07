@@ -77,6 +77,7 @@ public:
     xen_pfn_t gfn{invalid_frame};
     uint64_t perms{pg_perm_none};
     uint64_t mtype{pg_mtype_wb};
+    uint64_t *epte{nullptr};
     class page *page{nullptr};
     bool present{false};
 };
