@@ -33,9 +33,6 @@
 #include <pci/dev.h>
 #include <printv.h>
 
-constexpr auto PAGE_SIZE_4K = (1UL << 12);
-constexpr auto PAGE_SIZE_2M = (1UL << 21);
-
 extern microv::intel_x64::vcpu *vcpu0;
 using namespace bfvmm::x64;
 using namespace bfvmm::intel_x64;
@@ -159,7 +156,7 @@ void iommu_dump()
 void iommu::map_regs()
 {
     auto base_hpa = vcpu0->gpa_to_hpa(m_drhd->base_gpa).first;
-    auto base_hva = g_mm->alloc_map(page_size);
+    auto base_hva = g_mm->alloc_map(UV_PAGE_SIZE);
 
     g_cr3->map_4k(base_hva,
                   base_hpa,
@@ -184,8 +181,8 @@ void iommu::init_regs()
     auto ioreg_end = m_reg_hva + m_iotlb_reg_off + iotlb_reg_bytes - 1;
     auto frreg_end = m_reg_hva + m_frcd_reg_off + m_frcd_reg_bytes - 1;
 
-    auto ioreg_end_4k = ioreg_end & ~(page_size - 1);
-    auto frreg_end_4k = frreg_end & ~(page_size - 1);
+    auto ioreg_end_4k = ioreg_end & ~(UV_PAGE_SIZE - 1);
+    auto frreg_end_4k = frreg_end & ~(UV_PAGE_SIZE - 1);
 
     expects(m_reg_hva == ioreg_end_4k);
     expects(m_reg_hva == frreg_end_4k);
@@ -202,7 +199,10 @@ void iommu::init_regs()
     ensures(((m_cap & cap_cm_mask) >> cap_cm_from) == 0);
 
     /* Required write-buffer flushing is not supported */
-    ensures(((m_cap & cap_rwbf_mask) >> cap_rwbf_mask) == 0);
+    ensures(((m_cap & cap_rwbf_mask) >> cap_rwbf_from) == 0);
+
+    /* Do not support IOMMUs without page-selective invalidation */
+    ensures(((m_cap & cap_psi_mask) >> cap_psi_from) == 1);
 
     if (this->snoop_ctl()) {
         printv("iommu: enabling snoop control\n");
@@ -460,7 +460,7 @@ void iommu::map_dma(uint32_t bus, uint32_t devfn, dom_t *dom)
         itr = m_ctxt_map.find(bus);
         ctx_hva = itr->second.get();
         ctx_hpa = g_mm->virtptr_to_physint(ctx_hva);
-        this->clflush_range(ctx_hva, page_size);
+        this->clflush_range(ctx_hva, UV_PAGE_SIZE);
     } else {
         ctx_hva = itr->second.get();
         ctx_hpa = rte_ctp(&m_root.get()[bus]);
@@ -496,7 +496,7 @@ void iommu::map_dma(uint32_t bus, uint32_t devfn, dom_t *dom)
 }
 
 /* Global invalidation of the context-cache */
-void iommu::invalidate_ctx_cache()
+void iommu::flush_ctx_cache()
 {
     const uint64_t ccmd = ccmd_icc | ccmd_cirg_global;
     this->write_ccmd(ccmd);
@@ -507,14 +507,14 @@ void iommu::invalidate_ctx_cache()
 }
 
 /* Domain-selective invalidation of context-cache */
-void iommu::invalidate_ctx_cache(const dom_t *dom)
+void iommu::flush_ctx_cache(const dom_t *dom)
 {
     const uint64_t domid = this->did(dom);
 
     /* Fallback to global invalidation if domain is out of range */
     if (domid >= nr_domains()) {
         printv("%s: WARNING: did:0x%lx out of range\n", __func__, domid);
-        this->invalidate_ctx_cache();
+        this->flush_ctx_cache();
         return;
     }
 
@@ -526,8 +526,32 @@ void iommu::invalidate_ctx_cache(const dom_t *dom)
     }
 }
 
+/* Device-selective invalidation of context-cache */
+void iommu::flush_ctx_cache(const dom_t *dom,
+                          uint32_t bus,
+                          uint32_t dev,
+                          uint32_t fun)
+{
+    const uint64_t domid = this->did(dom);
+
+    /* Fallback to global invalidation if domain is out of range */
+    if (domid >= nr_domains()) {
+        printv("%s: WARNING: did:0x%lx out of range\n", __func__, domid);
+        this->flush_ctx_cache();
+        return;
+    }
+
+    uint64_t sid = bus << 8 | dev << 3 | fun;
+    uint64_t ccmd = ccmd_icc | ccmd_cirg_device | (sid << 16) | domid;
+    this->write_ccmd(ccmd);
+
+    while ((this->read_ccmd() & ccmd_icc) != 0) {
+        ::intel_x64::pause();
+    }
+}
+
 /* Global invalidation of IOTLB */
-void iommu::invalidate_iotlb()
+void iommu::flush_iotlb()
 {
     uint64_t iotlb = this->read_iotlb() & 0xFFFFFFFF;
 
@@ -544,14 +568,14 @@ void iommu::invalidate_iotlb()
 }
 
 /* Domain-selective invalidation of IOTLB */
-void iommu::invalidate_iotlb(const dom_t *dom)
+void iommu::flush_iotlb(const dom_t *dom)
 {
     const uint64_t domid = this->did(dom);
 
     /* Fallback to global invalidation if domain is out of range */
     if (domid >= nr_domains()) {
         printv("%s: WARNING: did:0x%lx out of range\n", __func__, domid);
-        this->invalidate_iotlb();
+        this->flush_iotlb();
         return;
     }
 
@@ -563,6 +587,38 @@ void iommu::invalidate_iotlb(const dom_t *dom)
     iotlb |= iotlb_dw;
     iotlb |= (domid << iotlb_did_from);
 
+    this->write_iotlb(iotlb);
+
+    while ((this->read_iotlb() & iotlb_ivt) != 0) {
+        ::intel_x64::pause();
+    }
+}
+
+/* Page-selective invalidation of IOTLB */
+void iommu::flush_iotlb_4k(const dom_t *dom, uint64_t addr, bool flush_nonleaf)
+{
+    const uint64_t domid = this->did(dom);
+
+    /* Fallback to global invalidation if domain is out of range */
+    if (domid >= nr_domains()) {
+        printv("%s: WARNING: did:0x%lx out of range\n", __func__, domid);
+        this->flush_iotlb();
+        return;
+    }
+
+    uint64_t iotlb = this->read_iotlb() & 0xFFFFFFFF;
+
+    iotlb |= iotlb_ivt;
+    iotlb |= iotlb_iirg_page;
+    iotlb |= iotlb_dr;
+    iotlb |= iotlb_dw;
+    iotlb |= (domid << iotlb_did_from);
+
+    const uint64_t ih = flush_nonleaf ? 0 : (1UL << 6);
+    const uint64_t iva = uv_align_page(addr) | ih;
+
+    this->write_iva(iva);
+    ::intel_x64::wmb();
     this->write_iotlb(iotlb);
 
     while ((this->read_iotlb() & iotlb_ivt) != 0) {
@@ -584,8 +640,8 @@ void iommu::enable_dma_remapping()
         ::intel_x64::pause();
     }
 
-    this->invalidate_ctx_cache();
-    this->invalidate_iotlb();
+    this->flush_ctx_cache();
+    this->flush_iotlb();
 
     /* Enable DMA translation */
     gsts = this->read_gsts() & 0x96FF'FFFF;
@@ -634,7 +690,7 @@ void iommu::clflush_slpt()
 
 iommu::iommu(struct drhd *drhd) : m_root{make_page<entry_t>()}
 {
-    this->clflush_range(m_root.get(), page_size);
+    this->clflush_range(m_root.get(), UV_PAGE_SIZE);
     this->m_drhd = drhd;
 
     auto scope = reinterpret_cast<uintptr_t>(drhd) + sizeof(*drhd);
