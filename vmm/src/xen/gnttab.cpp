@@ -117,8 +117,8 @@ void xen_gnttab_unmap_grant_ref(xen_vcpu *vcpu, gnttab_unmap_grant_ref_t *unmap)
     const auto fref = hdl & 0xFFFF;
     const auto fdomid = hdl >> 16;
 
-    printv("%s: fdom:%x fref:%x lgpa:%lx\n",
-           __func__, fdomid, fref, unmap->host_addr);
+//    printv("%s: fdom:%x fref:%x lgpa:%lx\n",
+//           __func__, fdomid, fref, unmap->host_addr);
 
     auto ldom = vcpu->m_xen_dom;
     auto lgnt = ldom->m_gnttab.get();
@@ -168,7 +168,8 @@ void xen_gnttab_unmap_grant_ref(xen_vcpu *vcpu, gnttab_unmap_grant_ref_t *unmap)
     put_xen_domain(fdomid);
 }
 
-bool xen_gnttab_map_grant_ref(xen_vcpu *vcpu)
+static void xen_gnttab_map_grant_ref(xen_vcpu *vcpu,
+                                     gnttab_map_grant_ref_t *map)
 {
     grant_entry_header_t *fhdr;
     xen_domid_t ldomid;
@@ -178,27 +179,22 @@ bool xen_gnttab_map_grant_ref(xen_vcpu *vcpu)
     class xen_page *fpg;
     uint32_t perm;
 
+    int rc = GNTST_okay;
     auto uvv = vcpu->m_uv_vcpu;
 
-    /* Multiple map_grant_refs are unsupported ATM */
-    expects(uvv->rdx() == 1);
-
-    int rc = GNTST_okay;
-    auto map = uvv->map_arg<gnttab_map_grant_ref_t>(uvv->rsi());
-
-    printv("%s: domid:%x flags:%x ref:%x gpa:%lx\n",
-           __func__, map->dom, map->flags, map->ref, map->host_addr);
+//    printv("%s: domid:%x flags:%x ref:%x gpa:%lx\n",
+//           __func__, map->dom, map->flags, map->ref, map->host_addr);
 
     if (!supported_map_flags(map->flags)) {
         printv("%s: unsupported GNTMAP flags:0x%x\n", __func__, map->flags);
-        return false;
+        return;
     }
 
     const auto fref = map->ref;
     if (fref & 0xFFFF0000) {
         printv("%s: OOB fref 0x%x would overflow map handle\n",
                __func__, fref);
-        return false;
+        return;
     }
 
     const auto map_ro = (map->flags & GNTMAP_readonly) != 0;
@@ -215,14 +211,14 @@ bool xen_gnttab_map_grant_ref(xen_vcpu *vcpu)
         printv("%s: handle 0x%x already maps to 0x%lx\n",
                 __func__, fdomid, lgnt->map_handles[new_hdl]);
         map->status = GNTST_bad_virt_addr;
-        return true;
+        return;
     }
 
     auto fdom = get_xen_domain(fdomid);
     if (!fdom) {
         printv("%s: bad dom:0x%x\n", __func__, fdomid);
         map->status = GNTST_bad_domain;
-        return true;
+        return;
     }
 
     auto fgnt = fdom->m_gnttab.get();
@@ -251,8 +247,8 @@ bool xen_gnttab_map_grant_ref(xen_vcpu *vcpu)
     if (already_mapped(fhdr->flags)) {
         printv("%s: remapping entry: ref:0x%x dom:0x%x\n",
                __func__, fref, fdomid);
-        put_xen_domain(fdomid);
-        return false;
+        rc = GNTST_general_error;
+        goto put_domain;
     }
 
     new_flags = fhdr->flags | GTF_reading | (map_ro ? 0 : GTF_writing);
@@ -285,7 +281,6 @@ put_domain:
 
     map->status = rc;
     uvv->set_rax(rc);
-    return true;
 }
 
 /*
@@ -502,9 +497,9 @@ static void xen_gnttab_copy(xen_vcpu *vcpu, gnttab_copy_t *copy)
     rc = GNTST_okay;
 
     /* Debugging info */
-    printv("%s: %03u bytes from (dom:0x%x,gfn:0x%lx) to ",
-           __func__, copy->len, src_dom->m_id, src_gfn);
-    printf("(dom:0x%x,gfn:0x%lx)\n", dst_dom->m_id, dst_gfn);
+//    printv("%s: %03u bytes from (dom:0x%x,gfn:0x%lx) to ",
+//           __func__, copy->len, src_dom->m_id, src_gfn);
+//    printf("(dom:0x%x,gfn:0x%lx)\n", dst_dom->m_id, dst_gfn);
 
 put_dst_dom:
     put_copy_dom(vcpu, dst->domid);
@@ -525,6 +520,28 @@ bool xen_gnttab_copy(xen_vcpu *vcpu)
     for (auto i = 0; i < num; i++) {
         xen_gnttab_copy(vcpu, &cop[i]);
         const auto rc = cop[i].status;
+
+        if (rc != GNTST_okay) {
+            printv("%s: op[%u] failed, rc=%d\n", __func__, i, rc);
+            uvv->set_rax(rc);
+            return false;
+        }
+    }
+
+    uvv->set_rax(0);
+    return true;
+}
+
+bool xen_gnttab_map_grant_ref(xen_vcpu *vcpu)
+{
+    auto uvv = vcpu->m_uv_vcpu;
+    auto num = uvv->rdx();
+    auto map = uvv->map_gva_4k<gnttab_map_grant_ref_t>(uvv->rsi(), num);
+    auto ops = map.get();
+
+    for (auto i = 0; i < num; i++) {
+        xen_gnttab_map_grant_ref(vcpu, &ops[i]);
+        const auto rc = ops[i].status;
 
         if (rc != GNTST_okay) {
             printv("%s: op[%u] failed, rc=%d\n", __func__, i, rc);

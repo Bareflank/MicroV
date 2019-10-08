@@ -37,13 +37,11 @@ tags
 *.o.*
 *.o.cmd
 *.ko.cmd
-*.mod.o.cmd
 *.mod
+*.mod.*
 *.symvers
 *.o
 *.ko
-*.mod.c
-*.mod.o
 *.order
 *.cache.mk
 
