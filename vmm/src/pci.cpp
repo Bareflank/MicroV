@@ -229,6 +229,9 @@ pci_dev::pci_dev(uint32_t addr, struct pci_dev *parent_bridge)
     } else {
         ensures(m_bridge->is_host_bridge() || m_bridge->is_pci_bridge());
     }
+
+    m_root_msi.pdev = this;
+    m_guest_msi.pdev = this;
 }
 
 void pci_dev::remap_ecam()
@@ -313,8 +316,9 @@ void pci_dev::parse_capabilities()
     auto nr_vectors = msi_nr_msg_capable(msi);
     auto per_vector_mask = msi_per_vector_masking(msi);
 
-    printv("pci: %s: MSI 64-bit, %u vectors, per-vector mask capable:%u\n",
-            bdf_str(), nr_vectors, per_vector_mask);
+    printv("pci: %s: MSI 64-bit, vectors:%u, masking%s\n",
+            bdf_str(), nr_vectors,
+            per_vector_mask ? "+" : "-");
 
     if (msi_enabled(msi)) {
         printv("pci: %s: MSI is enabled...disabling\n", bdf_str());
@@ -442,47 +446,65 @@ bool pci_dev::guest_normal_cfg_out(base_vcpu *vcpu, cfg_info &info)
     auto old = pci_cfg_read_reg(m_cf8, info.reg);
     auto val = cfg_hdlr::read_cfg_info(old, info);
 
-    if (info.reg == m_msi_cap && msi_enabled(val)) {
-        m_root_msi = {
-            this,
-            m_vcfg[m_msi_cap],
-            m_vcfg[m_msi_cap + 3],
-            m_vcfg[m_msi_cap + 1],
-            m_vcfg[m_msi_cap + 2]
-        };
+    /* TODO: Ensure guest doesn't remap BARs */
 
-        m_guest_msi = {
-            this,
-            pci_cfg_read_reg(m_cf8, val),
-            pci_cfg_read_reg(m_cf8, info.reg + 3),
-            pci_cfg_read_reg(m_cf8, info.reg + 1),
-            pci_cfg_read_reg(m_cf8, info.reg + 2)
-        };
+    if (info.reg < m_msi_cap || info.reg > m_msi_cap + 3) {
+        pci_cfg_write_reg(m_cf8, info.reg, val);
+        return true;
+    }
 
-        expects(msi_nr_msg_enabled(val) == 1);
+    std::lock_guard msi_lock(m_msi_mtx);
 
-        /* Create a new root->guest MSI mapping */
+    if (info.reg == m_msi_cap + 1) {
+        expects(msi_rh(val) == 0);
+        m_guest_msi.reg[1] = val;
+        return true;
+    } else if (info.reg == m_msi_cap + 2) {
+        m_guest_msi.reg[2] = val;
+        return true;
+    } else if (info.reg == m_msi_cap + 3) {
+        expects(msi_trig_mode(val) == 0);
+        expects(msi_deliv_mode(val) == 0);
+        m_guest_msi.reg[3] = val;
+        return true;
+    }
+
+    expects(msi_nr_msg_enabled(val) == 1);
+
+    const bool was_enabled = m_guest_msi.is_enabled();
+    m_guest_msi.reg[0] = val;
+    const bool now_enabled = m_guest_msi.is_enabled();
+
+    if (now_enabled && !m_root_msi.is_enabled()) {
+        printv("pci: %s: MSI root disabled on guest enable\n", bdf_str());
+        printv("pci: %s: MSI messages will not be delivered\n", bdf_str());
+        return true;
+    }
+
+    if (!was_enabled && now_enabled && !m_msi_mapped) {
+        expects(m_root_msi.redir_hint() == 0); /* no redirection hint */
+        expects(m_root_msi.deliv_mode() == 0); /* fixed delivery mode */
+        expects(m_root_msi.trigger_mode() == 0); /* edge triggered */
+
+        /* Create a root->guest MSI mapping */
         guest->map_msi(&m_root_msi, &m_guest_msi);
+        m_msi_mapped = true;
 
-        /* Write the root-programmed values to the device */
-        pci_cfg_write_reg(m_cf8, info.reg + 1, m_vcfg[m_msi_cap + 1]);
-        pci_cfg_write_reg(m_cf8, info.reg + 2, m_vcfg[m_msi_cap + 2]);
-        pci_cfg_write_reg(m_cf8, info.reg + 3, m_vcfg[m_msi_cap + 3]);
+        /* Write the root-specified address and data to the device */
+        pci_cfg_write_reg(m_cf8, info.reg + 1, m_root_msi.reg[1]);
+        pci_cfg_write_reg(m_cf8, info.reg + 2, m_root_msi.reg[2]);
+        pci_cfg_write_reg(m_cf8, info.reg + 3, m_root_msi.reg[3]);
+
+        /* Debug info */
+        const uint64_t lower = m_root_msi.reg[1];
+        const uint64_t upper = m_root_msi.reg[2];
+        const uint64_t addr = (upper << 32) | lower;
+        const uint32_t data = m_root_msi.reg[3];
 
         printv("pci: %s: enabling MSI:\n", bdf_str());
         printv("pci: %s:    ctrl: 0x%04x\n", bdf_str(), val >> 16);
-
-        const uint64_t low = m_vcfg[m_msi_cap + 1];
-        const uint64_t high = m_vcfg[m_msi_cap + 2];
-        const uint64_t addr = (high << 32) | low;
-        const uint32_t data = m_vcfg[m_msi_cap + 3];
-
         printv("pci: %s:    addr: 0x%lx\n", bdf_str(), addr);
         printv("pci: %s:    data: 0x%08x\n", bdf_str(), data);
-
-        expects(msi_rh(low) == 0); /* no redirection hint */
-        expects(msi_trig_mode(data) == 0); /* edge triggered */
-        expects(msi_deliv_mode(data) == 0); /* fixed delivery mode */
     }
 
     pci_cfg_write_reg(m_cf8, info.reg, val);
@@ -542,6 +564,12 @@ bool pci_dev::root_cfg_out(base_vcpu *vcpu, cfg_info &info)
     }
 
     m_vcfg[reg] = cfg_hdlr::read_cfg_info(m_vcfg[reg], info);
+
+    if (reg >= m_msi_cap && reg <= m_msi_cap + 3) {
+        std::lock_guard msi_lock(m_msi_mtx);
+        m_root_msi.reg[reg - m_msi_cap] = m_vcfg[reg];
+    }
+
     return true;
 }
 

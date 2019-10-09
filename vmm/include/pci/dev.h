@@ -24,6 +24,7 @@
 
 #include <array>
 #include <memory>
+#include <mutex>
 
 #include <bfgsl.h>
 #include <bfvcpuid.h>
@@ -55,8 +56,11 @@ struct pci_dev {
     bool m_guest_owned{};
     vcpuid_t m_guest_vcpuid{};
 
+    std::mutex m_msi_mtx{};
     struct msi_desc m_guest_msi{};
     struct msi_desc m_root_msi{};
+    bool m_msi_mapped{};
+
     struct pci_dev *m_bridge{};
     struct iommu *m_iommu{};
 
@@ -119,9 +123,9 @@ struct pci_dev {
     pci_dev(uint32_t addr, struct pci_dev *parent_bridge = nullptr);
     ~pci_dev() = default;
     pci_dev(const pci_dev &) = delete;
-    pci_dev(pci_dev &&) = default;
+    pci_dev(pci_dev &&) = delete;
     pci_dev &operator=(const pci_dev &) = delete;
-    pci_dev &operator=(pci_dev &&) = default;
+    pci_dev &operator=(pci_dev &&) = delete;
 };
 
 extern std::unordered_map<uint32_t, std::unique_ptr<struct pci_dev>> pci_map;
