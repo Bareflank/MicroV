@@ -19,6 +19,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+#include <mutex>
+
 #include <hve/arch/intel_x64/vcpu.h>
 #include <hve/arch/intel_x64/domain.h>
 #include <hve/arch/intel_x64/vmcall/event_op.h>
@@ -62,11 +64,15 @@ void vmcall_event_op_handler::send_bdf(uint64_t bdf)
     auto pdev = find_passthru_dev(bdf);
     expects(pdev);
 
+    std::lock_guard msi_lock(pdev->m_msi_mtx);
+
     auto root_vector = pdev->m_root_msi.vector();
     auto guest_msi = m_vcpu->find_guest_msi(root_vector);
-
     expects(guest_msi);
-    expects(guest_msi->dev() == pdev);
+
+    if (!guest_msi->is_enabled()) {
+        return;
+    }
 
     auto guest = get_vcpu(pdev->m_guest_vcpuid);
     if (!guest) {
@@ -82,8 +88,14 @@ void vmcall_event_op_handler::send_vector(uint64_t root_vector)
     auto guest_msi = m_vcpu->find_guest_msi(root_vector);
     expects(guest_msi);
 
-    auto pdev = guest_msi->dev();
+    auto pdev = guest_msi->pdev;
     expects(pdev);
+
+    std::lock_guard msi_lock(pdev->m_msi_mtx);
+
+    if (!guest_msi->is_enabled()) {
+        return;
+    }
 
     auto guest = get_vcpu(pdev->m_guest_vcpuid);
     if (!guest) {

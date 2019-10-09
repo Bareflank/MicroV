@@ -590,6 +590,7 @@ uint64_t vcpu::pcpuid()
     }
 }
 
+/* Caller must hold lock on pdev->m_msi_mtx */
 void vcpu::map_msi(const struct msi_desc *root_msi,
                    const struct msi_desc *guest_msi)
 {
@@ -637,8 +638,9 @@ void vcpu::map_msi(const struct msi_desc *root_msi,
                 }
 
                 try {
-                    expects(root->m_msi_map.count(key) == 0);
-                    root->m_msi_map[key] = {root_msi, guest_msi};
+                    if (root->m_msi_map.count(key) == 0) {
+                        root->m_msi_map[key] = {root_msi, guest_msi};
+                    }
 
                     printv("%s: root (dest:0x%x,vec:0x%x) -> ",
                             __func__, root_destid, root_vector);

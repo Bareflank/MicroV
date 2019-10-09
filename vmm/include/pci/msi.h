@@ -59,6 +59,11 @@ inline uint32_t msi_disable(uint32_t cap)
     return cap & ~0x0001'0000;
 }
 
+inline uint32_t msi_enable(uint32_t cap)
+{
+    return cap | 0x0001'0000;
+}
+
 /* MSI addr fields */
 inline uint32_t msi_dm(uint32_t addr)
 {
@@ -99,35 +104,17 @@ inline uint32_t msi_trig_mode(uint32_t data)
 struct pci_dev;
 
 struct msi_desc {
-    struct pci_dev *pdev;
-    uint32_t cap;
-    uint32_t data;
-    uint32_t addr[2];
+    uint32_t reg[4]{};
+    struct pci_dev *pdev{};
 
-    bool is_64bit() const { return msi_64bit(cap); }
-    uint32_t destid() const { return msi_destid(addr[0]); }
-    uint32_t vector() const { return msi_vector(data); }
-    uint32_t deliv_mode() const { return msi_deliv_mode(data); }
-    struct pci_dev *dev() const { return pdev; }
-
-    msi_desc(struct pci_dev *pdev,
-             uint32_t cap, uint32_t data, uint32_t addr0, uint32_t addr1)
-    {
-        expects(!msi_rh(addr0));       /* no redirection */
-        expects(!msi_trig_mode(data)); /* edge triggered */
-
-        this->pdev = pdev;
-        this->cap = cap;
-        this->data = data;
-        this->addr[0] = addr0;
-        this->addr[1] = addr1;
-
-        if (this->deliv_mode() == 1) {
-            bfalert_info(0, "MSI using lowest-priority delivery");
-        } else if (this->deliv_mode()) {
-            bfalert_nhex(0, "MSI using unsupported delivery", deliv_mode());
-        }
-    }
+    bool is_enabled() const { return msi_enabled(reg[0]); }
+    bool is_64bit() const { return msi_64bit(reg[0]); }
+    uint32_t destid() const { return msi_destid(reg[1]); }
+    uint32_t dest_mode() const { return msi_dm(reg[1]); }
+    uint32_t redir_hint() const { return msi_rh(reg[1]); }
+    uint32_t vector() const { return msi_vector(reg[3]); }
+    uint32_t deliv_mode() const { return msi_deliv_mode(reg[3]); }
+    uint32_t trigger_mode() const { return msi_trig_mode(reg[3]); }
 
     msi_desc() = default;
     msi_desc(const msi_desc &other) = default;
@@ -145,7 +132,7 @@ inline void validate_msi(const struct msi_desc *msid)
     const auto vector = msid->vector();
     const auto destid = msid->destid();
 
-    expects(msid->dev());
+    expects(msid->pdev);
     expects(vector >= 0x20);
     expects(vector <= 0xFF);
     expects(destid <= 0xFF);

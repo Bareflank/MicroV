@@ -874,8 +874,14 @@ bool xen_vcpu::handle_interrupt(base_vcpu *vcpu, interrupt_handler::info_t &info
     auto guest_msi = root->find_guest_msi(info.vector);
 
     if (guest_msi) {
-        auto pdev = guest_msi->dev();
+        auto pdev = guest_msi->pdev;
+
         expects(pdev);
+        std::lock_guard msi_lock(pdev->m_msi_mtx);
+
+        if (!guest_msi->is_enabled()) {
+            return true;
+        }
 
         auto guest = get_vcpu(pdev->m_guest_vcpuid);
         if (!guest) {
@@ -996,10 +1002,6 @@ bool xen_vcpu::debug_hypercall(microv_vcpu *vcpu)
 
 bool xen_vcpu::hypercall(microv_vcpu *vcpu)
 {
-    if (!m_debug_hypercalls) {
-        return false;
-    }
-
     if (this->debug_hypercall(vcpu)) {
         debug_xen_hypercall(this);
     }
