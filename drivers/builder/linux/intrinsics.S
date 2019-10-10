@@ -20,11 +20,11 @@
  * SOFTWARE.
  */
 
-        .code64
-        .intel_syntax noprefix
+.code64
+.intel_syntax noprefix
 
-        .globl  _cpuid_eax
-        .type   _cpuid_eax, @function
+.globl  _cpuid_eax
+.type   _cpuid_eax, @function
 _cpuid_eax:
         push rbx
 
@@ -34,9 +34,10 @@ _cpuid_eax:
 
         pop rbx
         ret
+.size _cpuid_eax, .-_cpuid_eax
 
-        .globl  _vmcall
-        .type   _vmcall, @function
+.globl  _vmcall
+.type   _vmcall, @function
 _vmcall:
 
         push rbx
@@ -53,3 +54,4 @@ _vmcall:
 
         pop rbx
         ret
+.size _vmcall, .-_vmcall

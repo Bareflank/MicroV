@@ -92,7 +92,7 @@ endfunction(add_driver_targets)
 
 add_custom_target_category("MicroV Drivers")
 add_driver_targets(builder)
-add_driver_targets(pci)
+#add_driver_targets(visr)
 
 # ------------------------------------------------------------------------------
 # Guest VMs
