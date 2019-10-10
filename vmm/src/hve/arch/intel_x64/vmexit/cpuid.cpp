@@ -191,7 +191,34 @@ cpuid_handler::handle_0x0000000B(vcpu_t *vcpu)
 bool
 cpuid_handler::handle_0x0000000D(vcpu_t *vcpu)
 {
+    const auto subleaf = vcpu->rcx();
     vcpu->execute_cpuid();
+
+    /*
+     * Remove any contribution that IA32_XSS bits make to the XSAVES size area.
+     * This has no effect when Linux is the root domain, because Linux doesn't
+     * use supervisor states. Windows does however, and if we dont remove the
+     * size contribution, it will trip a warning in do_extra_xstate_size_checks
+     * in Linux's fpu initializaiton.
+     */
+    if (subleaf == 1) {
+        /* Save the original values other than EBX */
+        const auto rax = vcpu->rax();
+        const auto rcx = vcpu->rcx();
+        const auto rdx = vcpu->rdx();
+
+        /* Read the size required for current XCR0 bits */
+        vcpu->set_rax(0xD);
+        vcpu->set_rcx(0x0);
+        vcpu->execute_cpuid();
+        auto rbx = vcpu->rbx();
+
+        vcpu->set_rax(rax);
+        vcpu->set_rbx(rbx);
+        vcpu->set_rcx(rcx);
+        vcpu->set_rdx(rdx);
+    }
+
     return vcpu->advance();
 }
 
