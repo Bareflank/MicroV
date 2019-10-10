@@ -27,7 +27,7 @@
 
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <Inf Include="bfbuilder.inf" />
+    <Inf Include="uvbuilder.inf" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Sources">
@@ -41,7 +41,7 @@
     <ClInclude Include="queue.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\common.c" />
+    <ClCompile Include="..\common.c" />
     <ClCompile Include="device.c" />
     <ClCompile Include="driver.c" />
     <ClCompile Include="platform.c" />

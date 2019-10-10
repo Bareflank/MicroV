@@ -20,10 +20,10 @@
  * SOFTWARE.
  */
 
-#include <driver.h>
+#include "driver.h"
 
 NTSTATUS
-bfbuilderCreateDevice(
+uvbuilderCreateDevice(
     _Inout_ PWDFDEVICE_INIT DeviceInit
 )
 {
@@ -38,16 +38,16 @@ bfbuilderCreateDevice(
         return status;
     }
 
-    status = WdfDeviceCreateDeviceInterface(device, &GUID_DEVINTERFACE_builder, NULL);
+    status = WdfDeviceCreateDeviceInterface(device, &GUID_DEVINTERFACE_uvbuilder, NULL);
     if (!NT_SUCCESS(status)) {
         return status;
     }
 
-    status = bfbuilderQueueInitialize(device);
+    status = uvbuilderQueueInitialize(device);
     if (!NT_SUCCESS(status)) {
         return status;
     }
 
-    BFDEBUG("bfbuilderCreateDevice: success\n");
+    BFDEBUG("uvbuilderCreateDevice: success\n");
     return status;
 }

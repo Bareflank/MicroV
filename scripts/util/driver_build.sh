@@ -52,21 +52,21 @@ find_msbuild() {
 case $(uname -s) in
 CYGWIN_NT-6.1*)
     find_msbuild
-    cd $1/bfbuilder/src/platform/windows/
+    cd $1/drivers/$3/windows
     SOURCE_ROOT_DIR=`cygpath -w -m $2`
-    >&2 eval "'$msbuild' /p:SOURCE_ROOT_DIR=$SOURCE_ROOT_DIR /m:3 /p:Configuration=Release /p:Platform=x64 /p:TargetVersion=Windows7 bfbuilder.sln"
+    >&2 eval "'$msbuild' /p:SOURCE_ROOT_DIR=$SOURCE_ROOT_DIR /m:3 /p:Configuration=Release /p:Platform=x64 /p:TargetVersion=Windows7 uvbuilder.sln"
     ;;
 CYGWIN_NT-6.3*)
     find_msbuild
-    cd $1/bfbuilder/src/platform/windows/
+    cd $1/drivers/$3/windows
     SOURCE_ROOT_DIR=`cygpath -w -m $2`
-    >&2 eval "'$msbuild' /p:SOURCE_ROOT_DIR=$SOURCE_ROOT_DIR /m:3 /p:Configuration=Release /p:Platform=x64 /p:TargetVersion=WindowsV6.3 bfbuilder.sln"
+    >&2 eval "'$msbuild' /p:SOURCE_ROOT_DIR=$SOURCE_ROOT_DIR /m:3 /p:Configuration=Release /p:Platform=x64 /p:TargetVersion=WindowsV6.3 uvbuilder.sln"
     ;;
 CYGWIN_NT-10.0*)
     find_msbuild
-    cd $1/bfbuilder/src/platform/windows/
+    cd $1/drivers/$3/windows
     SOURCE_ROOT_DIR=`cygpath -w -m $2`
-    >&2 eval "'$msbuild' /p:SOURCE_ROOT_DIR=$SOURCE_ROOT_DIR /m:3 /p:Configuration=Release /p:Platform=x64 /p:TargetVersion=Windows10 bfbuilder.sln"
+    >&2 eval "'$msbuild' /p:SOURCE_ROOT_DIR=$SOURCE_ROOT_DIR /m:3 /p:Configuration=Release /p:Platform=x64 /p:TargetVersion=Windows10 uvbuilder.sln"
     ;;
 Linux)
     cd $1/drivers/$3/linux

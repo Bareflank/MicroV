@@ -49,7 +49,7 @@ bfm_ioctl_open()
     SP_INTERFACE_DEVICE_DATA ifInfo;
     ifInfo.cbSize = sizeof(SP_INTERFACE_DEVICE_DATA);
 
-    hDevInfo = SetupDiGetClassDevs(&GUID_DEVINTERFACE_builder, 0, 0, DIGCF_DEVICEINTERFACE | DIGCF_PRESENT);
+    hDevInfo = SetupDiGetClassDevs(&GUID_DEVINTERFACE_uvbuilder, 0, 0, DIGCF_DEVICEINTERFACE | DIGCF_PRESENT);
     if (hDevInfo == INVALID_HANDLE_VALUE) {
         return hDevInfo;
     }
@@ -58,7 +58,7 @@ bfm_ioctl_open()
         return INVALID_HANDLE_VALUE;
     }
 
-    if (SetupDiEnumDeviceInterfaces(hDevInfo, &devInfo, &(GUID_DEVINTERFACE_builder), 0, &ifInfo) == false) {
+    if (SetupDiEnumDeviceInterfaces(hDevInfo, &devInfo, &(GUID_DEVINTERFACE_uvbuilder), 0, &ifInfo) == false) {
         return INVALID_HANDLE_VALUE;
     }
 
@@ -114,7 +114,7 @@ bfm_read_write_ioctl(HANDLE fd, DWORD request, void *data, DWORD size)
 ioctl_private::ioctl_private()
 {
     if ((fd = bfm_ioctl_open()) == INVALID_HANDLE_VALUE) {
-        throw std::runtime_error("failed to open to builder");
+        throw std::runtime_error("failed to open uvbuilder");
     }
 }
 

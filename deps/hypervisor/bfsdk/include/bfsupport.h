@@ -152,7 +152,7 @@ struct crt_info_t {
     uintptr_t arg2;
     uintptr_t arg3;
 
-    int info_num;
+    uint64_t info_num;
     struct section_info_t info[MAX_NUM_MODULES];
 
     uintptr_t func;

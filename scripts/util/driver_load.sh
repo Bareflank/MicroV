@@ -74,11 +74,11 @@ find_certmgr() {
 case $(uname -s) in
 CYGWIN_NT*)
     find_certmgr
-    cd $1/bfbuilder/src/platform/windows
-    >&2 eval "'$certmgr' /add x64/Release/bfbuilder.cer /s /r localMachine root"
-    >&2 eval "'$certmgr' /add x64/Release/bfbuilder.cer /s /r localMachine trustedpublisher"
-    >&2 /cygdrive/c/Program\ Files\ \(x86\)/Windows\ Kits/10/Tools/x64/devcon remove "ROOT\bfbuilder"
-    >&2 /cygdrive/c/Program\ Files\ \(x86\)/Windows\ Kits/10/Tools/x64/devcon install x64/Release/bfbuilder/bfbuilder.inf "ROOT\bfbuilder"
+    cd $1/drivers/$2/windows
+    >&2 eval "'$certmgr' /add x64/Release/uvbuilder.cer /s /r localMachine root"
+    >&2 eval "'$certmgr' /add x64/Release/uvbuilder.cer /s /r localMachine trustedpublisher"
+    >&2 /cygdrive/c/Program\ Files\ \(x86\)/Windows\ Kits/10/Tools/x64/devcon remove "ROOT\uvbuilder"
+    >&2 /cygdrive/c/Program\ Files\ \(x86\)/Windows\ Kits/10/Tools/x64/devcon install x64/Release/uvbuilder/uvbuilder.inf "ROOT\uvbuilder"
     ;;
 Linux)
     cd $1/drivers/$2/linux

@@ -20,8 +20,7 @@
  * SOFTWARE.
  */
 
-#include <driver.h>
-
+#include "driver.h"
 #include <common.h>
 #include <microv/builderinterface.h>
 
@@ -190,7 +189,7 @@ ioctl_destroy(domainid_t *args)
 }
 
 NTSTATUS
-bfbuilderQueueInitialize(
+uvbuilderQueueInitialize(
     _In_ WDFDEVICE Device
 )
 {
@@ -205,20 +204,20 @@ bfbuilderQueueInitialize(
         WdfIoQueueDispatchParallel
     );
 
-    queueConfig.EvtIoStop = bfbuilderEvtIoStop;
-    queueConfig.EvtIoDeviceControl = bfbuilderEvtIoDeviceControl;
+    queueConfig.EvtIoStop = uvbuilderEvtIoStop;
+    queueConfig.EvtIoDeviceControl = uvbuilderEvtIoDeviceControl;
 
     status = WdfIoQueueCreate(Device, &queueConfig, WDF_NO_OBJECT_ATTRIBUTES, &queue);
     if (!NT_SUCCESS(status)) {
         return status;
     }
 
-    BFDEBUG("bfbuilderQueueInitialize: success\n");
+    BFDEBUG("uvbuilderQueueInitialize: success\n");
     return STATUS_SUCCESS;
 }
 
 VOID
-bfbuilderEvtIoDeviceControl(
+uvbuilderEvtIoDeviceControl(
     _In_ WDFQUEUE Queue,
     _In_ WDFREQUEST Request,
     _In_ size_t OutputBufferLength,
@@ -284,7 +283,7 @@ IOCTL_FAILURE:
 }
 
 VOID
-bfbuilderEvtIoStop(
+uvbuilderEvtIoStop(
     _In_ WDFQUEUE Queue,
     _In_ WDFREQUEST Request,
     _In_ ULONG ActionFlags

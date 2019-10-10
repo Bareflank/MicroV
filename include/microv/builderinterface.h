@@ -35,7 +35,7 @@ extern "C" {
 /* -------------------------------------------------------------------------- */
 
 #ifndef BUILDER_NAME
-#define BUILDER_NAME "bareflank_builder"
+#define BUILDER_NAME "uv_builder"
 #endif
 
 #ifndef BUILDER_MAJOR
@@ -124,6 +124,7 @@ struct create_vm_args {
     char hvc;
     char xsvm;
     char ndvm;
+    char pad[5];
 };
 
 /* -------------------------------------------------------------------------- */
@@ -145,7 +146,7 @@ struct create_vm_args {
 
 #include <initguid.h>
 
-DEFINE_GUID(GUID_DEVINTERFACE_builder,
+DEFINE_GUID(GUID_DEVINTERFACE_uvbuilder,
     0x0156f59a, 0xdf90, 0x4ac6, 0x85, 0x3d, 0xcf, 0xd9, 0x3e, 0x25, 0x65, 0xc2);
 
 #define IOCTL_CREATE_VM CTL_CODE(BUILDER_DEVICETYPE, IOCTL_CREATE_VM_CMD, METHOD_IN_DIRECT, FILE_READ_DATA | FILE_WRITE_DATA)
