@@ -35,7 +35,7 @@ extern "C" {
 /* -------------------------------------------------------------------------- */
 
 #ifndef BUILDER_NAME
-#define BUILDER_NAME "uv_builder"
+#define BUILDER_NAME "uvbuilder"
 #endif
 
 #ifndef BUILDER_MAJOR
@@ -47,7 +47,7 @@ extern "C" {
 #endif
 
 #define IOCTL_CREATE_VM_CMD 0x901
-#define IOCTL_DESTROY_CMD 0x902
+#define IOCTL_DESTROY_VM_CMD 0x902
 
 /**
  * VM file types
@@ -134,7 +134,7 @@ struct create_vm_args {
 #ifdef __linux__
 
 #define IOCTL_CREATE_VM _IOWR(BUILDER_MAJOR, IOCTL_CREATE_VM_CMD, struct create_vm_args *)
-#define IOCTL_DESTROY _IOW(BUILDER_MAJOR, IOCTL_DESTROY_CMD, domainid_t *)
+#define IOCTL_DESTROY_VM _IOW(BUILDER_MAJOR, IOCTL_DESTROY_VM_CMD, domainid_t *)
 
 #endif
 
@@ -142,7 +142,7 @@ struct create_vm_args {
 /* Windows Interfaces                                                         */
 /* -------------------------------------------------------------------------- */
 
-#if defined(_WIN32) || defined(__CYGWIN__)
+#if defined(_WIN32) || defined(__CYGWIN__) || defined(_WIN64)
 
 #include <initguid.h>
 
@@ -150,7 +150,7 @@ DEFINE_GUID(GUID_DEVINTERFACE_uvbuilder,
     0x0156f59a, 0xdf90, 0x4ac6, 0x85, 0x3d, 0xcf, 0xd9, 0x3e, 0x25, 0x65, 0xc2);
 
 #define IOCTL_CREATE_VM CTL_CODE(BUILDER_DEVICETYPE, IOCTL_CREATE_VM_CMD, METHOD_IN_DIRECT, FILE_READ_DATA | FILE_WRITE_DATA)
-#define IOCTL_DESTROY CTL_CODE(BUILDER_DEVICETYPE, IOCTL_DESTROY_CMD, METHOD_IN_DIRECT, FILE_READ_DATA | FILE_WRITE_DATA)
+#define IOCTL_DESTROY_VM CTL_CODE(BUILDER_DEVICETYPE, IOCTL_DESTROY_VM_CMD, METHOD_IN_DIRECT, FILE_READ_DATA | FILE_WRITE_DATA)
 
 #endif
 

@@ -1227,7 +1227,7 @@ int64_t common_create_vm(struct create_vm_args *args)
 }
 
 int64_t
-common_destroy(uint64_t domainid)
+common_destroy_vm(uint64_t domainid)
 {
     status_t ret;
     struct vm_t *vm = get_vm(domainid);

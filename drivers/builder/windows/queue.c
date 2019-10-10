@@ -173,18 +173,18 @@ failed:
 }
 
 static long
-ioctl_destroy(domainid_t *args)
+ioctl_destroy_vm(domainid_t *args)
 {
     int64_t ret;
     domainid_t domainid = *args;
 
-    ret = common_destroy(domainid);
+    ret = common_destroy_vm(domainid);
     if (ret != BF_SUCCESS) {
-        BFDEBUG("common_destroy failed: %llx\n", ret);
+        BFDEBUG("common_destroy_vm failed: %llx\n", ret);
         return BF_IOCTL_FAILURE;
     }
 
-    BFDEBUG("IOCTL_DESTROY: succeeded\n");
+    BFDEBUG("IOCTL_DESTROY_VM: succeeded\n");
     return BF_IOCTL_SUCCESS;
 }
 
@@ -257,8 +257,8 @@ uvbuilderEvtIoDeviceControl(
             RtlCopyMemory(out, in, out_size);
             break;
 
-        case IOCTL_DESTROY:
-            ret = ioctl_destroy((domainid_t *)in);
+        case IOCTL_DESTROY_VM:
+            ret = ioctl_destroy_vm((domainid_t *)in);
             break;
 
         default:

@@ -38,7 +38,7 @@
 // -----------------------------------------------------------------------------
 
 HANDLE
-bfm_ioctl_open()
+uvctl_ioctl_open()
 {
     HANDLE hDevInfo;
     SP_INTERFACE_DEVICE_DETAIL_DATA *deviceDetailData = nullptr;
@@ -49,22 +49,35 @@ bfm_ioctl_open()
     SP_INTERFACE_DEVICE_DATA ifInfo;
     ifInfo.cbSize = sizeof(SP_INTERFACE_DEVICE_DATA);
 
-    hDevInfo = SetupDiGetClassDevs(&GUID_DEVINTERFACE_uvbuilder, 0, 0, DIGCF_DEVICEINTERFACE | DIGCF_PRESENT);
+    hDevInfo = SetupDiGetClassDevs(&GUID_DEVINTERFACE_uvbuilder,
+                                   0,
+                                   0,
+                                   DIGCF_DEVICEINTERFACE | DIGCF_PRESENT);
+
     if (hDevInfo == INVALID_HANDLE_VALUE) {
         return hDevInfo;
     }
 
-    if (SetupDiEnumDeviceInfo(hDevInfo, 0, &devInfo) == false) {
+    if (!SetupDiEnumDeviceInfo(hDevInfo, 0, &devInfo)) {
         return INVALID_HANDLE_VALUE;
     }
 
-    if (SetupDiEnumDeviceInterfaces(hDevInfo, &devInfo, &(GUID_DEVINTERFACE_uvbuilder), 0, &ifInfo) == false) {
+    if (!SetupDiEnumDeviceInterfaces(hDevInfo,
+                                    &devInfo,
+                                    &(GUID_DEVINTERFACE_uvbuilder),
+                                    0,
+                                    &ifInfo)) {
         return INVALID_HANDLE_VALUE;
     }
 
     DWORD requiredSize = 0;
 
-    if (SetupDiGetDeviceInterfaceDetail(hDevInfo, &ifInfo, NULL, 0, &requiredSize, NULL) == TRUE) {
+    if (SetupDiGetDeviceInterfaceDetail(hDevInfo,
+                                        &ifInfo,
+                                        NULL,
+                                        0,
+                                        &requiredSize,
+                                        NULL)) {
         return INVALID_HANDLE_VALUE;
     }
 
@@ -72,9 +85,10 @@ bfm_ioctl_open()
         return INVALID_HANDLE_VALUE;
     }
 
-    deviceDetailData = static_cast<SP_INTERFACE_DEVICE_DETAIL_DATA *>(malloc(requiredSize));
+    deviceDetailData =
+        static_cast<SP_INTERFACE_DEVICE_DETAIL_DATA *>(malloc(requiredSize));
 
-    if (deviceDetailData == nullptr) {
+    if (!deviceDetailData) {
         return INVALID_HANDLE_VALUE;
     }
 
@@ -83,7 +97,12 @@ bfm_ioctl_open()
 
     deviceDetailData->cbSize = sizeof(SP_INTERFACE_DEVICE_DETAIL_DATA);
 
-    if (SetupDiGetDeviceInterfaceDetail(hDevInfo, &ifInfo, deviceDetailData, requiredSize, NULL, NULL) == false) {
+    if (!SetupDiGetDeviceInterfaceDetail(hDevInfo,
+                                         &ifInfo,
+                                         deviceDetailData,
+                                         requiredSize,
+                                         NULL,
+                                         NULL)) {
         return INVALID_HANDLE_VALUE;
     }
 
@@ -97,7 +116,7 @@ bfm_ioctl_open()
 }
 
 int64_t
-bfm_read_write_ioctl(HANDLE fd, DWORD request, void *data, DWORD size)
+uvctl_rw_ioctl(HANDLE fd, DWORD request, void *data, DWORD size)
 {
     DWORD bytes = 0;
     if (!DeviceIoControl(fd, request, data, size, data, size, &bytes, NULL)) {
@@ -113,26 +132,31 @@ bfm_read_write_ioctl(HANDLE fd, DWORD request, void *data, DWORD size)
 
 ioctl_private::ioctl_private()
 {
-    if ((fd = bfm_ioctl_open()) == INVALID_HANDLE_VALUE) {
+    if ((fd = uvctl_ioctl_open()) == INVALID_HANDLE_VALUE) {
         throw std::runtime_error("failed to open uvbuilder");
     }
 }
 
 ioctl_private::~ioctl_private()
-{ CloseHandle(fd); }
-
-void
-ioctl_private::call_ioctl_create_vm(create_vm_args &args)
 {
-    if (bfm_read_write_ioctl(fd, IOCTL_CREATE_VM, &args, sizeof(create_vm_args)) < 0) {
+    CloseHandle(fd);
+}
+
+void ioctl_private::call_ioctl_create_vm(create_vm_args &args)
+{
+    int rc = uvctl_rw_ioctl(fd, IOCTL_CREATE_VM, &args, sizeof(create_vm_args));
+    if (rc < 0) {
         throw std::runtime_error("ioctl failed: IOCTL_CREATE_VM");
     }
 }
 
-void
-ioctl_private::call_ioctl_destroy(domainid_t domainid) noexcept
+void ioctl_private::call_ioctl_destroy(domainid_t domainid) noexcept
 {
-    if (bfm_read_write_ioctl(fd, IOCTL_DESTROY, &domainid, sizeof(domainid_t)) < 0) {
-        std::cerr << "[ERROR] ioctl failed: IOCTL_DESTROY\n";
+    int rc = uvctl_rw_ioctl(fd,
+                            IOCTL_DESTROY_VM,
+                            &domainid,
+                            sizeof(domainid_t));
+    if (rc < 0) {
+        std::cerr << "[ERROR] ioctl failed: IOCTL_DESTROY_VM\n";
     }
 }
