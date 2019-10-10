@@ -22,21 +22,25 @@
 #ifndef BARRIER_INTEL_X64_H
 #define BARRIER_INTEL_X64_H
 
+extern "C" void _lfence() noexcept;
+extern "C" void _sfence() noexcept;
+extern "C" void _mfence() noexcept;
+
 namespace intel_x64 {
 
 inline void rmb()
 {
-    __asm volatile("lfence" ::: "memory");
+    _lfence();
 }
 
 inline void wmb()
 {
-    __asm volatile("sfence" ::: "memory");
+    _sfence();
 }
 
 inline void mb()
 {
-    __asm volatile("mfence" ::: "memory");
+    _mfence();
 }
 
 }

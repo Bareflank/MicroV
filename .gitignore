@@ -54,3 +54,9 @@ drivers/builder/windows/x64
 
 deploy/windows/Input
 deploy/windows/Output
+*.suo
+*.db
+*.testlog
+*.json
+*.sqlite
+*.manifest

@@ -22,7 +22,17 @@
 #ifndef UVCTL_ARGS_H
 #define UVCTL_ARGS_H
 
+#ifdef _WIN64
+#pragma warning(push)
+#pragma warning(disable:4267)
+#endif
+
 #include "cxxopts.hpp"
+
+#ifdef _WIN64
+#pragma warning(pop)
+#endif
+
 #include <microv/hypercall.h>
 
 using args_type = cxxopts::ParseResult;
