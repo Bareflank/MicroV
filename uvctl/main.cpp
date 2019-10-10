@@ -26,7 +26,6 @@
 #include <fstream>
 #include <iostream>
 #include <signal.h>
-#include <unistd.h>
 
 #include <bfack.h>
 #include <bfgsl.h>
@@ -72,7 +71,7 @@ static inline void setup_kill_signal_handler(void)
 #endif
 }
 
-static uint64_t vm_file_type(const char *data, uint64_t size)
+static uint32_t vm_file_type(const char *data, uint64_t size)
 {
     /**
      * We support ELF (vmlinux) or bzImage. The latter
@@ -95,7 +94,7 @@ static uint64_t vm_file_type(const char *data, uint64_t size)
     throw std::invalid_argument("Unknown VM file type");
 }
 
-static uint64_t vm_exec_mode(uint64_t file_type)
+static uint32_t vm_exec_mode(uint64_t file_type)
 {
     switch (file_type) {
         case VM_FILE_VMLINUX: return VM_EXEC_XENPVH;

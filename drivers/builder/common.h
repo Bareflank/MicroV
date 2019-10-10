@@ -20,8 +20,8 @@
  * SOFTWARE.
  */
 
-#ifndef COMMON_H
-#define COMMON_H
+#ifndef UVBUILDER_COMMON_H
+#define UVBUILDER_COMMON_H
 
 #include <bftypes.h>
 #include <bferrorcodes.h>
@@ -49,8 +49,7 @@
  * @param args the arguments needed to create the VM
  * @return SUCCESS on success, negative error code on failure
  */
-int64_t
-common_create_vm(struct create_vm_args *args);
+int64_t common_create_vm(struct create_vm_args *args);
 
 /**
  * Destroy VM
@@ -61,7 +60,6 @@ common_create_vm(struct create_vm_args *args);
  * @param domainid the domain to destroy
  * @return SUCCESS on success, negative error code on failure
  */
-int64_t
-common_destroy(uint64_t domainid);
+int64_t common_destroy_vm(uint64_t domainid);
 
 #endif

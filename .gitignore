@@ -46,11 +46,17 @@ tags
 *.cache.mk
 
 deps/hypervisor/bfdriver/src/platform/linux/Makefile
-*bfvmm/include/compiler.h
+*vmm/include/compiler.h
 
-bfbuilder/src/platform/windows/.vs/
-bfbuilder/src/platform/windows/bfbuilder.VC.db
-bfbuilder/src/platform/windows/x64/
+*.vs
+*.VC.db
+drivers/builder/windows/x64
 
-bfinstallers/windows/Input
-bfinstallers/windows/Output
+deploy/windows/Input
+deploy/windows/Output
+*.suo
+*.db
+*.testlog
+*.json
+*.sqlite
+*.manifest

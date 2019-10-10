@@ -33,8 +33,18 @@
 #include <microv/gpalayout.h>
 #include <microv/hypercall.h>
 
+#ifdef _WIN64
+#pragma warning(push)
+#pragma warning(disable:4820)
+#pragma warning(disable:4464)
+#endif
+
 #include <xen.h>
 #include <arch-x86/hvm/start_info.h>
+
+#ifdef _WIN64
+#pragma warning(pop)
+#endif
 
 #define bfalloc_page(a) \
     (a *)platform_memset(platform_alloc_rwe(BAREFLANK_PAGE_SIZE), 0, BAREFLANK_PAGE_SIZE);
@@ -71,7 +81,7 @@ struct vm_t {
     struct fadt_t *fadt;
     struct dsdt_t *dsdt;
 
-    int used;
+    uint64_t used;
 
     /**
      * Currently, every VM with VM_EXEC_XENPVH is assumed to have
@@ -85,6 +95,8 @@ struct vm_t {
     struct hvm_modlist_entry *pvh_modlist;
     struct bfelf_loader_t elf_ldr;
     struct bfelf_binary_t elf_bin;
+
+    char pad[4];
 };
 
 static struct vm_t g_vms[MAX_VMS] = {0};
@@ -1215,7 +1227,7 @@ int64_t common_create_vm(struct create_vm_args *args)
 }
 
 int64_t
-common_destroy(uint64_t domainid)
+common_destroy_vm(uint64_t domainid)
 {
     status_t ret;
     struct vm_t *vm = get_vm(domainid);

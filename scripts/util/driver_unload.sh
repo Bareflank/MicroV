@@ -22,7 +22,7 @@
 
 case $(uname -s) in
 CYGWIN_NT*)
-    >&2 /cygdrive/c/Program\ Files\ \(x86\)/Windows\ Kits/10/Tools/x64/devcon remove "ROOT\bfbuilder"
+    >&2 /cygdrive/c/Program\ Files\ \(x86\)/Windows\ Kits/10/Tools/x64/devcon remove "ROOT\uvbuilder"
     ;;
 Linux)
     cd $1/drivers/$2/linux

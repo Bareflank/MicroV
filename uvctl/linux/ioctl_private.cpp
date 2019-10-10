@@ -41,13 +41,13 @@
 // -----------------------------------------------------------------------------
 
 int
-bfm_ioctl_open()
+uvctl_ioctl_open()
 {
-    return open("/dev/bareflank_builder", O_RDWR);
+    return open("/dev/" BUILDER_NAME, O_RDWR);
 }
 
 int64_t
-bfm_write_ioctl(int fd, unsigned long request, const void *data)
+uvctl_write_ioctl(int fd, unsigned long request, const void *data)
 {
     return ioctl(fd, request, data);
 }
@@ -58,19 +58,20 @@ bfm_write_ioctl(int fd, unsigned long request, const void *data)
 
 ioctl_private::ioctl_private()
 {
-    if ((fd = bfm_ioctl_open()) < 0) {
+    if ((fd = uvctl_ioctl_open()) < 0) {
         throw std::runtime_error("failed to open to the builder driver");
     }
 }
 
 ioctl_private::~ioctl_private()
-{ close(fd); }
+{
+    close(fd);
+}
 
 void
-ioctl_private::call_ioctl_create_vm(
-    create_vm_args &args)
+ioctl_private::call_ioctl_create_vm(create_vm_args &args)
 {
-    if (bfm_write_ioctl(fd, IOCTL_CREATE_VM, &args) < 0) {
+    if (uvctl_write_ioctl(fd, IOCTL_CREATE_VM, &args) < 0) {
         throw std::runtime_error("ioctl failed: IOCTL_CREATE_VM");
     }
 }
@@ -78,7 +79,7 @@ ioctl_private::call_ioctl_create_vm(
 void
 ioctl_private::call_ioctl_destroy(domainid_t domainid) noexcept
 {
-    if (bfm_write_ioctl(fd, IOCTL_DESTROY, &domainid) < 0) {
-        std::cerr << "[ERROR] ioctl failed: IOCTL_DESTROY\n";
+    if (uvctl_write_ioctl(fd, IOCTL_DESTROY_VM, &domainid) < 0) {
+        std::cerr << "[ERROR] ioctl failed: IOCTL_DESTROY_VM\n";
     }
 }

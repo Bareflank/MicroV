@@ -22,11 +22,17 @@
 
 #define INITGUID
 
+#pragma warning(push)
+#pragma warning(disable:4820) /* padding */
+#pragma warning(disable:4255) /* change foo() to foo(void) */
+
 #include <ntddk.h>
 #include <wdf.h>
 
-#include <queue.h>
-#include <device.h>
+#pragma warning(pop)
+
+#include "queue.h"
+#include "device.h"
 
 #include <common.h>
 
@@ -37,9 +43,9 @@
 EXTERN_C_START
 
 DRIVER_INITIALIZE DriverEntry;
-EVT_WDF_DRIVER_DEVICE_ADD bfbuilderEvtDeviceAdd;
-EVT_WDF_OBJECT_CONTEXT_CLEANUP bfbuilderEvtDriverContextCleanup;
-EVT_WDF_DEVICE_D0_ENTRY bfbuilderEvtDeviceD0Entry;
-EVT_WDF_DEVICE_D0_EXIT bfbuilderEvtDeviceD0Exit;
+EVT_WDF_DRIVER_DEVICE_ADD uvbuilderEvtDeviceAdd;
+EVT_WDF_OBJECT_CONTEXT_CLEANUP uvbuilderEvtDriverContextCleanup;
+EVT_WDF_DEVICE_D0_ENTRY uvbuilderEvtDeviceD0Entry;
+EVT_WDF_DEVICE_D0_EXIT uvbuilderEvtDeviceD0Exit;
 
 EXTERN_C_END

@@ -133,7 +133,7 @@ ioctl_create_vm(struct create_vm_args *args)
     ret = copy_to_user(args, &kern_args, sizeof(struct create_vm_args));
     if (ret != 0) {
         BFALERT("IOCTL_CREATE_VM: failed to copy args to userspace\n");
-        common_destroy(kern_args.domainid);
+        common_destroy_vm(kern_args.domainid);
         goto failed;
     }
 
@@ -159,24 +159,24 @@ failed:
 }
 
 static long
-ioctl_destroy(domainid_t *args)
+ioctl_destroy_vm(domainid_t *args)
 {
     int64_t ret;
     domainid_t domainid;
 
     ret = copy_from_user(&domainid, args, sizeof(domainid_t));
     if (ret != 0) {
-        BFALERT("IOCTL_DESTROY: failed to copy args from userspace\n");
+        BFALERT("IOCTL_DESTROY_VM: failed to copy args from userspace\n");
         return BF_IOCTL_FAILURE;
     }
 
-    ret = common_destroy(domainid);
+    ret = common_destroy_vm(domainid);
     if (ret != BF_SUCCESS) {
         BFDEBUG("common_destroy failed: %llx\n", ret);
         return BF_IOCTL_FAILURE;
     }
 
-    BFDEBUG("IOCTL_DESTROY: succeeded\n");
+    BFDEBUG("IOCTL_DESTROY_VM: succeeded\n");
     return BF_IOCTL_SUCCESS;
 }
 
@@ -188,8 +188,8 @@ dev_unlocked_ioctl(
         case IOCTL_CREATE_VM:
             return ioctl_create_vm((struct create_vm_args *)arg);
 
-        case IOCTL_DESTROY:
-            return ioctl_destroy((domainid_t *)arg);
+        case IOCTL_DESTROY_VM:
+            return ioctl_destroy_vm((domainid_t *)arg);
 
         default:
             return -EINVAL;

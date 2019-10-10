@@ -226,20 +226,20 @@ void uvc_domain::destroy()
      * (which has joined at this point).
      */
     for (auto &c : child_list) {
-        printf("%s: destroying child 0x%x\n", __func__, c.id);
+        printf("%s: destroying child 0x%llx\n", __func__, c.id);
         c.destroy();
     }
 
     std::lock_guard lock(vcpu_mtx);
 
     for (auto &v : vcpu_list) {
-        printf("%s: halting vcpu 0x%x\n", __func__, v.id);
+        printf("%s: halting vcpu 0x%llx\n", __func__, v.id);
         v.halt();
     }
 
     for (auto &v : vcpu_list) {
         if (v.run_thread.joinable()) {
-            printf("%s: joining vcpu 0x%x\n", __func__, v.id);
+            printf("%s: joining vcpu 0x%llx\n", __func__, v.id);
             v.run_thread.join();
         }
     }

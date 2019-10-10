@@ -61,7 +61,7 @@ void uvc_vcpu::unpause() noexcept
 
 void uvc_vcpu::fault(uint64_t err) const noexcept
 {
-    printf("[0x%x]: vcpu fault: 0x%x\n", id, err);
+    printf("[0x%llx]: vcpu fault: 0x%llx\n", id, err);
 }
 
 void uvc_vcpu::usleep(const microseconds &us) const
@@ -121,7 +121,7 @@ void uvc_vcpu::run() const
         case __enum_run_op__hlt:
             return;
         case __enum_run_op__fault:
-            printf("[0x%x]: vcpu fault: 0x%x\n", id, arg);
+            printf("[0x%llx]: vcpu fault: 0x%llx\n", id, arg);
             return;
         case __enum_run_op__yield:
             this->usleep(microseconds(arg));

@@ -39,6 +39,7 @@ target_sources(bfintrinsics PRIVATE
     $<${X64}:src/arch/x64/rflags.asm>
     $<${X64}:src/arch/x64/srs.asm>
     $<${X64}:src/arch/x64/tlb.asm>
+    $<${X64}:src/arch/intel_x64/barrier.asm>
     $<${X64}:src/arch/intel_x64/bit.asm>
     $<${X64}:src/arch/intel_x64/crs.asm>
     $<${X64}:src/arch/intel_x64/drs.asm>

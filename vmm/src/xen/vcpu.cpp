@@ -127,7 +127,7 @@ static bool xen_leaf0(base_vcpu *vcpu)
 
 static bool xen_leaf1(base_vcpu *vcpu)
 {
-    vcpu->set_rax(0x00040D00);
+    vcpu->set_rax(0x0004000D);
     vcpu->set_rbx(0);
     vcpu->set_rcx(0);
     vcpu->set_rdx(0);

@@ -20,8 +20,7 @@
  * SOFTWARE.
  */
 
-#include <driver.h>
-
+#include "driver.h"
 #include <common.h>
 #include <microv/builderinterface.h>
 
@@ -174,23 +173,23 @@ failed:
 }
 
 static long
-ioctl_destroy(domainid_t *args)
+ioctl_destroy_vm(domainid_t *args)
 {
     int64_t ret;
     domainid_t domainid = *args;
 
-    ret = common_destroy(domainid);
+    ret = common_destroy_vm(domainid);
     if (ret != BF_SUCCESS) {
-        BFDEBUG("common_destroy failed: %llx\n", ret);
+        BFDEBUG("common_destroy_vm failed: %llx\n", ret);
         return BF_IOCTL_FAILURE;
     }
 
-    BFDEBUG("IOCTL_DESTROY: succeeded\n");
+    BFDEBUG("IOCTL_DESTROY_VM: succeeded\n");
     return BF_IOCTL_SUCCESS;
 }
 
 NTSTATUS
-bfbuilderQueueInitialize(
+uvbuilderQueueInitialize(
     _In_ WDFDEVICE Device
 )
 {
@@ -205,20 +204,20 @@ bfbuilderQueueInitialize(
         WdfIoQueueDispatchParallel
     );
 
-    queueConfig.EvtIoStop = bfbuilderEvtIoStop;
-    queueConfig.EvtIoDeviceControl = bfbuilderEvtIoDeviceControl;
+    queueConfig.EvtIoStop = uvbuilderEvtIoStop;
+    queueConfig.EvtIoDeviceControl = uvbuilderEvtIoDeviceControl;
 
     status = WdfIoQueueCreate(Device, &queueConfig, WDF_NO_OBJECT_ATTRIBUTES, &queue);
     if (!NT_SUCCESS(status)) {
         return status;
     }
 
-    BFDEBUG("bfbuilderQueueInitialize: success\n");
+    BFDEBUG("uvbuilderQueueInitialize: success\n");
     return STATUS_SUCCESS;
 }
 
 VOID
-bfbuilderEvtIoDeviceControl(
+uvbuilderEvtIoDeviceControl(
     _In_ WDFQUEUE Queue,
     _In_ WDFREQUEST Request,
     _In_ size_t OutputBufferLength,
@@ -258,8 +257,8 @@ bfbuilderEvtIoDeviceControl(
             RtlCopyMemory(out, in, out_size);
             break;
 
-        case IOCTL_DESTROY:
-            ret = ioctl_destroy((domainid_t *)in);
+        case IOCTL_DESTROY_VM:
+            ret = ioctl_destroy_vm((domainid_t *)in);
             break;
 
         default:
@@ -284,7 +283,7 @@ IOCTL_FAILURE:
 }
 
 VOID
-bfbuilderEvtIoStop(
+uvbuilderEvtIoStop(
     _In_ WDFQUEUE Queue,
     _In_ WDFREQUEST Request,
     _In_ ULONG ActionFlags
