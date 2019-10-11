@@ -36,6 +36,7 @@ static constexpr uintptr_t x2apic_base{0x800};
 
 /* Register offsets */
 static constexpr uint32_t ID_REG = 0x02;
+static constexpr uint32_t EOI_REG = 0x0B;
 static constexpr uint32_t LDR_REG = 0x0D;
 static constexpr uint32_t DFR_REG = 0x0E;
 static constexpr uint32_t ICR_REG = 0x30;
@@ -55,6 +56,12 @@ static void x2apic_write_icr(uintptr_t base, uint64_t val)
 {
     bfignored(base);
     ia32_x2apic_icr::set(val);
+}
+
+static void x2apic_write_eoi(uintptr_t base)
+{
+    bfignored(base);
+    ia32_x2apic_eoi::set(0);
 }
 
 /* xAPIC operations */
@@ -79,6 +86,11 @@ static void xapic_write_icr(uintptr_t base, uint64_t val)
     *hi_addr = (uint32_t)(val >> 32);
     ::intel_x64::wmb();
     *lo_addr = (uint32_t)val;
+}
+
+static void xapic_write_eoi(uintptr_t base)
+{
+    xapic_write(base, EOI_REG, 0);
 }
 
 /* class implementation */
@@ -126,6 +138,7 @@ void lapic::init_xapic()
     m_base_addr = reinterpret_cast<uintptr_t>(m_xapic_hva);
     m_ops.write = xapic_write;
     m_ops.write_icr = xapic_write_icr;
+    m_ops.write_eoi = xapic_write_eoi;
     m_ops.read = xapic_read;
 }
 
@@ -134,6 +147,7 @@ void lapic::init_x2apic()
     m_base_addr = x2apic_base;
     m_ops.write = x2apic_write;
     m_ops.write_icr = x2apic_write_icr;
+    m_ops.write_eoi = x2apic_write_eoi;
     m_ops.read = x2apic_read;
 }
 
@@ -150,6 +164,11 @@ uint32_t lapic::read(uint32_t reg) const
 void lapic::write_icr(uint64_t val)
 {
     m_ops.write_icr(m_base_addr, val);
+}
+
+void lapic::write_eoi()
+{
+    m_ops.write_eoi(m_base_addr);
 }
 
 /*

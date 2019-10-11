@@ -482,8 +482,6 @@ bool pci_dev::guest_normal_cfg_out(base_vcpu *vcpu, cfg_info &info)
     }
 
     if (!was_enabled && now_enabled && !m_msi_mapped) {
-        expects(m_root_msi.redir_hint() == 0); /* no redirection hint */
-        expects(m_root_msi.deliv_mode() == 0); /* fixed delivery mode */
         expects(m_root_msi.trigger_mode() == 0); /* edge triggered */
 
         /* Create a root->guest MSI mapping */
@@ -568,6 +566,13 @@ bool pci_dev::root_cfg_out(base_vcpu *vcpu, cfg_info &info)
     if (reg >= m_msi_cap && reg <= m_msi_cap + 3) {
         std::lock_guard msi_lock(m_msi_mtx);
         m_root_msi.reg[reg - m_msi_cap] = m_vcfg[reg];
+
+        if (reg == m_msi_cap + 3) {
+            /* Clear reserved bits in data register (Windows sets some) */
+            constexpr uint32_t rsvd_bits = 0xFFFF3800;
+            m_root_msi.reg[3] &= ~rsvd_bits;
+            m_vcfg[reg] = m_root_msi.reg[3];
+        }
     }
 
     return true;

@@ -874,8 +874,15 @@ bool xen_vcpu::handle_interrupt(base_vcpu *vcpu, interrupt_handler::info_t &info
     auto guest_msi = root->find_guest_msi(info.vector);
 
     if (guest_msi) {
-        auto pdev = guest_msi->pdev;
+        /*
+         * The vector is assigned to a guest, so we have to send the EOI.
+         * This is because the guest kernel only has access to a virtual APIC,
+         * and therefore the EOI written by the kernel never makes it to actual
+         * hardware.
+         */
+        root->m_lapic->write_eoi();
 
+        auto pdev = guest_msi->pdev;
         expects(pdev);
         std::lock_guard msi_lock(pdev->m_msi_mtx);
 

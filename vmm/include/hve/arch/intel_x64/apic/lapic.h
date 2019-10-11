@@ -38,6 +38,7 @@ private:
     struct access_ops {
         void (*write)(uintptr_t base, uint32_t reg, uint32_t val);
         void (*write_icr)(uintptr_t base, uint64_t val);
+        void (*write_eoi)(uintptr_t base);
         uint32_t (*read)(uintptr_t base, uint32_t reg);
     };
 
@@ -57,6 +58,8 @@ private:
     bool emulate_wrmsr_base(base_vcpu *v, wrmsr_handler::info_t &info);
 
 public:
+
+    void write_eoi();
 
     /* Destination model. Only relevant when dest_mode is logical */
     enum {

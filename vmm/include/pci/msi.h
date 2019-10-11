@@ -127,15 +127,17 @@ using msi_key_t = uint64_t; /* root_vector */
 using msi_val_t = std::pair<const msi_desc *, const msi_desc *>;
 using msi_map_t = std::unordered_map<msi_key_t, msi_val_t>;
 
-inline void validate_msi(const struct msi_desc *msid)
+inline void validate_msi(const struct msi_desc *msi)
 {
-    const auto vector = msid->vector();
-    const auto destid = msid->destid();
+    const auto vector = msi->vector();
+    const auto destid = msi->destid();
+    const auto edge = msi->trigger_mode() == 0;
+    const auto pdev = msi->pdev;
 
-    expects(msid->pdev);
+    expects(edge);
+    expects(pdev);
     expects(vector >= 0x20);
     expects(vector <= 0xFF);
-    expects(destid <= 0xFF);
 //    expects((destid & (destid - 1)) == 0);
 }
 
