@@ -20,7 +20,7 @@
 ; SOFTWARE.
 
 ;
-; uvbuilder.inf
+; builder.inf
 ;
 
 [Version]
@@ -28,12 +28,12 @@ Signature="$WINDOWS NT$"
 Class=System
 ClassGuid={4d36e97d-e325-11ce-bfc1-08002be10318}
 Provider=%ManufacturerName%
-CatalogFile=uvbuilder.cat
+CatalogFile=builder.cat
 DriverVer=
 
 [DestinationDirs]
 DefaultDestDir = 12
-uvbuilder_Device_CoInstaller_CopyFiles = 11
+builder_Device_CoInstaller_CopyFiles = 11
 
 ; ================= Class section =====================
 
@@ -41,7 +41,7 @@ uvbuilder_Device_CoInstaller_CopyFiles = 11
 1 = %DiskName%,,,""
 
 [SourceDisksFiles]
-uvbuilder.sys  = 1,,
+builder.sys  = 1,,
 WdfCoInstaller$KMDFCOINSTALLERVERSION$.dll=1
 
 ;*****************************************
@@ -52,48 +52,48 @@ WdfCoInstaller$KMDFCOINSTALLERVERSION$.dll=1
 %ManufacturerName%=Standard,NT$ARCH$
 
 [Standard.NT$ARCH$]
-%uvbuilder.DeviceDesc%=uvbuilder_Device, Root\uvbuilder
+%builder.DeviceDesc%=builder_Device, Root\builder
 
-[uvbuilder_Device.NT]
+[builder_Device.NT]
 CopyFiles=Drivers_Dir
 
 [Drivers_Dir]
-uvbuilder.sys
+builder.sys
 
 ;-------------- Service installation
-[uvbuilder_Device.NT.Services]
-AddService = uvbuilder,%SPSVCINST_ASSOCSERVICE%, uvbuilder_Service_Inst
+[builder_Device.NT.Services]
+AddService = builder,%SPSVCINST_ASSOCSERVICE%, builder_Service_Inst
 
-; -------------- uvbuilder driver install sections
-[uvbuilder_Service_Inst]
-DisplayName    = %uvbuilder.SVCDESC%
+; -------------- builder driver install sections
+[builder_Service_Inst]
+DisplayName    = %builder.SVCDESC%
 ServiceType    = 1               ; SERVICE_KERNEL_DRIVER
 StartType      = 3               ; SERVICE_DEMAND_START
 ErrorControl   = 1               ; SERVICE_ERROR_NORMAL
-ServiceBinary  = %12%\uvbuilder.sys
+ServiceBinary  = %12%\builder.sys
 
 ;
-;--- uvbuilder_Device Coinstaller installation ------
+;--- builder_Device Coinstaller installation ------
 ;
 
-[uvbuilder_Device.NT.CoInstallers]
-AddReg=uvbuilder_Device_CoInstaller_AddReg
-CopyFiles=uvbuilder_Device_CoInstaller_CopyFiles
+[builder_Device.NT.CoInstallers]
+AddReg=builder_Device_CoInstaller_AddReg
+CopyFiles=builder_Device_CoInstaller_CopyFiles
 
-[uvbuilder_Device_CoInstaller_AddReg]
+[builder_Device_CoInstaller_AddReg]
 HKR,,CoInstallers32,0x00010000, "WdfCoInstaller$KMDFCOINSTALLERVERSION$.dll,WdfCoInstaller"
 
-[uvbuilder_Device_CoInstaller_CopyFiles]
+[builder_Device_CoInstaller_CopyFiles]
 WdfCoInstaller$KMDFCOINSTALLERVERSION$.dll
 
-[uvbuilder_Device.NT.Wdf]
-KmdfService =  uvbuilder, uvbuilder_wdfsect
-[uvbuilder_wdfsect]
+[builder_Device.NT.Wdf]
+KmdfService =  builder, builder_wdfsect
+[builder_wdfsect]
 KmdfLibraryVersion = $KMDFVERSION$
 
 [Strings]
 SPSVCINST_ASSOCSERVICE= 0x00000002
 ManufacturerName="Assured Information Security, Inc."
 DiskName = "Microv VM Builder"
-uvbuilder.DeviceDesc = "Microv VM Builder"
-uvbuilder.SVCDESC = "Microv VM Builder"
+builder.DeviceDesc = "Microv VM Builder"
+builder.SVCDESC = "Microv VM Builder"

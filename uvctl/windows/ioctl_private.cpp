@@ -49,7 +49,7 @@ uvctl_ioctl_open()
     SP_INTERFACE_DEVICE_DATA ifInfo;
     ifInfo.cbSize = sizeof(SP_INTERFACE_DEVICE_DATA);
 
-    hDevInfo = SetupDiGetClassDevs(&GUID_DEVINTERFACE_uvbuilder,
+    hDevInfo = SetupDiGetClassDevs(&GUID_DEVINTERFACE_builder,
                                    0,
                                    0,
                                    DIGCF_DEVICEINTERFACE | DIGCF_PRESENT);
@@ -64,7 +64,7 @@ uvctl_ioctl_open()
 
     if (!SetupDiEnumDeviceInterfaces(hDevInfo,
                                     &devInfo,
-                                    &(GUID_DEVINTERFACE_uvbuilder),
+                                    &(GUID_DEVINTERFACE_builder),
                                     0,
                                     &ifInfo)) {
         return INVALID_HANDLE_VALUE;

@@ -43,9 +43,9 @@
 EXTERN_C_START
 
 DRIVER_INITIALIZE DriverEntry;
-EVT_WDF_DRIVER_DEVICE_ADD uvbuilderEvtDeviceAdd;
-EVT_WDF_OBJECT_CONTEXT_CLEANUP uvbuilderEvtDriverContextCleanup;
-EVT_WDF_DEVICE_D0_ENTRY uvbuilderEvtDeviceD0Entry;
-EVT_WDF_DEVICE_D0_EXIT uvbuilderEvtDeviceD0Exit;
+EVT_WDF_DRIVER_DEVICE_ADD builderEvtDeviceAdd;
+EVT_WDF_OBJECT_CONTEXT_CLEANUP builderEvtDriverContextCleanup;
+EVT_WDF_DEVICE_D0_ENTRY builderEvtDeviceD0Entry;
+EVT_WDF_DEVICE_D0_EXIT builderEvtDeviceD0Exit;
 
 EXTERN_C_END

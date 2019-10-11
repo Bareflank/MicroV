@@ -75,10 +75,19 @@ case $(uname -s) in
 CYGWIN_NT*)
     find_certmgr
     cd $1/drivers/$2/windows
-    >&2 eval "'$certmgr' /add x64/Release/uvbuilder.cer /s /r localMachine root"
-    >&2 eval "'$certmgr' /add x64/Release/uvbuilder.cer /s /r localMachine trustedpublisher"
-    >&2 /cygdrive/c/Program\ Files\ \(x86\)/Windows\ Kits/10/Tools/x64/devcon remove "ROOT\uvbuilder"
-    >&2 /cygdrive/c/Program\ Files\ \(x86\)/Windows\ Kits/10/Tools/x64/devcon install x64/Release/uvbuilder/uvbuilder.inf "ROOT\uvbuilder"
+
+    if [[ $2 == "builder" ]]; then
+        root='ROOT\'
+        root="$root$2"
+        >&2 eval "'$certmgr' /add x64/Release/$2.cer /s /r localMachine root"
+        >&2 eval "'$certmgr' /add x64/Release/$2.cer /s /r localMachine trustedpublisher"
+        >&2 /cygdrive/c/Program\ Files\ \(x86\)/Windows\ Kits/10/Tools/x64/devcon remove "$root"
+        >&2 /cygdrive/c/Program\ Files\ \(x86\)/Windows\ Kits/10/Tools/x64/devcon install x64/Release/$2/$2.inf "$root"
+    fi
+
+    if [[ $2 == "visr" ]]; then
+        >&2 /cygdrive/c/windows/system32/pnputil /add-driver x64/Release/$2/$2.inf > x64/Release/$2/pnputil.out
+    fi
     ;;
 Linux)
     cd $1/drivers/$2/linux

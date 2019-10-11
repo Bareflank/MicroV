@@ -51,6 +51,7 @@ deps/hypervisor/bfdriver/src/platform/linux/Makefile
 *.vs
 *.VC.db
 drivers/builder/windows/x64
+drivers/visr/windows/x64
 
 deploy/windows/Input
 deploy/windows/Output

@@ -189,7 +189,7 @@ ioctl_destroy_vm(domainid_t *args)
 }
 
 NTSTATUS
-uvbuilderQueueInitialize(
+builderQueueInitialize(
     _In_ WDFDEVICE Device
 )
 {
@@ -204,20 +204,20 @@ uvbuilderQueueInitialize(
         WdfIoQueueDispatchParallel
     );
 
-    queueConfig.EvtIoStop = uvbuilderEvtIoStop;
-    queueConfig.EvtIoDeviceControl = uvbuilderEvtIoDeviceControl;
+    queueConfig.EvtIoStop = builderEvtIoStop;
+    queueConfig.EvtIoDeviceControl = builderEvtIoDeviceControl;
 
     status = WdfIoQueueCreate(Device, &queueConfig, WDF_NO_OBJECT_ATTRIBUTES, &queue);
     if (!NT_SUCCESS(status)) {
         return status;
     }
 
-    BFDEBUG("uvbuilderQueueInitialize: success\n");
+    BFDEBUG("builderQueueInitialize: success\n");
     return STATUS_SUCCESS;
 }
 
 VOID
-uvbuilderEvtIoDeviceControl(
+builderEvtIoDeviceControl(
     _In_ WDFQUEUE Queue,
     _In_ WDFREQUEST Request,
     _In_ size_t OutputBufferLength,
@@ -283,7 +283,7 @@ IOCTL_FAILURE:
 }
 
 VOID
-uvbuilderEvtIoStop(
+builderEvtIoStop(
     _In_ WDFQUEUE Queue,
     _In_ WDFREQUEST Request,
     _In_ ULONG ActionFlags
