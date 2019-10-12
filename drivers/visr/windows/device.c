@@ -22,6 +22,7 @@
 
 #include <driver.h>
 #include <device.h>
+#include <microv/hypercall.h>
 
 NTSTATUS
 visr_evt_device_d0_entry(
@@ -62,11 +63,6 @@ visr_post_interrupts_enabled(
 
     DEBUG("visr_post_interrupts_enabled called");
 
-    int cpui[4] = { 0 };
-
-    DEBUG("About to tell VMM to inject an interrupt...");
-    CpuIdEx(cpui, 0xdeadbeef, 0);
-
     return STATUS_SUCCESS;
 }
 
@@ -96,8 +92,7 @@ visr_wdf_isr(
     WDF_INTERRUPT_INFO_INIT(&interrupt_info);
     WdfInterruptGetInfo(Interrupt, &interrupt_info);
 
-    int cpui[4] = { 0 };
-    CpuIdEx(cpui, 0xcafebabe, interrupt_info.Vector);
+    __event_op__send_vector(interrupt_info.Vector);
     return TRUE;
 }
 
@@ -117,17 +112,10 @@ visr_wdf_interrupt_enable(
     _In_ WDFDEVICE AssociatedDevice
 )
 {
+    UNREFERENCED_PARAMETER(Interrupt);
     UNREFERENCED_PARAMETER(AssociatedDevice);
-    int cpui[4] = { 0 };
-
-    WDF_INTERRUPT_INFO interrupt_info;
-    WDF_INTERRUPT_INFO_INIT(&interrupt_info);
-    WdfInterruptGetInfo(Interrupt, &interrupt_info);
 
     DEBUG("visr_wdf_interrupt_enable called");
-
-    DEBUG("Coordinating interrupt remapping with the VMM, vector: 0x%08x", interrupt_info.Vector);
-    CpuIdEx(cpui, 0xf00dbeef, interrupt_info.Vector);
 
     return STATUS_SUCCESS;
 }
@@ -154,7 +142,7 @@ visr_evt_device_add(
 {
     NTSTATUS status;
     WDFDEVICE device;
-    WDF_PNPPOWER_EVENT_CALLBACKS  pnpPowerCallbacks;
+    WDF_PNPPOWER_EVENT_CALLBACKS pnpPowerCallbacks;
     WDF_OBJECT_ATTRIBUTES deviceAttributes;
     WDF_INTERRUPT_CONFIG interrupt_cfg;
     WDFINTERRUPT interrupt;
