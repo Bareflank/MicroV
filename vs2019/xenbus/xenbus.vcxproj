@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="..\configs.props" />
+  <PropertyGroup Label="PropertySheets">
+    <DriverType>WDM</DriverType>
+    <PlatformToolset>WindowsKernelModeDriver10.0</PlatformToolset>
+    <ConfigurationType>Driver</ConfigurationType>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{14C16C29-77C9-475B-A618-1B01E67CF985}</ProjectGuid>
+  </PropertyGroup>
+  <Import Project="..\targets.props" />
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <PropertyGroup>
+    <RunCodeAnalysis>true</RunCodeAnalysis>
+    <EnableInf2cat>false</EnableInf2cat>
+    <IntDir>..\$(ProjectName)\$(ConfigurationName)\$(Platform)\</IntDir>
+    <OutDir>..\$(ConfigurationName)\$(Platform)\</OutDir>
+  </PropertyGroup>
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <PreprocessorDefinitions>PROJECT=$(ProjectName);POOL_NX_OPTIN=1;NT_PROCESSOR_GROUPS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <AdditionalIncludeDirectories>$(WindowsSdkDir)\include\km;..\..\include;..\..\include\xen;..\..\src\common;</AdditionalIncludeDirectories>
+      <WarningLevel>EnableAllWarnings</WarningLevel>
+      <DisableSpecificWarnings>4146;4464;4711;4770;4548;4820;4668;4255;5045;6001;6054;26451;28196;30030;30029;%(DisableSpecificWarnings)</DisableSpecificWarnings>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <EnablePREfast>true</EnablePREfast>
+    </ClCompile>
+    <ResourceCompile>
+      <AdditionalIncludeDirectories>..\..\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ResourceCompile>
+    <Link>
+      <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
+      <AdditionalDependencies>$(ProjectDir)..\$(ConfigurationName)\$(Platform)\xen.lib;$(DDK_LIB_PATH)/libcntpr.lib;$(DDK_LIB_PATH)/procgrp.lib;$(DDK_LIB_PATH)/rtlver.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Platform)'=='Win32'">
+    <ClCompile>
+      <PreprocessorDefinitions>__i386__;%(PreprocessorDefinitions);_X86_</PreprocessorDefinitions>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Platform)'=='x64'">
+    <ClCompile>
+      <PreprocessorDefinitions>__x86_64__;%(PreprocessorDefinitions);_AMD64_</PreprocessorDefinitions>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)'=='Windows 8 Release'">
+    <ClCompile>
+      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+      <WholeProgramOptimization>true</WholeProgramOptimization>
+      <AdditionalOptions>/Qspectre %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <FilesToPackage Include="$(TargetPath)" />
+    <FilesToPackage Include="$(OutDir)$(TargetName).pdb" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\src\common\registry.c" />
+    <ClCompile Include="..\..\src\xenbus\bus.c" />
+    <ClCompile Include="..\..\src\xenbus\console.c" />
+    <ClCompile Include="..\..\src\xenbus\dma.c" />
+    <ClCompile Include="..\..\src\xenbus\debug.c" />
+    <ClCompile Include="..\..\src\xenbus\driver.c" />
+    <ClCompile Include="..\..\src\xenbus\evtchn.c" />
+    <ClCompile Include="..\..\src\xenbus\evtchn_2l.c" />
+    <ClCompile Include="..\..\src\xenbus\evtchn_fifo.c" />
+    <ClCompile Include="..\..\src\xenbus\fdo.c" />
+    <ClCompile Include="..\..\src\xenbus\filters.c" />
+    <ClCompile Include="..\..\src\xenbus\gnttab.c" />
+    <ClCompile Include="..\..\src\xenbus\pdo.c" />
+    <ClCompile Include="..\..\src\xenbus\shared_info.c" />
+    <ClCompile Include="..\..\src\xenbus\store.c" />
+    <ClCompile Include="..\..\src\xenbus\suspend.c" />
+    <ClCompile Include="..\..\src\xenbus\sync.c" />
+    <ClCompile Include="..\..\src\xenbus\thread.c" />
+    <ClCompile Include="..\..\src\xenbus\range_set.c" />
+    <ClCompile Include="..\..\src\xenbus\balloon.c" />
+    <ClCompile Include="..\..\src\xenbus\cache.c" />
+    <ClCompile Include="..\..\src\xenbus\hash_table.c" />
+    <ClCompile Include="..\..\src\xenbus\unplug.c" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="..\..\src\xenbus\xenbus.rc" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+</Project>

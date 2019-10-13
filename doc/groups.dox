@@ -1,0 +1,4 @@
+/*!
+ * \defgroup interfaces "Interfaces"
+ * \brief This group contains all the interfaces exported by drivers in this package
+ */
