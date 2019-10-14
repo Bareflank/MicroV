@@ -97,6 +97,9 @@ Set-Item -Path Env:MAJOR_VERSION -Value '9'
 Set-Item -Path Env:MINOR_VERSION -Value '0'
 Set-Item -Path Env:MICRO_VERSION -Value '0'
 
+$redist = $PSScriptRoot + "\..\..\..\deploy\windows\redist"
+set-Item -Path Env:DPINST_REDIST -Value $redist
+
 Win10Build "x64" $Type
 
 if ($Sdv) {
