@@ -1,31 +1,31 @@
 /* Copyright (c) Citrix Systems Inc.
  * All rights reserved.
- * 
- * Redistribution and use in source and binary forms, 
- * with or without modification, are permitted provided 
+ *
+ * Redistribution and use in source and binary forms,
+ * with or without modification, are permitted provided
  * that the following conditions are met:
- * 
- * *   Redistributions of source code must retain the above 
- *     copyright notice, this list of conditions and the 
+ *
+ * *   Redistributions of source code must retain the above
+ *     copyright notice, this list of conditions and the
  *     following disclaimer.
- * *   Redistributions in binary form must reproduce the above 
- *     copyright notice, this list of conditions and the 
- *     following disclaimer in the documentation and/or other 
+ * *   Redistributions in binary form must reproduce the above
+ *     copyright notice, this list of conditions and the
+ *     following disclaimer in the documentation and/or other
  *     materials provided with the distribution.
- * 
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND 
- * CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, 
- * INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF 
- * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE 
- * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR 
- * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, 
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, 
- * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR 
- * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS 
- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, 
- * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING 
- * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE 
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF 
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND
+ * CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES,
+ * INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR
+ * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+ * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+ * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
 
@@ -56,7 +56,7 @@ typedef struct _XENBUS_GNTTAB_CACHE XENBUS_GNTTAB_CACHE, *PXENBUS_GNTTAB_CACHE;
     \brief Acquire a reference to the GNTTAB interface
 
     \param Interface The interface header
-*/  
+*/
 typedef NTSTATUS
 (*XENBUS_GNTTAB_ACQUIRE)(
     IN  PINTERFACE  Interface
@@ -66,7 +66,7 @@ typedef NTSTATUS
     \brief Release a reference to the GNTTAB interface
 
     \param Interface The interface header
-*/  
+*/
 typedef VOID
 (*XENBUS_GNTTAB_RELEASE)(
     IN  PINTERFACE  Interface
@@ -94,7 +94,7 @@ typedef NTSTATUS
     \param ReleaseLock A callback invoked to release the spinlock
     \param Argument An optional context argument passed to the callbacks
     \param Cache A pointer to a grant table cache handle to be initialized
-*/  
+*/
 typedef NTSTATUS
 (*XENBUS_GNTTAB_CREATE_CACHE)(
     IN  PINTERFACE                  Interface,
@@ -154,7 +154,7 @@ typedef NTSTATUS
     \param Interface The interface header
     \param Entry The grant table entry handle
     \return The reference number
-*/  
+*/
 typedef ULONG
 (*XENBUS_GNTTAB_GET_REFERENCE)(
     IN  PINTERFACE                  Interface,
@@ -188,8 +188,8 @@ typedef NTSTATUS
     \param Cache The grant table cache handle
 
     All grant table entries must have been revoked prior to destruction
-    of the cache 
-*/  
+    of the cache
+*/
 typedef VOID
 (*XENBUS_GNTTAB_DESTROY_CACHE)(
     IN  PINTERFACE              Interface,
@@ -230,7 +230,7 @@ typedef NTSTATUS
     );
 
 // {763679C5-E5C2-4A6D-8B88-6BB02EC42D8E}
-DEFINE_GUID(GUID_XENBUS_GNTTAB_INTERFACE, 
+DEFINE_GUID(GUID_XENBUS_GNTTAB_INTERFACE,
 0x763679c5, 0xe5c2, 0x4a6d, 0x8b, 0x88, 0x6b, 0xb0, 0x2e, 0xc4, 0x2d, 0x8e);
 
 /*! \struct _XENBUS_GNTTAB_INTERFACE_V1

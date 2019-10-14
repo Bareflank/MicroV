@@ -1,31 +1,31 @@
 /* Copyright (c) Citrix Systems Inc.
  * All rights reserved.
- * 
- * Redistribution and use in source and binary forms, 
- * with or without modification, are permitted provided 
+ *
+ * Redistribution and use in source and binary forms,
+ * with or without modification, are permitted provided
  * that the following conditions are met:
- * 
- * *   Redistributions of source code must retain the above 
- *     copyright notice, this list of conditions and the 
+ *
+ * *   Redistributions of source code must retain the above
+ *     copyright notice, this list of conditions and the
  *     following disclaimer.
- * *   Redistributions in binary form must reproduce the above 
- *     copyright notice, this list of conditions and the 
- *     following disclaimer in the documentation and/or other 
+ * *   Redistributions in binary form must reproduce the above
+ *     copyright notice, this list of conditions and the
+ *     following disclaimer in the documentation and/or other
  *     materials provided with the distribution.
- * 
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND 
- * CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, 
- * INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF 
- * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE 
- * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR 
- * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, 
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, 
- * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR 
- * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS 
- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, 
- * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING 
- * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE 
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF 
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND
+ * CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES,
+ * INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR
+ * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+ * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+ * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
 
@@ -416,7 +416,7 @@ fail2:
 fail1:
     Error("fail1 (%08x)\n", status);
 
-    return status;    
+    return status;
 }
 
 static NTSTATUS
@@ -449,7 +449,7 @@ RangeSetAddAfter(
     }
 
     RangeSet->Cursor = Cursor;
-    status = RangeSetAdd(RangeSet, Start, End, FALSE);    
+    status = RangeSetAdd(RangeSet, Start, End, FALSE);
     if (!NT_SUCCESS(status))
         goto fail1;
 
@@ -458,7 +458,7 @@ RangeSetAddAfter(
 fail1:
     Error("fail1 (%08x)\n", status);
 
-    return status;    
+    return status;
 }
 
 static NTSTATUS
@@ -491,7 +491,7 @@ RangeSetAddBefore(
     }
 
     RangeSet->Cursor = Cursor;
-    status = RangeSetAdd(RangeSet, Start, End, TRUE);    
+    status = RangeSetAdd(RangeSet, Start, End, TRUE);
     if (!NT_SUCCESS(status))
         goto fail1;
 
@@ -500,7 +500,7 @@ RangeSetAddBefore(
 fail1:
     Error("fail1 (%08x)\n", status);
 
-    return status;    
+    return status;
 }
 
 static NTSTATUS
@@ -637,7 +637,7 @@ RangeSetDestroy(
         __RangeSetFree(RangeSet->Spare);
         RangeSet->Spare = NULL;
     }
-        
+
     ASSERT(__RangeSetIsEmpty(RangeSet));
     RtlZeroMemory(&RangeSet->List, sizeof (LIST_ENTRY));
     RtlZeroMemory(&RangeSet->Lock, sizeof (KSPIN_LOCK));
@@ -818,7 +818,7 @@ static struct _XENBUS_RANGE_SET_INTERFACE_V1 RangeSetInterfaceVersion1 = {
     RangeSetGet,
     RangeSetDestroy
 };
-                     
+
 NTSTATUS
 RangeSetInitialize(
     IN  PXENBUS_FDO                 Fdo,
@@ -893,7 +893,7 @@ RangeSetGetInterface(
     }
 
     return status;
-}   
+}
 
 ULONG
 RangeSetGetReferences(

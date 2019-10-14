@@ -1,31 +1,31 @@
 /* Copyright (c) Citrix Systems Inc.
  * All rights reserved.
- * 
- * Redistribution and use in source and binary forms, 
- * with or without modification, are permitted provided 
+ *
+ * Redistribution and use in source and binary forms,
+ * with or without modification, are permitted provided
  * that the following conditions are met:
- * 
- * *   Redistributions of source code must retain the above 
- *     copyright notice, this list of conditions and the 
+ *
+ * *   Redistributions of source code must retain the above
+ *     copyright notice, this list of conditions and the
  *     following disclaimer.
- * *   Redistributions in binary form must reproduce the above 
- *     copyright notice, this list of conditions and the 
- *     following disclaimer in the documentation and/or other 
+ * *   Redistributions in binary form must reproduce the above
+ *     copyright notice, this list of conditions and the
+ *     following disclaimer in the documentation and/or other
  *     materials provided with the distribution.
- * 
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND 
- * CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, 
- * INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF 
- * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE 
- * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR 
- * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, 
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, 
- * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR 
- * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS 
- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, 
- * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING 
- * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE 
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF 
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND
+ * CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES,
+ * INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR
+ * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+ * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+ * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
 
@@ -44,7 +44,7 @@
     \brief Acquire a reference to the SHARED_INFO interface
 
     \param Interface The interface header
-*/  
+*/
 typedef NTSTATUS
 (*XENBUS_SHARED_INFO_ACQUIRE)(
     IN  PINTERFACE  Interface
@@ -54,7 +54,7 @@ typedef NTSTATUS
     \brief Release a reference to the SHARED_INFO interface
 
     \param Interface The interface header
-*/  
+*/
 typedef VOID
 (*XENBUS_SHARED_INFO_RELEASE)(
     IN  PINTERFACE  Interface
@@ -77,7 +77,7 @@ typedef BOOLEAN
 
 /*! \typedef XENBUS_SHARED_INFO_EVTCHN_POLL
     \brief Private method for EVTCHN inerface
-*/  
+*/
 typedef BOOLEAN
 (*XENBUS_SHARED_INFO_EVTCHN_POLL)(
     IN  PINTERFACE                  Interface,
@@ -88,7 +88,7 @@ typedef BOOLEAN
 
 /*! \typedef XENBUS_SHARED_INFO_EVTCHN_ACK
     \brief Private method for EVTCHN inerface
-*/  
+*/
 typedef VOID
 (*XENBUS_SHARED_INFO_EVTCHN_ACK)(
     IN  PINTERFACE  Interface,
@@ -97,7 +97,7 @@ typedef VOID
 
 /*! \typedef XENBUS_SHARED_INFO_EVTCHN_MASK
     \brief Private method for EVTCHN inerface
-*/  
+*/
 typedef VOID
 (*XENBUS_SHARED_INFO_EVTCHN_MASK)(
     IN  PINTERFACE  Interface,
@@ -106,7 +106,7 @@ typedef VOID
 
 /*! \typedef XENBUS_SHARED_INFO_EVTCHN_UNMASK
     \brief Private method for EVTCHN inerface
-*/  
+*/
 typedef BOOLEAN
 (*XENBUS_SHARED_INFO_EVTCHN_UNMASK)(
     IN  PINTERFACE  Interface,
@@ -124,7 +124,7 @@ typedef LARGE_INTEGER
     \param Interface The interface header
     \param Time The wallclock time
     \param Local Set, on return, if the wallclock is in local time
-*/  
+*/
 typedef VOID
 (*XENBUS_SHARED_INFO_GET_TIME)(
     IN  PINTERFACE      Interface,
@@ -133,7 +133,7 @@ typedef VOID
     );
 
 // {7E73C34F-1640-4649-A8F3-263BC930A004}
-DEFINE_GUID(GUID_XENBUS_SHARED_INFO_INTERFACE, 
+DEFINE_GUID(GUID_XENBUS_SHARED_INFO_INTERFACE,
 0x7e73c34f, 0x1640, 0x4649, 0xa8, 0xf3, 0x26, 0x3b, 0xc9, 0x30, 0xa0, 0x4);
 
 /*! \struct _XENBUS_SHARED_INFO_INTERFACE_V2

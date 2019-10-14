@@ -1,31 +1,31 @@
 /* Copyright (c) Citrix Systems Inc.
  * All rights reserved.
- * 
- * Redistribution and use in source and binary forms, 
- * with or without modification, are permitted provided 
+ *
+ * Redistribution and use in source and binary forms,
+ * with or without modification, are permitted provided
  * that the following conditions are met:
- * 
- * *   Redistributions of source code must retain the above 
- *     copyright notice, this list of conditions and the 
+ *
+ * *   Redistributions of source code must retain the above
+ *     copyright notice, this list of conditions and the
  *     following disclaimer.
- * *   Redistributions in binary form must reproduce the above 
- *     copyright notice, this list of conditions and the 
- *     following disclaimer in the documentation and/or other 
+ * *   Redistributions in binary form must reproduce the above
+ *     copyright notice, this list of conditions and the
+ *     following disclaimer in the documentation and/or other
  *     materials provided with the distribution.
- * 
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND 
- * CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, 
- * INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF 
- * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE 
- * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR 
- * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, 
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, 
- * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR 
- * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS 
- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, 
- * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING 
- * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE 
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF 
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND
+ * CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES,
+ * INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR
+ * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+ * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+ * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
 
@@ -71,7 +71,7 @@ typedef struct _XENBUS_STORE_PERMISSION {
     \brief Acquire a reference to the STORE interface
 
     \param Interface The interface header
-*/  
+*/
 typedef NTSTATUS
 (*XENBUS_STORE_ACQUIRE)(
     IN  PINTERFACE  Interface
@@ -81,7 +81,7 @@ typedef NTSTATUS
     \brief Release a reference to the STORE interface
 
     \param Interface The interface header
-*/  
+*/
 typedef VOID
 (*XENBUS_STORE_RELEASE)(
     IN  PINTERFACE  Interface
@@ -92,7 +92,7 @@ typedef VOID
 
     \param Interface The interface header
     \param Buffer Pointer to the memory buffer
-*/  
+*/
 typedef VOID
 (*XENBUS_STORE_FREE)(
     IN  PINTERFACE  Interface,
@@ -112,7 +112,7 @@ typedef VOID
     buffer containing the value read
 
     The \a Buffer should be freed using \a XENBUS_STORE_FREE
-*/  
+*/
 typedef NTSTATUS
 (*XENBUS_STORE_READ)(
     IN  PINTERFACE                  Interface,
@@ -135,7 +135,7 @@ typedef NTSTATUS
     \param ... Additional parameters required by \a Format
 
     If the \a Node does not exist then it is created
-*/  
+*/
 typedef NTSTATUS
 (*XENBUS_STORE_PRINTF)(
     IN  PINTERFACE                  Interface,
@@ -155,7 +155,7 @@ typedef NTSTATUS
     \param Prefix An optional prefix for the \a Node
     \param Node The concatenation of the \a Prefix and this value specifies
     the XenStore key to remove
-*/  
+*/
 typedef NTSTATUS
 (*XENBUS_STORE_REMOVE)(
     IN  PINTERFACE                  Interface,
@@ -177,7 +177,7 @@ typedef NTSTATUS
     buffer containing a NUL separated list of key names
 
     The \a Buffer should be freed using \a XENBUS_STORE_FREE
-*/  
+*/
 typedef NTSTATUS
 (*XENBUS_STORE_DIRECTORY)(
     IN  PINTERFACE                  Interface,
@@ -192,7 +192,7 @@ typedef NTSTATUS
 
     \param Interface The interface header
     \param Transaction Pointer to a transaction handle to be initialized
-*/  
+*/
 typedef NTSTATUS
 (*XENBUS_STORE_TRANSACTION_START)(
     IN  PINTERFACE                  Interface,
@@ -209,7 +209,7 @@ typedef NTSTATUS
 
     If \a Commit is TRUE and the transaction to found to clash then
     STATUS_RETRY will be returned
-*/  
+*/
 typedef NTSTATUS
 (*XENBUS_STORE_TRANSACTION_END)(
     IN  PINTERFACE                  Interface,
@@ -227,7 +227,7 @@ typedef NTSTATUS
     \param Event A pointer to an event object to be signalled when the
     watch fires
     \param Watch A pointer to a watch handle to be initialized
-*/  
+*/
 typedef NTSTATUS
 (*XENBUS_STORE_WATCH_ADD)(
     IN  PINTERFACE          Interface,
@@ -242,7 +242,7 @@ typedef NTSTATUS
 
     \param Interface The interface header
     \param Watch The watch handle
-*/  
+*/
 typedef NTSTATUS
 (*XENBUS_STORE_WATCH_REMOVE)(
     IN  PINTERFACE          Interface,
@@ -258,7 +258,7 @@ typedef NTSTATUS
     activity then this will block the normal STORE interface DPC so this
     method must be regularly invoked during the spin loop to check for
     XenStore activity
-*/  
+*/
 typedef VOID
 (*XENBUS_STORE_POLL)(
     IN  PINTERFACE  Interface
@@ -287,7 +287,7 @@ typedef NTSTATUS
     );
 
 // {86824C3B-D34E-4753-B281-2F1E3AD214D7}
-DEFINE_GUID(GUID_XENBUS_STORE_INTERFACE, 
+DEFINE_GUID(GUID_XENBUS_STORE_INTERFACE,
 0x86824c3b, 0xd34e, 0x4753, 0xb2, 0x81, 0x2f, 0x1e, 0x3a, 0xd2, 0x14, 0xd7);
 
 /*! \struct _XENBUS_STORE_INTERFACE_V1

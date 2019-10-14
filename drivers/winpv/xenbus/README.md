@@ -12,7 +12,7 @@ The XenBus package consists of three device drivers:
 
 *    xenfilt.sys is a filter driver which is used to handle unplugging of
      emulated devices (such as disk and network devices) when paravirtual
-     devices are available 
+     devices are available
 
 Quick Start Guide
 =================

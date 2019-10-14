@@ -1,31 +1,31 @@
 /* Copyright (c) Citrix Systems Inc.
  * All rights reserved.
- * 
- * Redistribution and use in source and binary forms, 
- * with or without modification, are permitted provided 
+ *
+ * Redistribution and use in source and binary forms,
+ * with or without modification, are permitted provided
  * that the following conditions are met:
- * 
- * *   Redistributions of source code must retain the above 
- *     copyright notice, this list of conditions and the 
+ *
+ * *   Redistributions of source code must retain the above
+ *     copyright notice, this list of conditions and the
  *     following disclaimer.
- * *   Redistributions in binary form must reproduce the above 
- *     copyright notice, this list of conditions and the 
- *     following disclaimer in the documentation and/or other 
+ * *   Redistributions in binary form must reproduce the above
+ *     copyright notice, this list of conditions and the
+ *     following disclaimer in the documentation and/or other
  *     materials provided with the distribution.
- * 
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND 
- * CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, 
- * INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF 
- * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE 
- * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR 
- * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, 
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, 
- * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR 
- * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS 
- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, 
- * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING 
- * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE 
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF 
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND
+ * CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES,
+ * INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR
+ * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+ * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+ * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
 
@@ -218,7 +218,7 @@ StorePrepareRequest(
 
         Data = va_arg(Arguments, PCHAR);
         Length = va_arg(Arguments, ULONG);
-        
+
         if (Data == NULL) {
             ASSERT3U(Length, ==, 0);
             break;
@@ -294,7 +294,7 @@ StoreCopyToRing(
 
     KeMemoryBarrier();
 
-    return Offset;    
+    return Offset;
 }
 
 static NTSTATUS
@@ -411,7 +411,7 @@ StoreCopyFromRing(
 
     KeMemoryBarrier();
 
-    return Offset;    
+    return Offset;
 }
 
 static NTSTATUS
@@ -486,7 +486,7 @@ StoreVerifyHeader(
         Valid = FALSE;
     }
 
-    return Valid;    
+    return Valid;
 }
 
 static NTSTATUS
@@ -521,7 +521,7 @@ payload:
                                  Read);
 
 done:
-    return status;    
+    return status;
 }
 
 static PXENBUS_STORE_REQUEST
@@ -780,7 +780,7 @@ StoreFreeResponse(
     IN  PXENBUS_STORE_RESPONSE  Response
     )
 {
-    __StoreFree(Response);    
+    __StoreFree(Response);
 }
 
 static VOID
@@ -984,7 +984,7 @@ StoreCheckResponse(
              Index < sizeof (xsd_errors) / sizeof (xsd_errors[0]);
              Index++) {
             struct xsd_errors   *Entry = &xsd_errors[Index];
-            
+
             if (strncmp(Error, Entry->errstring, Length) == 0) {
                 ERRNO_TO_STATUS(Entry->errnum, status);
                 goto done;
@@ -1031,7 +1031,7 @@ StoreCopyPayload(
     InsertTailList(&Context->BufferList, &Buffer->ListEntry);
     KeReleaseSpinLock(&Context->Lock, Irql);
 
-    return Buffer;        
+    return Buffer;
 
 fail1:
     Error("fail1 (%08x)\n", status);
@@ -1094,7 +1094,7 @@ StoreRead(
     PXENBUS_STORE_BUFFER            Buffer;
     NTSTATUS                        status;
 
-    (VOID) RtlCaptureStackBackTrace(1, 1, &Caller, NULL);    
+    (VOID) RtlCaptureStackBackTrace(1, 1, &Caller, NULL);
 
     RtlZeroMemory(&Request, sizeof (XENBUS_STORE_REQUEST));
 
@@ -1383,7 +1383,7 @@ StoreDirectory(
     PXENBUS_STORE_BUFFER            Buffer;
     NTSTATUS                        status;
 
-    (VOID) RtlCaptureStackBackTrace(1, 1, &Caller, NULL);    
+    (VOID) RtlCaptureStackBackTrace(1, 1, &Caller, NULL);
 
     RtlZeroMemory(&Request, sizeof (XENBUS_STORE_REQUEST));
 
@@ -1463,7 +1463,7 @@ StoreTransactionStart(
         goto fail1;
 
     (*Transaction)->Magic = STORE_TRANSACTION_MAGIC;
-    (VOID) RtlCaptureStackBackTrace(1, 1, &(*Transaction)->Caller, NULL);    
+    (VOID) RtlCaptureStackBackTrace(1, 1, &(*Transaction)->Caller, NULL);
 
     RtlZeroMemory(&Request, sizeof (XENBUS_STORE_REQUEST));
 
@@ -1622,7 +1622,7 @@ StoreWatchAdd(
         goto fail1;
 
     (*Watch)->Magic = STORE_WATCH_MAGIC;
-    (VOID) RtlCaptureStackBackTrace(1, 1, &(*Watch)->Caller, NULL);    
+    (VOID) RtlCaptureStackBackTrace(1, 1, &(*Watch)->Caller, NULL);
 
     if (Prefix == NULL)
         Length = (ULONG)strlen(Node) + sizeof (CHAR);
@@ -1639,7 +1639,7 @@ StoreWatchAdd(
              RtlStringCbPrintfA(Path, Length, "%s", Node) :
              RtlStringCbPrintfA(Path, Length, "%s/%s", Prefix, Node);
     ASSERT(NT_SUCCESS(status));
-    
+
     (*Watch)->Path = Path;
     (*Watch)->Event = Event;
 
@@ -1665,7 +1665,7 @@ StoreWatchAdd(
                                  XS_WATCH,
                                  Path, strlen(Path),
                                  "", 1,
-                                 Token, strlen(Token), 
+                                 Token, strlen(Token),
                                  "", 1,
                                  NULL, 0);
     ASSERT(NT_SUCCESS(status));
@@ -1764,7 +1764,7 @@ StoreWatchRemove(
                                  XS_UNWATCH,
                                  Path, strlen(Path),
                                  "", 1,
-                                 Token, strlen(Token), 
+                                 Token, strlen(Token),
                                  "", 1,
                                  NULL, 0);
     ASSERT(NT_SUCCESS(status));
@@ -2566,7 +2566,7 @@ StoreRelease(
     )
 {
     PXENBUS_STORE_CONTEXT   Context = Interface->Context;
-    KIRQL                   Irql;    
+    KIRQL                   Irql;
 
     KeAcquireSpinLock(&Context->Lock, &Irql);
 
@@ -2637,7 +2637,7 @@ static struct _XENBUS_STORE_INTERFACE_V1 StoreInterfaceVersion1 = {
     StoreWatchRemove,
     StorePoll
 };
-                     
+
 static struct _XENBUS_STORE_INTERFACE_V2 StoreInterfaceVersion2 = {
     { sizeof (struct _XENBUS_STORE_INTERFACE_V2), 2, NULL, NULL, NULL },
     StoreAcquire,
@@ -2823,7 +2823,7 @@ StoreGetInterface(
     }
 
     return status;
-}   
+}
 
 ULONG
 StoreGetReferences(

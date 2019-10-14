@@ -1,31 +1,31 @@
 /* Copyright (c) Citrix Systems Inc.
  * All rights reserved.
- * 
- * Redistribution and use in source and binary forms, 
- * with or without modification, are permitted provided 
+ *
+ * Redistribution and use in source and binary forms,
+ * with or without modification, are permitted provided
  * that the following conditions are met:
- * 
- * *   Redistributions of source code must retain the above 
- *     copyright notice, this list of conditions and the 
+ *
+ * *   Redistributions of source code must retain the above
+ *     copyright notice, this list of conditions and the
  *     following disclaimer.
- * *   Redistributions in binary form must reproduce the above 
- *     copyright notice, this list of conditions and the 
- *     following disclaimer in the documentation and/or other 
+ * *   Redistributions in binary form must reproduce the above
+ *     copyright notice, this list of conditions and the
+ *     following disclaimer in the documentation and/or other
  *     materials provided with the distribution.
- * 
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND 
- * CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, 
- * INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF 
- * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE 
- * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR 
- * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, 
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, 
- * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR 
- * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS 
- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, 
- * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING 
- * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE 
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF 
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND
+ * CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES,
+ * INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR
+ * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+ * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+ * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
 
@@ -339,7 +339,7 @@ RegistryOpenHardwareKey(
     ASSERT(Cursor != NULL);
 
     *Cursor = L'\0';
-    
+
     RtlInitUnicodeString(&Unicode, Info->Name);
 
     status = RegistryOpenKey(NULL, &Unicode, DesiredAccess, Key);
@@ -544,7 +544,7 @@ RegistryEnumerateSubKeys(
         status = RtlUnicodeStringToAnsiString(&Ansi, &Unicode, FALSE);
         ASSERT(NT_SUCCESS(status));
 
-        Ansi.Length = (USHORT)(strlen(Ansi.Buffer) * sizeof (CHAR));        
+        Ansi.Length = (USHORT)(strlen(Ansi.Buffer) * sizeof (CHAR));
 
         status = Callback(Context, Key, &Ansi);
 
@@ -569,7 +569,7 @@ fail5:
 fail4:
 fail3:
     __RegistryFree(Full);
-    
+
 fail2:
 fail1:
     return status;
@@ -644,7 +644,7 @@ RegistryEnumerateValues(
         status = RtlUnicodeStringToAnsiString(&Ansi, &Unicode, FALSE);
         ASSERT(NT_SUCCESS(status));
 
-        Ansi.Length = (USHORT)(strlen(Ansi.Buffer) * sizeof (CHAR));        
+        Ansi.Length = (USHORT)(strlen(Ansi.Buffer) * sizeof (CHAR));
 
         status = Callback(Context, Key, &Ansi, Basic->Type);
 
@@ -667,7 +667,7 @@ fail5:
 fail4:
 fail3:
     __RegistryFree(Full);
-    
+
 fail2:
 fail1:
     return status;
@@ -722,7 +722,7 @@ RegistryQueryDwordValue(
     status = RtlAnsiStringToUnicodeString(&Unicode, &Ansi, TRUE);
     if (!NT_SUCCESS(status))
         goto fail1;
-        
+
     status = ZwQueryValueKey(Key,
                              &Unicode,
                              KeyValuePartialInformation,
@@ -754,7 +754,7 @@ RegistryQueryDwordValue(
         Partial->DataLength != sizeof (ULONG))
         goto fail5;
 
-    *Value = *(PULONG)Partial->Data;            
+    *Value = *(PULONG)Partial->Data;
 
     __RegistryFree(Partial);
 
@@ -791,7 +791,7 @@ RegistryUpdateDwordValue(
     status = RtlAnsiStringToUnicodeString(&Unicode, &Ansi, TRUE);
     if (!NT_SUCCESS(status))
         goto fail1;
-        
+
     Partial = __RegistryAllocate(FIELD_OFFSET(KEY_VALUE_PARTIAL_INFORMATION, Data) +
                                  sizeof (ULONG));
 
@@ -802,7 +802,7 @@ RegistryUpdateDwordValue(
     Partial->TitleIndex = 0;
     Partial->Type = REG_DWORD;
     Partial->DataLength = sizeof (ULONG);
-    *(PULONG)Partial->Data = Value;            
+    *(PULONG)Partial->Data = Value;
 
     status = ZwSetValueKey(Key,
                            &Unicode,
@@ -950,7 +950,7 @@ RegistryQuerySzValue(
     status = RtlAnsiStringToUnicodeString(&Unicode, &Ansi, TRUE);
     if (!NT_SUCCESS(status))
         goto fail1;
-        
+
     status = ZwQueryValueKey(Key,
                              &Unicode,
                              KeyValuePartialInformation,
@@ -1230,7 +1230,7 @@ RegistryQuerySystemStartOption(
     NTSTATUS                        status;
 
     RtlInitUnicodeString(&Unicode, L"\\Registry\\Machine\\SYSTEM\\CurrentControlSet\\Control");
-    
+
     status = RegistryOpenKey(NULL, &Unicode, KEY_READ, &Key);
     if (!NT_SUCCESS(status))
         goto fail1;

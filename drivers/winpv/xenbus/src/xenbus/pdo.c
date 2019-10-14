@@ -1,31 +1,31 @@
 /* Copyright (c) Citrix Systems Inc.
  * All rights reserved.
- * 
- * Redistribution and use in source and binary forms, 
- * with or without modification, are permitted provided 
+ *
+ * Redistribution and use in source and binary forms,
+ * with or without modification, are permitted provided
  * that the following conditions are met:
- * 
- * *   Redistributions of source code must retain the above 
- *     copyright notice, this list of conditions and the 
+ *
+ * *   Redistributions of source code must retain the above
+ *     copyright notice, this list of conditions and the
  *     following disclaimer.
- * *   Redistributions in binary form must reproduce the above 
- *     copyright notice, this list of conditions and the 
- *     following disclaimer in the documentation and/or other 
+ * *   Redistributions in binary form must reproduce the above
+ *     copyright notice, this list of conditions and the
+ *     following disclaimer in the documentation and/or other
  *     materials provided with the distribution.
- * 
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND 
- * CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, 
- * INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF 
- * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE 
- * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR 
- * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, 
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, 
- * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR 
- * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS 
- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, 
- * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING 
- * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE 
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF 
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND
+ * CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES,
+ * INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR
+ * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+ * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+ * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
 
@@ -481,7 +481,7 @@ __PdoGetDeviceObject(
 
     return (Dx->DeviceObject);
 }
-    
+
 PDEVICE_OBJECT
 PdoGetDeviceObject(
     IN  PXENBUS_PDO Pdo
@@ -963,7 +963,7 @@ PdoQueryBusInterface(
     PBUS_INTERFACE_STANDARD BusInterface;
     NTSTATUS                status;
 
-    status = Irp->IoStatus.Status;        
+    status = Irp->IoStatus.Status;
 
     StackLocation = IoGetCurrentIrpStackLocation(Irp);
     Size = StackLocation->Parameters.QueryInterface.Size;
@@ -973,7 +973,7 @@ PdoQueryBusInterface(
     if (Version != 1)
         goto done;
 
-    status = STATUS_BUFFER_TOO_SMALL;        
+    status = STATUS_BUFFER_TOO_SMALL;
     if (Size < sizeof (BUS_INTERFACE_STANDARD))
         goto done;
 
@@ -1606,7 +1606,7 @@ PdoDispatchPnp(
     MinorFunction = StackLocation->MinorFunction;
 
     Trace("====> (%02x:%s)\n",
-          MinorFunction, 
+          MinorFunction,
           PnpMinorFunctionName(MinorFunction));
 
     switch (StackLocation->MinorFunction) {
@@ -1693,7 +1693,7 @@ PdoDispatchPnp(
     }
 
     Trace("<==== (%02x:%s)(%08x)\n",
-          MinorFunction, 
+          MinorFunction,
           PnpMinorFunctionName(MinorFunction),
           status);
 
@@ -1715,7 +1715,7 @@ PdoSetDevicePower(
     PowerAction = StackLocation->Parameters.Power.ShutdownType;
 
     Trace("====> (%s:%s)\n",
-          DevicePowerStateName(DeviceState), 
+          DevicePowerStateName(DeviceState),
           PowerActionName(PowerAction));
 
     ASSERT3U(PowerAction, <, PowerActionShutdown);
@@ -1742,7 +1742,7 @@ PdoSetDevicePower(
     IoCompleteRequest(Irp, IO_NO_INCREMENT);
 
     Trace("<==== (%s:%s)\n",
-          DevicePowerStateName(DeviceState), 
+          DevicePowerStateName(DeviceState),
           PowerActionName(PowerAction));
 
     return STATUS_SUCCESS;
@@ -1803,7 +1803,7 @@ PdoSetSystemPower(
     PowerAction = StackLocation->Parameters.Power.ShutdownType;
 
     Trace("====> (%s:%s)\n",
-          SystemPowerStateName(SystemState), 
+          SystemPowerStateName(SystemState),
           PowerActionName(PowerAction));
 
     ASSERT3U(PowerAction, <, PowerActionShutdown);
@@ -1839,7 +1839,7 @@ PdoSetSystemPower(
     IoCompleteRequest(Irp, IO_NO_INCREMENT);
 
     Trace("<==== (%s:%s)\n",
-          SystemPowerStateName(SystemState), 
+          SystemPowerStateName(SystemState),
           PowerActionName(PowerAction));
 
     return STATUS_SUCCESS;
@@ -1895,14 +1895,14 @@ PdoSetPower(
     POWER_STATE_TYPE    PowerType;
     POWER_ACTION        PowerAction;
     NTSTATUS            status;
-    
+
     StackLocation = IoGetCurrentIrpStackLocation(Irp);
     PowerType = StackLocation->Parameters.Power.Type;
     PowerAction = StackLocation->Parameters.Power.ShutdownType;
 
     if (PowerAction >= PowerActionShutdown) {
         Irp->IoStatus.Status = STATUS_SUCCESS;
-        
+
         status = Irp->IoStatus.Status;
         IoCompleteRequest(Irp, IO_NO_INCREMENT);
 
@@ -2206,7 +2206,7 @@ PdoDestroy(
     ThreadAlert(Pdo->DevicePowerThread);
     ThreadJoin(Pdo->DevicePowerThread);
     Pdo->DevicePowerThread = NULL;
-    
+
     ThreadAlert(Pdo->SystemPowerThread);
     ThreadJoin(Pdo->SystemPowerThread);
     Pdo->SystemPowerThread = NULL;

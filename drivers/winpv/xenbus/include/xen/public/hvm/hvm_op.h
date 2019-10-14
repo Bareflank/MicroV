@@ -255,7 +255,7 @@ DEFINE_XEN_GUEST_HANDLE(xen_hvm_inject_msi_t);
  * ioreq ring), or...
  * HVM_PARAM_BUFIOREQ_EVTCHN is read (to get the event channel that Xen uses
  * to request buffered I/O emulation).
- * 
+ *
  * The following hypercalls facilitate the creation of IOREQ Servers for
  * 'secondary' emulators which are invoked to implement port I/O, memory, or
  * PCI config space ranges which they explicitly register.
@@ -289,7 +289,7 @@ DEFINE_XEN_GUEST_HANDLE(xen_hvm_create_ioreq_server_t);
 
 /*
  * HVMOP_get_ioreq_server_info: Get all the information necessary to access
- *                              IOREQ Server <id>. 
+ *                              IOREQ Server <id>.
  *
  * The emulator needs to map the synchronous ioreq structures and buffered
  * ioreq ring (if it exists) that Xen uses to request emulation. These are
@@ -378,7 +378,7 @@ DEFINE_XEN_GUEST_HANDLE(xen_hvm_destroy_ioreq_server_t);
 struct xen_hvm_set_ioreq_server_state {
     domid_t domid;   /* IN - domain to be serviced */
     ioservid_t id;   /* IN - server id */
-    uint8_t enabled; /* IN - enabled? */    
+    uint8_t enabled; /* IN - enabled? */
 };
 typedef struct xen_hvm_set_ioreq_server_state xen_hvm_set_ioreq_server_state_t;
 DEFINE_XEN_GUEST_HANDLE(xen_hvm_set_ioreq_server_state_t);
