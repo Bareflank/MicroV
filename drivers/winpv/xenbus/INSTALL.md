@@ -6,8 +6,8 @@ It's important to note that the build scripts generate a driver which is
 version of Windows you must enabled testsigning mode otherwise your system
 will fail signature verification checked on the next reboot.
 If you wish to install the test certificate on the target system then copy
-xenbus.pfx (which you'll find in he proj subdirectory) onto your system and
-use certmgr to install it. (It is not password protected).
+src\xenbus.pfx onto your system and use certmgr to install it. (It is not
+password protected).
 
 xenbus.sys binds to three PCI devices which may be synthesized by QEMU for
 your VM:
