@@ -407,8 +407,6 @@ ModuleInitialize(
 
     InitializeHighLock(&Context->Lock);
 
-    (VOID) AuxKlibInitialize();
-
     status = AuxKlibQueryModuleInformation(&BufferSize,
                                            sizeof (AUX_MODULE_EXTENDED_INFO),
                                            NULL);

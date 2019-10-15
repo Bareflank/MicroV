@@ -31,6 +31,7 @@
 
 #include <ntddk.h>
 #include <stdarg.h>
+#include <aux_klib.h>
 #include <xen.h>
 
 #include "acpi.h"
@@ -138,6 +139,76 @@ fail2:
     Error("fail2\n");
 
     MmUnmapIoSpace(Data, Length);
+
+fail1:
+    Error("fail1 (%08x)\n", status);
+
+    return status;
+}
+
+static NTSTATUS
+AcpiGetXsdtFwTable(
+    VOID
+    )
+{
+    ULONG    XsdtLength;
+    ULONG    RetLength;
+    NTSTATUS status;
+
+    Trace("====>\n");
+
+    if (AcpiXsdt != NULL)
+        goto done;
+
+    status = AuxKlibGetSystemFirmwareTable('ACPI',
+                                           'TDSX',
+                                           NULL,
+                                           0,
+                                           &RetLength);
+    if (status != STATUS_BUFFER_TOO_SMALL)
+        goto fail1;
+
+    XsdtLength = RetLength;
+    AcpiXsdt = __AcpiAllocate(XsdtLength);
+
+    status = STATUS_NO_MEMORY;
+    if (AcpiXsdt == NULL)
+        goto fail2;
+
+    status = AuxKlibGetSystemFirmwareTable('ACPI',
+                                           'TDSX',
+                                           AcpiXsdt,
+                                           XsdtLength,
+                                           &RetLength);
+    if (!NT_SUCCESS(status))
+        goto fail3;
+
+    status = STATUS_UNSUCCESSFUL;
+    if (RetLength != XsdtLength)
+        goto fail4;
+
+    if (!AcpiVerifyChecksum(AcpiXsdt, XsdtLength))
+        goto fail5;
+
+done:
+    Trace("<====\n");
+
+    return STATUS_SUCCESS;
+
+fail5:
+    Error("fail5\n");
+
+fail4:
+    Error("fail4\n");
+
+fail3:
+    Error("fail3\n");
+
+    __AcpiFree(AcpiXsdt);
+    AcpiXsdt = NULL;
+
+fail2:
+    Error("fail2\n");
 
 fail1:
     Error("fail1 (%08x)\n", status);
@@ -290,8 +361,12 @@ AcpiInitialize(
     NTSTATUS    status;
 
     status = AcpiFindRsdp();
-    if (!NT_SUCCESS(status))
-        goto fail1;
+    if (!NT_SUCCESS(status)) {
+
+        status = AcpiGetXsdtFwTable();
+        if (!NT_SUCCESS(status))
+            goto fail1;
+    }
 
     return STATUS_SUCCESS;
 

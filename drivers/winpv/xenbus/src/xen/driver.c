@@ -33,6 +33,7 @@
 
 #include <ntddk.h>
 #include <procgrp.h>
+#include <aux_klib.h>
 #include <xen.h>
 
 #include "registry.h"
@@ -249,31 +250,35 @@ DllInitialize(
 
     __DriverSetUnplugKey(UnplugKey);
 
-    status = AcpiInitialize();
+    status = AuxKlibInitialize();
     if (!NT_SUCCESS(status))
         goto fail6;
 
-    status = SystemInitialize();
+    status = AcpiInitialize();
     if (!NT_SUCCESS(status))
         goto fail7;
+
+    status = SystemInitialize();
+    if (!NT_SUCCESS(status))
+        goto fail8;
 
     HypercallInitialize();
 
     status = BugCheckInitialize();
     if (!NT_SUCCESS(status))
-        goto fail8;
+        goto fail9;
 
     status = ModuleInitialize();
     if (!NT_SUCCESS(status))
-        goto fail9;
+        goto fail10;
 
     status = ProcessInitialize();
     if (!NT_SUCCESS(status))
-        goto fail10;
+        goto fail11;
 
     status = UnplugInitialize();
     if (!NT_SUCCESS(status))
-        goto fail11;
+        goto fail12;
 
     RegistryCloseKey(ParametersKey);
 
@@ -283,32 +288,35 @@ DllInitialize(
 
     return STATUS_SUCCESS;
 
-fail11:
-    Error("fail11\n");
+fail12:
+    Error("fail12\n");
 
     ProcessTeardown();
 
-fail10:
-    Error("fail10\n");
+fail11:
+    Error("fail11\n");
 
     ModuleTeardown();
 
-fail9:
-    Error("fail9\n");
+fail10:
+    Error("fail10\n");
 
     BugCheckTeardown();
 
     HypercallTeardown();
 
-fail8:
-    Error("fail8\n");
+fail9:
+    Error("fail9\n");
 
     SystemTeardown();
 
-fail7:
-    Error("fail7\n");
+fail8:
+    Error("fail8\n");
 
     AcpiTeardown();
+
+fail7:
+    Error("fail7\n");
 
 fail6:
     Error("fail6\n");
