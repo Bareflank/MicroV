@@ -88,7 +88,7 @@ AddService=xenfilt,,XenFilt_Service,
 [XenBus_Service]
 DisplayName=%XenBusName%
 ServiceType=%SERVICE_KERNEL_DRIVER%
-StartType=%SERVICE_BOOT_START%
+StartType=%SERVICE_DEMAND_START%
 ErrorControl=%SERVICE_ERROR_NORMAL%
 ServiceBinary=%12%\xenbus.sys
 LoadOrderGroup="Boot Bus Extender"
@@ -109,7 +109,7 @@ HKR,"Interrupt Management\GroupPolicy",,0x00010001,1
 [XenFilt_Service]
 DisplayName=%XenFiltName%
 ServiceType=%SERVICE_KERNEL_DRIVER%
-StartType=%SERVICE_BOOT_START%
+StartType=%SERVICE_DEMAND_START%
 ErrorControl=%SERVICE_ERROR_NORMAL%
 ServiceBinary=%12%\xenfilt.sys
 LoadOrderGroup="Boot Bus Extender"
