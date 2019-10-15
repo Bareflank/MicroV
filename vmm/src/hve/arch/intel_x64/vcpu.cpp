@@ -274,6 +274,7 @@ bool vcpu::handle_0x4BF00010(bfvmm::intel_x64::vcpu *vcpu)
 
     m_lapic = std::make_unique<lapic>(this);
     init_xen_platform_pci(vcpu_cast(vcpu));
+    enable_xen_platform_pci();
 
     if (g_uefi_boot) {
         /* Order matters with these init functions */

@@ -34,9 +34,10 @@ using pci_cfg_info = microv::intel_x64::pci_cfg_handler::info;
 
 namespace microv {
 
-/* Platform device IOPORT */
-static constexpr uint16_t IOPORT = 0x10;
-static constexpr uint16_t IOPORT_MAGIC = 0x49D2;
+/* Platform device IO ports */
+static constexpr uint16_t XEN_IOPORT = 0xE9;
+static constexpr uint16_t PFD_IOPORT = 0x10;
+static constexpr uint16_t PFD_IOPORT_MAGIC = 0x49D2;
 
 /* Platform device PCI config space values */
 static constexpr uint32_t PCI_VENDOR = 0x5853;
@@ -83,6 +84,36 @@ static void reset_pci_cfg() noexcept
     pci_cfg[0xF] = (PCI_IRQ_PIN << 8) | PCI_IRQ_LINE;
 }
 
+static bool pfd_ioport_out(base_vcpu *vcpu, io_insn_handler::info_t &info)
+{
+    if (info.port_number != PFD_IOPORT + 2) {
+        return false;
+    }
+
+    auto size = info.size_of_access + 1;
+    if (size != 1) {
+        return false;
+    }
+
+    expects(info.reps > 1);
+    expects(info.reps <= 255);
+
+    char buf[256]{};
+    auto len = info.reps + 1;
+    auto data = vcpu->map_gva_4k<char>(info.address, info.reps);
+
+    memcpy(buf, data.get(), info.reps);
+
+    if (buf[info.reps - 1] != '\n') {
+        buf[info.reps - 1] = '\n';
+    }
+
+    buf[len - 1] = 0;
+    printv("[winpv-pfd] %s", buf);
+
+    return true;
+}
+
 static bool ioport_in(base_vcpu *vcpu, io_insn_handler::info_t &info)
 {
     return false;
@@ -90,7 +121,15 @@ static bool ioport_in(base_vcpu *vcpu, io_insn_handler::info_t &info)
 
 static bool ioport_out(base_vcpu *vcpu, io_insn_handler::info_t &info)
 {
-    return false;
+    switch (info.port_number) {
+    case XEN_IOPORT:
+        return false;
+    case PFD_IOPORT:
+    case PFD_IOPORT + 2:
+        return pfd_ioport_out(vcpu, info);
+    default:
+        return false;
+    }
 }
 
 static bool pci_cfg_in(base_vcpu *vcpu, pci_cfg_info &info)
@@ -108,7 +147,6 @@ static bool pci_cfg_in(base_vcpu *vcpu, pci_cfg_info &info)
         return true;
     }
 
-    printv("%s: in reg 0x%x\n", bdf_str, info.reg);
     pci_cfg_hdlr::write_cfg_info(pci_cfg[info.reg], info);
     return true;
 }
@@ -139,9 +177,7 @@ void init_xen_platform_pci(microv_vcpu *vcpu)
     std::lock_guard lock(mutex);
 
     if (pci_cfg_addr == pci_cfg_addr_inval) {
-    //    pci_cfg_addr = alloc_pci_cfg_addr();
-
-        pci_cfg_addr = pci_cfg_bdf_to_addr(2, 1, 0);
+        pci_cfg_addr = alloc_pci_cfg_addr();
         if (pci_cfg_addr == pci_cfg_addr_inval) {
             printv("xen-pfd: failed to allocate BDF\n");
             return;
@@ -159,22 +195,29 @@ void init_xen_platform_pci(microv_vcpu *vcpu)
 
     vcpu->add_pci_cfg_handler(pci_cfg_addr, {pci_cfg_in}, pci_dir_in);
     vcpu->add_pci_cfg_handler(pci_cfg_addr, {pci_cfg_out}, pci_dir_out);
-    vcpu->emulate_io_instruction(IOPORT, {ioport_in}, {ioport_out});
-    vcpu->emulate_io_instruction(IOPORT + 2, {ioport_in}, {ioport_out});
+    vcpu->emulate_io_instruction(XEN_IOPORT, {ioport_in}, {ioport_out});
+    vcpu->emulate_io_instruction(PFD_IOPORT, {ioport_in}, {ioport_out});
+    vcpu->emulate_io_instruction(PFD_IOPORT + 2, {ioport_in}, {ioport_out});
 }
 
 void enable_xen_platform_pci()
 {
     std::lock_guard lock(mutex);
-    printv("xen-pfd: enabled\n");
-    enabled = true;
+
+    if (!enabled) {
+        printv("xen-pfd: enabled\n");
+        enabled = true;
+    }
 }
 
 void disable_xen_platform_pci()
 {
     std::lock_guard lock(mutex);
-    printv("xen-pfd: disabled\n");
-    enabled = false;
+
+    if (enabled) {
+        printv("xen-pfd: disabled\n");
+        enabled = false;
+    }
 }
 
 }
