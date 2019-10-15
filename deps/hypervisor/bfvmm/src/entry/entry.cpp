@@ -109,6 +109,13 @@ private_uefi_boot(bool uefi_boot) noexcept
 }
 
 extern "C" int64_t
+private_winpv(bool enable_winpv) noexcept
+{
+    g_enable_winpv = enable_winpv;
+    return ENTRY_SUCCESS;
+}
+
+extern "C" int64_t
 private_init_vmm(uint64_t arg) noexcept
 {
     return guard_exceptions(ENTRY_ERROR_VMM_START_FAILED, [&]() {
@@ -183,6 +190,9 @@ bfmain(uintptr_t request, uintptr_t arg1, uintptr_t arg2, uintptr_t arg3)
 
         case BF_REQUEST_UEFI_BOOT:
             return private_uefi_boot((bool)arg1);
+
+        case BF_REQUEST_WINPV:
+            return private_winpv((bool)arg1);
 
         default:
             break;

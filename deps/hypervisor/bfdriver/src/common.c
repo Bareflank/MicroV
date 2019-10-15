@@ -39,6 +39,7 @@
 /* -------------------------------------------------------------------------- */
 
 int g_uefi_boot = 0;
+int g_enable_winpv = 0;
 
 #ifdef USE_XUE
 struct xue g_xue;
@@ -478,6 +479,14 @@ common_load_vmm(void)
     }
 
     ret = platform_call_vmm_on_core(0, BF_REQUEST_UEFI_BOOT,  (uint64_t)g_uefi_boot, 0);
+    if (ret != BF_SUCCESS) {
+        goto failure;
+    }
+
+    ret = platform_call_vmm_on_core(0,
+                                    BF_REQUEST_WINPV,
+                                    (uint64_t)g_enable_winpv,
+                                    0);
     if (ret != BF_SUCCESS) {
         goto failure;
     }

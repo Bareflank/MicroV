@@ -34,14 +34,11 @@
 #include <xue.h>
 
 extern int g_uefi_boot;
+extern int g_enable_winpv;
 
 extern struct xue g_xue;
 extern struct xue_ops g_xue_ops;
 struct xue_efi g_xue_efi;
-
-/* -------------------------------------------------------------------------- */
-/* Global                                                                     */
-/* -------------------------------------------------------------------------- */
 
 uint64_t g_vcpuid = 0;
 
@@ -53,9 +50,7 @@ struct pmodule_t {
 uint64_t g_num_pmodules = 0;
 struct pmodule_t pmodules[MAX_NUM_MODULES] = {{0}};
 
-/* -------------------------------------------------------------------------- */
-/* Misc Device                                                                */
-/* -------------------------------------------------------------------------- */
+static const CHAR16 *opt_enable_winpv = L"--enable-winpv";
 
 static int64_t
 ioctl_add_module(const char *file, uint64_t len)
@@ -241,6 +236,21 @@ load_start_vm(EFI_HANDLE ParentImage)
     return EFI_ABORTED;
 }
 
+void parse_cmdline(EFI_HANDLE image)
+{
+    INTN argc, i;
+    CHAR16 **argv;
+
+    argc = GetShellArgcArgv(image, &argv);
+
+    for (i = 0; i < argc; i++) {
+        if (!StrnCmp(opt_enable_winpv, argv[i], StrLen(opt_enable_winpv))) {
+            Print(L"enabling Windows PV\n");
+            g_enable_winpv = 1;
+        }
+    }
+}
+
 /* -------------------------------------------------------------------------- */
 /* Entry / Exit                                                               */
 /* -------------------------------------------------------------------------- */
@@ -272,6 +282,8 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *systab)
     g_xue.sysid = xue_sysid_efi;
     xue_open(&g_xue, &g_xue_ops, &g_xue_efi);
 #endif
+
+    parse_cmdline(image);
 
     ioctl_add_module((char *)vmm, vmm_len);
     ioctl_load_vmm();

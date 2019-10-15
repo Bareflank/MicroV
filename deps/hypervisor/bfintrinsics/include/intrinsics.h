@@ -27,6 +27,7 @@
 
 inline uintptr_t g_rsdp = 0;
 inline bool g_uefi_boot = false;
+inline bool g_enable_winpv = false;
 
 #ifdef BF_X64
 #include <arch/x64/cache.h>
