@@ -46,6 +46,7 @@ void WEAK_SYM vcpu_init_root(bfvmm::intel_x64::vcpu *vcpu);
 static bfn::once_flag acpi_ready;
 static bfn::once_flag vtd_ready;
 static bfn::once_flag pci_ready;
+static bfn::once_flag winpv_ready;
 
 //------------------------------------------------------------------------------
 // Fault Handlers
@@ -264,6 +265,7 @@ void vcpu::remove_child_domain(domainid_t child_id)
         m_child_doms.erase(child_id);
     }
 }
+
 bool vcpu::handle_0x4BF00010(bfvmm::intel_x64::vcpu *vcpu)
 {
 #ifdef USE_XUE
@@ -273,8 +275,14 @@ bool vcpu::handle_0x4BF00010(bfvmm::intel_x64::vcpu *vcpu)
 #endif
 
     m_lapic = std::make_unique<lapic>(this);
-    init_xen_platform_pci(vcpu_cast(vcpu));
-    enable_xen_platform_pci();
+
+    if (g_enable_winpv) {
+        bfn::call_once(winpv_ready, []{
+            enable_xen_platform_pci();
+        });
+
+        init_xen_platform_pci(vcpu_cast(vcpu));
+    }
 
     if (g_uefi_boot) {
         /* Order matters with these init functions */
