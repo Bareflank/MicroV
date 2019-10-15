@@ -19,20 +19,33 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#ifndef MICROV_PCI_H
-#define MICROV_PCI_H
+#ifndef MICROV_XEN_PLATFORM_PCI_H
+#define MICROV_XEN_PLATFORM_PCI_H
+
+#include "types.h"
 
 namespace microv {
 
-namespace intel_x64 {
-    class vcpu;
-}
+/*
+ * init_xen_platform_pci
+ *
+ * Initialize the Xen Platform PCI device on the given vcpu
+ */
+void init_xen_platform_pci(microv_vcpu *vcpu);
 
-inline bool pci_passthru = false;
+/*
+ * enable_xen_platform_pci
+ *
+ * Enable the Xen Platform PCI device
+ */
+void enable_xen_platform_pci();
 
-void init_pci();
-void init_pci_on_vcpu(microv::intel_x64::vcpu *vcpu);
-uint32_t alloc_pci_cfg_addr() noexcept;
+/*
+ * disable_xen_platform_pci
+ *
+ * Disable the Xen Platform PCI device
+ */
+void disable_xen_platform_pci();
 
 }
 

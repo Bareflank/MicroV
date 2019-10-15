@@ -194,6 +194,29 @@ void init_pci_on_vcpu(microv::intel_x64::vcpu *vcpu)
     }
 }
 
+/*
+ * Allocate an empty slot from bus 0. Note that the resulting address
+ * may conflict with hidden PCI devices (e.g. those part of the chipset),
+ * so in general it is not safe for emulation at this device to pass-through
+ * access to underlying hardware.
+ */
+uint32_t alloc_pci_cfg_addr() noexcept
+{
+    /* Scan bus 0 for empty slots starting at device 1 */
+    for (uint32_t devfn = 0x8; devfn < pci_nr_devfn; devfn++) {
+        const auto addr = pci_cfg_bdf_to_addr(0, devfn);
+        const auto reg0 = pci_cfg_read_reg(addr, 0);
+
+        if (pci_cfg_is_present(reg0)) {
+            continue;
+        }
+
+        return addr;
+    }
+
+    return pci_cfg_addr_inval;
+}
+
 struct pci_dev *find_passthru_dev(uint64_t bdf)
 {
     for (auto pdev : pci_passthru_list) {

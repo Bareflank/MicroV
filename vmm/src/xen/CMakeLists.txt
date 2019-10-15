@@ -37,6 +37,7 @@ target_sources(uvvmm_xen PRIVATE
     $<${X64}:gnttab.cpp>
     $<${X64}:hvm.cpp>
     $<${X64}:physdev.cpp>
+    $<${X64}:platform_pci.cpp>
     $<${X64}:util.cpp>
     $<${X64}:memory.cpp>
     $<${X64}:version.cpp>
