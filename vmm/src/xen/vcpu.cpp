@@ -33,6 +33,7 @@
 #include <pci/dev.h>
 #include <printv.h>
 
+#include <xen/cpuid.h>
 #include <xen/cpupool.h>
 #include <xen/evtchn.h>
 #include <xen/flask.h>
@@ -59,9 +60,6 @@
 namespace microv {
 
 static constexpr auto self_ipi_msr = 0x83F;
-static constexpr auto hcall_page_msr = 0xC0000500;
-static constexpr auto xen_leaf_base = 0x40000100;
-static constexpr auto xen_leaf(int i) { return xen_leaf_base + i; }
 
 /* exits specific to xl-created vcpu boot */
 static bool xlboot_io_insn_in(base_vcpu *v, io_insn_handler::info_t &info)
@@ -111,39 +109,6 @@ static bool handle_exception(base_vcpu *vcpu)
 static bool handle_tsc_deadline(base_vcpu *vcpu, wrmsr_handler::info_t &info)
 {
     bfalert_info(0, "TSC deadline write after SSHOTTMR set");
-    return true;
-}
-
-static bool xen_leaf0(base_vcpu *vcpu)
-{
-    vcpu->set_rax(xen_leaf(5));
-    vcpu->set_rbx(XEN_CPUID_SIGNATURE_EBX);
-    vcpu->set_rcx(XEN_CPUID_SIGNATURE_ECX);
-    vcpu->set_rdx(XEN_CPUID_SIGNATURE_EDX);
-
-    vcpu->advance();
-    return true;
-}
-
-static bool xen_leaf1(base_vcpu *vcpu)
-{
-    vcpu->set_rax(0x0004000D);
-    vcpu->set_rbx(0);
-    vcpu->set_rcx(0);
-    vcpu->set_rdx(0);
-
-    vcpu->advance();
-    return true;
-}
-
-static bool xen_leaf2(base_vcpu *vcpu)
-{
-    vcpu->set_rax(1);
-    vcpu->set_rbx(hcall_page_msr);
-    vcpu->set_rcx(0);
-    vcpu->set_rdx(0);
-
-    vcpu->advance();
     return true;
 }
 
@@ -1067,7 +1032,8 @@ xen_vcpu::xen_vcpu(microv_vcpu *vcpu) :
 
     vcpu->add_cpuid_emulator(xen_leaf(0), {xen_leaf0});
     vcpu->add_cpuid_emulator(xen_leaf(2), {xen_leaf2});
-    vcpu->emulate_wrmsr(hcall_page_msr, {&xen_vcpu::init_hypercall_page, this});
+    vcpu->emulate_wrmsr(xen_hypercall_page_msr,
+                       {&xen_vcpu::init_hypercall_page, this});
     vcpu->add_vmcall_handler({&xen_vcpu::hypercall, this});
     vcpu->add_cpuid_emulator(xen_leaf(1), {xen_leaf1});
     vcpu->add_cpuid_emulator(xen_leaf(4), {&xen_vcpu::xen_leaf4, this});

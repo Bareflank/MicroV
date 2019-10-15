@@ -22,6 +22,8 @@
 #include <mutex>
 #include <arch/x64/cpuid.h>
 #include <bfcallonce.h>
+#include <hve/arch/intel_x64/vcpu.h>
+#include <public/arch-x86/cpuid.h>
 #include <xen/cpuid.h>
 
 namespace microv {
@@ -84,6 +86,41 @@ void xen_get_pvh_cpufeatures(uint32_t cpufeat[xen_cpufeat_words]) noexcept
     for (auto i = 0; i < xen_cpufeat_words; i++) {
         cpufeat[i] = pvh_features[i];
     }
+}
+
+/* Generic xen cpuid leaf handling */
+
+bool xen_leaf0(base_vcpu *vcpu)
+{
+    vcpu->set_rax(xen_leaf(5));
+    vcpu->set_rbx(XEN_CPUID_SIGNATURE_EBX);
+    vcpu->set_rcx(XEN_CPUID_SIGNATURE_ECX);
+    vcpu->set_rdx(XEN_CPUID_SIGNATURE_EDX);
+
+    vcpu->advance();
+    return true;
+}
+
+bool xen_leaf1(base_vcpu *vcpu)
+{
+    vcpu->set_rax(0x0004000D);
+    vcpu->set_rbx(0);
+    vcpu->set_rcx(0);
+    vcpu->set_rdx(0);
+
+    vcpu->advance();
+    return true;
+}
+
+bool xen_leaf2(base_vcpu *vcpu)
+{
+    vcpu->set_rax(1);
+    vcpu->set_rbx(xen_hypercall_page_msr);
+    vcpu->set_rcx(0);
+    vcpu->set_rdx(0);
+
+    vcpu->advance();
+    return true;
 }
 
 }
