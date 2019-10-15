@@ -77,6 +77,7 @@ struct e820_entry_t {
 #define __enum_xue_op 5
 #define __enum_event_op 6
 #define __enum_iommu_op 7
+#define __enum_xenpfd_op 8
 
 #define bfopcode(a) ((a & 0x00FF000000000000) >> 48)
 
@@ -126,6 +127,19 @@ static inline status_t
 __xue_op(uint64_t arg1, uint64_t arg2, uint64_t arg3)
 {
     return _vmcall(0xBF05000000000000, arg1, arg2, arg3);
+}
+
+// -----------------------------------------------------------------------------
+// Xen Platform PCI device operations
+// -----------------------------------------------------------------------------
+
+#define __enum_xenpfd_op__enable 1
+#define __enum_xenpfd_op__disable 2
+
+static inline status_t
+__xenpfd_op(uint64_t arg1, uint64_t arg2, uint64_t arg3)
+{
+    return _vmcall(0xBF08000000000000, arg1, arg2, arg3);
 }
 
 // -----------------------------------------------------------------------------

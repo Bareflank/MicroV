@@ -118,7 +118,7 @@ constexpr uint32_t pci_cfg_bdf_to_addr(uint32_t b, uint32_t d, uint32_t f)
 
 constexpr uint32_t pci_cfg_bdf_to_addr(uint32_t bus, uint32_t devfn)
 {
-    const uint32_t d = (devfn & 0xF1) >> 3;
+    const uint32_t d = (devfn & 0xF8) >> 3;
     const uint32_t f = devfn & 0x07;
 
     return (1UL << 31) | (bus << 16) | (d << 11) | (f << 8);

@@ -58,6 +58,8 @@ parse_args(int argc, char *argv[])
     ("xsvm", "The VM is a xenstore VM")
     ("ndvm", "The VM is a network device VM")
     ("hvc", "Use the hvc console")
+    ("xenpfd-enable", "Enable the Xen Platform PCI device")
+    ("xenpfd-disable", "Disable the Xen Platform PCI device")
     ("reset-xue", "Reset the xue debugger")
     ("dump-iommu", "Dump IOMMU faults");
 
@@ -70,28 +72,6 @@ parse_args(int argc, char *argv[])
 
     if (args.count("verbose")) {
         verbose = true;
-    }
-
-    if (args.count("reset-xue")) {
-        __xue_op(__enum_xue_op__reset, 0, 0);
-        exit(EXIT_SUCCESS);
-    }
-
-    if (args.count("dump-iommu")) {
-        __iommu_op__dump();
-        exit(EXIT_SUCCESS);
-    }
-
-    if (!args.count("kernel")) {
-        throw std::runtime_error("must specify 'kernel'");
-    }
-
-    if (!args.count("initrd")) {
-        throw std::runtime_error("must specify 'initrd'");
-    }
-
-    if (args.count("uart") && args.count("pt_uart")) {
-        throw std::runtime_error("must specify 'uart' or 'pt_uart'");
     }
 
     return args;

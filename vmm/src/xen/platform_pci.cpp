@@ -108,6 +108,7 @@ static bool pci_cfg_in(base_vcpu *vcpu, pci_cfg_info &info)
         return true;
     }
 
+    printv("%s: in reg 0x%x\n", bdf_str, info.reg);
     pci_cfg_hdlr::write_cfg_info(pci_cfg[info.reg], info);
     return true;
 }
@@ -138,8 +139,9 @@ void init_xen_platform_pci(microv_vcpu *vcpu)
     std::lock_guard lock(mutex);
 
     if (pci_cfg_addr == pci_cfg_addr_inval) {
-        pci_cfg_addr = alloc_pci_cfg_addr();
+    //    pci_cfg_addr = alloc_pci_cfg_addr();
 
+        pci_cfg_addr = pci_cfg_bdf_to_addr(2, 1, 0);
         if (pci_cfg_addr == pci_cfg_addr_inval) {
             printv("xen-pfd: failed to allocate BDF\n");
             return;
@@ -164,12 +166,14 @@ void init_xen_platform_pci(microv_vcpu *vcpu)
 void enable_xen_platform_pci()
 {
     std::lock_guard lock(mutex);
+    printv("xen-pfd: enabled\n");
     enabled = true;
 }
 
 void disable_xen_platform_pci()
 {
     std::lock_guard lock(mutex);
+    printv("xen-pfd: disabled\n");
     enabled = false;
 }
 

@@ -32,6 +32,7 @@
 #include <pci/dev.h>
 #include <pci/pci.h>
 #include <printv.h>
+#include <xen/platform_pci.h>
 #include <xen/vcpu.h>
 #include <xue.h>
 
@@ -114,6 +115,7 @@ vcpu::vcpu(
     m_vmcall_iommu_op_handler{this},
     m_vmcall_vcpu_op_handler{this},
     m_vmcall_xue_op_handler{this},
+    m_vmcall_xenpfd_op_handler{this},
 
     m_x2apic_handler{this},
     m_pci_handler{this}
@@ -271,6 +273,7 @@ bool vcpu::handle_0x4BF00010(bfvmm::intel_x64::vcpu *vcpu)
 #endif
 
     m_lapic = std::make_unique<lapic>(this);
+    init_xen_platform_pci(vcpu_cast(vcpu));
 
     if (g_uefi_boot) {
         /* Order matters with these init functions */
