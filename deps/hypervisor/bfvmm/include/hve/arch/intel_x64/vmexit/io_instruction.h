@@ -114,6 +114,12 @@ public:
         /// default: false
         ///
         bool ignore_advance;
+
+        /// Reps
+        ///
+        /// For rep-prefixed instructions, the number of reps
+        ///
+        const uint64_t reps;
     };
 
     /// Handler delegate type

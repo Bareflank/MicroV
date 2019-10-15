@@ -128,9 +128,11 @@ bool
 io_instruction_handler::handle(vcpu *vcpu)
 {
     namespace io_instruction = vmcs_n::exit_qualification::io_instruction;
-    auto eq = io_instruction::get();
 
+    auto eq = io_instruction::get();
+    auto dir = io_instruction::direction_of_access::get();
     auto reps = 1ULL;
+
     if (io_instruction::rep_prefixed::is_enabled(eq)) {
         reps = vcpu->rcx() & 0x00000000FFFFFFFFULL;
     }
@@ -141,7 +143,8 @@ io_instruction_handler::handle(vcpu *vcpu)
         0ULL,
         0ULL,
         false,
-        false
+        false,
+        reps
     };
 
     switch (io_instruction::operand_encoding::get(eq)) {
@@ -155,11 +158,28 @@ io_instruction_handler::handle(vcpu *vcpu)
     }
 
     if (io_instruction::string_instruction::is_enabled(eq)) {
+        expects(dir == io_instruction::direction_of_access::out);
+
+        const auto &hdlrs = m_out_handlers.find(info.port_number);
+        if (hdlrs == m_out_handlers.end()) {
+            return false;
+        }
+
         info.address = vmcs_n::guest_linear_address::get();
+
+        for (const auto &d : hdlrs->second) {
+            if (d(vcpu, info)) {
+                if (!info.ignore_advance) {
+                    return vcpu->advance();
+                }
+
+                return true;
+            }
+        }
     }
 
     for (auto i = 0ULL; i < reps; i++) {
-        switch (io_instruction::direction_of_access::get(eq)) {
+        switch (dir) {
             case io_instruction::direction_of_access::in:
                 handle_in(vcpu, info);
                 break;
@@ -305,7 +325,7 @@ io_instruction_handler::load_operand(
                 auto map =
                     m_vcpu->map_gva_4k<uint8_t>(
                         info.address,
-                        info.size_of_access
+                        info.size_of_access + 1
                     );
 
                 info.val = map.get()[0] & 0x00000000000000FFULL;
@@ -316,7 +336,7 @@ io_instruction_handler::load_operand(
                 auto map =
                     m_vcpu->map_gva_4k<uint16_t>(
                         info.address,
-                        info.size_of_access
+                        info.size_of_access + 1
                     );
 
                 info.val = map.get()[0] & 0x000000000000FFFFULL;
@@ -327,7 +347,7 @@ io_instruction_handler::load_operand(
                 auto map =
                     m_vcpu->map_gva_4k<uint32_t>(
                         info.address,
-                        info.size_of_access
+                        info.size_of_access + 1
                     );
 
                 info.val = map.get()[0] & 0x00000000FFFFFFFFULL;
@@ -364,7 +384,7 @@ io_instruction_handler::store_operand(
                 auto map =
                     m_vcpu->map_gva_4k<uint8_t>(
                         info.address,
-                        info.size_of_access
+                        info.size_of_access + 1
                     );
 
                 map.get()[0] = gsl::narrow_cast<uint8_t>(info.val);
@@ -375,7 +395,7 @@ io_instruction_handler::store_operand(
                 auto map =
                     m_vcpu->map_gva_4k<uint16_t>(
                         info.address,
-                        info.size_of_access
+                        info.size_of_access + 1
                     );
 
                 map.get()[0] = gsl::narrow_cast<uint16_t>(info.val);
@@ -386,7 +406,7 @@ io_instruction_handler::store_operand(
                 auto map =
                     m_vcpu->map_gva_4k<uint32_t>(
                         info.address,
-                        info.size_of_access
+                        info.size_of_access + 1
                     );
 
                 map.get()[0] = gsl::narrow_cast<uint32_t>(info.val);
