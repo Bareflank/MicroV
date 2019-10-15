@@ -21,7 +21,10 @@
  */
 
 #include <common.h>
+
+#ifdef USE_XUE
 #include <xue.h>
+#endif
 
 #include <bftypes.h>
 #include <bfdebug.h>
@@ -37,8 +40,10 @@
 
 int g_uefi_boot = 0;
 
+#ifdef USE_XUE
 struct xue g_xue;
 struct xue_ops g_xue_ops;
+#endif
 
 int64_t g_num_modules = 0;
 struct bfelf_binary_t g_modules[MAX_NUM_MODULES];
