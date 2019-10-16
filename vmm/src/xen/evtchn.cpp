@@ -671,7 +671,7 @@ void xen_evtchn::queue_upcall(chan_t *chan)
 {
     if (!this->upcall(chan)) {
         auto xend = m_xen_dom;
-        auto xenv = xend->get_xen_vcpu();
+        auto xenv = xend->get_xen_vcpu(chan->vcpuid);
 
         if (!xenv) {
             bferror_nhex(0, "could not get xen vcpu, dom=", xend->m_id);
@@ -679,7 +679,7 @@ void xen_evtchn::queue_upcall(chan_t *chan)
         }
 
         xenv->m_uv_vcpu->queue_external_interrupt(m_upcall_vec);
-        xend->put_xen_vcpu();
+        xend->put_xen_vcpu(chan->vcpuid);
     }
 }
 
@@ -687,7 +687,7 @@ void xen_evtchn::inject_upcall(chan_t *chan)
 {
     if (!this->upcall(chan)) {
         auto xend = m_xen_dom;
-        auto xenv = xend->get_xen_vcpu();
+        auto xenv = xend->get_xen_vcpu(chan->vcpuid);
 
         if (!xenv) {
             bferror_nhex(0, "could not get xen vcpu, dom=", xend->m_id);
@@ -695,7 +695,7 @@ void xen_evtchn::inject_upcall(chan_t *chan)
         }
 
         xenv->m_uv_vcpu->inject_external_interrupt(m_upcall_vec);
-        xend->put_xen_vcpu();
+        xend->put_xen_vcpu(chan->vcpuid);
     }
 }
 

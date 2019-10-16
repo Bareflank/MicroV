@@ -52,7 +52,7 @@ bool xen_hvm_set_param(xen_vcpu *vcpu)
         return true;
     }
 
-    auto ret = dom->hvm->set_param(vcpu, param.get());
+    auto ret = dom->m_hvm->set_param(vcpu, param.get());
     put_xen_domain(domid);
 
     return ret;
@@ -80,7 +80,7 @@ bool xen_hvm_get_param(xen_vcpu *vcpu)
         return true;
     }
 
-    auto ret = dom->hvm->get_param(vcpu, param.get());
+    auto ret = dom->m_hvm->get_param(vcpu, param.get());
     put_xen_domain(domid);
 
     return ret;

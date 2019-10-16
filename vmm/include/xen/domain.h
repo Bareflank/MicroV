@@ -28,13 +28,13 @@
 
 #include <page.h>
 #include <public/domctl.h>
+#include <public/arch-x86/xen.h>
 #include <public/arch-x86/hvm/save.h>
 #include <public/hvm/save.h>
 #include <public/sysctl.h>
 #include <public/platform.h>
 
 namespace microv {
-
 
 xen_domid_t create_xen_domain(microv_domain *uv_dom,
                               class iommu *iommu = nullptr);
@@ -134,21 +134,23 @@ public:
 
 private:
     friend class xen_evtchn;
-    class xen_vcpu *get_xen_vcpu() noexcept;
-    void put_xen_vcpu() noexcept;
+
+    /* TODO: fix assumed id = 0 call sites */
+    class xen_vcpu *get_xen_vcpu(xen_vcpuid_t id = 0) noexcept;
+    void put_xen_vcpu(xen_vcpuid_t id = 0) noexcept;
     void set_uv_dom_ctx(struct hvm_hw_cpu *cpu);
 
 public:
     microv::domain_info *m_uv_info{};
     microv_domain *m_uv_dom{};
-    microv_vcpuid m_uv_vcpuid{};
+    std::array<microv_vcpuid, XEN_LEGACY_MAX_VCPUS> m_uvv_id{};
 
     xen_domid_t m_id{};
     xen_uuid_t m_uuid{};
     uint32_t m_ssid{};     /* flask id */
 
     /* Tunables */
-    uint32_t m_max_pcpus{1};
+    uint32_t m_max_pcpus{};
     uint32_t m_max_vcpus{};
     uint32_t m_max_evtchns{};
     uint32_t m_max_evtchn_port{};
@@ -185,7 +187,7 @@ public:
     std::unique_ptr<xen_memory> m_memory{};
     std::unique_ptr<xen_evtchn> m_evtchn{};
     std::unique_ptr<xen_gnttab> m_gnttab{};
-    std::unique_ptr<xen_hvm> hvm{};
+    std::unique_ptr<xen_hvm> m_hvm{};
 
     /* TSC params */
     uint64_t m_tsc_khz;
@@ -205,9 +207,9 @@ public:
         int type;
     };
 
-    std::list<struct io_region> assigned_pmio{};
-    std::list<struct io_region> assigned_mmio{};
-    std::list<uint32_t> assigned_devs{};
+    std::list<struct io_region> m_assigned_pmio{};
+    std::list<struct io_region> m_assigned_mmio{};
+    std::list<uint32_t> m_assigned_devs{};
 
 public:
     xen_domain(xen_domain &&) = delete;

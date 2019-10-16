@@ -563,10 +563,14 @@ xen_domain::xen_domain(microv_domain *domain, class iommu *iommu) :
     m_shinfo_page{make_page<struct shared_info>()},
     m_shinfo{m_shinfo_page.get()}
 {
-    m_uv_info = &domain->m_sod_info;
     m_uv_dom = domain;
-    m_uv_vcpuid = 0; /* the valid ID is bound with bind_vcpu */
+    m_uv_info = &domain->m_sod_info;
 
+    for (auto i = 0; i < m_uvv_id.size(); i++) {
+        m_uvv_id[i] = INVALID_VCPUID;
+    }
+
+    /* TODO: move me to init code */
     xen_init_cpufeatures();
 
     if (m_uv_info->xen_info_valid) {
@@ -634,7 +638,7 @@ xen_domain::xen_domain(microv_domain *domain, class iommu *iommu) :
     m_memory = std::make_unique<xen_memory>(this, iommu);
     m_evtchn = std::make_unique<xen_evtchn>(this);
     m_gnttab = std::make_unique<xen_gnttab>(this, m_memory.get());
-    hvm = std::make_unique<xen_hvm>(this, m_memory.get());
+    m_hvm = std::make_unique<xen_hvm>(this, m_memory.get());
 }
 
 xen_domain::~xen_domain()
@@ -667,13 +671,18 @@ void xen_domain::share_root_page(uintptr_t gpa, uintptr_t hpa,
     m_memory->add_root_backed_page(gfn, perm, mtype, hfn);
 }
 
-class xen_vcpu *xen_domain::get_xen_vcpu() noexcept
+class xen_vcpu *xen_domain::get_xen_vcpu(xen_vcpuid_t xen_id) noexcept
 {
-    if (!m_uv_vcpuid) {
+    if (xen_id >= m_uvv_id.size()) {
         return nullptr;
     }
 
-    auto uv_vcpu = get_vcpu(m_uv_vcpuid);
+    const auto uvv_id = m_uvv_id[xen_id];
+    if (uvv_id == INVALID_VCPUID) {
+        return nullptr;
+    }
+
+    auto uv_vcpu = get_vcpu(uvv_id);
     if (!uv_vcpu) {
         return nullptr;
     }
@@ -681,9 +690,13 @@ class xen_vcpu *xen_domain::get_xen_vcpu() noexcept
     return uv_vcpu->xen_vcpu();
 }
 
-void xen_domain::put_xen_vcpu() noexcept
+void xen_domain::put_xen_vcpu(xen_vcpuid_t xen_id) noexcept
 {
-    put_vcpu(m_uv_vcpuid);
+    if (xen_id >= m_uvv_id.size()) {
+        return;
+    }
+
+    put_vcpu(m_uvv_id[xen_id]);
 }
 
 int xen_domain::set_timer_mode(uint64_t mode)
@@ -717,14 +730,20 @@ void xen_domain::queue_virq(int virq)
  */
 void xen_domain::bind_vcpu(xen_vcpu *xen)
 {
-    expects(vcpuid::is_guest_vcpu(xen->m_uv_vcpu->id()));
-    m_uv_vcpuid = xen->m_uv_vcpu->id();
+    const auto xen_id = xen->m_id;
+    const auto uvv_id = xen->m_uv_vcpu->id();
 
-    m_tsc_khz = xen->m_tsc_khz;
-    m_tsc_mul = xen->m_tsc_mul;
-    m_tsc_shift = xen->m_tsc_shift;
+    expects(xen_id < m_uvv_id.size());
+    expects(uvv_id != INVALID_VCPUID);
 
+    m_uvv_id[xen_id] = uvv_id;
     m_memory->add_ept_handlers(xen);
+
+    if (xen_id == 0) {
+        m_tsc_khz = xen->m_tsc_khz;
+        m_tsc_mul = xen->m_tsc_mul;
+        m_tsc_shift = xen->m_tsc_shift;
+    }
 }
 
 uint64_t xen_domain::init_shared_info(xen_vcpu *xen, uintptr_t shinfo_gpfn)
@@ -755,8 +774,6 @@ uint64_t xen_domain::init_shared_info(xen_vcpu *xen, uintptr_t shinfo_gpfn)
 
     return now;
 }
-
-
 
 void xen_domain::update_wallclock(
     xen_vcpu *vcpu,
@@ -791,27 +808,18 @@ uint64_t xen_domain::runstate_time(int state)
 
 uint32_t xen_domain::nr_online_vcpus()
 {
-    auto xv = this->get_xen_vcpu();
+    uint32_t nr = 0;
 
-    if (!xv) {
-        return 0;
-    } else {
-        this->put_xen_vcpu();
-        return 1;
+    for (auto id : m_uvv_id) {
+        nr += (id != INVALID_VCPUID) ? 1 : 0;
     }
+
+    return nr;
 }
 
 xen_vcpuid_t xen_domain::max_vcpu_id()
 {
-    auto xv = this->get_xen_vcpu();
-
-    if (!xv) {
-        return XEN_INVALID_MAX_VCPU_ID;
-    } else {
-        auto id = xv->m_id;
-        this->put_xen_vcpu();
-        return id;
-    }
+    return m_uvv_id.size() - 1;
 }
 
 bool xen_domain::unpause(xen_vcpu *vcpu)
@@ -1370,7 +1378,7 @@ bool xen_domain::ioport_perm(xen_vcpu *v,
         .type = io_region::pmio_t
     };
 
-    assigned_pmio.push_back(pmio);
+    m_assigned_pmio.push_back(pmio);
     v->m_uv_vcpu->set_rax(0);
 
     return true;
@@ -1391,7 +1399,7 @@ bool xen_domain::iomem_perm(xen_vcpu *v,
         .type = io_region::mmio_t
     };
 
-    assigned_mmio.push_back(mmio);
+    m_assigned_mmio.push_back(mmio);
     v->m_uv_vcpu->set_rax(0);
 
     return true;
@@ -1407,7 +1415,7 @@ bool xen_domain::assign_device(xen_vcpu *v,
 
     /* Caller ensures segment is 0 */
     const auto bdf = assign->u.pci.machine_sbdf << 8;
-    assigned_devs.push_back(bdf);
+    m_assigned_devs.push_back(bdf);
 
     auto dev = find_passthru_dev(bdf);
     if (!dev) {
@@ -1425,8 +1433,8 @@ bool xen_domain::assign_device(xen_vcpu *v,
         bool found = false;
 
         if (bar.type == pci_bar_io) {
-            auto beg = assigned_pmio.begin();
-            auto end = assigned_pmio.end();
+            auto beg = m_assigned_pmio.begin();
+            auto end = m_assigned_pmio.end();
 
             for (auto r = beg; r != end; r++) {
                 if (r->base == bar.addr && r->size == bar.size) {
@@ -1442,8 +1450,8 @@ bool xen_domain::assign_device(xen_vcpu *v,
                 return false;
             }
         } else {
-            auto beg = assigned_mmio.begin();
-            auto end = assigned_mmio.end();
+            auto beg = m_assigned_mmio.begin();
+            auto end = m_assigned_mmio.end();
 
             for (auto r = beg; r != end; r++) {
                 if (r->base == bar.addr && r->size == bar.size) {
