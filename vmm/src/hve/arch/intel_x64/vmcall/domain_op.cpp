@@ -68,7 +68,7 @@ vmcall_domain_op_handler::domain_op__create_domain(vcpu *vcpu)
         info.wc_nsec = arg->wc_nsec;
         info.tsc = arg->tsc;
         info.ram = arg->ram;
-        /* TODO explicitly make xen_info_valid=0 for clarity-sake */
+        info.origin = microv::domain_info::origin_uvctl;
 
         vcpu->set_rax(domain::generate_domainid());
 

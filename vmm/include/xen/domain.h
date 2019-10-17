@@ -36,6 +36,8 @@
 
 namespace microv {
 
+constexpr xen_domid_t DOMID_WINPV = DOMID_FIRST_RESERVED - 1;
+
 xen_domid_t create_xen_domain(microv_domain *uv_dom,
                               class iommu *iommu = nullptr);
 xen_domain *get_xen_domain(xen_domid_t id) noexcept;
@@ -139,6 +141,9 @@ private:
     class xen_vcpu *get_xen_vcpu(xen_vcpuid_t id = 0) noexcept;
     void put_xen_vcpu(xen_vcpuid_t id = 0) noexcept;
     void set_uv_dom_ctx(struct hvm_hw_cpu *cpu);
+    void init_from_domctl() noexcept;
+    void init_from_uvctl() noexcept;
+    void init_from_root() noexcept;
 
 public:
     microv::domain_info *m_uv_info{};
@@ -180,7 +185,8 @@ public:
     std::unique_ptr<microv::ring<HVC_TX_SIZE>> m_hvc_tx_ring{};
 
     /* Shared info page */
-    page_ptr<struct shared_info> m_shinfo_page;
+    std::unique_ptr<uint8_t[]> m_shinfo_page{};
+    unique_map<uint8_t> m_shinfo_map{};
     struct shared_info *m_shinfo{};
     uintptr_t m_shinfo_gpfn{};
 

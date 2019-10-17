@@ -48,9 +48,9 @@ struct domain_info : public bfobject {
         wc_nsec = info->wc_nsec;
         tsc = info->tsc;
         ram = info->ram;
-        xen_info_valid = info->xen_info_valid;
+        origin = info->origin;
         xen_domid = info->xen_domid;
-        memcpy(&xen_create_dom, &info->xen_create_dom, sizeof(xen_create_dom));
+        memcpy(&domctl_create, &info->domctl_create, sizeof(domctl_create));
     }
 
     /* DOMF_* flags (see bfhypercall.h) */
@@ -65,9 +65,20 @@ struct domain_info : public bfobject {
     uint64_t ram{};
 
     /* Xen-specific domain info */
-    bool xen_info_valid{};
+    enum domain_origin {
+        origin_domctl,
+        origin_uvctl,
+        origin_root
+    };
+
+    int origin{};
     xen_domid_t xen_domid{};
-    struct xen_domctl_createdomain xen_create_dom{};
+    struct xen_domctl_createdomain domctl_create{};
+
+    bool is_root() const noexcept
+    {
+        return origin == origin_root;
+    }
 
     bool is_xen_dom() const noexcept
     {
@@ -108,7 +119,7 @@ struct domain_info : public bfobject {
     {
         bfdebug_info(0, "domain_info:");
         bfdebug_subnhex(0, "flags:", flags);
-        bfdebug_subbool(0, "xen_info_valid:", xen_info_valid);
+        bfdebug_subndec(0, "origin:", origin);
         bfdebug_subnhex(0, "xen_domid:", xen_domid);
     }
 };

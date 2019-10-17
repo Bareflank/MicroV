@@ -477,11 +477,11 @@ bool xen_domain_createdomain(xen_vcpu *vcpu, struct xen_domctl *ctl)
     info.wc_nsec = wc_nsec;
     info.tsc = now;
     info.ram = DEFAULT_RAM_SIZE;
-    info.xen_info_valid = 1;
+    info.origin = domain_info::origin_domctl;
     info.xen_domid = make_xen_domid();
 
-    static_assert(sizeof(*cd) == sizeof(info.xen_create_dom));
-    memcpy(&info.xen_create_dom, cd, sizeof(*cd));
+    static_assert(sizeof(*cd) == sizeof(info.domctl_create));
+    memcpy(&info.domctl_create, cd, sizeof(*cd));
 
     auto uv_domid = domain::generate_domainid();
     g_dm->create(uv_domid, &info);
@@ -489,9 +489,9 @@ bool xen_domain_createdomain(xen_vcpu *vcpu, struct xen_domctl *ctl)
     vcpu->m_uv_vcpu->set_rax(0);
 
     printv("createdomain: id:%u flags:0x%x vcpus:%u evtchn:%u grant:%u maptrack:%u\n",
-            ctl->domain, cd->flags, cd->max_vcpus,
-            cd->max_evtchn_port, cd->max_grant_frames,
-            cd->max_maptrack_frames);
+           ctl->domain, cd->flags, cd->max_vcpus,
+           cd->max_evtchn_port, cd->max_grant_frames,
+           cd->max_maptrack_frames);
 
     return true;
 }
@@ -559,9 +559,58 @@ bool xen_domain_cputopoinfo(xen_vcpu *vcpu, xen_sysctl_t *ctl)
     return ret;
 }
 
-xen_domain::xen_domain(microv_domain *domain, class iommu *iommu) :
-    m_shinfo_page{make_page<struct shared_info>()},
-    m_shinfo{m_shinfo_page.get()}
+void xen_domain::init_from_domctl() noexcept
+{
+    m_shinfo_page = std::make_unique<uint8_t[]>(UV_PAGE_SIZE);
+    m_shinfo = reinterpret_cast<struct shared_info *>(m_shinfo_page.get());
+
+    auto cd = &m_uv_info->domctl_create;
+
+    m_id = m_uv_info->xen_domid;
+    m_ssid = cd->ssidref;
+    m_max_pcpus = 1;
+    m_max_vcpus = 1;
+    m_max_evtchn_port = cd->max_evtchn_port;
+    m_max_grant_frames = cd->max_grant_frames;
+    m_max_maptrack_frames = cd->max_maptrack_frames;
+    m_flags |= XEN_DOMINF_paused;
+
+    memcpy(&m_uuid, &cd->handle, sizeof(m_uuid));
+    memcpy(&m_arch_config, &cd->arch, sizeof(cd->arch));
+}
+
+void xen_domain::init_from_uvctl() noexcept
+{
+    m_shinfo_page = std::make_unique<uint8_t[]>(UV_PAGE_SIZE);
+    m_shinfo = reinterpret_cast<struct shared_info *>(m_shinfo_page.get());
+
+    m_id = (m_uv_info->is_xenstore()) ? 0 : make_xen_domid();
+    m_ssid = 0;
+    m_max_pcpus = 1;
+    m_max_vcpus = 1;
+    m_max_evtchn_port = DEFAULT_EVTCHN_PORTS - 1;
+    m_max_grant_frames = xen_gnttab::max_shared_gte_pages();
+    m_max_maptrack_frames = DEFAULT_MAPTRACK_FRAMES;
+    m_arch_config.emulation_flags = XEN_X86_EMU_LAPIC;
+    m_flags |= XEN_DOMINF_running;
+    m_flags |= (m_uv_info->is_xenstore()) ? XEN_DOMINF_xs_domain : 0;
+
+    m_uv_info->xen_domid = m_id;
+    make_xen_uuid(&m_uuid);
+
+    if (m_uv_info->using_hvc()) {
+        m_hvc_rx_ring = std::make_unique<microv::ring<HVC_RX_SIZE>>();
+        m_hvc_tx_ring = std::make_unique<microv::ring<HVC_TX_SIZE>>();
+    }
+}
+
+void xen_domain::init_from_root() noexcept
+{
+    m_id = m_uv_info->xen_domid;
+    m_flags |= XEN_DOMINF_running;
+}
+
+xen_domain::xen_domain(microv_domain *domain, class iommu *iommu)
 {
     m_uv_dom = domain;
     m_uv_info = &domain->m_sod_info;
@@ -573,28 +622,18 @@ xen_domain::xen_domain(microv_domain *domain, class iommu *iommu) :
     /* TODO: move me to init code */
     xen_init_cpufeatures();
 
-    if (m_uv_info->xen_info_valid) {
-        auto cd = &m_uv_info->xen_create_dom;
-        m_id = m_uv_info->xen_domid;
-        memcpy(&m_uuid, &cd->handle, sizeof(m_uuid));
-        m_ssid = cd->ssidref;
-        // TODO: m_max_pcpus = cd->max_pcpus;
-        m_max_pcpus = 1;
-        m_max_vcpus = cd->max_vcpus;
-        m_max_evtchn_port = cd->max_evtchn_port;
-        m_max_grant_frames = cd->max_grant_frames;
-        m_max_maptrack_frames = cd->max_maptrack_frames;
-        memcpy(&m_arch_config, &cd->arch, sizeof(cd->arch));
-    } else {
-        m_id = (m_uv_info->is_xenstore()) ? 0 : make_xen_domid();
-        make_xen_uuid(&m_uuid);
-        m_ssid = 0;
-        m_max_pcpus = 1;
-        m_max_vcpus = 1;
-        m_max_evtchn_port = DEFAULT_EVTCHN_PORTS - 1;
-        m_max_grant_frames = xen_gnttab::max_shared_gte_pages();
-        m_max_maptrack_frames = DEFAULT_MAPTRACK_FRAMES;
-        m_arch_config.emulation_flags = XEN_X86_EMU_LAPIC;
+    switch (m_uv_info->origin) {
+    case domain_info::origin_domctl:
+        this->init_from_domctl();
+        break;
+    case domain_info::origin_uvctl:
+        this->init_from_uvctl();
+        break;
+    case domain_info::origin_root:
+        this->init_from_root();
+        break;
+    default:
+        throw std::invalid_argument("unknown domain origin");
     }
 
     /* Max supported by the ABI */
@@ -609,7 +648,7 @@ xen_domain::xen_domain(microv_domain *domain, class iommu *iommu) :
     m_out_pages = 0;
     m_paged_pages = 0;
 
-    if (m_uv_info->xen_info_valid) {
+    if (m_uv_info->origin == microv::domain_info::origin_domctl) {
         m_total_pages = 0;
         m_free_pages = 0;
     }
@@ -617,20 +656,8 @@ xen_domain::xen_domain(microv_domain *domain, class iommu *iommu) :
     m_cpupool_id = xen_cpupool::id_none;
     xen_cpupool_add_domain(m_cpupool_id, m_id);
 
-    m_flags = XEN_DOMINF_hvm_guest;
+    m_flags |= XEN_DOMINF_hvm_guest;
     m_flags |= XEN_DOMINF_hap;
-
-    if (m_uv_info->is_xenstore()) {
-        m_flags |= XEN_DOMINF_xs_domain;
-        m_flags |= XEN_DOMINF_running;
-    } else {
-        m_flags |= XEN_DOMINF_paused;
-    }
-
-    if (m_uv_info->using_hvc()) {
-        m_hvc_rx_ring = std::make_unique<microv::ring<HVC_RX_SIZE>>();
-        m_hvc_tx_ring = std::make_unique<microv::ring<HVC_TX_SIZE>>();
-    }
 
     m_numa_nodes = 1;
     m_ndvm = m_uv_info->is_ndvm();

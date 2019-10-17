@@ -558,6 +558,10 @@ bool xen_memory::handle_ept_exec(base_vcpu *vcpu,
 
 void xen_memory::bind_iommu(class iommu *new_iommu)
 {
+    if (!new_iommu) {
+        return;
+    }
+
     if (m_iommu && m_iommu != new_iommu) {
         throw std::runtime_error("xen_memory: only one IOMMU supported");
     }
@@ -589,6 +593,10 @@ void xen_memory::bind_iommu(class iommu *new_iommu)
 
 bool xen_memory::iommu_incoherent() const noexcept
 {
+    if (m_xen_dom->m_uv_dom->id() == 0) {
+        return false;
+    }
+
     if (m_iommu) {
         return !m_iommu->coherent_page_walk();
     } else {
