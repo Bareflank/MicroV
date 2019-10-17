@@ -121,7 +121,7 @@ vcpu::vcpu(
     m_x2apic_handler{this},
     m_pci_handler{this}
 {
-    domain->m_vcpu = this;
+    domain->add_vcpu(id);
     this->set_eptp(domain->ept());
 
     if (this->is_dom0()) {

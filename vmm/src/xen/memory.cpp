@@ -960,9 +960,6 @@ bool xen_memory::set_memory_map(xen_vcpu *v, xen_foreign_memory_map_t *fmap)
 
 bool xen_memory::remove_from_physmap(xen_vcpu *v, xen_remove_from_physmap_t *rmap)
 {
-    auto uvd = m_xen_dom->m_uv_dom;
-    auto uvv = uvd->m_vcpu;
-
     this->remove_page(rmap->gpfn);
     this->invept();
 

@@ -134,12 +134,13 @@ public:
     void update_wallclock(xen_vcpu *v,
                           const struct xenpf_settime64 *time) noexcept;
 
+    class xen_vcpu *get_xen_vcpu(xen_vcpuid_t id = 0) noexcept;
+    void put_xen_vcpu(xen_vcpuid_t id = 0) noexcept;
+
 private:
     friend class xen_evtchn;
 
     /* TODO: fix assumed id = 0 call sites */
-    class xen_vcpu *get_xen_vcpu(xen_vcpuid_t id = 0) noexcept;
-    void put_xen_vcpu(xen_vcpuid_t id = 0) noexcept;
     void set_uv_dom_ctx(struct hvm_hw_cpu *cpu);
     void init_from_domctl() noexcept;
     void init_from_uvctl() noexcept;
