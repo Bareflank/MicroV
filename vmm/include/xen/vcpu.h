@@ -57,6 +57,7 @@ public:
     microv_domain *m_uv_dom{};
     xen_domain *m_xen_dom{};
     xen_vcpuid_t m_id{};
+    int m_origin{};
 
 private:
     friend class xen_memory;

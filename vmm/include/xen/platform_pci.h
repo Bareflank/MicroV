@@ -31,7 +31,7 @@ namespace microv {
  *
  * Initialize the Xen Platform PCI device on the given vcpu
  */
-void init_xen_platform_pci(microv_vcpu *vcpu);
+void init_xen_platform_pci(xen_vcpu *vcpu);
 
 /*
  * enable_xen_platform_pci

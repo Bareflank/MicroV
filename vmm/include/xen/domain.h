@@ -91,7 +91,7 @@ public:
 
     int set_timer_mode(uint64_t mode);
     void queue_virq(int virq);
-    void bind_vcpu(xen_vcpu *xen);
+    xen_vcpuid_t add_vcpu(xen_vcpu *xen);
     void get_info(struct xen_domctl_getdomaininfo *info);
     uint64_t runstate_time(int state);
     uint32_t nr_online_vcpus();
@@ -137,6 +137,11 @@ public:
     class xen_vcpu *get_xen_vcpu(xen_vcpuid_t id = 0) noexcept;
     void put_xen_vcpu(xen_vcpuid_t id = 0) noexcept;
 
+    size_t constexpr max_nr_vcpus()
+    {
+        return m_uvv_id.size();
+    }
+
 private:
     friend class xen_evtchn;
 
@@ -149,7 +154,13 @@ private:
 public:
     microv::domain_info *m_uv_info{};
     microv_domain *m_uv_dom{};
+
+    /*
+     * We use this limit given by Xen as this is the max number of
+     * vcpus that a given struct shared_info can store
+     */
     std::array<microv_vcpuid, XEN_LEGACY_MAX_VCPUS> m_uvv_id{};
+    size_t m_nr_vcpus{};
 
     xen_domid_t m_id{};
     xen_uuid_t m_uuid{};

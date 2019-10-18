@@ -607,7 +607,14 @@ void xen_domain::init_from_uvctl() noexcept
 void xen_domain::init_from_root() noexcept
 {
     m_id = m_uv_info->xen_domid;
+    m_ssid = 0;
     m_flags |= XEN_DOMINF_running;
+    m_max_pcpus = 0;
+    m_max_vcpus = 0;
+    m_max_evtchn_port = DEFAULT_EVTCHN_PORTS - 1;
+    m_max_grant_frames = xen_gnttab::max_shared_gte_pages();
+    m_max_maptrack_frames = DEFAULT_MAPTRACK_FRAMES;
+    make_xen_uuid(&m_uuid);
 }
 
 xen_domain::xen_domain(microv_domain *domain, class iommu *iommu)
@@ -755,24 +762,34 @@ void xen_domain::queue_virq(int virq)
  * g_vcm->create() path. This means the bfmanager's m_mutex is already locked,
  * so doing a get_xen_vcpu() here would cause deadlock.
  */
-void xen_domain::bind_vcpu(xen_vcpu *xen)
+xen_vcpuid_t xen_domain::add_vcpu(xen_vcpu *vcpu)
 {
-    const auto xen_id = xen->m_id;
-    const auto uvv_id = xen->m_uv_vcpu->id();
-
-    expects(xen_id < m_uvv_id.size());
+    const auto uvv_id = vcpu->m_uv_vcpu->id();
     expects(uvv_id != INVALID_VCPUID);
+    expects(m_nr_vcpus < this->max_nr_vcpus());
 
+    const auto xen_id = (xen_vcpuid_t)m_nr_vcpus;
     m_uvv_id[xen_id] = uvv_id;
-    m_memory->add_ept_handlers(xen);
+
+    if (m_uv_info->origin != domain_info::origin_root) {
+        m_memory->add_ept_handlers(vcpu);
+    } else {
+        /* these are only used by the toolstack */
+        m_max_vcpus++;
+        m_max_pcpus++;
+    }
 
     if (xen_id == 0) {
-        m_tsc_khz = xen->m_tsc_khz;
-        m_tsc_mul = xen->m_tsc_mul;
-        m_tsc_shift = xen->m_tsc_shift;
+        m_tsc_khz = vcpu->m_tsc_khz;
+        m_tsc_mul = vcpu->m_tsc_mul;
+        m_tsc_shift = vcpu->m_tsc_shift;
     }
+
+    m_nr_vcpus++;
+    return xen_id;
 }
 
+/* TODO support root origin */
 uint64_t xen_domain::init_shared_info(xen_vcpu *xen, uintptr_t shinfo_gpfn)
 {
     expects(m_shinfo);

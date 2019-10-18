@@ -40,6 +40,7 @@
 #include <xen/gnttab.h>
 #include <xen/hvm.h>
 #include <xen/physdev.h>
+#include <xen/platform_pci.h>
 #include <xen/util.h>
 #include <xen/time.h>
 #include <xen/memory.h>
@@ -61,20 +62,15 @@ namespace microv {
 
 static constexpr auto self_ipi_msr = 0x83F;
 
-/* exits specific to xl-created vcpu boot */
-static bool xlboot_io_insn_in(base_vcpu *v, io_insn_handler::info_t &info)
+static bool xlboot_io_in(base_vcpu *v, io_insn_handler::info_t &info)
 {
-//    bfdebug_nhex(0, "xl boot: io_insn in", info.port_number);
     return true;
 }
 
-static bool xlboot_io_insn_out(base_vcpu *v, io_insn_handler::info_t &info)
+static bool xlboot_io_out(base_vcpu *v, io_insn_handler::info_t &info)
 {
-//    bfdebug_nhex(0, "xl boot: io_insn out", info.port_number);
     return true;
 }
-
-/* end xl-created boot exits */
 
 static bool handle_exception(base_vcpu *vcpu)
 {
@@ -918,6 +914,10 @@ bool xen_vcpu::debug_hypercall(microv_vcpu *vcpu)
     const auto rax = vcpu->rax();
     const auto rdi = vcpu->rdi();
 
+    if (vcpu->is_root_vcpu()) {
+        return true;
+    }
+
     if (rax == __HYPERVISOR_sched_op && rdi == SCHEDOP_yield) {
         return false;
     }
@@ -978,6 +978,10 @@ bool xen_vcpu::hypercall(microv_vcpu *vcpu)
         debug_xen_hypercall(this);
     }
 
+    if (vcpu->is_root_vcpu()) {
+        return false;
+    }
+
     switch (vcpu->rax()) {
     case __HYPERVISOR_memory_op:
         return this->handle_memory_op();
@@ -1017,9 +1021,11 @@ xen_vcpu::xen_vcpu(microv_vcpu *vcpu) :
     m_uv_dom{vcpu->dom()},
     m_xen_dom{m_uv_dom->xen_dom()}
 {
-    m_id = 0;
-    m_apicid = 0;
-    m_acpiid = 0;
+    m_id = m_xen_dom->add_vcpu(this);
+
+    m_origin = m_xen_dom->m_uv_info->origin;
+    m_apicid = (m_uv_dom->is_xsvm()) ? m_id : 0xDEADBEEF;
+    m_acpiid = (m_uv_dom->is_xsvm()) ? m_id : 0xCAFEBABE;
 
     m_flask = std::make_unique<class xen_flask>(this);
     m_xenver = std::make_unique<class xen_version>(this);
@@ -1030,35 +1036,49 @@ xen_vcpu::xen_vcpu(microv_vcpu *vcpu) :
     m_tsc_shift = 0;
     m_pet_shift = vcpu->m_yield_handler.m_pet_shift;
 
-    vcpu->add_cpuid_emulator(xen_leaf(0), {xen_leaf0});
+    /*
+     * Xen leaf 0 is the main thing that kicks off the Xen path
+     * path whenever Linux or Windows PV boots up. Right now this leaf is
+     * only active for Windows PV root domain and guest Linux PVH domains.
+     */
+    if (m_origin != domain_info::origin_root || g_enable_winpv) {
+        vcpu->add_cpuid_emulator(xen_leaf(0), {xen_leaf0});
+    }
+    vcpu->add_cpuid_emulator(xen_leaf(1), {xen_leaf1});
     vcpu->add_cpuid_emulator(xen_leaf(2), {xen_leaf2});
+    vcpu->add_cpuid_emulator(xen_leaf(4), {&xen_vcpu::xen_leaf4, this});
+
     vcpu->emulate_wrmsr(xen_hypercall_page_msr,
                        {&xen_vcpu::init_hypercall_page, this});
+
     vcpu->add_vmcall_handler({&xen_vcpu::hypercall, this});
-    vcpu->add_cpuid_emulator(xen_leaf(1), {xen_leaf1});
-    vcpu->add_cpuid_emulator(xen_leaf(4), {&xen_vcpu::xen_leaf4, this});
+
+    if (m_origin == domain_info::origin_root) {
+        return;
+    }
 
     vcpu->add_handler(0, handle_exception);
     vcpu->emulate_wrmsr(self_ipi_msr, {wrmsr_self_ipi});
     vcpu->add_external_interrupt_handler({&xen_vcpu::handle_interrupt, this});
 
-    m_xen_dom->bind_vcpu(this);
+    if (m_origin == domain_info::origin_domctl) {
+        vcpu->emulate_io_instruction(0xA1, {xlboot_io_in}, {xlboot_io_out});
+        vcpu->emulate_io_instruction(0x21, {xlboot_io_in}, {xlboot_io_out});
+        vcpu->emulate_io_instruction(0x43, {xlboot_io_in}, {xlboot_io_out});
+        vcpu->emulate_io_instruction(0x80, {xlboot_io_in}, {xlboot_io_out});
+        vcpu->emulate_io_instruction(0x40, {xlboot_io_in}, {xlboot_io_out});
+    }
 
-    vcpu->emulate_io_instruction(0xA1, {xlboot_io_insn_in}, {xlboot_io_insn_out});
-    vcpu->emulate_io_instruction(0x21, {xlboot_io_insn_in}, {xlboot_io_insn_out});
-    vcpu->emulate_io_instruction(0x43, {xlboot_io_insn_in}, {xlboot_io_insn_out});
-    vcpu->emulate_io_instruction(0x80, {xlboot_io_insn_in}, {xlboot_io_insn_out});
-    vcpu->emulate_io_instruction(0x40, {xlboot_io_insn_in}, {xlboot_io_insn_out});
-
-    /* Toolstack cpuid accesses */
-    vcpu->add_cpuid_emulator(PSN_LEAF, {cpuid_zeros});
-    vcpu->add_cpuid_emulator(MWAIT_LEAF, {cpuid_zeros});
-    vcpu->add_cpuid_emulator(0x8, {cpuid_zeros});
-    vcpu->add_cpuid_emulator(DCA_LEAF, {cpuid_zeros});
-    vcpu->add_cpuid_emulator(0xC, {cpuid_zeros});
-    vcpu->add_cpuid_emulator(0x80000005, {cpuid_zeros});
-    vcpu->add_cpuid_emulator(CLSIZE_LEAF, {cpuid_passthrough});
-    vcpu->add_cpuid_emulator(INVARIANT_TSC_LEAF, {cpuid_passthrough});
-    vcpu->add_cpuid_emulator(ADDR_SIZE_LEAF, {cpuid_passthrough});
+    if (m_uv_dom->is_xsvm()) {
+        vcpu->add_cpuid_emulator(PSN_LEAF, {cpuid_zeros});
+        vcpu->add_cpuid_emulator(MWAIT_LEAF, {cpuid_zeros});
+        vcpu->add_cpuid_emulator(0x8, {cpuid_zeros});
+        vcpu->add_cpuid_emulator(DCA_LEAF, {cpuid_zeros});
+        vcpu->add_cpuid_emulator(0xC, {cpuid_zeros});
+        vcpu->add_cpuid_emulator(0x80000005, {cpuid_zeros});
+        vcpu->add_cpuid_emulator(CLSIZE_LEAF, {cpuid_passthrough});
+        vcpu->add_cpuid_emulator(INVARIANT_TSC_LEAF, {cpuid_passthrough});
+        vcpu->add_cpuid_emulator(ADDR_SIZE_LEAF, {cpuid_passthrough});
+    }
 }
 }

@@ -27,6 +27,7 @@
 #include <hve/arch/intel_x64/vcpu.h>
 #include <pci/dev.h>
 #include <xen/domain.h>
+#include <xen/platform_pci.h>
 
 using namespace bfvmm::intel_x64;
 using namespace microv;
@@ -110,9 +111,12 @@ void domain::setup_dom0()
         m_sod_info.ram = MAX_PHYS_ADDR;
         m_sod_info.origin = domain_info::origin_root;
         m_sod_info.xen_domid = DOMID_WINPV;
+        m_sod_info.flags = DOMF_EXEC_XENPVH;
 
         m_xen_domid = create_xen_domain(this, nullptr);
         m_xen_dom = get_xen_domain(m_xen_domid);
+
+        enable_xen_platform_pci();
     }
 }
 

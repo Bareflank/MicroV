@@ -166,15 +166,15 @@ yield_handler::yield_handler(gsl::not_null<vcpu *> vcpu) :
     using namespace vmcs_n;
     using namespace ::intel_x64::msrs;
 
-    if (vcpu->is_dom0()) {
-        return;
-    }
-
     expects(tsc_supported());
     expects(invariant_tsc_supported());
 
     m_tsc_freq = tsc_freq_khz(bus_freq_khz());
     m_pet_shift = ia32_vmx_misc::preemption_timer_decrement::get();
+
+    if (vcpu->is_dom0()) {
+        return;
+    }
 
     if (m_tsc_freq == 0) {
         vcpu->halt("No TSC frequency info available. System unsupported");

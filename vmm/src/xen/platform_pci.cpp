@@ -28,6 +28,7 @@
 #include <printv.h>
 #include <xen/platform_pci.h>
 #include <xen/types.h>
+#include <xen/vcpu.h>
 
 using pci_cfg_hdlr = microv::intel_x64::pci_cfg_handler;
 using pci_cfg_info = microv::intel_x64::pci_cfg_handler::info;
@@ -172,7 +173,7 @@ static bool pci_cfg_out(base_vcpu *vcpu, pci_cfg_info &info)
     return true;
 }
 
-void init_xen_platform_pci(microv_vcpu *vcpu)
+void init_xen_platform_pci(xen_vcpu *vcpu)
 {
     std::lock_guard lock(mutex);
 
@@ -193,11 +194,14 @@ void init_xen_platform_pci(microv_vcpu *vcpu)
         printv("xen-pfd: using BDF %s\n", bdf_str);
     }
 
-    vcpu->add_pci_cfg_handler(pci_cfg_addr, {pci_cfg_in}, pci_dir_in);
-    vcpu->add_pci_cfg_handler(pci_cfg_addr, {pci_cfg_out}, pci_dir_out);
-    vcpu->emulate_io_instruction(XEN_IOPORT, {ioport_in}, {ioport_out});
-    vcpu->emulate_io_instruction(PFD_IOPORT, {ioport_in}, {ioport_out});
-    vcpu->emulate_io_instruction(PFD_IOPORT + 2, {ioport_in}, {ioport_out});
+    auto uvv = vcpu->m_uv_vcpu;
+
+    uvv->add_pci_cfg_handler(pci_cfg_addr, {pci_cfg_in}, pci_dir_in);
+    uvv->add_pci_cfg_handler(pci_cfg_addr, {pci_cfg_out}, pci_dir_out);
+
+    uvv->emulate_io_instruction(XEN_IOPORT, {ioport_in}, {ioport_out});
+    uvv->emulate_io_instruction(PFD_IOPORT, {ioport_in}, {ioport_out});
+    uvv->emulate_io_instruction(PFD_IOPORT + 2, {ioport_in}, {ioport_out});
 }
 
 void enable_xen_platform_pci()
