@@ -155,15 +155,19 @@ bool xen_vcpu::xen_leaf4(base_vcpu *vcpu)
 
 bool xen_vcpu::init_hypercall_page(base_vcpu *vcpu, wrmsr_handler::info_t &info)
 {
-    const auto gfn = xen_frame(info.val);
-    const auto err = m_xen_dom->m_memory->map_page(gfn, pg_perm_rwe);
+    const auto gpa = info.val;
+    const auto gfn = xen_frame(gpa);
 
-    if (err) {
-        vcpu->set_rax(err);
-        return false;
+    if (vcpu->is_guest_vcpu()) {
+        const auto err = m_xen_dom->m_memory->map_page(gfn, pg_perm_rwe);
+        if (err) {
+            vcpu->set_rax(err);
+            printv("%s: map_page failed, rc=%d\n", __func__, err);
+            return false;
+        }
     }
 
-    auto map = vcpu->map_gpa_4k<uint8_t>(info.val);
+    auto map = vcpu->map_gpa_4k<uint8_t>(gpa);
     auto buf = gsl::span(map.get(), 0x1000);
 
     for (uint8_t i = 0; i < 55; i++) {
@@ -180,6 +184,7 @@ bool xen_vcpu::init_hypercall_page(base_vcpu *vcpu, wrmsr_handler::info_t &info)
         entry[8] = 0xC3U;
     }
 
+    printv("%s: initialized hypercall page at gpa 0x%lx\n", __func__, gpa);
     return true;
 }
 
@@ -972,14 +977,10 @@ bool xen_vcpu::debug_hypercall(microv_vcpu *vcpu)
     return true;
 }
 
-bool xen_vcpu::hypercall(microv_vcpu *vcpu)
+bool xen_vcpu::guest_hypercall(microv_vcpu *vcpu)
 {
     if (this->debug_hypercall(vcpu)) {
         debug_xen_hypercall(this);
-    }
-
-    if (vcpu->is_root_vcpu()) {
-        return false;
     }
 
     switch (vcpu->rax()) {
@@ -1016,6 +1017,20 @@ bool xen_vcpu::hypercall(microv_vcpu *vcpu)
     }
 }
 
+bool xen_vcpu::root_hypercall(microv_vcpu *vcpu)
+{
+    if (this->debug_hypercall(vcpu)) {
+        debug_xen_hypercall(this);
+    }
+
+    switch (vcpu->rax()) {
+    case __HYPERVISOR_xen_version:
+        return this->handle_xen_version();
+    default:
+        return false;
+    }
+}
+
 xen_vcpu::xen_vcpu(microv_vcpu *vcpu) :
     m_uv_vcpu{vcpu},
     m_uv_dom{vcpu->dom()},
@@ -1038,7 +1053,7 @@ xen_vcpu::xen_vcpu(microv_vcpu *vcpu) :
 
     /*
      * Xen leaf 0 is the main thing that kicks off the Xen path
-     * path whenever Linux or Windows PV boots up. Right now this leaf is
+     * whenever Linux or Windows PV boots up. Right now this leaf is
      * only active for Windows PV root domain and guest Linux PVH domains.
      */
     if (m_origin != domain_info::origin_root || g_enable_winpv) {
@@ -1049,14 +1064,14 @@ xen_vcpu::xen_vcpu(microv_vcpu *vcpu) :
     vcpu->add_cpuid_emulator(xen_leaf(4), {&xen_vcpu::xen_leaf4, this});
 
     vcpu->emulate_wrmsr(xen_hypercall_page_msr,
-                       {&xen_vcpu::init_hypercall_page, this});
-
-    vcpu->add_vmcall_handler({&xen_vcpu::hypercall, this});
+                        {&xen_vcpu::init_hypercall_page, this});
 
     if (m_origin == domain_info::origin_root) {
+        vcpu->add_vmcall_handler({&xen_vcpu::root_hypercall, this});
         return;
     }
 
+    vcpu->add_vmcall_handler({&xen_vcpu::guest_hypercall, this});
     vcpu->add_handler(0, handle_exception);
     vcpu->emulate_wrmsr(self_ipi_msr, {wrmsr_self_ipi});
     vcpu->add_external_interrupt_handler({&xen_vcpu::handle_interrupt, this});

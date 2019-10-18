@@ -76,7 +76,6 @@ private:
     bool register_vcpu_time();
     bool register_runstate();
     void update_runstate(int new_state);
-
     void update_wallclock(const struct xenpf_settime64 *time);
 
     bool xen_leaf4(base_vcpu *vcpu);
@@ -89,7 +88,9 @@ private:
     bool hvm_get_param(xen_hvm_param_t *param);
 
     /* Hypercall handlers */
-    bool hypercall(microv_vcpu *vcpu);
+    bool guest_hypercall(microv_vcpu *vcpu);
+    bool root_hypercall(microv_vcpu *vcpu);
+
     bool handle_memory_op();
     bool handle_xen_version();
     bool handle_hvm_op();
