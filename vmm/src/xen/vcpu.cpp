@@ -1026,6 +1026,29 @@ bool xen_vcpu::root_hypercall(microv_vcpu *vcpu)
     switch (vcpu->rax()) {
     case __HYPERVISOR_xen_version:
         return this->handle_xen_version();
+    case __HYPERVISOR_memory_op:
+        switch (vcpu->rdi()) {
+        case XENMEM_decrease_reservation:
+        case XENMEM_add_to_physmap:
+        case XENMEM_populate_physmap:
+            return this->handle_memory_op();
+        default:
+            return false;
+        }
+    //case __HYPERVISOR_event_channel_op:
+    //    switch (vcpu->rdi()) {
+    //    case EVTCHNOP_init_control:
+    //        return this->handle_event_channel_op();
+    //    default:
+    //        return false;
+    //    }
+    //case __HYPERVISOR_hvm_op:
+    //    switch (vcpu->rdi()) {
+    //    case HVMOP_get_param:
+    //        return this->handle_hvm_op();
+    //    default:
+    //        return false;
+    //    }
     default:
         return false;
     }

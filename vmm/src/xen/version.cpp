@@ -105,7 +105,7 @@ bool xen_version::compile_info()
 bool xen_version::extraversion()
 {
     auto extra = m_uv_vcpu->map_arg<xen_extraversion_t>(m_uv_vcpu->rsi());
-    std::strncpy((char *)extra.get(), "microv", XEN_EXTRAVERSION_LEN);
+    std::strncpy((char *)extra.get(), "-microv", XEN_EXTRAVERSION_LEN);
     m_uv_vcpu->set_rax(0);
     return true;
 }

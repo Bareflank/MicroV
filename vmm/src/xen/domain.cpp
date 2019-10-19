@@ -789,34 +789,55 @@ xen_vcpuid_t xen_domain::add_vcpu(xen_vcpu *vcpu)
     return xen_id;
 }
 
-/* TODO support root origin */
 uint64_t xen_domain::init_shared_info(xen_vcpu *xen, uintptr_t shinfo_gpfn)
 {
-    expects(m_shinfo);
+    auto uvv = xen->m_uv_vcpu;
 
-    const auto perms = pg_perm_rw;
-    const auto mtype = pg_mtype_wb;
+    if (uvv->is_guest_vcpu()) {
+        expects(m_shinfo);
 
-    if (m_memory->find_page(shinfo_gpfn)) {
-        m_memory->remove_page(shinfo_gpfn);
+        const auto perms = pg_perm_rw;
+        const auto mtype = pg_mtype_wb;
+
+        if (m_memory->find_page(shinfo_gpfn)) {
+            m_memory->remove_page(shinfo_gpfn);
+        }
+
+        m_memory->add_vmm_backed_page(shinfo_gpfn, perms, mtype, m_shinfo);
+        xen->m_uv_vcpu->invept();
+
+        /* Set wallclock from start-of-day info */
+        auto now = ::x64::read_tsc::get();
+        auto wc_nsec = tsc_to_ns(now - m_uv_info->tsc, m_tsc_shift,  m_tsc_mul);
+        auto wc_sec = wc_nsec / 1000000000ULL;
+
+        wc_nsec += m_uv_info->wc_nsec;
+        wc_sec += m_uv_info->wc_sec;
+        m_shinfo->wc_nsec = gsl::narrow_cast<uint32_t>(wc_nsec);
+        m_shinfo->wc_sec = gsl::narrow_cast<uint32_t>(wc_sec);
+        m_shinfo->wc_sec_hi = gsl::narrow_cast<uint32_t>(wc_sec >> 32);
+        m_shinfo_gpfn = shinfo_gpfn;
+
+        return now;
     }
 
-    m_memory->add_vmm_backed_page(shinfo_gpfn, perms, mtype, m_shinfo);
-    xen->m_uv_vcpu->invept();
+    if (uvv->is_root_vcpu()) {
+        expects(m_id == DOMID_WINPV);
 
-    /* Set wallclock from start-of-day info */
-    auto now = ::x64::read_tsc::get();
-    auto wc_nsec = tsc_to_ns(now - m_uv_info->tsc, m_tsc_shift,  m_tsc_mul);
-    auto wc_sec = wc_nsec / 1000000000ULL;
+        /*
+         * The shared info page is the first 4K region of the hole created by
+         * the FDO Windows PV driver, so it is already mapped into the domain's
+         * EPT. Here we simply map it into the hypervisor for later reference.
+         */
+        m_shinfo_gpfn = shinfo_gpfn;
+        m_shinfo_map = uvv->map_gpa_4k<uint8_t>(xen_addr(m_shinfo_gpfn));
+        m_shinfo = reinterpret_cast<struct shared_info *>(m_shinfo_map.get());
 
-    wc_nsec += m_uv_info->wc_nsec;
-    wc_sec += m_uv_info->wc_sec;
-    m_shinfo->wc_nsec = gsl::narrow_cast<uint32_t>(wc_nsec);
-    m_shinfo->wc_sec = gsl::narrow_cast<uint32_t>(wc_sec);
-    m_shinfo->wc_sec_hi = gsl::narrow_cast<uint32_t>(wc_sec >> 32);
-    m_shinfo_gpfn = shinfo_gpfn;
+        return 0;
+    }
 
-    return now;
+    printv("%s: ERROR invalid vcpu type\n", __func__);
+    return 0;
 }
 
 void xen_domain::update_wallclock(

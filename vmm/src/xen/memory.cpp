@@ -33,6 +33,8 @@
 
 namespace microv {
 
+static uintptr_t winpv_hole_gfn;
+
 static std::mutex dom_pool_mtx;
 static std::unordered_map<uint64_t, class page> dom_pool;
 static uint64_t dom_page_id{};
@@ -264,7 +266,6 @@ bool xenmem_decrease_reservation(xen_vcpu *vcpu)
     auto rsv = uvv->map_arg<xen_memory_reservation_t>(uvv->rsi());
 
     expects(rsv->domid == DOMID_SELF);
-    expects(rsv->extent_order == 0);
 
     return vcpu->m_xen_dom->m_memory->decrease_reservation(vcpu, rsv.get());
 }
@@ -736,19 +737,35 @@ bool xen_memory::add_to_physmap(xen_vcpu *vcpu, xen_add_to_physmap_t *atp)
 {
     expects(atp->domid == DOMID_SELF || atp->domid == m_xen_dom->m_id);
 
-    switch (atp->space) {
-    case XENMAPSPACE_gmfn_foreign:
-        vcpu->m_uv_vcpu->set_rax(-ENOSYS);
-        return false;
-    case XENMAPSPACE_shared_info:
-        vcpu->init_shared_info(atp->gpfn);
-        vcpu->m_uv_vcpu->set_rax(0);
-        return true;
-    case XENMAPSPACE_grant_table:
-        return m_xen_dom->m_gnttab->mapspace_grant_table(vcpu, atp);
-    default:
-        return false;
+    if (vcpu->m_uv_vcpu->is_guest_vcpu()) {
+        switch (atp->space) {
+        case XENMAPSPACE_gmfn_foreign:
+            vcpu->m_uv_vcpu->set_rax(-ENOSYS);
+            return false;
+        case XENMAPSPACE_shared_info:
+            vcpu->init_shared_info(atp->gpfn);
+            vcpu->m_uv_vcpu->set_rax(0);
+            return true;
+        case XENMAPSPACE_grant_table:
+            return m_xen_dom->m_gnttab->mapspace_grant_table(vcpu, atp);
+        default:
+            return false;
+        }
     }
+
+    if (vcpu->m_uv_vcpu->is_root_vcpu()) {
+        switch (atp->space) {
+        case XENMAPSPACE_shared_info:
+            vcpu->m_xen_dom->init_shared_info(vcpu, atp->gpfn);
+            vcpu->m_uv_vcpu->set_rax(0);
+            return true;
+        default:
+            return false;
+        }
+    }
+
+    printv("%s: ERROR - invalid vcpu type\n", __func__);
+    return false;
 }
 
 bool xen_memory::add_to_physmap_batch(xen_vcpu *v,
@@ -852,16 +869,39 @@ bool xen_memory::decrease_reservation(xen_vcpu *v,
     auto gfn = map.get();
     auto nr_done = 0U;
 
-    for (auto i = 0U; i < rsv->nr_extents; i++) {
-        const auto err = this->remove_page(gfn[i]);
-        if (err) {
-            break;
+    if (uvv->is_guest_vcpu()) {
+        for (auto i = 0U; i < rsv->nr_extents; i++) {
+            const auto err = this->remove_page(gfn[i]);
+            if (err) {
+                break;
+            }
+            nr_done++;
         }
-        nr_done++;
-    }
 
-    this->invept();
-    uvv->set_rax(nr_done);
+        this->invept();
+        uvv->set_rax(nr_done);
+    } else {
+        expects(v->m_xen_dom->m_id == DOMID_WINPV);
+        expects(rsv->nr_extents == 1);
+        expects(rsv->extent_order == 9);
+        expects(m_ept->is_2m(xen_addr(gfn[0])));
+
+        printv("Creating Windows PV hole at 0x%lx\n", xen_addr(gfn[0]));
+        winpv_hole_gfn = gfn[0];
+
+        /*
+         * We assume this is from the fdo code in the Windows PV drivers
+         * that is creating the hole for various interfaces. If that is
+         * the case we should? be able to avoid a TLB shootdown because
+         * the memory hasn't been accessed yet.
+         */
+
+//        m_ept->unmap(xen_addr(gfn[0]), iommu_incoherent());
+//        m_ept->release(xen_addr(gfn[0]), iommu_incoherent());
+
+        nr_done = 1;
+        uvv->set_rax(nr_done);
+    }
 
     return true;
 }
@@ -905,25 +945,44 @@ bool xen_memory::populate_physmap(xen_vcpu *v, xen_memory_reservation_t *rsv)
     auto ext = uvv->map_gva_4k<xen_pfn_t>(rsv->extent_start.p, rsv->nr_extents);
     auto pages_per_ext = 1UL << rsv->extent_order;
 
-    for (auto i = 0; i < rsv->nr_extents; i++) {
-        auto gfn = ext.get()[i];
+    if (uvv->is_guest_vcpu()) {
+        for (auto i = 0; i < rsv->nr_extents; i++) {
+            auto gfn = ext.get()[i];
 
-        for (auto j = 0; j < pages_per_ext; j++) {
-            this->add_page(gfn + j, pg_perm_rwe, pg_mtype_wb);
+            for (auto j = 0; j < pages_per_ext; j++) {
+                this->add_page(gfn + j, pg_perm_rwe, pg_mtype_wb);
+            }
         }
+
+        m_xen_dom->m_total_pages += rsv->nr_extents * pages_per_ext;
+        m_xen_dom->m_out_pages -= rsv->nr_extents * pages_per_ext;
+
+        if (m_xen_dom->m_out_pages < 0) {
+            m_xen_dom->m_out_pages = 0;
+        }
+
+        this->invept();
+        uvv->set_rax(rsv->nr_extents);
+
+        return true;
     }
 
-    m_xen_dom->m_total_pages += rsv->nr_extents * pages_per_ext;
-    m_xen_dom->m_out_pages -= rsv->nr_extents * pages_per_ext;
+    if (uvv->is_root_vcpu()) {
+        expects(m_xen_dom->m_id == DOMID_WINPV);
+        expects(rsv->extent_order == 9);
+        expects(rsv->nr_extents == 1);
+        expects(ext.get()[0] == winpv_hole_gfn);
 
-    if (m_xen_dom->m_out_pages < 0) {
-        m_xen_dom->m_out_pages = 0;
+        printv("Filling Windows PV hole\n");
+
+        int nr_done = 1;
+        uvv->set_rax(nr_done);
+
+        return true;
     }
 
-    this->invept();
-    uvv->set_rax(rsv->nr_extents);
-
-    return true;
+    printv("%s: ERROR invalid vcpu type\n", __func__);
+    return false;
 }
 
 bool xen_memory::set_memory_map(xen_vcpu *v, xen_foreign_memory_map_t *fmap)
