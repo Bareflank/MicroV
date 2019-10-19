@@ -90,12 +90,15 @@ public:
                          uint32_t mtype);
 
     int set_timer_mode(uint64_t mode);
+    void set_default_evtchn_vcpuid();
     void queue_virq(int virq);
     xen_vcpuid_t add_vcpu(xen_vcpu *xen);
     void get_info(struct xen_domctl_getdomaininfo *info);
     uint64_t runstate_time(int state);
-    uint32_t nr_online_vcpus();
-    xen_vcpuid_t max_vcpu_id();
+    uint32_t nr_online_vcpus() const;
+    xen_vcpuid_t max_vcpuid() const;
+    xen_vcpuid_t make_vcpuid(microv_vcpuid uvv_id) const;
+    bool has_xen_vcpuid(xen_vcpuid_t vcpuid) const;
 
     size_t hvc_rx_put(const gsl::span<char> &span);
     size_t hvc_rx_get(const gsl::span<char> &span);
@@ -137,11 +140,6 @@ public:
     class xen_vcpu *get_xen_vcpu(xen_vcpuid_t id = 0) noexcept;
     void put_xen_vcpu(xen_vcpuid_t id = 0) noexcept;
 
-    size_t constexpr max_nr_vcpus()
-    {
-        return m_uvv_id.size();
-    }
-
 private:
     friend class xen_evtchn;
 
@@ -155,13 +153,7 @@ public:
     microv::domain_info *m_uv_info{};
     microv_domain *m_uv_dom{};
 
-    /*
-     * We use this limit given by Xen as this is the max number of
-     * vcpus that a given struct shared_info can store
-     */
-    std::array<microv_vcpuid, XEN_LEGACY_MAX_VCPUS> m_uvv_id{};
-    size_t m_nr_vcpus{};
-
+    std::unordered_map<xen_vcpuid_t, microv_vcpuid> m_vcpuid_map{};
     xen_domid_t m_id{};
     xen_uuid_t m_uuid{};
     uint32_t m_ssid{};     /* flask id */

@@ -204,8 +204,6 @@ bool xen_evtchn::init_control(xen_vcpu *v, evtchn_init_control_t *ctl)
     expects((ctl->offset & 0x7) == 0);
 
     this->add_event_ctl(v, ctl);
-
-    v->m_uv_vcpu->set_rax(0);
     return true;
 }
 
@@ -514,7 +512,7 @@ bool xen_evtchn::close(xen_vcpu *v, evtchn_close_t *ec)
         return false;
     }
 
-    chan->free();
+    chan->free(m_def_vcpuid);
     uvv->set_rax(0);
     return true;
 }
@@ -623,21 +621,26 @@ void xen_evtchn::add_event_ctl(xen_vcpu *v, evtchn_init_control_t *ctl)
     auto uvv = v->m_uv_vcpu;
     const auto vcpuid = ctl->vcpu;
 
-    if (vcpuid >= m_xen_dom->m_nr_vcpus) {
-        printv("%s: invalid vcpuid: %u (dom->nr_vcpus=%lu)\n",
-                __func__, vcpuid, m_xen_dom->m_nr_vcpus);
+    if (!m_xen_dom->has_xen_vcpuid(vcpuid)) {
+        printv("%s: invalid vcpuid: %u\n", __func__, vcpuid);
         uvv->set_rax(-EINVAL);
         return;
     }
 
-    if (vcpuid != m_event_ctl.size()) {
-        printv("%s: vcpuid %u inserted out of order\n", __func__, vcpuid);
+    if (m_event_ctl.find(vcpuid) != m_event_ctl.end()) {
+        printv("%s: vcpuid %u control block already inserted\n",
+                __func__, vcpuid);
         uvv->set_rax(-EINVAL);
         return;
     }
 
-    m_event_ctl.emplace_back(uvv, ctl);
+    if (m_event_ctl.size() == 0) {
+        expects(vcpuid == m_def_vcpuid);
+    }
+
+    m_event_ctl.try_emplace(vcpuid, uvv, ctl);
     ctl->link_bits = EVTCHN_FIFO_LINK_BITS;
+    uvv->set_rax(0);
 }
 
 void xen_evtchn::setup_ports()
@@ -759,7 +762,13 @@ int xen_evtchn::upcall(chan_t *chan)
         return -EINVAL;
     }
 
-    auto ctl = &m_event_ctl[chan->vcpuid];
+    auto itr = m_event_ctl.find(chan->vcpuid);
+    if (itr == m_event_ctl.end()) {
+        printv("%s: unknown vcpuid %u\n", __func__, chan->vcpuid);
+        return -ESRCH;
+    }
+
+    auto ctl = &itr->second;
     auto p = chan->priority;
     auto q = &ctl->queue.at(p);
 
@@ -872,11 +881,36 @@ void xen_evtchn::make_chan_page(port_t port)
 
     for (auto i = 0U; i < chans_per_page; i++) {
         auto chan = &page.get()[i];
-        chan->reset(port + i);
+        chan->reset(port + i, m_def_vcpuid);
     }
 
     m_chan_pages.push_back(std::move(page));
     m_allocated_chans += chans_per_page;
+}
+
+void xen_evtchn::set_default_vcpuid(xen_vcpuid_t id)
+{
+    if (id == m_def_vcpuid) {
+        return;
+    }
+
+    m_def_vcpuid = id;
+
+    for (auto i = 0; i < m_chan_pages.size(); i++) {
+        auto page = m_chan_pages[i].get();
+
+        for (auto j = 0; j < chans_per_page; j++) {
+            auto chan = &page[j];
+
+            if (chan->state == chan_t::state_free) {
+                chan->vcpuid = id;
+                chan->prev_vcpuid = id;
+            } else {
+                printv("%s: WARNING: port %llu not free\n",
+                        __func__, i * chans_per_page + j);
+            }
+        }
+    }
 }
 
 void xen_evtchn::make_word_page(microv_vcpu *uvv, uintptr_t gfn)
