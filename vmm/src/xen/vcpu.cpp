@@ -1035,13 +1035,13 @@ bool xen_vcpu::root_hypercall(microv_vcpu *vcpu)
         default:
             return false;
         }
-    //case __HYPERVISOR_event_channel_op:
-    //    switch (vcpu->rdi()) {
-    //    case EVTCHNOP_init_control:
-    //        return this->handle_event_channel_op();
-    //    default:
-    //        return false;
-    //    }
+    case __HYPERVISOR_event_channel_op:
+        switch (vcpu->rdi()) {
+        case EVTCHNOP_init_control:
+            return this->handle_event_channel_op();
+        default:
+            return false;
+        }
     case __HYPERVISOR_hvm_op:
         switch (vcpu->rdi()) {
         case HVMOP_get_param:

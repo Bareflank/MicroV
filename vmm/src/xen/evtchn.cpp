@@ -198,17 +198,14 @@ int xen_evtchn::set_upcall_vector(xen_vcpu *v, xen_hvm_param_t *param)
     return 0;
 }
 
-bool xen_evtchn::init_control(xen_vcpu *v, evtchn_init_control_t *eic)
+bool xen_evtchn::init_control(xen_vcpu *v, evtchn_init_control_t *ctl)
 {
-    expects(eic->offset <= (PAGE_SIZE - sizeof(evtchn_fifo_control_block_t)));
-    expects((eic->offset & 0x7) == 0);
+    expects(ctl->offset <= (PAGE_SIZE - sizeof(evtchn_fifo_control_block_t)));
+    expects((ctl->offset & 0x7) == 0);
 
-    auto uvv = v->m_uv_vcpu;
-    this->setup_ctl_blk(uvv, eic->control_gfn, eic->offset);
-    eic->link_bits = EVTCHN_FIFO_LINK_BITS;
+    this->add_event_ctl(v, ctl);
 
-    printv("evtchn: init_control\n");
-    uvv->set_rax(0);
+    v->m_uv_vcpu->set_rax(0);
     return true;
 }
 
@@ -551,7 +548,7 @@ void xen_evtchn::notify_remote(chan_t *chan)
      * is bounded above by the timer period.
      */
 
-    rdom->m_evtchn->upcall(chan->rport);
+    rdom->m_evtchn->push_upcall(chan->rport);
     put_xen_domain(rdomid);
 }
 
@@ -621,18 +618,26 @@ void xen_evtchn::inject_virq(uint32_t virq)
 // Initialization
 // =============================================================================
 
-void xen_evtchn::setup_ctl_blk(microv_vcpu *uvv, uint64_t gfn, uint32_t offset)
+void xen_evtchn::add_event_ctl(xen_vcpu *v, evtchn_init_control_t *ctl)
 {
-    const auto gpa = xen_addr(gfn);
-    m_ctl_blk_ump = uvv->map_gpa_4k<uint8_t>(gpa);
+    auto uvv = v->m_uv_vcpu;
+    const auto vcpuid = ctl->vcpu;
 
-    uint8_t *base = m_ctl_blk_ump.get() + offset;
-    m_ctl_blk = reinterpret_cast<evtchn_fifo_control_block_t *>(base);
-
-    for (auto i = 0U; i <= EVTCHN_FIFO_PRIORITY_MIN; i++) {
-        m_queues[i].priority = gsl::narrow_cast<uint8_t>(i);
-        m_queues[i].head = &m_ctl_blk->head[i];
+    if (vcpuid >= m_xen_dom->m_nr_vcpus) {
+        printv("%s: invalid vcpuid: %u (dom->nr_vcpus=%lu)\n",
+                __func__, vcpuid, m_xen_dom->m_nr_vcpus);
+        uvv->set_rax(-EINVAL);
+        return;
     }
+
+    if (vcpuid != m_event_ctl.size()) {
+        printv("%s: vcpuid %u inserted out of order\n", __func__, vcpuid);
+        uvv->set_rax(-EINVAL);
+        return;
+    }
+
+    m_event_ctl.emplace_back(uvv, ctl);
+    ctl->link_bits = EVTCHN_FIFO_LINK_BITS;
 }
 
 void xen_evtchn::setup_ports()
@@ -665,6 +670,30 @@ bool xen_evtchn::set_link(word_t *word, event_word_t *val, port_t link)
     auto desire = (expect & ~((1 << EVTCHN_FIFO_BUSY) | port_mask)) | link_bits;
 
     return word->compare_exchange_strong(expect, desire);
+}
+
+void xen_evtchn::push_upcall(port_t port)
+{
+    auto chan = this->port_to_chan(port);
+    expects(chan);
+
+    this->push_upcall(chan);
+}
+
+void xen_evtchn::push_upcall(chan_t *chan)
+{
+    if (!this->upcall(chan)) {
+        auto xend = m_xen_dom;
+        auto xenv = xend->get_xen_vcpu(chan->vcpuid);
+
+        if (!xenv) {
+            bferror_nhex(0, "could not get xen vcpu, dom=", xend->m_id);
+            return;
+        }
+
+        xenv->m_uv_vcpu->push_external_interrupt(m_upcall_vec);
+        xend->put_xen_vcpu(chan->vcpuid);
+    }
 }
 
 void xen_evtchn::queue_upcall(chan_t *chan)
@@ -711,8 +740,6 @@ void xen_evtchn::upcall(evtchn_port_t port)
 
 int xen_evtchn::upcall(chan_t *chan)
 {
-    expects(m_ctl_blk);
-
     auto port = chan->port;
     auto word = this->port_to_word(port);
     if (!word) {
@@ -726,8 +753,15 @@ int xen_evtchn::upcall(chan_t *chan)
         return -EBUSY;
     }
 
+    if (chan->vcpuid >= m_event_ctl.size()) {
+        printv("%s: OOB vcpuid=%u, event_ctl.size=%lu\n",
+                __func__, chan->vcpuid, m_event_ctl.size());
+        return -EINVAL;
+    }
+
+    auto ctl = &m_event_ctl[chan->vcpuid];
     auto p = chan->priority;
-    auto q = &m_queues.at(p);
+    auto q = &ctl->queue.at(p);
 
     if (*q->head == null_port) {
         *q->head = port;
@@ -750,7 +784,7 @@ int xen_evtchn::upcall(chan_t *chan)
     }
 
     this->word_set_pending(word);
-    m_ctl_blk->ready |= (1UL << p);
+    ctl->blk->ready |= (1UL << p);
     ::intel_x64::wmb();
 
     return 0;

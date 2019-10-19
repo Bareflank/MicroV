@@ -22,10 +22,13 @@
 #ifndef MICROV_XEN_EVTCHN_H
 #define MICROV_XEN_EVTCHN_H
 
+#include <vector>
+
 #include "types.h"
 #include <public/event_channel.h>
 #include <public/hvm/hvm_op.h>
 #include <public/hvm/params.h>
+#include <xen/page.h>
 
 namespace microv {
 
@@ -97,15 +100,36 @@ struct event_channel {
 
 } __attribute__((packed));
 
+struct event_queue {
+    evtchn_port_t *head;
+    uint8_t priority;
+};
+
+struct event_control {
+    unique_map<uint8_t> map;
+    evtchn_fifo_control_block_t *blk;
+    std::array<struct event_queue, EVTCHN_FIFO_MAX_QUEUES> queue;
+
+    event_control(microv_vcpu *uvv, evtchn_init_control *init)
+    {
+        const auto gpa = xen_addr(init->control_gfn);
+        const auto off = init->offset;
+
+        map = uvv->map_gpa_4k<uint8_t>(gpa);
+        blk = reinterpret_cast<evtchn_fifo_control_block_t *>(map.get() + off);
+
+        for (auto i = 0U; i <= EVTCHN_FIFO_PRIORITY_MIN; i++) {
+            queue[i].head = &blk->head[i];
+            queue[i].priority = gsl::narrow_cast<uint8_t>(i);
+        }
+    }
+};
+
 class xen_evtchn {
 public:
     using port_t = evtchn_port_t;
     using word_t = std::atomic<event_word_t>;
     using chan_t = struct event_channel;
-    using queue_t = struct fifo_queue {
-        port_t *head;
-        uint8_t priority;
-    };
 
     static_assert(is_power_of_2(EVTCHN_FIFO_NR_CHANNELS));
     static_assert(is_power_of_2(sizeof(word_t)));
@@ -170,12 +194,14 @@ private:
     port_t make_new_port();
     int make_port(port_t port);
     void setup_ports();
-    void setup_ctl_blk(microv_vcpu *uvv, uint64_t gfn, uint32_t offset);
+    void add_event_ctl(xen_vcpu *v, evtchn_init_control_t *ctl);
 
     void make_chan_page(port_t port);
     void make_word_page(microv_vcpu *uvv, uintptr_t gfn);
 
     void notify_remote(chan_t *chan);
+    void push_upcall(port_t port);
+    void push_upcall(chan_t *chan);
     void queue_upcall(chan_t *chan);
     void inject_upcall(chan_t *chan);
     int upcall(chan_t *chan);
@@ -189,15 +215,14 @@ private:
     void word_set_pending(word_t *word);
     void word_clr_mask(word_t *word);
 
-    // Data members
-    //
     uint64_t m_allocated_chans{};
     uint64_t m_allocated_words{};
 
-    evtchn_fifo_control_block_t *m_ctl_blk{};
-    unique_map<uint8_t> m_ctl_blk_ump{};
+    // Control blocks
+    //
+    std::vector<struct event_control> m_event_ctl{};
 
-    std::array<queue_t, EVTCHN_FIFO_MAX_QUEUES> m_queues{0};
+    // VIRQ mapping
     std::array<port_t, NR_VIRQS> m_virq_to_port{0};
 
     std::vector<unique_map<word_t>> m_word_pages{};
