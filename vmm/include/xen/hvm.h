@@ -36,7 +36,7 @@ public:
     xen_hvm(xen_domain *dom, xen_memory *mem);
 
     bool set_param(xen_vcpu *vcpu, xen_hvm_param_t *param);
-    bool get_param(xen_vcpu *vcpu, xen_hvm_param_t *param) const;
+    bool get_param(xen_vcpu *vcpu, xen_hvm_param_t *param);
     uint64_t get_param(uint32_t index) const;
 
     ~xen_hvm() = default;

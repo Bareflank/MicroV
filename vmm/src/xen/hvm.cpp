@@ -151,27 +151,59 @@ uint64_t xen_hvm::get_param(uint32_t index) const
     return params[index];
 }
 
-bool xen_hvm::get_param(xen_vcpu *vcpu, xen_hvm_param_t *p) const
+bool xen_hvm::get_param(xen_vcpu *vcpu, xen_hvm_param_t *p)
 {
     int err = 0;
+    auto uvv = vcpu->m_uv_vcpu;
 
-    switch (p->index) {
-    case HVM_PARAM_STORE_PFN:
-    case HVM_PARAM_CONSOLE_PFN:
-    case HVM_PARAM_PAE_ENABLED:
-    case HVM_PARAM_NESTEDHVM:
-    case HVM_PARAM_STORE_EVTCHN:
-    case HVM_PARAM_CONSOLE_EVTCHN:
-        break;
-    default:
-        bferror_nhex(0, "hvm get_param:", p->index);
-        return false;
+    if (uvv->is_guest_vcpu()) {
+        switch (p->index) {
+        case HVM_PARAM_STORE_PFN:
+        case HVM_PARAM_CONSOLE_PFN:
+        case HVM_PARAM_PAE_ENABLED:
+        case HVM_PARAM_NESTEDHVM:
+        case HVM_PARAM_STORE_EVTCHN:
+        case HVM_PARAM_CONSOLE_EVTCHN:
+            break;
+        default:
+            bferror_nhex(0, "hvm get_param:", p->index);
+            return false;
+        }
+
+        p->value = this->get_param(p->index);
+        uvv->set_rax(err);
+
+        return true;
     }
 
-    p->value = this->get_param(p->index);
-    vcpu->m_uv_vcpu->set_rax(err);
+    if (uvv->is_root_vcpu()) {
+        expects(vcpu->m_xen_dom->m_id == DOMID_WINPV);
+        expects(this->xen_dom->m_id == DOMID_WINPV);
 
-    return true;
+        switch (p->index) {
+        case HVM_PARAM_STORE_EVTCHN:
+        case HVM_PARAM_CONSOLE_EVTCHN: {
+            /* Simulate what the toolstack would have done for us */
+            evtchn_alloc_unbound_t eau = {
+                .dom = DOMID_WINPV,
+                .remote_dom = 0,
+                .port = 0
+            };
+
+            auto ret = this->xen_dom->m_evtchn->alloc_unbound(vcpu, &eau);
+            p->value = eau.port;
+            params[p->index] = eau.port;
+
+            uvv->set_rax(ret ? 0 : -EINVAL);
+            return true;
+        }
+        default:
+            return false;
+        }
+    }
+
+    printv("%s: ERROR invalid vcpu type\n", __func__);
+    return false;
 }
 
 }

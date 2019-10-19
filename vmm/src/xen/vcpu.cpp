@@ -1042,13 +1042,13 @@ bool xen_vcpu::root_hypercall(microv_vcpu *vcpu)
     //    default:
     //        return false;
     //    }
-    //case __HYPERVISOR_hvm_op:
-    //    switch (vcpu->rdi()) {
-    //    case HVMOP_get_param:
-    //        return this->handle_hvm_op();
-    //    default:
-    //        return false;
-    //    }
+    case __HYPERVISOR_hvm_op:
+        switch (vcpu->rdi()) {
+        case HVMOP_get_param:
+            return this->handle_hvm_op();
+        default:
+            return false;
+        }
     default:
         return false;
     }
