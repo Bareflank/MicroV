@@ -1075,7 +1075,7 @@ SystemVirtualCpuIndex(
     if (Index >= __SystemProcessorCount())
         goto fail1;
 
-    *vcpu_id = Processor->ProcessorID;
+    *vcpu_id = Index;
     return STATUS_SUCCESS;
 
 fail1:
