@@ -30,6 +30,7 @@ namespace microv {
 bool xen_hvm_set_param(xen_vcpu *vcpu);
 bool xen_hvm_get_param(xen_vcpu *vcpu);
 bool xen_hvm_pagetable_dying(xen_vcpu *vcpu);
+bool xen_hvm_set_evtchn_upcall_vector(xen_vcpu *vcpu);
 
 class xen_hvm {
 public:

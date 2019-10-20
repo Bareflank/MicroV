@@ -92,6 +92,16 @@ bool xen_hvm_pagetable_dying(xen_vcpu *vcpu)
     return true;
 }
 
+bool xen_hvm_set_evtchn_upcall_vector(xen_vcpu *vcpu)
+{
+    auto uvv = vcpu->m_uv_vcpu;
+    auto arg = uvv->map_arg<xen_hvm_evtchn_upcall_vector_t>(uvv->rsi());
+    auto ret = vcpu->m_xen_dom->m_evtchn->set_upcall_vector(vcpu, arg.get());
+
+    uvv->set_rax(ret);
+    return true;
+}
+
 xen_hvm::xen_hvm(xen_domain *dom, xen_memory *mem) :
     xen_dom{dom},
     xen_mem{mem}

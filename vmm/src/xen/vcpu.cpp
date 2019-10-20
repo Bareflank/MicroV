@@ -319,6 +319,8 @@ bool xen_vcpu::handle_hvm_op()
         return xen_hvm_get_param(this);
     case HVMOP_pagetable_dying:
         return xen_hvm_pagetable_dying(this);
+    case HVMOP_set_evtchn_upcall_vector:
+        return xen_hvm_set_evtchn_upcall_vector(this);
     default:
         return false;
     }
@@ -1045,6 +1047,8 @@ bool xen_vcpu::root_hypercall(microv_vcpu *vcpu)
     case __HYPERVISOR_hvm_op:
         switch (vcpu->rdi()) {
         case HVMOP_get_param:
+        case HVMOP_pagetable_dying:
+        case HVMOP_set_evtchn_upcall_vector:
             return this->handle_hvm_op();
         default:
             return false;
