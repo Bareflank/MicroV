@@ -548,6 +548,10 @@ EvtchnFlush(
     ASSERT3U(Index, <, Context->ProcessorCount);
     Processor = &Context->Processor[Index];
 
+    if (Context->Interrupt == NULL) {
+        ASSERT3U(Processor->UpcallEnabled, ==, TRUE);
+    }
+
     Interrupt = (Processor->UpcallEnabled) ?
                 Processor->Interrupt :
                 Context->Interrupt;
@@ -636,6 +640,10 @@ EvtchnTrigger(
 
     ASSERT3U(Index, <, Context->ProcessorCount);
     Processor = &Context->Processor[Index];
+
+    if (Context->Interrupt == NULL) {
+        ASSERT3U(Processor->UpcallEnabled, ==, TRUE);
+    }
 
     Interrupt = (Processor->UpcallEnabled) ?
                 Processor->Interrupt :
@@ -1241,12 +1249,14 @@ EvtchnInterruptEnable(
         Processor->UpcallEnabled = TRUE;
     }
 
-    Line = FdoGetInterruptLine(Context->Fdo, Context->Interrupt);
+    if (Context->Interrupt != NULL) {
+        Line = FdoGetInterruptLine(Context->Fdo, Context->Interrupt);
 
-    status = HvmSetParam(HVM_PARAM_CALLBACK_IRQ, Line);
-    ASSERT(NT_SUCCESS(status));
+        status = HvmSetParam(HVM_PARAM_CALLBACK_IRQ, Line);
+        ASSERT(NT_SUCCESS(status));
 
-    Info("CALLBACK VIA (Vector = %u)\n", Line);
+        Info("CALLBACK VIA (Vector = %u)\n", Line);
+    }
 
     Trace("<====\n");
 }
@@ -1496,23 +1506,43 @@ EvtchnAcquire(
                                               Context);
 
     status = STATUS_UNSUCCESSFUL;
-    if (Context->Interrupt == NULL)
-        goto fail8;
+    if (Context->Interrupt == NULL) {
+        Error("failed to allocate global line interrupt\n");
+    }
 
     Context->ProcessorCount = KeQueryMaximumProcessorCountEx(ALL_PROCESSOR_GROUPS);
     Context->Processor = __EvtchnAllocate(sizeof (XENBUS_EVTCHN_PROCESSOR) * Context->ProcessorCount);
 
     status = STATUS_NO_MEMORY;
     if (Context->Processor == NULL)
-        goto fail9;
+        goto fail8;
 
     for (Index = 0; Index < Context->ProcessorCount; Index++) {
         PXENBUS_EVTCHN_PROCESSOR    Processor;
 
         if (!XENBUS_EVTCHN_ABI(IsProcessorEnabled,
                                &Context->EvtchnAbi,
-                               Index))
-            continue;
+                               Index)) {
+            ULONG i;
+
+            if (Context->Interrupt != NULL)
+                continue;
+
+            Error("control block for vcpu %u is not enabled\n", Index);
+
+            for (i = 0; i < Index; i++) {
+                Processor = &Context->Processor[i];
+
+                (VOID) KeRemoveQueueDpc(&Processor->Dpc);
+                RtlZeroMemory(&Processor->Dpc, sizeof (KDPC));
+                RtlZeroMemory(&Processor->PendingList, sizeof (LIST_ENTRY));
+
+                FdoFreeInterrupt(Fdo, Processor->Interrupt);
+                Processor->Interrupt = NULL;
+            }
+
+            goto fail9;
+        }
 
         status = KeGetProcessorNumberFromIndex(Index, &ProcNumber);
         ASSERT(NT_SUCCESS(status));
@@ -1526,8 +1556,27 @@ EvtchnAcquire(
                                                     EvtchnInterruptCallback,
                                                     Context);
 
-        if (Processor->Interrupt == NULL)
-            continue;
+        if (Processor->Interrupt == NULL) {
+            ULONG i;
+
+            if (Context->Interrupt != NULL)
+                continue;
+
+            Error("failed to allocate edge interrupt on vcpu %u\n", Index);
+
+            for (i = 0; i < Index; i++) {
+                Processor = &Context->Processor[i];
+
+                (VOID) KeRemoveQueueDpc(&Processor->Dpc);
+                RtlZeroMemory(&Processor->Dpc, sizeof (KDPC));
+                RtlZeroMemory(&Processor->PendingList, sizeof (LIST_ENTRY));
+
+                FdoFreeInterrupt(Fdo, Processor->Interrupt);
+                Processor->Interrupt = NULL;
+            }
+
+            goto fail9;
+        }
 
         InitializeListHead(&Processor->PendingList);
 
@@ -1547,11 +1596,13 @@ done:
 fail9:
     Error("fail9\n");
 
-    Context->ProcessorCount = 0;
+    __EvtchnFree(Context->Processor);
+    Context->Processor = NULL;
 
 fail8:
     Error("fail8\n");
 
+    Context->ProcessorCount = 0;
     EvtchnAbiRelease(Context);
 
 fail7:
@@ -1646,8 +1697,10 @@ EvtchnRelease(
     Context->Processor = NULL;
     Context->ProcessorCount = 0;
 
-    FdoFreeInterrupt(Fdo, Context->Interrupt);
-    Context->Interrupt = NULL;
+    if (Context->Interrupt != NULL) {
+        FdoFreeInterrupt(Fdo, Context->Interrupt);
+        Context->Interrupt = NULL;
+    }
 
     if (!IsListEmpty(&Context->List))
         BUG("OUTSTANDING EVENT CHANNELS");
