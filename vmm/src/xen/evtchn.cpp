@@ -204,8 +204,6 @@ bool xen_evtchn::init_control(xen_vcpu *v, evtchn_init_control_t *ctl)
     expects((ctl->offset & 0x7) == 0);
 
     this->add_event_ctl(v, ctl);
-
-    v->m_uv_vcpu->set_rax(0);
     return true;
 }
 
@@ -638,6 +636,7 @@ void xen_evtchn::add_event_ctl(xen_vcpu *v, evtchn_init_control_t *ctl)
 
     m_event_ctl.emplace_back(uvv, ctl);
     ctl->link_bits = EVTCHN_FIFO_LINK_BITS;
+    uvv->set_rax(0);
 }
 
 void xen_evtchn::setup_ports()
