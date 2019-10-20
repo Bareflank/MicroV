@@ -25,7 +25,6 @@
 #include <map>
 #include <mutex>
 
-#include <acpi.h>
 #include <arch/x64/cpuid.h>
 #include <arch/intel_x64/barrier.h>
 #include <hve/arch/intel_x64/domain.h>
@@ -60,8 +59,6 @@
 #include <public/hvm/save.h>
 
 namespace microv {
-
-static struct acpi_table *madt{};
 
 using ref_t = std::atomic<uint64_t>;
 using dom_t = std::pair<std::unique_ptr<xen_domain>, std::unique_ptr<ref_t>>;
@@ -145,62 +142,6 @@ void put_xen_domain(xen_domid_t id) noexcept
     } catch (...) {
         printv("%s: threw exception for id 0x%x\n", __func__, id);
     }
-}
-
-static xen_vcpuid_t read_madt_processor_id(microv_vcpuid uvvid)
-{
-    expects(vcpuid::is_root_vcpu(uvvid));
-
-    if (!madt) {
-        madt = find_acpi_table("APIC");
-
-        if (!madt) {
-            printv("%s: MADT not found\n", __func__);
-            return xen_invl_vcpuid;
-        }
-
-        if (memcmp(madt->hva, "APIC", 4)) {
-            printv("%s: Invalid MADT signature\n", __func__);
-            return xen_invl_vcpuid;
-        }
-    }
-
-    constexpr auto ics_offset = 44;
-    const struct acpi_subtable_header_t *ics_hdr;
-    const struct ics_lapic_t *ics_lapic;
-    const char *end = madt->hva + madt->len;
-    const char *buf = madt->hva + ics_offset;
-    auto ics_lapic_idx = 0;
-
-    while (buf < end) {
-        /* Check for Local APIC ICS */
-        ics_hdr = (const struct acpi_subtable_header_t *)buf;
-        if (ics_hdr->type != ICS_TYPE_LOCAL_APIC) {
-            buf += ics_hdr->length;
-            continue;
-        }
-
-        /* Ensure the corresponding CPU is enabled */
-        ics_lapic = (const struct ics_lapic_t *)buf;
-        if (!(ics_lapic->flags & 1)) {
-            buf += ics_hdr->length;
-            continue;
-        }
-
-        /* Keep going if we aren't to the ID we want yet */
-        if (uvvid != ics_lapic_idx) {
-            buf += ics_hdr->length;
-            ics_lapic_idx++;
-            continue;
-        }
-
-        return ics_lapic->processorid;
-    }
-
-    printv("%s: ACPI processor ID not found for root vcpuid %lu\n",
-            __func__, uvvid);
-
-    return xen_invl_vcpuid;
 }
 
 bool xen_domain_get_cpu_featureset(xen_vcpu *vcpu, struct xen_sysctl *ctl)
@@ -681,6 +622,10 @@ xen_domain::xen_domain(microv_domain *domain, class iommu *iommu)
     m_uv_dom = domain;
     m_uv_info = &domain->m_sod_info;
 
+    for (auto i = 0; i < m_uvv_id.size(); i++) {
+        m_uvv_id[i] = INVALID_VCPUID;
+    }
+
     /* TODO: move me to init code */
     xen_init_cpufeatures();
 
@@ -710,7 +655,7 @@ xen_domain::xen_domain(microv_domain *domain, class iommu *iommu)
     m_out_pages = 0;
     m_paged_pages = 0;
 
-    if (m_uv_info->origin == domain_info::origin_domctl) {
+    if (m_uv_info->origin == microv::domain_info::origin_domctl) {
         m_total_pages = 0;
         m_free_pages = 0;
     }
@@ -734,16 +679,6 @@ xen_domain::~xen_domain()
 {
     iommu_dump();
     xen_cpupool_rm_domain(m_cpupool_id, m_id);
-}
-
-void xen_domain::set_default_evtchn_vcpuid()
-{
-    expects(m_id == DOMID_WINPV);
-
-    const auto def_id = read_madt_processor_id(0);
-    expects(def_id != xen_invl_vcpuid);
-
-    m_evtchn->set_default_vcpuid(def_id);
 }
 
 int xen_domain::acquire_gnttab_pages(xen_mem_acquire_resource_t *res,
@@ -772,12 +707,15 @@ void xen_domain::share_root_page(uintptr_t gpa, uintptr_t hpa,
 
 class xen_vcpu *xen_domain::get_xen_vcpu(xen_vcpuid_t xen_id) noexcept
 {
-    const auto itr = m_vcpuid_map.find(xen_id);
-    if (itr == m_vcpuid_map.end()) {
+    if (xen_id >= m_uvv_id.size()) {
         return nullptr;
     }
 
-    const auto uvv_id = itr->second;
+    const auto uvv_id = m_uvv_id[xen_id];
+    if (uvv_id == INVALID_VCPUID) {
+        return nullptr;
+    }
+
     auto uv_vcpu = get_vcpu(uvv_id);
     if (!uv_vcpu) {
         return nullptr;
@@ -788,13 +726,11 @@ class xen_vcpu *xen_domain::get_xen_vcpu(xen_vcpuid_t xen_id) noexcept
 
 void xen_domain::put_xen_vcpu(xen_vcpuid_t xen_id) noexcept
 {
-    const auto itr = m_vcpuid_map.find(xen_id);
-    if (itr == m_vcpuid_map.end()) {
+    if (xen_id >= m_uvv_id.size()) {
         return;
     }
 
-    const auto uvv_id = itr->second;
-    put_vcpu(uvv_id);
+    put_vcpu(m_uvv_id[xen_id]);
 }
 
 int xen_domain::set_timer_mode(uint64_t mode)
@@ -821,24 +757,6 @@ void xen_domain::queue_virq(int virq)
     m_evtchn->queue_virq(virq);
 }
 
-bool xen_domain::has_xen_vcpuid(xen_vcpuid_t vcpuid) const
-{
-    return m_vcpuid_map.find(vcpuid) != m_vcpuid_map.cend();
-}
-
-xen_vcpuid_t xen_domain::make_vcpuid(microv_vcpuid uvv_id) const
-{
-    if (m_uv_info->origin != domain_info::origin_root) {
-        return m_vcpuid_map.size();
-    }
-
-    if (m_id == DOMID_WINPV) {
-        return read_madt_processor_id(uvv_id);
-    }
-
-    return xen_invl_vcpuid;
-}
-
 /*
  * N.B. this is called from the xen_vcpu constructor, which is called from the
  * g_vcm->create() path. This means the bfmanager's m_mutex is already locked,
@@ -848,12 +766,10 @@ xen_vcpuid_t xen_domain::add_vcpu(xen_vcpu *vcpu)
 {
     const auto uvv_id = vcpu->m_uv_vcpu->id();
     expects(uvv_id != INVALID_VCPUID);
+    expects(m_nr_vcpus < this->max_nr_vcpus());
 
-    const auto xen_id = this->make_vcpuid(uvv_id);
-    expects(xen_id != xen_invl_vcpuid);
-    expects(xen_id < XEN_LEGACY_MAX_VCPUS);
-
-    m_vcpuid_map.try_emplace(xen_id, uvv_id);
+    const auto xen_id = (xen_vcpuid_t)m_nr_vcpus;
+    m_uvv_id[xen_id] = uvv_id;
 
     if (m_uv_info->origin != domain_info::origin_root) {
         m_memory->add_ept_handlers(vcpu);
@@ -863,13 +779,13 @@ xen_vcpuid_t xen_domain::add_vcpu(xen_vcpu *vcpu)
         m_max_pcpus++;
     }
 
-    /* Init time info from first vcpu */
-    if (m_vcpuid_map.size() == 1) {
+    if (xen_id == 0) {
         m_tsc_khz = vcpu->m_tsc_khz;
         m_tsc_mul = vcpu->m_tsc_mul;
         m_tsc_shift = vcpu->m_tsc_shift;
     }
 
+    m_nr_vcpus++;
     return xen_id;
 }
 
@@ -942,7 +858,6 @@ void xen_domain::update_wallclock(
     m_shinfo->wc_version++;
 }
 
-/* TODO: look up vcpuid */
 uint64_t xen_domain::runstate_time(int state)
 {
     auto xv = this->get_xen_vcpu();
@@ -956,25 +871,20 @@ uint64_t xen_domain::runstate_time(int state)
     }
 }
 
-xen_vcpuid_t xen_domain::max_vcpuid() const
+uint32_t xen_domain::nr_online_vcpus()
 {
-    if (m_vcpuid_map.size() == 0) {
-        return xen_invl_vcpuid;
+    uint32_t nr = 0;
+
+    for (auto id : m_uvv_id) {
+        nr += (id != INVALID_VCPUID) ? 1 : 0;
     }
 
-    xen_vcpuid_t max = 0;
-
-    for (const auto &elem : m_vcpuid_map) {
-        max = (elem.first > max) ? elem.first : max;
-    }
-
-    return max;
+    return nr;
 }
 
-/* TODO: check runstate for != RUNSTATE_offline */
-uint32_t xen_domain::nr_online_vcpus() const
+xen_vcpuid_t xen_domain::max_vcpu_id()
 {
-    return m_vcpuid_map.size();
+    return m_uvv_id.size() - 1;
 }
 
 bool xen_domain::unpause(xen_vcpu *vcpu)
@@ -1061,7 +971,7 @@ void xen_domain::get_info(struct xen_domctl_getdomaininfo *info)
     info->shared_info_frame = m_shinfo_gpfn;
     info->cpu_time = this->runstate_time(RUNSTATE_running);
     info->nr_online_vcpus = this->nr_online_vcpus();
-    info->max_vcpu_id = this->max_vcpuid();
+    info->max_vcpu_id = this->max_vcpu_id();
     info->ssidref = m_ssid;
     info->cpupool = m_cpupool_id;
 

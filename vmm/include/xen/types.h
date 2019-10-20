@@ -33,7 +33,6 @@
 #include <microv/math.h>
 
 #include <public/xen.h>
-#include <public/domctl.h>
 
 /* Base hypervisor vcpu */
 namespace bfvmm::intel_x64 {
@@ -90,7 +89,7 @@ using xen_vcpuid_t = uint32_t;
 using xen_cpupoolid_t = uint32_t;
 
 constexpr xen_domid_t xen_invl_domid = ~0;
-constexpr xen_vcpuid_t xen_invl_vcpuid = XEN_INVALID_MAX_VCPU_ID;
+constexpr xen_vcpuid_t xen_invl_vcpuid = ~0;
 constexpr auto xen_hypercall_page_msr = 0xC0000500;
 
 inline bool hypercall_debug = false;

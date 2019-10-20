@@ -45,10 +45,10 @@ bool xen_evtchn_status(xen_vcpu *v);
 bool xen_evtchn_unmask(xen_vcpu *v);
 
 struct event_channel {
-    static constexpr uint32_t invalid_virq = ~0;
-    static constexpr uint32_t invalid_pirq = ~0;
-    static constexpr xen_domid_t invalid_domid = ~0;
-    static constexpr evtchn_port_t invalid_port = 0x0;
+    static constexpr auto invalid_virq = 0xFFFFUL;
+    static constexpr auto invalid_pirq = 0xFFFFUL;
+    static constexpr auto invalid_domid = 0xFFFFUL;
+    static constexpr auto invalid_port = 0x0UL;
 
     enum state : uint8_t {
         state_free,
@@ -63,27 +63,27 @@ struct event_channel {
     using state_t = enum state;
 
     state_t state{state_free};
-    uint32_t virq{invalid_virq};
-    uint32_t pirq{invalid_pirq};
-    xen_domid_t rdomid{invalid_domid};
-    evtchn_port_t rport{invalid_port};
+    uint32_t virq;
+    uint32_t pirq;
+    xen_domid_t rdomid;
+    evtchn_port_t rport;
 
     bool is_pending{};
     uint8_t priority{EVTCHN_FIFO_PRIORITY_DEFAULT};
     uint8_t prev_priority{EVTCHN_FIFO_PRIORITY_DEFAULT};
-    xen_vcpuid_t vcpuid{xen_invl_vcpuid};
-    xen_vcpuid_t prev_vcpuid{xen_invl_vcpuid};
-    evtchn_port_t port{invalid_port};
+    xen_vcpuid_t vcpuid{};
+    xen_vcpuid_t prev_vcpuid{};
+    evtchn_port_t port{};
 
     uint8_t pad[34];
 
-    void free(xen_vcpuid_t default_vcpuid) noexcept
+    void free() noexcept
     {
         state = state_free;
-        vcpuid = default_vcpuid;
+        vcpuid = 0;
     }
 
-    void reset(evtchn_port_t p, xen_vcpuid_t default_vcpuid) noexcept
+    void reset(evtchn_port_t p) noexcept
     {
         state = state_free;
         virq = invalid_virq;
@@ -93,21 +93,22 @@ struct event_channel {
         is_pending = false;
         priority = EVTCHN_FIFO_PRIORITY_DEFAULT;
         prev_priority = EVTCHN_FIFO_PRIORITY_DEFAULT;
-        vcpuid = default_vcpuid;
-        prev_vcpuid = default_vcpuid;
+        vcpuid = 0;
+        prev_vcpuid = 0;
         port = p;
     }
+
 } __attribute__((packed));
 
 struct event_queue {
-    evtchn_port_t *head{};
-    uint8_t priority{EVTCHN_FIFO_PRIORITY_DEFAULT};
+    evtchn_port_t *head;
+    uint8_t priority;
 };
 
 struct event_control {
-    unique_map<uint8_t> map{};
-    evtchn_fifo_control_block_t *blk{};
-    std::array<struct event_queue, EVTCHN_FIFO_MAX_QUEUES> queue{};
+    unique_map<uint8_t> map;
+    evtchn_fifo_control_block_t *blk;
+    std::array<struct event_queue, EVTCHN_FIFO_MAX_QUEUES> queue;
 
     event_control(microv_vcpu *uvv, evtchn_init_control *init)
     {
@@ -152,7 +153,6 @@ public:
     bool send(xen_vcpu *v, evtchn_send_t *es);
 
     int set_upcall_vector(xen_vcpu *v, xen_hvm_param_t *param);
-    void set_default_vcpuid(xen_vcpuid_t vcpuid);
     void queue_virq(uint32_t virq);
     void inject_virq(uint32_t virq);
     void unbind_interdomain(evtchn_port_t port, xen_domid_t remote_domid);
@@ -220,7 +220,7 @@ private:
 
     // Control blocks
     //
-    std::unordered_map<xen_vcpuid_t, struct event_control> m_event_ctl{};
+    std::vector<struct event_control> m_event_ctl{};
 
     // VIRQ mapping
     std::array<port_t, NR_VIRQS> m_virq_to_port{0};
@@ -228,7 +228,6 @@ private:
     std::vector<unique_map<word_t>> m_word_pages{};
     std::vector<page_ptr<chan_t>> m_chan_pages{};
 
-    xen_vcpuid_t m_def_vcpuid{};
     xen_domain *m_xen_dom{};
     uint64_t m_upcall_vec{};
     port_t m_nr_ports{};

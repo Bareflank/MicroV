@@ -155,6 +155,13 @@ static inline void trap_exceptions()
 void
 vcpu::write_dom0_guest_state(domain *domain)
 {
+    if (domain->exec_mode() == VM_EXEC_XENPVH) {
+        m_xen_vcpu = std::make_unique<class xen_vcpu>(this);
+
+        if (g_enable_winpv) {
+            init_xen_platform_pci(m_xen_vcpu.get());
+        }
+    }
 }
 
 void
@@ -286,14 +293,6 @@ bool vcpu::handle_0x4BF00010(bfvmm::intel_x64::vcpu *vcpu)
             bfn::call_once(vtd_ready, []{ init_vtd(); });
             m_pci_handler.enable();
             init_pci_on_vcpu(this);
-        }
-
-        if (m_domain->exec_mode() == VM_EXEC_XENPVH && g_enable_winpv) {
-            if (this->id() == 0) {
-                m_domain->m_xen_dom->set_default_evtchn_vcpuid();
-            }
-            m_xen_vcpu = std::make_unique<class xen_vcpu>(this);
-            init_xen_platform_pci(m_xen_vcpu.get());
         }
     }
 
