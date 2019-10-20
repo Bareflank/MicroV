@@ -1053,6 +1053,13 @@ bool xen_vcpu::root_hypercall(microv_vcpu *vcpu)
         default:
             return false;
         }
+    case __HYPERVISOR_grant_table_op:
+        switch (vcpu->rdi()) {
+        case GNTTABOP_query_size:
+            return this->handle_grant_table_op();
+        default:
+            return false;
+        }
     default:
         return false;
     }

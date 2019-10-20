@@ -33,7 +33,8 @@
 
 namespace microv {
 
-static uintptr_t winpv_hole_gfn;
+uintptr_t winpv_hole_gfn;
+size_t winpv_hole_size;
 
 static std::mutex dom_pool_mtx;
 static std::unordered_map<uint64_t, class page> dom_pool;
@@ -759,6 +760,8 @@ bool xen_memory::add_to_physmap(xen_vcpu *vcpu, xen_add_to_physmap_t *atp)
             vcpu->m_xen_dom->init_shared_info(vcpu, atp->gpfn);
             vcpu->m_uv_vcpu->set_rax(0);
             return true;
+        case XENMAPSPACE_grant_table:
+            return m_xen_dom->m_gnttab->mapspace_grant_table(vcpu, atp);
         default:
             return false;
         }
@@ -886,8 +889,12 @@ bool xen_memory::decrease_reservation(xen_vcpu *v,
         expects(rsv->extent_order == 9);
         expects(m_ept->is_2m(xen_addr(gfn[0])));
 
-        printv("Creating Windows PV hole at 0x%lx\n", xen_addr(gfn[0]));
+        printv("Scrubbing Windows PV hole at 0x%lx\n", xen_addr(gfn[0]));
         winpv_hole_gfn = gfn[0];
+        winpv_hole_size = (2 << 20);
+
+        auto buf = uvv->map_gpa_2m<uint8_t>(xen_addr(gfn[0]));
+        memset(buf.get(), 0, winpv_hole_size);
 
         /*
          * We assume this is from the fdo code in the Windows PV drivers
