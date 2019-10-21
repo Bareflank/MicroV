@@ -229,6 +229,33 @@ bool xen_domain_getinfolist(xen_vcpu *vcpu, struct xen_sysctl *ctl)
     return true;
 }
 
+bool xen_domain_sched_id(xen_vcpu *vcpu, struct xen_sysctl *ctl)
+{
+    auto uvv = vcpu->m_uv_vcpu;
+    auto si = &ctl->u.sched_id;
+
+    auto dom = get_xen_domain(vcpu->m_xen_dom->m_id);
+    if (!dom) {
+        printv("%s: dom:0x%x not found\n", __func__, vcpu->m_xen_dom->m_id);
+        uvv->set_rax(-ESRCH);
+        return true;
+    }
+
+    auto pool = get_cpupool(dom->m_cpupool_id);
+    if (!pool) {
+        printv("%s: cpupool:0x%x not found\n", __func__, dom->m_cpupool_id);
+        put_xen_domain(vcpu->m_xen_dom->m_id);
+        uvv->set_rax(-ESRCH);
+        return true;
+    }
+
+    put_xen_domain(vcpu->m_xen_dom->m_id);
+
+    ctl->u.sched_id.sched_id = pool->m_sched_id;
+
+    return true;
+}
+
 bool xen_domain_unpausedomain(xen_vcpu *vcpu, struct xen_domctl *ctl)
 {
     auto uvv = vcpu->m_uv_vcpu;
