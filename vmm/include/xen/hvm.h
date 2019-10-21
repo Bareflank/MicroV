@@ -48,6 +48,8 @@ public:
 
     xen_domain *xen_dom{};
     xen_memory *xen_mem{};
+    std::unique_ptr<uint8_t[]> store_page{};
+    std::unique_ptr<uint8_t[]> console_page{};
     std::array<uint64_t, HVM_NR_PARAMS> params{};
 };
 

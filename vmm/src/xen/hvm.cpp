@@ -106,6 +106,23 @@ xen_hvm::xen_hvm(xen_domain *dom, xen_memory *mem) :
     xen_dom{dom},
     xen_mem{mem}
 {
+    if (xen_dom->m_uv_info->origin != domain_info::origin_root) {
+        return;
+    }
+
+    if (xen_dom->m_id == DOMID_WINPV) {
+        store_page = std::make_unique<uint8_t[]>(UV_PAGE_SIZE);
+        console_page = std::make_unique<uint8_t[]>(UV_PAGE_SIZE);
+
+        auto store_pfn = xen_frame(g_mm->virtptr_to_physint(store_page.get()));
+        auto console_pfn = xen_frame(g_mm->virtptr_to_physint(console_page.get()));
+
+        params[HVM_PARAM_STORE_PFN] = store_pfn;
+        params[HVM_PARAM_CONSOLE_PFN] = console_pfn;
+
+        printv("winpv store pfn: 0x%lx\n", store_pfn);
+        printv("winpv console pfn: 0x%lx\n", console_pfn);
+    }
 }
 
 bool xen_hvm::set_param(xen_vcpu *vcpu, xen_hvm_param_t *p)
@@ -203,6 +220,12 @@ bool xen_hvm::get_param(xen_vcpu *vcpu, xen_hvm_param_t *p)
             auto ret = this->xen_dom->m_evtchn->alloc_unbound(vcpu, &eau);
             p->value = eau.port;
             params[p->index] = eau.port;
+
+            if (p->index == HVM_PARAM_STORE_EVTCHN) {
+                printv("winpv store evtchn port: %u\n", eau.port);
+            } else if (p->index == HVM_PARAM_CONSOLE_EVTCHN) {
+                printv("winpv console evtchn port: %u\n", eau.port);
+            }
 
             uvv->set_rax(ret ? 0 : -EINVAL);
             return true;

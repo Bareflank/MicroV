@@ -21,13 +21,12 @@
 
 #include <printv.h>
 #include <hve/arch/intel_x64/vcpu.h>
+#include <xen/hvm.h>
 #include <xen/gnttab.h>
 #include <xen/domain.h>
 #include <xen/vcpu.h>
 
 namespace microv {
-
-constexpr grant_handle_t invalid_mgl_node = ~0;
 
 /*
  * mappable_gtf
@@ -968,6 +967,27 @@ bool xen_gnttab::mapspace_grant_table(xen_vcpu *vcpu, xen_add_to_physmap_t *atp)
 
         shared_tab.emplace_back(map.get());
         shared_map.emplace_back(std::move(map));
+
+        /* Fill in store and console entries as xl would have */
+        if (idx == 0) {
+            /* Grant toolstack VM read/write access to store */
+            auto pfn = xen_dom->m_hvm->get_param(HVM_PARAM_STORE_PFN);
+            expects(pfn != 0);
+
+            auto gte = this->shr_v1_entry(GNTTAB_RESERVED_XENSTORE);
+            gte->flags = GTF_permit_access;
+            gte->domid = 0;
+            gte->frame = pfn;
+
+            /* Grant toolstack VM read/write access to console */
+            pfn = xen_dom->m_hvm->get_param(HVM_PARAM_CONSOLE_PFN);
+            expects(pfn != 0);
+
+            gte = this->shr_v1_entry(GNTTAB_RESERVED_CONSOLE);
+            gte->flags = GTF_permit_access;
+            gte->domid = 0;
+            gte->frame = pfn;
+        }
 
         uvv->set_rax(0);
         return true;
