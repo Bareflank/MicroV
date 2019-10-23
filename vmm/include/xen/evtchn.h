@@ -160,6 +160,7 @@ public:
     void queue_virq(uint32_t virq);
     void inject_virq(uint32_t virq);
     void unbind_interdomain(evtchn_port_t port, xen_domid_t remote_domid);
+    int alloc_unbound(evtchn_alloc_unbound_t *arg);
     int bind_interdomain(evtchn_port_t port,
                          evtchn_port_t remote_port,
                          xen_domid_t remote_domid);

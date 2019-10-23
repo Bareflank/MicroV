@@ -91,11 +91,12 @@ bool xen_evtchn_alloc_unbound(xen_vcpu *v)
 {
     expects(v->m_xen_dom);
 
+    auto rc = -EINVAL;
     auto uvv = v->m_uv_vcpu;
     auto eau = uvv->map_arg<evtchn_alloc_unbound_t>(uvv->rsi());
 
     if (eau->dom == DOMID_SELF || eau->dom == v->m_xen_dom->m_id) {
-        return v->m_xen_dom->m_evtchn->alloc_unbound(v, eau.get());
+        rc = v->m_xen_dom->m_evtchn->alloc_unbound(eau.get());
     } else {
         auto domid = eau->dom;
         auto dom = get_xen_domain(domid);
@@ -105,17 +106,18 @@ bool xen_evtchn_alloc_unbound(xen_vcpu *v)
             return true;
         }
 
-        bool ret = false;
         try {
-            ret = dom->m_evtchn->alloc_unbound(v, eau.get());
+            rc = dom->m_evtchn->alloc_unbound(eau.get());
         } catch (...) {
             put_xen_domain(domid);
             throw;
         }
 
         put_xen_domain(domid);
-        return ret;
     }
+
+    uvv->set_rax(rc);
+    return true;
 }
 
 bool xen_evtchn_bind_interdomain(xen_vcpu *v)
@@ -323,7 +325,7 @@ bool xen_evtchn::unmask(xen_vcpu *v, evtchn_unmask_t *unmask)
     return true;
 }
 
-bool xen_evtchn::alloc_unbound(xen_vcpu *v, evtchn_alloc_unbound_t *eau)
+int xen_evtchn::alloc_unbound(evtchn_alloc_unbound_t *eau)
 {
     auto port = this->make_new_port();
     auto chan = this->port_to_chan(port);
@@ -345,8 +347,7 @@ bool xen_evtchn::alloc_unbound(xen_vcpu *v, evtchn_alloc_unbound_t *eau)
             m_xen_dom->m_id,
             chan->rdomid);
 
-    v->m_uv_vcpu->set_rax(0);
-    return true;
+    return 0;
 }
 
 int xen_evtchn::bind_interdomain(evtchn_port_t local_port,

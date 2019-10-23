@@ -102,6 +102,62 @@ bool xen_hvm_set_evtchn_upcall_vector(xen_vcpu *vcpu)
     return true;
 }
 
+void xen_hvm::init_root_store_params()
+{
+    /*
+     * Note both the store and console pages are accessed from this guest
+     * (i.e. the root domain) and dom0. Right now, the pages are already
+     * mapped into the root's EPT which is identity mapped, so no more
+     * work is needed for the root to use them. The dom0 guest will map
+     * in the xenstore page when the root is xs_introduce_domain()'d to
+     * xenstore.
+     */
+    store_page = std::make_unique<uint8_t[]>(UV_PAGE_SIZE);
+
+    evtchn_alloc_unbound_t store_chan = {
+        .dom = DOMID_SELF,
+        .remote_dom = 0,
+        .port = 0
+    };
+
+    if (int rc = xen_dom->m_evtchn->alloc_unbound(&store_chan); rc) {
+        printv("winpv: failed to alloc store port, rc=%d\n", rc);
+        return;
+    }
+
+    const auto gpfn = xen_frame(g_mm->virtptr_to_physint(store_page.get()));
+    const auto port = store_chan.port;
+
+    printv("winpv: xenstore pfn=0x%lx, evtchn=%u\n", gpfn, port);
+
+    params[HVM_PARAM_STORE_PFN] = gpfn;
+    params[HVM_PARAM_STORE_EVTCHN] = port;
+}
+
+void xen_hvm::init_root_console_params()
+{
+    console_page = std::make_unique<uint8_t[]>(UV_PAGE_SIZE);
+
+    evtchn_alloc_unbound_t console_chan = {
+        .dom = DOMID_SELF,
+        .remote_dom = 0,
+        .port = 0
+    };
+
+    if (int rc = xen_dom->m_evtchn->alloc_unbound(&console_chan); rc) {
+        printv("winpv: failed to alloc console port, rc=%d\n", rc);
+        return;
+    }
+
+    const auto gpfn = xen_frame(g_mm->virtptr_to_physint(console_page.get()));
+    const auto port = console_chan.port;
+
+    printv("winpv: console pfn=0x%lx, evtchn=%u\n", gpfn, port);
+
+    params[HVM_PARAM_CONSOLE_PFN] = gpfn;
+    params[HVM_PARAM_CONSOLE_EVTCHN] = port;
+}
+
 xen_hvm::xen_hvm(xen_domain *dom, xen_memory *mem) :
     xen_dom{dom},
     xen_mem{mem}
@@ -111,17 +167,8 @@ xen_hvm::xen_hvm(xen_domain *dom, xen_memory *mem) :
     }
 
     if (xen_dom->m_id == DOMID_WINPV) {
-        store_page = std::make_unique<uint8_t[]>(UV_PAGE_SIZE);
-        console_page = std::make_unique<uint8_t[]>(UV_PAGE_SIZE);
-
-        auto store_pfn = xen_frame(g_mm->virtptr_to_physint(store_page.get()));
-        auto console_pfn = xen_frame(g_mm->virtptr_to_physint(console_page.get()));
-
-        params[HVM_PARAM_STORE_PFN] = store_pfn;
-        params[HVM_PARAM_CONSOLE_PFN] = console_pfn;
-
-        printv("winpv store pfn: 0x%lx\n", store_pfn);
-        printv("winpv console pfn: 0x%lx\n", console_pfn);
+        init_root_store_params();
+        init_root_console_params();
     }
 }
 
@@ -209,27 +256,10 @@ bool xen_hvm::get_param(xen_vcpu *vcpu, xen_hvm_param_t *p)
 
         switch (p->index) {
         case HVM_PARAM_STORE_EVTCHN:
-        case HVM_PARAM_CONSOLE_EVTCHN: {
-            /* Simulate what the toolstack would have done for us */
-            evtchn_alloc_unbound_t eau = {
-                .dom = DOMID_WINPV,
-                .remote_dom = 0,
-                .port = 0
-            };
-
-            auto ret = this->xen_dom->m_evtchn->alloc_unbound(vcpu, &eau);
-            p->value = eau.port;
-            params[p->index] = eau.port;
-
-            if (p->index == HVM_PARAM_STORE_EVTCHN) {
-                printv("winpv store evtchn port: %u\n", eau.port);
-            } else if (p->index == HVM_PARAM_CONSOLE_EVTCHN) {
-                printv("winpv console evtchn port: %u\n", eau.port);
-            }
-
-            uvv->set_rax(ret ? 0 : -EINVAL);
+        case HVM_PARAM_CONSOLE_EVTCHN:
+            p->value = this->get_param(p->index);
+            uvv->set_rax(0);
             return true;
-        }
         default:
             return false;
         }

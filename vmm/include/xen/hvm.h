@@ -40,6 +40,9 @@ public:
     bool get_param(xen_vcpu *vcpu, xen_hvm_param_t *param);
     uint64_t get_param(uint32_t index) const;
 
+    void init_root_store_params();
+    void init_root_console_params();
+
     ~xen_hvm() = default;
     xen_hvm(xen_hvm &&) = default;
     xen_hvm(const xen_hvm &) = delete;
