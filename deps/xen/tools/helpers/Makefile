@@ -8,6 +8,7 @@ include $(XEN_ROOT)/tools/Rules.mk
 PROGS += xen-init-dom0
 ifeq ($(CONFIG_Linux),y)
 PROGS += init-xenstore-domain
+PROGS += init-winpv
 endif
 
 XEN_INIT_DOM0_OBJS = xen-init-dom0.o init-dom-json.o
@@ -23,6 +24,10 @@ $(INIT_XENSTORE_DOMAIN_OBJS): CFLAGS += $(CFLAGS_libxenctrl)
 $(INIT_XENSTORE_DOMAIN_OBJS): CFLAGS += $(CFLAGS_libxenstore)
 $(INIT_XENSTORE_DOMAIN_OBJS): CFLAGS += $(CFLAGS_libxenlight)
 
+INIT_WINPV_OBJS = init-winpv.o
+$(INIT_WINPV_OBJS): CFLAGS += $(CFLAGS_libxenctrl)
+$(INIT_WINPV_OBJS): CFLAGS += $(CFLAGS_libxenstore)
+
 .PHONY: all
 all: $(PROGS)
 
@@ -34,17 +39,22 @@ $(INIT_XENSTORE_DOMAIN_OBJS): _paths.h
 init-xenstore-domain: $(INIT_XENSTORE_DOMAIN_OBJS)
 	$(CC) $(LDFLAGS) -o $@ $(INIT_XENSTORE_DOMAIN_OBJS) $(LDLIBS_libxentoollog) $(LDLIBS_libxenstore) $(LDLIBS_libxenctrl) $(LDLIBS_libxenguest) $(LDLIBS_libxenlight) $(APPEND_LDFLAGS)
 
+init-winpv: $(INIT_WINPV_OBJS)
+	$(CC) $(LDFLAGS) -o $@ $(INIT_WINPV_OBJS) $(LDLIBS_libxenctrl) $(LDLIBS_libxenstore) $(APPEND_LDFLAGS)
+
 .PHONY: install
 install: all
 	$(INSTALL_DIR) $(DESTDIR)$(LIBEXEC_BIN)
 	$(INSTALL_PROG) xen-init-dom0 $(DESTDIR)$(LIBEXEC_BIN)
 ifeq ($(CONFIG_Linux),y)
 	$(INSTALL_PROG) init-xenstore-domain $(DESTDIR)$(LIBEXEC_BIN)
+	$(INSTALL_PROG) init-winpv $(DESTDIR)$(LIBEXEC_BIN)
 endif
 
 .PHONY: uninstall
 uninstall:
 ifeq ($(CONFIG_Linux),y)
+	rm -f $(DESTDIR)$(LIBEXEC_BIN)/init-winpv
 	rm -f $(DESTDIR)$(LIBEXEC_BIN)/init-xenstore-domain
 endif
 	rm -f $(DESTDIR)$(LIBEXEC_BIN)/xen-init-dom0
