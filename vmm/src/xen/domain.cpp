@@ -789,6 +789,14 @@ xen_vcpuid_t xen_domain::add_vcpu(xen_vcpu *vcpu)
     return xen_id;
 }
 
+void xen_domain::set_upcall_pending(xen_vcpuid_t vcpuid)
+{
+    expects(m_shinfo);
+    expects(vcpuid < m_nr_vcpus);
+
+    m_shinfo->vcpu_info[vcpuid].evtchn_upcall_pending = 1;
+}
+
 uint64_t xen_domain::init_shared_info(xen_vcpu *xen, uintptr_t shinfo_gpfn)
 {
     auto uvv = xen->m_uv_vcpu;

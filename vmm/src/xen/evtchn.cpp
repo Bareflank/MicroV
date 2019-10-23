@@ -813,6 +813,7 @@ int xen_evtchn::upcall(chan_t *chan)
     }
 
     this->word_set_pending(word);
+    m_xen_dom->set_upcall_pending(chan->vcpuid);
     ctl->blk->ready |= (1UL << p);
     ::intel_x64::wmb();
 

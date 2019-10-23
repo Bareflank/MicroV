@@ -102,6 +102,7 @@ public:
     size_t hvc_tx_put(const gsl::span<char> &span);
     size_t hvc_tx_get(const gsl::span<char> &span);
 
+    void set_upcall_pending(xen_vcpuid_t vcpuid);
     int acquire_gnttab_pages(xen_mem_acquire_resource_t *res,
                              gsl::span<class page *> pages);
 
