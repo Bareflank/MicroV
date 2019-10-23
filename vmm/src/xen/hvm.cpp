@@ -132,6 +132,12 @@ void xen_hvm::init_root_store_params()
 
     params[HVM_PARAM_STORE_PFN] = gpfn;
     params[HVM_PARAM_STORE_EVTCHN] = port;
+
+    xen_dom->m_memory->add_vmm_backed_page(gpfn,
+                                           pg_perm_rw,
+                                           pg_mtype_wb,
+                                           store_page.get(),
+                                           false);
 }
 
 void xen_hvm::init_root_console_params()
@@ -156,6 +162,12 @@ void xen_hvm::init_root_console_params()
 
     params[HVM_PARAM_CONSOLE_PFN] = gpfn;
     params[HVM_PARAM_CONSOLE_EVTCHN] = port;
+
+    xen_dom->m_memory->add_vmm_backed_page(gpfn,
+                                           pg_perm_rw,
+                                           pg_mtype_wb,
+                                           console_page.get(),
+                                           false);
 }
 
 xen_hvm::xen_hvm(xen_domain *dom, xen_memory *mem) :
