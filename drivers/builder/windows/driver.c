@@ -33,9 +33,9 @@ DriverEntry(
     WDF_OBJECT_ATTRIBUTES attributes;
 
     WDF_OBJECT_ATTRIBUTES_INIT(&attributes);
-    attributes.EvtCleanupCallback = uvbuilderEvtDriverContextCleanup;
+    attributes.EvtCleanupCallback = builderEvtDriverContextCleanup;
 
-    WDF_DRIVER_CONFIG_INIT(&config, uvbuilderEvtDeviceAdd);
+    WDF_DRIVER_CONFIG_INIT(&config, builderEvtDeviceAdd);
 
     status = WdfDriverCreate(DriverObject, RegistryPath, &attributes, &config, WDF_NO_HANDLE);
     if (!NT_SUCCESS(status)) {
@@ -47,7 +47,7 @@ DriverEntry(
 }
 
 NTSTATUS
-uvbuilderEvtDeviceAdd(
+builderEvtDeviceAdd(
     _In_    WDFDRIVER Driver,
     _Inout_ PWDFDEVICE_INIT DeviceInit
 )
@@ -58,31 +58,31 @@ uvbuilderEvtDeviceAdd(
     UNREFERENCED_PARAMETER(Driver);
 
     WDF_PNPPOWER_EVENT_CALLBACKS_INIT(&pnpPowerCallbacks);
-    pnpPowerCallbacks.EvtDeviceD0Entry = uvbuilderEvtDeviceD0Entry;
-    pnpPowerCallbacks.EvtDeviceD0Exit = uvbuilderEvtDeviceD0Exit;
+    pnpPowerCallbacks.EvtDeviceD0Entry = builderEvtDeviceD0Entry;
+    pnpPowerCallbacks.EvtDeviceD0Exit = builderEvtDeviceD0Exit;
 
     WdfDeviceInitSetPnpPowerEventCallbacks(DeviceInit, &pnpPowerCallbacks);
 
-    status = uvbuilderCreateDevice(DeviceInit);
+    status = builderCreateDevice(DeviceInit);
     if (!NT_SUCCESS(status)) {
         return status;
     }
 
-    BFDEBUG("uvbuilderEvtDeviceAdd: success\n");
+    BFDEBUG("builderEvtDeviceAdd: success\n");
     return STATUS_SUCCESS;
 }
 
 VOID
-uvbuilderEvtDriverContextCleanup(
+builderEvtDriverContextCleanup(
     _In_ WDFOBJECT DriverObject
 )
 {
     UNREFERENCED_PARAMETER(DriverObject);
-    BFDEBUG("uvbuilderEvtDriverContextCleanup: success\n");
+    BFDEBUG("builderEvtDriverContextCleanup: success\n");
 }
 
 NTSTATUS
-uvbuilderEvtDeviceD0Entry(
+builderEvtDeviceD0Entry(
     _In_ WDFDEVICE Device,
     _In_ WDF_POWER_DEVICE_STATE PreviousState
 )
@@ -90,12 +90,12 @@ uvbuilderEvtDeviceD0Entry(
     UNREFERENCED_PARAMETER(Device);
     UNREFERENCED_PARAMETER(PreviousState);
 
-    BFDEBUG("uvbuilderEvtDeviceD0Entry: success\n");
+    BFDEBUG("builderEvtDeviceD0Entry: success\n");
     return STATUS_SUCCESS;
 }
 
 NTSTATUS
-uvbuilderEvtDeviceD0Exit(
+builderEvtDeviceD0Exit(
     _In_ WDFDEVICE Device,
     _In_ WDF_POWER_DEVICE_STATE TargetState
 )
@@ -103,6 +103,6 @@ uvbuilderEvtDeviceD0Exit(
     UNREFERENCED_PARAMETER(Device);
     UNREFERENCED_PARAMETER(TargetState);
 
-    BFDEBUG("uvbuilderEvtDeviceD0Entry: success\n");
+    BFDEBUG("builderEvtDeviceD0Entry: success\n");
     return STATUS_SUCCESS;
 }

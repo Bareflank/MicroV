@@ -21,13 +21,12 @@
 
 #include <printv.h>
 #include <hve/arch/intel_x64/vcpu.h>
+#include <xen/hvm.h>
 #include <xen/gnttab.h>
 #include <xen/domain.h>
 #include <xen/vcpu.h>
 
 namespace microv {
-
-constexpr grant_handle_t invalid_mgl_node = ~0;
 
 /*
  * mappable_gtf
@@ -621,10 +620,17 @@ xen_gnttab::xen_gnttab(xen_domain *dom, xen_memory *mem)
     xen_dom = dom;
     xen_mem = mem;
 
-    shared_rsrc_pages.reserve(max_shared_gte_pages());
     shared_tab.reserve(max_shared_gte_pages());
 
-    this->grow(1);
+    if (dom->m_uv_info->origin == domain_info::origin_root) {
+        if (dom->m_id == DOMID_WINPV) {
+            shared_map.reserve(max_shared_gte_pages());
+        }
+    } else {
+        shared_rsrc.reserve(max_shared_gte_pages());
+        shared_page.reserve(max_shared_gte_pages());
+        this->grow_pages(1);
+    }
 }
 
 grant_entry_header_t *xen_gnttab::shared_header(grant_ref_t ref)
@@ -699,7 +705,7 @@ inline xen_gnttab::shr_v1_gte_t *xen_gnttab::shr_v1_entry(grant_ref_t ref)
 
     expects(pg_idx < shared_tab.size());
 
-    auto gte = reinterpret_cast<shr_v1_gte_t *>(shared_tab[pg_idx].get());
+    auto gte = reinterpret_cast<shr_v1_gte_t *>(shared_tab[pg_idx]);
     return &gte[pg_off];
 }
 
@@ -710,7 +716,7 @@ inline xen_gnttab::shr_v2_gte_t *xen_gnttab::shr_v2_entry(grant_ref_t ref)
 
     expects(pg_idx < shared_tab.size());
 
-    auto gte = reinterpret_cast<shr_v2_gte_t *>(shared_tab[pg_idx].get());
+    auto gte = reinterpret_cast<shr_v2_gte_t *>(shared_tab[pg_idx]);
     return &gte[pg_off];
 }
 
@@ -721,7 +727,7 @@ inline xen_gnttab::status_gte_t *xen_gnttab::status_entry(grant_ref_t ref)
 
     expects(pg_idx < status_tab.size());
 
-    auto gte = reinterpret_cast<status_gte_t *>(status_tab[pg_idx].get());
+    auto gte = reinterpret_cast<status_gte_t *>(status_tab[pg_idx]);
     return &gte[pg_off];
 }
 
@@ -765,7 +771,7 @@ int xen_gnttab::get_status_pages(size_t idx, size_t count,
     return get_pages(XENMEM_resource_grant_table_id_status, idx, count, pages);
 }
 
-int xen_gnttab::grow(const uint32_t new_shr)
+int xen_gnttab::grow_pages(const uint32_t new_shr)
 {
     auto new_sts = (version == 2) ? this->shared_to_status_pages(new_shr) : 0;
 
@@ -774,8 +780,9 @@ int xen_gnttab::grow(const uint32_t new_shr)
         auto shr_page = make_page<uint8_t>();
         auto dom_page = alloc_vmm_backed_page(shr_page.get());
 
-        shared_tab.emplace_back(std::move(shr_page));
-        shared_rsrc_pages.emplace_back(dom_page);
+        shared_tab.emplace_back(shr_page.get());
+        shared_page.emplace_back(std::move(shr_page));
+        shared_rsrc.emplace_back(dom_page);
     }
 
     /* Status entry pages */
@@ -783,8 +790,9 @@ int xen_gnttab::grow(const uint32_t new_shr)
         auto sts_page = make_page<status_gte_t>();
         auto dom_page = alloc_vmm_backed_page(sts_page.get());
 
-        status_tab.emplace_back(std::move(sts_page));
-        status_rsrc_pages.emplace_back(dom_page);
+        status_tab.emplace_back(sts_page.get());
+        status_page.emplace_back(std::move(sts_page));
+        status_rsrc.emplace_back(dom_page);
     }
 
     return 0;
@@ -798,8 +806,8 @@ int xen_gnttab::get_pages(int tabid, size_t idx, size_t count,
 
     switch (tabid) {
     case XENMEM_resource_grant_table_id_shared: {
-        const auto size = shared_tab.size();
-        const auto cpty = shared_tab.capacity();
+        const auto size = shared_page.size();
+        const auto cpty = shared_page.capacity();
 
         /*
          * If the last requested index is greater than the
@@ -812,19 +820,19 @@ int xen_gnttab::get_pages(int tabid, size_t idx, size_t count,
         /* Grow if we need to */
         if (last >= size) {
             const auto shr_pages = last + 1 - size;
-            this->grow(shr_pages);
+            this->grow_pages(shr_pages);
         }
 
         /* Populate the page list */
         for (auto i = 0; i < count; i++) {
-            pages[i] = shared_rsrc_pages[idx + i];
+            pages[i] = shared_rsrc[idx + i];
         }
 
         break;
     }
     case XENMEM_resource_grant_table_id_status: {
-        const auto size = status_tab.size();
-        const auto cpty = status_tab.capacity();
+        const auto size = status_page.size();
+        const auto cpty = status_page.capacity();
 
         /*
          * If the last requested index is greater than the
@@ -837,12 +845,12 @@ int xen_gnttab::get_pages(int tabid, size_t idx, size_t count,
         /* Grow if we need to */
         if (last >= size) {
             const auto sts_pages = last + 1 - size;
-            this->grow(this->status_to_shared_pages(sts_pages));
+            this->grow_pages(this->status_to_shared_pages(sts_pages));
         }
 
         /* Populate the page list */
         for (auto i = 0; i < count; i++) {
-            pages[i] = status_rsrc_pages[idx + i];
+            pages[i] = status_rsrc[idx + i];
         }
 
         break;
@@ -900,35 +908,92 @@ bool xen_gnttab::set_version(xen_vcpu *vcpu, gnttab_set_version_t *gsv)
     return true;
 }
 
+extern uintptr_t winpv_hole_gfn;
+extern size_t winpv_hole_size;
+
+static inline bool in_winpv_hole(uintptr_t gfn) noexcept
+{
+    const auto gpa = xen_addr(gfn);
+    const auto hole_gpa = xen_addr(winpv_hole_gfn);
+
+    return gpa >= hole_gpa && gpa < (hole_gpa + winpv_hole_size);
+}
+
 bool xen_gnttab::mapspace_grant_table(xen_vcpu *vcpu, xen_add_to_physmap_t *atp)
 {
     auto uvv = vcpu->m_uv_vcpu;
     auto idx = atp->idx;
+    auto gfn = atp->gpfn;
     class page *page{};
 
-    if (idx & XENMAPIDX_grant_table_status) {
-        if (version != 2) {
-            expects(version == 1);
-            bferror_info(0, "mapspace gnttab status but version is 1");
-            uvv->set_rax(-EINVAL);
-            return true;
+    if (uvv->is_guest_vcpu()) {
+        if (idx & XENMAPIDX_grant_table_status) {
+            if (version != 2) {
+                expects(version == 1);
+                bferror_info(0, "mapspace gnttab status but version is 1");
+                uvv->set_rax(-EINVAL);
+                return true;
+            }
+
+            idx &= ~XENMAPIDX_grant_table_status;
+            if (auto rc = this->get_status_page(idx, &page); rc) {
+                bferror_nhex(0, "get_status_page failed, idx=", idx);
+                return rc;
+            }
+        } else {
+            if (auto rc = this->get_shared_page(idx, &page); rc) {
+                bferror_nhex(0, "get_shared_page failed, idx=", idx);
+                return rc;
+            }
         }
 
-        idx &= ~XENMAPIDX_grant_table_status;
-        if (auto rc = this->get_status_page(idx, &page); rc) {
-            bferror_nhex(0, "get_status_page failed, idx=", idx);
-            return rc;
-        }
-    } else {
-        if (auto rc = this->get_shared_page(idx, &page); rc) {
-            bferror_nhex(0, "get_shared_page failed, idx=", idx);
-            return rc;
-        }
+        xen_mem->add_local_page(gfn, pg_perm_rw, pg_mtype_wb, page);
+        uvv->set_rax(0);
+
+        return true;
     }
 
-    xen_mem->add_local_page(atp->gpfn, pg_perm_rw, pg_mtype_wb, page);
-    uvv->set_rax(0);
+    if (uvv->is_root_vcpu()) {
+        expects(xen_dom->m_id == DOMID_WINPV);
+        expects(in_winpv_hole(gfn));
+        expects((idx & XENMAPIDX_grant_table_status) == 0);
+        expects(idx < shared_map.capacity());
+        expects(idx < shared_tab.capacity());
+        expects(idx == shared_map.size());
+        expects(idx == shared_tab.size());
 
-    return true;
+        auto gpa = xen_addr(gfn);
+        auto map = uvv->map_gpa_4k<uint8_t>(gpa);
+
+        shared_tab.emplace_back(map.get());
+        shared_map.emplace_back(std::move(map));
+
+        /* Fill in store and console entries as xl would have */
+        if (idx == 0) {
+            /* Grant toolstack VM read/write access to store */
+            auto pfn = xen_dom->m_hvm->get_param(HVM_PARAM_STORE_PFN);
+            expects(pfn != 0);
+
+            auto gte = this->shr_v1_entry(GNTTAB_RESERVED_XENSTORE);
+            gte->flags = GTF_permit_access;
+            gte->domid = 0;
+            gte->frame = pfn;
+
+            /* Grant toolstack VM read/write access to console */
+            pfn = xen_dom->m_hvm->get_param(HVM_PARAM_CONSOLE_PFN);
+            expects(pfn != 0);
+
+            gte = this->shr_v1_entry(GNTTAB_RESERVED_CONSOLE);
+            gte->flags = GTF_permit_access;
+            gte->domid = 0;
+            gte->frame = pfn;
+        }
+
+        uvv->set_rax(0);
+        return true;
+    }
+
+    printv("%s: ERROR invalid vcpu type\n", __func__);
+    return false;
 }
 }

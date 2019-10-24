@@ -27,6 +27,7 @@
 #include <hve/arch/intel_x64/vmcall/domain_op.h>
 
 #include <xen/types.h>
+#include <xen/vcpu.h>
 #include <public/xen.h>
 
 namespace microv::intel_x64
@@ -68,7 +69,7 @@ vmcall_domain_op_handler::domain_op__create_domain(vcpu *vcpu)
         info.wc_nsec = arg->wc_nsec;
         info.tsc = arg->tsc;
         info.ram = arg->ram;
-        /* TODO explicitly make xen_info_valid=0 for clarity-sake */
+        info.origin = microv::domain_info::origin_uvctl;
 
         vcpu->set_rax(domain::generate_domainid());
 
@@ -115,8 +116,8 @@ void vmcall_domain_op_handler::domain_op__hvc_rx_put(vcpu *vcpu)
             return;
         }
 
-        auto xen = dom->xen_dom();
-        if (!xen) {
+        auto xend = dom->xen_dom();
+        if (!xend) {
             bferror_nhex(0, "NULL xen domain for domain = ", vcpu->rbx());
             vcpu->set_rax(0);
             return;
@@ -124,10 +125,12 @@ void vmcall_domain_op_handler::domain_op__hvc_rx_put(vcpu *vcpu)
 
         auto len = vcpu->rdx();
         auto buf = vcpu->map_gva_4k<char>(vcpu->rcx(), len);
-        auto num = xen->hvc_rx_put(gsl::span(buf.get(), len));
+        auto num = xend->hvc_rx_put(gsl::span(buf.get(), len));
 
-        dom->m_vcpu->load();
-        xen->queue_virq(VIRQ_CONSOLE);
+        auto uvv = xend->get_xen_vcpu(0)->m_uv_vcpu;
+        uvv->load();
+        xend->queue_virq(VIRQ_CONSOLE);
+        xend->put_xen_vcpu(0);
 
         vcpu->load();
         vcpu->set_rax(num);

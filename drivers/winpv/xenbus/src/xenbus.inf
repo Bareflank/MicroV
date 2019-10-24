@@ -1,0 +1,178 @@
+; Copyright (c) Citrix Systems Inc.
+; All rights reserved.
+;
+; Redistribution and use in source and binary forms,
+; with or without modification, are permitted provided
+; that the following conditions are met:
+;
+; *   Redistributions of source code must retain the above
+;     copyright notice, this list of conditions and the
+;     following disclaimer.
+; *   Redistributions in binary form must reproduce the above
+;     copyright notice, this list of conditions and the
+;     following disclaimer in the documentation and/or other
+;     materials provided with the distribution.
+;
+; THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND
+; CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES,
+; INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+; MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+; DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR
+; CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+; SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+; BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+; SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+; INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+; WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+; NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+; OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+; SUCH DAMAGE.
+
+[Version]
+Signature="$Windows NT$"
+Class=System
+ClassGUID={4d36e97d-e325-11ce-bfc1-08002be10318}
+Provider=%Vendor%
+CatalogFile=xenbus.cat
+DriverVer=@INF_DATE@,@MAJOR_VERSION@.@MINOR_VERSION@.@MICRO_VERSION@.@BUILD_NUMBER@
+DriverPackageDisplayName=%DiskDesc%
+
+[DestinationDirs]
+DefaultDestDir=12
+CoInst_CopyFiles=11
+Monitor_CopyFiles=11
+
+[SourceDisksNames]
+0=%DiskDesc%
+
+[SourceDisksFiles]
+xen.sys=0,,
+xenbus.sys=0,,
+xenfilt.sys=0,,
+xenbus_coinst.dll=0,,
+xenbus_monitor.exe=0,,
+xenbus_monitor.dll=0,,
+
+[XenBus_CopyFiles]
+xen.sys
+xenbus.sys
+xenfilt.sys
+
+[CoInst_CopyFiles]
+xenbus_coinst_@MAJOR_VERSION@_@MINOR_VERSION@_@MICRO_VERSION@_@BUILD_NUMBER@.dll,xenbus_coinst.dll
+
+[Monitor_CopyFiles]
+xenbus_monitor_@MAJOR_VERSION@_@MINOR_VERSION@_@MICRO_VERSION@_@BUILD_NUMBER@.exe,xenbus_monitor.exe
+xenbus_monitor_@MAJOR_VERSION@_@MINOR_VERSION@_@MICRO_VERSION@_@BUILD_NUMBER@.dll,xenbus_monitor.dll
+
+[Manufacturer]
+%Vendor%=Inst,NT@INF_ARCH@
+
+[Inst.NT@INF_ARCH@]
+; DisplayName		Section		DeviceID
+; -----------		-------		--------
+
+%XenBusName%		=XenBus_Inst,	PCI\VEN_5853&DEV_@VENDOR_DEVICE_ID@&SUBSYS_@VENDOR_DEVICE_ID@5853&REV_01
+%XenBusName%		=XenBus_Inst,	PCI\VEN_5853&DEV_0002
+%XenBusName%		=XenBus_Inst,	PCI\VEN_5853&DEV_0001
+
+[XenBus_Inst]
+CopyFiles=XenBus_CopyFiles
+CopyFiles=Monitor_CopyFiles
+
+[XenBus_Inst.Services]
+AddService=xenbus_monitor,%SPSVCSINST_STARTSERVICE%,Monitor_Service,Monitor_EventLog
+AddService=xenbus,%SPSVCINST_ASSOCSERVICE%,XenBus_Service
+AddService=xenfilt,,XenFilt_Service,
+
+[XenBus_Service]
+DisplayName=%XenBusName%
+ServiceType=%SERVICE_KERNEL_DRIVER%
+StartType=%SERVICE_DEMAND_START%
+ErrorControl=%SERVICE_ERROR_NORMAL%
+ServiceBinary=%12%\xenbus.sys
+LoadOrderGroup="Boot Bus Extender"
+AddReg = XenBus_Parameters, XenBus_Interrupts
+
+[XenBus_Parameters]
+HKR,"Parameters",,0x00000010
+HKR,"Parameters","SupportedClasses",0x00010000,"VIF","VBD","VKBD","IFACE","CONS"
+HKR,"Parameters","SyntheticClasses",0x00010000,"IFACE","CONS"
+HKR,"Parameters","RequestKey",0x00000000,%RequestKey%
+
+[XenBus_Interrupts]
+HKR,"Interrupt Management",,0x00000010
+HKR,"Interrupt Management\MessageSignaledInterruptProperties",,0x00000010
+HKR,"Interrupt Management\MessageSignaledInterruptProperties","MSISupported",0x00010001,1
+HKR,"Interrupt Management\GroupPolicy",,0x00010001,1
+
+[XenFilt_Service]
+DisplayName=%XenFiltName%
+ServiceType=%SERVICE_KERNEL_DRIVER%
+StartType=%SERVICE_DEMAND_START%
+ErrorControl=%SERVICE_ERROR_NORMAL%
+ServiceBinary=%12%\xenfilt.sys
+LoadOrderGroup="Boot Bus Extender"
+AddReg = XenFilt_Parameters
+
+[XenFilt_Parameters]
+HKR,"Parameters",,0x00000010
+HKR,"Parameters","*PNP0A03",0x00000000,"PCI"
+HKR,"Parameters","Internal_IDE_Channel",0x00000000,"IDE"
+
+[Monitor_Service]
+DisplayName=%MonitorName%
+Description=%MonitorDesc%
+ServiceType=%SERVICE_WIN32_OWN_PROCESS%
+StartType=%SERVICE_AUTO_START%
+ErrorControl=%SERVICE_ERROR_NORMAL%
+ServiceBinary=%11%\xenbus_monitor_@MAJOR_VERSION@_@MINOR_VERSION@_@MICRO_VERSION@_@BUILD_NUMBER@.exe
+AddReg = Monitor_Parameters
+
+[Monitor_Parameters]
+HKR,"Parameters",,0x00000010
+HKR,"Parameters","RequestKey",0x00000000,%RequestKey%
+HKR,"Parameters","DialogTitle",0x00000000,%DialogTitle%
+HKR,"Parameters","DialogText",0x00000000,%DialogText%
+
+[Monitor_EventLog]
+AddReg=Monitor_EventLog_AddReg
+
+[Monitor_EventLog_AddReg]
+HKR,,EventMessageFile,0x00020000,"%%SystemRoot%%\System32\xenbus_monitor_@MAJOR_VERSION@_@MINOR_VERSION@_@MICRO_VERSION@_@BUILD_NUMBER@.dll"
+HKR,,TypesSupported,0x00010001,7
+
+[XenBus_Inst.CoInstallers]
+CopyFiles=CoInst_CopyFiles
+AddReg=CoInst_AddReg
+
+[CoInst_AddReg]
+HKR,,CoInstallers32,0x00010000,"xenbus_coinst_@MAJOR_VERSION@_@MINOR_VERSION@_@MICRO_VERSION@_@BUILD_NUMBER@.dll,Entry"
+
+[Strings]
+
+Vendor="@VENDOR_NAME@"
+DiskDesc="@PRODUCT_NAME@ PV Bus Package"
+XenBusName="@PRODUCT_NAME@ PV Bus"
+XenFiltName="@PRODUCT_NAME@ Generic Bus Filter"
+MonitorName="@PRODUCT_NAME@ PV Driver Monitor"
+MonitorDesc="Provides support for @PRODUCT_NAME@ PV drivers"
+RequestKey="SYSTEM\CurrentControlSet\Services\xenbus_monitor\Request"
+DialogTitle="@PRODUCT_NAME@"
+DialogText="needs to restart the system to complete installation. Press 'Yes' to restart the system now or 'No' if you plan to restart the system later."
+
+SERVICE_BOOT_START=0x0
+SERVICE_SYSTEM_START=0x1
+SERVICE_AUTO_START=0x2
+SERVICE_DEMAND_START=0x3
+SERVICE_DISABLED=0x4
+
+SERVICE_WIN32_OWN_PROCESS=0x10
+SERVICE_KERNEL_DRIVER=0x1
+SERVICE_ERROR_IGNORE=0x0
+SERVICE_ERROR_NORMAL=0x1
+SERVICE_ERROR_SEVERE=0x2
+SERVICE_ERROR_CRITICAL=0x3
+
+SPSVCINST_ASSOCSERVICE=0x00000002
+SPSVCSINST_STARTSERVICE=0x00000800

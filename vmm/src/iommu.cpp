@@ -696,7 +696,7 @@ iommu::iommu(struct drhd *drhd) : m_root{make_page<entry_t>()}
     auto scope = reinterpret_cast<uintptr_t>(drhd) + sizeof(*drhd);
     this->m_scope = reinterpret_cast<struct dmar_devscope *>(scope);
     this->bind_devices();
-    this->dump_devices();
+//    this->dump_devices();
 
     /* Leave early if this doesn't scope a passthrough device */
     if (!m_guest_devs.size()) {

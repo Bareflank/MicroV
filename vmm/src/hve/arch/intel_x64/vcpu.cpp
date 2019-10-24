@@ -32,6 +32,7 @@
 #include <pci/dev.h>
 #include <pci/pci.h>
 #include <printv.h>
+#include <xen/platform_pci.h>
 #include <xen/vcpu.h>
 #include <xue.h>
 
@@ -114,21 +115,23 @@ vcpu::vcpu(
     m_vmcall_iommu_op_handler{this},
     m_vmcall_vcpu_op_handler{this},
     m_vmcall_xue_op_handler{this},
+    m_vmcall_xenpfd_op_handler{this},
 
     m_x2apic_handler{this},
     m_pci_handler{this}
 {
-    domain->m_vcpu = this;
+    domain->add_vcpu(id);
     this->set_eptp(domain->ept());
 
     if (this->is_dom0()) {
         nr_root_vcpus++;
-        this->write_dom0_guest_state(domain);
 
         if (vcpu0 == nullptr) {
             vcpu0 = this;
             init_cache_ops();
         }
+
+        this->write_dom0_guest_state(domain);
     }
     else {
         this->write_domU_guest_state(domain);
@@ -151,7 +154,15 @@ static inline void trap_exceptions()
 
 void
 vcpu::write_dom0_guest_state(domain *domain)
-{ }
+{
+    if (domain->exec_mode() == VM_EXEC_XENPVH) {
+        m_xen_vcpu = std::make_unique<class xen_vcpu>(this);
+
+        if (g_enable_winpv) {
+            init_xen_platform_pci(m_xen_vcpu.get());
+        }
+    }
+}
 
 void
 vcpu::write_domU_guest_state(domain *domain)
@@ -262,6 +273,7 @@ void vcpu::remove_child_domain(domainid_t child_id)
         m_child_doms.erase(child_id);
     }
 }
+
 bool vcpu::handle_0x4BF00010(bfvmm::intel_x64::vcpu *vcpu)
 {
 #ifdef USE_XUE
@@ -596,7 +608,7 @@ void vcpu::map_msi(const struct msi_desc *root_msi,
 {
     if (this->is_domU()) {
         expects(this->m_root_vcpu);
-        expects(this->m_root_vcpu->is_dom0());
+        expects(this->m_root_vcpu->is_root_vcpu());
         m_root_vcpu->map_msi(root_msi, guest_msi);
         return;
     }
@@ -604,105 +616,42 @@ void vcpu::map_msi(const struct msi_desc *root_msi,
     validate_msi(root_msi);
     validate_msi(guest_msi);
 
+    /*
+     * Ensure that the physical APIC is in xAPIC mode.
+     * If it is in x2APIC, all the MSI code needs to be
+     * revisited as that will change the way the MSI fields
+     * are interpreted.
+     */
     expects(m_lapic);
     expects(m_lapic->is_xapic());
 
     const auto root_destid = root_msi->destid();
     const auto root_vector = root_msi->vector();
 
-    /*
-     * Interpretation of destid depends on the destination mode of the ICR:
-     *
-     *    logical_mode() -> destid is from LDR (logical APIC ID)
-     *   !logical_mode() -> destid is from ID register (local APIC ID)
-     *
-     * Note we are reading the mode of the local APIC of the CPU we are
-     * currently running on; it's possible the local APIC implied by destid
-     * is different than the current one. However, it should be safe to
-     * assume that the destination mode of every local APIC is the same
-     * because
-     *
-     *   1) the manual states that it must be the same and
-     *   2) any sane OS will ensure that identitical modes are being used
-     */
-
-    if (m_lapic->logical_dest()) {
-        for (uint64_t i = 0; i < nr_root_vcpus; i++) {
-            if (root_destid == (1UL << i)) {
-                auto key = root_vector;
-                auto root = get_vcpu(i);
-
-                if (!root) {
-                    bfdebug_nhex(0, "map_msi: failed to get_vcpu:", i);
-                    return;
-                }
-
-                try {
-                    if (root->m_msi_map.count(key) == 0) {
-                        root->m_msi_map[key] = {root_msi, guest_msi};
-                    }
-
-                    printv("%s: root (dest:0x%x,vec:0x%x) -> ",
-                            __func__, root_destid, root_vector);
-                    printf("guest (dest:0x%x,vec:0x%x)\n",
-                            guest_msi->destid(), guest_msi->vector());
-                } catch (...) {
-                    bferror_info(0, "exception mapping msi in logical mode");
-                    put_vcpu(i);
-                    throw;
-                }
-
-                put_vcpu(i);
-                return;
-            }
-        }
-
-        bfalert_nhex(0, "map_msi: logical mode destid not found", root_destid);
-        return;
-    }
-
-    /*
-     * In physical mode, the destid is the local APIC id. Note that the
-     * lapic::local_id member function reads the cached ID from ordinary
-     * memory. No APIC access occurs. This is fine because the ID register is
-     * read-only (although the manual does state that some systems may support
-     * changing its value 0_0 - it also says software shouldn't change it). If
-     * that function did do an APIC access, we would either have to remap each
-     * (x)APIC or do an IPI to the proper core.
-     */
     for (uint64_t i = 0; i < nr_root_vcpus; i++) {
-        auto root = get_vcpu(i);
-        if (!root) {
-            bfdebug_nhex(0, "map_msi: failed to get_vcpu:", i);
-            return;
+        auto root_vcpu = get_vcpu(i);
+        if (!root_vcpu) {
+            printv("%s: failed to get_vcpu %lu", __func__, i);
+            continue;
         }
 
         try {
-            auto local_id = root->m_lapic->local_id();
-            if (root_destid == local_id) {
-                 auto key = root_vector;
-                 expects(root->m_msi_map.count(key) == 0);
-                 root->m_msi_map[key] = {root_msi, guest_msi};
-                 put_vcpu(i);
-                 return;
-            }
+            auto msi_map = &root_vcpu->m_msi_map;
+            msi_map->try_emplace(root_vector, root_msi, guest_msi);
         } catch (...) {
-            bferror_info(0, "exception mapping msi in physical mode");
+            bferror_info(0, "exception mapping msi");
             put_vcpu(i);
             throw;
         }
 
         put_vcpu(i);
     }
-
-    bfalert_nhex(0, "map_msi: physical mode destid not found", root_destid);
-    return;
 }
 
-const struct msi_desc *vcpu::find_guest_msi(msi_key_t key) const
+const struct msi_desc *vcpu::find_guest_msi(msi_key_t root_vector) const
 {
-    const auto itr = m_msi_map.find(key);
-    if (itr == m_msi_map.end()) {
+    const auto itr = m_msi_map.find(root_vector);
+    if (itr == m_msi_map.cend()) {
         return nullptr;
     }
 

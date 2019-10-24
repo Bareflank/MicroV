@@ -33,12 +33,14 @@
 #include <pci/dev.h>
 #include <printv.h>
 
+#include <xen/cpuid.h>
 #include <xen/cpupool.h>
 #include <xen/evtchn.h>
 #include <xen/flask.h>
 #include <xen/gnttab.h>
 #include <xen/hvm.h>
 #include <xen/physdev.h>
+#include <xen/platform_pci.h>
 #include <xen/util.h>
 #include <xen/time.h>
 #include <xen/memory.h>
@@ -59,24 +61,16 @@
 namespace microv {
 
 static constexpr auto self_ipi_msr = 0x83F;
-static constexpr auto hcall_page_msr = 0xC0000500;
-static constexpr auto xen_leaf_base = 0x40000100;
-static constexpr auto xen_leaf(int i) { return xen_leaf_base + i; }
 
-/* exits specific to xl-created vcpu boot */
-static bool xlboot_io_insn_in(base_vcpu *v, io_insn_handler::info_t &info)
+static bool xlboot_io_in(base_vcpu *v, io_insn_handler::info_t &info)
 {
-//    bfdebug_nhex(0, "xl boot: io_insn in", info.port_number);
     return true;
 }
 
-static bool xlboot_io_insn_out(base_vcpu *v, io_insn_handler::info_t &info)
+static bool xlboot_io_out(base_vcpu *v, io_insn_handler::info_t &info)
 {
-//    bfdebug_nhex(0, "xl boot: io_insn out", info.port_number);
     return true;
 }
-
-/* end xl-created boot exits */
 
 static bool handle_exception(base_vcpu *vcpu)
 {
@@ -111,39 +105,6 @@ static bool handle_exception(base_vcpu *vcpu)
 static bool handle_tsc_deadline(base_vcpu *vcpu, wrmsr_handler::info_t &info)
 {
     bfalert_info(0, "TSC deadline write after SSHOTTMR set");
-    return true;
-}
-
-static bool xen_leaf0(base_vcpu *vcpu)
-{
-    vcpu->set_rax(xen_leaf(5));
-    vcpu->set_rbx(XEN_CPUID_SIGNATURE_EBX);
-    vcpu->set_rcx(XEN_CPUID_SIGNATURE_ECX);
-    vcpu->set_rdx(XEN_CPUID_SIGNATURE_EDX);
-
-    vcpu->advance();
-    return true;
-}
-
-static bool xen_leaf1(base_vcpu *vcpu)
-{
-    vcpu->set_rax(0x0004000D);
-    vcpu->set_rbx(0);
-    vcpu->set_rcx(0);
-    vcpu->set_rdx(0);
-
-    vcpu->advance();
-    return true;
-}
-
-static bool xen_leaf2(base_vcpu *vcpu)
-{
-    vcpu->set_rax(1);
-    vcpu->set_rbx(hcall_page_msr);
-    vcpu->set_rcx(0);
-    vcpu->set_rdx(0);
-
-    vcpu->advance();
     return true;
 }
 
@@ -194,15 +155,19 @@ bool xen_vcpu::xen_leaf4(base_vcpu *vcpu)
 
 bool xen_vcpu::init_hypercall_page(base_vcpu *vcpu, wrmsr_handler::info_t &info)
 {
-    const auto gfn = xen_frame(info.val);
-    const auto err = m_xen_dom->m_memory->map_page(gfn, pg_perm_rwe);
+    const auto gpa = info.val;
+    const auto gfn = xen_frame(gpa);
 
-    if (err) {
-        vcpu->set_rax(err);
-        return false;
+    if (vcpu->is_guest_vcpu()) {
+        const auto err = m_xen_dom->m_memory->map_page(gfn, pg_perm_rwe);
+        if (err) {
+            vcpu->set_rax(err);
+            printv("%s: map_page failed, rc=%d\n", __func__, err);
+            return false;
+        }
     }
 
-    auto map = vcpu->map_gpa_4k<uint8_t>(info.val);
+    auto map = vcpu->map_gpa_4k<uint8_t>(gpa);
     auto buf = gsl::span(map.get(), 0x1000);
 
     for (uint8_t i = 0; i < 55; i++) {
@@ -219,6 +184,7 @@ bool xen_vcpu::init_hypercall_page(base_vcpu *vcpu, wrmsr_handler::info_t &info)
         entry[8] = 0xC3U;
     }
 
+    printv("%s: initialized hypercall page at gpa 0x%lx\n", __func__, gpa);
     return true;
 }
 
@@ -353,6 +319,8 @@ bool xen_vcpu::handle_hvm_op()
         return xen_hvm_get_param(this);
     case HVMOP_pagetable_dying:
         return xen_hvm_pagetable_dying(this);
+    case HVMOP_set_evtchn_upcall_vector:
+        return xen_hvm_set_evtchn_upcall_vector(this);
     default:
         return false;
     }
@@ -874,8 +842,15 @@ bool xen_vcpu::handle_interrupt(base_vcpu *vcpu, interrupt_handler::info_t &info
     auto guest_msi = root->find_guest_msi(info.vector);
 
     if (guest_msi) {
-        auto pdev = guest_msi->pdev;
+        /*
+         * The vector is assigned to a guest, so we have to send the EOI.
+         * This is because the guest kernel only has access to a virtual APIC,
+         * and therefore the EOI written by the kernel never makes it to actual
+         * hardware.
+         */
+        root->m_lapic->write_eoi();
 
+        auto pdev = guest_msi->pdev;
         expects(pdev);
         std::lock_guard msi_lock(pdev->m_msi_mtx);
 
@@ -946,6 +921,10 @@ bool xen_vcpu::debug_hypercall(microv_vcpu *vcpu)
     const auto rax = vcpu->rax();
     const auto rdi = vcpu->rdi();
 
+    if (vcpu->is_root_vcpu()) {
+        return false;
+    }
+
     if (rax == __HYPERVISOR_sched_op && rdi == SCHEDOP_yield) {
         return false;
     }
@@ -1000,7 +979,7 @@ bool xen_vcpu::debug_hypercall(microv_vcpu *vcpu)
     return true;
 }
 
-bool xen_vcpu::hypercall(microv_vcpu *vcpu)
+bool xen_vcpu::guest_hypercall(microv_vcpu *vcpu)
 {
     if (this->debug_hypercall(vcpu)) {
         debug_xen_hypercall(this);
@@ -1040,14 +1019,64 @@ bool xen_vcpu::hypercall(microv_vcpu *vcpu)
     }
 }
 
+bool xen_vcpu::root_hypercall(microv_vcpu *vcpu)
+{
+    if (this->debug_hypercall(vcpu)) {
+        debug_xen_hypercall(this);
+    }
+
+    switch (vcpu->rax()) {
+    case __HYPERVISOR_xen_version:
+        return this->handle_xen_version();
+    case __HYPERVISOR_memory_op:
+        switch (vcpu->rdi()) {
+        case XENMEM_decrease_reservation:
+        case XENMEM_add_to_physmap:
+        case XENMEM_populate_physmap:
+            return this->handle_memory_op();
+        default:
+            return false;
+        }
+    case __HYPERVISOR_event_channel_op:
+        switch (vcpu->rdi()) {
+        case EVTCHNOP_init_control:
+        case EVTCHNOP_expand_array:
+        case EVTCHNOP_send:
+            return this->handle_event_channel_op();
+        default:
+            return false;
+        }
+    case __HYPERVISOR_hvm_op:
+        switch (vcpu->rdi()) {
+        case HVMOP_get_param:
+        case HVMOP_pagetable_dying:
+        case HVMOP_set_evtchn_upcall_vector:
+            return this->handle_hvm_op();
+        default:
+            return false;
+        }
+    case __HYPERVISOR_grant_table_op:
+        switch (vcpu->rdi()) {
+        case GNTTABOP_query_size:
+            return this->handle_grant_table_op();
+        default:
+            return false;
+        }
+    default:
+        return false;
+    }
+}
+
 xen_vcpu::xen_vcpu(microv_vcpu *vcpu) :
     m_uv_vcpu{vcpu},
     m_uv_dom{vcpu->dom()},
     m_xen_dom{m_uv_dom->xen_dom()}
 {
-    m_id = 0;
-    m_apicid = 0;
-    m_acpiid = 0;
+    m_id = m_xen_dom->add_vcpu(this);
+
+    m_origin = m_xen_dom->m_uv_info->origin;
+    m_apicid = (m_uv_dom->is_xsvm()) ? m_id : 0xDEADBEEF;
+    m_acpiid = (m_uv_dom->is_xsvm()) ? m_id : 0xCAFEBABE;
 
     m_flask = std::make_unique<class xen_flask>(this);
     m_xenver = std::make_unique<class xen_version>(this);
@@ -1058,34 +1087,49 @@ xen_vcpu::xen_vcpu(microv_vcpu *vcpu) :
     m_tsc_shift = 0;
     m_pet_shift = vcpu->m_yield_handler.m_pet_shift;
 
-    vcpu->add_cpuid_emulator(xen_leaf(0), {xen_leaf0});
-    vcpu->add_cpuid_emulator(xen_leaf(2), {xen_leaf2});
-    vcpu->emulate_wrmsr(hcall_page_msr, {&xen_vcpu::init_hypercall_page, this});
-    vcpu->add_vmcall_handler({&xen_vcpu::hypercall, this});
+    /*
+     * Xen leaf 0 is the main thing that kicks off the Xen path
+     * whenever Linux or Windows PV boots up. Right now this leaf is
+     * only active for Windows PV root domain and guest Linux PVH domains.
+     */
+    if (m_origin != domain_info::origin_root || g_enable_winpv) {
+        vcpu->add_cpuid_emulator(xen_leaf(0), {xen_leaf0});
+    }
     vcpu->add_cpuid_emulator(xen_leaf(1), {xen_leaf1});
+    vcpu->add_cpuid_emulator(xen_leaf(2), {xen_leaf2});
     vcpu->add_cpuid_emulator(xen_leaf(4), {&xen_vcpu::xen_leaf4, this});
 
+    vcpu->emulate_wrmsr(xen_hypercall_page_msr,
+                        {&xen_vcpu::init_hypercall_page, this});
+
+    if (m_origin == domain_info::origin_root) {
+        vcpu->add_vmcall_handler({&xen_vcpu::root_hypercall, this});
+        return;
+    }
+
+    vcpu->add_vmcall_handler({&xen_vcpu::guest_hypercall, this});
     vcpu->add_handler(0, handle_exception);
     vcpu->emulate_wrmsr(self_ipi_msr, {wrmsr_self_ipi});
     vcpu->add_external_interrupt_handler({&xen_vcpu::handle_interrupt, this});
 
-    m_xen_dom->bind_vcpu(this);
+    if (m_origin == domain_info::origin_domctl) {
+        vcpu->emulate_io_instruction(0xA1, {xlboot_io_in}, {xlboot_io_out});
+        vcpu->emulate_io_instruction(0x21, {xlboot_io_in}, {xlboot_io_out});
+        vcpu->emulate_io_instruction(0x43, {xlboot_io_in}, {xlboot_io_out});
+        vcpu->emulate_io_instruction(0x80, {xlboot_io_in}, {xlboot_io_out});
+        vcpu->emulate_io_instruction(0x40, {xlboot_io_in}, {xlboot_io_out});
+    }
 
-    vcpu->emulate_io_instruction(0xA1, {xlboot_io_insn_in}, {xlboot_io_insn_out});
-    vcpu->emulate_io_instruction(0x21, {xlboot_io_insn_in}, {xlboot_io_insn_out});
-    vcpu->emulate_io_instruction(0x43, {xlboot_io_insn_in}, {xlboot_io_insn_out});
-    vcpu->emulate_io_instruction(0x80, {xlboot_io_insn_in}, {xlboot_io_insn_out});
-    vcpu->emulate_io_instruction(0x40, {xlboot_io_insn_in}, {xlboot_io_insn_out});
-
-    /* Toolstack cpuid accesses */
-    vcpu->add_cpuid_emulator(PSN_LEAF, {cpuid_zeros});
-    vcpu->add_cpuid_emulator(MWAIT_LEAF, {cpuid_zeros});
-    vcpu->add_cpuid_emulator(0x8, {cpuid_zeros});
-    vcpu->add_cpuid_emulator(DCA_LEAF, {cpuid_zeros});
-    vcpu->add_cpuid_emulator(0xC, {cpuid_zeros});
-    vcpu->add_cpuid_emulator(0x80000005, {cpuid_zeros});
-    vcpu->add_cpuid_emulator(CLSIZE_LEAF, {cpuid_passthrough});
-    vcpu->add_cpuid_emulator(INVARIANT_TSC_LEAF, {cpuid_passthrough});
-    vcpu->add_cpuid_emulator(ADDR_SIZE_LEAF, {cpuid_passthrough});
+    if (m_uv_dom->is_xsvm()) {
+        vcpu->add_cpuid_emulator(PSN_LEAF, {cpuid_zeros});
+        vcpu->add_cpuid_emulator(MWAIT_LEAF, {cpuid_zeros});
+        vcpu->add_cpuid_emulator(0x8, {cpuid_zeros});
+        vcpu->add_cpuid_emulator(DCA_LEAF, {cpuid_zeros});
+        vcpu->add_cpuid_emulator(0xC, {cpuid_zeros});
+        vcpu->add_cpuid_emulator(0x80000005, {cpuid_zeros});
+        vcpu->add_cpuid_emulator(CLSIZE_LEAF, {cpuid_passthrough});
+        vcpu->add_cpuid_emulator(INVARIANT_TSC_LEAF, {cpuid_passthrough});
+        vcpu->add_cpuid_emulator(ADDR_SIZE_LEAF, {cpuid_passthrough});
+    }
 }
 }

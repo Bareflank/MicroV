@@ -32,6 +32,7 @@ inline bool pci_passthru = false;
 
 void init_pci();
 void init_pci_on_vcpu(microv::intel_x64::vcpu *vcpu);
+uint32_t alloc_pci_cfg_addr() noexcept;
 
 }
 

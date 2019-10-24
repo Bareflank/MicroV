@@ -52,7 +52,7 @@ bool xen_hvm_set_param(xen_vcpu *vcpu)
         return true;
     }
 
-    auto ret = dom->hvm->set_param(vcpu, param.get());
+    auto ret = dom->m_hvm->set_param(vcpu, param.get());
     put_xen_domain(domid);
 
     return ret;
@@ -80,7 +80,7 @@ bool xen_hvm_get_param(xen_vcpu *vcpu)
         return true;
     }
 
-    auto ret = dom->hvm->get_param(vcpu, param.get());
+    auto ret = dom->m_hvm->get_param(vcpu, param.get());
     put_xen_domain(domid);
 
     return ret;
@@ -92,10 +92,96 @@ bool xen_hvm_pagetable_dying(xen_vcpu *vcpu)
     return true;
 }
 
+bool xen_hvm_set_evtchn_upcall_vector(xen_vcpu *vcpu)
+{
+    auto uvv = vcpu->m_uv_vcpu;
+    auto arg = uvv->map_arg<xen_hvm_evtchn_upcall_vector_t>(uvv->rsi());
+    auto ret = vcpu->m_xen_dom->m_evtchn->set_upcall_vector(vcpu, arg.get());
+
+    uvv->set_rax(ret);
+    return true;
+}
+
+void xen_hvm::init_root_store_params()
+{
+    /*
+     * Note both the store and console pages are accessed from this guest
+     * (i.e. the root domain) and dom0. Right now, the pages are already
+     * mapped into the root's EPT which is identity mapped, so no more
+     * work is needed for the root to use them. The dom0 guest will map
+     * in the xenstore page when the root is xs_introduce_domain()'d to
+     * xenstore.
+     */
+    store_page = std::make_unique<uint8_t[]>(UV_PAGE_SIZE);
+
+    evtchn_alloc_unbound_t store_chan = {
+        .dom = DOMID_SELF,
+        .remote_dom = 0,
+        .port = 0
+    };
+
+    if (int rc = xen_dom->m_evtchn->alloc_unbound(&store_chan); rc) {
+        printv("winpv: failed to alloc store port, rc=%d\n", rc);
+        return;
+    }
+
+    const auto gpfn = xen_frame(g_mm->virtptr_to_physint(store_page.get()));
+    const auto port = store_chan.port;
+
+    printv("winpv: xenstore pfn=0x%lx, evtchn=%u\n", gpfn, port);
+
+    params[HVM_PARAM_STORE_PFN] = gpfn;
+    params[HVM_PARAM_STORE_EVTCHN] = port;
+
+    xen_dom->m_memory->add_vmm_backed_page(gpfn,
+                                           pg_perm_rw,
+                                           pg_mtype_wb,
+                                           store_page.get(),
+                                           false);
+}
+
+void xen_hvm::init_root_console_params()
+{
+    console_page = std::make_unique<uint8_t[]>(UV_PAGE_SIZE);
+
+    evtchn_alloc_unbound_t console_chan = {
+        .dom = DOMID_SELF,
+        .remote_dom = 0,
+        .port = 0
+    };
+
+    if (int rc = xen_dom->m_evtchn->alloc_unbound(&console_chan); rc) {
+        printv("winpv: failed to alloc console port, rc=%d\n", rc);
+        return;
+    }
+
+    const auto gpfn = xen_frame(g_mm->virtptr_to_physint(console_page.get()));
+    const auto port = console_chan.port;
+
+    printv("winpv: console pfn=0x%lx, evtchn=%u\n", gpfn, port);
+
+    params[HVM_PARAM_CONSOLE_PFN] = gpfn;
+    params[HVM_PARAM_CONSOLE_EVTCHN] = port;
+
+    xen_dom->m_memory->add_vmm_backed_page(gpfn,
+                                           pg_perm_rw,
+                                           pg_mtype_wb,
+                                           console_page.get(),
+                                           false);
+}
+
 xen_hvm::xen_hvm(xen_domain *dom, xen_memory *mem) :
     xen_dom{dom},
     xen_mem{mem}
 {
+    if (xen_dom->m_uv_info->origin != domain_info::origin_root) {
+        return;
+    }
+
+    if (xen_dom->m_id == DOMID_WINPV) {
+        init_root_store_params();
+        init_root_console_params();
+    }
 }
 
 bool xen_hvm::set_param(xen_vcpu *vcpu, xen_hvm_param_t *p)
@@ -151,27 +237,48 @@ uint64_t xen_hvm::get_param(uint32_t index) const
     return params[index];
 }
 
-bool xen_hvm::get_param(xen_vcpu *vcpu, xen_hvm_param_t *p) const
+bool xen_hvm::get_param(xen_vcpu *vcpu, xen_hvm_param_t *p)
 {
     int err = 0;
+    auto uvv = vcpu->m_uv_vcpu;
 
-    switch (p->index) {
-    case HVM_PARAM_STORE_PFN:
-    case HVM_PARAM_CONSOLE_PFN:
-    case HVM_PARAM_PAE_ENABLED:
-    case HVM_PARAM_NESTEDHVM:
-    case HVM_PARAM_STORE_EVTCHN:
-    case HVM_PARAM_CONSOLE_EVTCHN:
-        break;
-    default:
-        bferror_nhex(0, "hvm get_param:", p->index);
-        return false;
+    if (uvv->is_guest_vcpu()) {
+        switch (p->index) {
+        case HVM_PARAM_STORE_PFN:
+        case HVM_PARAM_CONSOLE_PFN:
+        case HVM_PARAM_PAE_ENABLED:
+        case HVM_PARAM_NESTEDHVM:
+        case HVM_PARAM_STORE_EVTCHN:
+        case HVM_PARAM_CONSOLE_EVTCHN:
+            break;
+        default:
+            bferror_nhex(0, "hvm get_param:", p->index);
+            return false;
+        }
+
+        p->value = this->get_param(p->index);
+        uvv->set_rax(err);
+
+        return true;
     }
 
-    p->value = this->get_param(p->index);
-    vcpu->m_uv_vcpu->set_rax(err);
+    if (uvv->is_root_vcpu()) {
+        expects(vcpu->m_xen_dom->m_id == DOMID_WINPV);
+        expects(this->xen_dom->m_id == DOMID_WINPV);
 
-    return true;
+        switch (p->index) {
+        case HVM_PARAM_STORE_EVTCHN:
+        case HVM_PARAM_CONSOLE_EVTCHN:
+            p->value = this->get_param(p->index);
+            uvv->set_rax(0);
+            return true;
+        default:
+            return false;
+        }
+    }
+
+    printv("%s: ERROR invalid vcpu type\n", __func__);
+    return false;
 }
 
 }

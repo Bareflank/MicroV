@@ -30,14 +30,18 @@ namespace microv {
 bool xen_hvm_set_param(xen_vcpu *vcpu);
 bool xen_hvm_get_param(xen_vcpu *vcpu);
 bool xen_hvm_pagetable_dying(xen_vcpu *vcpu);
+bool xen_hvm_set_evtchn_upcall_vector(xen_vcpu *vcpu);
 
 class xen_hvm {
 public:
     xen_hvm(xen_domain *dom, xen_memory *mem);
 
     bool set_param(xen_vcpu *vcpu, xen_hvm_param_t *param);
-    bool get_param(xen_vcpu *vcpu, xen_hvm_param_t *param) const;
+    bool get_param(xen_vcpu *vcpu, xen_hvm_param_t *param);
     uint64_t get_param(uint32_t index) const;
+
+    void init_root_store_params();
+    void init_root_console_params();
 
     ~xen_hvm() = default;
     xen_hvm(xen_hvm &&) = default;
@@ -47,6 +51,8 @@ public:
 
     xen_domain *xen_dom{};
     xen_memory *xen_mem{};
+    std::unique_ptr<uint8_t[]> store_page{};
+    std::unique_ptr<uint8_t[]> console_page{};
     std::array<uint64_t, HVM_NR_PARAMS> params{};
 };
 

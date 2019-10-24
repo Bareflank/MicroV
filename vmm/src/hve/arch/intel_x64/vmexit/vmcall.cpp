@@ -42,10 +42,10 @@ vmcall_handler::vmcall_handler(
 // Add Handler / Enablers
 // -----------------------------------------------------------------------------
 
-void
-vmcall_handler::add_handler(
-    const handler_delegate_t &d)
-{ m_handlers.push_back(d); }
+void vmcall_handler::add_handler(const handler_delegate_t &d)
+{
+    m_handlers.push_back(d);
+}
 
 // -----------------------------------------------------------------------------
 // Handlers
@@ -62,6 +62,7 @@ vmcall_error(gsl::not_null<vcpu *> vcpu, const std::string &str)
 
         if ((vcpu->rax() & 0xFF00000000000000) == 0xBF00000000000000) {
             /* Bareflank hypercall */
+            bferror_info(0, "Microv hypercall:");
             bferror_subnhex(0, "rax", vcpu->rax(), msg);
             bferror_subnhex(0, "rbx", vcpu->rbx(), msg);
             bferror_subnhex(0, "rcx", vcpu->rcx(), msg);
@@ -69,8 +70,11 @@ vmcall_error(gsl::not_null<vcpu *> vcpu, const std::string &str)
         }
         else {
             /* Xen hypercall */
+            bferror_info(0, "Xen hypercall:");
             bferror_subnhex(0, "rax", vcpu->rax(), msg);
             bferror_subnhex(0, "rdi", vcpu->rdi(), msg);
+            bferror_subnhex(0, "rsi", vcpu->rsi(), msg);
+            bferror_subnhex(0, "rdx", vcpu->rdx(), msg);
         }
     });
 

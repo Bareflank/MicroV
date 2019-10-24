@@ -94,7 +94,7 @@ public:
     void add_root_backed_page(xen_pfn_t gfn, uint32_t perms, uint32_t mtype,
                               xen_pfn_t hfn);
     void add_vmm_backed_page(xen_pfn_t gfn, uint32_t perms, uint32_t mtype,
-                             void *ptr);
+                             void *ptr, bool need_map = true);
     void add_foreign_page(xen_pfn_t gfn, uint32_t perms, uint32_t mtype,
                           class page *fpg);
     void add_local_page(xen_pfn_t gfn, uint32_t perms, uint32_t mtype,

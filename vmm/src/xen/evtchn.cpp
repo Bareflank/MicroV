@@ -91,11 +91,12 @@ bool xen_evtchn_alloc_unbound(xen_vcpu *v)
 {
     expects(v->m_xen_dom);
 
+    auto rc = -EINVAL;
     auto uvv = v->m_uv_vcpu;
     auto eau = uvv->map_arg<evtchn_alloc_unbound_t>(uvv->rsi());
 
     if (eau->dom == DOMID_SELF || eau->dom == v->m_xen_dom->m_id) {
-        return v->m_xen_dom->m_evtchn->alloc_unbound(v, eau.get());
+        rc = v->m_xen_dom->m_evtchn->alloc_unbound(eau.get());
     } else {
         auto domid = eau->dom;
         auto dom = get_xen_domain(domid);
@@ -105,17 +106,18 @@ bool xen_evtchn_alloc_unbound(xen_vcpu *v)
             return true;
         }
 
-        bool ret = false;
         try {
-            ret = dom->m_evtchn->alloc_unbound(v, eau.get());
+            rc = dom->m_evtchn->alloc_unbound(eau.get());
         } catch (...) {
             put_xen_domain(domid);
             throw;
         }
 
         put_xen_domain(domid);
-        return ret;
     }
+
+    uvv->set_rax(rc);
+    return true;
 }
 
 bool xen_evtchn_bind_interdomain(xen_vcpu *v)
@@ -181,34 +183,55 @@ xen_evtchn::xen_evtchn(xen_domain *dom) : m_xen_dom{dom}
     this->setup_ports();
 }
 
-/* TODO: check if this vector should be made per-vcpu */
+/* This signature sets the vector for vcpu0 */
 int xen_evtchn::set_upcall_vector(xen_vcpu *v, xen_hvm_param_t *param)
 {
     auto type = (param->value & HVM_PARAM_CALLBACK_IRQ_TYPE_MASK) >> 56;
     if (type != HVM_PARAM_CALLBACK_TYPE_VECTOR) {
+        printv("%s: unsupported type: 0x%llx\n", __func__, type);
         return -EINVAL;
     }
 
     auto vector = param->value & 0xFFU;
-    if (vector < 0x20U || vector > 0xFFU) {
-        return -EINVAL;
+    if (vector < 0x20U) {
+        printv("%s: invalid vector: 0x%lx\n", __func__, vector);
+        return -ERANGE;
     }
 
-    m_upcall_vec = vector;
+    expects(m_event_ctl.size() > 0);
+    m_event_ctl.data()->upcall_vector = vector;
+    printv("Set global upcall vector: 0x%lx\n", vector);
+
     return 0;
 }
 
-bool xen_evtchn::init_control(xen_vcpu *v, evtchn_init_control_t *eic)
+/* This signature sets the vector for the vcpu referenced in arg */
+int xen_evtchn::set_upcall_vector(xen_vcpu *v,
+                                  xen_hvm_evtchn_upcall_vector_t *arg)
 {
-    expects(eic->offset <= (PAGE_SIZE - sizeof(evtchn_fifo_control_block_t)));
-    expects((eic->offset & 0x7) == 0);
+    if (arg->vcpu >= m_event_ctl.size()) {
+        printv("%s: invalid vcpuid: 0x%x\n", __func__, arg->vcpu);
+        return -EINVAL;
+    }
 
-    auto uvv = v->m_uv_vcpu;
-    this->setup_ctl_blk(uvv, eic->control_gfn, eic->offset);
-    eic->link_bits = EVTCHN_FIFO_LINK_BITS;
+    if (arg->vector < 0x20U || arg->vector >= 0xFFU) {
+        printv("%s: invalid vector: 0x%x\n", __func__, arg->vector);
+        return -ERANGE;
+    }
 
-    printv("evtchn: init_control\n");
-    uvv->set_rax(0);
+    auto ctl = &m_event_ctl.data()[arg->vcpu];
+    ctl->upcall_vector = arg->vector;
+    printv("Set upcall vector 0x%x on vcpu 0x%x\n", arg->vector, arg->vcpu);
+
+    return 0;
+}
+
+bool xen_evtchn::init_control(xen_vcpu *v, evtchn_init_control_t *ctl)
+{
+    expects(ctl->offset <= (PAGE_SIZE - sizeof(evtchn_fifo_control_block_t)));
+    expects((ctl->offset & 0x7) == 0);
+
+    this->add_event_ctl(v, ctl);
     return true;
 }
 
@@ -302,7 +325,7 @@ bool xen_evtchn::unmask(xen_vcpu *v, evtchn_unmask_t *unmask)
     return true;
 }
 
-bool xen_evtchn::alloc_unbound(xen_vcpu *v, evtchn_alloc_unbound_t *eau)
+int xen_evtchn::alloc_unbound(evtchn_alloc_unbound_t *eau)
 {
     auto port = this->make_new_port();
     auto chan = this->port_to_chan(port);
@@ -324,8 +347,7 @@ bool xen_evtchn::alloc_unbound(xen_vcpu *v, evtchn_alloc_unbound_t *eau)
             m_xen_dom->m_id,
             chan->rdomid);
 
-    v->m_uv_vcpu->set_rax(0);
-    return true;
+    return 0;
 }
 
 int xen_evtchn::bind_interdomain(evtchn_port_t local_port,
@@ -551,7 +573,7 @@ void xen_evtchn::notify_remote(chan_t *chan)
      * is bounded above by the timer period.
      */
 
-    rdom->m_evtchn->upcall(chan->rport);
+    rdom->m_evtchn->push_upcall(chan->rport);
     put_xen_domain(rdomid);
 }
 
@@ -621,18 +643,27 @@ void xen_evtchn::inject_virq(uint32_t virq)
 // Initialization
 // =============================================================================
 
-void xen_evtchn::setup_ctl_blk(microv_vcpu *uvv, uint64_t gfn, uint32_t offset)
+void xen_evtchn::add_event_ctl(xen_vcpu *v, evtchn_init_control_t *ctl)
 {
-    const auto gpa = xen_addr(gfn);
-    m_ctl_blk_ump = uvv->map_gpa_4k<uint8_t>(gpa);
+    auto uvv = v->m_uv_vcpu;
+    const auto vcpuid = ctl->vcpu;
 
-    uint8_t *base = m_ctl_blk_ump.get() + offset;
-    m_ctl_blk = reinterpret_cast<evtchn_fifo_control_block_t *>(base);
-
-    for (auto i = 0U; i <= EVTCHN_FIFO_PRIORITY_MIN; i++) {
-        m_queues[i].priority = gsl::narrow_cast<uint8_t>(i);
-        m_queues[i].head = &m_ctl_blk->head[i];
+    if (vcpuid >= m_xen_dom->m_nr_vcpus) {
+        printv("%s: invalid vcpuid: %u (dom->nr_vcpus=%lu)\n",
+                __func__, vcpuid, m_xen_dom->m_nr_vcpus);
+        uvv->set_rax(-EINVAL);
+        return;
     }
+
+    if (vcpuid != m_event_ctl.size()) {
+        printv("%s: vcpuid %u inserted out of order\n", __func__, vcpuid);
+        uvv->set_rax(-EINVAL);
+        return;
+    }
+
+    m_event_ctl.emplace_back(uvv, ctl);
+    ctl->link_bits = EVTCHN_FIFO_LINK_BITS;
+    uvv->set_rax(0);
 }
 
 void xen_evtchn::setup_ports()
@@ -667,19 +698,45 @@ bool xen_evtchn::set_link(word_t *word, event_word_t *val, port_t link)
     return word->compare_exchange_strong(expect, desire);
 }
 
-void xen_evtchn::queue_upcall(chan_t *chan)
+void xen_evtchn::push_upcall(port_t port)
+{
+    auto chan = this->port_to_chan(port);
+    expects(chan);
+
+    this->push_upcall(chan);
+}
+
+void xen_evtchn::push_upcall(chan_t *chan)
 {
     if (!this->upcall(chan)) {
         auto xend = m_xen_dom;
-        auto xenv = xend->get_xen_vcpu();
+        auto xenv = xend->get_xen_vcpu(chan->vcpuid);
 
         if (!xenv) {
             bferror_nhex(0, "could not get xen vcpu, dom=", xend->m_id);
             return;
         }
 
-        xenv->m_uv_vcpu->queue_external_interrupt(m_upcall_vec);
-        xend->put_xen_vcpu();
+        auto ctl = &m_event_ctl.data()[chan->vcpuid];
+        xenv->m_uv_vcpu->push_external_interrupt(ctl->upcall_vector);
+        xend->put_xen_vcpu(chan->vcpuid);
+    }
+}
+
+void xen_evtchn::queue_upcall(chan_t *chan)
+{
+    if (!this->upcall(chan)) {
+        auto xend = m_xen_dom;
+        auto xenv = xend->get_xen_vcpu(chan->vcpuid);
+
+        if (!xenv) {
+            bferror_nhex(0, "could not get xen vcpu, dom=", xend->m_id);
+            return;
+        }
+
+        auto ctl = &m_event_ctl.data()[chan->vcpuid];
+        xenv->m_uv_vcpu->queue_external_interrupt(ctl->upcall_vector);
+        xend->put_xen_vcpu(chan->vcpuid);
     }
 }
 
@@ -687,15 +744,16 @@ void xen_evtchn::inject_upcall(chan_t *chan)
 {
     if (!this->upcall(chan)) {
         auto xend = m_xen_dom;
-        auto xenv = xend->get_xen_vcpu();
+        auto xenv = xend->get_xen_vcpu(chan->vcpuid);
 
         if (!xenv) {
             bferror_nhex(0, "could not get xen vcpu, dom=", xend->m_id);
             return;
         }
 
-        xenv->m_uv_vcpu->inject_external_interrupt(m_upcall_vec);
-        xend->put_xen_vcpu();
+        auto ctl = &m_event_ctl.data()[chan->vcpuid];
+        xenv->m_uv_vcpu->inject_external_interrupt(ctl->upcall_vector);
+        xend->put_xen_vcpu(chan->vcpuid);
     }
 }
 
@@ -711,8 +769,6 @@ void xen_evtchn::upcall(evtchn_port_t port)
 
 int xen_evtchn::upcall(chan_t *chan)
 {
-    expects(m_ctl_blk);
-
     auto port = chan->port;
     auto word = this->port_to_word(port);
     if (!word) {
@@ -726,8 +782,15 @@ int xen_evtchn::upcall(chan_t *chan)
         return -EBUSY;
     }
 
+    if (chan->vcpuid >= m_event_ctl.size()) {
+        printv("%s: OOB vcpuid=%u, event_ctl.size=%lu\n",
+                __func__, chan->vcpuid, m_event_ctl.size());
+        return -EINVAL;
+    }
+
+    auto ctl = &m_event_ctl[chan->vcpuid];
     auto p = chan->priority;
-    auto q = &m_queues.at(p);
+    auto q = &ctl->queue.at(p);
 
     if (*q->head == null_port) {
         *q->head = port;
@@ -750,7 +813,8 @@ int xen_evtchn::upcall(chan_t *chan)
     }
 
     this->word_set_pending(word);
-    m_ctl_blk->ready |= (1UL << p);
+    m_xen_dom->set_upcall_pending(chan->vcpuid);
+    ctl->blk->ready |= (1UL << p);
     ::intel_x64::wmb();
 
     return 0;

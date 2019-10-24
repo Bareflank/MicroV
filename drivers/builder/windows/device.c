@@ -23,7 +23,7 @@
 #include "driver.h"
 
 NTSTATUS
-uvbuilderCreateDevice(
+builderCreateDevice(
     _Inout_ PWDFDEVICE_INIT DeviceInit
 )
 {
@@ -38,16 +38,16 @@ uvbuilderCreateDevice(
         return status;
     }
 
-    status = WdfDeviceCreateDeviceInterface(device, &GUID_DEVINTERFACE_uvbuilder, NULL);
+    status = WdfDeviceCreateDeviceInterface(device, &GUID_DEVINTERFACE_builder, NULL);
     if (!NT_SUCCESS(status)) {
         return status;
     }
 
-    status = uvbuilderQueueInitialize(device);
+    status = builderQueueInitialize(device);
     if (!NT_SUCCESS(status)) {
         return status;
     }
 
-    BFDEBUG("uvbuilderCreateDevice: success\n");
+    BFDEBUG("builderCreateDevice: success\n");
     return status;
 }

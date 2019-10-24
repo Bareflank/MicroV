@@ -194,6 +194,29 @@ void init_pci_on_vcpu(microv::intel_x64::vcpu *vcpu)
     }
 }
 
+/*
+ * Allocate an empty slot from bus 0. Note that the resulting address
+ * may conflict with hidden PCI devices (e.g. those part of the chipset),
+ * so in general it is not safe for emulation at this device to pass-through
+ * access to underlying hardware.
+ */
+uint32_t alloc_pci_cfg_addr() noexcept
+{
+    /* Scan bus 0 for empty slots starting at device 1 */
+    for (uint32_t devfn = 0x8; devfn < pci_nr_devfn; devfn++) {
+        const auto addr = pci_cfg_bdf_to_addr(0, devfn);
+        const auto reg0 = pci_cfg_read_reg(addr, 0);
+
+        if (pci_cfg_is_present(reg0)) {
+            continue;
+        }
+
+        return addr;
+    }
+
+    return pci_cfg_addr_inval;
+}
+
 struct pci_dev *find_passthru_dev(uint64_t bdf)
 {
     for (auto pdev : pci_passthru_list) {
@@ -482,8 +505,6 @@ bool pci_dev::guest_normal_cfg_out(base_vcpu *vcpu, cfg_info &info)
     }
 
     if (!was_enabled && now_enabled && !m_msi_mapped) {
-        expects(m_root_msi.redir_hint() == 0); /* no redirection hint */
-        expects(m_root_msi.deliv_mode() == 0); /* fixed delivery mode */
         expects(m_root_msi.trigger_mode() == 0); /* edge triggered */
 
         /* Create a root->guest MSI mapping */
@@ -568,6 +589,13 @@ bool pci_dev::root_cfg_out(base_vcpu *vcpu, cfg_info &info)
     if (reg >= m_msi_cap && reg <= m_msi_cap + 3) {
         std::lock_guard msi_lock(m_msi_mtx);
         m_root_msi.reg[reg - m_msi_cap] = m_vcfg[reg];
+
+        if (reg == m_msi_cap + 3) {
+            /* Clear reserved bits in data register (Windows sets some) */
+            constexpr uint32_t rsvd_bits = 0xFFFF3800;
+            m_root_msi.reg[3] &= ~rsvd_bits;
+            m_vcfg[reg] = m_root_msi.reg[3];
+        }
     }
 
     return true;

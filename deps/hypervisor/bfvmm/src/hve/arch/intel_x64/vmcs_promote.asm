@@ -34,6 +34,7 @@ default rel
 %define VMCS_GUEST_IA32_SYSENTER_EIP                              0x00006826
 %define VMCS_GUEST_FS_BASE                                        0x0000680E
 %define VMCS_GUEST_GS_BASE                                        0x00006810
+%define VMCS_GUEST_RFLAGS                                         0x00006820
 
 %define IA32_DEBUGCTL_MSR                                         0x000001D9
 %define IA32_PAT_MSR                                              0x00000277
@@ -266,6 +267,12 @@ vmcs_promote:
     mov rsi, VMCS_GUEST_GS_BASE
     vmread rsi, rsi
     call _write_msr wrt ..plt
+
+    mov rsi, VMCS_GUEST_RFLAGS
+    vmread rdi, rsi
+    and rdi, 0xFFFFFFFFFFFFFDFF
+    push rdi
+    popf
 
     ;
     ; Restore Registers

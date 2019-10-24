@@ -70,6 +70,7 @@ enum pci_subclass_bridge_t {
 constexpr uint32_t pci_nr_bus = 256;
 constexpr uint32_t pci_nr_dev = 32;
 constexpr uint32_t pci_nr_fun = 8;
+constexpr uint32_t pci_nr_devfn = 256;
 
 constexpr uint32_t pci_en_mask  = 0x80000000;
 constexpr uint32_t pci_bus_mask = 0x00FF0000;
@@ -77,6 +78,8 @@ constexpr uint32_t pci_dev_mask = 0x0000F800;
 constexpr uint32_t pci_fun_mask = 0x00000700;
 constexpr uint32_t pci_reg_mask = 0x000000FC;
 constexpr uint32_t pci_off_mask = 0x00000003;
+
+constexpr uint32_t pci_cfg_addr_inval = ~pci_en_mask;
 
 enum {
     pci_dir_in,
@@ -111,6 +114,14 @@ constexpr uint32_t pci_cfg_reg(uint32_t addr)
 constexpr uint32_t pci_cfg_bdf_to_addr(uint32_t b, uint32_t d, uint32_t f)
 {
     return (1UL << 31) | (b << 16) | (d << 11) | (f << 8);
+}
+
+constexpr uint32_t pci_cfg_bdf_to_addr(uint32_t bus, uint32_t devfn)
+{
+    const uint32_t d = (devfn & 0xF8) >> 3;
+    const uint32_t f = devfn & 0x07;
+
+    return (1UL << 31) | (bus << 16) | (d << 11) | (f << 8);
 }
 
 constexpr uint32_t pci_cfg_devfn(uint32_t dev, uint32_t fn)

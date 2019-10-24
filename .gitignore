@@ -51,6 +51,7 @@ deps/hypervisor/bfdriver/src/platform/linux/Makefile
 *.vs
 *.VC.db
 drivers/builder/windows/x64
+drivers/visr/windows/x64
 
 deploy/windows/Input
 deploy/windows/Output
@@ -60,3 +61,23 @@ deploy/windows/Output
 *.json
 *.sqlite
 *.manifest
+
+drivers/winpv/xenbus/.build_number
+drivers/winpv/xenbus/include/version.h
+drivers/winpv/xenbus/vs2019/Windows10Release/
+drivers/winpv/xenbus/vs2019/package/Windows10Release/
+drivers/winpv/xenbus/vs2019/version/.revision
+drivers/winpv/xenbus/vs2019/version/version.log
+drivers/winpv/xenbus/vs2019/x64/
+drivers/winpv/xenbus/vs2019/xen/Windows10Release/
+drivers/winpv/xenbus/vs2019/xenbus.inf
+drivers/winpv/xenbus/vs2019/xenbus/Windows10Release/
+drivers/winpv/xenbus/vs2019/xenbus_coinst/x64/
+drivers/winpv/xenbus/vs2019/xenbus_monitor/x64/
+drivers/winpv/xenbus/vs2019/xenfilt/Windows10Release/
+drivers/winpv/xenbus/vs2019/package/Windows10Debug/
+drivers/winpv/xenbus/vs2019/xen/Windows10Debug/
+drivers/winpv/xenbus/vs2019/xenbus/Windows10Debug/
+drivers/winpv/xenbus/vs2019/xenfilt/Windows10Debug/
+drivers/winpv/xenbus/vs2019/xenbus_coinst/Windows10Debug/
+drivers/winpv/xenbus/vs2019/xenbus_monitor/Windows10Debug/

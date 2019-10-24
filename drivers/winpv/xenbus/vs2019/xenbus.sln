@@ -1,0 +1,175 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 16
+VisualStudioVersion = 16.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "version", "version\version.vcxproj", "{65FA97EA-A569-4FC1-BFE7-D68E109143F7}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "xenbus_coinst", "xenbus_coinst\xenbus_coinst.vcxproj", "{4BF41378-C01B-4002-8581-563C5F703362}"
+	ProjectSection(ProjectDependencies) = postProject
+		{65FA97EA-A569-4FC1-BFE7-D68E109143F7} = {65FA97EA-A569-4FC1-BFE7-D68E109143F7}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "xenbus_monitor", "xenbus_monitor\xenbus_monitor.vcxproj", "{2E61D2CC-865E-442C-8C83-B8DAFD7BBD3B}"
+	ProjectSection(ProjectDependencies) = postProject
+		{65FA97EA-A569-4FC1-BFE7-D68E109143F7} = {65FA97EA-A569-4FC1-BFE7-D68E109143F7}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "xen", "xen\xen.vcxproj", "{9C6A5D48-A331-4B1F-A004-7BB67BA5BE1C}"
+	ProjectSection(ProjectDependencies) = postProject
+		{65FA97EA-A569-4FC1-BFE7-D68E109143F7} = {65FA97EA-A569-4FC1-BFE7-D68E109143F7}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "xenfilt", "xenfilt\xenfilt.vcxproj", "{D7411B2C-2C43-434D-9F56-E10A3D2F5BAD}"
+	ProjectSection(ProjectDependencies) = postProject
+		{65FA97EA-A569-4FC1-BFE7-D68E109143F7} = {65FA97EA-A569-4FC1-BFE7-D68E109143F7}
+		{9C6A5D48-A331-4B1F-A004-7BB67BA5BE1C} = {9C6A5D48-A331-4B1F-A004-7BB67BA5BE1C}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "xenbus", "xenbus\xenbus.vcxproj", "{14C16C29-77C9-475B-A618-1B01E67CF985}"
+	ProjectSection(ProjectDependencies) = postProject
+		{65FA97EA-A569-4FC1-BFE7-D68E109143F7} = {65FA97EA-A569-4FC1-BFE7-D68E109143F7}
+		{9C6A5D48-A331-4B1F-A004-7BB67BA5BE1C} = {9C6A5D48-A331-4B1F-A004-7BB67BA5BE1C}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "package", "package\package.vcxproj", "{92E5A46B-913C-45C6-B6F8-7E062D85279F}"
+	ProjectSection(ProjectDependencies) = postProject
+		{65FA97EA-A569-4FC1-BFE7-D68E109143F7} = {65FA97EA-A569-4FC1-BFE7-D68E109143F7}
+		{14C16C29-77C9-475B-A618-1B01E67CF985} = {14C16C29-77C9-475B-A618-1B01E67CF985}
+		{4BF41378-C01B-4002-8581-563C5F703362} = {4BF41378-C01B-4002-8581-563C5F703362}
+		{9C6A5D48-A331-4B1F-A004-7BB67BA5BE1C} = {9C6A5D48-A331-4B1F-A004-7BB67BA5BE1C}
+		{D7411B2C-2C43-434D-9F56-E10A3D2F5BAD} = {D7411B2C-2C43-434D-9F56-E10A3D2F5BAD}
+		{2E61D2CC-865E-442C-8C83-B8DAFD7BBD3B} = {2E61D2CC-865E-442C-8C83-B8DAFD7BBD3B}
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Windows 10 Debug|Win32 = Windows 10 Debug|Win32
+		Windows 10 Debug|x64 = Windows 10 Debug|x64
+		Windows 10 Release|Win32 = Windows 10 Release|Win32
+		Windows 10 Release|x64 = Windows 10 Release|x64
+		Windows 8 Debug|Win32 = Windows 8 Debug|Win32
+		Windows 8 Debug|x64 = Windows 8 Debug|x64
+		Windows 8 Release|Win32 = Windows 8 Release|Win32
+		Windows 8 Release|x64 = Windows 8 Release|x64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{65FA97EA-A569-4FC1-BFE7-D68E109143F7}.Windows 10 Debug|Win32.ActiveCfg = Windows 10 Debug|Win32
+		{65FA97EA-A569-4FC1-BFE7-D68E109143F7}.Windows 10 Debug|Win32.Build.0 = Windows 10 Debug|Win32
+		{65FA97EA-A569-4FC1-BFE7-D68E109143F7}.Windows 10 Debug|x64.ActiveCfg = Windows 10 Debug|x64
+		{65FA97EA-A569-4FC1-BFE7-D68E109143F7}.Windows 10 Debug|x64.Build.0 = Windows 10 Debug|x64
+		{65FA97EA-A569-4FC1-BFE7-D68E109143F7}.Windows 10 Release|Win32.ActiveCfg = Windows 10 Release|Win32
+		{65FA97EA-A569-4FC1-BFE7-D68E109143F7}.Windows 10 Release|Win32.Build.0 = Windows 10 Release|Win32
+		{65FA97EA-A569-4FC1-BFE7-D68E109143F7}.Windows 10 Release|x64.ActiveCfg = Windows 10 Release|x64
+		{65FA97EA-A569-4FC1-BFE7-D68E109143F7}.Windows 10 Release|x64.Build.0 = Windows 10 Release|x64
+		{65FA97EA-A569-4FC1-BFE7-D68E109143F7}.Windows 8 Debug|Win32.ActiveCfg = Windows 8 Debug|Win32
+		{65FA97EA-A569-4FC1-BFE7-D68E109143F7}.Windows 8 Debug|Win32.Build.0 = Windows 8 Debug|Win32
+		{65FA97EA-A569-4FC1-BFE7-D68E109143F7}.Windows 8 Debug|x64.ActiveCfg = Windows 8 Debug|x64
+		{65FA97EA-A569-4FC1-BFE7-D68E109143F7}.Windows 8 Debug|x64.Build.0 = Windows 8 Debug|x64
+		{65FA97EA-A569-4FC1-BFE7-D68E109143F7}.Windows 8 Release|Win32.ActiveCfg = Windows 8 Release|Win32
+		{65FA97EA-A569-4FC1-BFE7-D68E109143F7}.Windows 8 Release|Win32.Build.0 = Windows 8 Release|Win32
+		{65FA97EA-A569-4FC1-BFE7-D68E109143F7}.Windows 8 Release|x64.ActiveCfg = Windows 8 Release|x64
+		{65FA97EA-A569-4FC1-BFE7-D68E109143F7}.Windows 8 Release|x64.Build.0 = Windows 8 Release|x64
+		{4BF41378-C01B-4002-8581-563C5F703362}.Windows 10 Debug|Win32.ActiveCfg = Windows 10 Debug|Win32
+		{4BF41378-C01B-4002-8581-563C5F703362}.Windows 10 Debug|Win32.Build.0 = Windows 10 Debug|Win32
+		{4BF41378-C01B-4002-8581-563C5F703362}.Windows 10 Debug|x64.ActiveCfg = Windows 10 Debug|x64
+		{4BF41378-C01B-4002-8581-563C5F703362}.Windows 10 Debug|x64.Build.0 = Windows 10 Debug|x64
+		{4BF41378-C01B-4002-8581-563C5F703362}.Windows 10 Release|Win32.ActiveCfg = Windows 10 Release|Win32
+		{4BF41378-C01B-4002-8581-563C5F703362}.Windows 10 Release|Win32.Build.0 = Windows 10 Release|Win32
+		{4BF41378-C01B-4002-8581-563C5F703362}.Windows 10 Release|x64.ActiveCfg = Windows 10 Release|x64
+		{4BF41378-C01B-4002-8581-563C5F703362}.Windows 10 Release|x64.Build.0 = Windows 10 Release|x64
+		{4BF41378-C01B-4002-8581-563C5F703362}.Windows 8 Debug|Win32.ActiveCfg = Windows 8 Debug|Win32
+		{4BF41378-C01B-4002-8581-563C5F703362}.Windows 8 Debug|Win32.Build.0 = Windows 8 Debug|Win32
+		{4BF41378-C01B-4002-8581-563C5F703362}.Windows 8 Debug|x64.ActiveCfg = Windows 8 Debug|x64
+		{4BF41378-C01B-4002-8581-563C5F703362}.Windows 8 Debug|x64.Build.0 = Windows 8 Debug|x64
+		{4BF41378-C01B-4002-8581-563C5F703362}.Windows 8 Release|Win32.ActiveCfg = Windows 8 Release|Win32
+		{4BF41378-C01B-4002-8581-563C5F703362}.Windows 8 Release|Win32.Build.0 = Windows 8 Release|Win32
+		{4BF41378-C01B-4002-8581-563C5F703362}.Windows 8 Release|x64.ActiveCfg = Windows 8 Release|x64
+		{4BF41378-C01B-4002-8581-563C5F703362}.Windows 8 Release|x64.Build.0 = Windows 8 Release|x64
+		{2E61D2CC-865E-442C-8C83-B8DAFD7BBD3B}.Windows 10 Debug|Win32.ActiveCfg = Windows 10 Debug|Win32
+		{2E61D2CC-865E-442C-8C83-B8DAFD7BBD3B}.Windows 10 Debug|Win32.Build.0 = Windows 10 Debug|Win32
+		{2E61D2CC-865E-442C-8C83-B8DAFD7BBD3B}.Windows 10 Debug|x64.ActiveCfg = Windows 10 Debug|x64
+		{2E61D2CC-865E-442C-8C83-B8DAFD7BBD3B}.Windows 10 Debug|x64.Build.0 = Windows 10 Debug|x64
+		{2E61D2CC-865E-442C-8C83-B8DAFD7BBD3B}.Windows 10 Release|Win32.ActiveCfg = Windows 10 Release|Win32
+		{2E61D2CC-865E-442C-8C83-B8DAFD7BBD3B}.Windows 10 Release|Win32.Build.0 = Windows 10 Release|Win32
+		{2E61D2CC-865E-442C-8C83-B8DAFD7BBD3B}.Windows 10 Release|x64.ActiveCfg = Windows 10 Release|x64
+		{2E61D2CC-865E-442C-8C83-B8DAFD7BBD3B}.Windows 10 Release|x64.Build.0 = Windows 10 Release|x64
+		{2E61D2CC-865E-442C-8C83-B8DAFD7BBD3B}.Windows 8 Debug|Win32.ActiveCfg = Windows 8 Debug|Win32
+		{2E61D2CC-865E-442C-8C83-B8DAFD7BBD3B}.Windows 8 Debug|Win32.Build.0 = Windows 8 Debug|Win32
+		{2E61D2CC-865E-442C-8C83-B8DAFD7BBD3B}.Windows 8 Debug|x64.ActiveCfg = Windows 8 Debug|x64
+		{2E61D2CC-865E-442C-8C83-B8DAFD7BBD3B}.Windows 8 Debug|x64.Build.0 = Windows 8 Debug|x64
+		{2E61D2CC-865E-442C-8C83-B8DAFD7BBD3B}.Windows 8 Release|Win32.ActiveCfg = Windows 8 Release|Win32
+		{2E61D2CC-865E-442C-8C83-B8DAFD7BBD3B}.Windows 8 Release|Win32.Build.0 = Windows 8 Release|Win32
+		{2E61D2CC-865E-442C-8C83-B8DAFD7BBD3B}.Windows 8 Release|x64.ActiveCfg = Windows 8 Release|x64
+		{2E61D2CC-865E-442C-8C83-B8DAFD7BBD3B}.Windows 8 Release|x64.Build.0 = Windows 8 Release|x64
+		{9C6A5D48-A331-4B1F-A004-7BB67BA5BE1C}.Windows 10 Debug|Win32.ActiveCfg = Windows 10 Debug|Win32
+		{9C6A5D48-A331-4B1F-A004-7BB67BA5BE1C}.Windows 10 Debug|Win32.Build.0 = Windows 10 Debug|Win32
+		{9C6A5D48-A331-4B1F-A004-7BB67BA5BE1C}.Windows 10 Debug|x64.ActiveCfg = Windows 10 Debug|x64
+		{9C6A5D48-A331-4B1F-A004-7BB67BA5BE1C}.Windows 10 Debug|x64.Build.0 = Windows 10 Debug|x64
+		{9C6A5D48-A331-4B1F-A004-7BB67BA5BE1C}.Windows 10 Release|Win32.ActiveCfg = Windows 10 Release|Win32
+		{9C6A5D48-A331-4B1F-A004-7BB67BA5BE1C}.Windows 10 Release|Win32.Build.0 = Windows 10 Release|Win32
+		{9C6A5D48-A331-4B1F-A004-7BB67BA5BE1C}.Windows 10 Release|x64.ActiveCfg = Windows 10 Release|x64
+		{9C6A5D48-A331-4B1F-A004-7BB67BA5BE1C}.Windows 10 Release|x64.Build.0 = Windows 10 Release|x64
+		{9C6A5D48-A331-4B1F-A004-7BB67BA5BE1C}.Windows 8 Debug|Win32.ActiveCfg = Windows 8 Debug|Win32
+		{9C6A5D48-A331-4B1F-A004-7BB67BA5BE1C}.Windows 8 Debug|Win32.Build.0 = Windows 8 Debug|Win32
+		{9C6A5D48-A331-4B1F-A004-7BB67BA5BE1C}.Windows 8 Debug|x64.ActiveCfg = Windows 8 Debug|x64
+		{9C6A5D48-A331-4B1F-A004-7BB67BA5BE1C}.Windows 8 Debug|x64.Build.0 = Windows 8 Debug|x64
+		{9C6A5D48-A331-4B1F-A004-7BB67BA5BE1C}.Windows 8 Release|Win32.ActiveCfg = Windows 8 Release|Win32
+		{9C6A5D48-A331-4B1F-A004-7BB67BA5BE1C}.Windows 8 Release|Win32.Build.0 = Windows 8 Release|Win32
+		{9C6A5D48-A331-4B1F-A004-7BB67BA5BE1C}.Windows 8 Release|x64.ActiveCfg = Windows 8 Release|x64
+		{9C6A5D48-A331-4B1F-A004-7BB67BA5BE1C}.Windows 8 Release|x64.Build.0 = Windows 8 Release|x64
+		{D7411B2C-2C43-434D-9F56-E10A3D2F5BAD}.Windows 10 Debug|Win32.ActiveCfg = Windows 10 Debug|Win32
+		{D7411B2C-2C43-434D-9F56-E10A3D2F5BAD}.Windows 10 Debug|Win32.Build.0 = Windows 10 Debug|Win32
+		{D7411B2C-2C43-434D-9F56-E10A3D2F5BAD}.Windows 10 Debug|x64.ActiveCfg = Windows 10 Debug|x64
+		{D7411B2C-2C43-434D-9F56-E10A3D2F5BAD}.Windows 10 Debug|x64.Build.0 = Windows 10 Debug|x64
+		{D7411B2C-2C43-434D-9F56-E10A3D2F5BAD}.Windows 10 Release|Win32.ActiveCfg = Windows 10 Release|Win32
+		{D7411B2C-2C43-434D-9F56-E10A3D2F5BAD}.Windows 10 Release|Win32.Build.0 = Windows 10 Release|Win32
+		{D7411B2C-2C43-434D-9F56-E10A3D2F5BAD}.Windows 10 Release|x64.ActiveCfg = Windows 10 Release|x64
+		{D7411B2C-2C43-434D-9F56-E10A3D2F5BAD}.Windows 10 Release|x64.Build.0 = Windows 10 Release|x64
+		{D7411B2C-2C43-434D-9F56-E10A3D2F5BAD}.Windows 8 Debug|Win32.ActiveCfg = Windows 8 Debug|Win32
+		{D7411B2C-2C43-434D-9F56-E10A3D2F5BAD}.Windows 8 Debug|Win32.Build.0 = Windows 8 Debug|Win32
+		{D7411B2C-2C43-434D-9F56-E10A3D2F5BAD}.Windows 8 Debug|x64.ActiveCfg = Windows 8 Debug|x64
+		{D7411B2C-2C43-434D-9F56-E10A3D2F5BAD}.Windows 8 Debug|x64.Build.0 = Windows 8 Debug|x64
+		{D7411B2C-2C43-434D-9F56-E10A3D2F5BAD}.Windows 8 Release|Win32.ActiveCfg = Windows 8 Release|Win32
+		{D7411B2C-2C43-434D-9F56-E10A3D2F5BAD}.Windows 8 Release|Win32.Build.0 = Windows 8 Release|Win32
+		{D7411B2C-2C43-434D-9F56-E10A3D2F5BAD}.Windows 8 Release|x64.ActiveCfg = Windows 8 Release|x64
+		{D7411B2C-2C43-434D-9F56-E10A3D2F5BAD}.Windows 8 Release|x64.Build.0 = Windows 8 Release|x64
+		{14C16C29-77C9-475B-A618-1B01E67CF985}.Windows 10 Debug|Win32.ActiveCfg = Windows 10 Debug|Win32
+		{14C16C29-77C9-475B-A618-1B01E67CF985}.Windows 10 Debug|Win32.Build.0 = Windows 10 Debug|Win32
+		{14C16C29-77C9-475B-A618-1B01E67CF985}.Windows 10 Debug|x64.ActiveCfg = Windows 10 Debug|x64
+		{14C16C29-77C9-475B-A618-1B01E67CF985}.Windows 10 Debug|x64.Build.0 = Windows 10 Debug|x64
+		{14C16C29-77C9-475B-A618-1B01E67CF985}.Windows 10 Release|Win32.ActiveCfg = Windows 10 Release|Win32
+		{14C16C29-77C9-475B-A618-1B01E67CF985}.Windows 10 Release|Win32.Build.0 = Windows 10 Release|Win32
+		{14C16C29-77C9-475B-A618-1B01E67CF985}.Windows 10 Release|x64.ActiveCfg = Windows 10 Release|x64
+		{14C16C29-77C9-475B-A618-1B01E67CF985}.Windows 10 Release|x64.Build.0 = Windows 10 Release|x64
+		{14C16C29-77C9-475B-A618-1B01E67CF985}.Windows 8 Debug|Win32.ActiveCfg = Windows 8 Debug|Win32
+		{14C16C29-77C9-475B-A618-1B01E67CF985}.Windows 8 Debug|Win32.Build.0 = Windows 8 Debug|Win32
+		{14C16C29-77C9-475B-A618-1B01E67CF985}.Windows 8 Debug|x64.ActiveCfg = Windows 8 Debug|x64
+		{14C16C29-77C9-475B-A618-1B01E67CF985}.Windows 8 Debug|x64.Build.0 = Windows 8 Debug|x64
+		{14C16C29-77C9-475B-A618-1B01E67CF985}.Windows 8 Release|Win32.ActiveCfg = Windows 8 Release|Win32
+		{14C16C29-77C9-475B-A618-1B01E67CF985}.Windows 8 Release|Win32.Build.0 = Windows 8 Release|Win32
+		{14C16C29-77C9-475B-A618-1B01E67CF985}.Windows 8 Release|x64.ActiveCfg = Windows 8 Release|x64
+		{14C16C29-77C9-475B-A618-1B01E67CF985}.Windows 8 Release|x64.Build.0 = Windows 8 Release|x64
+		{92E5A46B-913C-45C6-B6F8-7E062D85279F}.Windows 10 Debug|Win32.ActiveCfg = Windows 10 Debug|Win32
+		{92E5A46B-913C-45C6-B6F8-7E062D85279F}.Windows 10 Debug|Win32.Build.0 = Windows 10 Debug|Win32
+		{92E5A46B-913C-45C6-B6F8-7E062D85279F}.Windows 10 Debug|x64.ActiveCfg = Windows 10 Debug|x64
+		{92E5A46B-913C-45C6-B6F8-7E062D85279F}.Windows 10 Debug|x64.Build.0 = Windows 10 Debug|x64
+		{92E5A46B-913C-45C6-B6F8-7E062D85279F}.Windows 10 Release|Win32.ActiveCfg = Windows 10 Release|Win32
+		{92E5A46B-913C-45C6-B6F8-7E062D85279F}.Windows 10 Release|Win32.Build.0 = Windows 10 Release|Win32
+		{92E5A46B-913C-45C6-B6F8-7E062D85279F}.Windows 10 Release|x64.ActiveCfg = Windows 10 Release|x64
+		{92E5A46B-913C-45C6-B6F8-7E062D85279F}.Windows 10 Release|x64.Build.0 = Windows 10 Release|x64
+		{92E5A46B-913C-45C6-B6F8-7E062D85279F}.Windows 8 Debug|Win32.ActiveCfg = Windows 8 Debug|Win32
+		{92E5A46B-913C-45C6-B6F8-7E062D85279F}.Windows 8 Debug|Win32.Build.0 = Windows 8 Debug|Win32
+		{92E5A46B-913C-45C6-B6F8-7E062D85279F}.Windows 8 Debug|x64.ActiveCfg = Windows 8 Debug|x64
+		{92E5A46B-913C-45C6-B6F8-7E062D85279F}.Windows 8 Debug|x64.Build.0 = Windows 8 Debug|x64
+		{92E5A46B-913C-45C6-B6F8-7E062D85279F}.Windows 8 Release|Win32.ActiveCfg = Windows 8 Release|Win32
+		{92E5A46B-913C-45C6-B6F8-7E062D85279F}.Windows 8 Release|Win32.Build.0 = Windows 8 Release|Win32
+		{92E5A46B-913C-45C6-B6F8-7E062D85279F}.Windows 8 Release|x64.ActiveCfg = Windows 8 Release|x64
+		{92E5A46B-913C-45C6-B6F8-7E062D85279F}.Windows 8 Release|x64.Build.0 = Windows 8 Release|x64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {B401BB41-D030-43B6-B5FD-9ADFE9A6648E}
+	EndGlobalSection
+EndGlobal

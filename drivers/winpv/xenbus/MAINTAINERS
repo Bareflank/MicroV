@@ -1,0 +1,51 @@
+List of maintainers and how to submit changes
+=============================================
+
+If you wish to submit code, we recommend first reaching out to the maintainers,
+who will advise you on the precise procedure they wish to use.
+
+We also request you follow these basic guidelines:
+
+1.  Make sure you test your changes on both a 32- and 64-bit version of Windows.
+    (The more versions of Windows you can test on the better).
+
+2.  Make sure your changes do not introduce any new prefast warnings.
+
+3.  Make a patch available to the relevant maintainer in the list. Use 'diff -u'
+    to make the patch easy to merge. Be prepared to get your changes sent back
+    with seemingly silly requests about formatting and variable names. These
+    aren't as silly as they seem. One job the maintainers do is to keep things
+    looking the same.
+
+    NOTE that all source should have Unix line endings.
+
+    PLEASE see http://wiki.xen.org/wiki/Submitting_Xen_Patches for hints on how
+    to submit a patch in a suitable form. Whilst the PV driver source
+    repositories are distinct from the Xen Project hypervisor source, we will
+    follow the same general patch submission and review process.
+
+    PLEASE try to include any credit lines you want added with the  patch. It
+    avoids people being missed off by mistake and makes it easier to know who
+    wants adding and who doesn't.
+
+    PLEASE document known bugs. If it doesn't work for everything or does
+    something very odd once a month document it.
+
+    PLEASE remember that submissions must be made under the terms of the
+    "Developer's Certificate of Origin" (DCO) and should include a
+    Signed-off-by: line.
+
+4.  Make sure you have the right to submit any changes you make. If you do
+    changes at work you may find your employer owns the patches instead of
+    you.
+
+
+Maintainers List
+----------------
+
+* Paul Durrant <paul@xen.org>
+
+* Ben Chalmers <ben.chalmers@citrix.com>
+
+* Owen Smith <owen.smith@citrix.com>
+

@@ -30,11 +30,11 @@ typedef struct _QUEUE_CONTEXT {
 WDF_DECLARE_CONTEXT_TYPE_WITH_NAME(QUEUE_CONTEXT, QueueGetContext)
 
 NTSTATUS
-uvbuilderQueueInitialize(
+builderQueueInitialize(
     _In_ WDFDEVICE hDevice
 );
 
-EVT_WDF_IO_QUEUE_IO_DEVICE_CONTROL uvbuilderEvtIoDeviceControl;
-EVT_WDF_IO_QUEUE_IO_STOP uvbuilderEvtIoStop;
+EVT_WDF_IO_QUEUE_IO_DEVICE_CONTROL builderEvtIoDeviceControl;
+EVT_WDF_IO_QUEUE_IO_STOP builderEvtIoStop;
 
 EXTERN_C_END

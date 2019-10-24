@@ -62,7 +62,7 @@ class xen_gnttab {
     shr_v1_gte_t *shr_v1_entry(grant_ref_t ref);
     shr_v2_gte_t *shr_v2_entry(grant_ref_t ref);
 
-    int grow(uint32_t shr_pages);
+    int grow_pages(uint32_t shr_pages);
 
     uint32_t version{1};
 
@@ -70,12 +70,20 @@ class xen_gnttab {
     xen_memory *xen_mem{};
 
     /* List of dom pages used to implement XENMEM_acquire_resource */
-    std::vector<class page *> shared_rsrc_pages{};
-    std::vector<class page *> status_rsrc_pages{};
+    std::vector<class page *> shared_rsrc{};
+    std::vector<class page *> status_rsrc{};
 
-    /* Tables of various entry types */
-    std::vector<page_ptr<uint8_t>> shared_tab{};
-    std::vector<page_ptr<status_gte_t>> status_tab{};
+    /* Page backing for guest domains */
+    std::vector<page_ptr<uint8_t>> shared_page{};
+    std::vector<page_ptr<status_gte_t>> status_page{};
+
+    /* Map backing for root domains */
+    std::vector<unique_map<uint8_t>> shared_map{};
+    std::vector<unique_map<status_gte_t>> status_map{};
+
+    /* VMM-accessible tables */
+    std::vector<uint8_t *> shared_tab{};
+    std::vector<status_gte_t *> status_tab{};
 
 public:
     static constexpr uint32_t max_shared_gte_pages() { return 64; }

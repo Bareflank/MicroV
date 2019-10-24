@@ -28,6 +28,7 @@
 
 #include <page.h>
 #include <public/domctl.h>
+#include <public/arch-x86/xen.h>
 #include <public/arch-x86/hvm/save.h>
 #include <public/hvm/save.h>
 #include <public/sysctl.h>
@@ -35,6 +36,7 @@
 
 namespace microv {
 
+constexpr xen_domid_t DOMID_WINPV = DOMID_FIRST_RESERVED - 1;
 
 xen_domid_t create_xen_domain(microv_domain *uv_dom,
                               class iommu *iommu = nullptr);
@@ -89,7 +91,7 @@ public:
 
     int set_timer_mode(uint64_t mode);
     void queue_virq(int virq);
-    void bind_vcpu(xen_vcpu *xen);
+    xen_vcpuid_t add_vcpu(xen_vcpu *xen);
     void get_info(struct xen_domctl_getdomaininfo *info);
     uint64_t runstate_time(int state);
     uint32_t nr_online_vcpus();
@@ -100,6 +102,7 @@ public:
     size_t hvc_tx_put(const gsl::span<char> &span);
     size_t hvc_tx_get(const gsl::span<char> &span);
 
+    void set_upcall_pending(xen_vcpuid_t vcpuid);
     int acquire_gnttab_pages(xen_mem_acquire_resource_t *res,
                              gsl::span<class page *> pages);
 
@@ -132,23 +135,40 @@ public:
     void update_wallclock(xen_vcpu *v,
                           const struct xenpf_settime64 *time) noexcept;
 
+    class xen_vcpu *get_xen_vcpu(xen_vcpuid_t id = 0) noexcept;
+    void put_xen_vcpu(xen_vcpuid_t id = 0) noexcept;
+
+    size_t constexpr max_nr_vcpus()
+    {
+        return m_uvv_id.size();
+    }
+
 private:
     friend class xen_evtchn;
-    class xen_vcpu *get_xen_vcpu() noexcept;
-    void put_xen_vcpu() noexcept;
+
+    /* TODO: fix assumed id = 0 call sites */
     void set_uv_dom_ctx(struct hvm_hw_cpu *cpu);
+    void init_from_domctl() noexcept;
+    void init_from_uvctl() noexcept;
+    void init_from_root() noexcept;
 
 public:
     microv::domain_info *m_uv_info{};
     microv_domain *m_uv_dom{};
-    microv_vcpuid m_uv_vcpuid{};
+
+    /*
+     * We use this limit given by Xen as this is the max number of
+     * vcpus that a given struct shared_info can store
+     */
+    std::array<microv_vcpuid, XEN_LEGACY_MAX_VCPUS> m_uvv_id{};
+    size_t m_nr_vcpus{};
 
     xen_domid_t m_id{};
     xen_uuid_t m_uuid{};
     uint32_t m_ssid{};     /* flask id */
 
     /* Tunables */
-    uint32_t m_max_pcpus{1};
+    uint32_t m_max_pcpus{};
     uint32_t m_max_vcpus{};
     uint32_t m_max_evtchns{};
     uint32_t m_max_evtchn_port{};
@@ -178,14 +198,15 @@ public:
     std::unique_ptr<microv::ring<HVC_TX_SIZE>> m_hvc_tx_ring{};
 
     /* Shared info page */
-    page_ptr<struct shared_info> m_shinfo_page;
+    std::unique_ptr<uint8_t[]> m_shinfo_page{};
+    unique_map<uint8_t> m_shinfo_map{};
     struct shared_info *m_shinfo{};
     uintptr_t m_shinfo_gpfn{};
 
     std::unique_ptr<xen_memory> m_memory{};
     std::unique_ptr<xen_evtchn> m_evtchn{};
     std::unique_ptr<xen_gnttab> m_gnttab{};
-    std::unique_ptr<xen_hvm> hvm{};
+    std::unique_ptr<xen_hvm> m_hvm{};
 
     /* TSC params */
     uint64_t m_tsc_khz;
@@ -205,9 +226,9 @@ public:
         int type;
     };
 
-    std::list<struct io_region> assigned_pmio{};
-    std::list<struct io_region> assigned_mmio{};
-    std::list<uint32_t> assigned_devs{};
+    std::list<struct io_region> m_assigned_pmio{};
+    std::list<struct io_region> m_assigned_mmio{};
+    std::list<uint32_t> m_assigned_devs{};
 
 public:
     xen_domain(xen_domain &&) = delete;

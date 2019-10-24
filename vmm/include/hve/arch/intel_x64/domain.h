@@ -467,6 +467,9 @@ public:
     void invept() const
     { ::intel_x64::vmx::invept_single_context(m_eptp); }
 
+    void add_vcpu(vcpuid::type vcpuid)
+    { m_vcpuid.emplace_back(vcpuid); }
+
     std::mutex e820_mtx;
 
 private:
@@ -554,7 +557,7 @@ public:
 
     xen_domid_t m_xen_domid{};
     microv::xen_domain *m_xen_dom{};
-    microv::intel_x64::vcpu *m_vcpu{};
+    std::vector<vcpuid::type> m_vcpuid{};
 
     /// @cond
 

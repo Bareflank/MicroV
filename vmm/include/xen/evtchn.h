@@ -22,10 +22,13 @@
 #ifndef MICROV_XEN_EVTCHN_H
 #define MICROV_XEN_EVTCHN_H
 
+#include <vector>
+
 #include "types.h"
 #include <public/event_channel.h>
 #include <public/hvm/hvm_op.h>
 #include <public/hvm/params.h>
+#include <xen/page.h>
 
 namespace microv {
 
@@ -42,10 +45,10 @@ bool xen_evtchn_status(xen_vcpu *v);
 bool xen_evtchn_unmask(xen_vcpu *v);
 
 struct event_channel {
-    static constexpr auto invalid_virq = 0xFFFFUL;
-    static constexpr auto invalid_pirq = 0xFFFFUL;
-    static constexpr auto invalid_domid = 0xFFFFUL;
-    static constexpr auto invalid_port = 0x0UL;
+    static constexpr uint32_t invalid_virq = ~0;
+    static constexpr uint32_t invalid_pirq = ~0;
+    static constexpr xen_domid_t invalid_domid = ~0;
+    static constexpr evtchn_port_t invalid_port = 0;
 
     enum state : uint8_t {
         state_free,
@@ -60,10 +63,10 @@ struct event_channel {
     using state_t = enum state;
 
     state_t state{state_free};
-    uint32_t virq;
-    uint32_t pirq;
-    xen_domid_t rdomid;
-    evtchn_port_t rport;
+    uint32_t virq{invalid_virq};
+    uint32_t pirq{invalid_pirq};
+    xen_domid_t rdomid{invalid_domid};
+    evtchn_port_t rport{invalid_port};
 
     bool is_pending{};
     uint8_t priority{EVTCHN_FIFO_PRIORITY_DEFAULT};
@@ -97,15 +100,38 @@ struct event_channel {
 
 } __attribute__((packed));
 
+struct event_queue {
+    evtchn_port_t *head{};
+    uint8_t priority{EVTCHN_FIFO_PRIORITY_DEFAULT};
+};
+
+struct event_control {
+    uint32_t upcall_vector;
+    unique_map<uint8_t> map;
+    evtchn_fifo_control_block_t *blk;
+    std::array<struct event_queue, EVTCHN_FIFO_MAX_QUEUES> queue;
+
+    event_control(microv_vcpu *uvv, evtchn_init_control *init)
+    {
+        const auto gpa = xen_addr(init->control_gfn);
+        const auto off = init->offset;
+
+        upcall_vector = 0xFF;
+        map = uvv->map_gpa_4k<uint8_t>(gpa);
+        blk = reinterpret_cast<evtchn_fifo_control_block_t *>(map.get() + off);
+
+        for (auto i = 0U; i <= EVTCHN_FIFO_PRIORITY_MIN; i++) {
+            queue[i].head = &blk->head[i];
+            queue[i].priority = gsl::narrow_cast<uint8_t>(i);
+        }
+    }
+};
+
 class xen_evtchn {
 public:
     using port_t = evtchn_port_t;
     using word_t = std::atomic<event_word_t>;
     using chan_t = struct event_channel;
-    using queue_t = struct fifo_queue {
-        port_t *head;
-        uint8_t priority;
-    };
 
     static_assert(is_power_of_2(EVTCHN_FIFO_NR_CHANNELS));
     static_assert(is_power_of_2(sizeof(word_t)));
@@ -129,9 +155,12 @@ public:
     bool send(xen_vcpu *v, evtchn_send_t *es);
 
     int set_upcall_vector(xen_vcpu *v, xen_hvm_param_t *param);
+    int set_upcall_vector(xen_vcpu *v, xen_hvm_evtchn_upcall_vector_t *arg);
+
     void queue_virq(uint32_t virq);
     void inject_virq(uint32_t virq);
     void unbind_interdomain(evtchn_port_t port, xen_domid_t remote_domid);
+    int alloc_unbound(evtchn_alloc_unbound_t *arg);
     int bind_interdomain(evtchn_port_t port,
                          evtchn_port_t remote_port,
                          xen_domid_t remote_domid);
@@ -170,12 +199,14 @@ private:
     port_t make_new_port();
     int make_port(port_t port);
     void setup_ports();
-    void setup_ctl_blk(microv_vcpu *uvv, uint64_t gfn, uint32_t offset);
+    void add_event_ctl(xen_vcpu *v, evtchn_init_control_t *ctl);
 
     void make_chan_page(port_t port);
     void make_word_page(microv_vcpu *uvv, uintptr_t gfn);
 
     void notify_remote(chan_t *chan);
+    void push_upcall(port_t port);
+    void push_upcall(chan_t *chan);
     void queue_upcall(chan_t *chan);
     void inject_upcall(chan_t *chan);
     int upcall(chan_t *chan);
@@ -189,22 +220,20 @@ private:
     void word_set_pending(word_t *word);
     void word_clr_mask(word_t *word);
 
-    // Data members
-    //
     uint64_t m_allocated_chans{};
     uint64_t m_allocated_words{};
 
-    evtchn_fifo_control_block_t *m_ctl_blk{};
-    unique_map<uint8_t> m_ctl_blk_ump{};
+    // Control blocks
+    //
+    std::vector<struct event_control> m_event_ctl{};
 
-    std::array<queue_t, EVTCHN_FIFO_MAX_QUEUES> m_queues{0};
+    // VIRQ mapping
     std::array<port_t, NR_VIRQS> m_virq_to_port{0};
 
     std::vector<unique_map<word_t>> m_word_pages{};
     std::vector<page_ptr<chan_t>> m_chan_pages{};
 
     xen_domain *m_xen_dom{};
-    uint64_t m_upcall_vec{};
     port_t m_nr_ports{};
     port_t m_port_end{1};
 

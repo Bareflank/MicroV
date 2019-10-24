@@ -20,6 +20,7 @@
 // SOFTWARE.
 
 #include <mutex>
+#include <printv.h>
 
 #include <hve/arch/intel_x64/vcpu.h>
 #include <hve/arch/intel_x64/domain.h>
@@ -28,6 +29,7 @@
 #include <pci/cfg.h>
 #include <pci/dev.h>
 #include <pci/msi.h>
+
 
 namespace microv::intel_x64
 {
@@ -102,6 +104,7 @@ void vmcall_event_op_handler::send_vector(uint64_t root_vector)
         return;
     }
 
+    printv("%s: queueing vector 0x%x\n", pdev->bdf_str(), guest_msi->vector());
     guest->push_external_interrupt(guest_msi->vector());
     put_vcpu(pdev->m_guest_vcpuid);
 }

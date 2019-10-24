@@ -477,11 +477,11 @@ bool xen_domain_createdomain(xen_vcpu *vcpu, struct xen_domctl *ctl)
     info.wc_nsec = wc_nsec;
     info.tsc = now;
     info.ram = DEFAULT_RAM_SIZE;
-    info.xen_info_valid = 1;
+    info.origin = domain_info::origin_domctl;
     info.xen_domid = make_xen_domid();
 
-    static_assert(sizeof(*cd) == sizeof(info.xen_create_dom));
-    memcpy(&info.xen_create_dom, cd, sizeof(*cd));
+    static_assert(sizeof(*cd) == sizeof(info.domctl_create));
+    memcpy(&info.domctl_create, cd, sizeof(*cd));
 
     auto uv_domid = domain::generate_domainid();
     g_dm->create(uv_domid, &info);
@@ -489,9 +489,9 @@ bool xen_domain_createdomain(xen_vcpu *vcpu, struct xen_domctl *ctl)
     vcpu->m_uv_vcpu->set_rax(0);
 
     printv("createdomain: id:%u flags:0x%x vcpus:%u evtchn:%u grant:%u maptrack:%u\n",
-            ctl->domain, cd->flags, cd->max_vcpus,
-            cd->max_evtchn_port, cd->max_grant_frames,
-            cd->max_maptrack_frames);
+           ctl->domain, cd->flags, cd->max_vcpus,
+           cd->max_evtchn_port, cd->max_grant_frames,
+           cd->max_maptrack_frames);
 
     return true;
 }
@@ -559,38 +559,88 @@ bool xen_domain_cputopoinfo(xen_vcpu *vcpu, xen_sysctl_t *ctl)
     return ret;
 }
 
-xen_domain::xen_domain(microv_domain *domain, class iommu *iommu) :
-    m_shinfo_page{make_page<struct shared_info>()},
-    m_shinfo{m_shinfo_page.get()}
+void xen_domain::init_from_domctl() noexcept
 {
-    m_uv_info = &domain->m_sod_info;
-    m_uv_dom = domain;
-    m_uv_vcpuid = 0; /* the valid ID is bound with bind_vcpu */
+    m_shinfo_page = std::make_unique<uint8_t[]>(UV_PAGE_SIZE);
+    m_shinfo = reinterpret_cast<struct shared_info *>(m_shinfo_page.get());
 
+    auto cd = &m_uv_info->domctl_create;
+
+    m_id = m_uv_info->xen_domid;
+    m_ssid = cd->ssidref;
+    m_max_pcpus = 1;
+    m_max_vcpus = 1;
+    m_max_evtchn_port = cd->max_evtchn_port;
+    m_max_grant_frames = cd->max_grant_frames;
+    m_max_maptrack_frames = cd->max_maptrack_frames;
+    m_flags |= XEN_DOMINF_paused;
+
+    memcpy(&m_uuid, &cd->handle, sizeof(m_uuid));
+    memcpy(&m_arch_config, &cd->arch, sizeof(cd->arch));
+}
+
+void xen_domain::init_from_uvctl() noexcept
+{
+    m_shinfo_page = std::make_unique<uint8_t[]>(UV_PAGE_SIZE);
+    m_shinfo = reinterpret_cast<struct shared_info *>(m_shinfo_page.get());
+
+    m_id = (m_uv_info->is_xenstore()) ? 0 : make_xen_domid();
+    m_ssid = 0;
+    m_max_pcpus = 1;
+    m_max_vcpus = 1;
+    m_max_evtchn_port = DEFAULT_EVTCHN_PORTS - 1;
+    m_max_grant_frames = xen_gnttab::max_shared_gte_pages();
+    m_max_maptrack_frames = DEFAULT_MAPTRACK_FRAMES;
+    m_arch_config.emulation_flags = XEN_X86_EMU_LAPIC;
+    m_flags |= XEN_DOMINF_running;
+    m_flags |= (m_uv_info->is_xenstore()) ? XEN_DOMINF_xs_domain : 0;
+
+    m_uv_info->xen_domid = m_id;
+    make_xen_uuid(&m_uuid);
+
+    if (m_uv_info->using_hvc()) {
+        m_hvc_rx_ring = std::make_unique<microv::ring<HVC_RX_SIZE>>();
+        m_hvc_tx_ring = std::make_unique<microv::ring<HVC_TX_SIZE>>();
+    }
+}
+
+void xen_domain::init_from_root() noexcept
+{
+    m_id = m_uv_info->xen_domid;
+    m_ssid = 0;
+    m_flags |= XEN_DOMINF_running;
+    m_max_pcpus = 0;
+    m_max_vcpus = 0;
+    m_max_evtchn_port = DEFAULT_EVTCHN_PORTS - 1;
+    m_max_grant_frames = xen_gnttab::max_shared_gte_pages();
+    m_max_maptrack_frames = DEFAULT_MAPTRACK_FRAMES;
+    make_xen_uuid(&m_uuid);
+}
+
+xen_domain::xen_domain(microv_domain *domain, class iommu *iommu)
+{
+    m_uv_dom = domain;
+    m_uv_info = &domain->m_sod_info;
+
+    for (auto i = 0; i < m_uvv_id.size(); i++) {
+        m_uvv_id[i] = INVALID_VCPUID;
+    }
+
+    /* TODO: move me to init code */
     xen_init_cpufeatures();
 
-    if (m_uv_info->xen_info_valid) {
-        auto cd = &m_uv_info->xen_create_dom;
-        m_id = m_uv_info->xen_domid;
-        memcpy(&m_uuid, &cd->handle, sizeof(m_uuid));
-        m_ssid = cd->ssidref;
-        // TODO: m_max_pcpus = cd->max_pcpus;
-        m_max_pcpus = 1;
-        m_max_vcpus = cd->max_vcpus;
-        m_max_evtchn_port = cd->max_evtchn_port;
-        m_max_grant_frames = cd->max_grant_frames;
-        m_max_maptrack_frames = cd->max_maptrack_frames;
-        memcpy(&m_arch_config, &cd->arch, sizeof(cd->arch));
-    } else {
-        m_id = (m_uv_info->is_xenstore()) ? 0 : make_xen_domid();
-        make_xen_uuid(&m_uuid);
-        m_ssid = 0;
-        m_max_pcpus = 1;
-        m_max_vcpus = 1;
-        m_max_evtchn_port = DEFAULT_EVTCHN_PORTS - 1;
-        m_max_grant_frames = xen_gnttab::max_shared_gte_pages();
-        m_max_maptrack_frames = DEFAULT_MAPTRACK_FRAMES;
-        m_arch_config.emulation_flags = XEN_X86_EMU_LAPIC;
+    switch (m_uv_info->origin) {
+    case domain_info::origin_domctl:
+        this->init_from_domctl();
+        break;
+    case domain_info::origin_uvctl:
+        this->init_from_uvctl();
+        break;
+    case domain_info::origin_root:
+        this->init_from_root();
+        break;
+    default:
+        throw std::invalid_argument("unknown domain origin");
     }
 
     /* Max supported by the ABI */
@@ -605,7 +655,7 @@ xen_domain::xen_domain(microv_domain *domain, class iommu *iommu) :
     m_out_pages = 0;
     m_paged_pages = 0;
 
-    if (m_uv_info->xen_info_valid) {
+    if (m_uv_info->origin == microv::domain_info::origin_domctl) {
         m_total_pages = 0;
         m_free_pages = 0;
     }
@@ -613,20 +663,8 @@ xen_domain::xen_domain(microv_domain *domain, class iommu *iommu) :
     m_cpupool_id = xen_cpupool::id_none;
     xen_cpupool_add_domain(m_cpupool_id, m_id);
 
-    m_flags = XEN_DOMINF_hvm_guest;
+    m_flags |= XEN_DOMINF_hvm_guest;
     m_flags |= XEN_DOMINF_hap;
-
-    if (m_uv_info->is_xenstore()) {
-        m_flags |= XEN_DOMINF_xs_domain;
-        m_flags |= XEN_DOMINF_running;
-    } else {
-        m_flags |= XEN_DOMINF_paused;
-    }
-
-    if (m_uv_info->using_hvc()) {
-        m_hvc_rx_ring = std::make_unique<microv::ring<HVC_RX_SIZE>>();
-        m_hvc_tx_ring = std::make_unique<microv::ring<HVC_TX_SIZE>>();
-    }
 
     m_numa_nodes = 1;
     m_ndvm = m_uv_info->is_ndvm();
@@ -634,7 +672,7 @@ xen_domain::xen_domain(microv_domain *domain, class iommu *iommu) :
     m_memory = std::make_unique<xen_memory>(this, iommu);
     m_evtchn = std::make_unique<xen_evtchn>(this);
     m_gnttab = std::make_unique<xen_gnttab>(this, m_memory.get());
-    hvm = std::make_unique<xen_hvm>(this, m_memory.get());
+    m_hvm = std::make_unique<xen_hvm>(this, m_memory.get());
 }
 
 xen_domain::~xen_domain()
@@ -667,13 +705,18 @@ void xen_domain::share_root_page(uintptr_t gpa, uintptr_t hpa,
     m_memory->add_root_backed_page(gfn, perm, mtype, hfn);
 }
 
-class xen_vcpu *xen_domain::get_xen_vcpu() noexcept
+class xen_vcpu *xen_domain::get_xen_vcpu(xen_vcpuid_t xen_id) noexcept
 {
-    if (!m_uv_vcpuid) {
+    if (xen_id >= m_uvv_id.size()) {
         return nullptr;
     }
 
-    auto uv_vcpu = get_vcpu(m_uv_vcpuid);
+    const auto uvv_id = m_uvv_id[xen_id];
+    if (uvv_id == INVALID_VCPUID) {
+        return nullptr;
+    }
+
+    auto uv_vcpu = get_vcpu(uvv_id);
     if (!uv_vcpu) {
         return nullptr;
     }
@@ -681,9 +724,13 @@ class xen_vcpu *xen_domain::get_xen_vcpu() noexcept
     return uv_vcpu->xen_vcpu();
 }
 
-void xen_domain::put_xen_vcpu() noexcept
+void xen_domain::put_xen_vcpu(xen_vcpuid_t xen_id) noexcept
 {
-    put_vcpu(m_uv_vcpuid);
+    if (xen_id >= m_uvv_id.size()) {
+        return;
+    }
+
+    put_vcpu(m_uvv_id[xen_id]);
 }
 
 int xen_domain::set_timer_mode(uint64_t mode)
@@ -715,48 +762,91 @@ void xen_domain::queue_virq(int virq)
  * g_vcm->create() path. This means the bfmanager's m_mutex is already locked,
  * so doing a get_xen_vcpu() here would cause deadlock.
  */
-void xen_domain::bind_vcpu(xen_vcpu *xen)
+xen_vcpuid_t xen_domain::add_vcpu(xen_vcpu *vcpu)
 {
-    expects(vcpuid::is_guest_vcpu(xen->m_uv_vcpu->id()));
-    m_uv_vcpuid = xen->m_uv_vcpu->id();
+    const auto uvv_id = vcpu->m_uv_vcpu->id();
+    expects(uvv_id != INVALID_VCPUID);
+    expects(m_nr_vcpus < this->max_nr_vcpus());
 
-    m_tsc_khz = xen->m_tsc_khz;
-    m_tsc_mul = xen->m_tsc_mul;
-    m_tsc_shift = xen->m_tsc_shift;
+    const auto xen_id = (xen_vcpuid_t)m_nr_vcpus;
+    m_uvv_id[xen_id] = uvv_id;
 
-    m_memory->add_ept_handlers(xen);
+    if (m_uv_info->origin != domain_info::origin_root) {
+        m_memory->add_ept_handlers(vcpu);
+    } else {
+        /* these are only used by the toolstack */
+        m_max_vcpus++;
+        m_max_pcpus++;
+    }
+
+    if (xen_id == 0) {
+        m_tsc_khz = vcpu->m_tsc_khz;
+        m_tsc_mul = vcpu->m_tsc_mul;
+        m_tsc_shift = vcpu->m_tsc_shift;
+    }
+
+    m_nr_vcpus++;
+    return xen_id;
+}
+
+void xen_domain::set_upcall_pending(xen_vcpuid_t vcpuid)
+{
+    expects(m_shinfo);
+    expects(vcpuid < m_nr_vcpus);
+
+    m_shinfo->vcpu_info[vcpuid].evtchn_upcall_pending = 1;
 }
 
 uint64_t xen_domain::init_shared_info(xen_vcpu *xen, uintptr_t shinfo_gpfn)
 {
-    expects(m_shinfo);
+    auto uvv = xen->m_uv_vcpu;
 
-    const auto perms = pg_perm_rw;
-    const auto mtype = pg_mtype_wb;
+    if (uvv->is_guest_vcpu()) {
+        expects(m_shinfo);
 
-    if (m_memory->find_page(shinfo_gpfn)) {
-        m_memory->remove_page(shinfo_gpfn);
+        const auto perms = pg_perm_rw;
+        const auto mtype = pg_mtype_wb;
+
+        if (m_memory->find_page(shinfo_gpfn)) {
+            m_memory->remove_page(shinfo_gpfn);
+        }
+
+        m_memory->add_vmm_backed_page(shinfo_gpfn, perms, mtype, m_shinfo);
+        xen->m_uv_vcpu->invept();
+
+        /* Set wallclock from start-of-day info */
+        auto now = ::x64::read_tsc::get();
+        auto wc_nsec = tsc_to_ns(now - m_uv_info->tsc, m_tsc_shift,  m_tsc_mul);
+        auto wc_sec = wc_nsec / 1000000000ULL;
+
+        wc_nsec += m_uv_info->wc_nsec;
+        wc_sec += m_uv_info->wc_sec;
+        m_shinfo->wc_nsec = gsl::narrow_cast<uint32_t>(wc_nsec);
+        m_shinfo->wc_sec = gsl::narrow_cast<uint32_t>(wc_sec);
+        m_shinfo->wc_sec_hi = gsl::narrow_cast<uint32_t>(wc_sec >> 32);
+        m_shinfo_gpfn = shinfo_gpfn;
+
+        return now;
     }
 
-    m_memory->add_vmm_backed_page(shinfo_gpfn, perms, mtype, m_shinfo);
-    xen->m_uv_vcpu->invept();
+    if (uvv->is_root_vcpu()) {
+        expects(m_id == DOMID_WINPV);
 
-    /* Set wallclock from start-of-day info */
-    auto now = ::x64::read_tsc::get();
-    auto wc_nsec = tsc_to_ns(now - m_uv_info->tsc, m_tsc_shift,  m_tsc_mul);
-    auto wc_sec = wc_nsec / 1000000000ULL;
+        /*
+         * The shared info page is the first 4K region of the hole created by
+         * the FDO Windows PV driver, so it is already mapped into the domain's
+         * EPT. Here we simply map it into the hypervisor for later reference.
+         */
+        m_shinfo_gpfn = shinfo_gpfn;
+        m_shinfo_map = uvv->map_gpa_4k<uint8_t>(xen_addr(m_shinfo_gpfn));
+        m_shinfo = reinterpret_cast<struct shared_info *>(m_shinfo_map.get());
 
-    wc_nsec += m_uv_info->wc_nsec;
-    wc_sec += m_uv_info->wc_sec;
-    m_shinfo->wc_nsec = gsl::narrow_cast<uint32_t>(wc_nsec);
-    m_shinfo->wc_sec = gsl::narrow_cast<uint32_t>(wc_sec);
-    m_shinfo->wc_sec_hi = gsl::narrow_cast<uint32_t>(wc_sec >> 32);
-    m_shinfo_gpfn = shinfo_gpfn;
+        return 0;
+    }
 
-    return now;
+    printv("%s: ERROR invalid vcpu type\n", __func__);
+    return 0;
 }
-
-
 
 void xen_domain::update_wallclock(
     xen_vcpu *vcpu,
@@ -791,27 +881,18 @@ uint64_t xen_domain::runstate_time(int state)
 
 uint32_t xen_domain::nr_online_vcpus()
 {
-    auto xv = this->get_xen_vcpu();
+    uint32_t nr = 0;
 
-    if (!xv) {
-        return 0;
-    } else {
-        this->put_xen_vcpu();
-        return 1;
+    for (auto id : m_uvv_id) {
+        nr += (id != INVALID_VCPUID) ? 1 : 0;
     }
+
+    return nr;
 }
 
 xen_vcpuid_t xen_domain::max_vcpu_id()
 {
-    auto xv = this->get_xen_vcpu();
-
-    if (!xv) {
-        return XEN_INVALID_MAX_VCPU_ID;
-    } else {
-        auto id = xv->m_id;
-        this->put_xen_vcpu();
-        return id;
-    }
+    return m_uvv_id.size() - 1;
 }
 
 bool xen_domain::unpause(xen_vcpu *vcpu)
@@ -1370,7 +1451,7 @@ bool xen_domain::ioport_perm(xen_vcpu *v,
         .type = io_region::pmio_t
     };
 
-    assigned_pmio.push_back(pmio);
+    m_assigned_pmio.push_back(pmio);
     v->m_uv_vcpu->set_rax(0);
 
     return true;
@@ -1391,7 +1472,7 @@ bool xen_domain::iomem_perm(xen_vcpu *v,
         .type = io_region::mmio_t
     };
 
-    assigned_mmio.push_back(mmio);
+    m_assigned_mmio.push_back(mmio);
     v->m_uv_vcpu->set_rax(0);
 
     return true;
@@ -1407,7 +1488,7 @@ bool xen_domain::assign_device(xen_vcpu *v,
 
     /* Caller ensures segment is 0 */
     const auto bdf = assign->u.pci.machine_sbdf << 8;
-    assigned_devs.push_back(bdf);
+    m_assigned_devs.push_back(bdf);
 
     auto dev = find_passthru_dev(bdf);
     if (!dev) {
@@ -1425,8 +1506,8 @@ bool xen_domain::assign_device(xen_vcpu *v,
         bool found = false;
 
         if (bar.type == pci_bar_io) {
-            auto beg = assigned_pmio.begin();
-            auto end = assigned_pmio.end();
+            auto beg = m_assigned_pmio.begin();
+            auto end = m_assigned_pmio.end();
 
             for (auto r = beg; r != end; r++) {
                 if (r->base == bar.addr && r->size == bar.size) {
@@ -1442,8 +1523,8 @@ bool xen_domain::assign_device(xen_vcpu *v,
                 return false;
             }
         } else {
-            auto beg = assigned_mmio.begin();
-            auto end = assigned_mmio.end();
+            auto beg = m_assigned_mmio.begin();
+            auto end = m_assigned_mmio.end();
 
             for (auto r = beg; r != end; r++) {
                 if (r->base == bar.addr && r->size == bar.size) {

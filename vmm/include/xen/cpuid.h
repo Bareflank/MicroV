@@ -35,6 +35,8 @@ constexpr uint32_t xen_cpufeat_to_word(uint32_t feat)
 
 constexpr auto xen_last_cpufeat = XEN_X86_FEATURE_AVX512_BF16;
 constexpr auto xen_cpufeat_words = xen_cpufeat_to_word(xen_last_cpufeat) + 1;
+constexpr auto xen_leaf_base = 0x40000100;
+constexpr auto xen_leaf(int i) { return xen_leaf_base + i; }
 
 /*
  * xen_init_cpufeatures
@@ -49,6 +51,10 @@ void xen_init_cpufeatures() noexcept;
  * Return the default cpufeatures of a PVH guest in @cpufeat
  */
 void xen_get_pvh_cpufeatures(uint32_t cpufeat[xen_cpufeat_words]) noexcept;
+
+bool xen_leaf0(base_vcpu *vcpu);
+bool xen_leaf1(base_vcpu *vcpu);
+bool xen_leaf2(base_vcpu *vcpu);
 
 }
 

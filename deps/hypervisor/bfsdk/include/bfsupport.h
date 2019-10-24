@@ -179,6 +179,7 @@ struct crt_info_t {
 #define BF_REQUEST_SET_RSDP 6
 #define BF_REQUEST_INIT_XUE 7
 #define BF_REQUEST_UEFI_BOOT 8
+#define BF_REQUEST_WINPV 9
 #define BF_REQUEST_END 0xFFFF
 
 /* @endcond */

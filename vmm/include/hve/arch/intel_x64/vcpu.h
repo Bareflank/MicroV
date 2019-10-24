@@ -41,6 +41,7 @@
 #include "vmcall/run_op.h"
 #include "vmcall/vcpu_op.h"
 #include "vmcall/xue_op.h"
+#include "vmcall/xenpfd_op.h"
 
 #include "domain.h"
 #include "xstate.h"
@@ -365,6 +366,7 @@ private:
     vmcall_iommu_op_handler m_vmcall_iommu_op_handler;
     vmcall_vcpu_op_handler m_vmcall_vcpu_op_handler;
     vmcall_xue_op_handler m_vmcall_xue_op_handler;
+    vmcall_xenpfd_op_handler m_vmcall_xenpfd_op_handler;
 
     x2apic_handler m_x2apic_handler;
     pci_cfg_handler m_pci_handler;
