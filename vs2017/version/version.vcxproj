@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="..\configs.props" />
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{65FA97EA-A569-4FC1-BFE7-D68E109143F7}</ProjectGuid>
+  </PropertyGroup>
+  <PropertyGroup>
+    <Script>..\..\scripts\genfiles.ps1</Script>
+    <SolutionDir>..</SolutionDir>
+    <IncludeDir>..\..\include</IncludeDir>
+    <SourceDir>..\..\src</SourceDir>
+  </PropertyGroup>
+  <Target Name="Build">
+    <Exec Command="powershell.exe -ExecutionPolicy Bypass -NoProfile -NonInteractive -File $(Script) $(Platform) $(SolutionDir) $(IncludeDir) $(SourceDir)" />
+  </Target>
+</Project>
