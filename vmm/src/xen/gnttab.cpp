@@ -223,6 +223,16 @@ static void xen_gnttab_map_grant_ref(xen_vcpu *vcpu,
     auto fgnt = fdom->m_gnttab.get();
     if (fgnt->invalid_ref(fref)) {
         printv("%s: OOB ref:0x%x for dom:0x%x\n", __func__, fref, fdomid);
+
+        if (fdomid == DOMID_WINPV && fref == GNTTAB_RESERVED_XENSTORE) {
+            fmem = fdom->m_memory.get();
+            fgfn = fdom->m_hvm->get_param(HVM_PARAM_STORE_PFN);
+            fpg = fmem->find_page(fgfn);
+
+            expects(fpg);
+            goto set_perms;
+        }
+
         rc = GNTST_bad_gntref;
         goto put_domain;
     }
@@ -264,6 +274,7 @@ static void xen_gnttab_map_grant_ref(xen_vcpu *vcpu,
         goto put_domain;
     }
 
+set_perms:
     perm = (map_ro) ? pg_perm_r : pg_perm_rw;
     lmem = vcpu->m_xen_dom->m_memory.get();
     lgfn = xen_frame(map->host_addr);

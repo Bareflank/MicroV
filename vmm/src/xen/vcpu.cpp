@@ -922,7 +922,7 @@ bool xen_vcpu::debug_hypercall(microv_vcpu *vcpu)
     const auto rdi = vcpu->rdi();
 
     if (vcpu->is_root_vcpu()) {
-        return false;
+        return true;
     }
 
     if (rax == __HYPERVISOR_sched_op && rdi == SCHEDOP_yield) {
@@ -1042,6 +1042,7 @@ bool xen_vcpu::root_hypercall(microv_vcpu *vcpu)
         case EVTCHNOP_init_control:
         case EVTCHNOP_expand_array:
         case EVTCHNOP_send:
+        case EVTCHNOP_bind_virq:
             return this->handle_event_channel_op();
         default:
             return false;
