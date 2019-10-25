@@ -1,0 +1,231 @@
+; Copyright (c) Citrix Systems Inc.
+; All rights reserved.
+;
+; Redistribution and use in source and binary forms, 
+; with or without modification, are permitted provided 
+; that the following conditions are met:
+;
+; *   Redistributions of source code must retain the above 
+;     copyright notice, this list of conditions and the 
+;     following disclaimer.
+; *   Redistributions in binary form must reproduce the above 
+;     copyright notice, this list of conditions and the 
+;     following disclaimer in the documentation and/or other 
+;     materials provided with the distribution.
+;
+; THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND 
+; CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, 
+; INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF 
+; MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE 
+; DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR 
+; CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, 
+; SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, 
+; BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR 
+; SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS 
+; INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, 
+; WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING 
+; NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE 
+; OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF 
+; SUCH DAMAGE
+ 
+[Version] 
+Signature="$Windows NT$" 
+Class=Net
+ClassGUID={4d36e972-e325-11ce-bfc1-08002be10318}
+Provider=%Vendor% 
+CatalogFile=xennet.cat
+DriverVer=@INF_DATE@,@MAJOR_VERSION@.@MINOR_VERSION@.@MICRO_VERSION@.@BUILD_NUMBER@
+DriverPackageDisplayName=%DiskDesc%
+
+[DestinationDirs] 
+DefaultDestDir=12 
+CoInst_CopyFiles=11
+
+[SourceDisksNames]
+0=%DiskDesc%
+
+[SourceDisksFiles]
+xennet.sys=0,,
+xennet_coinst.dll=0,,
+
+[XenNet_Copyfiles]
+xennet.sys
+
+[CoInst_CopyFiles]
+xennet_coinst_@MAJOR_VERSION@_@MINOR_VERSION@_@MICRO_VERSION@_@BUILD_NUMBER@.dll,xennet_coinst.dll
+
+[Manufacturer] 
+%Vendor%=Inst,NT@INF_ARCH@
+
+[Inst.NT@INF_ARCH@]
+; DisplayName		Section		DeviceID
+; -----------		-------		--------
+
+%XenNetName%		=XenNet_Inst,	XENVIF\VEN_@VENDOR_PREFIX@@VENDOR_DEVICE_ID@&DEV_NET&REV_09000000
+%XenNetName%		=XenNet_Inst,	XENVIF\VEN_@VENDOR_PREFIX@0001&DEV_NET&REV_09000000
+%XenNetName%		=XenNet_Inst,	XENVIF\VEN_@VENDOR_PREFIX@0002&DEV_NET&REV_09000000
+
+[XenNet_Inst] 
+Characteristics=0x84
+BusType=1
+*IfType=6             	; IF_TYPE_ETHERNET_CSMACD
+*MediaType=0          	; NdisMedium802_3
+*PhysicalMediaType=0	; NdisPhysicalMediumUnspecified
+CopyFiles=XenNet_Copyfiles
+AddReg=Xennet_Inst_AddReg
+
+[XenNet_Inst_AddReg] 
+HKR, Ndi, Service, 0, "xennet"
+HKR, Ndi\Interfaces, UpperRange, 0, "ndis5"
+HKR, Ndi\Interfaces, LowerRange, 0, "ethernet"
+
+HKR, Ndi\params\*IPChecksumOffloadIPv4,           ParamDesc,  0, %IPChecksumOffloadIPv4%
+HKR, Ndi\params\*IPChecksumOffloadIPv4,           Type,       0, "enum"
+HKR, Ndi\params\*IPChecksumOffloadIPv4,           Default,    0, "3"
+HKR, Ndi\params\*IPChecksumOffloadIPv4,           Optional,   0, "0"
+HKR, Ndi\params\*IPChecksumOffloadIPv4\enum,      "0",        0, %Disabled%
+HKR, Ndi\params\*IPChecksumOffloadIPv4\enum,      "1",        0, %Enabled-Tx%
+HKR, Ndi\params\*IPChecksumOffloadIPv4\enum,      "2",        0, %Enabled-Rx%
+HKR, Ndi\params\*IPChecksumOffloadIPv4\enum,      "3",        0, %Enabled-TxRx%
+
+HKR, Ndi\params\*TCPChecksumOffloadIPv4,          ParamDesc,  0, %TCPChecksumOffloadIPv4%
+HKR, Ndi\params\*TCPChecksumOffloadIPv4,          Type,       0, "enum"
+HKR, Ndi\params\*TCPChecksumOffloadIPv4,          Default,    0, "3"
+HKR, Ndi\params\*TCPChecksumOffloadIPv4,          Optional,   0, "0"
+HKR, Ndi\params\*TCPChecksumOffloadIPv4\enum,     "0",        0, %Disabled%
+HKR, Ndi\params\*TCPChecksumOffloadIPv4\enum,     "1",        0, %Enabled-Tx%
+HKR, Ndi\params\*TCPChecksumOffloadIPv4\enum,     "2",        0, %Enabled-Rx%
+HKR, Ndi\params\*TCPChecksumOffloadIPv4\enum,     "3",        0, %Enabled-TxRx%
+
+HKR, Ndi\params\*UDPChecksumOffloadIPv4,          ParamDesc,  0, %UDPChecksumOffloadIPv4%
+HKR, Ndi\params\*UDPChecksumOffloadIPv4,          Type,       0, "enum"
+HKR, Ndi\params\*UDPChecksumOffloadIPv4,          Default,    0, "3"
+HKR, Ndi\params\*UDPChecksumOffloadIPv4,          Optional,   0, "0"
+HKR, Ndi\params\*UDPChecksumOffloadIPv4\enum,     "0",        0, %Disabled%
+HKR, Ndi\params\*UDPChecksumOffloadIPv4\enum,     "1",        0, %Enabled-Tx%
+HKR, Ndi\params\*UDPChecksumOffloadIPv4\enum,     "2",        0, %Enabled-Rx%
+HKR, Ndi\params\*UDPChecksumOffloadIPv4\enum,     "3",        0, %Enabled-TxRx%
+
+HKR, Ndi\params\*TCPChecksumOffloadIPv6,          ParamDesc,  0, %TCPChecksumOffloadIPv6%
+HKR, Ndi\params\*TCPChecksumOffloadIPv6,          Type,       0, "enum"
+HKR, Ndi\params\*TCPChecksumOffloadIPv6,          Default,    0, "3"
+HKR, Ndi\params\*TCPChecksumOffloadIPv6,          Optional,   0, "0"
+HKR, Ndi\params\*TCPChecksumOffloadIPv6\enum,     "0",        0, %Disabled%
+HKR, Ndi\params\*TCPChecksumOffloadIPv6\enum,     "1",        0, %Enabled-Tx%
+HKR, Ndi\params\*TCPChecksumOffloadIPv6\enum,     "2",        0, %Enabled-Rx%
+HKR, Ndi\params\*TCPChecksumOffloadIPv6\enum,     "3",        0, %Enabled-TxRx%
+
+HKR, Ndi\params\*UDPChecksumOffloadIPv6,          ParamDesc,  0, %UDPChecksumOffloadIPv6%
+HKR, Ndi\params\*UDPChecksumOffloadIPv6,          Type,       0, "enum"
+HKR, Ndi\params\*UDPChecksumOffloadIPv6,          Default,    0, "3"
+HKR, Ndi\params\*UDPChecksumOffloadIPv6,          Optional,   0, "0"
+HKR, Ndi\params\*UDPChecksumOffloadIPv6\enum,     "0",        0, %Disabled%
+HKR, Ndi\params\*UDPChecksumOffloadIPv6\enum,     "1",        0, %Enabled-Tx%
+HKR, Ndi\params\*UDPChecksumOffloadIPv6\enum,     "2",        0, %Enabled-Rx%
+HKR, Ndi\params\*UDPChecksumOffloadIPv6\enum,     "3",        0, %Enabled-TxRx%
+
+HKR, Ndi\params\NeedChecksumValue,          	  ParamDesc,  0, %NeedChecksumValue%
+HKR, Ndi\params\NeedChecksumValue,          	  Type,       0, "enum"
+HKR, Ndi\params\NeedChecksumValue,          	  Default,    0, "1"
+HKR, Ndi\params\NeedChecksumValue,          	  Optional,   0, "0"
+HKR, Ndi\params\NeedChecksumValue\enum,     	  "0",        0, %Disabled%
+HKR, Ndi\params\NeedChecksumValue\enum,     	  "1",        0, %Enabled%
+
+HKR, Ndi\params\*LSOV2IPv4,                       ParamDesc,  0, %LSOV2IPv4%
+HKR, Ndi\params\*LSOV2IPv4,                       Type,       0, "enum"
+HKR, Ndi\params\*LSOV2IPv4,                       Default,    0, "1"
+HKR, Ndi\params\*LSOV2IPv4,                       Optional,   0, "0"
+HKR, Ndi\params\*LSOV2IPv4\enum,                  "0",        0, %Disabled%
+HKR, Ndi\params\*LSOV2IPv4\enum,                  "1",        0, %Enabled%
+
+HKR, Ndi\params\*LSOV2IPv6,                       ParamDesc,  0, %LSOV2IPv6%
+HKR, Ndi\params\*LSOV2IPv6,                       Type,       0, "enum"
+HKR, Ndi\params\*LSOV2IPv6,                       Default,    0, "1"
+HKR, Ndi\params\*LSOV2IPv6,                       Optional,   0, "0"
+HKR, Ndi\params\*LSOV2IPv6\enum,                  "0",        0, %Disabled%
+HKR, Ndi\params\*LSOV2IPv6\enum,                  "1",        0, %Enabled%
+
+HKR, Ndi\params\LROIPv4,                          ParamDesc,  0, %LROIPv4%
+HKR, Ndi\params\LROIPv4,                          Type,       0, "enum"
+HKR, Ndi\params\LROIPv4,                          Default,    0, "1"
+HKR, Ndi\params\LROIPv4,                          Optional,   0, "0"
+HKR, Ndi\params\LROIPv4\enum,                     "0",        0, %Disabled%
+HKR, Ndi\params\LROIPv4\enum,                     "1",        0, %Enabled%
+
+HKR, Ndi\params\LROIPv6,                          ParamDesc,  0, %LROIPv6%
+HKR, Ndi\params\LROIPv6,                          Type,       0, "enum"
+HKR, Ndi\params\LROIPv6,                          Default,    0, "1"
+HKR, Ndi\params\LROIPv6,                          Optional,   0, "0"
+HKR, Ndi\params\LROIPv6\enum,                     "0",        0, %Disabled%
+HKR, Ndi\params\LROIPv6\enum,                     "1",        0, %Enabled%
+
+HKR, Ndi\params\*RSS,                             ParamDesc,  0, %RSS%
+HKR, Ndi\params\*RSS,                             Type,       0, "enum"
+HKR, Ndi\params\*RSS,                             Default,    0, "1"
+HKR, Ndi\params\*RSS,                             Optional,   0, "0"
+HKR, Ndi\params\*RSS\enum,                        "0",        0, %Disabled%
+HKR, Ndi\params\*RSS\enum,                        "1",        0, %Enabled%
+
+[XenNet_Inst.Services] 
+AddService=xennet,0x02,XenNet_Service,XenNet_EventLog
+
+[XenNet_Service] 
+DisplayName=%XenNetName%
+ServiceType=%SERVICE_KERNEL_DRIVER% 
+StartType=%SERVICE_DEMAND_START% 
+ErrorControl=%SERVICE_ERROR_NORMAL% 
+ServiceBinary=%12%\xennet.sys 
+LoadOrderGroup="NDIS"
+AddReg = XenNet_BootFlags
+
+[XenNet_BootFlags]
+HKR,,"BootFlags",0x00010003,0x81
+
+[XenNet_EventLog]
+AddReg=XenNet_EventLog_AddReg
+
+[XenNet_EventLog_AddReg]
+HKR,,EventMessageFile,0x00020000,"%%SystemRoot%%\System32\netevent.dll"
+HKR,,TypesSupported,0x00010001,7
+
+[XenNet_Inst.CoInstallers]
+CopyFiles=CoInst_CopyFiles
+AddReg=CoInst_AddReg
+
+[CoInst_AddReg]
+HKR,,CoInstallers32,0x00010000,"xennet_coinst_@MAJOR_VERSION@_@MINOR_VERSION@_@MICRO_VERSION@_@BUILD_NUMBER@.dll,Entry"
+
+[Strings] 
+
+Vendor="@VENDOR_NAME@"
+DiskDesc="@PRODUCT_NAME@ PV Network Device Package" 
+XenNetName="@PRODUCT_NAME@ PV Network Device"
+IPChecksumOffloadIPv4="IPv4 Checksum Offload"
+TCPChecksumOffloadIPv4="TCP Checksum Offload (IPv4)"
+UDPChecksumOffloadIPv4="UDP Checksum Offload (IPv4)"
+TCPChecksumOffloadIPv6="TCP Checksum Offload (IPv6)"
+UDPChecksumOffloadIPv6="UDP Checksum Offload (IPv6)"
+NeedChecksumValue="Correct TCP/UDP Checksum Value"
+LSOV2IPv4="Large Send Offload V2 (IPv4)"
+LSOV2IPv6="Large Send Offload V2 (IPv6)"
+LROIPv4="Large Receive Offload (IPv4)"
+LROIPv6="Large Receive Offload (IPv6)"
+RSS="Receive Side Scaling"
+HeaderDataSplit="Header Data Split"
+Disabled="Disabled"
+Enabled="Enabled"
+Enabled-Rx="Rx Enabled"
+Enabled-Tx="Tx Enabled"
+Enabled-TxRx="Rx & Tx Enabled"
+
+SERVICE_BOOT_START=0x0 
+SERVICE_SYSTEM_START=0x1 
+SERVICE_AUTO_START=0x2 
+SERVICE_DEMAND_START=0x3 
+SERVICE_DISABLED=0x4 
+
+SERVICE_KERNEL_DRIVER=0x1 
+SERVICE_ERROR_IGNORE=0x0 
+SERVICE_ERROR_NORMAL=0x1 
+SERVICE_ERROR_SEVERE=0x2 
+SERVICE_ERROR_CRITICAL=0x3 
