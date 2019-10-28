@@ -141,17 +141,25 @@ void xen_gnttab_unmap_grant_ref(xen_vcpu *vcpu, gnttab_unmap_grant_ref_t *unmap)
         return;
     }
 
+    grant_entry_header_t *fhdr = nullptr;
     auto fgnt = fdom->m_gnttab.get();
+
     if (fgnt->invalid_ref(fref)) {
         printv("%s: bad fref:%x\n", __func__, fref);
+
+        if (fdomid == DOMID_WINPV && fref == GNTTAB_RESERVED_XENSTORE) {
+            goto unmap;
+        }
+
         unmap->status = GNTST_bad_handle;
         put_xen_domain(fdomid);
         return;
     }
 
-    auto fhdr = fgnt->shared_header(fref);
+    fhdr = fgnt->shared_header(fref);
     fhdr->flags &= ~(GTF_reading | GTF_writing);
 
+unmap:
     auto lmem = ldom->m_memory.get();
     auto lgfn = xen_frame(unmap->host_addr);
     if (auto rc = lmem->remove_page(lgfn); rc) {
