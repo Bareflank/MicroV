@@ -178,8 +178,8 @@ bool
 x2apic_handler::handle_wrmsr_0x00000808(
     vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info)
 {
-    if (info.val != 0) {
-        vcpu->halt("non-zero TPR not supported");
+    if (info.val != 0 && info.val != 0x10) {
+        vcpu->halt("unsupported TPR value");
     }
 
     return true;
