@@ -303,6 +303,9 @@ public:
     VIRTUAL void add_wrcr4_handler(
         vmcs_n::value_type mask, const handler_delegate_t &d);
 
+    VIRTUAL void add_rdcr8_handler(const handler_delegate_t &d);
+    VIRTUAL void add_wrcr8_handler(const handler_delegate_t &d);
+
     /// Execute wrcr0
     ///
     /// Executes the wrcr0 instruction, and populates the vCPU's registers.

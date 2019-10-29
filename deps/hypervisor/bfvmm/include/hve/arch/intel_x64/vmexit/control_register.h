@@ -39,6 +39,9 @@ namespace bfvmm::intel_x64
 
 class vcpu;
 
+void emulate_rdgpr(vcpu *vcpu);
+void emulate_wrgpr(vcpu *vcpu);
+
 /// Control Register
 ///
 /// Provides an interface for enabling/disabling exiting on control register
@@ -209,6 +212,9 @@ public:
     ///
     void add_wrcr4_handler(const handler_delegate_t &d);
 
+    void add_rdcr8_handler(const handler_delegate_t &d);
+    void add_wrcr8_handler(const handler_delegate_t &d);
+
 public:
 
     /// Execute wrcr0
@@ -324,6 +330,9 @@ public:
     ///
     void enable_wrcr4_exiting(vmcs_n::value_type mask);
 
+    void enable_rdcr8_exiting();
+    void enable_wrcr8_exiting();
+
 public:
 
     /// @cond
@@ -337,11 +346,14 @@ private:
     bool handle_cr0(vcpu *vcpu);
     bool handle_cr3(vcpu *vcpu);
     bool handle_cr4(vcpu *vcpu);
+    bool handle_cr8(vcpu *vcpu);
 
     bool handle_wrcr0(vcpu *vcpu);
     bool handle_rdcr3(vcpu *vcpu);
     bool handle_wrcr3(vcpu *vcpu);
     bool handle_wrcr4(vcpu *vcpu);
+    bool handle_rdcr8(vcpu *vcpu);
+    bool handle_wrcr8(vcpu *vcpu);
 
 private:
 
@@ -351,6 +363,8 @@ private:
     std::list<handler_delegate_t> m_rdcr3_handlers;
     std::list<handler_delegate_t> m_wrcr3_handlers;
     std::list<handler_delegate_t> m_wrcr4_handlers;
+    std::list<handler_delegate_t> m_rdcr8_handlers;
+    std::list<handler_delegate_t> m_wrcr8_handlers;
 
 public:
 

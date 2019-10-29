@@ -94,6 +94,36 @@ ept_violation_handler(vcpu_t *vcpu)
 namespace microv::intel_x64
 {
 
+bool vcpu::handle_rdcr8(vcpu_t *vcpu)
+{
+    vcpu->set_gr1(m_cr8);
+    emulate_wrgpr(vcpu);
+
+    return true;
+}
+
+bool vcpu::handle_wrcr8(vcpu_t *vcpu)
+{
+    emulate_rdgpr(vcpu);
+    m_cr8 = vcpu->gr1();
+
+    bfalert_nhex(0, "guest wrote to CR8", m_cr8);
+
+    /*
+     * Linux doesn't really use CR8. If a guest ever does, then we will need
+     * to incorporate the changes to CR8 into the interrupt injection logic to
+     * ensure that priorities are being respected. Right now it isn't an issue
+     * because the value is one of the two below, which is well below any
+     * vector that we will be injecting.
+     */
+
+    if (m_cr8 != 0 && m_cr8 != 1) {
+        return false;
+    }
+
+    return true;
+}
+
 vcpu::vcpu(
     vcpuid::type id,
     gsl::not_null<domain *> domain
@@ -136,6 +166,8 @@ vcpu::vcpu(
     else {
         this->write_domU_guest_state(domain);
         this->init_xstate();
+        this->add_rdcr8_handler({&vcpu::handle_rdcr8, this});
+        this->add_wrcr8_handler({&vcpu::handle_wrcr8, this});
     }
 
     this->add_cpuid_emulator(0x4BF00010, {&vcpu::handle_0x4BF00010, this});
