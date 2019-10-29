@@ -91,3 +91,13 @@ drivers/winpv/xenvif/vs2019/version/.revision
 drivers/winpv/xenvif/vs2019/xenvif.inf
 drivers/winpv/xenvif/vs2019/Windows10*
 drivers/winpv/xenvif/vs2019/xenvif_coinst/Windows10*
+
+drivers/winpv/xennet/.build_number
+drivers/winpv/xennet/include/version.h
+drivers/winpv/xennet/vs2019/Windows10Release/
+drivers/winpv/xennet/vs2019/package/Windows10Release/
+drivers/winpv/xennet/vs2019/version/.revision
+drivers/winpv/xennet/vs2019/x64/
+drivers/winpv/xennet/vs2019/xennet.inf
+drivers/winpv/xennet/vs2019/xennet/Windows10Release/
+drivers/winpv/xennet/vs2019/xennet_coinst/x64/
