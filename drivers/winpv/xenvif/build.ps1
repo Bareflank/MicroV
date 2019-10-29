@@ -12,15 +12,34 @@ param(
 # Script Body
 #
 
-Function Build {
+Function Win8Build {
 	param(
 		[string]$Arch,
 		[string]$Type
 	)
 
 	$visualstudioversion = $Env:VisualStudioVersion
-	$solutiondir = @{ "14.0" = "vs2015"; "15.0" = "vs2017"; "16.0" = "vs2019" }
+	$solutiondir = @{ "14.0" = "vs2015"; "15.0" = "vs2017"; "16.0" = "vs2019"; }
 	$configurationbase = @{ "14.0" = "Windows 8"; "15.0" = "Windows 8"; "16.0" = "Windows 8"; }
+
+	$params = @{
+		SolutionDir = $solutiondir[$visualstudioversion];
+		ConfigurationBase = $configurationbase[$visualstudioversion];
+		Arch = $Arch;
+		Type = $Type
+		}
+	& ".\msbuild.ps1" @params
+}
+
+Function Win10Build {
+	param(
+		[string]$Arch,
+		[string]$Type
+	)
+
+	$visualstudioversion = $Env:VisualStudioVersion
+	$solutiondir = @{ "14.0" = "vs2015"; "15.0" = "vs2017"; "16.0" = "vs2019"; }
+	$configurationbase = @{ "14.0" = "Windows 10"; "15.0" = "Windows 10"; "16.0" = "Windows 10"; }
 
 	$params = @{
 		SolutionDir = $solutiondir[$visualstudioversion];
@@ -78,8 +97,10 @@ Set-Item -Path Env:MAJOR_VERSION -Value '9'
 Set-Item -Path Env:MINOR_VERSION -Value '0'
 Set-Item -Path Env:MICRO_VERSION -Value '0'
 
-Build "x86" $Type
-Build "x64" $Type
+$redist = $PSScriptRoot + "\..\..\..\deploy\windows\redist"
+Set-Item -Path Env:DPINST_REDIST -Value $redist
+
+Win10Build "x64" $Type
 
 if ($Sdv) {
 	SdvBuild

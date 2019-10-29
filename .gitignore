@@ -81,3 +81,13 @@ drivers/winpv/xenbus/vs2019/xenbus/Windows10Debug/
 drivers/winpv/xenbus/vs2019/xenfilt/Windows10Debug/
 drivers/winpv/xenbus/vs2019/xenbus_coinst/Windows10Debug/
 drivers/winpv/xenbus/vs2019/xenbus_monitor/Windows10Debug/
+
+drivers/winpv/xenvif/.build_number
+drivers/winpv/xenvif/include/version.h
+drivers/winpv/xenvif/vs2019/Windows10*
+drivers/winpv/xenvif/vs2019/xenvif/Windows10*
+drivers/winpv/xenvif/vs2019/package/Windows10*
+drivers/winpv/xenvif/vs2019/version/.revision
+drivers/winpv/xenvif/vs2019/xenvif.inf
+drivers/winpv/xenvif/vs2019/Windows10*
+drivers/winpv/xenvif/vs2019/xenvif_coinst/Windows10*
