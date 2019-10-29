@@ -104,7 +104,6 @@ void vmcall_event_op_handler::send_vector(uint64_t root_vector)
         return;
     }
 
-    printv("%s: queueing vector 0x%x\n", pdev->bdf_str(), guest_msi->vector());
     guest->push_external_interrupt(guest_msi->vector());
     put_vcpu(pdev->m_guest_vcpuid);
 }
