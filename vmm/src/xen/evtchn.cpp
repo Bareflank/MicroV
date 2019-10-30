@@ -582,6 +582,8 @@ void xen_evtchn::notify_remote(chan_t *chan)
 
 bool xen_evtchn::send(xen_vcpu *v, evtchn_send_t *es)
 {
+    std::lock_guard lock(m_send_mtx);
+
     auto chan = this->port_to_chan(es->port);
     if (!chan) {
         bfalert_nhex(0, "evtchn::send: chan not found:", es->port);
