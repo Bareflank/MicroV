@@ -175,7 +175,6 @@ static int make_xs_dirs(void)
     xs_mkdir_ro(t, dom_root);
     xs_mkdir_ro_relative(t, dom_root, "name");
     xs_mkdir_ro_relative(t, dom_root, "domid");
-    xs_mkdir_ro_relative(t, dom_root, "memory");
     xs_mkdir_rw_relative(t, dom_root, "drivers");
 
     strcpy(val, "winpv");
