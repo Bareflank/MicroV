@@ -1208,7 +1208,7 @@ void parse_config_data(const char *config_source,
                        libxl_domain_config *d_config)
 {
     const char *buf;
-    long l, vcpus = 0;
+    long l, vcpus = 0, root_dom = 0;
     XLU_Config *config;
     XLU_ConfigList *cpus, *vbds, *nics, *pcis, *cvfbs, *cpuids, *vtpms,
                    *usbctrls, *usbdevs, *p9devs, *vdispls, *pvcallsifs_devs;
@@ -1306,6 +1306,10 @@ void parse_config_data(const char *config_source,
             fprintf(stderr, "Failed to parse UUID: %s\n", buf);
             exit(1);
         }
+
+        if (!strcmp("01000000-0000-0000-0000-000000000000", buf)) {
+            root_dom = 1;
+        }
     }else{
         libxl_uuid_generate(&c_info->uuid);
     }
@@ -1316,6 +1320,11 @@ void parse_config_data(const char *config_source,
         xlu_cfg_replace_string(config, "pool", &c_info->pool_name, 0);
 
     libxl_domain_build_info_init_type(b_info, c_info->type);
+
+    b_info->root_domain = root_dom;
+    if (b_info->root_domain) {
+        printf("Creating root domain\n");
+    }
 
     if (b_info->type == LIBXL_DOMAIN_TYPE_PVH) {
         xlu_cfg_get_defbool(config, "pvshim", &b_info->u.pvh.pvshim, 0);
