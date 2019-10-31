@@ -327,6 +327,8 @@ bool xen_evtchn::unmask(xen_vcpu *v, evtchn_unmask_t *unmask)
 
 int xen_evtchn::alloc_unbound(evtchn_alloc_unbound_t *eau)
 {
+    std::lock_guard lock(m_mutex);
+
     auto port = this->make_new_port();
     auto chan = this->port_to_chan(port);
 
@@ -582,7 +584,7 @@ void xen_evtchn::notify_remote(chan_t *chan)
 
 bool xen_evtchn::send(xen_vcpu *v, evtchn_send_t *es)
 {
-    std::lock_guard lock(m_send_mtx);
+    std::lock_guard lock(m_mutex);
 
     auto chan = this->port_to_chan(es->port);
     if (!chan) {

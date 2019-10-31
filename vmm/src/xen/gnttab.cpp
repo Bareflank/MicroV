@@ -276,10 +276,22 @@ static void xen_gnttab_map_grant_ref(xen_vcpu *vcpu,
     fpg = fmem->find_page(fgfn);
 
     if (!fpg) {
-        printv("%s: gfn 0x%lx not mapped in dom 0x%x\n",
-               __func__, fgfn, fdomid);
-        rc = GNTST_general_error;
-        goto put_domain;
+        if (fdomid == DOMID_WINPV) {
+            fmem->add_root_backed_page(fgfn,
+                                       pg_perm_rw,
+                                       pg_mtype_wb,
+                                       fgfn,
+                                       false);
+            fpg = fmem->find_page(fgfn);
+            ensures(fpg);
+
+            printf("%s: mapped root page: 0x%lx\n", __func__, fgfn);
+        } else {
+            printv("%s: gfn 0x%lx not mapped in dom 0x%x\n",
+                   __func__, fgfn, fdomid);
+            rc = GNTST_general_error;
+            goto put_domain;
+        }
     }
 
 set_perms:

@@ -939,6 +939,11 @@ bool xen_domain::unpause(xen_vcpu *vcpu)
     m_flags &= ~XEN_DOMINF_paused;
     m_flags |= XEN_DOMINF_running;
 
+    if (m_id == DOMID_WINPV) {
+        uvv->set_rax(0);
+        return true;
+    }
+
     put_xen_domain(m_id);
 
     if (!m_returned_new) {

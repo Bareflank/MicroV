@@ -922,6 +922,9 @@ bool xen_vcpu::debug_hypercall(microv_vcpu *vcpu)
     const auto rdi = vcpu->rdi();
 
     if (vcpu->is_root_vcpu()) {
+        if (rax == __HYPERVISOR_event_channel_op && rdi == EVTCHNOP_send) {
+            return false;
+        }
         return true;
     }
 
@@ -1030,6 +1033,7 @@ bool xen_vcpu::root_hypercall(microv_vcpu *vcpu)
         return this->handle_xen_version();
     case __HYPERVISOR_memory_op:
         switch (vcpu->rdi()) {
+        /* TODO: check that ring3 isn't doing these calls */
         case XENMEM_decrease_reservation:
         case XENMEM_add_to_physmap:
         case XENMEM_populate_physmap:
@@ -1043,6 +1047,7 @@ bool xen_vcpu::root_hypercall(microv_vcpu *vcpu)
         case EVTCHNOP_expand_array:
         case EVTCHNOP_send:
         case EVTCHNOP_bind_virq:
+        case EVTCHNOP_alloc_unbound:
             return this->handle_event_channel_op();
         default:
             return false;

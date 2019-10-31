@@ -92,7 +92,7 @@ public:
 
     void add_page(xen_pfn_t gfn, uint32_t perms, uint32_t mtype);
     void add_root_backed_page(xen_pfn_t gfn, uint32_t perms, uint32_t mtype,
-                              xen_pfn_t hfn);
+                              xen_pfn_t hfn, bool need_map = true);
     void add_vmm_backed_page(xen_pfn_t gfn, uint32_t perms, uint32_t mtype,
                              void *ptr, bool need_map = true);
     void add_foreign_page(xen_pfn_t gfn, uint32_t perms, uint32_t mtype,

@@ -233,7 +233,7 @@ private:
     std::vector<unique_map<word_t>> m_word_pages{};
     std::vector<page_ptr<chan_t>> m_chan_pages{};
 
-    std::mutex m_send_mtx{};
+    std::mutex m_mutex{};
     xen_domain *m_xen_dom{};
     port_t m_nr_ports{};
     port_t m_port_end{1};

@@ -662,14 +662,17 @@ void xen_memory::add_page(xen_pfn_t gfn, uint32_t perms, uint32_t mtype)
 
 /* Add a page with root backing */
 void xen_memory::add_root_backed_page(xen_pfn_t gfn, uint32_t perms,
-                                      uint32_t mtype, xen_pfn_t hfn)
+                                      uint32_t mtype, xen_pfn_t hfn,
+                                      bool need_map)
 {
     expects(m_page_map.count(gfn) == 0);
 
     auto pg = alloc_root_backed_page(hfn);
     m_page_map.try_emplace(gfn, xen_page(gfn, perms, mtype, pg));
 
-    this->map_page(this->find_page(gfn));
+    if (need_map) {
+        this->map_page(this->find_page(gfn));
+    }
 }
 
 /* Add a page with vmm backing */
