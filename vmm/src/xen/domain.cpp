@@ -65,11 +65,28 @@ using dom_t = std::pair<std::unique_ptr<xen_domain>, std::unique_ptr<ref_t>>;
 
 static_assert(ref_t::is_always_lock_free);
 
+/* Has the toolstack "created" the root domain yet? */
+static bool xl_created_root = false;
+
+/* UUID of the root domain */
+static xen_uuid_t root_uuid = {
+    1, 0, 0, 0,
+    0, 0,
+    0, 0,
+    0, 0,
+    0, 0, 0, 0, 0, 0
+};
+
 std::mutex dom_mutex;
 std::mutex ref_mutex;
 
 std::map<xen_domid_t, dom_t> dom_map;
 std::map<xen_domid_t, ref_t *> ref_map;
+
+bool is_root_uuid(uint8_t *hdl) noexcept
+{
+    return !memcmp(hdl, &root_uuid, sizeof(root_uuid));
+}
 
 xen_domid_t create_xen_domain(microv_domain *uv_dom, class iommu *iommu)
 {
@@ -198,6 +215,10 @@ bool xen_domain_getinfolist(xen_vcpu *vcpu, struct xen_sysctl *ctl)
 
         auto info = &buf.get()[num];
         auto dom = itr->second.first.get();
+
+        if (dom->m_id == DOMID_WINPV && !xl_created_root) {
+            continue;
+        }
 
         dom->get_info(info);
         num++;
@@ -456,6 +477,14 @@ bool xen_domain_createdomain(xen_vcpu *vcpu, struct xen_domctl *ctl)
     expects((cd->flags & XEN_DOMCTL_CDF_oos_off) == 0);
     expects((cd->flags & XEN_DOMCTL_CDF_xs_domain) == 0);
 
+    if (is_root_uuid(&cd->handle[0])) {
+        printv("%s: root domain: 0x%x\n", __func__, DOMID_WINPV);
+        xl_created_root = true;
+        ctl->domain = DOMID_WINPV;
+        vcpu->m_uv_vcpu->set_rax(0);
+        return true;
+    }
+
     auto tsc_shift = vcpu->m_xen_dom->m_tsc_shift;
     auto tsc_mult = vcpu->m_xen_dom->m_tsc_mul;
     auto uv_info = vcpu->m_xen_dom->m_uv_info;
@@ -614,7 +643,10 @@ void xen_domain::init_from_root() noexcept
     m_max_evtchn_port = DEFAULT_EVTCHN_PORTS - 1;
     m_max_grant_frames = xen_gnttab::max_shared_gte_pages();
     m_max_maptrack_frames = DEFAULT_MAPTRACK_FRAMES;
-    make_xen_uuid(&m_uuid);
+
+    /* The root domain has a special UUID */
+    memset(&m_uuid, 0, sizeof(m_uuid));
+    m_uuid.a[0] = 1;
 }
 
 xen_domain::xen_domain(microv_domain *domain, class iommu *iommu)
@@ -978,8 +1010,10 @@ void xen_domain::get_info(struct xen_domctl_getdomaininfo *info)
     info->paged_pages = m_paged_pages;
     info->shared_info_frame = m_shinfo_gpfn;
     info->cpu_time = this->runstate_time(RUNSTATE_running);
-    info->nr_online_vcpus = this->nr_online_vcpus();
-    info->max_vcpu_id = this->max_vcpu_id();
+    //info->nr_online_vcpus = this->nr_online_vcpus();
+    //info->max_vcpu_id = this->max_vcpu_id();
+    info->nr_online_vcpus = 1;
+    info->max_vcpu_id = 0;
     info->ssidref = m_ssid;
     info->cpupool = m_cpupool_id;
 

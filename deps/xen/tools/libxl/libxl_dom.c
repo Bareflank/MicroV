@@ -510,8 +510,6 @@ int libxl__build_pre(libxl__gc *gc, uint32_t domid,
         return ERROR_FAIL;
     }
 
-    printf("set maxmem\n");
-
     xs_domid = xs_read(ctx->xsh, XBT_NULL, "/tool/xenstored/domid", NULL);
     state->store_domid = xs_domid ? atoi(xs_domid) : 0;
     free(xs_domid);
@@ -520,10 +518,29 @@ int libxl__build_pre(libxl__gc *gc, uint32_t domid,
     state->console_domid = con_domid ? atoi(con_domid) : 0;
     free(con_domid);
 
-    state->store_port = xc_evtchn_alloc_unbound(ctx->xch, domid, state->store_domid);
-    state->console_port = xc_evtchn_alloc_unbound(ctx->xch, domid, state->console_domid);
+    if (info->root_domain) {
+        int err;
+        uint64_t port;
 
-    printf("allocated store and console evtchn unbound\n");
+        err = xc_hvm_param_get(ctx->xch, domid, HVM_PARAM_STORE_EVTCHN, &port);
+        if (err) {
+            LOGE(ERROR, "Couldn't read store evtchn for root domain");
+            return ERROR_FAIL;
+        }
+
+        state->store_port = port;
+
+        err = xc_hvm_param_get(ctx->xch, domid, HVM_PARAM_CONSOLE_EVTCHN, &port);
+        if (err) {
+            LOGE(ERROR, "Couldn't read console evtchn for root domain");
+            return ERROR_FAIL;
+        }
+
+        state->console_port = port;
+    } else {
+        state->store_port = xc_evtchn_alloc_unbound(ctx->xch, domid, state->store_domid);
+        state->console_port = xc_evtchn_alloc_unbound(ctx->xch, domid, state->console_domid);
+    }
 
     if (info->type != LIBXL_DOMAIN_TYPE_PV)
         hvm_set_conf_params(ctx->xch, domid, info);
@@ -560,7 +577,6 @@ int libxl__build_pre(libxl__gc *gc, uint32_t domid,
     }
 
     rc = libxl__arch_domain_create(gc, d_config, domid);
-    printf("arch_domain_create done\n");
 
     return rc;
 }
@@ -619,6 +635,10 @@ int libxl__build_post(libxl__gc *gc, uint32_t domid,
     char **ents;
     int i, rc;
 
+    if (info->root_domain) {
+        goto set_xs_ents;
+    }
+
     if (info->num_vnuma_nodes && !info->num_vcpu_soft_affinity) {
         rc = set_vnuma_affinity(gc, domid, info);
         if (rc)
@@ -643,6 +663,7 @@ int libxl__build_post(libxl__gc *gc, uint32_t domid,
         }
     }
 
+set_xs_ents:
     ents = libxl__calloc(gc, 12 + (info->max_vcpus * 2) + 2, sizeof(char *));
     ents[0] = "memory/static-max";
     ents[1] = GCSPRINTF("%"PRId64, info->max_memkb);
@@ -1289,10 +1310,12 @@ int libxl__build_hvm(libxl__gc *gc, uint32_t domid,
             dom->mmio_size = info->u.hvm.mmio_hole_memkb << 10;
     }
 
-    rc = libxl__domain_firmware(gc, info, state, dom);
-    if (rc != 0) {
-        LOG(ERROR, "initializing domain firmware failed");
-        goto out;
+    if (!info->root_domain) {
+        rc = libxl__domain_firmware(gc, info, state, dom);
+        if (rc != 0) {
+            LOG(ERROR, "initializing domain firmware failed");
+            goto out;
+        }
     }
 
     printf("%s 1\n", __func__);
@@ -1377,11 +1400,11 @@ int libxl__build_hvm(libxl__gc *gc, uint32_t domid,
             dom->vnode_to_pnode[i] = info->vnuma_nodes[i].pnode;
     }
 
-    printf("%s 6\n", __func__);
-    rc = libxl__build_dom(gc, domid, d_config, state, dom);
-    printf("%s 7\n", __func__);
-    if (rc != 0)
-        goto out;
+    if (!info->root_domain) {
+        rc = libxl__build_dom(gc, domid, d_config, state, dom);
+        if (rc != 0)
+            goto out;
+    }
 
     printf("%s 8\n", __func__);
     rc = hvm_build_set_params(ctx->xch, domid, info, state->store_port,
