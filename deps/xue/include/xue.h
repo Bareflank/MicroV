@@ -34,6 +34,7 @@
 #define XUE_XHC_DEV_Z390 0xA36DULL
 #define XUE_XHC_DEV_WILDCAT_POINT 0x9CB1ULL
 #define XUE_XHC_DEV_SUNRISE_POINT 0x9D2FULL
+#define XUE_XHC_DEV_CANNON_POINT 0x9DEDULL
 
 /* DbC idVendor and idProduct */
 #define XUE_DBC_VENDOR 0x1D6B
@@ -65,6 +66,7 @@ static inline int known_xhc(uint32_t dev_ven)
     case (XUE_XHC_DEV_Z390 << 16) | XUE_XHC_VEN_INTEL:
     case (XUE_XHC_DEV_WILDCAT_POINT << 16) | XUE_XHC_VEN_INTEL:
     case (XUE_XHC_DEV_SUNRISE_POINT << 16) | XUE_XHC_VEN_INTEL:
+    case (XUE_XHC_DEV_CANNON_POINT << 16) | XUE_XHC_VEN_INTEL:
         return 1;
     default:
         return 0;
@@ -824,7 +826,7 @@ struct xue_dbc_reg {
 
 /* Defines the size in bytes of TRB rings as 2^XUE_TRB_RING_ORDER * 4096 */
 #ifndef XUE_TRB_RING_ORDER
-#define XUE_TRB_RING_ORDER 0
+#define XUE_TRB_RING_ORDER 4
 #endif
 #define XUE_TRB_RING_CAP (XUE_TRB_PER_PAGE * (1ULL << XUE_TRB_RING_ORDER))
 #define XUE_TRB_RING_BYTES (XUE_TRB_RING_CAP * sizeof(struct xue_trb))
