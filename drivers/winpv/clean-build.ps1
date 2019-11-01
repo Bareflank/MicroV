@@ -25,6 +25,6 @@ foreach ($d in $dir_list)
 {
     pushd $d.Name
     .\clean.ps1
-    .\build.ps1 -type free
+    .\build.ps1 -type checked
     popd
 }
