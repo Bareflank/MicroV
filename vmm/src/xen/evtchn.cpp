@@ -327,6 +327,8 @@ bool xen_evtchn::unmask(xen_vcpu *v, evtchn_unmask_t *unmask)
 
 int xen_evtchn::alloc_unbound(evtchn_alloc_unbound_t *eau)
 {
+    std::lock_guard lock(m_mutex);
+
     auto port = this->make_new_port();
     auto chan = this->port_to_chan(port);
 
@@ -462,19 +464,22 @@ bool xen_evtchn::bind_vcpu(xen_vcpu *v, evtchn_bind_vcpu_t *ebv)
 
 bool xen_evtchn::bind_virq(xen_vcpu *v, evtchn_bind_virq_t *ebv)
 {
-    expects(ebv->vcpu == v->m_id);
+    expects(ebv->vcpu < m_xen_dom->m_nr_vcpus);
     expects(ebv->virq < virq_info.size());
     expects(ebv->virq < m_virq_to_port.size());
 
     auto port = this->bind(chan_t::state_virq);
     auto chan = this->port_to_chan(port);
 
+    chan->vcpuid = ebv->vcpu;
     chan->virq = ebv->virq;
+
     m_virq_to_port[ebv->virq] = port;
     ebv->port = port;
 
-    const auto name = virq_info[ebv->virq].name;
-    printv("evtchn: bind_virq %s to port %u\n", name, port);
+    printv("evtchn: bind_virq %s to port %u on vcpu 0x%x\n",
+           virq_info[ebv->virq].name, port, ebv->vcpu);
+
     v->m_uv_vcpu->set_rax(0);
     return true;
 }
@@ -579,6 +584,8 @@ void xen_evtchn::notify_remote(chan_t *chan)
 
 bool xen_evtchn::send(xen_vcpu *v, evtchn_send_t *es)
 {
+    std::lock_guard lock(m_mutex);
+
     auto chan = this->port_to_chan(es->port);
     if (!chan) {
         bfalert_nhex(0, "evtchn::send: chan not found:", es->port);

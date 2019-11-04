@@ -141,17 +141,25 @@ void xen_gnttab_unmap_grant_ref(xen_vcpu *vcpu, gnttab_unmap_grant_ref_t *unmap)
         return;
     }
 
+    grant_entry_header_t *fhdr = nullptr;
     auto fgnt = fdom->m_gnttab.get();
+
     if (fgnt->invalid_ref(fref)) {
         printv("%s: bad fref:%x\n", __func__, fref);
+
+        if (fdomid == DOMID_WINPV && fref == GNTTAB_RESERVED_XENSTORE) {
+            goto unmap;
+        }
+
         unmap->status = GNTST_bad_handle;
         put_xen_domain(fdomid);
         return;
     }
 
-    auto fhdr = fgnt->shared_header(fref);
+    fhdr = fgnt->shared_header(fref);
     fhdr->flags &= ~(GTF_reading | GTF_writing);
 
+unmap:
     auto lmem = ldom->m_memory.get();
     auto lgfn = xen_frame(unmap->host_addr);
     if (auto rc = lmem->remove_page(lgfn); rc) {
@@ -223,6 +231,16 @@ static void xen_gnttab_map_grant_ref(xen_vcpu *vcpu,
     auto fgnt = fdom->m_gnttab.get();
     if (fgnt->invalid_ref(fref)) {
         printv("%s: OOB ref:0x%x for dom:0x%x\n", __func__, fref, fdomid);
+
+        if (fdomid == DOMID_WINPV && fref == GNTTAB_RESERVED_XENSTORE) {
+            fmem = fdom->m_memory.get();
+            fgfn = fdom->m_hvm->get_param(HVM_PARAM_STORE_PFN);
+            fpg = fmem->find_page(fgfn);
+
+            expects(fpg);
+            goto set_perms;
+        }
+
         rc = GNTST_bad_gntref;
         goto put_domain;
     }
@@ -258,12 +276,25 @@ static void xen_gnttab_map_grant_ref(xen_vcpu *vcpu,
     fpg = fmem->find_page(fgfn);
 
     if (!fpg) {
-        printv("%s: gfn 0x%lx not mapped in dom 0x%x\n",
-               __func__, fgfn, fdomid);
-        rc = GNTST_general_error;
-        goto put_domain;
+        if (fdomid == DOMID_WINPV) {
+            fmem->add_root_backed_page(fgfn,
+                                       pg_perm_rw,
+                                       pg_mtype_wb,
+                                       fgfn,
+                                       false);
+            fpg = fmem->find_page(fgfn);
+            ensures(fpg);
+
+            printf("%s: mapped root page: 0x%lx\n", __func__, fgfn);
+        } else {
+            printv("%s: gfn 0x%lx not mapped in dom 0x%x\n",
+                   __func__, fgfn, fdomid);
+            rc = GNTST_general_error;
+            goto put_domain;
+        }
     }
 
+set_perms:
     perm = (map_ro) ? pg_perm_r : pg_perm_rw;
     lmem = vcpu->m_xen_dom->m_memory.get();
     lgfn = xen_frame(map->host_addr);

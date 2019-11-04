@@ -1067,8 +1067,6 @@ SystemVirtualCpuIndex(
     OUT unsigned int    *vcpu_id
     )
 {
-    PSYSTEM_CONTEXT     Context = &SystemContext;
-    PSYSTEM_PROCESSOR   Processor = &Context->Processor[Index];
     NTSTATUS            status;
 
     status = STATUS_UNSUCCESSFUL;

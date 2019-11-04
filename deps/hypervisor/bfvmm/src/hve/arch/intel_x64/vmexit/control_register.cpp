@@ -288,6 +288,16 @@ control_register_handler::add_wrcr4_handler(
     const handler_delegate_t &d)
 { m_wrcr4_handlers.push_front(d); }
 
+void control_register_handler::add_rdcr8_handler(const handler_delegate_t &d)
+{
+    m_rdcr8_handlers.push_front(d);
+}
+
+void control_register_handler::add_wrcr8_handler(const handler_delegate_t &d)
+{
+    m_wrcr8_handlers.push_front(d);
+}
+
 // -----------------------------------------------------------------------------
 // Enablers
 // -----------------------------------------------------------------------------
@@ -324,6 +334,18 @@ control_register_handler::enable_wrcr4_exiting(
 {
     mask |= m_vcpu->global_state()->ia32_vmx_cr4_fixed0;
     vmcs_n::cr4_guest_host_mask::set(mask);
+}
+
+void control_register_handler::enable_rdcr8_exiting()
+{
+    using namespace vmcs_n;
+    primary_processor_based_vm_execution_controls::cr8_store_exiting::enable();
+}
+
+void control_register_handler::enable_wrcr8_exiting()
+{
+    using namespace vmcs_n;
+    primary_processor_based_vm_execution_controls::cr8_load_exiting::enable();
 }
 
 // -----------------------------------------------------------------------------
@@ -383,6 +405,9 @@ control_register_handler::handle(vcpu *vcpu)
 
         case 4:
             return handle_cr4(vcpu);
+
+        case 8:
+            return handle_cr8(vcpu);
 
         default:
             throw std::runtime_error(
@@ -468,6 +493,30 @@ control_register_handler::handle_cr4(vcpu *vcpu)
 }
 
 bool
+control_register_handler::handle_cr8(vcpu *vcpu)
+{
+    using namespace vmcs_n::exit_qualification::control_register_access;
+
+    switch (access_type::get()) {
+        case access_type::mov_to_cr:
+            return handle_wrcr8(vcpu);
+
+        case access_type::mov_from_cr:
+            return handle_rdcr8(vcpu);
+
+        case access_type::clts:
+            throw std::runtime_error(
+                "control_register_handler::handle_cr8: clts not supported"
+            );
+
+        default:
+            throw std::runtime_error(
+                "control_register_handler::handle_cr8: lmsw not supported"
+            );
+    }
+}
+
+bool
 control_register_handler::handle_wrcr0(vcpu *vcpu)
 {
     this->execute_wrcr0(vcpu);
@@ -519,6 +568,28 @@ control_register_handler::handle_wrcr4(vcpu *vcpu)
     this->execute_wrcr4(vcpu);
 
     for (const auto &d : m_wrcr4_handlers) {
+        if (d(vcpu)) {
+            return true;
+        }
+    }
+
+    return vcpu->advance();
+}
+
+bool control_register_handler::handle_rdcr8(vcpu *vcpu)
+{
+    for (const auto &d : m_rdcr8_handlers) {
+        if (d(vcpu)) {
+            return true;
+        }
+    }
+
+    return vcpu->advance();
+}
+
+bool control_register_handler::handle_wrcr8(vcpu *vcpu)
+{
+    for (const auto &d : m_wrcr8_handlers) {
         if (d(vcpu)) {
             return true;
         }

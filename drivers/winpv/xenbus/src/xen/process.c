@@ -67,7 +67,7 @@ ProcessNotify(
     KeRaiseIrql(DISPATCH_LEVEL, &Irql);
 
     Address.QuadPart = __readcr3();
-    (VOID)HvmPagetableDying(Address);
+    //(VOID)HvmPagetableDying(Address);
 
     KeLowerIrql(Irql);
 }

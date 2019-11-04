@@ -588,6 +588,18 @@ vcpu::add_wrcr4_handler(
     m_control_register_handler.enable_wrcr4_exiting(mask);
 }
 
+void vcpu::add_rdcr8_handler(const handler_delegate_t &d)
+{
+    m_control_register_handler.add_rdcr8_handler(d);
+    m_control_register_handler.enable_rdcr8_exiting();
+}
+
+void vcpu::add_wrcr8_handler(const handler_delegate_t &d)
+{
+    m_control_register_handler.add_wrcr8_handler(d);
+    m_control_register_handler.enable_wrcr8_exiting();
+}
+
 void
 vcpu::execute_wrcr0()
 { m_control_register_handler.execute_wrcr0(this); }

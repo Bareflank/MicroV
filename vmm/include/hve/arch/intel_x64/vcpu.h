@@ -325,6 +325,10 @@ public:
     bool handle_0x4BF00010(bfvmm::intel_x64::vcpu *vcpu);
     bool handle_0x4BF00021(bfvmm::intel_x64::vcpu *vcpu);
 
+    /// CR8 handlers
+    bool handle_rdcr8(bfvmm::intel_x64::vcpu *vcpu);
+    bool handle_wrcr8(bfvmm::intel_x64::vcpu *vcpu);
+
     /// xstate management
     void init_xstate();
     void save_xstate();
@@ -371,6 +375,7 @@ private:
     x2apic_handler m_x2apic_handler;
     pci_cfg_handler m_pci_handler;
 
+    uint64_t m_cr8{};
     vcpu *m_root_vcpu{};
 
     std::unique_ptr<microv::xen_vcpu> m_xen_vcpu{};

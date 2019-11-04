@@ -475,6 +475,7 @@ libxl_altp2m_mode = Enumeration("altp2m_mode", [
 
 libxl_domain_build_info = Struct("domain_build_info",[
     ("max_vcpus",       integer),
+    ("root_domain",     integer),
     ("avail_vcpus",     libxl_bitmap),
     ("cpumap",          libxl_bitmap),
     ("nodemap",         libxl_bitmap),
@@ -498,7 +499,7 @@ libxl_domain_build_info = Struct("domain_build_info",[
 
     ("max_grant_frames",    uint32, {'init_val': 'LIBXL_MAX_GRANT_FRAMES_DEFAULT'}),
     ("max_maptrack_frames", uint32, {'init_val': 'LIBXL_MAX_MAPTRACK_FRAMES_DEFAULT'}),
-    
+
     ("device_model_version", libxl_device_model_version),
     ("device_model_stubdomain", libxl_defbool),
     # if you set device_model you must set device_model_version too
@@ -574,10 +575,10 @@ libxl_domain_build_info = Struct("domain_build_info",[
                                        ("keymap",           string),
                                        ("sdl",              libxl_sdl_info),
                                        ("spice",            libxl_spice_info),
-                                       
+
                                        ("gfx_passthru",     libxl_defbool),
                                        ("gfx_passthru_kind", libxl_gfx_passthru_kind),
-                                       
+
                                        ("serial",           string),
                                        ("boot",             string),
                                        ("usb",              libxl_defbool),

@@ -1070,6 +1070,7 @@ static void domcreate_bootloader_done(libxl__egc *egc,
         &dcs->srs.shs.callbacks.restore.a;
 
     if (rc) {
+        printf("%s: 0\n", __func__);
         domcreate_rebuild_done(egc, dcs, rc);
         return;
     }
@@ -1090,6 +1091,7 @@ static void domcreate_bootloader_done(libxl__egc *egc,
 
     if (restore_fd < 0 && dcs->domid_soft_reset == INVALID_DOMID) {
         rc = libxl__domain_build(gc, d_config, domid, state);
+        printf("%s: 1\n", __func__);
         domcreate_rebuild_done(egc, dcs, rc);
         return;
     }
@@ -1274,6 +1276,7 @@ out:
         libxl_fd_set_nonblock(ctx, fd, 0);
         errno = esave;
     }
+    printf("%s: 0\n", __func__);
     domcreate_rebuild_done(egc, dcs, ret);
 }
 

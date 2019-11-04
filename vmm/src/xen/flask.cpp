@@ -44,7 +44,7 @@ bool xen_flask::handle(xen_flask_op_t *fop)
         break;
     }
 
-    m_uv_vcpu->set_rax(-EINVAL);
+    m_uv_vcpu->set_rax(-ENOSYS);
     return true;
 }
 }

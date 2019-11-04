@@ -1,0 +1,115 @@
+; Copyright (c) Citrix Systems Inc.
+; All rights reserved.
+;
+; Redistribution and use in source and binary forms, 
+; with or without modification, are permitted provided 
+; that the following conditions are met:
+;
+; *   Redistributions of source code must retain the above 
+;     copyright notice, this list of conditions and the 
+;     following disclaimer.
+; *   Redistributions in binary form must reproduce the above 
+;     copyright notice, this list of conditions and the 
+;     following disclaimer in the documentation and/or other 
+;     materials provided with the distribution.
+;
+; THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND 
+; CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, 
+; INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF 
+; MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE 
+; DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR 
+; CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, 
+; SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, 
+; BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR 
+; SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS 
+; INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, 
+; WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING 
+; NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE 
+; OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF 
+; SUCH DAMAGE.
+
+ 
+[Version] 
+Signature="$Windows NT$" 
+Class=System
+ClassGUID={4d36e97d-e325-11ce-bfc1-08002be10318}
+Provider=%Vendor%
+CatalogFile=xenvif.cat
+DriverVer=@INF_DATE@,@MAJOR_VERSION@.@MINOR_VERSION@.@MICRO_VERSION@.@BUILD_NUMBER@
+DriverPackageDisplayName=%DiskDesc%
+
+[DestinationDirs] 
+DefaultDestDir=12 
+CoInst_CopyFiles=11
+
+[SourceDisksNames]
+0=%DiskDesc%
+
+[SourceDisksFiles]
+xenvif.sys=0,,
+xenvif_coinst.dll=0,,
+
+[CoInst_CopyFiles]
+xenvif_coinst_@MAJOR_VERSION@_@MINOR_VERSION@_@MICRO_VERSION@_@BUILD_NUMBER@.dll,xenvif_coinst.dll
+
+[Manufacturer] 
+%Vendor%=Inst,NT@INF_ARCH@
+
+[Inst.NT@INF_ARCH@]
+; DisplayName		Section		DeviceID
+; -----------		-------		--------
+
+%XenVifName%		=XenVif_Inst,	XENBUS\VEN_@VENDOR_PREFIX@@VENDOR_DEVICE_ID@&DEV_VIF&REV_09000005
+%XenVifName%		=XenVif_Inst,	XENBUS\VEN_@VENDOR_PREFIX@0001&DEV_VIF&REV_09000005
+%XenVifName%		=XenVif_Inst,	XENBUS\VEN_@VENDOR_PREFIX@0002&DEV_VIF&REV_09000005
+
+[XenVif_Inst] 
+CopyFiles=XenVif_Copyfiles
+
+[XenVif_Copyfiles]
+xenvif.sys
+
+[XenVif_Inst.Services] 
+AddService=xenvif,0x02,XenVif_Service,
+
+[XenVif_Service]
+DisplayName=%XenVifName%
+ServiceType=%SERVICE_KERNEL_DRIVER% 
+StartType=%SERVICE_DEMAND_START% 
+ErrorControl=%SERVICE_ERROR_NORMAL% 
+ServiceBinary=%12%\xenvif.sys 
+LoadOrderGroup="NDIS"
+AddReg = XenVif_BootFlags, XenVif_Parameters
+
+[XenVif_BootFlags]
+HKR,,"BootFlags",0x00010003,0x81
+
+[XenVif_Parameters]
+HKR,"Parameters",,0x00000010
+HKR,"Parameters","RequestKey",0x00000000,%RequestKey%
+
+[XenVif_Inst.CoInstallers]
+CopyFiles=CoInst_CopyFiles
+AddReg=CoInst_AddReg
+
+[CoInst_AddReg]
+HKR,,CoInstallers32,0x00010000,"xenvif_coinst_@MAJOR_VERSION@_@MINOR_VERSION@_@MICRO_VERSION@_@BUILD_NUMBER@.dll,Entry"
+
+[Strings] 
+
+Vendor="@VENDOR_NAME@"
+DiskDesc="@PRODUCT_NAME@ PV Network Class Package"
+XenVifName="@PRODUCT_NAME@ PV Network Class"
+RequestKey="SYSTEM\CurrentControlSet\Services\xenbus_monitor\Request"
+
+SERVICE_BOOT_START=0x0 
+SERVICE_SYSTEM_START=0x1 
+SERVICE_AUTO_START=0x2 
+SERVICE_DEMAND_START=0x3 
+SERVICE_DISABLED=0x4 
+
+SERVICE_KERNEL_DRIVER=0x1 
+SERVICE_ERROR_IGNORE=0x0 
+SERVICE_ERROR_NORMAL=0x1 
+SERVICE_ERROR_SEVERE=0x2 
+SERVICE_ERROR_CRITICAL=0x3 
