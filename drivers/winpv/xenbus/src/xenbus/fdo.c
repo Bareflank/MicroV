@@ -108,11 +108,6 @@ struct _XENBUS_FDO {
     KEVENT                          SuspendEvent;
     PXENBUS_STORE_WATCH             SuspendWatch;
 
-    PXENBUS_THREAD                  BalloonThread;
-    KEVENT                          BalloonEvent;
-    PXENBUS_STORE_WATCH             BalloonWatch;
-    MUTEX                           BalloonSuspendMutex;
-
     PCM_PARTIAL_RESOURCE_LIST       RawResourceList;
     PCM_PARTIAL_RESOURCE_LIST       TranslatedResourceList;
 
@@ -128,7 +123,6 @@ struct _XENBUS_FDO {
     PXENBUS_CACHE_CONTEXT           CacheContext;
     PXENBUS_GNTTAB_CONTEXT          GnttabContext;
     PXENBUS_UNPLUG_CONTEXT          UnplugContext;
-    PXENBUS_BALLOON_CONTEXT         BalloonContext;
 
     XENBUS_DEBUG_INTERFACE          DebugInterface;
     XENBUS_SUSPEND_INTERFACE        SuspendInterface;
@@ -136,7 +130,6 @@ struct _XENBUS_FDO {
     XENBUS_STORE_INTERFACE          StoreInterface;
     XENBUS_CONSOLE_INTERFACE        ConsoleInterface;
     XENBUS_RANGE_SET_INTERFACE      RangeSetInterface;
-    XENBUS_BALLOON_INTERFACE        BalloonInterface;
 
     PUCHAR                          Buffer;
     PMDL                            Mdl;
@@ -908,7 +901,6 @@ DEFINE_FDO_GET_CONTEXT(RangeSet, PXENBUS_RANGE_SET_CONTEXT)
 DEFINE_FDO_GET_CONTEXT(Cache, PXENBUS_CACHE_CONTEXT)
 DEFINE_FDO_GET_CONTEXT(Gnttab, PXENBUS_GNTTAB_CONTEXT)
 DEFINE_FDO_GET_CONTEXT(Unplug, PXENBUS_UNPLUG_CONTEXT)
-DEFINE_FDO_GET_CONTEXT(Balloon, PXENBUS_BALLOON_CONTEXT)
 
 __drv_functionClass(IO_COMPLETION_ROUTINE)
 __drv_sameIRQL
@@ -1538,15 +1530,9 @@ __FdoSuspendSetActive(
     IN  PXENBUS_FDO     Fdo
     )
 {
-    if (!TryAcquireMutex(&Fdo->BalloonSuspendMutex))
-        goto fail1;
-
-    Trace("<===>\n");
+    UNREFERENCED_PARAMETER(Fdo);
 
     return STATUS_SUCCESS;
-
-fail1:
-    return STATUS_UNSUCCESSFUL;
 }
 
 static FORCEINLINE VOID
@@ -1554,16 +1540,7 @@ __FdoSuspendClearActive(
     IN  PXENBUS_FDO     Fdo
     )
 {
-    ReleaseMutex(&Fdo->BalloonSuspendMutex);
-
-    Trace("<===>\n");
-
-    //
-    // We may have missed initiating a balloon
-    // whilst suspending/resuming.
-    //
-    if (Fdo->BalloonInterface.Interface.Context != NULL)
-        ThreadWake(Fdo->BalloonThread);
+    UNREFERENCED_PARAMETER(Fdo);
 }
 
 static NTSTATUS
@@ -1663,221 +1640,6 @@ loop:
 #define TIME_MS(_ms)            (TIME_US((_ms) * 1000ll))
 #define TIME_S(_s)              (TIME_MS((_s) * 1000ll))
 #define TIME_RELATIVE(_t)       (-(_t))
-
-static FORCEINLINE NTSTATUS
-__FdoBalloonSetActive(
-    IN  PXENBUS_FDO         Fdo
-    )
-{
-    if (!TryAcquireMutex(&Fdo->BalloonSuspendMutex))
-        goto fail1;
-
-    Trace("<===>\n");
-
-    (VOID) XENBUS_STORE(Printf,
-                        &Fdo->StoreInterface,
-                        NULL,
-                        "control",
-                        "balloon-active",
-                        "%u",
-                        1);
-
-    return STATUS_SUCCESS;
-
-fail1:
-    return STATUS_UNSUCCESSFUL;
-}
-
-static FORCEINLINE VOID
-__FdoBalloonClearActive(
-    IN  PXENBUS_FDO     Fdo
-    )
-{
-    (VOID) XENBUS_STORE(Printf,
-                        &Fdo->StoreInterface,
-                        NULL,
-                        "control",
-                        "balloon-active",
-                        "%u",
-                        0);
-
-    ReleaseMutex(&Fdo->BalloonSuspendMutex);
-
-    Trace("<===>\n");
-
-    //
-    // We may have missed initiating a suspend
-    // whilst the balloon was active.
-    //
-    ThreadWake(Fdo->SuspendThread);
-}
-
-#define XENBUS_BALLOON_RETRY_PERIOD 1
-
-static NTSTATUS
-FdoBalloon(
-    IN  PXENBUS_THREAD  Self,
-    IN  PVOID           Context
-    )
-{
-    PXENBUS_FDO         Fdo = Context;
-    PKEVENT             Event;
-    LARGE_INTEGER       Timeout;
-    ULONGLONG           StaticMax;
-    BOOLEAN             Initialized;
-    BOOLEAN             Active;
-    NTSTATUS            status;
-
-    Info("====>\n");
-
-    Event = ThreadGetEvent(Self);
-
-    Timeout.QuadPart = TIME_RELATIVE(TIME_S(XENBUS_BALLOON_RETRY_PERIOD));
-
-    StaticMax = 0;
-    Initialized = FALSE;
-    Active = FALSE;
-
-    for (;;) {
-        PCHAR                   Buffer;
-        ULONGLONG               Target;
-        ULONGLONG               Size;
-
-        Trace("waiting%s...\n", (Active) ? " (Active)" : "");
-
-        (VOID) KeWaitForSingleObject(Event,
-                                     Executive,
-                                     KernelMode,
-                                     FALSE,
-                                     (Active) ?
-                                     &Timeout :
-                                     NULL);
-        KeClearEvent(Event);
-
-        Trace("awake\n");
-
-        if (ThreadIsAlerted(Self))
-            break;
-
-        // It is not safe to use interfaces before this point
-        if (__FdoGetDevicePowerState(Fdo) != PowerDeviceD0) {
-            if (Active) {
-                Active = FALSE;
-
-                __FdoBalloonClearActive(Fdo);
-            }
-
-            goto loop;
-        }
-
-        if (!Initialized) {
-            ULONGLONG   VideoRAM;
-
-            ASSERT(!Active);
-
-            status = XENBUS_STORE(Read,
-                                  &Fdo->StoreInterface,
-                                  NULL,
-                                  "memory",
-                                  "static-max",
-                                  &Buffer);
-            if (!NT_SUCCESS(status))
-                goto loop;
-
-            StaticMax = _strtoui64(Buffer, NULL, 10);
-
-            XENBUS_STORE(Free,
-                         &Fdo->StoreInterface,
-                         Buffer);
-
-            if (StaticMax == 0)
-                goto loop;
-
-            status = XENBUS_STORE(Read,
-                                  &Fdo->StoreInterface,
-                                  NULL,
-                                  "memory",
-                                  "videoram",
-                                  &Buffer);
-            if (NT_SUCCESS(status)) {
-                VideoRAM = _strtoui64(Buffer, NULL, 10);
-
-                XENBUS_STORE(Free,
-                             &Fdo->StoreInterface,
-                             Buffer);
-            } else {
-                VideoRAM = 0;
-            }
-
-            if (StaticMax < VideoRAM)
-                goto loop;
-
-            StaticMax -= VideoRAM;
-            StaticMax /= 4;   // We need the value in pages
-
-            Initialized = TRUE;
-        }
-
-        ASSERT(Initialized);
-
-        status = XENBUS_STORE(Read,
-                              &Fdo->StoreInterface,
-                              NULL,
-                              "memory",
-                              "target",
-                              &Buffer);
-        if (!NT_SUCCESS(status))
-            goto loop;
-
-        Target = _strtoui64(Buffer, NULL, 10) / 4;
-
-        XENBUS_STORE(Free,
-                     &Fdo->StoreInterface,
-                     Buffer);
-
-        if (Target > StaticMax)
-            Target = StaticMax;
-
-        Size = StaticMax - Target;
-
-        if (XENBUS_BALLOON(GetSize,
-                           &Fdo->BalloonInterface) == Size) {
-            Trace("nothing to do\n");
-            goto loop;
-        }
-
-        if (!Active) {
-            status = __FdoBalloonSetActive(Fdo);
-            if (!NT_SUCCESS(status))
-                goto loop;
-
-            Active = TRUE;
-        }
-
-        status = XENBUS_BALLOON(Adjust,
-                                &Fdo->BalloonInterface,
-                                Size);
-        if (!NT_SUCCESS(status))
-            goto loop;
-
-        ASSERT(Active);
-        Active = FALSE;
-
-        __FdoBalloonClearActive(Fdo);
-
-loop:
-        if (!Active)
-            KeSetEvent(&Fdo->BalloonEvent, IO_NO_INCREMENT, FALSE);
-    }
-
-    ASSERT3U(XENBUS_BALLOON(GetSize,
-                            &Fdo->BalloonInterface), ==, 0);
-
-    KeSetEvent(&Fdo->BalloonEvent, IO_NO_INCREMENT, FALSE);
-
-    Info("<====\n");
-    return STATUS_SUCCESS;
-}
 
 static VOID
 FdoDumpIoResourceDescriptor(
@@ -2829,42 +2591,9 @@ __FdoD3ToD0(
                         "%u",
                         1);
 
-    if (Fdo->BalloonInterface.Interface.Context != NULL) {
-        status = XENBUS_STORE(WatchAdd,
-                              &Fdo->StoreInterface,
-                              "memory",
-                              "target",
-                              ThreadGetEvent(Fdo->BalloonThread),
-                              &Fdo->BalloonWatch);
-        if (!NT_SUCCESS(status))
-            goto fail4;
-
-        (VOID) XENBUS_STORE(Printf,
-                            &Fdo->StoreInterface,
-                            NULL,
-                            "control",
-                            "feature-balloon",
-                            "%u",
-                            1);
-    }
-
     Trace("<====\n");
 
     return STATUS_SUCCESS;
-
-fail4:
-    Error("fail4\n");
-
-    (VOID) XENBUS_STORE(Remove,
-                        &Fdo->StoreInterface,
-                        NULL,
-                        "control",
-                        "feature-suspend");
-
-    (VOID) XENBUS_STORE(WatchRemove,
-                        &Fdo->StoreInterface,
-                        Fdo->SuspendWatch);
-    Fdo->SuspendWatch = NULL;
 
 fail3:
     Error("fail3\n");
@@ -2899,19 +2628,6 @@ __FdoD0ToD3(
     Trace("====>\n");
 
     ASSERT3U(KeGetCurrentIrql(), ==, DISPATCH_LEVEL);
-
-    if (Fdo->BalloonInterface.Interface.Context != NULL) {
-        (VOID) XENBUS_STORE(Remove,
-                            &Fdo->StoreInterface,
-                            NULL,
-                            "control",
-                            "feature-balloon");
-
-        (VOID) XENBUS_STORE(WatchRemove,
-                            &Fdo->StoreInterface,
-                            Fdo->BalloonWatch);
-        Fdo->BalloonWatch = NULL;
-    }
 
     (VOID) XENBUS_STORE(Remove,
                         &Fdo->StoreInterface,
@@ -3183,15 +2899,9 @@ FdoD3ToD0(
     if (!NT_SUCCESS(status))
         goto fail7;
 
-    if (Fdo->BalloonInterface.Interface.Context != NULL) {
-        status = XENBUS_BALLOON(Acquire, &Fdo->BalloonInterface);
-        if (!NT_SUCCESS(status))
-            goto fail8;
-    }
-
     status = __FdoD3ToD0(Fdo);
     if (!NT_SUCCESS(status))
-        goto fail9;
+        goto fail8;
 
     status = XENBUS_SUSPEND(Register,
                             &Fdo->SuspendInterface,
@@ -3200,7 +2910,7 @@ FdoD3ToD0(
                             Fdo,
                             &Fdo->SuspendCallbackLate);
     if (!NT_SUCCESS(status))
-        goto fail10;
+        goto fail9;
 
     KeLowerIrql(Irql);
 
@@ -3231,16 +2941,10 @@ not_active:
 
     return STATUS_SUCCESS;
 
-fail10:
-    Error("fail10\n");
-
-    __FdoD0ToD3(Fdo);
-
 fail9:
     Error("fail9\n");
 
-    if (Fdo->BalloonInterface.Interface.Context != NULL)
-        XENBUS_BALLOON(Release, &Fdo->BalloonInterface);
+    __FdoD0ToD3(Fdo);
 
 fail8:
     Error("fail8\n");
@@ -3329,21 +3033,6 @@ FdoD0ToD3(
     if (!__FdoIsActive(Fdo))
         goto not_active;
 
-    if (Fdo->BalloonInterface.Interface.Context != NULL) {
-        Trace("waiting for balloon thread...\n");
-
-        KeClearEvent(&Fdo->BalloonEvent);
-        ThreadWake(Fdo->BalloonThread);
-
-        (VOID) KeWaitForSingleObject(&Fdo->BalloonEvent,
-                                     Executive,
-                                     KernelMode,
-                                     FALSE,
-                                     NULL);
-
-        Trace("done\n");
-    }
-
     Trace("waiting for suspend thread...\n");
 
     KeClearEvent(&Fdo->SuspendEvent);
@@ -3365,9 +3054,6 @@ FdoD0ToD3(
     Fdo->SuspendCallbackLate = NULL;
 
     __FdoD0ToD3(Fdo);
-
-    if (Fdo->BalloonInterface.Interface.Context != NULL)
-        XENBUS_BALLOON(Release, &Fdo->BalloonInterface);
 
     XENBUS_CONSOLE(Release, &Fdo->ConsoleInterface);
 
@@ -3441,7 +3127,6 @@ FdoS3ToS4(
     BUG_ON(StoreGetReferences(Fdo->StoreContext) != 0);
     BUG_ON(ConsoleGetReferences(Fdo->ConsoleContext) != 0);
     BUG_ON(GnttabGetReferences(Fdo->GnttabContext) != 0);
-    BUG_ON(BalloonGetReferences(Fdo->BalloonContext) != 0);
 
 not_active:
     __FdoSetSystemPowerState(Fdo, PowerSystemHibernate);
@@ -3559,62 +3244,16 @@ FdoStartDevice(
     if (!NT_SUCCESS(status))
         goto fail5;
 
-    InitializeMutex(&Fdo->BalloonSuspendMutex);
-
     KeInitializeEvent(&Fdo->SuspendEvent, NotificationEvent, FALSE);
 
     status = ThreadCreate(FdoSuspend, Fdo, &Fdo->SuspendThread);
     if (!NT_SUCCESS(status))
         goto fail6;
 
-    if (Fdo->BalloonInterface.Interface.Context != NULL) {
-        KeInitializeEvent(&Fdo->BalloonEvent, NotificationEvent, FALSE);
-
-        status = ThreadCreate(FdoBalloon, Fdo, &Fdo->BalloonThread);
-        if (!NT_SUCCESS(status))
-            goto fail7;
-    }
-
 not_active:
     status = FdoD3ToD0(Fdo);
     if (!NT_SUCCESS(status))
-        goto fail8;
-
-    if (Fdo->BalloonInterface.Interface.Context != NULL) {
-        LARGE_INTEGER   Timeout;
-
-        ASSERT(__FdoIsActive(Fdo));
-
-        //
-        // Balloon inflation should complete within a reasonable
-        // time (otherwise the target is probably unreasonable).
-        //
-        Timeout.QuadPart = TIME_RELATIVE(TIME_S(BALLOON_WARN_TIMEOUT));
-
-        status = KeWaitForSingleObject(&Fdo->BalloonEvent,
-                                        Executive,
-                                        KernelMode,
-                                        FALSE,
-                                        &Timeout);
-        if (status == STATUS_TIMEOUT) {
-            Warning("waiting for balloon\n");
-
-            //
-            // If inflation does not complete after a lengthy timeout
-            // then it is unlikely that it ever will. In this case we
-            // cause a bugcheck.
-            //
-            Timeout.QuadPart = TIME_RELATIVE(TIME_S((BALLOON_BUGCHECK_TIMEOUT - BALLOON_WARN_TIMEOUT)));
-
-            status = KeWaitForSingleObject(&Fdo->BalloonEvent,
-                                            Executive,
-                                            KernelMode,
-                                            FALSE,
-                                            &Timeout);
-            if (status == STATUS_TIMEOUT)
-                BUG("BALLOON INFLATION TIMEOUT\n");
-        }
-    }
+        goto fail7;
 
     __FdoSetDevicePnpState(Fdo, Started);
 
@@ -3626,23 +3265,8 @@ not_active:
 
     return status;
 
-fail8:
-    Error("fail8\n");
-
-    if (!__FdoIsActive(Fdo))
-        goto fail4;
-
-    if (Fdo->BalloonInterface.Interface.Context != NULL) {
-        ThreadAlert(Fdo->BalloonThread);
-        ThreadJoin(Fdo->BalloonThread);
-        Fdo->BalloonThread = NULL;
-    }
-
 fail7:
     Error("fail7\n");
-
-    if (Fdo->BalloonInterface.Interface.Context != NULL)
-        RtlZeroMemory(&Fdo->BalloonEvent, sizeof (KEVENT));
 
     ThreadAlert(Fdo->SuspendThread);
     ThreadJoin(Fdo->SuspendThread);
@@ -3652,8 +3276,6 @@ fail6:
     Error("fail6\n");
 
     RtlZeroMemory(&Fdo->SuspendEvent, sizeof (KEVENT));
-
-    RtlZeroMemory(&Fdo->BalloonSuspendMutex, sizeof (MUTEX));
 
     ThreadAlert(Fdo->ScanThread);
     ThreadJoin(Fdo->ScanThread);
@@ -3699,24 +3321,12 @@ FdoQueryStopDevice(
     NTSTATUS        status;
 
     status = STATUS_UNSUCCESSFUL;
-    if (Fdo->BalloonInterface.Interface.Context != NULL &&
-        XENBUS_BALLOON(GetSize,
-                       &Fdo->BalloonInterface) != 0)
-        goto fail1;
 
     __FdoSetDevicePnpState(Fdo, StopPending);
     Irp->IoStatus.Status = STATUS_SUCCESS;
 
     IoSkipCurrentIrpStackLocation(Irp);
     status = IoCallDriver(Fdo->LowerDeviceObject, Irp);
-
-    return status;
-
-fail1:
-    Error("fail1 (%08x)\n", status);
-
-    Irp->IoStatus.Status = status;
-    IoCompleteRequest(Irp, IO_NO_INCREMENT);
 
     return status;
 }
@@ -3753,21 +3363,11 @@ FdoStopDevice(
     if (!__FdoIsActive(Fdo))
         goto not_active;
 
-    if (Fdo->BalloonInterface.Interface.Context != NULL) {
-        ThreadAlert(Fdo->BalloonThread);
-        ThreadJoin(Fdo->BalloonThread);
-        Fdo->BalloonThread = NULL;
-
-        RtlZeroMemory(&Fdo->BalloonEvent, sizeof (KEVENT));
-    }
-
     ThreadAlert(Fdo->SuspendThread);
     ThreadJoin(Fdo->SuspendThread);
     Fdo->SuspendThread = NULL;
 
     RtlZeroMemory(&Fdo->SuspendEvent, sizeof (KEVENT));
-
-    RtlZeroMemory(&Fdo->BalloonSuspendMutex, sizeof (MUTEX));
 
     ThreadAlert(Fdo->ScanThread);
     ThreadJoin(Fdo->ScanThread);
@@ -3802,24 +3402,12 @@ FdoQueryRemoveDevice(
     NTSTATUS        status;
 
     status = STATUS_UNSUCCESSFUL;
-    if (Fdo->BalloonInterface.Interface.Context != NULL &&
-        XENBUS_BALLOON(GetSize,
-                       &Fdo->BalloonInterface) != 0)
-        goto fail1;
 
     __FdoSetDevicePnpState(Fdo, RemovePending);
     Irp->IoStatus.Status = STATUS_SUCCESS;
 
     IoSkipCurrentIrpStackLocation(Irp);
     status = IoCallDriver(Fdo->LowerDeviceObject, Irp);
-
-    return status;
-
-fail1:
-    Error("fail1 (%08x)\n", status);
-
-    Irp->IoStatus.Status = status;
-    IoCompleteRequest(Irp, IO_NO_INCREMENT);
 
     return status;
 }
@@ -3937,21 +3525,11 @@ FdoRemoveDevice(
     if (!__FdoIsActive(Fdo))
         goto not_active;
 
-    if (Fdo->BalloonInterface.Interface.Context != NULL) {
-        ThreadAlert(Fdo->BalloonThread);
-        ThreadJoin(Fdo->BalloonThread);
-        Fdo->BalloonThread = NULL;
-
-        RtlZeroMemory(&Fdo->BalloonEvent, sizeof (KEVENT));
-    }
-
     ThreadAlert(Fdo->SuspendThread);
     ThreadJoin(Fdo->SuspendThread);
     Fdo->SuspendThread = NULL;
 
     RtlZeroMemory(&Fdo->SuspendEvent, sizeof (KEVENT));
-
-    RtlZeroMemory(&Fdo->BalloonSuspendMutex, sizeof (MUTEX));
 
     ThreadAlert(Fdo->ScanThread);
     ThreadJoin(Fdo->ScanThread);
@@ -5256,36 +4834,6 @@ __FdoFreeBuffer(
     Fdo->Buffer = NULL;
 }
 
-static BOOLEAN
-FdoIsBalloonEnabled(
-    IN  PXENBUS_FDO Fdo
-    )
-{
-    CHAR            Key[] = "XEN:BALLOON=";
-    PANSI_STRING    Option;
-    PCHAR           Value;
-    BOOLEAN         Enabled;
-    NTSTATUS        status;
-
-    UNREFERENCED_PARAMETER(Fdo);
-
-    Enabled = TRUE;
-
-    status = RegistryQuerySystemStartOption(Key, &Option);
-    if (!NT_SUCCESS(status))
-        goto done;
-
-    Value = Option->Buffer + sizeof (Key) - 1;
-
-    if (strcmp(Value, "OFF") == 0)
-        Enabled = FALSE;
-
-    RegistryFreeSzValue(Option);
-
-done:
-    return Enabled;
-}
-
 NTSTATUS
 FdoCreate(
     IN  PDEVICE_OBJECT          PhysicalDeviceObject
@@ -5406,12 +4954,6 @@ FdoCreate(
     if (!NT_SUCCESS(status))
         goto fail19;
 
-    if (FdoIsBalloonEnabled(Fdo)) {
-        status = BalloonInitialize(Fdo, &Fdo->BalloonContext);
-        if (!NT_SUCCESS(status))
-            goto fail20;
-    }
-
     status = DebugGetInterface(__FdoGetDebugContext(Fdo),
                                XENBUS_DEBUG_INTERFACE_VERSION_MAX,
                                (PINTERFACE)&Fdo->DebugInterface,
@@ -5454,12 +4996,6 @@ FdoCreate(
     ASSERT(NT_SUCCESS(status));
     ASSERT(Fdo->ConsoleInterface.Interface.Context != NULL);
 
-    status = BalloonGetInterface(__FdoGetBalloonContext(Fdo),
-                                 XENBUS_BALLOON_INTERFACE_VERSION_MAX,
-                                 (PINTERFACE)&Fdo->BalloonInterface,
-                                 sizeof (Fdo->BalloonInterface));
-    ASSERT(NT_SUCCESS(status));
-
 done:
     InitializeMutex(&Fdo->Mutex);
     InitializeListHead(&Fdo->List);
@@ -5478,12 +5014,6 @@ done:
     DriverAddFunctionDeviceObject(Fdo);
 
     return STATUS_SUCCESS;
-
-fail20:
-    Error("fail20\n");
-
-    UnplugTeardown(Fdo->UnplugContext);
-    Fdo->UnplugContext = NULL;
 
 fail19:
     Error("fail19\n");
@@ -5630,9 +5160,6 @@ FdoDestroy(
     RtlZeroMemory(&Fdo->Mutex, sizeof (MUTEX));
 
     if (__FdoIsActive(Fdo)) {
-        RtlZeroMemory(&Fdo->BalloonInterface,
-                      sizeof (XENBUS_BALLOON_INTERFACE));
-
         RtlZeroMemory(&Fdo->ConsoleInterface,
                       sizeof (XENBUS_CONSOLE_INTERFACE));
 
@@ -5650,11 +5177,6 @@ FdoDestroy(
 
         RtlZeroMemory(&Fdo->DebugInterface,
                       sizeof (XENBUS_DEBUG_INTERFACE));
-
-        if (Fdo->BalloonContext != NULL) {
-            BalloonTeardown(Fdo->BalloonContext);
-            Fdo->BalloonContext = NULL;
-        }
 
         UnplugTeardown(Fdo->UnplugContext);
         Fdo->UnplugContext = NULL;

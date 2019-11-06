@@ -78,7 +78,6 @@
     <ClCompile Include="..\..\src\xenbus\sync.c" />
     <ClCompile Include="..\..\src\xenbus\thread.c" />
     <ClCompile Include="..\..\src\xenbus\range_set.c" />
-    <ClCompile Include="..\..\src\xenbus\balloon.c" />
     <ClCompile Include="..\..\src\xenbus\cache.c" />
     <ClCompile Include="..\..\src\xenbus\hash_table.c" />
     <ClCompile Include="..\..\src\xenbus\unplug.c" />
