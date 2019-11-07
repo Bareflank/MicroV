@@ -91,7 +91,6 @@ ServiceType=%SERVICE_KERNEL_DRIVER%
 StartType=%SERVICE_DEMAND_START%
 ErrorControl=%SERVICE_ERROR_NORMAL%
 ServiceBinary=%12%\xenbus.sys
-LoadOrderGroup="Boot Bus Extender"
 AddReg = XenBus_Parameters, XenBus_Interrupts
 
 [XenBus_Parameters]
@@ -112,7 +111,6 @@ ServiceType=%SERVICE_KERNEL_DRIVER%
 StartType=%SERVICE_DEMAND_START%
 ErrorControl=%SERVICE_ERROR_NORMAL%
 ServiceBinary=%12%\xenfilt.sys
-LoadOrderGroup="Boot Bus Extender"
 AddReg = XenFilt_Parameters
 
 [XenFilt_Parameters]
