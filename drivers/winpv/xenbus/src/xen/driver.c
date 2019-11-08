@@ -200,7 +200,7 @@ DllInitialize(
 
     status = RegistryCreateSubKey(ServiceKey,
                                 "Parameters",
-                                REG_OPTION_NON_VOLATILE,
+                                REG_OPTION_VOLATILE,
                                 &ParametersKey);
     if (!NT_SUCCESS(status))
         goto fail4;
@@ -243,7 +243,7 @@ DllInitialize(
 
     status = RegistryCreateSubKey(ServiceKey,
                                   "Unplug",
-                                  REG_OPTION_NON_VOLATILE,
+                                  REG_OPTION_VOLATILE,
                                   &UnplugKey);
     if (!NT_SUCCESS(status))
         goto fail5;
