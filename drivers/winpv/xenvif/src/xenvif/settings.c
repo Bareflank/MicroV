@@ -199,7 +199,7 @@ SettingsCopyInterface(
     status = (!Save) ?
         RegistryCreateSubKey(InterfacesKey,
                              KeyName,
-                             REG_OPTION_NON_VOLATILE,
+                             REG_OPTION_VOLATILE,
                              &Key) :
         RegistryOpenSubKey(InterfacesKey,
                            KeyName,
@@ -211,7 +211,7 @@ SettingsCopyInterface(
     status = (Save) ?
         RegistryCreateSubKey(SettingsKey,
                              SaveKeyName,
-                             REG_OPTION_NON_VOLATILE,
+                             REG_OPTION_VOLATILE,
                              &SaveKey) :
         RegistryOpenSubKey(SettingsKey,
                            SaveKeyName,
@@ -429,7 +429,7 @@ SettingsCopyIpAddresses(
     status = (Save) ?
         RegistryCreateSubKey(SettingsKey,
                              (PCHAR)SaveKeyName,
-                             REG_OPTION_NON_VOLATILE,
+                             REG_OPTION_VOLATILE,
                              &SaveKey) :
         RegistryOpenSubKey(SettingsKey,
                            (PCHAR)SaveKeyName,
@@ -551,7 +551,7 @@ SettingsSave(
 
     status = RegistryCreateSubKey(SettingsKey,
                                   SubKeyName,
-                                  REG_OPTION_NON_VOLATILE,
+                                  REG_OPTION_VOLATILE,
                                   &SubKey);
     if (!NT_SUCCESS(status))
         goto fail1;
