@@ -2538,7 +2538,7 @@ __FdoD3ToD0(
 
     Trace("====>\n");
 
-    ASSERT3U(KeGetCurrentIrql(), ==, DISPATCH_LEVEL);
+    ASSERT3U(KeGetCurrentIrql(), ==, PASSIVE_LEVEL);
 
     (VOID) FdoSetDistribution(Fdo);
 
@@ -2627,7 +2627,7 @@ __FdoD0ToD3(
 {
     Trace("====>\n");
 
-    ASSERT3U(KeGetCurrentIrql(), ==, DISPATCH_LEVEL);
+    ASSERT3U(KeGetCurrentIrql(), ==, PASSIVE_LEVEL);
 
     (VOID) XENBUS_STORE(Remove,
                         &Fdo->StoreInterface,
@@ -2856,7 +2856,6 @@ FdoD3ToD0(
     )
 {
     POWER_STATE                 PowerState;
-    KIRQL                       Irql;
     PLIST_ENTRY                 ListEntry;
     NTSTATUS                    status;
 
@@ -2867,8 +2866,6 @@ FdoD3ToD0(
 
     if (!__FdoIsActive(Fdo))
         goto not_active;
-
-    KeRaiseIrql(DISPATCH_LEVEL, &Irql);
 
     status = XENBUS_DEBUG(Acquire, &Fdo->DebugInterface);
     if (!NT_SUCCESS(status))
@@ -2911,8 +2908,6 @@ FdoD3ToD0(
                             &Fdo->SuspendCallbackLate);
     if (!NT_SUCCESS(status))
         goto fail9;
-
-    KeLowerIrql(Irql);
 
 not_active:
     __FdoSetDevicePowerState(Fdo, PowerDeviceD0);
@@ -2984,8 +2979,6 @@ fail2:
 fail1:
     Error("fail1 (%08x)\n", status);
 
-    KeLowerIrql(Irql);
-
     return status;
 }
 
@@ -2997,7 +2990,6 @@ FdoD0ToD3(
 {
     POWER_STATE     PowerState;
     PLIST_ENTRY     ListEntry;
-    KIRQL           Irql;
 
     ASSERT3U(KeGetCurrentIrql(), ==, PASSIVE_LEVEL);
     ASSERT3U(__FdoGetDevicePowerState(Fdo), ==, PowerDeviceD0);
@@ -3046,8 +3038,6 @@ FdoD0ToD3(
 
     Trace("done\n");
 
-    KeRaiseIrql(DISPATCH_LEVEL, &Irql);
-
     XENBUS_SUSPEND(Deregister,
                    &Fdo->SuspendInterface,
                    Fdo->SuspendCallbackLate);
@@ -3068,8 +3058,6 @@ FdoD0ToD3(
     XENBUS_SUSPEND(Release, &Fdo->SuspendInterface);
 
     XENBUS_DEBUG(Release, &Fdo->DebugInterface);
-
-    KeLowerIrql(Irql);
 
 not_active:
     Trace("<====\n");
