@@ -71,5 +71,14 @@ ThreadJoin(
     IN  PXENBUS_THREAD  Thread
     );
 
+struct _XENBUS_THREAD {
+    XENBUS_THREAD_FUNCTION  Function;
+    PVOID                   Context;
+    KEVENT                  Event;
+    BOOLEAN                 Alerted;
+    LONG                    References;
+    PKTHREAD                Thread;
+};
+
 #endif  // _XENBUS_THREAD_H
 
