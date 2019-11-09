@@ -50,7 +50,7 @@ typedef struct _XENVIF_MAC_MULTICAST {
 
 struct _XENVIF_MAC {
     PXENVIF_FRONTEND        Frontend;
-    EX_SPIN_LOCK            Lock;
+    FAST_MUTEX              FastMutex;
     BOOLEAN                 Connected;
     BOOLEAN                 Enabled;
     ULONG                   Speed;
@@ -240,6 +240,7 @@ MacInitialize(
                          &(*Mac)->StoreInterface);
 
     (*Mac)->Frontend = Frontend;
+    ExInitializeFastMutex(&(*Mac)->FastMutex);
 
     return STATUS_SUCCESS;
 
@@ -247,52 +248,6 @@ fail1:
     Error("fail1 (%08x)\n");
 
     return status;
-}
-
-static FORCEINLINE VOID
-__drv_requiresIRQL(DISPATCH_LEVEL)
-__MacAcquireLockExclusive(
-    IN  PXENVIF_MAC     Mac
-    )
-{
-    ASSERT3U(KeGetCurrentIrql(), ==, DISPATCH_LEVEL);
-
-    ExAcquireSpinLockExclusiveAtDpcLevel(&Mac->Lock);
-}
-
-static FORCEINLINE VOID
-__drv_requiresIRQL(DISPATCH_LEVEL)
-__MacReleaseLockExclusive(
-    IN  PXENVIF_MAC     Mac
-    )
-{
-    ASSERT3U(KeGetCurrentIrql(), ==, DISPATCH_LEVEL);
-
-#pragma prefast(disable:26110)
-    ExReleaseSpinLockExclusiveFromDpcLevel(&Mac->Lock);
-}
-
-static FORCEINLINE VOID
-__drv_requiresIRQL(DISPATCH_LEVEL)
-__MacAcquireLockShared(
-    IN  PXENVIF_MAC     Mac
-    )
-{
-    ASSERT3U(KeGetCurrentIrql(), ==, DISPATCH_LEVEL);
-
-    ExAcquireSpinLockSharedAtDpcLevel(&Mac->Lock);
-}
-
-static FORCEINLINE VOID
-__drv_requiresIRQL(DISPATCH_LEVEL)
-__MacReleaseLockShared(
-    IN  PXENVIF_MAC     Mac
-    )
-{
-    ASSERT3U(KeGetCurrentIrql(), ==, DISPATCH_LEVEL);
-
-#pragma prefast(disable:26110)
-    ExReleaseSpinLockSharedFromDpcLevel(&Mac->Lock);
 }
 
 static NTSTATUS
@@ -305,15 +260,14 @@ MacDumpAddressTable(
     ULONG               Count;
     PLIST_ENTRY         ListEntry;
     ULONG               Index;
-    KIRQL               Irql;
     NTSTATUS            status;
 
     Trace("====>\n");
 
     Frontend = Mac->Frontend;
 
-    KeRaiseIrql(DISPATCH_LEVEL, &Irql);
-    __MacAcquireLockShared(Mac);
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
+    ExAcquireFastMutex(&Mac->FastMutex);
 
     status  = STATUS_UNSUCCESSFUL;
     if (!Mac->Connected)
@@ -347,8 +301,7 @@ MacDumpAddressTable(
 
     ASSERT3U(Index, ==, Count);
 
-    __MacReleaseLockShared(Mac);
-    KeLowerIrql(Irql);
+    ExReleaseFastMutex(&Mac->FastMutex);
 
     (VOID) XENBUS_STORE(Remove,
                         &Mac->StoreInterface,
@@ -392,8 +345,7 @@ fail2:
 fail1:
     Error("fail1 (%08x)\n", status);
 
-    __MacReleaseLockExclusive(Mac);
-    KeLowerIrql(Irql);
+    ExReleaseFastMutex(&Mac->FastMutex);
 
     return status;
 }
@@ -466,12 +418,13 @@ MacConnect(
     if (!NT_SUCCESS(status))
         goto fail5;
 
-    __MacAcquireLockExclusive(Mac);
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
+    ExAcquireFastMutex(&Mac->FastMutex);
 
     ASSERT(!Mac->Connected);
     Mac->Connected = TRUE;
 
-    __MacReleaseLockExclusive(Mac);
+    ExReleaseFastMutex(&Mac->FastMutex);
 
     (VOID) MacDumpAddressTable(Mac);
 
@@ -524,9 +477,8 @@ MacEnable(
 
     Frontend = Mac->Frontend;
 
-    ASSERT3U(KeGetCurrentIrql(), ==, DISPATCH_LEVEL);
-
-    __MacAcquireLockExclusive(Mac);
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
+    ExAcquireFastMutex(&Mac->FastMutex);
 
     Thread = VifGetMacThread(PdoGetVifContext(FrontendGetPdo(Frontend)));
 
@@ -551,7 +503,7 @@ MacEnable(
     ASSERT(!Mac->Enabled);
     Mac->Enabled = TRUE;
 
-    __MacReleaseLockExclusive(Mac);
+    ExReleaseFastMutex(&Mac->FastMutex);
 
     Trace("<====\n");
     return STATUS_SUCCESS;
@@ -567,7 +519,7 @@ fail2:
 fail1:
     Error("fail1 (%08x)\n");
 
-    __MacReleaseLockExclusive(Mac);
+    ExReleaseFastMutex(&Mac->FastMutex);
 
     return status;
 }
@@ -583,9 +535,8 @@ MacDisable(
 
     Frontend = Mac->Frontend;
 
-    ASSERT3U(KeGetCurrentIrql(), ==, DISPATCH_LEVEL);
-
-    __MacAcquireLockExclusive(Mac);
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
+    ExAcquireFastMutex(&Mac->FastMutex);
 
     ASSERT(Mac->Enabled);
     Mac->Enabled = FALSE;
@@ -600,7 +551,7 @@ MacDisable(
                         Mac->DisconnectWatch);
     Mac->DisconnectWatch = NULL;
 
-    __MacReleaseLockExclusive(Mac);
+    ExReleaseFastMutex(&Mac->FastMutex);
 
     Trace("<====\n");
 }
@@ -614,14 +565,13 @@ MacDisconnect(
 
     Frontend = Mac->Frontend;
 
-    ASSERT3U(KeGetCurrentIrql(), ==, DISPATCH_LEVEL);
-
-    __MacAcquireLockExclusive(Mac);
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
+    ExAcquireFastMutex(&Mac->FastMutex);
 
     ASSERT(Mac->Connected);
     Mac->Connected = FALSE;
 
-    __MacReleaseLockExclusive(Mac);
+    ExReleaseFastMutex(&Mac->FastMutex);
 
     XENBUS_DEBUG(Deregister,
                  &Mac->DebugInterface,
@@ -681,7 +631,7 @@ MacTeardown(
     RtlZeroMemory(&Mac->DebugInterface,
                   sizeof (XENBUS_DEBUG_INTERFACE));
 
-    Mac->Lock = 0;
+    RtlZeroMemory(&Mac->FastMutex, sizeof (FAST_MUTEX));
 
     Mac->Speed = 0;
 
@@ -828,7 +778,6 @@ MacAddMulticastAddress(
 {
     PXENVIF_FRONTEND            Frontend;
     PXENVIF_MAC_MULTICAST       Multicast;
-    KIRQL                       Irql;
     NTSTATUS                    status;
 
     Frontend = Mac->Frontend;
@@ -843,14 +792,13 @@ MacAddMulticastAddress(
 
     Multicast->Address = *Address;
 
-    KeRaiseIrql(DISPATCH_LEVEL, &Irql);
-    __MacAcquireLockExclusive(Mac);
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
+    ExAcquireFastMutex(&Mac->FastMutex);
 
     InsertTailList(&Mac->MulticastList, &Multicast->ListEntry);
     Mac->MulticastCount++;
 
-    __MacReleaseLockExclusive(Mac);
-    KeLowerIrql(Irql);
+    ExReleaseFastMutex(&Mac->FastMutex);
 
     (VOID) MacDumpAddressTable(Mac);
 
@@ -880,13 +828,12 @@ MacRemoveMulticastAddress(
     PXENVIF_FRONTEND            Frontend;
     PLIST_ENTRY                 ListEntry;
     PXENVIF_MAC_MULTICAST       Multicast;
-    KIRQL                       Irql;
     NTSTATUS                    status;
 
     Frontend = Mac->Frontend;
 
-    KeRaiseIrql(DISPATCH_LEVEL, &Irql);
-    __MacAcquireLockExclusive(Mac);
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
+    ExAcquireFastMutex(&Mac->FastMutex);
 
     for (ListEntry = Mac->MulticastList.Flink;
          ListEntry != &Mac->MulticastList;
@@ -911,8 +858,7 @@ found:
     RemoveEntryList(&Multicast->ListEntry);
     __MacFree(Multicast);
 
-    __MacReleaseLockExclusive(Mac);
-    KeLowerIrql(Irql);
+    ExReleaseFastMutex(&Mac->FastMutex);
 
     (VOID) MacDumpAddressTable(Mac);
 
@@ -930,8 +876,7 @@ found:
 fail1:
     Error("fail1 (%08x)\n", status);
 
-    __MacReleaseLockExclusive(Mac);
-    KeLowerIrql(Irql);
+    ExReleaseFastMutex(&Mac->FastMutex);
 
     return status;
 }
@@ -944,11 +889,10 @@ MacQueryMulticastAddresses(
     )
 {
     PLIST_ENTRY                 ListEntry;
-    KIRQL                       Irql;
     NTSTATUS                    status;
 
-    KeRaiseIrql(DISPATCH_LEVEL, &Irql);
-    __MacAcquireLockShared(Mac);
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
+    ExAcquireFastMutex(&Mac->FastMutex);
 
     status = STATUS_BUFFER_OVERFLOW;
     if (Address == NULL || *Count < Mac->MulticastCount)
@@ -968,16 +912,14 @@ MacQueryMulticastAddresses(
     }
     ASSERT3U(*Count, ==, Mac->MulticastCount);
 
-    __MacReleaseLockShared(Mac);
-    KeLowerIrql(Irql);
+    ExReleaseFastMutex(&Mac->FastMutex);
 
     return STATUS_SUCCESS;
 
 fail1:
     *Count = Mac->MulticastCount;
 
-    __MacReleaseLockExclusive(Mac);
-    KeLowerIrql(Irql);
+    ExReleaseFastMutex(&Mac->FastMutex);
 
     return status;
 }
@@ -998,15 +940,14 @@ MacSetFilterLevel(
     IN  XENVIF_MAC_FILTER_LEVEL Level
     )
 {
-    KIRQL                       Irql;
     NTSTATUS                    status;
 
     status = STATUS_INVALID_PARAMETER;
     if (Type >= ETHERNET_ADDRESS_TYPE_COUNT)
         goto fail1;
 
-    KeRaiseIrql(DISPATCH_LEVEL, &Irql);
-    __MacAcquireLockExclusive(Mac);
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
+    ExAcquireFastMutex(&Mac->FastMutex);
 
     status = STATUS_INVALID_PARAMETER;
     if (Level > XENVIF_MAC_FILTER_ALL || Level < XENVIF_MAC_FILTER_NONE)
@@ -1014,16 +955,14 @@ MacSetFilterLevel(
 
     Mac->FilterLevel[Type] = Level;
 
-    __MacReleaseLockExclusive(Mac);
-    KeLowerIrql(Irql);
+    ExReleaseFastMutex(&Mac->FastMutex);
 
     return STATUS_SUCCESS;
 
 fail2:
     Error("fail2\n");
 
-    __MacReleaseLockExclusive(Mac);
-    KeLowerIrql(Irql);
+    ExReleaseFastMutex(&Mac->FastMutex);
 
 fail1:
     Error("fail1 (%08x)\n", status);
@@ -1038,20 +977,18 @@ MacQueryFilterLevel(
     OUT PXENVIF_MAC_FILTER_LEVEL    Level
     )
 {
-    KIRQL                           Irql;
     NTSTATUS                        status;
 
     status = STATUS_INVALID_PARAMETER;
     if (Type >= ETHERNET_ADDRESS_TYPE_COUNT)
         goto fail1;
 
-    KeRaiseIrql(DISPATCH_LEVEL, &Irql);
-    __MacAcquireLockShared(Mac);
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
+    ExAcquireFastMutex(&Mac->FastMutex);
 
     *Level = Mac->FilterLevel[Type];
 
-    __MacReleaseLockShared(Mac);
-    KeLowerIrql(Irql);
+    ExReleaseFastMutex(&Mac->FastMutex);
 
     return STATUS_SUCCESS;
 
@@ -1069,13 +1006,12 @@ MacApplyFilters(
 {
     ETHERNET_ADDRESS_TYPE   Type;
     BOOLEAN                 Allow;
-    KIRQL                   Irql;
 
     Type = GET_ETHERNET_ADDRESS_TYPE(DestinationAddress);
     Allow = FALSE;
 
-    KeRaiseIrql(DISPATCH_LEVEL, &Irql);
-    __MacAcquireLockShared(Mac);
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
+    ExAcquireFastMutex(&Mac->FastMutex);
 
     switch (Type) {
     case ETHERNET_ADDRESS_UNICAST:
@@ -1169,8 +1105,7 @@ MacApplyFilters(
         break;
     }
 
-    __MacReleaseLockShared(Mac);
-    KeLowerIrql(Irql);
+    ExReleaseFastMutex(&Mac->FastMutex);
 
     return Allow;
 }
