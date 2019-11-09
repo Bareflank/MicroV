@@ -1,31 +1,31 @@
 /* Copyright (c) Citrix Systems Inc.
  * All rights reserved.
- * 
- * Redistribution and use in source and binary forms, 
- * with or without modification, are permitted provided 
+ *
+ * Redistribution and use in source and binary forms,
+ * with or without modification, are permitted provided
  * that the following conditions are met:
- * 
- * *   Redistributions of source code must retain the above 
- *     copyright notice, this list of conditions and the 
+ *
+ * *   Redistributions of source code must retain the above
+ *     copyright notice, this list of conditions and the
  *     following disclaimer.
- * *   Redistributions in binary form must reproduce the above 
- *     copyright notice, this list of conditions and the 
+ * *   Redistributions in binary form must reproduce the above
+ *     copyright notice, this list of conditions and the
  *     following disclaimer in the documetation and/or other
  *     materials provided with the distribution.
- * 
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND 
- * CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, 
- * INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF 
- * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE 
- * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR 
- * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, 
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, 
- * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR 
- * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS 
- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, 
- * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING 
- * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE 
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF 
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND
+ * CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES,
+ * INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR
+ * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+ * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+ * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
 
@@ -942,7 +942,7 @@ fail2:
     Error("fail2\n");
 
     ASSERT3P(Buffer->Context, ==, Packet);
-    Buffer->Context = NULL;        
+    Buffer->Context = NULL;
 
     --Packet->Reference;
 
@@ -985,7 +985,7 @@ fail1:
         __TransmitterPutFragment(Ring, Fragment);
 
         ASSERT3P(Buffer->Context, ==, Packet);
-        Buffer->Context = NULL;        
+        Buffer->Context = NULL;
 
         --Packet->Reference;
 
@@ -1217,7 +1217,7 @@ __TransmitterRingPrepareHeader(
 
     Fragment->Type = XENVIF_TRANSMITTER_FRAGMENT_TYPE_BUFFER;
     Fragment->Context = Buffer;
- 
+
     Buffer->Reference++;
 
     Pfn = MmGetMdlPfnArray(Mdl)[0];
@@ -1296,9 +1296,9 @@ __TransmitterRingPrepareHeader(
 
         // Fix up the IP packet length
         Length = Info->IpHeader.Length +
-                 Info->IpOptions.Length + 
-                 Info->TcpHeader.Length + 
-                 Info->TcpOptions.Length + 
+                 Info->IpOptions.Length +
+                 Info->TcpHeader.Length +
+                 Info->TcpOptions.Length +
                  Payload->Length;
 
         ASSERT3U((USHORT)Length, ==, Length);
@@ -1319,7 +1319,7 @@ __TransmitterRingPrepareHeader(
         if (Packet->MaximumSegmentSize == Payload->Length)
             Packet->OffloadOptions.OffloadIpVersion4LargePacket = 0;
     }
-    
+
     if (Packet->OffloadOptions.OffloadIpVersion6LargePacket) {
         PIP_HEADER  IpHeader;
         PTCP_HEADER TcpHeader;
@@ -1334,9 +1334,9 @@ __TransmitterRingPrepareHeader(
         TcpHeader = (PTCP_HEADER)(BaseVa + Info->TcpHeader.Offset);
 
         // Fix up the IP payload length
-        Length = Info->IpOptions.Length + 
-                 Info->TcpHeader.Length + 
-                 Info->TcpOptions.Length + 
+        Length = Info->IpOptions.Length +
+                 Info->TcpHeader.Length +
+                 Info->TcpOptions.Length +
                  Payload->Length;
 
         ASSERT3U((USHORT)Length, ==, Length);
@@ -1361,7 +1361,7 @@ __TransmitterRingPrepareHeader(
         ULONG   MaximumFrameSize;
 
         MacQueryMaximumFrameSize(Mac, &MaximumFrameSize);
-        
+
         if (Fragment->Length > MaximumFrameSize) {
             status = STATUS_INVALID_PARAMETER;
             SquashError = TRUE;
@@ -1957,7 +1957,7 @@ __TransmitterRingPrepareNeighbourAdvertisement(
     IpHeader->NextHeader = IPPROTO_ICMPV6;
     IpHeader->HopLimit = 255;
 
-    RtlCopyMemory(IpHeader->SourceAddress.Byte, 
+    RtlCopyMemory(IpHeader->SourceAddress.Byte,
                   Address,
                   IPV6_ADDRESS_LENGTH);
 
@@ -2727,7 +2727,7 @@ TransmitterRingSwizzle(
 
     InitializeListHead(&List);
 
-    New = XENVIF_TRANSMITTER_LOCK_BIT;    
+    New = XENVIF_TRANSMITTER_LOCK_BIT;
     Old = (ULONG_PTR)InterlockedExchangePointer(&Ring->Lock, (PVOID)New);
 
     ASSERT(Old & XENVIF_TRANSMITTER_LOCK_BIT);
@@ -3350,7 +3350,7 @@ TransmitterRingWatchdog(
     Timeout.QuadPart = TIME_RELATIVE(TIME_S(XENVIF_TRANSMITTER_WATCHDOG_PERIOD));
     PacketsQueued = 0;
 
-    for (;;) { 
+    for (;;) {
         PKEVENT Event;
         KIRQL   Irql;
 
@@ -3733,7 +3733,7 @@ __TransmitterRingConnect(
     if (!NT_SUCCESS(status))
         goto fail5;
 
-    ASSERT3U(KeGetCurrentIrql(), ==, DISPATCH_LEVEL);
+//    ASSERT3U(KeGetCurrentIrql(), ==, DISPATCH_LEVEL);
 
     if (FrontendIsSplit(Frontend)) {
         Ring->Channel = XENBUS_EVTCHN(Open,
@@ -3924,7 +3924,7 @@ static FORCEINLINE VOID
 __TransmitterRingDisable(
     IN  PXENVIF_TRANSMITTER_RING    Ring
     )
-{    
+{
     PXENVIF_TRANSMITTER             Transmitter;
     PXENVIF_FRONTEND                Frontend;
     PXENVIF_TRANSMITTER_PACKET      Packet;
@@ -4209,7 +4209,7 @@ __TransmitterRingAbortPackets(
     while (!IsListEmpty(&Ring->PacketQueue)) {
         PLIST_ENTRY                 ListEntry;
         PXENVIF_TRANSMITTER_PACKET  Packet;
-        
+
         ListEntry = RemoveHeadList(&Ring->PacketQueue);
         ASSERT3P(ListEntry, !=, &Ring->PacketQueue);
 
@@ -4634,7 +4634,7 @@ fail2:
     (*Transmitter)->AlwaysCopy = 0;
     (*Transmitter)->ValidateChecksums = 0;
     (*Transmitter)->DisableMulticastControl = 0;
-    
+
     ASSERT(IsZeroMemory(*Transmitter, sizeof (XENVIF_TRANSMITTER)));
     __TransmitterFree(*Transmitter);
 
@@ -4699,7 +4699,7 @@ TransmitterConnect(
             goto fail5;
 
         Index++;
-    }    
+    }
 
     status = XENBUS_DEBUG(Register,
                           &Transmitter->DebugInterface,
@@ -4837,7 +4837,7 @@ TransmitterStoreWrite(
             goto fail2;
 
         Index++;
-    }    
+    }
 
     return STATUS_SUCCESS;
 
@@ -4868,7 +4868,7 @@ TransmitterEnable(
 
         __TransmitterRingEnable(Ring);
         Index++;
-    }    
+    }
 
     Trace("<====\n");
     return STATUS_SUCCESS;
@@ -5214,7 +5214,7 @@ TransmitterAbortPackets(
         PXENVIF_TRANSMITTER_RING    Ring = Transmitter->Ring[Index];
 
         __TransmitterRingAbortPackets(Ring);
-    }    
+    }
 
     KeLowerIrql(Irql);
 }
