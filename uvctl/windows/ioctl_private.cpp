@@ -144,7 +144,7 @@ ioctl_private::~ioctl_private()
 
 void ioctl_private::call_ioctl_create_vm(create_vm_args &args)
 {
-    int rc = uvctl_rw_ioctl(fd, IOCTL_CREATE_VM, &args, sizeof(create_vm_args));
+    auto rc = uvctl_rw_ioctl(fd, IOCTL_CREATE_VM, &args, sizeof(create_vm_args));
     if (rc < 0) {
         throw std::runtime_error("ioctl failed: IOCTL_CREATE_VM");
     }
@@ -152,7 +152,7 @@ void ioctl_private::call_ioctl_create_vm(create_vm_args &args)
 
 void ioctl_private::call_ioctl_destroy(domainid_t domainid) noexcept
 {
-    int rc = uvctl_rw_ioctl(fd,
+    auto rc = uvctl_rw_ioctl(fd,
                             IOCTL_DESTROY_VM,
                             &domainid,
                             sizeof(domainid_t));
