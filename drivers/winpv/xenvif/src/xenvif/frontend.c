@@ -1,31 +1,31 @@
 /* Copyright (c) Citrix Systems Inc.
  * All rights reserved.
- * 
- * Redistribution and use in source and binary forms, 
- * with or without modification, are permitted provided 
+ *
+ * Redistribution and use in source and binary forms,
+ * with or without modification, are permitted provided
  * that the following conditions are met:
- * 
- * *   Redistributions of source code must retain the above 
- *     copyright notice, this list of conditions and the 
+ *
+ * *   Redistributions of source code must retain the above
+ *     copyright notice, this list of conditions and the
  *     following disclaimer.
- * *   Redistributions in binary form must reproduce the above 
- *     copyright notice, this list of conditions and the 
- *     following disclaimer in the documentation and/or other 
+ * *   Redistributions in binary form must reproduce the above
+ *     copyright notice, this list of conditions and the
+ *     following disclaimer in the documentation and/or other
  *     materials provided with the distribution.
- * 
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND 
- * CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, 
- * INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF 
- * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE 
- * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR 
- * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, 
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, 
- * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR 
- * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS 
- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, 
- * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING 
- * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE 
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF 
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND
+ * CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES,
+ * INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR
+ * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+ * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+ * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
 
@@ -73,6 +73,7 @@ struct _XENVIF_FRONTEND {
     XENVIF_FRONTEND_STATE       State;
     BOOLEAN                     Online;
     KSPIN_LOCK                  Lock;
+    FAST_MUTEX                  StateMutex;
     PXENVIF_THREAD              EjectThread;
     KEVENT                      EjectEvent;
 
@@ -449,9 +450,9 @@ FrontendEjectFailed(
     if (Path == NULL)
         goto fail1;
 
-    status = RtlStringCbPrintfA(Path, 
+    status = RtlStringCbPrintfA(Path,
                                 Length,
-                                "error/%s", 
+                                "error/%s",
                                 __FrontendGetPath(Frontend));
     if (!NT_SUCCESS(status))
         goto fail2;
@@ -828,7 +829,7 @@ FrontendMib(
     NTSTATUS            (*__GetIfTable2)(PMIB_IF_TABLE2 *);
     NTSTATUS            (*__NotifyUnicastIpAddressChange)(ADDRESS_FAMILY,
                                                           PUNICAST_IPADDRESS_CHANGE_CALLBACK,
-                                                          PVOID,    
+                                                          PVOID,
                                                           BOOLEAN,
                                                           HANDLE *);
     NTSTATUS            (*__GetUnicastIpAddressTable)(ADDRESS_FAMILY,
@@ -881,7 +882,7 @@ FrontendMib(
 
     Event = ThreadGetEvent(Self);
 
-    for (;;) { 
+    for (;;) {
         PMIB_IF_TABLE2              IfTable;
         PMIB_UNICASTIPADDRESS_TABLE UnicastIpAddressTable;
         KIRQL                       Irql;
@@ -2470,9 +2471,9 @@ FrontendSetState(
     )
 {
     BOOLEAN                     Failed;
-    KIRQL                       Irql;
 
-    KeAcquireSpinLock(&Frontend->Lock, &Irql);
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
+    ExAcquireFastMutex(&Frontend->StateMutex);
 
     Info("%s: ====> '%s' -> '%s'\n",
          __FrontendGetPath(Frontend),
@@ -2610,7 +2611,7 @@ FrontendSetState(
              FrontendStateName(Frontend->State));
     }
 
-    KeReleaseSpinLock(&Frontend->Lock, Irql);
+    ExReleaseFastMutex(&Frontend->StateMutex);
 
     Info("%s: <=====\n", __FrontendGetPath(Frontend));
 
@@ -2622,8 +2623,6 @@ __FrontendResume(
     IN  PXENVIF_FRONTEND    Frontend
     )
 {
-    ASSERT3U(KeGetCurrentIrql(), ==, DISPATCH_LEVEL);
-
     ASSERT3U(Frontend->State, ==, FRONTEND_UNKNOWN);
     (VOID) FrontendSetState(Frontend, FRONTEND_CLOSED);
 }
@@ -2633,8 +2632,6 @@ __FrontendSuspend(
     IN  PXENVIF_FRONTEND    Frontend
     )
 {
-    ASSERT3U(KeGetCurrentIrql(), ==, DISPATCH_LEVEL);
-
     (VOID) FrontendSetState(Frontend, FRONTEND_UNKNOWN);
 }
 
@@ -2664,12 +2661,11 @@ FrontendResume(
     IN  PXENVIF_FRONTEND    Frontend
     )
 {
-    KIRQL                   Irql;
     NTSTATUS                status;
 
     Trace("====>\n");
 
-    KeRaiseIrql(DISPATCH_LEVEL, &Irql);
+//    KeRaiseIrql(DISPATCH_LEVEL, &Irql);
 
     status = XENBUS_SUSPEND(Acquire, &Frontend->SuspendInterface);
     if (!NT_SUCCESS(status))
@@ -2695,7 +2691,8 @@ FrontendResume(
     if (!NT_SUCCESS(status))
         goto fail3;
 
-    KeLowerIrql(Irql);
+//    KeLowerIrql(Irql);
+//    PASSIVE
 
     KeClearEvent(&Frontend->EjectEvent);
     ThreadWake(Frontend->EjectThread);
@@ -2711,7 +2708,7 @@ FrontendResume(
     Trace("<====\n");
 
     return STATUS_SUCCESS;
-    
+
 fail3:
     Error("fail3\n");
 
@@ -2729,8 +2726,6 @@ fail2:
 
 fail1:
     Error("fail1 (%08x)\n", status);
-
-    KeLowerIrql(Irql);
 
     return status;
 }
@@ -2804,9 +2799,9 @@ FrontendInitialize(
     if (Path == NULL)
         goto fail1;
 
-    status = RtlStringCbPrintfA(Path, 
+    status = RtlStringCbPrintfA(Path,
                                 Length,
-                                "device/vif/%s", 
+                                "device/vif/%s",
                                 Name);
     if (!NT_SUCCESS(status))
         goto fail2;
@@ -2818,7 +2813,7 @@ FrontendInitialize(
     if (Prefix == NULL)
         goto fail3;
 
-    status = RtlStringCbPrintfA(Prefix, 
+    status = RtlStringCbPrintfA(Prefix,
                                 Length,
                                 "attr/vif/%s",
                                 Name);
@@ -2837,6 +2832,7 @@ FrontendInitialize(
     (*Frontend)->BackendDomain = DOMID_INVALID;
 
     KeInitializeSpinLock(&(*Frontend)->Lock);
+    ExInitializeFastMutex(&(*Frontend)->StateMutex);
 
     (*Frontend)->Online = TRUE;
 
@@ -2953,6 +2949,7 @@ fail6:
     (*Frontend)->Online = FALSE;
 
     RtlZeroMemory(&(*Frontend)->Lock, sizeof (KSPIN_LOCK));
+    RtlZeroMemory(&(*Frontend)->StateMutex, sizeof (FAST_MUTEX));
 
     (*Frontend)->BackendDomain = 0;
     (*Frontend)->Prefix = NULL;
@@ -3050,6 +3047,7 @@ FrontendTeardown(
     Frontend->Online = FALSE;
 
     RtlZeroMemory(&Frontend->Lock, sizeof (KSPIN_LOCK));
+    RtlZeroMemory(&Frontend->StateMutex, sizeof (FAST_MUTEX));
 
     Frontend->BackendDomain = 0;
 
