@@ -825,6 +825,7 @@ StoreProcessResponse(
     KeMemoryBarrier();
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static VOID
 StorePollLocked(
     IN  PXENBUS_STORE_CONTEXT   Context
@@ -889,6 +890,7 @@ StoreDpc(
 
 #define XENBUS_STORE_POLL_PERIOD 5
 
+_IRQL_requires_max_(APC_LEVEL)
 static PXENBUS_STORE_RESPONSE
 StoreSubmitRequest(
     IN  PXENBUS_STORE_CONTEXT   Context,
@@ -1009,6 +1011,7 @@ fail1:
     return NULL;
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static VOID
 StoreFreePayload(
     IN  PXENBUS_STORE_CONTEXT   Context,
