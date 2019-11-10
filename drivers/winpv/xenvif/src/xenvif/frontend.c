@@ -2208,6 +2208,8 @@ FrontendConnect(
     if (!NT_SUCCESS(status))
         goto fail3;
 
+    Info("MAC connected\n");
+
     FrontendSetNumQueues(Frontend);
     FrontendSetSplit(Frontend);
 
@@ -2215,16 +2217,24 @@ FrontendConnect(
     if (!NT_SUCCESS(status))
         goto fail4;
 
+    Info("Receiver connected\n");
+
     status = TransmitterConnect(__FrontendGetTransmitter(Frontend));
     if (!NT_SUCCESS(status))
         goto fail5;
+
+    Info("Transmitter connected\n");
 
     status = ControllerConnect(__FrontendGetController(Frontend));
     if (!NT_SUCCESS(status))
         goto fail6;
 
+    Info("Controller connected\n");
+
     Attempt = 0;
     do {
+        Info("Attempt %i of STORE transaction\n", Attempt);
+
         PXENBUS_STORE_TRANSACTION   Transaction;
 
         status = XENBUS_STORE(TransactionStart,
@@ -2319,6 +2329,7 @@ abort:
 
     ControllerEnable(__FrontendGetController(Frontend));
 
+    Info("Xenbus CONNECTED...waking MibThread\n");
     ThreadWake(Frontend->MibThread);
 
     Trace("<====\n");

@@ -1,31 +1,31 @@
 /* Copyright (c) Citrix Systems Inc.
  * All rights reserved.
- * 
- * Redistribution and use in source and binary forms, 
- * with or without modification, are permitted provided 
+ *
+ * Redistribution and use in source and binary forms,
+ * with or without modification, are permitted provided
  * that the following conditions are met:
- * 
- * *   Redistributions of source code must retain the above 
- *     copyright notice, this list of conditions and the 
+ *
+ * *   Redistributions of source code must retain the above
+ *     copyright notice, this list of conditions and the
  *     following disclaimer.
- * *   Redistributions in binary form must reproduce the above 
- *     copyright notice, this list of conditions and the 
- *     following disclaimer in the documentation and/or other 
+ * *   Redistributions in binary form must reproduce the above
+ *     copyright notice, this list of conditions and the
+ *     following disclaimer in the documentation and/or other
  *     materials provided with the distribution.
- * 
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND 
- * CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, 
- * INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF 
- * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE 
- * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR 
- * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, 
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, 
- * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR 
- * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS 
- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, 
- * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING 
- * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE 
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF 
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND
+ * CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES,
+ * INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR
+ * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+ * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+ * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
 
@@ -216,7 +216,7 @@ ReceiverPacketCtor(
 
 fail1:
     Error("fail1 (%08x)\n", status);
-    
+
     ASSERT(IsZeroMemory(Packet, sizeof (XENVIF_RECEIVER_PACKET)));
 
     return status;
@@ -575,7 +575,7 @@ ReceiverRingProcessChecksum(
         } else {
             Packet->Flags.TcpChecksumNotValidated = 1;
         }
-        
+
         if ((Ring->OffloadOptions.NeedChecksumValue ||
              Receiver->CalculateChecksums != 0) &&
             (flags & NETRXF_data_validated)) {
@@ -821,9 +821,9 @@ __ReceiverRingBuildSegment(
         ULONG   PacketLength;
 
         PacketLength = Info->IpHeader.Length +
-                       Info->IpOptions.Length + 
-                       Info->TcpHeader.Length + 
-                       Info->TcpOptions.Length + 
+                       Info->IpOptions.Length +
+                       Info->TcpHeader.Length +
+                       Info->TcpOptions.Length +
                        SegmentSize;
 
         IpHeader->Version4.PacketLength = HTONS((USHORT)PacketLength);
@@ -833,9 +833,9 @@ __ReceiverRingBuildSegment(
 
         ASSERT3U(IpHeader->Version, ==, 6);
 
-        PayloadLength = Info->IpOptions.Length + 
-                        Info->TcpHeader.Length + 
-                        Info->TcpOptions.Length + 
+        PayloadLength = Info->IpOptions.Length +
+                        Info->TcpHeader.Length +
+                        Info->TcpOptions.Length +
                         SegmentSize;
 
         IpHeader->Version6.PayloadLength = HTONS((USHORT)PayloadLength);
@@ -851,7 +851,7 @@ __ReceiverRingBuildSegment(
         ULONG   Length;
 
         Mdl->Next = __ReceiverRingGetMdl(Ring, FALSE);
-            
+
         status = STATUS_NO_MEMORY;
         if (Mdl->Next == NULL)
             goto fail2;
@@ -909,7 +909,7 @@ fail2:
 
 fail1:
     Error("fail1 (%08x)\n", status);
-    
+
     return NULL;
 }
 
@@ -949,7 +949,7 @@ ReceiverRingProcessLargePacket(
     Info = &Packet->Info;
     ASSERT(Info->IpHeader.Offset != 0);
     ASSERT(Info->TcpHeader.Offset != 0);
-    
+
     flags = (uint16_t)Packet->Flags.Value;
     ASSERT(flags & NETRXF_csum_blank);
     ASSERT(flags & NETRXF_data_validated);
@@ -979,11 +979,11 @@ ReceiverRingProcessLargePacket(
         USHORT  PacketLength;
 
         PacketLength = NTOHS(IpHeader->Version4.PacketLength);
-        
+
         Length = (ULONG)PacketLength -
                  Info->TcpOptions.Length -
                  Info->TcpHeader.Length -
-                 Info->IpOptions.Length - 
+                 Info->IpOptions.Length -
                  Info->IpHeader.Length;
     } else {
         USHORT  PayloadLength;
@@ -1032,13 +1032,13 @@ ReceiverRingProcessLargePacket(
             USHORT  PacketLength;
 
             PacketLength = NTOHS(IpHeader->Version4.PacketLength);
-        
+
             ASSERT3U(Length,
                      ==,
                      (ULONG)PacketLength -
                      Info->TcpOptions.Length -
                      Info->TcpHeader.Length -
-                     Info->IpOptions.Length - 
+                     Info->IpOptions.Length -
                      Info->IpHeader.Length);
 
             IpHeader->Version4.Checksum = ChecksumIpVersion4Header(InfoVa, Info);
@@ -1761,7 +1761,7 @@ fail1:
     Error("fail1 (%08x)\n", status);
 
     __ReceiverRingPutFragment(Ring, Fragment);
-    
+
     return NULL;
 }
 
@@ -1823,7 +1823,7 @@ ReceiverRingFill(
         }
 
         Fragment = __ReceiverRingPreparePacket(Ring, Packet);
-        
+
         if (Fragment == NULL) {
             __ReceiverRingPutPacket(Ring, Packet, TRUE);
             break;
@@ -2354,7 +2354,7 @@ ReceiverRingWatchdog(
     rsp_prod = 0;
     rsp_cons = 0;
 
-    for (;;) { 
+    for (;;) {
         PKEVENT Event;
         KIRQL   Irql;
 
@@ -2603,7 +2603,7 @@ __ReceiverRingConnect(
     ASSERT3P(Ring->Front.sring, ==, Ring->Shared);
 
     Pfn = MmGetMdlPfnArray(Ring->Mdl)[0];
-    
+
     status = XENBUS_GNTTAB(PermitForeignAccess,
                            &Receiver->GnttabInterface,
                            Ring->GnttabCache,
@@ -2614,6 +2614,8 @@ __ReceiverRingConnect(
                            &Ring->Entry);
     if (!NT_SUCCESS(status))
         goto fail4;
+
+    Info("Granted receiver PFN: 0x%llx\n", Pfn);
 
     status = RtlStringCbPrintfA(Name,
                                 sizeof (Name),
@@ -2829,7 +2831,7 @@ static FORCEINLINE VOID
 __ReceiverRingDisable(
     IN  PXENVIF_RECEIVER_RING   Ring
     )
-{    
+{
     PXENVIF_RECEIVER            Receiver;
     PXENVIF_FRONTEND            Frontend;
 
@@ -3226,7 +3228,7 @@ ReceiverConnect(
             goto fail5;
 
         Index++;
-    }    
+    }
 
     status = XENBUS_DEBUG(Register,
                           &Receiver->DebugInterface,
@@ -3432,7 +3434,7 @@ ReceiverStoreWrite(
             goto fail6;
 
         Index++;
-    }    
+    }
 
     return STATUS_SUCCESS;
 
@@ -3479,7 +3481,7 @@ ReceiverEnable(
             goto fail1;
 
         Index++;
-    }    
+    }
 
     Trace("<====\n");
     return STATUS_SUCCESS;
@@ -3644,7 +3646,7 @@ ReceiverSetOffloadOptions(
             break;
 
         __ReceiverRingSetOffloadOptions(Ring, Options);
-    }    
+    }
 }
 
 VOID

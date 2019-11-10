@@ -385,17 +385,25 @@ ControllerConnect(
     if (!NT_SUCCESS(status))
         goto fail1;
 
+    Info("Acquired DEBUG interface\n");
+
     status = XENBUS_STORE(Acquire, &Controller->StoreInterface);
     if (!NT_SUCCESS(status))
         goto fail2;
+
+    Info("Acquired STORE interface\n");
 
     status = XENBUS_EVTCHN(Acquire, &Controller->EvtchnInterface);
     if (!NT_SUCCESS(status))
         goto fail3;
 
+    Info("Acquired EVTCHN interface\n");
+
     status = XENBUS_GNTTAB(Acquire, &Controller->GnttabInterface);
     if (!NT_SUCCESS(status))
         goto fail4;
+
+    Info("Acquired GNTTAB interface\n");
 
     status = XENBUS_STORE(Read,
                           &Controller->StoreInterface,
@@ -438,6 +446,8 @@ ControllerConnect(
     if (!NT_SUCCESS(status))
         goto fail6;
 
+    Info("Created GNTTAB cache\n");
+
     Controller->Mdl = __AllocatePage();
 
     status = STATUS_NO_MEMORY;
@@ -465,6 +475,8 @@ ControllerConnect(
     if (!NT_SUCCESS(status))
         goto fail8;
 
+    Info("Granted controller PFN: 0x%llx\n", Pfn);
+
     Controller->Channel = XENBUS_EVTCHN(Open,
                                         &Controller->EvtchnInterface,
                                         XENBUS_EVTCHN_TYPE_UNBOUND,
@@ -472,6 +484,8 @@ ControllerConnect(
                                         Controller,
                                         FrontendGetBackendDomain(Frontend),
                                         FALSE);
+
+    Info("Opened event channel\n");
 
     status = STATUS_UNSUCCESSFUL;
     if (Controller->Channel == NULL)
@@ -483,6 +497,8 @@ ControllerConnect(
                          FALSE,
                          TRUE);
 
+    Info("Unmask event channel\n");
+
     status = XENBUS_DEBUG(Register,
                           &Controller->DebugInterface,
                           __MODULE__ "|CONTROLLER",
@@ -491,6 +507,8 @@ ControllerConnect(
                           &Controller->DebugCallback);
     if (!NT_SUCCESS(status))
         goto fail10;
+
+    Info("Registered DEBUG callback\n");
 
     ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
     ExAcquireFastMutex(&Controller->FastMutex);

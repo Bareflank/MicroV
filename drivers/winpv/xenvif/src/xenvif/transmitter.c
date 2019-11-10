@@ -3723,6 +3723,9 @@ __TransmitterRingConnect(
                            Pfn,
                            FALSE,
                            &Ring->Entry);
+
+    Info("Granted transmitter PFN: 0x%llx\n", Pfn);
+
     if (!NT_SUCCESS(status))
         goto fail4;
 
