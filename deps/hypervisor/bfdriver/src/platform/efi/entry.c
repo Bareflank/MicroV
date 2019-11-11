@@ -51,6 +51,11 @@ uint64_t g_num_pmodules = 0;
 struct pmodule_t pmodules[MAX_NUM_MODULES] = {{0}};
 
 static const CHAR16 *opt_enable_winpv = L"--enable-winpv";
+static const CHAR16 *opt_no_pci_pt = L"--no-pci-pt";
+
+#define NO_PCI_PT_LIST_SIZE 256
+extern uint64_t no_pci_pt_list[NO_PCI_PT_LIST_SIZE];
+extern uint64_t no_pci_pt_count;
 
 static int64_t
 ioctl_add_module(const char *file, uint64_t len)
@@ -247,6 +252,49 @@ void parse_cmdline(EFI_HANDLE image)
         if (!StrnCmp(opt_enable_winpv, argv[i], StrLen(opt_enable_winpv))) {
             Print(L"enabling Windows PV\n");
             g_enable_winpv = 1;
+        }
+
+        if (!StrnCmp(opt_no_pci_pt, argv[i], StrLen(opt_no_pci_pt))) {
+            if (i >= argc - 1) {
+                continue;
+            }
+
+            CHAR16 *bdf_str = argv[i + 1];
+            UINTN bdf_len = StrLen(bdf_str);
+
+            if (bdf_len != 7) {
+                Print(L"Invalid BDF string size: %u\n", bdf_len);
+                Print(L"  usage: --no-pci-pt BB:DD.F\n");
+                continue;
+            }
+
+            CHAR8 bus_str[16];
+            CHAR8 dev_str[16];
+            CHAR8 fun_str[16];
+
+            ZeroMem(bus_str, 16);
+            ZeroMem(dev_str, 16);
+            ZeroMem(fun_str, 16);
+
+            CopyMem(bus_str, bdf_str, 4);
+            CopyMem(dev_str, (char *)bdf_str + 6, 4);
+            CopyMem(fun_str, (char *)bdf_str + 12, 2);
+
+            UINTN bus = xtoi((CHAR16 *)bus_str);
+            UINTN dev = xtoi((CHAR16 *)dev_str);
+            UINTN fun = xtoi((CHAR16 *)fun_str);
+
+            if (bus > 255 || dev > 31 || fun > 7) {
+                Print(L"BDF out of range: bus=%lx, dev=%lx, fun=%lx\n",
+                      bus, dev, fun);
+                continue;
+            }
+
+            no_pci_pt_list[no_pci_pt_count] =
+                (bus << 16) | (dev << 11) | (fun << 8);
+            no_pci_pt_count++;
+
+            Print(L"Disabling passthrough for %02x:%02x.%02x\n", bus, dev, fun);
         }
     }
 }
