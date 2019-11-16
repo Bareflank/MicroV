@@ -821,6 +821,36 @@ bool xen_vcpu::handle_pet(base_vcpu *vcpu)
     return true;
 }
 
+void xen_vcpu::push_external_interrupt(uint64_t vector)
+{
+    if (m_uv_vcpu->is_root_vcpu()) {
+        m_uv_vcpu->write_ipi(vector);
+        return;
+    }
+
+    m_uv_vcpu->push_external_interrupt(vector);
+}
+
+void xen_vcpu::queue_external_interrupt(uint64_t vector)
+{
+    if (m_uv_vcpu->is_root_vcpu()) {
+        m_uv_vcpu->write_ipi(vector);
+        return;
+    }
+
+    m_uv_vcpu->queue_external_interrupt(vector);
+}
+
+void xen_vcpu::inject_external_interrupt(uint64_t vector)
+{
+    if (m_uv_vcpu->is_root_vcpu()) {
+        m_uv_vcpu->write_ipi(vector);
+        return;
+    }
+
+    m_uv_vcpu->inject_external_interrupt(vector);
+}
+
 /*
  * This will be called *anytime* an interrupt arrives while the guest is running.
  * Care must be taken to ensure that all the structures referenced here are

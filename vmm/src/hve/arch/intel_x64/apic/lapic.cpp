@@ -119,6 +119,8 @@ lapic::lapic(vcpu *vcpu) : m_vcpu{vcpu}
 
     const auto id = this->read(ID_REG);
     m_local_id = (m_xapic_hva) ? id >> 24 : id;
+
+    expects(m_local_id < 0xFF);
 }
 
 void lapic::init_xapic()
@@ -169,6 +171,30 @@ void lapic::write_icr(uint64_t val)
 void lapic::write_eoi()
 {
     m_ops.write_eoi(m_base_addr);
+}
+
+void lapic::write_ipi(uint64_t vector, uint64_t vcpu)
+{
+    expects(vcpuid::is_root_vcpu(vcpu));
+    expects(this->is_xapic());
+
+    /*
+     * NOTE: this is only needed for xAPIC. We should restructure
+     * the access_ops so that x2APIC doesn't have to pay for this
+     */
+    std::lock_guard lock(m_mutex);
+
+    /*
+     * Send the IPI in physical destination mode using the
+     * cached local APIC ID of this lapic.
+     */
+    uint64_t icr = 0;
+
+    icr |= ((uint64_t)(this->local_id()) << 56);
+    icr |= (1UL << 14);
+    icr |= vector & 0xFF;
+
+    this->write_icr(icr);
 }
 
 /*

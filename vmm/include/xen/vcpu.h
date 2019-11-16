@@ -49,6 +49,10 @@ public:
     void init_shared_info(uintptr_t shinfo_gpfn);
     uint64_t runstate_time(int state);
 
+    void push_external_interrupt(uint64_t vector);
+    void queue_external_interrupt(uint64_t vector);
+    void inject_external_interrupt(uint64_t vector);
+
     /*
      * Provides raw access. Use only when certain the pointer is
      * valid (e.g. xen_vcpu hypercall context).

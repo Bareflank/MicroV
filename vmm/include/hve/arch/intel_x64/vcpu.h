@@ -346,6 +346,8 @@ public:
                              const pci_cfg_handler::delegate_t &d,
                              int direction);
 
+    void write_ipi(uint64_t vector);
+
 private:
     friend class microv::xen_vcpu;
     friend class microv::intel_x64::vcpu;

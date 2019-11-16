@@ -725,7 +725,7 @@ void xen_evtchn::push_upcall(chan_t *chan)
         }
 
         auto ctl = &m_event_ctl.data()[chan->vcpuid];
-        xenv->m_uv_vcpu->push_external_interrupt(ctl->upcall_vector);
+        xenv->push_external_interrupt(ctl->upcall_vector);
         xend->put_xen_vcpu(chan->vcpuid);
     }
 }
@@ -742,7 +742,7 @@ void xen_evtchn::queue_upcall(chan_t *chan)
         }
 
         auto ctl = &m_event_ctl.data()[chan->vcpuid];
-        xenv->m_uv_vcpu->queue_external_interrupt(ctl->upcall_vector);
+        xenv->queue_external_interrupt(ctl->upcall_vector);
         xend->put_xen_vcpu(chan->vcpuid);
     }
 }
@@ -759,7 +759,7 @@ void xen_evtchn::inject_upcall(chan_t *chan)
         }
 
         auto ctl = &m_event_ctl.data()[chan->vcpuid];
-        xenv->m_uv_vcpu->inject_external_interrupt(ctl->upcall_vector);
+        xenv->inject_external_interrupt(ctl->upcall_vector);
         xend->put_xen_vcpu(chan->vcpuid);
     }
 }
