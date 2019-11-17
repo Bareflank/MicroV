@@ -1611,7 +1611,6 @@ __ReceiverRingReleaseLock(
 {
     ASSERT3U(KeGetCurrentIrql(), ==, APC_LEVEL);
 
-#pragma prefast(disable:26110)
     ExReleaseFastMutex(&Ring->FastMutex);
 }
 

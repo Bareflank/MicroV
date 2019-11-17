@@ -46,12 +46,14 @@ ControllerInitialize(
     OUT PXENVIF_CONTROLLER  *Controller
     );
 
+_IRQL_requires_same_
 _IRQL_requires_max_(APC_LEVEL)
 extern NTSTATUS
 ControllerConnect(
     IN  PXENVIF_CONTROLLER  Controller
     );
 
+_IRQL_requires_same_
 _IRQL_requires_max_(APC_LEVEL)
 extern NTSTATUS
 ControllerStoreWrite(
@@ -69,17 +71,21 @@ ControllerDisable(
     IN  PXENVIF_CONTROLLER  Controller
     );
 
+_IRQL_requires_same_
 _IRQL_requires_max_(APC_LEVEL)
 extern VOID
 ControllerDisconnect(
     IN  PXENVIF_CONTROLLER  Controller
     );
 
+_IRQL_requires_same_
+_IRQL_requires_max_(PASSIVE_LEVEL)
 extern VOID
 ControllerTeardown(
     IN  PXENVIF_CONTROLLER  Controller
     );
 
+_IRQL_requires_same_
 _IRQL_requires_max_(APC_LEVEL)
 extern NTSTATUS
 ControllerSetHashAlgorithm(
@@ -87,6 +93,7 @@ ControllerSetHashAlgorithm(
     IN  ULONG               Algorithm
     );
 
+_IRQL_requires_same_
 _IRQL_requires_max_(APC_LEVEL)
 extern NTSTATUS
 ControllerGetHashFlags(
@@ -94,6 +101,7 @@ ControllerGetHashFlags(
     IN  PULONG              Flags
     );
 
+_IRQL_requires_same_
 _IRQL_requires_max_(APC_LEVEL)
 extern NTSTATUS
 ControllerSetHashFlags(
@@ -101,6 +109,7 @@ ControllerSetHashFlags(
     IN  ULONG               Flags
     );
 
+_IRQL_requires_same_
 _IRQL_requires_max_(APC_LEVEL)
 extern NTSTATUS
 ControllerSetHashKey(
@@ -109,6 +118,7 @@ ControllerSetHashKey(
     IN  ULONG               Size
     );
 
+_IRQL_requires_same_
 _IRQL_requires_max_(APC_LEVEL)
 extern NTSTATUS
 ControllerGetHashMappingSize(
@@ -116,6 +126,7 @@ ControllerGetHashMappingSize(
     IN  PULONG              Size
     );
 
+_IRQL_requires_same_
 _IRQL_requires_max_(APC_LEVEL)
 extern NTSTATUS
 ControllerSetHashMappingSize(
@@ -123,6 +134,7 @@ ControllerSetHashMappingSize(
     IN  ULONG               Size
     );
 
+_IRQL_requires_same_
 _IRQL_requires_max_(APC_LEVEL)
 extern NTSTATUS
 ControllerSetHashMapping(

@@ -99,9 +99,9 @@ __ControllerFree(
     __FreePoolWithTag(Buffer, XENVIF_CONTROLLER_TAG);
 }
 
-#pragma warning(push)
-#pragma warning(disable:28167)
-
+_IRQL_requires_max_(APC_LEVEL)
+_IRQL_raises_(APC_LEVEL)
+_IRQL_saves_global_(OldIrql, Controller)
 static VOID
 ControllerAcquireLock(
     IN  PXENVIF_CONTROLLER  Controller
@@ -110,6 +110,8 @@ ControllerAcquireLock(
     ExAcquireFastMutex(&Controller->FastMutex);
 }
 
+_IRQL_requires_(APC_LEVEL)
+_IRQL_restores_global_(OldIrql, Controller)
 static VOID
 ControllerReleaseLock(
     IN  PXENVIF_CONTROLLER  Controller
@@ -117,8 +119,6 @@ ControllerReleaseLock(
 {
     ExReleaseFastMutex(&Controller->FastMutex);
 }
-
-#pragma warning(pop)
 
 static FORCEINLINE VOID
 __ControllerSend(
@@ -231,6 +231,8 @@ fail1:
 
 #define XENVIF_CONTROLLER_POLL_PERIOD 100 // ms
 
+_IRQL_requires_same_
+_IRQL_requires_max_(APC_LEVEL)
 static NTSTATUS
 ControllerGetResponse(
     IN  PXENVIF_CONTROLLER          Controller,
@@ -364,6 +366,7 @@ fail1:
     return status;
 }
 
+_IRQL_requires_same_
 _IRQL_requires_max_(APC_LEVEL)
 NTSTATUS
 ControllerConnect(
@@ -589,6 +592,7 @@ fail1:
     return status;
 }
 
+_IRQL_requires_same_
 _IRQL_requires_max_(APC_LEVEL)
 NTSTATUS
 ControllerStoreWrite(
@@ -665,6 +669,7 @@ ControllerDisable(
     Trace("<===>\n");
 }
 
+_IRQL_requires_same_
 _IRQL_requires_max_(APC_LEVEL)
 VOID
 ControllerDisconnect(
@@ -729,6 +734,8 @@ done:
     Trace("<====\n");
 }
 
+_IRQL_requires_same_
+_IRQL_requires_max_(PASSIVE_LEVEL)
 VOID
 ControllerTeardown(
     IN  PXENVIF_CONTROLLER  Controller
@@ -759,6 +766,7 @@ ControllerTeardown(
     __ControllerFree(Controller);
 }
 
+_IRQL_requires_same_
 _IRQL_requires_max_(APC_LEVEL)
 NTSTATUS
 ControllerSetHashAlgorithm(
@@ -801,6 +809,7 @@ fail1:
     return status;
 }
 
+_IRQL_requires_same_
 _IRQL_requires_max_(APC_LEVEL)
 NTSTATUS
 ControllerGetHashFlags(
@@ -843,6 +852,7 @@ fail1:
     return status;
 }
 
+_IRQL_requires_same_
 _IRQL_requires_max_(APC_LEVEL)
 NTSTATUS
 ControllerSetHashFlags(
@@ -885,6 +895,7 @@ fail1:
     return status;
 }
 
+_IRQL_requires_same_
 _IRQL_requires_max_(APC_LEVEL)
 NTSTATUS
 ControllerSetHashKey(
@@ -981,6 +992,7 @@ fail1:
     return status;
 }
 
+_IRQL_requires_same_
 _IRQL_requires_max_(APC_LEVEL)
 NTSTATUS
 ControllerGetHashMappingSize(
@@ -1023,6 +1035,7 @@ fail1:
     return status;
 }
 
+_IRQL_requires_same_
 _IRQL_requires_max_(APC_LEVEL)
 NTSTATUS
 ControllerSetHashMappingSize(
@@ -1065,6 +1078,7 @@ fail1:
     return status;
 }
 
+_IRQL_requires_same_
 _IRQL_requires_max_(APC_LEVEL)
 NTSTATUS
 ControllerSetHashMapping(

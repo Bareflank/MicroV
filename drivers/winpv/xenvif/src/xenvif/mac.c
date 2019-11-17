@@ -250,6 +250,8 @@ fail1:
     return status;
 }
 
+_IRQL_requires_same_
+_IRQL_requires_max_(APC_LEVEL)
 static NTSTATUS
 MacDumpAddressTable(
     IN  PXENVIF_MAC     Mac
@@ -350,6 +352,8 @@ fail1:
     return status;
 }
 
+_IRQL_requires_same_
+_IRQL_requires_max_(APC_LEVEL)
 NTSTATUS
 MacConnect(
     IN  PXENVIF_MAC     Mac
@@ -361,7 +365,7 @@ MacConnect(
     ULONG64             Mtu;
     NTSTATUS            status;
 
-    //ASSERT3U(KeGetCurrentIrql(), ==, DISPATCH_LEVEL);
+    ASSERT3U(KeGetCurrentIrql(), <, DISPATCH_LEVEL);
 
     Frontend = Mac->Frontend;
 
@@ -418,7 +422,6 @@ MacConnect(
     if (!NT_SUCCESS(status))
         goto fail5;
 
-    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
     ExAcquireFastMutex(&Mac->FastMutex);
 
     ASSERT(!Mac->Connected);
@@ -464,6 +467,8 @@ fail1:
     return status;
 }
 
+_IRQL_requires_same_
+_IRQL_requires_max_(APC_LEVEL)
 NTSTATUS
 MacEnable(
     IN  PXENVIF_MAC     Mac
@@ -524,6 +529,8 @@ fail1:
     return status;
 }
 
+_IRQL_requires_same_
+_IRQL_requires_max_(APC_LEVEL)
 VOID
 MacDisable(
     IN  PXENVIF_MAC     Mac
@@ -556,6 +563,8 @@ MacDisable(
     Trace("<====\n");
 }
 
+_IRQL_requires_same_
+_IRQL_requires_max_(APC_LEVEL)
 VOID
 MacDisconnect(
     IN  PXENVIF_MAC     Mac
@@ -639,6 +648,8 @@ MacTeardown(
     __MacFree(Mac);
 }
 
+_IRQL_requires_same_
+_IRQL_requires_max_(APC_LEVEL)
 static FORCEINLINE ULONG64
 __MacGetSpeed(
     IN  PXENVIF_MAC Mac
@@ -700,6 +711,8 @@ __MacGetSpeed(
     return Speed;
 }
 
+_IRQL_requires_same_
+_IRQL_requires_max_(APC_LEVEL)
 static FORCEINLINE BOOLEAN
 __MacGetDisconnect(
     IN  PXENVIF_MAC     Mac
@@ -731,6 +744,8 @@ __MacGetDisconnect(
     return Disconnect;
 }
 
+_IRQL_requires_same_
+_IRQL_requires_max_(APC_LEVEL)
 VOID
 MacQueryState(
     IN  PXENVIF_MAC                 Mac,
@@ -770,6 +785,8 @@ MacQueryMaximumFrameSize(
     *Size = Mac->MaximumFrameSize;
 }
 
+_IRQL_requires_same_
+_IRQL_requires_max_(APC_LEVEL)
 NTSTATUS
 MacAddMulticastAddress(
     IN      PXENVIF_MAC         Mac,
@@ -819,6 +836,8 @@ fail1:
     return status;
 }
 
+_IRQL_requires_same_
+_IRQL_requires_max_(APC_LEVEL)
 NTSTATUS
 MacRemoveMulticastAddress(
     IN      PXENVIF_MAC         Mac,
@@ -881,6 +900,8 @@ fail1:
     return status;
 }
 
+_IRQL_requires_same_
+_IRQL_requires_max_(APC_LEVEL)
 NTSTATUS
 MacQueryMulticastAddresses(
     IN      PXENVIF_MAC         Mac,
@@ -933,6 +954,8 @@ MacQueryBroadcastAddress(
     *Address = Mac->BroadcastAddress;
 }
 
+_IRQL_requires_same_
+_IRQL_requires_max_(APC_LEVEL)
 NTSTATUS
 MacSetFilterLevel(
     IN  PXENVIF_MAC             Mac,
@@ -970,6 +993,8 @@ fail1:
     return status;
 }
 
+_IRQL_requires_same_
+_IRQL_requires_max_(APC_LEVEL)
 NTSTATUS
 MacQueryFilterLevel(
     IN  PXENVIF_MAC                 Mac,
@@ -998,6 +1023,8 @@ fail1:
     return status;
 }
 
+_IRQL_requires_same_
+_IRQL_requires_max_(APC_LEVEL)
 BOOLEAN
 MacApplyFilters(
     IN  PXENVIF_MAC         Mac,

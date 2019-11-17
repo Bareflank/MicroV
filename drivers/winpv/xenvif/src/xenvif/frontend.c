@@ -2999,7 +2999,7 @@ FrontendTeardown(
 {
     Trace("====>\n");
 
-    ASSERT3U(KeGetCurrentIrql(), ==, PASSIVE_LEVEL);
+    ASSERT3U(KeGetCurrentIrql(), <, APC_LEVEL);
 
     ASSERT(Frontend->State == FRONTEND_UNKNOWN);
 
