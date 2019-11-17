@@ -72,8 +72,7 @@ struct _XENVIF_FRONTEND {
     PCHAR                       Prefix;
     XENVIF_FRONTEND_STATE       State;
     BOOLEAN                     Online;
-    KSPIN_LOCK                  Lock;
-    FAST_MUTEX                  StateMutex;
+    FAST_MUTEX                  FastMutex;
     PXENVIF_THREAD              EjectThread;
     KEVENT                      EjectEvent;
 
@@ -349,6 +348,8 @@ FrontendIsOnline(
     return Frontend->Online;
 }
 
+_IRQL_requires_same_
+_IRQL_requires_max_(APC_LEVEL)
 static BOOLEAN
 FrontendIsBackendOnline(
     IN  PXENVIF_FRONTEND    Frontend
@@ -391,8 +392,6 @@ FrontendEject(
     Event = ThreadGetEvent(Self);
 
     for (;;) {
-        KIRQL       Irql;
-
         KeWaitForSingleObject(Event,
                               Executive,
                               KernelMode,
@@ -403,7 +402,7 @@ FrontendEject(
         if (ThreadIsAlerted(Self))
             break;
 
-        KeAcquireSpinLock(&Frontend->Lock, &Irql);
+        ExAcquireFastMutex(&Frontend->FastMutex);
 
         // It is not safe to use interfaces before this point
         if (Frontend->State == FRONTEND_UNKNOWN ||
@@ -417,7 +416,7 @@ FrontendEject(
             PdoRequestEject(__FrontendGetPdo(Frontend));
 
 loop:
-        KeReleaseSpinLock(&Frontend->Lock, Irql);
+        ExReleaseFastMutex(&Frontend->FastMutex);
 
         KeSetEvent(&Frontend->EjectEvent, IO_NO_INCREMENT, FALSE);
     }
@@ -429,17 +428,19 @@ loop:
     return STATUS_SUCCESS;
 }
 
+_IRQL_requires_same_
+_IRQL_requires_max_(APC_LEVEL)
 VOID
 FrontendEjectFailed(
     IN PXENVIF_FRONTEND Frontend
     )
 {
-    KIRQL               Irql;
     ULONG               Length;
     PCHAR               Path;
     NTSTATUS            status;
 
-    KeAcquireSpinLock(&Frontend->Lock, &Irql);
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
+    ExAcquireFastMutex(&Frontend->FastMutex);
 
     Info("%s: device eject failed\n", __FrontendGetPath(Frontend));
 
@@ -466,7 +467,7 @@ FrontendEjectFailed(
 
     __FrontendFree(Path);
 
-    KeReleaseSpinLock(&Frontend->Lock, Irql);
+    ExReleaseFastMutex(&Frontend->FastMutex);
     return;
 
 fail2:
@@ -477,7 +478,7 @@ fail2:
 fail1:
     Error("fail1 (%08x)\n", status);
 
-    KeReleaseSpinLock(&Frontend->Lock, Irql);
+    ExReleaseFastMutex(&Frontend->FastMutex);
 }
 
 static NTSTATUS
@@ -626,6 +627,8 @@ fail1:
     return status;
 }
 
+_IRQL_requires_same_
+_IRQL_requires_max_(APC_LEVEL)
 static NTSTATUS
 FrontendDumpAlias(
     IN  PXENVIF_FRONTEND    Frontend
@@ -663,6 +666,8 @@ fail1:
     return status;
 }
 
+_IRQL_requires_same_
+_IRQL_requires_max_(APC_LEVEL)
 static NTSTATUS
 FrontendDumpAddressTable(
     IN  PXENVIF_FRONTEND        Frontend
@@ -885,7 +890,6 @@ FrontendMib(
     for (;;) {
         PMIB_IF_TABLE2              IfTable;
         PMIB_UNICASTIPADDRESS_TABLE UnicastIpAddressTable;
-        KIRQL                       Irql;
 
         Trace("waiting...\n");
 
@@ -923,7 +927,8 @@ FrontendMib(
         if (!NT_SUCCESS(status))
             goto loop;
 
-        KeAcquireSpinLock(&Frontend->Lock, &Irql);
+        ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
+        ExAcquireFastMutex(&Frontend->FastMutex);
 
         if (Frontend->State == FRONTEND_CONNECTED ||
             Frontend->State == FRONTEND_ENABLED) {
@@ -931,7 +936,7 @@ FrontendMib(
             (VOID) FrontendDumpAddressTable(Frontend);
         }
 
-        KeReleaseSpinLock(&Frontend->Lock, Irql);
+        ExReleaseFastMutex(&Frontend->FastMutex);
 
 loop:
         if (UnicastIpAddressTable != NULL)
@@ -976,6 +981,8 @@ fail1:
     return status;
 }
 
+_IRQL_requires_same_
+_IRQL_requires_max_(APC_LEVEL)
 NTSTATUS
 FrontendSetMulticastAddresses(
     IN  PXENVIF_FRONTEND    Frontend,
@@ -985,17 +992,16 @@ FrontendSetMulticastAddresses(
 {
     PXENVIF_TRANSMITTER     Transmitter;
     PXENVIF_MAC             Mac;
-    KIRQL                   Irql;
     PETHERNET_ADDRESS       MulticastAddress;
     ULONG                   MulticastCount;
     ULONG                   MulticastIndex;
     ULONG                   Index;
     NTSTATUS                status;
 
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
+
     Transmitter = FrontendGetTransmitter(Frontend);
     Mac = FrontendGetMac(Frontend);
-
-    KeRaiseIrql(DISPATCH_LEVEL, &Irql);
 
     status = MacQueryMulticastAddresses(Mac, NULL, &MulticastCount);
     ASSERT3U(status, ==, STATUS_BUFFER_OVERFLOW);
@@ -1064,8 +1070,6 @@ FrontendSetMulticastAddresses(
     if (MulticastAddress != NULL)
         __FrontendFree(MulticastAddress);
 
-    KeLowerIrql(Irql);
-
     return STATUS_SUCCESS;
 
 fail2:
@@ -1076,11 +1080,11 @@ fail2:
 fail1:
     Error("fail1 (%08x)\n", status);
 
-    KeLowerIrql(Irql);
-
     return status;
 }
 
+_IRQL_requires_same_
+_IRQL_requires_max_(APC_LEVEL)
 static NTSTATUS
 FrontendNotifyMulticastAddresses(
     IN  PXENVIF_FRONTEND    Frontend,
@@ -1135,6 +1139,8 @@ fail1:
     return status;
 }
 
+_IRQL_requires_same_
+_IRQL_requires_max_(APC_LEVEL)
 NTSTATUS
 FrontendSetFilterLevel(
     IN  PXENVIF_FRONTEND        Frontend,
@@ -1143,12 +1149,9 @@ FrontendSetFilterLevel(
     )
 {
     PXENVIF_MAC                 Mac;
-    KIRQL                       Irql;
     NTSTATUS                    status;
 
     Mac = FrontendGetMac(Frontend);
-
-    KeRaiseIrql(DISPATCH_LEVEL, &Irql);
 
     status = MacSetFilterLevel(Mac, Type, Level);
     if (!NT_SUCCESS(status))
@@ -1164,30 +1167,28 @@ FrontendSetFilterLevel(
         (VOID) TransmitterRequestMulticastControl(Transmitter, Enabled);
     }
 
-    KeLowerIrql(Irql);
-
     return STATUS_SUCCESS;
 
 fail1:
     Error("fail1 (%08x)\n", status);
 
-    KeLowerIrql(Irql);
-
     return status;
 }
 
+_IRQL_requires_same_
+_IRQL_requires_max_(APC_LEVEL)
 VOID
 FrontendAdvertiseIpAddresses(
     IN  PXENVIF_FRONTEND    Frontend
     )
 {
     PXENVIF_TRANSMITTER     Transmitter;
-    KIRQL                   Irql;
     ULONG                   Index;
 
     Transmitter = FrontendGetTransmitter(Frontend);
 
-    KeAcquireSpinLock(&Frontend->Lock, &Irql);
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
+    ExAcquireFastMutex(&Frontend->FastMutex);
 
     for (Index = 0; Index < Frontend->AddressCount; Index++) {
         switch (Frontend->AddressTable[Index].si_family) {
@@ -1216,7 +1217,7 @@ FrontendAdvertiseIpAddresses(
         }
     }
 
-    KeReleaseSpinLock(&Frontend->Lock, Irql);
+    ExReleaseFastMutex(&Frontend->FastMutex);
 }
 
 static VOID
@@ -1244,6 +1245,8 @@ FrontendSetOffline(
     Trace("<====\n");
 }
 
+_IRQL_requires_same_
+_IRQL_requires_max_(APC_LEVEL)
 static VOID
 FrontendSetXenbusState(
     IN  PXENVIF_FRONTEND    Frontend,
@@ -1276,6 +1279,8 @@ FrontendSetXenbusState(
           XenbusStateName(State));
 }
 
+_IRQL_requires_same_
+_IRQL_requires_max_(APC_LEVEL)
 static NTSTATUS
 FrontendAcquireBackend(
     IN  PXENVIF_FRONTEND    Frontend
@@ -1322,6 +1327,15 @@ fail1:
     return status;
 }
 
+#define TIME_US(_us)        ((_us) * 10)
+#define TIME_MS(_ms)        (TIME_US((_ms) * 1000))
+#define TIME_S(_s)          (TIME_MS((_s) * 1000))
+#define TIME_RELATIVE(_t)   (-(_t))
+
+#define WAIT_PERIOD 1
+
+_IRQL_requires_same_
+_IRQL_requires_max_(APC_LEVEL)
 static VOID
 FrontendWaitForBackendXenbusStateChange(
     IN      PXENVIF_FRONTEND    Frontend,
@@ -1366,6 +1380,7 @@ FrontendWaitForBackendXenbusStateChange(
             ULONG   Attempt = 0;
 
             while (++Attempt < 1000) {
+                LARGE_INTEGER LocalTimeout;
                 status = KeWaitForSingleObject(&Event,
                                                Executive,
                                                KernelMode,
@@ -1374,12 +1389,10 @@ FrontendWaitForBackendXenbusStateChange(
                 if (status != STATUS_TIMEOUT)
                     break;
 
-                // We are waiting for a watch event at DISPATCH_LEVEL so
-                // it is our responsibility to poll the store ring.
-                XENBUS_STORE(Poll,
-                             &Frontend->StoreInterface);
+                XENBUS_STORE(Poll, &Frontend->StoreInterface);
 
-                KeStallExecutionProcessor(1000);   // 1ms
+                LocalTimeout.QuadPart = TIME_RELATIVE(TIME_MS(WAIT_PERIOD));
+                KeDelayExecutionThread(KernelMode, FALSE, &LocalTimeout);
             }
 
             KeClearEvent(&Event);
@@ -1416,6 +1429,8 @@ FrontendWaitForBackendXenbusStateChange(
           XenbusStateName(*State));
 }
 
+_IRQL_requires_same_
+_IRQL_requires_max_(APC_LEVEL)
 static VOID
 FrontendReleaseBackend(
     IN      PXENVIF_FRONTEND    Frontend
@@ -1436,6 +1451,8 @@ FrontendReleaseBackend(
     Trace("<=====\n");
 }
 
+_IRQL_requires_same_
+_IRQL_requires_max_(APC_LEVEL)
 static VOID
 FrontendClose(
     IN  PXENVIF_FRONTEND    Frontend
@@ -1497,6 +1514,8 @@ FrontendClose(
     Trace("<====\n");
 }
 
+_IRQL_requires_same_
+_IRQL_requires_max_(APC_LEVEL)
 static NTSTATUS
 FrontendPrepare(
     IN  PXENVIF_FRONTEND    Frontend
@@ -1632,8 +1651,8 @@ FrontendIncrementStatistic(
     )
 {
     ULONG                       Index;
-    PXENVIF_FRONTEND_STATISTICS Statistics;
     KIRQL                       Irql;
+    PXENVIF_FRONTEND_STATISTICS Statistics;
 
     ASSERT(Name < XENVIF_VIF_STATISTIC_COUNT);
 
@@ -1754,6 +1773,8 @@ FrontendDebugCallback(
     }
 }
 
+_IRQL_requires_same_
+_IRQL_requires_max_(APC_LEVEL)
 static VOID
 FrontendSetNumQueues(
     IN  PXENVIF_FRONTEND    Frontend
@@ -1801,6 +1822,8 @@ FrontendGetNumQueues(
     return __FrontendGetNumQueues(Frontend);
 }
 
+_IRQL_requires_same_
+_IRQL_requires_max_(APC_LEVEL)
 static VOID
 FrontendSetSplit(
     IN  PXENVIF_FRONTEND    Frontend
@@ -1845,6 +1868,8 @@ FrontendIsSplit(
     return __FrontendIsSplit(Frontend);
 }
 
+_IRQL_requires_same_
+_IRQL_requires_max_(APC_LEVEL)
 static FORCEINLINE NTSTATUS
 __FrontendUpdateHash(
     PXENVIF_FRONTEND        Frontend,
@@ -1922,6 +1947,8 @@ fail1:
     return status;
 }
 
+_IRQL_requires_same_
+_IRQL_requires_max_(APC_LEVEL)
 NTSTATUS
 FrontendSetHashAlgorithm(
     IN  PXENVIF_FRONTEND                Frontend,
@@ -1929,10 +1956,10 @@ FrontendSetHashAlgorithm(
     )
 {
     XENVIF_FRONTEND_HASH                Hash;
-    KIRQL                               Irql;
     NTSTATUS                            status;
 
-    KeAcquireSpinLock(&Frontend->Lock, &Irql);
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
+    ExAcquireFastMutex(&Frontend->FastMutex);
 
     switch (Algorithm) {
     case XENVIF_PACKET_HASH_ALGORITHM_NONE:
@@ -1972,7 +1999,7 @@ FrontendSetHashAlgorithm(
 
     Frontend->Hash = Hash;
 
-    KeReleaseSpinLock(&Frontend->Lock, Irql);
+    ExReleaseFastMutex(&Frontend->FastMutex);
 
     return STATUS_SUCCESS;
 
@@ -1982,25 +2009,26 @@ fail2:
 fail1:
     Error("fail1 (%08x)\n", status);
 
-    KeReleaseSpinLock(&Frontend->Lock, Irql);
+    ExReleaseFastMutex(&Frontend->FastMutex);
 
     return status;
 }
 
+_IRQL_requires_same_
+_IRQL_requires_max_(APC_LEVEL)
 NTSTATUS
 FrontendQueryHashTypes(
     IN  PXENVIF_FRONTEND    Frontend,
     OUT PULONG              Types
     )
 {
-    KIRQL                   Irql;
     ULONG                   Flags;
     NTSTATUS                status;
 
-    KeAcquireSpinLock(&Frontend->Lock, &Irql);
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
+    ExAcquireFastMutex(&Frontend->FastMutex);
 
-    status = ControllerGetHashFlags(__FrontendGetController(Frontend),
-                                    &Flags);
+    status = ControllerGetHashFlags(__FrontendGetController(Frontend), &Flags);
     if (!NT_SUCCESS(status))
         goto fail1;
 
@@ -2014,18 +2042,20 @@ FrontendQueryHashTypes(
     if (Flags & XEN_NETIF_CTRL_HASH_TYPE_IPV6_TCP)
         *Types |= 1 << XENVIF_PACKET_HASH_TYPE_IPV6_TCP;
 
-    KeReleaseSpinLock(&Frontend->Lock, Irql);
+    ExReleaseFastMutex(&Frontend->FastMutex);
 
     return STATUS_SUCCESS;
 
 fail1:
     Error("fail1 (%08x)\n", status);
 
-    KeReleaseSpinLock(&Frontend->Lock, Irql);
+    ExReleaseFastMutex(&Frontend->FastMutex);
 
     return status;
 }
 
+_IRQL_requires_same_
+_IRQL_requires_max_(APC_LEVEL)
 NTSTATUS
 FrontendSetHashMapping(
     IN  PXENVIF_FRONTEND    Frontend,
@@ -2034,10 +2064,10 @@ FrontendSetHashMapping(
     )
 {
     XENVIF_FRONTEND_HASH    Hash;
-    KIRQL                   Irql;
     NTSTATUS                status;
 
-    KeAcquireSpinLock(&Frontend->Lock, &Irql);
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
+    ExAcquireFastMutex(&Frontend->FastMutex);
 
     status = STATUS_INVALID_PARAMETER;
     if (Size > XENVIF_FRONTEND_MAXIMUM_HASH_MAPPING_SIZE)
@@ -2054,7 +2084,7 @@ FrontendSetHashMapping(
 
     Frontend->Hash = Hash;
 
-    KeReleaseSpinLock(&Frontend->Lock, Irql);
+    ExReleaseFastMutex(&Frontend->FastMutex);
 
     return STATUS_SUCCESS;
 
@@ -2064,11 +2094,13 @@ fail2:
 fail1:
     Error("fail1 (%08x)\n", status);
 
-    KeReleaseSpinLock(&Frontend->Lock, Irql);
+    ExReleaseFastMutex(&Frontend->FastMutex);
 
     return status;
 }
 
+_IRQL_requires_same_
+_IRQL_requires_max_(APC_LEVEL)
 NTSTATUS
 FrontendSetHashKey(
     IN  PXENVIF_FRONTEND    Frontend,
@@ -2076,10 +2108,10 @@ FrontendSetHashKey(
     )
 {
     XENVIF_FRONTEND_HASH    Hash;
-    KIRQL                   Irql;
     NTSTATUS                status;
 
-    KeAcquireSpinLock(&Frontend->Lock, &Irql);
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
+    ExAcquireFastMutex(&Frontend->FastMutex);
 
     Hash = Frontend->Hash;
 
@@ -2091,18 +2123,20 @@ FrontendSetHashKey(
 
     Frontend->Hash = Hash;
 
-    KeReleaseSpinLock(&Frontend->Lock, Irql);
+    ExReleaseFastMutex(&Frontend->FastMutex);
 
     return STATUS_SUCCESS;
 
 fail1:
     Error("fail1 (%08x)\n", status);
 
-    KeReleaseSpinLock(&Frontend->Lock, Irql);
+    ExReleaseFastMutex(&Frontend->FastMutex);
 
     return status;
 }
 
+_IRQL_requires_same_
+_IRQL_requires_max_(APC_LEVEL)
 NTSTATUS
 FrontendSetHashTypes(
     IN  PXENVIF_FRONTEND    Frontend,
@@ -2110,11 +2144,11 @@ FrontendSetHashTypes(
     )
 {
     XENVIF_FRONTEND_HASH    Hash;
-    KIRQL                   Irql;
     ULONG                   Flags;
     NTSTATUS                status;
 
-    KeAcquireSpinLock(&Frontend->Lock, &Irql);
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
+    ExAcquireFastMutex(&Frontend->FastMutex);
 
     Hash = Frontend->Hash;
 
@@ -2136,14 +2170,14 @@ FrontendSetHashTypes(
 
     Frontend->Hash = Hash;
 
-    KeReleaseSpinLock(&Frontend->Lock, Irql);
+    ExReleaseFastMutex(&Frontend->FastMutex);
 
     return STATUS_SUCCESS;
 
 fail1:
     Error("fail1 (%08x)\n", status);
 
-    KeReleaseSpinLock(&Frontend->Lock, Irql);
+    ExReleaseFastMutex(&Frontend->FastMutex);
 
     return status;
 }
@@ -2178,6 +2212,8 @@ FrontendGetQueue(
     return Queue;
 }
 
+_IRQL_requires_same_
+_IRQL_requires_max_(APC_LEVEL)
 static NTSTATUS
 FrontendConnect(
     IN  PXENVIF_FRONTEND    Frontend
@@ -2379,6 +2415,8 @@ fail1:
     return status;
 }
 
+_IRQL_requires_same_
+_IRQL_requires_max_(APC_LEVEL)
 static VOID
 FrontendDisconnect(
     IN  PXENVIF_FRONTEND    Frontend
@@ -2406,6 +2444,8 @@ FrontendDisconnect(
     Trace("<====\n");
 }
 
+_IRQL_requires_same_
+_IRQL_requires_max_(APC_LEVEL)
 static NTSTATUS
 FrontendEnable(
     IN  PXENVIF_FRONTEND    Frontend
@@ -2457,6 +2497,8 @@ fail1:
     return status;
 }
 
+_IRQL_requires_same_
+_IRQL_requires_max_(APC_LEVEL)
 static VOID
 FrontendDisable(
     IN  PXENVIF_FRONTEND    Frontend
@@ -2473,6 +2515,8 @@ FrontendDisable(
     Trace("<====\n");
 }
 
+_IRQL_requires_same_
+_IRQL_requires_max_(APC_LEVEL)
 NTSTATUS
 FrontendSetState(
     IN  PXENVIF_FRONTEND        Frontend,
@@ -2482,7 +2526,7 @@ FrontendSetState(
     BOOLEAN                     Failed;
 
     ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
-    ExAcquireFastMutex(&Frontend->StateMutex);
+    ExAcquireFastMutex(&Frontend->FastMutex);
 
     Info("%s: ====> '%s' -> '%s'\n",
          __FrontendGetPath(Frontend),
@@ -2620,13 +2664,15 @@ FrontendSetState(
              FrontendStateName(Frontend->State));
     }
 
-    ExReleaseFastMutex(&Frontend->StateMutex);
+    ExReleaseFastMutex(&Frontend->FastMutex);
 
     Info("%s: <=====\n", __FrontendGetPath(Frontend));
 
     return (!Failed) ? STATUS_SUCCESS : STATUS_UNSUCCESSFUL;
 }
 
+_IRQL_requires_same_
+_IRQL_requires_max_(APC_LEVEL)
 static FORCEINLINE VOID
 __FrontendResume(
     IN  PXENVIF_FRONTEND    Frontend
@@ -2636,6 +2682,8 @@ __FrontendResume(
     (VOID) FrontendSetState(Frontend, FRONTEND_CLOSED);
 }
 
+_IRQL_requires_same_
+_IRQL_requires_max_(APC_LEVEL)
 static FORCEINLINE VOID
 __FrontendSuspend(
     IN  PXENVIF_FRONTEND    Frontend
@@ -2654,6 +2702,8 @@ FrontendSuspendCallbackEarly(
     Frontend->Online = FALSE;
 }
 
+_IRQL_requires_same_
+_IRQL_requires_max_(APC_LEVEL)
 static DECLSPEC_NOINLINE VOID
 FrontendSuspendCallbackLate(
     IN  PVOID           Argument
@@ -2665,6 +2715,8 @@ FrontendSuspendCallbackLate(
     __FrontendResume(Frontend);
 }
 
+_IRQL_requires_same_
+_IRQL_requires_(PASSIVE_LEVEL)
 NTSTATUS
 FrontendResume(
     IN  PXENVIF_FRONTEND    Frontend
@@ -2673,8 +2725,6 @@ FrontendResume(
     NTSTATUS                status;
 
     Trace("====>\n");
-
-//    KeRaiseIrql(DISPATCH_LEVEL, &Irql);
 
     status = XENBUS_SUSPEND(Acquire, &Frontend->SuspendInterface);
     if (!NT_SUCCESS(status))
@@ -2699,9 +2749,6 @@ FrontendResume(
                             &Frontend->SuspendCallbackLate);
     if (!NT_SUCCESS(status))
         goto fail3;
-
-//    KeLowerIrql(Irql);
-//    PASSIVE
 
     KeClearEvent(&Frontend->EjectEvent);
     ThreadWake(Frontend->EjectThread);
@@ -2739,16 +2786,14 @@ fail1:
     return status;
 }
 
+_IRQL_requires_same_
+_IRQL_requires_(PASSIVE_LEVEL)
 VOID
 FrontendSuspend(
     IN  PXENVIF_FRONTEND    Frontend
     )
 {
-    KIRQL                   Irql;
-
     Trace("====>\n");
-
-    KeRaiseIrql(DISPATCH_LEVEL, &Irql);
 
     XENBUS_SUSPEND(Deregister,
                    &Frontend->SuspendInterface,
@@ -2764,8 +2809,6 @@ FrontendSuspend(
 
     XENBUS_SUSPEND(Release, &Frontend->SuspendInterface);
 
-    KeLowerIrql(Irql);
-
     KeClearEvent(&Frontend->EjectEvent);
     ThreadWake(Frontend->EjectThread);
 
@@ -2780,7 +2823,8 @@ FrontendSuspend(
     Trace("<====\n");
 }
 
-__drv_requiresIRQL(PASSIVE_LEVEL)
+_IRQL_requires_same_
+_IRQL_requires_(PASSIVE_LEVEL)
 NTSTATUS
 FrontendInitialize(
     IN  PXENVIF_PDO         Pdo,
@@ -2840,8 +2884,7 @@ FrontendInitialize(
     (*Frontend)->Prefix = Prefix;
     (*Frontend)->BackendDomain = DOMID_INVALID;
 
-    KeInitializeSpinLock(&(*Frontend)->Lock);
-    ExInitializeFastMutex(&(*Frontend)->StateMutex);
+    ExInitializeFastMutex(&(*Frontend)->FastMutex);
 
     (*Frontend)->Online = TRUE;
 
@@ -2957,8 +3000,7 @@ fail6:
 
     (*Frontend)->Online = FALSE;
 
-    RtlZeroMemory(&(*Frontend)->Lock, sizeof (KSPIN_LOCK));
-    RtlZeroMemory(&(*Frontend)->StateMutex, sizeof (FAST_MUTEX));
+    RtlZeroMemory(&(*Frontend)->FastMutex, sizeof (FAST_MUTEX));
 
     (*Frontend)->BackendDomain = 0;
     (*Frontend)->Prefix = NULL;
@@ -2992,6 +3034,8 @@ fail1:
     return status;
 }
 
+_IRQL_requires_same_
+_IRQL_requires_max_(PASSIVE_LEVEL)
 VOID
 FrontendTeardown(
     IN  PXENVIF_FRONTEND    Frontend
@@ -3055,8 +3099,7 @@ FrontendTeardown(
 
     Frontend->Online = FALSE;
 
-    RtlZeroMemory(&Frontend->Lock, sizeof (KSPIN_LOCK));
-    RtlZeroMemory(&Frontend->StateMutex, sizeof (FAST_MUTEX));
+    RtlZeroMemory(&Frontend->FastMutex, sizeof (FAST_MUTEX));
 
     Frontend->BackendDomain = 0;
 
