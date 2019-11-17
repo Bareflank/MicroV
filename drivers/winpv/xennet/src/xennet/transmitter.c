@@ -341,9 +341,6 @@ __TransmitterSendNetBufferList(
     __TransmitterPutNetBufferList(Transmitter, NetBufferList);
 }
 
-#pragma warning(push)
-#pragma warning(disable:28167) // changes IRQL
-
 VOID
 TransmitterSendNetBufferLists(
     IN  PXENNET_TRANSMITTER     Transmitter,
@@ -370,8 +367,6 @@ TransmitterSendNetBufferLists(
         NetBufferList = ListNext;
     }
 }
-
-#pragma warning(pop)
 
 VOID
 TransmitterReturnPacket(
