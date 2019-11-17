@@ -1,31 +1,31 @@
 /* Copyright (c) Citrix Systems Inc.
  * All rights reserved.
- * 
- * Redistribution and use in source and binary forms, 
- * with or without modification, are permitted provided 
+ *
+ * Redistribution and use in source and binary forms,
+ * with or without modification, are permitted provided
  * that the following conditions are met:
- * 
- * *   Redistributions of source code must retain the above 
- *     copyright notice, this list of conditions and the 
+ *
+ * *   Redistributions of source code must retain the above
+ *     copyright notice, this list of conditions and the
  *     following disclaimer.
- * *   Redistributions in binary form must reproduce the above 
- *     copyright notice, this list of conditions and the 
- *     following disclaimer in the documentation and/or other 
+ * *   Redistributions in binary form must reproduce the above
+ *     copyright notice, this list of conditions and the
+ *     following disclaimer in the documentation and/or other
  *     materials provided with the distribution.
- * 
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND 
- * CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, 
- * INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF 
- * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE 
- * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR 
- * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, 
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, 
- * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR 
- * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS 
- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, 
- * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING 
- * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE 
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF 
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND
+ * CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES,
+ * INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR
+ * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+ * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+ * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
 
@@ -41,7 +41,7 @@
 #include "assert.h"
 
 typedef struct _XENNET_RECEIVER_QUEUE {
-    KSPIN_LOCK          Lock;
+    FAST_MUTEX          FastMutex;
     PNET_BUFFER_LIST    Head;
     PNET_BUFFER_LIST    Tail;
     ULONG               Count;
@@ -113,6 +113,7 @@ __ReceiverPutNetBufferList(
     } while (InterlockedCompareExchangePointer(&Receiver->PutList, New, Old) != Old);
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static PNET_BUFFER_LIST
 __ReceiverAllocateNetBufferList(
     IN  PXENNET_RECEIVER        Receiver,
@@ -124,7 +125,7 @@ __ReceiverAllocateNetBufferList(
 {
     PNET_BUFFER_LIST            NetBufferList;
 
-    ASSERT3U(KeGetCurrentIrql(), ==, DISPATCH_LEVEL);
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
 
     NetBufferList = __ReceiverGetNetBufferList(Receiver);
     if (NetBufferList != NULL) {
@@ -162,7 +163,7 @@ __ReceiverAllocateNetBufferList(
     }
 
     return NetBufferList;
-}        
+}
 
 static PVOID
 __ReceiverReleaseNetBufferList(
@@ -390,7 +391,7 @@ __ReceiverPushPackets(
 
     Queue = &Receiver->Queue[Index];
 
-    KeAcquireSpinLockAtDpcLevel(&Queue->Lock);
+    ExAcquireFastMutex(&Queue->FastMutex);
 
     NetBufferList = Queue->Head;
     Count = Queue->Count;
@@ -398,7 +399,7 @@ __ReceiverPushPackets(
     Queue->Tail = Queue->Head = NULL;
     Queue->Count = 0;
 
-    KeReleaseSpinLockFromDpcLevel(&Queue->Lock);
+    ExReleaseFastMutex(&Queue->FastMutex);
 
     (VOID) InterlockedAdd(&Receiver->Indicated, Count);
 
@@ -408,8 +409,7 @@ __ReceiverPushPackets(
 
     Indicated = Receiver->Indicated;
 
-    Flags = NDIS_RECEIVE_FLAGS_DISPATCH_LEVEL |
-            NDIS_RECEIVE_FLAGS_PERFECT_FILTERED;
+    Flags = NDIS_RECEIVE_FLAGS_PERFECT_FILTERED;
 
     ASSERT3S(Indicated - Returned, >=, 0);
     if (Indicated - Returned > IN_NDIS_MAX)
@@ -462,7 +462,7 @@ ReceiverInitialize(
     for (Index = 0; Index < HVM_MAX_VCPUS; Index++) {
         PXENNET_RECEIVER_QUEUE  Queue = &(*Receiver)->Queue[Index];
 
-        KeInitializeSpinLock(&Queue->Lock);
+        ExInitializeFastMutex(&Queue->FastMutex);
     }
 
     return NDIS_STATUS_SUCCESS;
@@ -531,6 +531,7 @@ ReceiverReturnNetBufferLists(
     __ReceiverReturnNetBufferLists(Receiver, NetBufferList, TRUE);
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 VOID
 ReceiverQueuePacket(
     IN  PXENNET_RECEIVER                Receiver,
@@ -550,6 +551,8 @@ ReceiverQueuePacket(
     PXENVIF_VIF_INTERFACE               VifInterface;
     PNET_BUFFER_LIST                    NetBufferList;
     PXENNET_RECEIVER_QUEUE              Queue;
+
+    ASSERT3U(KeGetCurrentIrql(), <, DISPATCH_LEVEL);
 
     VifInterface = AdapterGetVifInterface(Receiver->Adapter);
 
@@ -572,7 +575,7 @@ ReceiverQueuePacket(
 
     Queue = &Receiver->Queue[Index];
 
-    KeAcquireSpinLockAtDpcLevel(&Queue->Lock);
+    ExAcquireFastMutex(&Queue->FastMutex);
 
     if (Queue->Head == NULL) {
         ASSERT3U(Queue->Count, ==, 0);
@@ -583,7 +586,7 @@ ReceiverQueuePacket(
     }
     Queue->Count++;
 
-    KeReleaseSpinLockFromDpcLevel(&Queue->Lock);
+    ExReleaseFastMutex(&Queue->FastMutex);
 
 done:
     if (!More)
