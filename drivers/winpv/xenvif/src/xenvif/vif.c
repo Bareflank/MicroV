@@ -401,6 +401,7 @@ done:
     return status;
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static NTSTATUS
 VifTransmitterQueuePacket(
     IN  PINTERFACE                  Interface,
@@ -418,6 +419,7 @@ VifTransmitterQueuePacket(
     PXENVIF_VIF_CONTEXT             Context = Interface->Context;
     NTSTATUS                        status;
 
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
     ExAcquireFastMutex(&Context->FastMutex);
 
     status = STATUS_UNSUCCESSFUL;
@@ -441,6 +443,7 @@ done:
     return status;
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static VOID
 VifTransmitterQueryOffloadOptions(
     IN  PINTERFACE                  Interface,
@@ -449,6 +452,7 @@ VifTransmitterQueryOffloadOptions(
 {
     PXENVIF_VIF_CONTEXT             Context = Interface->Context;
 
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
     ExAcquireFastMutex(&Context->FastMutex);
 
     TransmitterQueryOffloadOptions(FrontendGetTransmitter(Context->Frontend),
@@ -457,6 +461,7 @@ VifTransmitterQueryOffloadOptions(
     ExReleaseFastMutex(&Context->FastMutex);
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static VOID
 VifTransmitterQueryLargePacketSize(
     IN  PINTERFACE      Interface,
@@ -466,6 +471,7 @@ VifTransmitterQueryLargePacketSize(
 {
     PXENVIF_VIF_CONTEXT Context = Interface->Context;
 
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
     ExAcquireFastMutex(&Context->FastMutex);
 
     TransmitterQueryLargePacketSize(FrontendGetTransmitter(Context->Frontend),
@@ -475,6 +481,7 @@ VifTransmitterQueryLargePacketSize(
     ExReleaseFastMutex(&Context->FastMutex);
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static VOID
 VifReceiverSetOffloadOptions(
     IN  PINTERFACE                  Interface,
@@ -483,6 +490,7 @@ VifReceiverSetOffloadOptions(
 {
     PXENVIF_VIF_CONTEXT             Context = Interface->Context;
 
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
     ExAcquireFastMutex(&Context->FastMutex);
 
     ReceiverSetOffloadOptions(FrontendGetReceiver(Context->Frontend),
@@ -491,6 +499,7 @@ VifReceiverSetOffloadOptions(
     ExReleaseFastMutex(&Context->FastMutex);
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static VOID
 VifReceiverSetBackfillSize(
     IN  PINTERFACE      Interface,
@@ -499,6 +508,7 @@ VifReceiverSetBackfillSize(
 {
     PXENVIF_VIF_CONTEXT Context = Interface->Context;
 
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
     ExAcquireFastMutex(&Context->FastMutex);
 
     ReceiverSetBackfillSize(FrontendGetReceiver(Context->Frontend),
@@ -507,6 +517,7 @@ VifReceiverSetBackfillSize(
     ExReleaseFastMutex(&Context->FastMutex);
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static NTSTATUS
 VifReceiverSetHashAlgorithm(
     IN  PINTERFACE                      Interface,
@@ -516,6 +527,7 @@ VifReceiverSetHashAlgorithm(
     PXENVIF_VIF_CONTEXT                 Context = Interface->Context;
     NTSTATUS                            status;
 
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
     ExAcquireFastMutex(&Context->FastMutex);
 
     status = ReceiverSetHashAlgorithm(FrontendGetReceiver(Context->Frontend),
@@ -526,6 +538,7 @@ VifReceiverSetHashAlgorithm(
     return status;
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static NTSTATUS
 VifReceiverQueryHashCapabilities(
     IN  PINTERFACE      Interface,
@@ -537,6 +550,7 @@ VifReceiverQueryHashCapabilities(
     PULONG              Types;
     NTSTATUS            status;
 
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
     ExAcquireFastMutex(&Context->FastMutex);
 
     va_start(Arguments, Interface);
@@ -553,6 +567,7 @@ VifReceiverQueryHashCapabilities(
     return status;
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static NTSTATUS
 VifReceiverUpdateHashParameters(
     IN  PINTERFACE      Interface,
@@ -565,6 +580,7 @@ VifReceiverUpdateHashParameters(
     PUCHAR              Key;
     NTSTATUS            status;
 
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
     ExAcquireFastMutex(&Context->FastMutex);
 
     va_start(Arguments, Interface);
@@ -583,6 +599,7 @@ VifReceiverUpdateHashParameters(
     return status;
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static VOID
 VifMacQueryState(
     IN  PINTERFACE                  Interface,
@@ -593,6 +610,7 @@ VifMacQueryState(
 {
     PXENVIF_VIF_CONTEXT             Context = Interface->Context;
 
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
     ExAcquireFastMutex(&Context->FastMutex);
 
     MacQueryState(FrontendGetMac(Context->Frontend),
@@ -603,6 +621,7 @@ VifMacQueryState(
     ExReleaseFastMutex(&Context->FastMutex);
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static VOID
 VifMacQueryMaximumFrameSize(
     IN  PINTERFACE      Interface,
@@ -611,6 +630,7 @@ VifMacQueryMaximumFrameSize(
 {
     PXENVIF_VIF_CONTEXT Context = Interface->Context;
 
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
     ExAcquireFastMutex(&Context->FastMutex);
 
     MacQueryMaximumFrameSize(FrontendGetMac(Context->Frontend), Size);
@@ -618,6 +638,7 @@ VifMacQueryMaximumFrameSize(
     ExReleaseFastMutex(&Context->FastMutex);
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static VOID
 VifMacQueryPermanentAddress(
     IN  PINTERFACE          Interface,
@@ -626,6 +647,7 @@ VifMacQueryPermanentAddress(
 {
     PXENVIF_VIF_CONTEXT     Context = Interface->Context;
 
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
     ExAcquireFastMutex(&Context->FastMutex);
 
     MacQueryPermanentAddress(FrontendGetMac(Context->Frontend), Address);
@@ -633,6 +655,7 @@ VifMacQueryPermanentAddress(
     ExReleaseFastMutex(&Context->FastMutex);
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static VOID
 VifMacQueryCurrentAddress(
     IN  PINTERFACE          Interface,
@@ -641,6 +664,7 @@ VifMacQueryCurrentAddress(
 {
     PXENVIF_VIF_CONTEXT     Context = Interface->Context;
 
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
     ExAcquireFastMutex(&Context->FastMutex);
 
     MacQueryCurrentAddress(FrontendGetMac(Context->Frontend), Address);
@@ -648,6 +672,7 @@ VifMacQueryCurrentAddress(
     ExReleaseFastMutex(&Context->FastMutex);
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static NTSTATUS
 VifMacQueryMulticastAddresses(
     IN      PINTERFACE          Interface,
@@ -658,6 +683,7 @@ VifMacQueryMulticastAddresses(
     PXENVIF_VIF_CONTEXT         Context = Interface->Context;
     NTSTATUS                    status;
 
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
     ExAcquireFastMutex(&Context->FastMutex);
 
     status = MacQueryMulticastAddresses(FrontendGetMac(Context->Frontend),
@@ -669,6 +695,7 @@ VifMacQueryMulticastAddresses(
     return status;
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static NTSTATUS
 VifMacSetMulticastAddresses(
     IN  PINTERFACE          Interface,
@@ -679,6 +706,8 @@ VifMacSetMulticastAddresses(
     PXENVIF_VIF_CONTEXT     Context = Interface->Context;
     ULONG                   Index;
     NTSTATUS                status;
+
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
 
     status = STATUS_INVALID_PARAMETER;
     for (Index = 0; Index < Count; Index++) {
@@ -698,6 +727,7 @@ done:
     return status;
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static NTSTATUS
 VifMacQueryFilterLevel(
     IN  PINTERFACE                  Interface,
@@ -708,6 +738,7 @@ VifMacQueryFilterLevel(
     PXENVIF_VIF_CONTEXT             Context = Interface->Context;
     NTSTATUS                status;
 
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
     ExAcquireFastMutex(&Context->FastMutex);
 
     status = MacQueryFilterLevel(FrontendGetMac(Context->Frontend),
@@ -719,6 +750,7 @@ VifMacQueryFilterLevel(
     return status;
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static NTSTATUS
 VifMacSetFilterLevel(
     IN  PINTERFACE                  Interface,
@@ -729,6 +761,7 @@ VifMacSetFilterLevel(
     PXENVIF_VIF_CONTEXT             Context = Interface->Context;
     NTSTATUS                        status;
 
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
     ExAcquireFastMutex(&Context->FastMutex);
 
     status = FrontendSetFilterLevel(Context->Frontend, Type, Level);
@@ -738,6 +771,7 @@ VifMacSetFilterLevel(
     return status;
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static VOID
 VifReceiverQueryRingSize(
     IN  PINTERFACE          Interface,
@@ -746,6 +780,7 @@ VifReceiverQueryRingSize(
 {
     PXENVIF_VIF_CONTEXT     Context = Interface->Context;
 
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
     ExAcquireFastMutex(&Context->FastMutex);
 
     ReceiverQueryRingSize(FrontendGetReceiver(Context->Frontend), Size);
@@ -753,6 +788,7 @@ VifReceiverQueryRingSize(
     ExReleaseFastMutex(&Context->FastMutex);
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static VOID
 VifTransmitterQueryRingSize(
     IN  PINTERFACE          Interface,
@@ -761,6 +797,7 @@ VifTransmitterQueryRingSize(
 {
     PXENVIF_VIF_CONTEXT     Context = Interface->Context;
 
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
     ExAcquireFastMutex(&Context->FastMutex);
 
     TransmitterQueryRingSize(FrontendGetTransmitter(Context->Frontend), Size);
@@ -768,6 +805,7 @@ VifTransmitterQueryRingSize(
     ExReleaseFastMutex(&Context->FastMutex);
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static NTSTATUS
 VifAcquire(
     PINTERFACE              Interface
@@ -775,6 +813,7 @@ VifAcquire(
 {
     PXENVIF_VIF_CONTEXT     Context = Interface->Context;
 
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
     ExAcquireFastMutex(&Context->FastMutex);
 
     if (Context->References++ != 0)
@@ -793,6 +832,7 @@ done:
     return STATUS_SUCCESS;
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 VOID
 VifRelease(
     IN  PINTERFACE          Interface
@@ -800,6 +840,7 @@ VifRelease(
 {
     PXENVIF_VIF_CONTEXT     Context = Interface->Context;
 
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
     ExAcquireFastMutex(&Context->FastMutex);
 
     if (--Context->References > 0)
@@ -1154,6 +1195,7 @@ __VifReceiverQueuePacket(
 
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 VOID
 VifReceiverQueuePacket(
     IN  PXENVIF_VIF_CONTEXT             Context,
@@ -1222,6 +1264,7 @@ VifReceiverQueuePacket(
     }
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 VOID
 VifTransmitterReturnPacket(
     IN  PXENVIF_VIF_CONTEXT                         Context,
