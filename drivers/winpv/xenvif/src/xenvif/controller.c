@@ -364,6 +364,7 @@ fail1:
     return status;
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 NTSTATUS
 ControllerConnect(
     IN  PXENVIF_CONTROLLER      Controller
@@ -511,10 +512,9 @@ ControllerConnect(
     Info("Registered DEBUG callback\n");
 
     ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
+
     ExAcquireFastMutex(&Controller->FastMutex);
-
     Controller->Connected = TRUE;
-
     ExReleaseFastMutex(&Controller->FastMutex);
 
 done:
@@ -589,6 +589,7 @@ fail1:
     return status;
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 NTSTATUS
 ControllerStoreWrite(
     IN  PXENVIF_CONTROLLER          Controller,
@@ -598,6 +599,8 @@ ControllerStoreWrite(
     PXENVIF_FRONTEND                Frontend;
     ULONG                           Port;
     NTSTATUS                        status;
+
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
 
     if (!Controller->Connected)
         goto done;
@@ -662,6 +665,7 @@ ControllerDisable(
     Trace("<===>\n");
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 VOID
 ControllerDisconnect(
     IN  PXENVIF_CONTROLLER  Controller
@@ -755,6 +759,7 @@ ControllerTeardown(
     __ControllerFree(Controller);
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 NTSTATUS
 ControllerSetHashAlgorithm(
     IN  PXENVIF_CONTROLLER  Controller,
@@ -796,6 +801,7 @@ fail1:
     return status;
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 NTSTATUS
 ControllerGetHashFlags(
     IN  PXENVIF_CONTROLLER  Controller,
@@ -837,6 +843,7 @@ fail1:
     return status;
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 NTSTATUS
 ControllerSetHashFlags(
     IN  PXENVIF_CONTROLLER  Controller,
@@ -878,6 +885,7 @@ fail1:
     return status;
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 NTSTATUS
 ControllerSetHashKey(
     IN  PXENVIF_CONTROLLER  Controller,
@@ -973,6 +981,7 @@ fail1:
     return status;
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 NTSTATUS
 ControllerGetHashMappingSize(
     IN  PXENVIF_CONTROLLER  Controller,
@@ -1014,6 +1023,7 @@ fail1:
     return status;
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 NTSTATUS
 ControllerSetHashMappingSize(
     IN  PXENVIF_CONTROLLER  Controller,
@@ -1055,6 +1065,7 @@ fail1:
     return status;
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 NTSTATUS
 ControllerSetHashMapping(
     IN  PXENVIF_CONTROLLER  Controller,
