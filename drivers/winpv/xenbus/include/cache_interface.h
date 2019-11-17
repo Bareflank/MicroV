@@ -76,6 +76,7 @@ typedef VOID
     be used to initialize any object data prior to its insertion into the
     cache.
 */
+_IRQL_requires_max_(APC_LEVEL)
 typedef NTSTATUS
 (*XENBUS_CACHE_CTOR)(
     IN  PVOID   Argument,
@@ -91,6 +92,7 @@ typedef NTSTATUS
     This callback is invoked just after an object is removed from the
     cache and before it is freed and may be used to tear down any object data.
 */
+_IRQL_requires_max_(APC_LEVEL)
 typedef VOID
 (*XENBUS_CACHE_DTOR)(
     IN  PVOID   Argument,
@@ -105,6 +107,7 @@ typedef VOID
     This callback is invoked if the cache implementation requires mutual
     exclusion.
 */
+_IRQL_requires_max_(APC_LEVEL)
 typedef VOID
 (*XENBUS_CACHE_ACQUIRE_LOCK)(
     IN  PVOID   Argument
@@ -118,6 +121,7 @@ typedef VOID
     This callback is invoked to release the mutual exclusion lock acquired
     by a previous invocation of \a XENBUS_CACHE_ACQUIRE_LOCK.
 */
+_IRQL_requires_max_(APC_LEVEL)
 typedef VOID
 (*XENBUS_CACHE_RELEASE_LOCK)(
     IN  PVOID   Argument
@@ -178,6 +182,7 @@ typedef NTSTATUS
     \param Locked If mutually exclusive access to the cache is already
     guaranteed then set this to TRUE
 */
+_IRQL_requires_max_(APC_LEVEL)
 typedef PVOID
 (*XENBUS_CACHE_GET)(
     IN  PINTERFACE      Interface,
@@ -193,6 +198,7 @@ typedef PVOID
     \param Locked If mutually exclusive access to the cache is already
     guaranteed then set this to TRUE
 */
+_IRQL_requires_max_(APC_LEVEL)
 typedef VOID
 (*XENBUS_CACHE_PUT)(
     IN  PINTERFACE      Interface,

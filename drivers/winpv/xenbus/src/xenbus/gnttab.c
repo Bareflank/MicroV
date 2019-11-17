@@ -75,7 +75,7 @@ typedef struct _XENBUS_GNTTAB_MAP_ENTRY {
 
 struct _XENBUS_GNTTAB_CONTEXT {
     PXENBUS_FDO                 Fdo;
-    KSPIN_LOCK                  Lock;
+    FAST_MUTEX                  FastMutex;
     LONG                        References;
     ULONG                       MaximumFrameCount;
     PHYSICAL_ADDRESS            Address;
@@ -322,6 +322,7 @@ GnttabReleaseLock(
     Cache->ReleaseLock(Cache->Argument);
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static NTSTATUS
 GnttabCreateCache(
     IN  PINTERFACE              Interface,
@@ -335,8 +336,9 @@ GnttabCreateCache(
     )
 {
     PXENBUS_GNTTAB_CONTEXT      Context = Interface->Context;
-    KIRQL                       Irql;
     NTSTATUS                    status;
+
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
 
     *Cache = __GnttabAllocate(sizeof (XENBUS_GNTTAB_CACHE));
 
@@ -372,9 +374,9 @@ GnttabCreateCache(
     if (!NT_SUCCESS(status))
         goto fail3;
 
-    KeAcquireSpinLock(&Context->Lock, &Irql);
+    ExAcquireFastMutex(&Context->FastMutex);
     InsertTailList(&Context->List, &(*Cache)->ListEntry);
-    KeReleaseSpinLock(&Context->Lock, Irql);
+    ExReleaseFastMutex(&Context->FastMutex);
 
     return STATUS_SUCCESS;
 
@@ -422,6 +424,7 @@ GnttabCreateCacheVersion1(
                              Cache);
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static VOID
 GnttabDestroyCache(
     IN  PINTERFACE              Interface,
@@ -429,11 +432,12 @@ GnttabDestroyCache(
     )
 {
     PXENBUS_GNTTAB_CONTEXT      Context = Interface->Context;
-    KIRQL                       Irql;
 
-    KeAcquireSpinLock(&Context->Lock, &Irql);
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
+
+    ExAcquireFastMutex(&Context->FastMutex);
     RemoveEntryList(&Cache->ListEntry);
-    KeReleaseSpinLock(&Context->Lock, Irql);
+    ExReleaseFastMutex(&Context->FastMutex);
 
     RtlZeroMemory(&Cache->ListEntry, sizeof (LIST_ENTRY));
 
@@ -454,6 +458,7 @@ GnttabDestroyCache(
     __GnttabFree(Cache);
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static NTSTATUS
 GnttabPermitForeignAccess(
     IN  PINTERFACE              Interface,
@@ -468,6 +473,7 @@ GnttabPermitForeignAccess(
     PXENBUS_GNTTAB_CONTEXT      Context = Interface->Context;
     NTSTATUS                    status;
 
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
     *Entry = XENBUS_CACHE(Get,
                           &Context->CacheInterface,
                           Cache->Cache,
@@ -497,6 +503,14 @@ fail1:
     return status;
 }
 
+#define TIME_US(_us)        ((_us) * 10)
+#define TIME_MS(_ms)        (TIME_US((_ms) * 1000))
+#define TIME_S(_s)          (TIME_MS((_s) * 1000))
+#define TIME_RELATIVE(_t)   (-(_t))
+
+#define GNTTAB_POLL_PERIOD 5
+
+_IRQL_requires_max_(APC_LEVEL)
 static NTSTATUS
 GnttabRevokeForeignAccess(
     IN  PINTERFACE              Interface,
@@ -510,6 +524,7 @@ GnttabRevokeForeignAccess(
     ULONG                       Attempt;
     NTSTATUS                    status;
 
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
     ASSERT3U(Entry->Magic, ==, XENBUS_GNTTAB_ENTRY_MAGIC);
     ASSERT3U(Entry->Reference, >=, XENBUS_GNTTAB_RESERVED_ENTRY_COUNT);
     ASSERT3U(Entry->Reference, <, (Context->FrameIndex + 1) * XENBUS_GNTTAB_ENTRY_PER_FRAME);
@@ -518,8 +533,9 @@ GnttabRevokeForeignAccess(
 
     Attempt = 0;
     while (Attempt++ < 100) {
-        uint16_t    Old;
-        uint16_t    New;
+        uint16_t       Old;
+        uint16_t       New;
+        LARGE_INTEGER Timeout;
 
         Old = *flags;
         Old &= ~(GTF_reading | GTF_writing);
@@ -529,7 +545,8 @@ GnttabRevokeForeignAccess(
         if (InterlockedCompareExchange16(flags, New, Old) == Old)
             break;
 
-        SchedYield();
+        Timeout.QuadPart = TIME_RELATIVE(TIME_MS(GNTTAB_POLL_PERIOD));
+        KeDelayExecutionThread(KernelMode, FALSE, &Timeout);
     }
 
     status = STATUS_UNSUCCESSFUL;
@@ -758,6 +775,7 @@ GnttabDebugCallback(
                  Context->FrameIndex);
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 NTSTATUS
 GnttabAcquire(
     IN  PINTERFACE          Interface
@@ -765,10 +783,10 @@ GnttabAcquire(
 {
     PXENBUS_GNTTAB_CONTEXT  Context = Interface->Context;
     PXENBUS_FDO             Fdo = Context->Fdo;
-    KIRQL                   Irql;
     NTSTATUS                status;
 
-    KeAcquireSpinLock(&Context->Lock, &Irql);
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
+    ExAcquireFastMutex(&Context->FastMutex);
 
     if (Context->References++ != 0)
         goto done;
@@ -841,7 +859,7 @@ GnttabAcquire(
     Trace("<====\n");
 
 done:
-    KeReleaseSpinLock(&Context->Lock, Irql);
+    ExReleaseFastMutex(&Context->FastMutex);
 
     return STATUS_SUCCESS;
 
@@ -913,11 +931,12 @@ fail1:
 
     --Context->References;
     ASSERT3U(Context->References, ==, 0);
-    KeReleaseSpinLock(&Context->Lock, Irql);
+    ExReleaseFastMutex(&Context->FastMutex);
 
     return status;
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 VOID
 GnttabRelease(
     IN  PINTERFACE          Interface
@@ -925,9 +944,9 @@ GnttabRelease(
 {
     PXENBUS_GNTTAB_CONTEXT  Context = Interface->Context;
     PXENBUS_FDO             Fdo = Context->Fdo;
-    KIRQL                   Irql;
 
-    KeAcquireSpinLock(&Context->Lock, &Irql);
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
+    ExAcquireFastMutex(&Context->FastMutex);
 
     if (--Context->References > 0)
         goto done;
@@ -976,7 +995,7 @@ GnttabRelease(
     Trace("<====\n");
 
 done:
-    KeReleaseSpinLock(&Context->Lock, Irql);
+    ExReleaseFastMutex(&Context->FastMutex);
 }
 
 static struct _XENBUS_GNTTAB_INTERFACE_V1   GnttabInterfaceVersion1 = {
@@ -1076,7 +1095,7 @@ GnttabInitialize(
     ASSERT((*Context)->DebugInterface.Interface.Context != NULL);
 
     InitializeListHead(&(*Context)->List);
-    KeInitializeSpinLock(&(*Context)->Lock);
+    ExInitializeFastMutex(&(*Context)->FastMutex);
 
     status = HashTableCreate(&(*Context)->MapTable);
     if (!NT_SUCCESS(status))
@@ -1206,7 +1225,7 @@ GnttabTeardown(
     HashTableDestroy(Context->MapTable);
     Context->MapTable = NULL;
 
-    RtlZeroMemory(&Context->Lock, sizeof (KSPIN_LOCK));
+    RtlZeroMemory(&Context->FastMutex, sizeof (FAST_MUTEX));
     RtlZeroMemory(&Context->List, sizeof (LIST_ENTRY));
 
     RtlZeroMemory(&Context->DebugInterface,

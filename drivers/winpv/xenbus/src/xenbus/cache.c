@@ -92,7 +92,7 @@ struct _XENBUS_CACHE {
 
 struct _XENBUS_CACHE_CONTEXT {
     PXENBUS_FDO             Fdo;
-    KSPIN_LOCK              Lock;
+    FAST_MUTEX              FastMutex;
     LONG                    References;
     XENBUS_DEBUG_INTERFACE  DebugInterface;
     PXENBUS_DEBUG_CALLBACK  DebugCallback;
@@ -119,7 +119,7 @@ __CacheFree(
 }
 
 static FORCEINLINE VOID
-__drv_requiresIRQL(DISPATCH_LEVEL)
+_IRQL_requires_max_(APC_LEVEL)
 __CacheAcquireLock(
     IN  PXENBUS_CACHE   Cache
     )
@@ -128,7 +128,7 @@ __CacheAcquireLock(
 }
 
 static FORCEINLINE VOID
-__drv_requiresIRQL(DISPATCH_LEVEL)
+_IRQL_requires_max_(APC_LEVEL)
 __CacheReleaseLock(
     IN  PXENBUS_CACHE   Cache
     )
@@ -137,7 +137,7 @@ __CacheReleaseLock(
 }
 
 static FORCEINLINE NTSTATUS
-__drv_requiresIRQL(DISPATCH_LEVEL)
+_IRQL_requires_max_(APC_LEVEL)
 __CacheCtor(
     IN  PXENBUS_CACHE   Cache,
     IN  PVOID           Object
@@ -147,7 +147,7 @@ __CacheCtor(
 }
 
 static FORCEINLINE VOID
-__drv_requiresIRQL(DISPATCH_LEVEL)
+_IRQL_requires_max_(APC_LEVEL)
 __CacheDtor(
     IN  PXENBUS_CACHE   Cache,
     IN  PVOID           Object
@@ -466,6 +466,7 @@ __CacheMaskClear(
 }
 
 // Must be called with lock held
+_IRQL_requires_max_(APC_LEVEL)
 static PVOID
 CacheGetObjectFromSlab(
     IN  PXENBUS_CACHE_SLAB  Slab
@@ -495,6 +496,7 @@ CacheGetObjectFromSlab(
 }
 
 // Must be called with lock held
+_IRQL_requires_max_(APC_LEVEL)
 static VOID
 CachePutObjectToSlab(
     IN  PXENBUS_CACHE_SLAB  Slab,
@@ -516,6 +518,7 @@ CachePutObjectToSlab(
     __CacheMaskClear(Slab->Mask, Index);
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static PVOID
 CacheGet(
     IN  PINTERFACE          Interface,
@@ -523,14 +526,13 @@ CacheGet(
     IN  BOOLEAN             Locked
     )
 {
-    KIRQL                   Irql;
     ULONG                   Index;
     PXENBUS_CACHE_MAGAZINE  Magazine;
     PVOID                   Object;
 
     UNREFERENCED_PARAMETER(Interface);
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
 
-    KeRaiseIrql(DISPATCH_LEVEL, &Irql);
     Index = KeGetCurrentProcessorNumberEx(NULL);
 
     ASSERT3U(Index, <, Cache->MagazineCount);
@@ -575,11 +577,10 @@ again:
         __CacheReleaseLock(Cache);
 
 done:
-    KeLowerIrql(Irql);
-
     return Object;
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static VOID
 CachePut(
     IN  PINTERFACE          Interface,
@@ -588,15 +589,14 @@ CachePut(
     IN  BOOLEAN             Locked
     )
 {
-    KIRQL                   Irql;
     ULONG                   Index;
     PXENBUS_CACHE_MAGAZINE  Magazine;
     PXENBUS_CACHE_SLAB      Slab;
     NTSTATUS                status;
 
     UNREFERENCED_PARAMETER(Interface);
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
 
-    KeRaiseIrql(DISPATCH_LEVEL, &Irql);
     Index = KeGetCurrentProcessorNumberEx(NULL);
 
     ASSERT3U(Index, <, Cache->MagazineCount);
@@ -605,7 +605,7 @@ CachePut(
     status = CachePutObjectToMagazine(Magazine, Object);
 
     if (NT_SUCCESS(status))
-        goto done;
+        return;
 
     Slab = (PXENBUS_CACHE_SLAB)PAGE_ALIGN(Object);
     ASSERT3U(Slab->Magic, ==, XENBUS_CACHE_SLAB_MAGIC);
@@ -623,21 +623,18 @@ CachePut(
 
     if (!Locked)
         __CacheReleaseLock(Cache);
-
-done:
-    KeLowerIrql(Irql);
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static NTSTATUS
 CacheFill(
     IN  PXENBUS_CACHE   Cache,
     IN  ULONG           Count
     )
 {
-    KIRQL               Irql;
     NTSTATUS            status;
 
-    KeRaiseIrql(DISPATCH_LEVEL, &Irql);
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
     __CacheAcquireLock(Cache);
 
     status = STATUS_SUCCESS;
@@ -650,21 +647,20 @@ CacheFill(
     CacheAudit(Cache);
 
     __CacheReleaseLock(Cache);
-    KeLowerIrql(Irql);
 
     return status;
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static VOID
 CacheSpill(
     IN  PXENBUS_CACHE   Cache,
     IN  ULONG           Count
     )
 {
-    KIRQL               Irql;
     PLIST_ENTRY         ListEntry;
 
-    KeRaiseIrql(DISPATCH_LEVEL, &Irql);
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
     __CacheAcquireLock(Cache);
 
     if (Cache->Count <= Count)
@@ -695,18 +691,16 @@ CacheSpill(
 
 done:
     __CacheReleaseLock(Cache);
-    KeLowerIrql(Irql);
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static FORCEINLINE VOID
 __CacheFlushMagazines(
     IN  PXENBUS_CACHE   Cache
     )
 {
-    KIRQL               Irql;
     ULONG               Index;
 
-    KeRaiseIrql(DISPATCH_LEVEL, &Irql);
     __CacheAcquireLock(Cache);
 
     for (Index = 0; Index < Cache->MagazineCount; Index++) {
@@ -724,9 +718,9 @@ __CacheFlushMagazines(
     }
 
     __CacheReleaseLock(Cache);
-    KeLowerIrql(Irql);
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static NTSTATUS
 CacheCreate(
     IN  PINTERFACE          Interface,
@@ -743,7 +737,6 @@ CacheCreate(
     )
 {
     PXENBUS_CACHE_CONTEXT   Context = Interface->Context;
-    KIRQL                   Irql;
     NTSTATUS                status;
 
     Trace("====> (%s)\n", Name);
@@ -794,9 +787,9 @@ CacheCreate(
     if ((*Cache)->Magazine == NULL)
         goto fail5;
 
-    KeAcquireSpinLock(&Context->Lock, &Irql);
+    ExAcquireFastMutex(&Context->FastMutex);
     InsertTailList(&Context->List, &(*Cache)->ListEntry);
-    KeReleaseSpinLock(&Context->Lock, Irql);
+    ExReleaseFastMutex(&Context->FastMutex);
 
     Trace("<====\n");
 
@@ -842,6 +835,7 @@ fail1:
     return status;
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static NTSTATUS
 CacheCreateVersion1(
     IN  PINTERFACE          Interface,
@@ -869,6 +863,7 @@ CacheCreateVersion1(
                        Cache);
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static VOID
 CacheDestroy(
     IN  PINTERFACE          Interface,
@@ -876,13 +871,12 @@ CacheDestroy(
     )
 {
     PXENBUS_CACHE_CONTEXT   Context = Interface->Context;
-    KIRQL                   Irql;
 
     Trace("====> (%s)\n", Cache->Name);
 
-    KeAcquireSpinLock(&Context->Lock, &Irql);
+    ExAcquireFastMutex(&Context->FastMutex);
     RemoveEntryList(&Cache->ListEntry);
-    KeReleaseSpinLock(&Context->Lock, Irql);
+    ExReleaseFastMutex(&Context->FastMutex);
 
     RtlZeroMemory(&Cache->ListEntry, sizeof (LIST_ENTRY));
 
@@ -957,6 +951,7 @@ CacheDebugCallback(
 
 #define XENBUS_CACHE_MONITOR_PERIOD 5
 
+_IRQL_requires_max_(APC_LEVEL)
 static NTSTATUS
 CacheMonitor(
     IN  PXENBUS_THREAD      Self,
@@ -975,8 +970,6 @@ CacheMonitor(
     Timeout.QuadPart = TIME_RELATIVE(TIME_S(XENBUS_CACHE_MONITOR_PERIOD));
 
     for (;;) {
-        KIRQL   Irql;
-
         (VOID) KeWaitForSingleObject(Event,
                                      Executive,
                                      KernelMode,
@@ -987,7 +980,7 @@ CacheMonitor(
         if (ThreadIsAlerted(Self))
             break;
 
-        KeAcquireSpinLock(&Context->Lock, &Irql);
+        ExAcquireFastMutex(&Context->FastMutex);
 
         if (Context->References == 0)
             goto loop;
@@ -1007,7 +1000,7 @@ CacheMonitor(
         }
 
 loop:
-        KeReleaseSpinLock(&Context->Lock, Irql);
+        ExReleaseFastMutex(&Context->FastMutex);
     }
 
     Trace("====>\n");
@@ -1015,16 +1008,16 @@ loop:
     return STATUS_SUCCESS;
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static NTSTATUS
 CacheAcquire(
     PINTERFACE              Interface
     )
 {
     PXENBUS_CACHE_CONTEXT   Context = Interface->Context;
-    KIRQL                   Irql;
     NTSTATUS                status;
 
-    KeAcquireSpinLock(&Context->Lock, &Irql);
+    ExAcquireFastMutex(&Context->FastMutex);
 
     if (Context->References++ != 0)
         goto done;
@@ -1047,7 +1040,7 @@ CacheAcquire(
     Trace("<====\n");
 
 done:
-    KeReleaseSpinLock(&Context->Lock, Irql);
+    ExReleaseFastMutex(&Context->FastMutex);
 
     return STATUS_SUCCESS;
 
@@ -1061,20 +1054,20 @@ fail1:
 
     --Context->References;
     ASSERT3U(Context->References, ==, 0);
-    KeReleaseSpinLock(&Context->Lock, Irql);
+    ExReleaseFastMutex(&Context->FastMutex);
 
     return status;
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 VOID
 CacheRelease(
     IN  PINTERFACE          Interface
     )
 {
     PXENBUS_CACHE_CONTEXT   Context = Interface->Context;
-    KIRQL                   Irql;
 
-    KeAcquireSpinLock(&Context->Lock, &Irql);
+    ExAcquireFastMutex(&Context->FastMutex);
 
     if (--Context->References > 0)
         goto done;
@@ -1094,7 +1087,7 @@ CacheRelease(
     Trace("<====\n");
 
 done:
-    KeReleaseSpinLock(&Context->Lock, Irql);
+    ExReleaseFastMutex(&Context->FastMutex);
 }
 
 static struct _XENBUS_CACHE_INTERFACE_V1 CacheInterfaceVersion1 = {
@@ -1141,7 +1134,7 @@ CacheInitialize(
     ASSERT((*Context)->DebugInterface.Interface.Context != NULL);
 
     InitializeListHead(&(*Context)->List);
-    KeInitializeSpinLock(&(*Context)->Lock);
+    ExInitializeFastMutex(&(*Context)->FastMutex);
 
     status = ThreadCreate(CacheMonitor, *Context, &(*Context)->MonitorThread);
     if (!NT_SUCCESS(status))
@@ -1156,7 +1149,7 @@ CacheInitialize(
 fail2:
     Error("fail2\n");
 
-    RtlZeroMemory(&(*Context)->Lock, sizeof (KSPIN_LOCK));
+    RtlZeroMemory(&(*Context)->FastMutex, sizeof (FAST_MUTEX));
     RtlZeroMemory(&(*Context)->List, sizeof (LIST_ENTRY));
 
     RtlZeroMemory(&(*Context)->DebugInterface,
@@ -1244,7 +1237,7 @@ CacheTeardown(
     ThreadJoin(Context->MonitorThread);
     Context->MonitorThread = NULL;
 
-    RtlZeroMemory(&Context->Lock, sizeof (KSPIN_LOCK));
+    RtlZeroMemory(&Context->FastMutex, sizeof (FAST_MUTEX));
     RtlZeroMemory(&Context->List, sizeof (LIST_ENTRY));
 
     RtlZeroMemory(&Context->DebugInterface,
