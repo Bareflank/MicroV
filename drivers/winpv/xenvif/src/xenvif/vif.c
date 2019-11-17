@@ -1,31 +1,31 @@
 /* Copyright (c) Citrix Systems Inc.
  * All rights reserved.
- * 
- * Redistribution and use in source and binary forms, 
- * with or without modification, are permitted provided 
+ *
+ * Redistribution and use in source and binary forms,
+ * with or without modification, are permitted provided
  * that the following conditions are met:
- * 
- * *   Redistributions of source code must retain the above 
- *     copyright notice, this list of conditions and the 
+ *
+ * *   Redistributions of source code must retain the above
+ *     copyright notice, this list of conditions and the
  *     following disclaimer.
- * *   Redistributions in binary form must reproduce the above 
- *     copyright notice, this list of conditions and the 
- *     following disclaimer in the documentation and/or other 
+ * *   Redistributions in binary form must reproduce the above
+ *     copyright notice, this list of conditions and the
+ *     following disclaimer in the documentation and/or other
  *     materials provided with the distribution.
- * 
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND 
- * CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, 
- * INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF 
- * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE 
- * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR 
- * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, 
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, 
- * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR 
- * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS 
- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, 
- * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING 
- * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE 
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF 
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND
+ * CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES,
+ * INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR
+ * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+ * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+ * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
 
@@ -38,7 +38,6 @@
 #include "pdo.h"
 #include "parse.h"
 #include "vif.h"
-#include "mrsw.h"
 #include "thread.h"
 #include "dbg_print.h"
 #include "assert.h"
@@ -46,7 +45,7 @@
 
 struct _XENVIF_VIF_CONTEXT {
     PXENVIF_PDO                 Pdo;
-    XENVIF_MRSW_LOCK            Lock;
+    FAST_MUTEX                  FastMutex;
     LONG                        References;
     PXENVIF_FRONTEND            Frontend;
     BOOLEAN                     Enabled;
@@ -104,7 +103,7 @@ VifMac(
 
         if (ThreadIsAlerted(Self))
             break;
-        
+
         if (Context->Enabled)
             Context->Callback(Context->Argument,
                               XENVIF_MAC_STATE_CHANGE);
@@ -145,14 +144,13 @@ VifEnable(
     )
 {
     PXENVIF_VIF_CONTEXT     Context = Interface->Context;
-    KIRQL                   Irql;
-    BOOLEAN                 Exclusive;
+    BOOLEAN                 HoldLock;
     NTSTATUS                status;
 
     Trace("====>\n");
 
-    AcquireMrswLockExclusive(&Context->Lock, &Irql);
-    Exclusive = TRUE;
+    ExAcquireFastMutex(&Context->FastMutex);
+    HoldLock = TRUE;
 
     if (Context->Enabled)
         goto done;
@@ -182,8 +180,7 @@ VifEnable(
         goto fail3;
 
 done:
-    ASSERT(Exclusive);
-    ReleaseMrswLockExclusive(&Context->Lock, Irql, FALSE);
+    ExReleaseFastMutex(&Context->FastMutex);
 
     Trace("<====\n");
 
@@ -194,8 +191,8 @@ fail3:
 
     (VOID) FrontendSetState(Context->Frontend, FRONTEND_CONNECTED);
 
-    ReleaseMrswLockExclusive(&Context->Lock, Irql, TRUE);
-    Exclusive = FALSE;
+    ExReleaseFastMutex(&Context->FastMutex);
+    HoldLock = FALSE;
 
     ReceiverWaitForPackets(FrontendGetReceiver(Context->Frontend));
     TransmitterAbortPackets(FrontendGetTransmitter(Context->Frontend));
@@ -228,10 +225,8 @@ fail1:
     Context->Argument = NULL;
     Context->Callback = NULL;
 
-    if (Exclusive)
-        ReleaseMrswLockExclusive(&Context->Lock, Irql, FALSE);
-    else
-        ReleaseMrswLockShared(&Context->Lock);
+    if (HoldLock)
+        ExReleaseFastMutex(&Context->FastMutex);
 
     return status;
 }
@@ -242,14 +237,13 @@ VifDisable(
     )
 {
     PXENVIF_VIF_CONTEXT Context = Interface->Context;
-    KIRQL               Irql;
 
     Trace("====>\n");
 
-    AcquireMrswLockExclusive(&Context->Lock, &Irql);
+    ExAcquireFastMutex(&Context->FastMutex);
 
     if (!Context->Enabled) {
-        ReleaseMrswLockExclusive(&Context->Lock, Irql, FALSE);
+        ExReleaseFastMutex(&Context->FastMutex);
         goto done;
     }
 
@@ -264,7 +258,7 @@ VifDisable(
 
     (VOID) FrontendSetState(Context->Frontend, FRONTEND_CONNECTED);
 
-    ReleaseMrswLockExclusive(&Context->Lock, Irql, TRUE);
+    ExReleaseFastMutex(&Context->FastMutex);
 
     ReceiverWaitForPackets(FrontendGetReceiver(Context->Frontend));
     TransmitterAbortPackets(FrontendGetTransmitter(Context->Frontend));
@@ -287,8 +281,6 @@ VifDisable(
     Context->Argument = NULL;
     Context->Callback = NULL;
 
-    ReleaseMrswLockShared(&Context->Lock);
-
 done:
     Trace("<====\n");
 }
@@ -306,12 +298,12 @@ VifQueryStatistic(
     status = STATUS_INVALID_PARAMETER;
     if (Index >= XENVIF_VIF_STATISTIC_COUNT)
         goto done;
-        
-    AcquireMrswLockShared(&Context->Lock);
+
+    ExAcquireFastMutex(&Context->FastMutex);
 
     FrontendQueryStatistic(Context->Frontend, Index, Value);
 
-    ReleaseMrswLockShared(&Context->Lock);
+    ExReleaseFastMutex(&Context->FastMutex);
     status = STATUS_SUCCESS;
 
 done:
@@ -326,11 +318,11 @@ VifQueryRingCount(
 {
     PXENVIF_VIF_CONTEXT Context = Interface->Context;
 
-    AcquireMrswLockShared(&Context->Lock);
+    ExAcquireFastMutex(&Context->FastMutex);
 
     *Count = FrontendGetNumQueues(Context->Frontend);
 
-    ReleaseMrswLockShared(&Context->Lock);
+    ExReleaseFastMutex(&Context->FastMutex);
 }
 
 static NTSTATUS
@@ -343,13 +335,13 @@ VifUpdateHashMapping(
     PXENVIF_VIF_CONTEXT     Context = Interface->Context;
     NTSTATUS                status;
 
-    AcquireMrswLockShared(&Context->Lock);
+    ExAcquireFastMutex(&Context->FastMutex);
 
     status = ReceiverUpdateHashMapping(FrontendGetReceiver(Context->Frontend),
                                        Mapping,
                                        Order);
 
-    ReleaseMrswLockShared(&Context->Lock);
+    ExReleaseFastMutex(&Context->FastMutex);
 
     return status;
 }
@@ -362,12 +354,12 @@ VifReceiverReturnPacket(
 {
     PXENVIF_VIF_CONTEXT Context = Interface->Context;
 
-    AcquireMrswLockShared(&Context->Lock);
+    ExAcquireFastMutex(&Context->FastMutex);
 
     ReceiverReturnPacket(FrontendGetReceiver(Context->Frontend),
                          Cookie);
 
-    ReleaseMrswLockShared(&Context->Lock);
+    ExReleaseFastMutex(&Context->FastMutex);
 }
 
 static NTSTATUS
@@ -386,7 +378,7 @@ VifTransmitterQueuePacketVersion6(
     PXENVIF_VIF_CONTEXT             Context = Interface->Context;
     NTSTATUS                        status;
 
-    AcquireMrswLockShared(&Context->Lock);
+    ExAcquireFastMutex(&Context->FastMutex);
 
     status = STATUS_UNSUCCESSFUL;
     if (!Context->Enabled)
@@ -404,7 +396,7 @@ VifTransmitterQueuePacketVersion6(
                                     Cookie);
 
 done:
-    ReleaseMrswLockShared(&Context->Lock);
+    ExReleaseFastMutex(&Context->FastMutex);
 
     return status;
 }
@@ -426,7 +418,7 @@ VifTransmitterQueuePacket(
     PXENVIF_VIF_CONTEXT             Context = Interface->Context;
     NTSTATUS                        status;
 
-    AcquireMrswLockShared(&Context->Lock);
+    ExAcquireFastMutex(&Context->FastMutex);
 
     status = STATUS_UNSUCCESSFUL;
     if (!Context->Enabled)
@@ -444,7 +436,7 @@ VifTransmitterQueuePacket(
                                     Cookie);
 
 done:
-    ReleaseMrswLockShared(&Context->Lock);
+    ExReleaseFastMutex(&Context->FastMutex);
 
     return status;
 }
@@ -457,12 +449,12 @@ VifTransmitterQueryOffloadOptions(
 {
     PXENVIF_VIF_CONTEXT             Context = Interface->Context;
 
-    AcquireMrswLockShared(&Context->Lock);
+    ExAcquireFastMutex(&Context->FastMutex);
 
     TransmitterQueryOffloadOptions(FrontendGetTransmitter(Context->Frontend),
                                    Options);
 
-    ReleaseMrswLockShared(&Context->Lock);
+    ExReleaseFastMutex(&Context->FastMutex);
 }
 
 static VOID
@@ -474,13 +466,13 @@ VifTransmitterQueryLargePacketSize(
 {
     PXENVIF_VIF_CONTEXT Context = Interface->Context;
 
-    AcquireMrswLockShared(&Context->Lock);
+    ExAcquireFastMutex(&Context->FastMutex);
 
     TransmitterQueryLargePacketSize(FrontendGetTransmitter(Context->Frontend),
                                     Version,
                                     Size);
 
-    ReleaseMrswLockShared(&Context->Lock);
+    ExReleaseFastMutex(&Context->FastMutex);
 }
 
 static VOID
@@ -491,12 +483,12 @@ VifReceiverSetOffloadOptions(
 {
     PXENVIF_VIF_CONTEXT             Context = Interface->Context;
 
-    AcquireMrswLockShared(&Context->Lock);
+    ExAcquireFastMutex(&Context->FastMutex);
 
     ReceiverSetOffloadOptions(FrontendGetReceiver(Context->Frontend),
                               Options);
 
-    ReleaseMrswLockShared(&Context->Lock);
+    ExReleaseFastMutex(&Context->FastMutex);
 }
 
 static VOID
@@ -507,12 +499,12 @@ VifReceiverSetBackfillSize(
 {
     PXENVIF_VIF_CONTEXT Context = Interface->Context;
 
-    AcquireMrswLockShared(&Context->Lock);
+    ExAcquireFastMutex(&Context->FastMutex);
 
     ReceiverSetBackfillSize(FrontendGetReceiver(Context->Frontend),
                             Size);
 
-    ReleaseMrswLockShared(&Context->Lock);
+    ExReleaseFastMutex(&Context->FastMutex);
 }
 
 static NTSTATUS
@@ -524,12 +516,12 @@ VifReceiverSetHashAlgorithm(
     PXENVIF_VIF_CONTEXT                 Context = Interface->Context;
     NTSTATUS                            status;
 
-    AcquireMrswLockShared(&Context->Lock);
+    ExAcquireFastMutex(&Context->FastMutex);
 
     status = ReceiverSetHashAlgorithm(FrontendGetReceiver(Context->Frontend),
                                       Algorithm);
 
-    ReleaseMrswLockShared(&Context->Lock);
+    ExReleaseFastMutex(&Context->FastMutex);
 
     return status;
 }
@@ -545,7 +537,7 @@ VifReceiverQueryHashCapabilities(
     PULONG              Types;
     NTSTATUS            status;
 
-    AcquireMrswLockShared(&Context->Lock);
+    ExAcquireFastMutex(&Context->FastMutex);
 
     va_start(Arguments, Interface);
 
@@ -556,7 +548,7 @@ VifReceiverQueryHashCapabilities(
 
     va_end(Arguments);
 
-    ReleaseMrswLockShared(&Context->Lock);
+    ExReleaseFastMutex(&Context->FastMutex);
 
     return status;
 }
@@ -573,7 +565,7 @@ VifReceiverUpdateHashParameters(
     PUCHAR              Key;
     NTSTATUS            status;
 
-    AcquireMrswLockShared(&Context->Lock);
+    ExAcquireFastMutex(&Context->FastMutex);
 
     va_start(Arguments, Interface);
 
@@ -586,7 +578,7 @@ VifReceiverUpdateHashParameters(
 
     va_end(Arguments);
 
-    ReleaseMrswLockShared(&Context->Lock);
+    ExReleaseFastMutex(&Context->FastMutex);
 
     return status;
 }
@@ -601,14 +593,14 @@ VifMacQueryState(
 {
     PXENVIF_VIF_CONTEXT             Context = Interface->Context;
 
-    AcquireMrswLockShared(&Context->Lock);
+    ExAcquireFastMutex(&Context->FastMutex);
 
     MacQueryState(FrontendGetMac(Context->Frontend),
                   MediaConnectState,
                   LinkSpeed,
                   MediaDuplexState);
 
-    ReleaseMrswLockShared(&Context->Lock);
+    ExReleaseFastMutex(&Context->FastMutex);
 }
 
 static VOID
@@ -619,11 +611,11 @@ VifMacQueryMaximumFrameSize(
 {
     PXENVIF_VIF_CONTEXT Context = Interface->Context;
 
-    AcquireMrswLockShared(&Context->Lock);
+    ExAcquireFastMutex(&Context->FastMutex);
 
     MacQueryMaximumFrameSize(FrontendGetMac(Context->Frontend), Size);
 
-    ReleaseMrswLockShared(&Context->Lock);
+    ExReleaseFastMutex(&Context->FastMutex);
 }
 
 static VOID
@@ -634,11 +626,11 @@ VifMacQueryPermanentAddress(
 {
     PXENVIF_VIF_CONTEXT     Context = Interface->Context;
 
-    AcquireMrswLockShared(&Context->Lock);
+    ExAcquireFastMutex(&Context->FastMutex);
 
     MacQueryPermanentAddress(FrontendGetMac(Context->Frontend), Address);
 
-    ReleaseMrswLockShared(&Context->Lock);
+    ExReleaseFastMutex(&Context->FastMutex);
 }
 
 static VOID
@@ -649,11 +641,11 @@ VifMacQueryCurrentAddress(
 {
     PXENVIF_VIF_CONTEXT     Context = Interface->Context;
 
-    AcquireMrswLockShared(&Context->Lock);
+    ExAcquireFastMutex(&Context->FastMutex);
 
     MacQueryCurrentAddress(FrontendGetMac(Context->Frontend), Address);
 
-    ReleaseMrswLockShared(&Context->Lock);
+    ExReleaseFastMutex(&Context->FastMutex);
 }
 
 static NTSTATUS
@@ -666,13 +658,13 @@ VifMacQueryMulticastAddresses(
     PXENVIF_VIF_CONTEXT         Context = Interface->Context;
     NTSTATUS                    status;
 
-    AcquireMrswLockShared(&Context->Lock);
+    ExAcquireFastMutex(&Context->FastMutex);
 
     status = MacQueryMulticastAddresses(FrontendGetMac(Context->Frontend),
                                         Address,
                                         Count);
 
-    ReleaseMrswLockShared(&Context->Lock);
+    ExReleaseFastMutex(&Context->FastMutex);
 
     return status;
 }
@@ -694,13 +686,13 @@ VifMacSetMulticastAddresses(
             goto done;
     }
 
-    AcquireMrswLockShared(&Context->Lock);
+    ExAcquireFastMutex(&Context->FastMutex);
 
     status = FrontendSetMulticastAddresses(Context->Frontend,
                                            Address,
                                            Count);
 
-    ReleaseMrswLockShared(&Context->Lock);
+    ExReleaseFastMutex(&Context->FastMutex);
 
 done:
     return status;
@@ -716,13 +708,13 @@ VifMacQueryFilterLevel(
     PXENVIF_VIF_CONTEXT             Context = Interface->Context;
     NTSTATUS                status;
 
-    AcquireMrswLockShared(&Context->Lock);
+    ExAcquireFastMutex(&Context->FastMutex);
 
     status = MacQueryFilterLevel(FrontendGetMac(Context->Frontend),
                                  Type,
                                  Level);
 
-    ReleaseMrswLockShared(&Context->Lock);
+    ExReleaseFastMutex(&Context->FastMutex);
 
     return status;
 }
@@ -737,11 +729,11 @@ VifMacSetFilterLevel(
     PXENVIF_VIF_CONTEXT             Context = Interface->Context;
     NTSTATUS                        status;
 
-    AcquireMrswLockShared(&Context->Lock);
+    ExAcquireFastMutex(&Context->FastMutex);
 
     status = FrontendSetFilterLevel(Context->Frontend, Type, Level);
 
-    ReleaseMrswLockShared(&Context->Lock);
+    ExReleaseFastMutex(&Context->FastMutex);
 
     return status;
 }
@@ -754,11 +746,11 @@ VifReceiverQueryRingSize(
 {
     PXENVIF_VIF_CONTEXT     Context = Interface->Context;
 
-    AcquireMrswLockShared(&Context->Lock);
+    ExAcquireFastMutex(&Context->FastMutex);
 
     ReceiverQueryRingSize(FrontendGetReceiver(Context->Frontend), Size);
 
-    ReleaseMrswLockShared(&Context->Lock);
+    ExReleaseFastMutex(&Context->FastMutex);
 }
 
 static VOID
@@ -769,11 +761,11 @@ VifTransmitterQueryRingSize(
 {
     PXENVIF_VIF_CONTEXT     Context = Interface->Context;
 
-    AcquireMrswLockShared(&Context->Lock);
+    ExAcquireFastMutex(&Context->FastMutex);
 
     TransmitterQueryRingSize(FrontendGetTransmitter(Context->Frontend), Size);
 
-    ReleaseMrswLockShared(&Context->Lock);
+    ExReleaseFastMutex(&Context->FastMutex);
 }
 
 static NTSTATUS
@@ -782,9 +774,8 @@ VifAcquire(
     )
 {
     PXENVIF_VIF_CONTEXT     Context = Interface->Context;
-    KIRQL                   Irql;
 
-    AcquireMrswLockExclusive(&Context->Lock, &Irql);
+    ExAcquireFastMutex(&Context->FastMutex);
 
     if (Context->References++ != 0)
         goto done;
@@ -797,7 +788,7 @@ VifAcquire(
     Trace("<====\n");
 
 done:
-    ReleaseMrswLockExclusive(&Context->Lock, Irql, FALSE);
+    ExReleaseFastMutex(&Context->FastMutex);
 
     return STATUS_SUCCESS;
 }
@@ -808,9 +799,8 @@ VifRelease(
     )
 {
     PXENVIF_VIF_CONTEXT     Context = Interface->Context;
-    KIRQL                   Irql;
 
-    AcquireMrswLockExclusive(&Context->Lock, &Irql);
+    ExAcquireFastMutex(&Context->FastMutex);
 
     if (--Context->References > 0)
         goto done;
@@ -825,7 +815,7 @@ VifRelease(
     Trace("<====\n");
 
 done:
-    ReleaseMrswLockExclusive(&Context->Lock, Irql, FALSE);
+    ExReleaseFastMutex(&Context->FastMutex);
 }
 
 static struct _XENVIF_VIF_INTERFACE_V6 VifInterfaceVersion6 = {
@@ -934,7 +924,7 @@ VifInitialize(
     if (*Context == NULL)
         goto fail1;
 
-    InitializeMrswLock(&(*Context)->Lock);
+    ExInitializeFastMutex(&(*Context)->FastMutex);
 
     FdoGetSuspendInterface(PdoGetFdo(Pdo),&(*Context)->SuspendInterface);
 
@@ -960,7 +950,7 @@ fail2:
     RtlZeroMemory(&(*Context)->SuspendInterface,
                   sizeof (XENBUS_SUSPEND_INTERFACE));
 
-    RtlZeroMemory(&(*Context)->Lock, sizeof (XENVIF_MRSW_LOCK));
+    RtlZeroMemory(&(*Context)->FastMutex, sizeof (FAST_MUTEX));
 
     ASSERT(IsZeroMemory(*Context, sizeof (XENVIF_VIF_CONTEXT)));
     __VifFree(*Context);
@@ -1039,7 +1029,7 @@ VifGetInterface(
     }
 
     return status;
-}   
+}
 
 VOID
 VifTeardown(
@@ -1060,7 +1050,7 @@ VifTeardown(
     RtlZeroMemory(&Context->SuspendInterface,
                   sizeof (XENBUS_SUSPEND_INTERFACE));
 
-    RtlZeroMemory(&Context->Lock, sizeof (XENVIF_MRSW_LOCK));
+    RtlZeroMemory(&Context->FastMutex, sizeof (FAST_MUTEX));
 
     ASSERT(IsZeroMemory(Context, sizeof (XENVIF_VIF_CONTEXT)));
     __VifFree(Context);
@@ -1180,10 +1170,6 @@ VifReceiverQueuePacket(
     IN  PVOID                           Cookie
     )
 {
-    KIRQL                               Irql;
-
-    KeRaiseIrql(DISPATCH_LEVEL, &Irql);
-
     switch (Context->Version) {
     case 6:
         __VifReceiverQueuePacketVersion6(Context,
@@ -1234,8 +1220,6 @@ VifReceiverQueuePacket(
         ASSERT(FALSE);
         break;
     }
-
-    KeLowerIrql(Irql);
 }
 
 VOID
