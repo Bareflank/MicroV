@@ -981,6 +981,14 @@ bool xen_vcpu::debug_hypercall(microv_vcpu *vcpu)
         return false;
     }
 
+    if (rax == __HYPERVISOR_grant_table_op && rdi == GNTTABOP_map_grant_ref) {
+        return false;
+    }
+
+    if (rax == __HYPERVISOR_grant_table_op && rdi == GNTTABOP_unmap_grant_ref) {
+        return false;
+    }
+
     if (rax == __HYPERVISOR_vcpu_op && rdi == VCPUOP_set_singleshot_timer) {
         return false;
     }
@@ -1166,6 +1174,8 @@ xen_vcpu::xen_vcpu(microv_vcpu *vcpu) :
         vcpu->add_cpuid_emulator(CLSIZE_LEAF, {cpuid_passthrough});
         vcpu->add_cpuid_emulator(INVARIANT_TSC_LEAF, {cpuid_passthrough});
         vcpu->add_cpuid_emulator(ADDR_SIZE_LEAF, {cpuid_passthrough});
+
+        vcpu->emulate_io_instruction(0x61, {xlboot_io_in}, {xlboot_io_out});
     }
 }
 }
