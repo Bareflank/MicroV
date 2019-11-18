@@ -101,6 +101,7 @@ ReceiverSetBackfillSize(
     IN  ULONG               Size
     );
 
+_IRQL_requires_max_(DISPATCH_LEVEL)
 extern VOID
 ReceiverReturnPacket(
     IN  PXENVIF_RECEIVER    Receiver,

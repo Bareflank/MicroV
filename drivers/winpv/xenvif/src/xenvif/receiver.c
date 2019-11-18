@@ -105,11 +105,14 @@ typedef struct _XENVIF_RECEIVER_RING {
     PXENVIF_THREAD              WatchdogThread;
     PXENVIF_THREAD              PollThread;
     PXENVIF_THREAD              SwizzleThread;
+    PXENVIF_THREAD              NdisRecvThread;
     PLIST_ENTRY                 PacketQueue;
     KDPC                        QueueDpc;
     ULONG                       QueueDpcs;
     LIST_ENTRY                  PacketComplete;
     XENVIF_RECEIVER_HASH        Hash;
+    KSPIN_LOCK                  NdisLock;
+    LIST_ENTRY                  PacketFromNdis;
 } XENVIF_RECEIVER_RING, *PXENVIF_RECEIVER_RING;
 
 typedef struct _XENVIF_RECEIVER_PACKET {
@@ -2411,6 +2414,79 @@ PollRing(
     return STATUS_SUCCESS;
 }
 
+static NTSTATUS
+RecvFromNdis(
+    IN  PXENVIF_THREAD      Self,
+    IN  PVOID               Context
+    )
+{
+    PXENVIF_RECEIVER_RING   Ring = Context;
+    PXENVIF_RECEIVER        Receiver = Ring->Receiver;
+    PROCESSOR_NUMBER        ProcNumber;
+    GROUP_AFFINITY          Affinity;
+    NTSTATUS                status;
+
+    status = KeGetProcessorNumberFromIndex(Ring->Index, &ProcNumber);
+    ASSERT(NT_SUCCESS(status));
+
+    Affinity.Group = ProcNumber.Group;
+    Affinity.Mask = (KAFFINITY)1 << ProcNumber.Number;
+    KeSetSystemGroupAffinityThread(&Affinity, NULL);
+
+    for (;;) {
+        PKEVENT                  Event;
+        KIRQL                    Irql;
+        PXENVIF_RECEIVER_PACKET  Packet;
+        PLIST_ENTRY              ListEntry;
+        LONG                     Loaned;
+        LONG                     Returned;
+
+        Event = ThreadGetEvent(Self);
+
+        (VOID) KeWaitForSingleObject(Event,
+                                     Executive,
+                                     KernelMode,
+                                     FALSE,
+                                     NULL);
+        KeClearEvent(Event);
+
+        if (ThreadIsAlerted(Self))
+            break;
+
+        for (;;) {
+            // Here we move packets off the Ndis List and onto the internal one
+            KeAcquireSpinLock(&Ring->NdisLock, &Irql);
+
+            if (IsListEmpty(&Ring->PacketFromNdis)) {
+                KeReleaseSpinLock(&Ring->NdisLock, Irql);
+                break;
+            }
+
+            ListEntry = RemoveHeadList(&Ring->PacketFromNdis);
+            KeReleaseSpinLock(&Ring->NdisLock, Irql);
+
+            Packet = CONTAINING_RECORD(ListEntry, XENVIF_RECEIVER_PACKET, ListEntry);
+            RtlZeroMemory(ListEntry, sizeof (LIST_ENTRY));
+
+            __ReceiverRingReturnPacket(Ring, Packet, FALSE);
+
+            KeMemoryBarrier();
+
+            Returned = InterlockedIncrement(&Receiver->Returned);
+
+            // Make sure Loaned is not sampled before Returned
+            KeMemoryBarrier();
+
+            Loaned = Receiver->Loaned;
+
+            ASSERT3S(Loaned - Returned, >=, 0);
+            KeSetEvent(&Receiver->Event, 0, FALSE);
+        }
+    }
+
+    return STATUS_SUCCESS;
+}
+
 KSERVICE_ROUTINE    ReceiverRingEvtchnCallback;
 
 BOOLEAN
@@ -2552,6 +2628,7 @@ __ReceiverRingInitialize(
         goto fail1;
 
     ExInitializeFastMutex(&(*Ring)->FastMutex);
+    KeInitializeSpinLock(&(*Ring)->NdisLock);
 
     (*Ring)->Receiver = Receiver;
     (*Ring)->Index = Index;
@@ -2561,6 +2638,7 @@ __ReceiverRingInitialize(
         goto fail2;
 
     InitializeListHead(&(*Ring)->PacketComplete);
+    InitializeListHead(&(*Ring)->PacketFromNdis);
 
     KeInitializeDpc(&(*Ring)->PollDpc, ReceiverRingPollDpc, *Ring);
 
@@ -2630,9 +2708,20 @@ __ReceiverRingInitialize(
     if (!NT_SUCCESS(status))
         goto fail9;
 
+    status = ThreadCreate(RecvFromNdis, *Ring, &(*Ring)->NdisRecvThread);
+    if (!NT_SUCCESS(status))
+        goto fail10;
+
     KeInitializeThreadedDpc(&(*Ring)->QueueDpc, ReceiverRingQueueDpc, *Ring);
 
     return STATUS_SUCCESS;
+
+fail10:
+    Error("fail10\n");
+
+    ThreadAlert((*Ring)->SwizzleThread);
+    ThreadJoin((*Ring)->SwizzleThread);
+    (*Ring)->SwizzleThread = NULL;
 
 fail9:
     Error("fail9\n");
@@ -2676,6 +2765,7 @@ fail3:
     RtlZeroMemory(&(*Ring)->PollDpc, sizeof (KDPC));
 
     RtlZeroMemory(&(*Ring)->PacketComplete, sizeof (LIST_ENTRY));
+    RtlZeroMemory(&(*Ring)->PacketFromNdis, sizeof (LIST_ENTRY));
 
     FrontendFreePath(Frontend, (*Ring)->Path);
     (*Ring)->Path = NULL;
@@ -2687,6 +2777,7 @@ fail2:
     (*Ring)->Receiver = NULL;
 
     RtlZeroMemory(&(*Ring)->FastMutex, sizeof (FAST_MUTEX));
+    RtlZeroMemory(&(*Ring)->NdisLock, sizeof (KSPIN_LOCK));
 
     ASSERT(IsZeroMemory(*Ring, sizeof (XENVIF_RECEIVER_RING)));
     __ReceiverFree(*Ring);
@@ -3106,6 +3197,10 @@ __ReceiverRingTeardown(
     ThreadJoin(Ring->SwizzleThread);
     Ring->SwizzleThread = NULL;
 
+    ThreadAlert(Ring->NdisRecvThread);
+    ThreadJoin(Ring->NdisRecvThread);
+    Ring->NdisRecvThread = NULL;
+
     XENBUS_CACHE(Destroy,
                  &Receiver->CacheInterface,
                  Ring->FragmentCache);
@@ -3118,6 +3213,7 @@ __ReceiverRingTeardown(
 
     ASSERT(IsListEmpty(&Ring->PacketComplete));
     RtlZeroMemory(&Ring->PacketComplete, sizeof (LIST_ENTRY));
+    RtlZeroMemory(&Ring->PacketFromNdis, sizeof (LIST_ENTRY));
 
     FrontendFreePath(Frontend, Ring->Path);
     Ring->Path = NULL;
@@ -3126,6 +3222,7 @@ __ReceiverRingTeardown(
     Ring->Receiver = NULL;
 
     RtlZeroMemory(&Ring->FastMutex, sizeof (FAST_MUTEX));
+    RtlZeroMemory(&Ring->NdisLock, sizeof (KSPIN_LOCK));
 
     ASSERT(IsZeroMemory(Ring, sizeof (XENVIF_RECEIVER_RING)));
     __ReceiverFree(Ring);
@@ -3854,33 +3951,27 @@ ReceiverQueryRingSize(
     *Size = XENVIF_RECEIVER_RING_SIZE;
 }
 
+// Called by NDIS at <= DISPATCH_LEVEL
+_IRQL_requires_max_(DISPATCH_LEVEL)
 VOID
 ReceiverReturnPacket(
     IN  PXENVIF_RECEIVER    Receiver,
     IN  PVOID               Cookie
     )
 {
+    UNREFERENCED_PARAMETER(Receiver);
+
+    ASSERT3U(KeGetCurrentIrql(), <=, DISPATCH_LEVEL);
+
+    KIRQL                   Irql;
     PXENVIF_RECEIVER_PACKET Packet = Cookie;
-    PXENVIF_RECEIVER_RING   Ring;
-    LONG                    Loaned;
-    LONG                    Returned;
+    PXENVIF_RECEIVER_RING   Ring = Packet->Ring;
 
-    Ring = Packet->Ring;
+    KeAcquireSpinLock(&Ring->NdisLock, &Irql);
+    InsertTailList(&Ring->PacketFromNdis, &Packet->ListEntry);
+    KeReleaseSpinLock(&Ring->NdisLock, Irql);
 
-    __ReceiverRingReturnPacket(Ring, Packet, FALSE);
-
-    KeMemoryBarrier();
-
-    Returned = InterlockedIncrement(&Receiver->Returned);
-
-    // Make sure Loaned is not sampled before Returned
-    KeMemoryBarrier();
-
-    Loaned = Receiver->Loaned;
-
-    ASSERT3S(Loaned - Returned, >=, 0);
-
-    KeSetEvent(&Receiver->Event, 0, FALSE);
+    ThreadWake(Ring->NdisRecvThread);
 }
 
 #define XENVIF_RECEIVER_PACKET_WAIT_PERIOD 10
