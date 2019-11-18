@@ -36,52 +36,21 @@
 #include <tcpip.h>
 #include "dbg_print.h"
 #include "assert.h"
+#include "thread.h"
+#include "util.h"
+
+typedef struct _XENNET_SEND_INFO {
+    LIST_ENTRY              ListEntry;
+    PNET_BUFFER_LIST        NetBufferList;
+} XENNET_SEND_INFO, *PXENNET_SEND_INFO;
 
 struct _XENNET_TRANSMITTER {
     PXENNET_ADAPTER             Adapter;
     XENVIF_VIF_OFFLOAD_OPTIONS  OffloadOptions;
+    PXENNET_THREAD              SendThread;
+    KSPIN_LOCK                  SendLock;
+    LIST_ENTRY                  SendList;
 };
-
-#define TRANSMITTER_POOL_TAG        'TteN'
-
-NDIS_STATUS
-TransmitterInitialize (
-    IN  PXENNET_ADAPTER     Adapter,
-    OUT PXENNET_TRANSMITTER *Transmitter
-    )
-{
-    NTSTATUS                status;
-
-    *Transmitter = ExAllocatePoolWithTag(NonPagedPool,
-                                         sizeof(XENNET_TRANSMITTER),
-                                         TRANSMITTER_POOL_TAG);
-
-    status = STATUS_NO_MEMORY;
-    if (*Transmitter == NULL)
-        goto fail1;
-
-    RtlZeroMemory(*Transmitter, sizeof(XENNET_TRANSMITTER));
-
-    (*Transmitter)->Adapter = Adapter;
-
-    return NDIS_STATUS_SUCCESS;
-
-fail1:
-    Error("fail1\n (%08x)", status);
-
-    return NDIS_STATUS_FAILURE;
-}
-
-VOID
-TransmitterTeardown(
-    IN  PXENNET_TRANSMITTER Transmitter
-    )
-{
-    Transmitter->Adapter = NULL;
-    Transmitter->OffloadOptions.Value = 0;
-
-    ExFreePoolWithTag(Transmitter, TRANSMITTER_POOL_TAG);
-}
 
 typedef struct _NET_BUFFER_LIST_RESERVED {
     LONG    Reference;
@@ -89,6 +58,24 @@ typedef struct _NET_BUFFER_LIST_RESERVED {
 } NET_BUFFER_LIST_RESERVED, *PNET_BUFFER_LIST_RESERVED;
 
 C_ASSERT(sizeof (NET_BUFFER_LIST_RESERVED) <= RTL_FIELD_SIZE(NET_BUFFER_LIST, MiniportReserved));
+
+#define TRANSMITTER_POOL_TAG        'TteN'
+
+static FORCEINLINE PVOID
+__TransmitterAllocate(
+    IN  ULONG   Length
+    )
+{
+    return __AllocatePoolWithTag(NonPagedPool, Length, TRANSMITTER_POOL_TAG);
+}
+
+static FORCEINLINE VOID
+__TransmitterFree(
+    IN  PVOID   Buffer
+    )
+{
+    __FreePoolWithTag(Buffer, TRANSMITTER_POOL_TAG);
+}
 
 static VOID
 __TransmitterCompleteNetBufferList(
@@ -167,6 +154,7 @@ __TransmitterReturnPacket(
     __TransmitterPutNetBufferList(Transmitter, NetBufferList);
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static VOID
 __TransmitterOffloadOptions(
     IN  PNET_BUFFER_LIST            NetBufferList,
@@ -276,6 +264,7 @@ __TransmitterHash(
     Hash->Value = NET_BUFFER_LIST_GET_HASH_VALUE(NetBufferList);
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static VOID
 __TransmitterSendNetBufferList(
     IN  PXENNET_TRANSMITTER     Transmitter,
@@ -341,6 +330,7 @@ __TransmitterSendNetBufferList(
     __TransmitterPutNetBufferList(Transmitter, NetBufferList);
 }
 
+_IRQL_requires_max_(DISPATCH_LEVEL)
 VOID
 TransmitterSendNetBufferLists(
     IN  PXENNET_TRANSMITTER     Transmitter,
@@ -349,23 +339,86 @@ TransmitterSendNetBufferLists(
     IN  ULONG                   SendFlags
     )
 {
-    LIST_ENTRY                  List;
-
     UNREFERENCED_PARAMETER(PortNumber);
-    UNREFERENCED_PARAMETER(SendFlags);
 
-    InitializeListHead(&List);
+    KIRQL                       Irql;
+    PXENNET_SEND_INFO           Info;
 
-    while (NetBufferList != NULL) {
-        PNET_BUFFER_LIST            ListNext;
+    Info = __TransmitterAllocate(sizeof(XENNET_SEND_INFO));
+    if (Info == NULL) {
+        NET_BUFFER_LIST_STATUS(NetBufferList) = NDIS_STATUS_FAILURE;
 
-        ListNext = NET_BUFFER_LIST_NEXT_NBL(NetBufferList);
-        NET_BUFFER_LIST_NEXT_NBL(NetBufferList) = NULL;
-
-        __TransmitterSendNetBufferList(Transmitter, NetBufferList);
-
-        NetBufferList = ListNext;
+        NdisMSendNetBufferListsComplete(AdapterGetHandle(Transmitter->Adapter),
+                                        NetBufferList,
+                                        SendFlags);
+        return;
     }
+
+    Info->NetBufferList = NetBufferList;
+
+    KeAcquireSpinLock(&Transmitter->SendLock, &Irql);
+    InsertTailList(&Transmitter->SendList, &Info->ListEntry);
+    KeReleaseSpinLock(&Transmitter->SendLock, Irql);
+
+    ThreadWake(Transmitter->SendThread);
+}
+
+static NTSTATUS
+SendNbl(
+    IN  PXENNET_THREAD    Self,
+    IN  PVOID             Context
+)
+{
+    PXENNET_TRANSMITTER   Transmitter = Context;
+
+    for (;;) {
+        PKEVENT Event = ThreadGetEvent(Self);
+
+        (VOID) KeWaitForSingleObject(Event,
+                                     Executive,
+                                     KernelMode,
+                                     FALSE,
+                                     NULL);
+        KeClearEvent(Event);
+
+        if (ThreadIsAlerted(Self))
+            break;
+
+        for (;;) {
+            KIRQL             Irql;
+            PXENNET_SEND_INFO Info;
+            PLIST_ENTRY       ListEntry;
+            PNET_BUFFER_LIST  NetBufferList;
+
+            KeAcquireSpinLock(&Transmitter->SendLock, &Irql);
+
+            if (IsListEmpty(&Transmitter->SendList)) {
+                KeReleaseSpinLock(&Transmitter->SendLock, Irql);
+                break;
+            }
+
+            ListEntry = RemoveHeadList(&Transmitter->SendList);
+            KeReleaseSpinLock(&Transmitter->SendLock, Irql);
+
+            Info = CONTAINING_RECORD(ListEntry, XENNET_SEND_INFO, ListEntry);
+            NetBufferList = Info->NetBufferList;
+
+            while (NetBufferList != NULL) {
+                PNET_BUFFER_LIST ListNext;
+
+                ListNext = NET_BUFFER_LIST_NEXT_NBL(NetBufferList);
+                NET_BUFFER_LIST_NEXT_NBL(NetBufferList) = NULL;
+
+                __TransmitterSendNetBufferList(Transmitter, NetBufferList);
+
+                NetBufferList = ListNext;
+            }
+
+            __TransmitterFree(Info);
+        }
+    }
+
+    return STATUS_SUCCESS;
 }
 
 VOID
@@ -392,4 +445,60 @@ TransmitterOffloadOptions(
     )
 {
     return &Transmitter->OffloadOptions;
+}
+
+NDIS_STATUS
+TransmitterInitialize (
+    IN  PXENNET_ADAPTER     Adapter,
+    OUT PXENNET_TRANSMITTER *Transmitter
+    )
+{
+    NTSTATUS                status;
+
+    *Transmitter = __TransmitterAllocate(sizeof(XENNET_TRANSMITTER));
+
+    status = STATUS_NO_MEMORY;
+    if (*Transmitter == NULL)
+        goto fail1;
+
+    RtlZeroMemory(*Transmitter, sizeof(XENNET_TRANSMITTER));
+
+    KeInitializeSpinLock(&(*Transmitter)->SendLock);
+    InitializeListHead(&(*Transmitter)->SendList);
+    (*Transmitter)->Adapter = Adapter;
+
+    status = ThreadCreate(SendNbl, *Transmitter, &(*Transmitter)->SendThread);
+    if (!NT_SUCCESS(status))
+       goto fail2;
+
+    return NDIS_STATUS_SUCCESS;
+
+fail2:
+    Error("fail2\n");
+
+    RtlZeroMemory(*Transmitter, sizeof(XENNET_TRANSMITTER));
+    __TransmitterFree(*Transmitter);
+
+fail1:
+    Error("fail1\n (%08x)", status);
+
+    return NDIS_STATUS_FAILURE;
+}
+
+VOID
+TransmitterTeardown(
+    IN  PXENNET_TRANSMITTER Transmitter
+    )
+{
+    ThreadAlert(Transmitter->SendThread);
+    ThreadJoin(Transmitter->SendThread);
+    Transmitter->SendThread = NULL;
+
+    RtlZeroMemory(&Transmitter->SendLock, sizeof (KSPIN_LOCK));
+    RtlZeroMemory(&Transmitter->SendList, sizeof (LIST_ENTRY));
+
+    Transmitter->Adapter = NULL;
+    Transmitter->OffloadOptions.Value = 0;
+
+    __TransmitterFree(Transmitter);
 }
