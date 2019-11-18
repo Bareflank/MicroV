@@ -459,7 +459,11 @@ bool xen_vcpu::handle_domctl()
 bool xen_vcpu::handle_grant_table_op()
 {
     try {
-        expects(m_uv_vcpu->rdx() > 0);
+
+        if (m_uv_vcpu->rdx() == 0) {
+            printv("Received gnttabop %lu with count == 0\n", m_uv_vcpu->rdi());
+            return true;
+        }
 
         switch (m_uv_vcpu->rdi()) {
         case GNTTABOP_map_grant_ref:
@@ -974,18 +978,19 @@ bool xen_vcpu::debug_hypercall(microv_vcpu *vcpu)
         if (rax == __HYPERVISOR_grant_table_op && rdi == GNTTABOP_copy) {
             return false;
         }
+
+        if (rax == __HYPERVISOR_grant_table_op && rdi == GNTTABOP_map_grant_ref) {
+            return false;
+        }
+
+        if (rax == __HYPERVISOR_grant_table_op && rdi == GNTTABOP_unmap_grant_ref) {
+            return false;
+        }
+
         return true;
     }
 
     if (rax == __HYPERVISOR_console_io) {
-        return false;
-    }
-
-    if (rax == __HYPERVISOR_grant_table_op && rdi == GNTTABOP_map_grant_ref) {
-        return false;
-    }
-
-    if (rax == __HYPERVISOR_grant_table_op && rdi == GNTTABOP_unmap_grant_ref) {
         return false;
     }
 

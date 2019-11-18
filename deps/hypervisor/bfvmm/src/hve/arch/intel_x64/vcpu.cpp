@@ -493,6 +493,7 @@ vcpu::dump(const char *str)
         bferror_brk1(0, msg);
 
         bferror_lnbr(0, msg);
+        bferror_info(0, "vcpu state:", msg);
         bferror_info(0, "general purpose registers", msg);
         bferror_subnhex(0, "rax", this->rax(), msg);
         bferror_subnhex(0, "rbx", this->rbx(), msg);
@@ -526,8 +527,8 @@ vcpu::dump(const char *str)
 
         bferror_lnbr(0, msg);
         bferror_info(0, "addressing", msg);
-        bferror_subnhex(0, "linear address", guest_linear_address::get(), msg);
-        bferror_subnhex(0, "physical address", guest_physical_address::get(), msg);
+        bferror_subnhex(0, "guest linear address", guest_linear_address::get(), msg);
+        bferror_subnhex(0, "guest physical address", guest_physical_address::get(), msg);
 
         bferror_lnbr(0, msg);
         bferror_info(0, "exit info", msg);
@@ -1076,7 +1077,16 @@ vcpu::gva_to_gpa(uint64_t gva)
         get_entry(pd::entry::phys_addr::get(pd_pte), pt::index(gva));
 
     if (pt::entry::present::is_disabled(pt_pte)) {
-        throw std::runtime_error("pt_pte is not present");
+
+        bferror_nhex(0, "gva_to_gpa: pt_pte not present for gva:", gva);
+
+        if (m_mmap) {
+            bferror_nhex(0, "gva_to_gpa: mmap PML4 phys:", m_mmap->pml4_phys());
+        } else {
+            bferror_info(0, "gva_to_gpa: mmap is NULL!");
+        }
+
+        throw std::runtime_error("gva_to_gpa: pt_pte is not present for gva");
     }
 
     return {
@@ -1088,13 +1098,17 @@ vcpu::gva_to_gpa(uint64_t gva)
 std::pair<uintptr_t, uintptr_t>
 vcpu::gva_to_hpa(uint64_t gva)
 {
-    auto ret = this->gva_to_gpa(gva);
+    try {
+        auto ret = this->gva_to_gpa(gva);
 
-    if (m_mmap == nullptr) {
-        return ret;
+        if (m_mmap == nullptr) {
+            return ret;
+        }
+
+        return this->gpa_to_hpa(ret.first);
+    } catch (...) {
+        this->halt("gva_to_hpa failed");
     }
-
-    return this->gpa_to_hpa(ret.first);
 }
 
 void
