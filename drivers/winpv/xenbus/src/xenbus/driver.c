@@ -276,8 +276,8 @@ DriverAddFunctionDeviceObject(
     InsertTailList(&Driver.List, &Dx->ListEntry);
     References = Driver.References++;
 
-    if (References == 1)
-        FiltersInstall();
+    //if (References == 1)
+        //FiltersInstall();
 }
 
 VOID
@@ -867,7 +867,7 @@ DriverEntry(
 
     // Remove the filters from the registry. They will be re-instated by
     // the first successful AddDevice.
-    FiltersUninstall();
+    //FiltersUninstall();
 
     DriverObject->DriverExtension->AddDevice = DriverAddDevice;
 

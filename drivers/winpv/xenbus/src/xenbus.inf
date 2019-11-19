@@ -39,8 +39,6 @@ DriverPackageDisplayName=%DiskDesc%
 
 [DestinationDirs]
 DefaultDestDir=12
-CoInst_CopyFiles=11
-Monitor_CopyFiles=11
 
 [SourceDisksNames]
 0=%DiskDesc%
@@ -48,22 +46,10 @@ Monitor_CopyFiles=11
 [SourceDisksFiles]
 xen.sys=0,,
 xenbus.sys=0,,
-xenfilt.sys=0,,
-xenbus_coinst.dll=0,,
-xenbus_monitor.exe=0,,
-xenbus_monitor.dll=0,,
 
 [XenBus_CopyFiles]
 xen.sys
 xenbus.sys
-xenfilt.sys
-
-[CoInst_CopyFiles]
-xenbus_coinst_@MAJOR_VERSION@_@MINOR_VERSION@_@MICRO_VERSION@_@BUILD_NUMBER@.dll,xenbus_coinst.dll
-
-[Monitor_CopyFiles]
-xenbus_monitor_@MAJOR_VERSION@_@MINOR_VERSION@_@MICRO_VERSION@_@BUILD_NUMBER@.exe,xenbus_monitor.exe
-xenbus_monitor_@MAJOR_VERSION@_@MINOR_VERSION@_@MICRO_VERSION@_@BUILD_NUMBER@.dll,xenbus_monitor.dll
 
 [Manufacturer]
 %Vendor%=Inst,NT@INF_ARCH@
@@ -78,12 +64,9 @@ xenbus_monitor_@MAJOR_VERSION@_@MINOR_VERSION@_@MICRO_VERSION@_@BUILD_NUMBER@.dl
 
 [XenBus_Inst]
 CopyFiles=XenBus_CopyFiles
-CopyFiles=Monitor_CopyFiles
 
 [XenBus_Inst.Services]
-AddService=xenbus_monitor,%SPSVCSINST_STARTSERVICE%,Monitor_Service,Monitor_EventLog
 AddService=xenbus,%SPSVCINST_ASSOCSERVICE%,XenBus_Service
-AddService=xenfilt,,XenFilt_Service,
 
 [XenBus_Service]
 DisplayName=%XenBusName%
@@ -98,7 +81,6 @@ AddReg = XenBus_Parameters, XenBus_Interrupts
 HKR,"Parameters",,0x00000010
 HKR,"Parameters","SupportedClasses",0x00010000,"VIF","VBD","VKBD","IFACE","CONS"
 HKR,"Parameters","SyntheticClasses",0x00010000,"IFACE","CONS"
-HKR,"Parameters","RequestKey",0x00000000,%RequestKey%
 
 [XenBus_Interrupts]
 HKR,"Interrupt Management",,0x00000010
@@ -106,60 +88,11 @@ HKR,"Interrupt Management\MessageSignaledInterruptProperties",,0x00000010
 HKR,"Interrupt Management\MessageSignaledInterruptProperties","MSISupported",0x00010001,1
 HKR,"Interrupt Management\GroupPolicy",,0x00010001,1
 
-[XenFilt_Service]
-DisplayName=%XenFiltName%
-ServiceType=%SERVICE_KERNEL_DRIVER%
-StartType=%SERVICE_BOOT_START%
-ErrorControl=%SERVICE_ERROR_NORMAL%
-ServiceBinary=%12%\xenfilt.sys
-LoadOrderGroup="Boot Bus Extender"
-AddReg = XenFilt_Parameters
-
-[XenFilt_Parameters]
-HKR,"Parameters",,0x00000010
-HKR,"Parameters","*PNP0A03",0x00000000,"PCI"
-HKR,"Parameters","Internal_IDE_Channel",0x00000000,"IDE"
-
-[Monitor_Service]
-DisplayName=%MonitorName%
-Description=%MonitorDesc%
-ServiceType=%SERVICE_WIN32_OWN_PROCESS%
-StartType=%SERVICE_AUTO_START%
-ErrorControl=%SERVICE_ERROR_NORMAL%
-ServiceBinary=%11%\xenbus_monitor_@MAJOR_VERSION@_@MINOR_VERSION@_@MICRO_VERSION@_@BUILD_NUMBER@.exe
-AddReg = Monitor_Parameters
-
-[Monitor_Parameters]
-HKR,"Parameters",,0x00000010
-HKR,"Parameters","RequestKey",0x00000000,%RequestKey%
-HKR,"Parameters","DialogTitle",0x00000000,%DialogTitle%
-HKR,"Parameters","DialogText",0x00000000,%DialogText%
-
-[Monitor_EventLog]
-AddReg=Monitor_EventLog_AddReg
-
-[Monitor_EventLog_AddReg]
-HKR,,EventMessageFile,0x00020000,"%%SystemRoot%%\System32\xenbus_monitor_@MAJOR_VERSION@_@MINOR_VERSION@_@MICRO_VERSION@_@BUILD_NUMBER@.dll"
-HKR,,TypesSupported,0x00010001,7
-
-[XenBus_Inst.CoInstallers]
-CopyFiles=CoInst_CopyFiles
-AddReg=CoInst_AddReg
-
-[CoInst_AddReg]
-HKR,,CoInstallers32,0x00010000,"xenbus_coinst_@MAJOR_VERSION@_@MINOR_VERSION@_@MICRO_VERSION@_@BUILD_NUMBER@.dll,Entry"
-
 [Strings]
 
 Vendor="@VENDOR_NAME@"
 DiskDesc="@PRODUCT_NAME@ PV Bus Package"
 XenBusName="@PRODUCT_NAME@ PV Bus"
-XenFiltName="@PRODUCT_NAME@ Generic Bus Filter"
-MonitorName="@PRODUCT_NAME@ PV Driver Monitor"
-MonitorDesc="Provides support for @PRODUCT_NAME@ PV drivers"
-RequestKey="SYSTEM\CurrentControlSet\Services\xenbus_monitor\Request"
-DialogTitle="@PRODUCT_NAME@"
-DialogText="needs to restart the system to complete installation. Press 'Yes' to restart the system now or 'No' if you plan to restart the system later."
 
 SERVICE_BOOT_START=0x0
 SERVICE_SYSTEM_START=0x1
