@@ -108,6 +108,8 @@ struct _XENBUS_FDO {
     KEVENT                          SuspendEvent;
     PXENBUS_STORE_WATCH             SuspendWatch;
 
+    PXENBUS_THREAD                  StoreThread;
+
     PCM_PARTIAL_RESOURCE_LIST       RawResourceList;
     PCM_PARTIAL_RESOURCE_LIST       TranslatedResourceList;
 
@@ -2531,16 +2533,12 @@ FdoOutputBuffer(
                           (ULONG)(Cursor - FdoOutBuffer));
 }
 
-static FORCEINLINE NTSTATUS
-__FdoD3ToD0(
-    IN  PXENBUS_FDO Fdo
+static VOID
+StoreD3ToD0(
+    IN PXENBUS_FDO Fdo
     )
 {
-    NTSTATUS        status;
-
-    Trace("====>\n");
-
-    ASSERT3U(KeGetCurrentIrql(), ==, PASSIVE_LEVEL);
+    NTSTATUS status;
 
     (VOID) FdoSetDistribution(Fdo);
 
@@ -2593,9 +2591,10 @@ __FdoD3ToD0(
                         "%u",
                         1);
 
-    Trace("<====\n");
+    __FdoSetDevicePnpState(Fdo, Started);
+    ThreadWake(Fdo->ScanThread);
 
-    return STATUS_SUCCESS;
+    return;
 
 fail3:
     Error("fail3\n");
@@ -2618,8 +2617,46 @@ fail2:
 
 fail1:
     Error("fail1 (%08x)\n", status);
+}
 
-    return status;
+static NTSTATUS
+FdoStore(
+    IN  PXENBUS_THREAD  Self,
+    IN  PVOID           Context
+    )
+{
+    PXENBUS_FDO         Fdo = Context;
+    PKEVENT             Event;
+
+    Event = ThreadGetEvent(Self);
+
+    for (;;) {
+        (VOID) KeWaitForSingleObject(Event,
+                                     Executive,
+                                     KernelMode,
+                                     FALSE,
+                                     NULL);
+        KeClearEvent(Event);
+
+        if (ThreadIsAlerted(Self))
+            break;
+
+        StoreD3ToD0(Fdo);
+    }
+
+    return STATUS_SUCCESS;
+}
+
+static FORCEINLINE NTSTATUS
+__FdoD3ToD0(
+    IN  PXENBUS_FDO Fdo
+    )
+{
+    ASSERT3U(KeGetCurrentIrql(), ==, PASSIVE_LEVEL);
+
+    ThreadWake(Fdo->StoreThread);
+
+    return STATUS_SUCCESS;
 }
 
 static FORCEINLINE VOID
@@ -3240,20 +3277,26 @@ FdoStartDevice(
     if (!NT_SUCCESS(status))
         goto fail6;
 
-not_active:
-    status = FdoD3ToD0(Fdo);
+    status = ThreadCreate(FdoStore, Fdo, &Fdo->StoreThread);
     if (!NT_SUCCESS(status))
         goto fail7;
 
-    __FdoSetDevicePnpState(Fdo, Started);
-
-    if (__FdoIsActive(Fdo))
-        ThreadWake(Fdo->ScanThread);
+not_active:
+    status = FdoD3ToD0(Fdo);
+    if (!NT_SUCCESS(status))
+        goto fail8;
 
     status = Irp->IoStatus.Status;
     IoCompleteRequest(Irp, IO_NO_INCREMENT);
 
     return status;
+
+fail8:
+    Error("fail8\n");
+
+    ThreadAlert(Fdo->StoreThread);
+    ThreadJoin(Fdo->StoreThread);
+    Fdo->StoreThread = NULL;
 
 fail7:
     Error("fail7\n");
@@ -3364,6 +3407,10 @@ FdoStopDevice(
     Fdo->ScanThread = NULL;
 
     RtlZeroMemory(&Fdo->ScanEvent, sizeof (KEVENT));
+
+    ThreadAlert(Fdo->StoreThread);
+    ThreadJoin(Fdo->StoreThread);
+    Fdo->StoreThread = NULL;
 
     FdoDestroyInterrupt(Fdo);
 
@@ -3526,6 +3573,10 @@ FdoRemoveDevice(
     Fdo->ScanThread = NULL;
 
     RtlZeroMemory(&Fdo->ScanEvent, sizeof (KEVENT));
+
+    ThreadAlert(Fdo->StoreThread);
+    ThreadJoin(Fdo->StoreThread);
+    Fdo->StoreThread = NULL;
 
     FdoDestroyInterrupt(Fdo);
 
