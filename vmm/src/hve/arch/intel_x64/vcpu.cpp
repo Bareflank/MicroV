@@ -489,6 +489,15 @@ vcpu::apic_timer_vector()
 //------------------------------------------------------------------------------
 // Setup Functions
 //------------------------------------------------------------------------------
+void vcpu::set_xenstore_ready() noexcept
+{
+    m_domain->m_xenstore_ready = 1;
+}
+
+uint64_t vcpu::is_xenstore_ready() noexcept
+{
+    return m_domain->m_xenstore_ready;
+}
 
 void
 vcpu::setup_default_controls()

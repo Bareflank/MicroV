@@ -54,6 +54,14 @@ bool vmcall_event_op_handler::dispatch(vcpu *vcpu)
     case __enum_event_op__send_bdf:
         this->send_bdf(vcpu->rcx());
         return true;
+    case __enum_event_op__set_xenstore_ready:
+        expects(vcpu->is_root_vcpu());
+        vcpu->set_xenstore_ready();
+        return true;
+    case __enum_event_op__is_xenstore_ready:
+        expects(vcpu->is_root_vcpu());
+        vcpu->set_rax(vcpu->is_xenstore_ready());
+        return true;
     default:
         break;
     };

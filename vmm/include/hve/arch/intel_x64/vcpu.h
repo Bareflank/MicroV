@@ -109,6 +109,8 @@ public:
 public:
 
     microv::xen_vcpu *xen_vcpu() noexcept;
+    void set_xenstore_ready() noexcept;
+    uint64_t is_xenstore_ready() noexcept;
 
     void add_child_vcpu(vcpuid_t id);
     vcpu *find_child_vcpu(vcpuid_t id);
