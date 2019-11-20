@@ -64,6 +64,11 @@
 #include "assert.h"
 #include "util.h"
 
+#pragma warning(push)
+#pragma warning(disable:4142) // benign redefinition of types
+#include <microv/hypercall.h>
+#pragma warning(pop)
+
 #define XENBUS_FDO_TAG 'ODF'
 
 #define MAXNAMELEN  128
@@ -2538,7 +2543,25 @@ StoreD3ToD0(
     IN PXENBUS_FDO Fdo
     )
 {
-    NTSTATUS status;
+    NTSTATUS       status;
+    LARGE_INTEGER  Timeout;
+    UINT64         Ready;
+
+    Timeout.QuadPart = TIME_RELATIVE(TIME_MS(200));
+
+    /* Sleep until the VMM signals that the xenstore backend is ready */
+    do {
+        KeDelayExecutionThread(KernelMode, FALSE, &Timeout);
+        Ready = __event_op__is_xenstore_ready();
+        ASSERT3U(Ready, <=, 1);
+    } while (!Ready);
+
+    /* Sleep one more time for good measure */
+    KeDelayExecutionThread(KernelMode, FALSE, &Timeout);
+
+    status = XENBUS_STORE(Acquire, &Fdo->StoreInterface);
+    if (!NT_SUCCESS(status))
+        goto fail1;
 
     (VOID) FdoSetDistribution(Fdo);
 
@@ -2551,7 +2574,7 @@ StoreD3ToD0(
 
     status = STATUS_UNSUCCESSFUL;
     if (Fdo->Channel == NULL)
-        goto fail1;
+        goto fail2;
 
     (VOID) XENBUS_EVTCHN(Unmask,
                          &Fdo->EvtchnInterface,
@@ -2572,7 +2595,7 @@ StoreD3ToD0(
                           ThreadGetEvent(Fdo->ScanThread),
                           &Fdo->ScanWatch);
     if (!NT_SUCCESS(status))
-        goto fail2;
+        goto fail3;
 
     status = XENBUS_STORE(WatchAdd,
                           &Fdo->StoreInterface,
@@ -2581,7 +2604,7 @@ StoreD3ToD0(
                           ThreadGetEvent(Fdo->SuspendThread),
                           &Fdo->SuspendWatch);
     if (!NT_SUCCESS(status))
-        goto fail3;
+        goto fail4;
 
     (VOID) XENBUS_STORE(Printf,
                         &Fdo->StoreInterface,
@@ -2596,16 +2619,16 @@ StoreD3ToD0(
 
     return;
 
-fail3:
-    Error("fail3\n");
+fail4:
+    Error("fail4\n");
 
     (VOID) XENBUS_STORE(WatchRemove,
                         &Fdo->StoreInterface,
                         Fdo->ScanWatch);
     Fdo->ScanWatch = NULL;
 
-fail2:
-    Error("fail2\n");
+fail3:
+    Error("fail3\n");
 
     LogRemoveDisposition(Fdo->LogDisposition);
     Fdo->LogDisposition = NULL;
@@ -2614,6 +2637,12 @@ fail2:
                   &Fdo->EvtchnInterface,
                   Fdo->Channel);
     Fdo->Channel = NULL;
+
+fail2:
+    Error("fail2\n");
+
+    FdoClearDistribution(Fdo);
+    XENBUS_STORE(Release, &Fdo->StoreInterface);
 
 fail1:
     Error("fail1 (%08x)\n", status);
@@ -2655,6 +2684,7 @@ __FdoD3ToD0(
     ASSERT3U(KeGetCurrentIrql(), ==, PASSIVE_LEVEL);
 
     ThreadWake(Fdo->StoreThread);
+    ThreadWake(Fdo->ScanThread);
 
     return STATUS_SUCCESS;
 }
@@ -2927,17 +2957,13 @@ FdoD3ToD0(
     if (!NT_SUCCESS(status))
         goto fail5;
 
-    status = XENBUS_STORE(Acquire, &Fdo->StoreInterface);
+    status = XENBUS_CONSOLE(Acquire, &Fdo->ConsoleInterface);
     if (!NT_SUCCESS(status))
         goto fail6;
 
-    status = XENBUS_CONSOLE(Acquire, &Fdo->ConsoleInterface);
-    if (!NT_SUCCESS(status))
-        goto fail7;
-
     status = __FdoD3ToD0(Fdo);
     if (!NT_SUCCESS(status))
-        goto fail8;
+        goto fail7;
 
     status = XENBUS_SUSPEND(Register,
                             &Fdo->SuspendInterface,
@@ -2946,7 +2972,7 @@ FdoD3ToD0(
                             Fdo,
                             &Fdo->SuspendCallbackLate);
     if (!NT_SUCCESS(status))
-        goto fail9;
+        goto fail8;
 
 not_active:
     __FdoSetDevicePowerState(Fdo, PowerDeviceD0);
@@ -2975,20 +3001,15 @@ not_active:
 
     return STATUS_SUCCESS;
 
-fail9:
-    Error("fail9\n");
-
-    __FdoD0ToD3(Fdo);
-
 fail8:
     Error("fail8\n");
 
-    XENBUS_CONSOLE(Release, &Fdo->ConsoleInterface);
+    __FdoD0ToD3(Fdo);
 
 fail7:
     Error("fail7\n");
 
-    XENBUS_STORE(Release, &Fdo->StoreInterface);
+    XENBUS_CONSOLE(Release, &Fdo->ConsoleInterface);
 
 fail6:
     Error("fail6\n");
