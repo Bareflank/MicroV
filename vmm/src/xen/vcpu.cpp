@@ -462,6 +462,7 @@ bool xen_vcpu::handle_grant_table_op()
 
         if (m_uv_vcpu->rdx() == 0) {
             printv("Received gnttabop %lu with count == 0\n", m_uv_vcpu->rdi());
+            m_uv_vcpu->set_rax(0);
             return true;
         }
 
