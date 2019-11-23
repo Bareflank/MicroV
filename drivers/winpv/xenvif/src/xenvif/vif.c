@@ -45,7 +45,7 @@
 
 struct _XENVIF_VIF_CONTEXT {
     PXENVIF_PDO                 Pdo;
-    FAST_MUTEX                  FastMutex;
+    ERESOURCE                   Resource;
     LONG                        References;
     PXENVIF_FRONTEND            Frontend;
     BOOLEAN                     Enabled;
@@ -57,6 +57,8 @@ struct _XENVIF_VIF_CONTEXT {
     XENBUS_SUSPEND_INTERFACE    SuspendInterface;
     PXENBUS_SUSPEND_CALLBACK    SuspendCallbackLate;
 };
+
+C_ASSERT((FIELD_OFFSET(XENVIF_VIF_CONTEXT, Resource) & 0x7) == 0);
 
 #define XENVIF_VIF_TAG  'FIV'
 
@@ -74,6 +76,45 @@ __VifFree(
     )
 {
     __FreePoolWithTag(Buffer, XENVIF_VIF_TAG);
+}
+
+static FORCEINLINE VOID
+__AcquireLockShared(
+    IN PXENVIF_VIF_CONTEXT Context
+)
+{
+    BOOLEAN Wait = TRUE;
+
+    KeEnterCriticalRegion();
+    ExAcquireResourceSharedLite(&Context->Resource, Wait);
+}
+
+static FORCEINLINE VOID
+__AcquireLockExclusive(
+    IN PXENVIF_VIF_CONTEXT Context
+)
+{
+    BOOLEAN Wait = TRUE;
+
+    KeEnterCriticalRegion();
+    ExAcquireResourceExclusiveLite(&Context->Resource, Wait);
+}
+
+static FORCEINLINE VOID
+__ReleaseLock(
+    IN PXENVIF_VIF_CONTEXT Context
+)
+{
+    ExReleaseResourceLite(&Context->Resource);
+    KeLeaveCriticalRegion();
+}
+
+static FORCEINLINE VOID
+__ConvertLockExclusiveToShared(
+    IN PXENVIF_VIF_CONTEXT Context
+)
+{
+    ExConvertExclusiveToSharedLite(&Context->Resource);
 }
 
 static NTSTATUS
@@ -144,20 +185,17 @@ VifEnable(
     )
 {
     PXENVIF_VIF_CONTEXT     Context = Interface->Context;
-    BOOLEAN                 HoldLock;
     NTSTATUS                status;
 
     Trace("====>\n");
 
-    ExAcquireFastMutex(&Context->FastMutex);
-    HoldLock = TRUE;
+    __AcquireLockExclusive(Context);
 
     if (Context->Enabled)
         goto done;
 
     Context->Callback = Callback;
     Context->Argument = Argument;
-
     Context->Enabled = TRUE;
 
     KeMemoryBarrier();
@@ -180,7 +218,7 @@ VifEnable(
         goto fail3;
 
 done:
-    ExReleaseFastMutex(&Context->FastMutex);
+    __ReleaseLock(Context);
 
     Trace("<====\n");
 
@@ -191,8 +229,7 @@ fail3:
 
     (VOID) FrontendSetState(Context->Frontend, FRONTEND_CONNECTED);
 
-    ExReleaseFastMutex(&Context->FastMutex);
-    HoldLock = FALSE;
+    __ConvertLockExclusiveToShared(Context);
 
     ReceiverWaitForPackets(FrontendGetReceiver(Context->Frontend));
     TransmitterAbortPackets(FrontendGetTransmitter(Context->Frontend));
@@ -225,8 +262,7 @@ fail1:
     Context->Argument = NULL;
     Context->Callback = NULL;
 
-    if (HoldLock)
-        ExReleaseFastMutex(&Context->FastMutex);
+    __ReleaseLock(Context);
 
     return status;
 }
@@ -240,10 +276,10 @@ VifDisable(
 
     Trace("====>\n");
 
-    ExAcquireFastMutex(&Context->FastMutex);
+    __AcquireLockExclusive(Context);
 
     if (!Context->Enabled) {
-        ExReleaseFastMutex(&Context->FastMutex);
+        __ReleaseLock(Context);
         goto done;
     }
 
@@ -258,7 +294,7 @@ VifDisable(
 
     (VOID) FrontendSetState(Context->Frontend, FRONTEND_CONNECTED);
 
-    ExReleaseFastMutex(&Context->FastMutex);
+    __ConvertLockExclusiveToShared(Context);
 
     ReceiverWaitForPackets(FrontendGetReceiver(Context->Frontend));
     TransmitterAbortPackets(FrontendGetTransmitter(Context->Frontend));
@@ -281,6 +317,8 @@ VifDisable(
     Context->Argument = NULL;
     Context->Callback = NULL;
 
+    __ReleaseLock(Context);
+
 done:
     Trace("<====\n");
 }
@@ -299,11 +337,10 @@ VifQueryStatistic(
     if (Index >= XENVIF_VIF_STATISTIC_COUNT)
         goto done;
 
-    ExAcquireFastMutex(&Context->FastMutex);
-
+    __AcquireLockShared(Context);
     FrontendQueryStatistic(Context->Frontend, Index, Value);
+    __ReleaseLock(Context);
 
-    ExReleaseFastMutex(&Context->FastMutex);
     status = STATUS_SUCCESS;
 
 done:
@@ -318,11 +355,9 @@ VifQueryRingCount(
 {
     PXENVIF_VIF_CONTEXT Context = Interface->Context;
 
-    ExAcquireFastMutex(&Context->FastMutex);
-
+    __AcquireLockShared(Context);
     *Count = FrontendGetNumQueues(Context->Frontend);
-
-    ExReleaseFastMutex(&Context->FastMutex);
+    __ReleaseLock(Context);
 }
 
 static NTSTATUS
@@ -335,13 +370,12 @@ VifUpdateHashMapping(
     PXENVIF_VIF_CONTEXT     Context = Interface->Context;
     NTSTATUS                status;
 
-    ExAcquireFastMutex(&Context->FastMutex);
+    __AcquireLockShared(Context);
 
     status = ReceiverUpdateHashMapping(FrontendGetReceiver(Context->Frontend),
                                        Mapping,
                                        Order);
-
-    ExReleaseFastMutex(&Context->FastMutex);
+    __ReleaseLock(Context);
 
     return status;
 }
@@ -354,12 +388,9 @@ VifReceiverReturnPacket(
 {
     PXENVIF_VIF_CONTEXT Context = Interface->Context;
 
-    ExAcquireFastMutex(&Context->FastMutex);
-
-    ReceiverReturnPacket(FrontendGetReceiver(Context->Frontend),
-                         Cookie);
-
-    ExReleaseFastMutex(&Context->FastMutex);
+    __AcquireLockShared(Context);
+    ReceiverReturnPacket(FrontendGetReceiver(Context->Frontend), Cookie);
+    __ReleaseLock(Context);
 }
 
 static NTSTATUS
@@ -378,7 +409,7 @@ VifTransmitterQueuePacketVersion6(
     PXENVIF_VIF_CONTEXT             Context = Interface->Context;
     NTSTATUS                        status;
 
-    ExAcquireFastMutex(&Context->FastMutex);
+    __AcquireLockShared(Context);
 
     status = STATUS_UNSUCCESSFUL;
     if (!Context->Enabled)
@@ -396,7 +427,7 @@ VifTransmitterQueuePacketVersion6(
                                     Cookie);
 
 done:
-    ExReleaseFastMutex(&Context->FastMutex);
+    __ReleaseLock(Context);
 
     return status;
 }
@@ -420,7 +451,8 @@ VifTransmitterQueuePacket(
     NTSTATUS                        status;
 
     ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
-    ExAcquireFastMutex(&Context->FastMutex);
+
+    __AcquireLockShared(Context);
 
     status = STATUS_UNSUCCESSFUL;
     if (!Context->Enabled)
@@ -438,7 +470,7 @@ VifTransmitterQueuePacket(
                                     Cookie);
 
 done:
-    ExReleaseFastMutex(&Context->FastMutex);
+    __ReleaseLock(Context);
 
     return status;
 }
@@ -453,12 +485,12 @@ VifTransmitterQueryOffloadOptions(
     PXENVIF_VIF_CONTEXT             Context = Interface->Context;
 
     ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
-    ExAcquireFastMutex(&Context->FastMutex);
+
+    __AcquireLockShared(Context);
 
     TransmitterQueryOffloadOptions(FrontendGetTransmitter(Context->Frontend),
                                    Options);
-
-    ExReleaseFastMutex(&Context->FastMutex);
+    __ReleaseLock(Context);
 }
 
 _IRQL_requires_max_(APC_LEVEL)
@@ -472,13 +504,13 @@ VifTransmitterQueryLargePacketSize(
     PXENVIF_VIF_CONTEXT Context = Interface->Context;
 
     ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
-    ExAcquireFastMutex(&Context->FastMutex);
+
+    __AcquireLockShared(Context);
 
     TransmitterQueryLargePacketSize(FrontendGetTransmitter(Context->Frontend),
                                     Version,
                                     Size);
-
-    ExReleaseFastMutex(&Context->FastMutex);
+    __ReleaseLock(Context);
 }
 
 _IRQL_requires_max_(APC_LEVEL)
@@ -491,12 +523,12 @@ VifReceiverSetOffloadOptions(
     PXENVIF_VIF_CONTEXT             Context = Interface->Context;
 
     ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
-    ExAcquireFastMutex(&Context->FastMutex);
+
+    __AcquireLockShared(Context);
 
     ReceiverSetOffloadOptions(FrontendGetReceiver(Context->Frontend),
                               Options);
-
-    ExReleaseFastMutex(&Context->FastMutex);
+    __ReleaseLock(Context);
 }
 
 _IRQL_requires_max_(APC_LEVEL)
@@ -509,12 +541,12 @@ VifReceiverSetBackfillSize(
     PXENVIF_VIF_CONTEXT Context = Interface->Context;
 
     ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
-    ExAcquireFastMutex(&Context->FastMutex);
+
+    __AcquireLockShared(Context);
 
     ReceiverSetBackfillSize(FrontendGetReceiver(Context->Frontend),
                             Size);
-
-    ExReleaseFastMutex(&Context->FastMutex);
+    __ReleaseLock(Context);
 }
 
 _IRQL_requires_max_(APC_LEVEL)
@@ -528,12 +560,12 @@ VifReceiverSetHashAlgorithm(
     NTSTATUS                            status;
 
     ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
-    ExAcquireFastMutex(&Context->FastMutex);
+
+    __AcquireLockShared(Context);
 
     status = ReceiverSetHashAlgorithm(FrontendGetReceiver(Context->Frontend),
                                       Algorithm);
-
-    ExReleaseFastMutex(&Context->FastMutex);
+    __ReleaseLock(Context);
 
     return status;
 }
@@ -551,18 +583,17 @@ VifReceiverQueryHashCapabilities(
     NTSTATUS            status;
 
     ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
-    ExAcquireFastMutex(&Context->FastMutex);
+
+    __AcquireLockShared(Context);
 
     va_start(Arguments, Interface);
-
     Types = va_arg(Arguments, PULONG);
 
     status = ReceiverQueryHashCapabilities(FrontendGetReceiver(Context->Frontend),
                                            Types);
-
     va_end(Arguments);
 
-    ExReleaseFastMutex(&Context->FastMutex);
+    __ReleaseLock(Context);
 
     return status;
 }
@@ -581,20 +612,19 @@ VifReceiverUpdateHashParameters(
     NTSTATUS            status;
 
     ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
-    ExAcquireFastMutex(&Context->FastMutex);
+
+    __AcquireLockShared(Context);
 
     va_start(Arguments, Interface);
-
     Types = va_arg(Arguments, ULONG);
     Key = va_arg(Arguments, PUCHAR);
 
     status = ReceiverUpdateHashParameters(FrontendGetReceiver(Context->Frontend),
                                           Types,
                                           Key);
-
     va_end(Arguments);
 
-    ExReleaseFastMutex(&Context->FastMutex);
+    __ReleaseLock(Context);
 
     return status;
 }
@@ -611,14 +641,15 @@ VifMacQueryState(
     PXENVIF_VIF_CONTEXT             Context = Interface->Context;
 
     ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
-    ExAcquireFastMutex(&Context->FastMutex);
+
+    __AcquireLockShared(Context);
 
     MacQueryState(FrontendGetMac(Context->Frontend),
                   MediaConnectState,
                   LinkSpeed,
                   MediaDuplexState);
 
-    ExReleaseFastMutex(&Context->FastMutex);
+    __ReleaseLock(Context);
 }
 
 _IRQL_requires_max_(APC_LEVEL)
@@ -631,11 +662,10 @@ VifMacQueryMaximumFrameSize(
     PXENVIF_VIF_CONTEXT Context = Interface->Context;
 
     ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
-    ExAcquireFastMutex(&Context->FastMutex);
 
+    __AcquireLockShared(Context);
     MacQueryMaximumFrameSize(FrontendGetMac(Context->Frontend), Size);
-
-    ExReleaseFastMutex(&Context->FastMutex);
+    __ReleaseLock(Context);
 }
 
 _IRQL_requires_max_(APC_LEVEL)
@@ -648,11 +678,10 @@ VifMacQueryPermanentAddress(
     PXENVIF_VIF_CONTEXT     Context = Interface->Context;
 
     ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
-    ExAcquireFastMutex(&Context->FastMutex);
 
+    __AcquireLockShared(Context);
     MacQueryPermanentAddress(FrontendGetMac(Context->Frontend), Address);
-
-    ExReleaseFastMutex(&Context->FastMutex);
+    __ReleaseLock(Context);
 }
 
 _IRQL_requires_max_(APC_LEVEL)
@@ -665,11 +694,10 @@ VifMacQueryCurrentAddress(
     PXENVIF_VIF_CONTEXT     Context = Interface->Context;
 
     ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
-    ExAcquireFastMutex(&Context->FastMutex);
 
+    __AcquireLockShared(Context);
     MacQueryCurrentAddress(FrontendGetMac(Context->Frontend), Address);
-
-    ExReleaseFastMutex(&Context->FastMutex);
+    __ReleaseLock(Context);
 }
 
 _IRQL_requires_max_(APC_LEVEL)
@@ -684,13 +712,13 @@ VifMacQueryMulticastAddresses(
     NTSTATUS                    status;
 
     ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
-    ExAcquireFastMutex(&Context->FastMutex);
+
+    __AcquireLockShared(Context);
 
     status = MacQueryMulticastAddresses(FrontendGetMac(Context->Frontend),
                                         Address,
                                         Count);
-
-    ExReleaseFastMutex(&Context->FastMutex);
+    __ReleaseLock(Context);
 
     return status;
 }
@@ -715,13 +743,12 @@ VifMacSetMulticastAddresses(
             goto done;
     }
 
-    ExAcquireFastMutex(&Context->FastMutex);
+    __AcquireLockShared(Context);
 
     status = FrontendSetMulticastAddresses(Context->Frontend,
                                            Address,
                                            Count);
-
-    ExReleaseFastMutex(&Context->FastMutex);
+    __ReleaseLock(Context);
 
 done:
     return status;
@@ -739,13 +766,13 @@ VifMacQueryFilterLevel(
     NTSTATUS                status;
 
     ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
-    ExAcquireFastMutex(&Context->FastMutex);
+
+    __AcquireLockShared(Context);
 
     status = MacQueryFilterLevel(FrontendGetMac(Context->Frontend),
                                  Type,
                                  Level);
-
-    ExReleaseFastMutex(&Context->FastMutex);
+    __ReleaseLock(Context);
 
     return status;
 }
@@ -762,11 +789,10 @@ VifMacSetFilterLevel(
     NTSTATUS                        status;
 
     ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
-    ExAcquireFastMutex(&Context->FastMutex);
 
+    __AcquireLockShared(Context);
     status = FrontendSetFilterLevel(Context->Frontend, Type, Level);
-
-    ExReleaseFastMutex(&Context->FastMutex);
+    __ReleaseLock(Context);
 
     return status;
 }
@@ -781,11 +807,10 @@ VifReceiverQueryRingSize(
     PXENVIF_VIF_CONTEXT     Context = Interface->Context;
 
     ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
-    ExAcquireFastMutex(&Context->FastMutex);
 
+    __AcquireLockShared(Context);
     ReceiverQueryRingSize(FrontendGetReceiver(Context->Frontend), Size);
-
-    ExReleaseFastMutex(&Context->FastMutex);
+    __ReleaseLock(Context);
 }
 
 _IRQL_requires_max_(APC_LEVEL)
@@ -798,11 +823,10 @@ VifTransmitterQueryRingSize(
     PXENVIF_VIF_CONTEXT     Context = Interface->Context;
 
     ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
-    ExAcquireFastMutex(&Context->FastMutex);
 
+    __AcquireLockShared(Context);
     TransmitterQueryRingSize(FrontendGetTransmitter(Context->Frontend), Size);
-
-    ExReleaseFastMutex(&Context->FastMutex);
+    __ReleaseLock(Context);
 }
 
 _IRQL_requires_max_(APC_LEVEL)
@@ -814,7 +838,8 @@ VifAcquire(
     PXENVIF_VIF_CONTEXT     Context = Interface->Context;
 
     ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
-    ExAcquireFastMutex(&Context->FastMutex);
+
+    __AcquireLockExclusive(Context);
 
     if (Context->References++ != 0)
         goto done;
@@ -827,7 +852,7 @@ VifAcquire(
     Trace("<====\n");
 
 done:
-    ExReleaseFastMutex(&Context->FastMutex);
+    __ReleaseLock(Context);
 
     return STATUS_SUCCESS;
 }
@@ -841,7 +866,8 @@ VifRelease(
     PXENVIF_VIF_CONTEXT     Context = Interface->Context;
 
     ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
-    ExAcquireFastMutex(&Context->FastMutex);
+
+    __AcquireLockExclusive(Context);
 
     if (--Context->References > 0)
         goto done;
@@ -856,7 +882,7 @@ VifRelease(
     Trace("<====\n");
 
 done:
-    ExReleaseFastMutex(&Context->FastMutex);
+    __ReleaseLock(Context);
 }
 
 static struct _XENVIF_VIF_INTERFACE_V6 VifInterfaceVersion6 = {
@@ -965,7 +991,7 @@ VifInitialize(
     if (*Context == NULL)
         goto fail1;
 
-    ExInitializeFastMutex(&(*Context)->FastMutex);
+    ExInitializeResourceLite(&(*Context)->Resource);
 
     FdoGetSuspendInterface(PdoGetFdo(Pdo),&(*Context)->SuspendInterface);
 
@@ -991,7 +1017,8 @@ fail2:
     RtlZeroMemory(&(*Context)->SuspendInterface,
                   sizeof (XENBUS_SUSPEND_INTERFACE));
 
-    RtlZeroMemory(&(*Context)->FastMutex, sizeof (FAST_MUTEX));
+    ExDeleteResourceLite(&(*Context)->Resource);
+    RtlZeroMemory(&(*Context)->Resource, sizeof (ERESOURCE));
 
     ASSERT(IsZeroMemory(*Context, sizeof (XENVIF_VIF_CONTEXT)));
     __VifFree(*Context);
@@ -1091,7 +1118,8 @@ VifTeardown(
     RtlZeroMemory(&Context->SuspendInterface,
                   sizeof (XENBUS_SUSPEND_INTERFACE));
 
-    RtlZeroMemory(&Context->FastMutex, sizeof (FAST_MUTEX));
+    ExDeleteResourceLite(&Context->Resource);
+    RtlZeroMemory(&Context->Resource, sizeof (ERESOURCE));
 
     ASSERT(IsZeroMemory(Context, sizeof (XENVIF_VIF_CONTEXT)));
     __VifFree(Context);
