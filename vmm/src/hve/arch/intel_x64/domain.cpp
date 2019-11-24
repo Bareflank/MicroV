@@ -119,7 +119,11 @@ void domain::setup_dom0()
         m_xen_domid = create_xen_domain(this, nullptr);
         m_xen_dom = get_xen_domain(m_xen_domid);
 
-        enable_xen_platform_pci();
+        if (g_disable_xen_pfd) {
+            disable_xen_platform_pci();
+        } else {
+            enable_xen_platform_pci();
+        }
     }
 }
 

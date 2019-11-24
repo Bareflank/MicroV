@@ -35,6 +35,7 @@
 
 extern int g_uefi_boot;
 extern int g_enable_winpv;
+extern int g_disable_xen_pfd;
 
 extern struct xue g_xue;
 extern struct xue_ops g_xue_ops;
@@ -50,6 +51,7 @@ struct pmodule_t {
 uint64_t g_num_pmodules = 0;
 struct pmodule_t pmodules[MAX_NUM_MODULES] = {{0}};
 
+static const CHAR16 *opt_disable_xen_pfd = L"--disable-xen-pfd";
 static const CHAR16 *opt_enable_winpv = L"--enable-winpv";
 static const CHAR16 *opt_no_pci_pt = L"--no-pci-pt";
 
@@ -250,8 +252,13 @@ void parse_cmdline(EFI_HANDLE image)
 
     for (i = 0; i < argc; i++) {
         if (!StrnCmp(opt_enable_winpv, argv[i], StrLen(opt_enable_winpv))) {
-            Print(L"enabling Windows PV\n");
+            Print(L"Enabling Windows PV\n");
             g_enable_winpv = 1;
+        }
+
+        if (!StrnCmp(opt_disable_xen_pfd, argv[i], StrLen(opt_disable_xen_pfd))) {
+            Print(L"Disabling Xen Platform PCI device\n");
+            g_disable_xen_pfd = 1;
         }
 
         if (!StrnCmp(opt_no_pci_pt, argv[i], StrLen(opt_no_pci_pt))) {

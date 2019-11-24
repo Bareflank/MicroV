@@ -109,9 +109,11 @@ private_uefi_boot(bool uefi_boot) noexcept
 }
 
 extern "C" int64_t
-private_winpv(bool enable_winpv) noexcept
+private_winpv(bool enable_winpv, bool disable_xen_pfd) noexcept
 {
     g_enable_winpv = enable_winpv;
+    g_disable_xen_pfd = disable_xen_pfd;
+
     return ENTRY_SUCCESS;
 }
 
@@ -199,7 +201,7 @@ bfmain(uintptr_t request, uintptr_t arg1, uintptr_t arg2, uintptr_t arg3)
             return private_uefi_boot((bool)arg1);
 
         case BF_REQUEST_WINPV:
-            return private_winpv((bool)arg1);
+            return private_winpv((bool)arg1, (bool)arg2);
 
         case BF_REQUEST_NO_PCI_PT:
             return private_no_pci_pt(arg1);

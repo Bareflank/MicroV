@@ -40,6 +40,7 @@
 
 int g_uefi_boot = 0;
 int g_enable_winpv = 0;
+int g_disable_xen_pfd = 0;
 
 #define NO_PCI_PT_LIST_SIZE 256
 uint64_t no_pci_pt_list[NO_PCI_PT_LIST_SIZE];
@@ -491,7 +492,7 @@ common_load_vmm(void)
     ret = platform_call_vmm_on_core(0,
                                     BF_REQUEST_WINPV,
                                     (uint64_t)g_enable_winpv,
-                                    0);
+                                    (uint64_t)g_disable_xen_pfd);
     if (ret != BF_SUCCESS) {
         goto failure;
     }
