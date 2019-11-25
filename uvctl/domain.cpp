@@ -66,11 +66,16 @@ void uvc_domain::recv_uart()
 void uvc_domain::recv_hvc()
 {
     uint64_t size{};
-    std::array<char, HVC_TX_SIZE> buf{};
+    std::array<char, HVC_TX_SIZE> array{0};
 
     while (enable_hvc) {
-        size = __domain_op__hvc_tx_get(id, buf.data(), HVC_TX_SIZE);
-        std::cout.write(buf.data(), (int)size);
+        auto buf = static_cast<volatile char *>(array.data());
+
+        /* Touch it to try to convince the OS to map it in */
+        buf[0] = 0;
+
+        size = __domain_op__hvc_tx_get(id, (char *)buf, HVC_TX_SIZE);
+        std::cout.write((const char *)buf, (int)size);
         std::cout.flush();
         std::this_thread::sleep_for(hvc_sleep);
     }

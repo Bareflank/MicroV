@@ -360,7 +360,7 @@ __uart_ndec_op(uint16_t port, uint64_t val)
 
 #define UART_MAX_BUFFER 0x4000
 #define HVC_RX_SIZE 256
-#define HVC_TX_SIZE 0x4000
+#define HVC_TX_SIZE 0x1000
 
 /* Is this a privileged xen domain? */
 #define DOMF_XENPRIV (1ULL << 0)
