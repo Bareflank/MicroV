@@ -1,0 +1,10 @@
+[Unit]
+Description=NDVM initialization for Venom IR&D demo
+
+[Service]
+Type=oneshot
+RemainAfterExit=true
+ExecStart=/root/init-demo.sh
+
+[Install]
+WantedBy=multi-user.target
