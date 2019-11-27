@@ -60,6 +60,7 @@
 
 namespace microv {
 
+static uint64_t xenstore_ready = 0;
 static constexpr auto self_ipi_msr = 0x83F;
 
 static bool xlboot_io_in(base_vcpu *v, io_insn_handler::info_t &info)
@@ -1182,6 +1183,9 @@ xen_vcpu::xen_vcpu(microv_vcpu *vcpu) :
         vcpu->add_cpuid_emulator(ADDR_SIZE_LEAF, {cpuid_passthrough});
 
         vcpu->emulate_io_instruction(0x61, {xlboot_io_in}, {xlboot_io_out});
+
+        m_event_op_hdlr =
+            std::make_unique<intel_x64::vmcall_event_op_handler>(vcpu);
     }
 }
 }

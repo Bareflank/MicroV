@@ -36,7 +36,7 @@ class vcpu;
 class vmcall_event_op_handler {
 private:
     bool dispatch(vcpu *vcpu);
-    vcpu *m_vcpu;
+    vcpu *m_vcpu{};
 
 public:
 
@@ -44,6 +44,7 @@ public:
     void send_vector(uint64_t root_vector);
 
     vmcall_event_op_handler(gsl::not_null<vcpu *> vcpu);
+    vmcall_event_op_handler() = default;
     ~vmcall_event_op_handler() = default;
     vmcall_event_op_handler(vmcall_event_op_handler &&) = default;
     vmcall_event_op_handler &operator=(vmcall_event_op_handler &&) = default;

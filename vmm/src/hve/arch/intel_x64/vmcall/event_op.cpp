@@ -30,9 +30,10 @@
 #include <pci/dev.h>
 #include <pci/msi.h>
 
-
 namespace microv::intel_x64
 {
+
+static uint64_t xenstore_ready = 0;
 
 vmcall_event_op_handler::vmcall_event_op_handler(gsl::not_null<vcpu *> vcpu) :
     m_vcpu{vcpu}
@@ -55,12 +56,11 @@ bool vmcall_event_op_handler::dispatch(vcpu *vcpu)
         this->send_bdf(vcpu->rcx());
         return true;
     case __enum_event_op__set_xenstore_ready:
-        expects(vcpu->is_root_vcpu());
-        vcpu->set_xenstore_ready();
+        printv("xenstore ready\n");
+        xenstore_ready = 1;
         return true;
     case __enum_event_op__is_xenstore_ready:
-        expects(vcpu->is_root_vcpu());
-        vcpu->set_rax(vcpu->is_xenstore_ready());
+        vcpu->set_rax(xenstore_ready);
         return true;
     default:
         break;

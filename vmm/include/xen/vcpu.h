@@ -40,6 +40,10 @@
 
 namespace microv {
 
+namespace intel_x64 {
+    class vmcall_event_op_handler;
+}
+
 class xen_vcpu {
 public:
     xen_vcpu(microv_vcpu *vcpu);
@@ -62,6 +66,7 @@ public:
     xen_domain *m_xen_dom{};
     xen_vcpuid_t m_id{};
     int m_origin{};
+    std::unique_ptr<intel_x64::vmcall_event_op_handler> m_event_op_hdlr{};
 
 private:
     friend class xen_memory;
