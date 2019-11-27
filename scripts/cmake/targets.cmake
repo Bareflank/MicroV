@@ -90,9 +90,17 @@ function(add_driver_targets DRV)
     add_dependencies(driver_quick ${DRV}_quick)
 endfunction(add_driver_targets)
 
-add_custom_target_category("MicroV Drivers")
-add_driver_targets(builder)
-#add_driver_targets(visr)
+if(BUILD_BUILDER OR BUILD_VISR)
+    add_custom_target_category("MicroV Drivers")
+endif()
+
+if(BUILD_BUILDER)
+    add_driver_targets(builder)
+endif()
+
+if(BUILD_VISR)
+    add_driver_targets(visr)
+endif()
 
 # ------------------------------------------------------------------------------
 # Guest VMs
