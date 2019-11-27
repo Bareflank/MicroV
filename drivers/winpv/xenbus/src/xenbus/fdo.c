@@ -2561,8 +2561,6 @@ StoreD3ToD0(
     if (!NT_SUCCESS(status))
         goto fail1;
 
-    (VOID) FdoSetDistribution(Fdo);
-
     Fdo->Channel = XENBUS_EVTCHN(Open,
                                  &Fdo->EvtchnInterface,
                                  XENBUS_EVTCHN_TYPE_VIRQ,
@@ -2614,6 +2612,8 @@ StoreD3ToD0(
 
     __FdoSetDevicePnpState(Fdo, Started);
     ThreadWake(Fdo->ScanThread);
+
+    (VOID) FdoSetDistribution(Fdo);
 
     return;
 
