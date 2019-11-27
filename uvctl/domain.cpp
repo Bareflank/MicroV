@@ -81,8 +81,12 @@ void uvc_domain::recv_hvc()
     }
 }
 
-
+#ifdef WIN64
+#define HVC_CTRL_STOP_PROCESS 0x01 /* ^A - stop in-guest process */
+#else
 #define HVC_CTRL_STOP_PROCESS 0x13 /* ^S - stop in-guest process */
+#endif
+
 #define HVC_CTRL_EXIT_CONSOLE 0x1D /* ^] - exit domU console */
 
 void uvc_domain::send_hvc()
