@@ -19,5 +19,7 @@ ln -s ../../../lib/systemd/system/xenstored.service \
       etc/systemd/system/multi-user.target.wants/xenstored.service
 ln -s ../../../lib/systemd/system/xen-init-dom0.service \
       etc/systemd/system/multi-user.target.wants/xen-init-dom0.service
+ln -s ../../../lib/systemd/system/demo.service \
+      etc/systemd/system/multi-user.target.wants/demo.service
 
 popd

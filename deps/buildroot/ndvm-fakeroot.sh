@@ -13,4 +13,7 @@ rm -rf usr/lib/systemd/system/sysinit.target.wants/systemd-update-utmp-runlevel.
 rm -rf etc/systemd/system/network.service
 rm -rf etc/systemd/system/multi-user.target.wants/network.service
 
+ln -s ../../../lib/systemd/system/demo.service \
+      etc/systemd/system/multi-user.target.wants/demo.service
+
 popd
