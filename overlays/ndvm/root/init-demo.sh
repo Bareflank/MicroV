@@ -1,14 +1,18 @@
 #!/bin/sh
 
-#/root/init-wifi.sh <iface> <ssid> <pass>
+phy="wlp0s20f3"
+vif="vif2.0"
+cidr="169.254.0.0/16"
+ssid="yourmom"
+pass="yourmom"
 
-present=$(ip a | grep vif2.0)
+/root/init-wifi.sh $phy $ssid $pass
 
+present=$(ip a | grep $vif)
 while [[ $? -ne 0 ]];
 do
     sleep 1
-    present=$(ip a | grep vif2.0)
+    present=$(ip a | grep $vif)
 done
 
-#/root/init-nat.sh <iface> vif2.0
-/root/init-nat.sh enp2s0 vif2.0 169.254.0.0/16
+/root/init-nat.sh $phy $vif $cidr

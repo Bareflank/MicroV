@@ -1,8 +1,8 @@
 #!/bin/sh
 
-phy=eth0
-vpn=wg0
-vif=vif32751.0
+phy="eth0"
+vpn="wg0"
+vif="vif32751.0"
 
 #
 # Wait for the physical link to come up
@@ -27,10 +27,23 @@ echo 'nameserver 8.8.8.8' > /etc/resolv.conf
 
 #
 # Start the wireguard tunnel on interface wg0.
-# This routes all traffic through the VPN server in Paris.
+# This routes all traffic through the VPN server
+# in Paris on a 192.168.4.0/24 subnet.
 #
 
-/root/wgclient.sh default-route
+vpn_up=$(/root/wgclient.sh default-route)
+while [[ $? -ne 0 ]];
+do
+    sleep 1
+    vpn_up=$(/root/wgclient.sh default-route)
+done
+
+present=$(ip a | grep $vpn)
+while [[ $? -ne 0 ]];
+do
+    sleep 1
+    present=$(ip a | grep $vpn)
+done
 
 #
 # Wait for the vif backend to come up
