@@ -485,26 +485,12 @@ bool xen_domain_createdomain(xen_vcpu *vcpu, struct xen_domctl *ctl)
         return true;
     }
 
-    auto tsc_shift = vcpu->m_xen_dom->m_tsc_shift;
-    auto tsc_mult = vcpu->m_xen_dom->m_tsc_mul;
-    auto uv_info = vcpu->m_xen_dom->m_uv_info;
-
-    auto wc_nsec = uv_info->wc_nsec;
-    auto wc_sec =  uv_info->wc_sec;
-    auto tsc = uv_info->tsc;
-
-    auto now = ::x64::read_tsc::get();
-    auto nsec = tsc_to_ns(now - tsc, tsc_shift, tsc_mult);
-    auto sec = wc_nsec / 1000000000ULL;
-
-    wc_nsec += nsec;
-    wc_sec += sec;
-
     struct microv::domain_info info{};
+
     info.flags = DOMF_EXEC_XENPVH;
-    info.wc_sec = wc_sec;
-    info.wc_nsec = wc_nsec;
-    info.tsc = now;
+    info.wc_sec = vcpu->m_xen_dom->m_uv_info->wc_sec;
+    info.wc_nsec = vcpu->m_xen_dom->m_uv_info->wc_nsec;
+    info.tsc = vcpu->m_xen_dom->m_uv_info->tsc;
     info.ram = DEFAULT_RAM_SIZE;
     info.origin = domain_info::origin_domctl;
     info.xen_domid = make_xen_domid();
