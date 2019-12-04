@@ -1732,22 +1732,22 @@ bool xen_domain::get_sharing_shared_pages(xen_vcpu *v)
 
 size_t xen_domain::hvc_rx_put(const gsl::span<char> &span)
 {
-    return m_hvc_rx_ring->put(span);
+    return (m_hvc_rx_ring) ? m_hvc_rx_ring->put(span) : 0;
 }
 
 size_t xen_domain::hvc_rx_get(const gsl::span<char> &span)
 {
-    return m_hvc_rx_ring->get(span);
+    return (m_hvc_rx_ring) ? m_hvc_rx_ring->get(span) : 0;
 }
 
 size_t xen_domain::hvc_tx_put(const gsl::span<char> &span)
 {
-    return m_hvc_tx_ring->put(span);
+    return (m_hvc_tx_ring) ? m_hvc_tx_ring->put(span) : 0;
 }
 
 size_t xen_domain::hvc_tx_get(const gsl::span<char> &span)
 {
-    return m_hvc_tx_ring->get(span);
+    return (m_hvc_tx_ring) ? m_hvc_tx_ring->get(span) : 0;
 }
 
 }

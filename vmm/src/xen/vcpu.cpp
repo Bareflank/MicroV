@@ -213,20 +213,18 @@ bool xen_vcpu::handle_console_io()
 {
     expects(m_uv_dom->is_xsvm());
 
-    uint64_t len = m_uv_vcpu->rsi();
+    auto len = m_uv_vcpu->rsi();
+    if (!len) {
+        m_uv_vcpu->set_rax(0);
+        return true;
+    }
+
     auto buf = m_uv_vcpu->map_gva_4k<char>(m_uv_vcpu->rdx(), len);
 
     switch (m_uv_vcpu->rdi()) {
     case CONSOLEIO_read: {
         auto n = m_xen_dom->hvc_rx_get(gsl::span(buf.get(), len));
         m_uv_vcpu->set_rax(n);
-//        if (n) {
-//            printf("console read: ");
-//            for (auto i = 0; i < n; i++) {
-//                printf("%c", buf.get()[i]);
-//            }
-//            printf("\n");
-//        }
         return true;
     }
     case CONSOLEIO_write: {
