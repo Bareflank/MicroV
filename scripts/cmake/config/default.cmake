@@ -81,3 +81,17 @@ add_config(
     DEFAULT_VAL OFF
     DESCRIPTION "Make targets to graph guest filesystem info"
 )
+
+add_config(
+    CONFIG_NAME BUILD_BUILDER
+    CONFIG_TYPE BOOL
+    DEFAULT_VAL OFF
+    DESCRIPTION "Build driver for running guest VMs"
+)
+
+add_config(
+    CONFIG_NAME BUILD_VISR
+    CONFIG_TYPE BOOL
+    DEFAULT_VAL OFF
+    DESCRIPTION "Build driver for PCI passthrough"
+)

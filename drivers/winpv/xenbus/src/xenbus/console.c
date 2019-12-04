@@ -42,6 +42,7 @@
 #include "dbg_print.h"
 #include "assert.h"
 #include "util.h"
+#include "thread.h"
 
 #define CONSOLE_WAKEUP_MAGIC 'EKAW'
 
@@ -54,7 +55,7 @@ struct _XENBUS_CONSOLE_WAKEUP {
 
 struct _XENBUS_CONSOLE_CONTEXT {
     PXENBUS_FDO                 Fdo;
-    KSPIN_LOCK                  Lock;
+    FAST_MUTEX                  FastMutex;
     LONG                        References;
     struct xencons_interface    *Shared;
     HIGH_LOCK                   RingLock;
@@ -70,6 +71,7 @@ struct _XENBUS_CONSOLE_CONTEXT {
     XENBUS_DEBUG_INTERFACE      DebugInterface;
     PXENBUS_SUSPEND_CALLBACK    SuspendCallbackLate;
     PXENBUS_DEBUG_CALLBACK      DebugCallback;
+    PXENBUS_THREAD              PollThread;
     BOOLEAN                     Enabled;
 };
 
@@ -243,24 +245,51 @@ ConsoleCopyFromIn(
     return Offset;
 }
 
-static VOID
-ConsolePoll(
-    IN  PXENBUS_CONSOLE_CONTEXT Context
+static NTSTATUS
+PollConsole(
+    IN  PXENBUS_THREAD                  Self,
+    IN  PVOID                           _Context
     )
 {
-    PLIST_ENTRY                 ListEntry;
+    PXENBUS_CONSOLE_CONTEXT               Context = _Context;
 
-    for (ListEntry = Context->WakeupList.Flink;
-         ListEntry != &Context->WakeupList;
-         ListEntry = ListEntry->Flink) {
-        PXENBUS_CONSOLE_WAKEUP  Wakeup;
+    for (;;) {
+        PKEVENT Event = ThreadGetEvent(Self);
+        PLIST_ENTRY                 ListEntry;
 
-        Wakeup = CONTAINING_RECORD(ListEntry,
-                                   XENBUS_CONSOLE_WAKEUP,
-                                   ListEntry);
+        (VOID) KeWaitForSingleObject(Event,
+                                     Executive,
+                                     KernelMode,
+                                     FALSE,
+                                     NULL);
+        KeClearEvent(Event);
 
-        KeSetEvent(Wakeup->Event, IO_NO_INCREMENT, FALSE);
+        if (ThreadIsAlerted(Self))
+            break;
+
+        ExAcquireFastMutex(&Context->FastMutex);
+
+        if (Context->References == 0) {
+            ExReleaseFastMutex(&Context->FastMutex);
+            continue;
+        }
+
+        for (ListEntry = Context->WakeupList.Flink;
+             ListEntry != &Context->WakeupList;
+             ListEntry = ListEntry->Flink) {
+            PXENBUS_CONSOLE_WAKEUP  Wakeup;
+
+            Wakeup = CONTAINING_RECORD(ListEntry,
+                                       XENBUS_CONSOLE_WAKEUP,
+                                       ListEntry);
+
+            KeSetEvent(Wakeup->Event, IO_NO_INCREMENT, FALSE);
+        }
+
+        ExReleaseFastMutex(&Context->FastMutex);
     }
+
+    return STATUS_SUCCESS;
 }
 
 static
@@ -284,11 +313,7 @@ ConsoleDpc(
     UNREFERENCED_PARAMETER(Argument2);
 
     ASSERT(Context != NULL);
-
-    KeAcquireSpinLockAtDpcLevel(&Context->Lock);
-    if (Context->References != 0)
-        ConsolePoll(Context);
-    KeReleaseSpinLockFromDpcLevel(&Context->Lock);
+    ThreadWake(Context->PollThread);
 }
 
 static
@@ -403,6 +428,7 @@ fail1:
     return status;
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static VOID
 ConsoleSuspendCallbackLate(
     IN  PVOID                   Argument
@@ -410,21 +436,22 @@ ConsoleSuspendCallbackLate(
 {
     PXENBUS_CONSOLE_CONTEXT     Context = Argument;
     struct xencons_interface    *Shared;
-    KIRQL                       Irql;
     PHYSICAL_ADDRESS            Address;
     NTSTATUS                    status;
+
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
 
     status = ConsoleGetAddress(Context, &Address);
     ASSERT3U(Address.QuadPart, ==, Context->Address.QuadPart);
 
     Shared = Context->Shared;
 
-    KeAcquireSpinLock(&Context->Lock, &Irql);
+    ExAcquireFastMutex(&Context->FastMutex);
 
     ConsoleDisable(Context);
     ConsoleEnable(Context);
 
-    KeReleaseSpinLock(&Context->Lock, Irql);
+    ExReleaseFastMutex(&Context->FastMutex);
 }
 
 static VOID
@@ -607,6 +634,7 @@ RtlCaptureStackBackTrace(
     __out_opt   PULONG  BackTraceHash
     );
 
+_IRQL_requires_max_(APC_LEVEL)
 static NTSTATUS
 ConsoleWakeupAdd(
     IN  PINTERFACE          	Interface,
@@ -615,8 +643,9 @@ ConsoleWakeupAdd(
     )
 {
     PXENBUS_CONSOLE_CONTEXT     Context = Interface->Context;
-    KIRQL                       Irql;
     NTSTATUS                    status;
+
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
 
     *Wakeup = __ConsoleAllocate(sizeof (XENBUS_CONSOLE_WAKEUP));
 
@@ -629,9 +658,9 @@ ConsoleWakeupAdd(
 
     (*Wakeup)->Event = Event;
 
-    KeAcquireSpinLock(&Context->Lock, &Irql);
+    ExAcquireFastMutex(&Context->FastMutex);
     InsertTailList(&Context->WakeupList, &(*Wakeup)->ListEntry);
-    KeReleaseSpinLock(&Context->Lock, Irql);
+    ExReleaseFastMutex(&Context->FastMutex);
 
     return STATUS_SUCCESS;
 
@@ -641,6 +670,7 @@ fail1:
     return status;
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static VOID
 ConsoleWakeupRemove(
     IN  PINTERFACE          	Interface,
@@ -648,11 +678,12 @@ ConsoleWakeupRemove(
     )
 {
     PXENBUS_CONSOLE_CONTEXT     Context = Interface->Context;
-    KIRQL                       Irql;
 
-    KeAcquireSpinLock(&Context->Lock, &Irql);
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
+
+    ExAcquireFastMutex(&Context->FastMutex);
     RemoveEntryList(&Wakeup->ListEntry);
-    KeReleaseSpinLock(&Context->Lock, Irql);
+    ExReleaseFastMutex(&Context->FastMutex);
 
     RtlZeroMemory(&Wakeup->ListEntry, sizeof (LIST_ENTRY));
 
@@ -665,17 +696,18 @@ ConsoleWakeupRemove(
     __ConsoleFree(Wakeup);
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static NTSTATUS
 ConsoleAcquire(
     IN  PINTERFACE          Interface
     )
 {
     PXENBUS_CONSOLE_CONTEXT Context = Interface->Context;
-    KIRQL                   Irql;
     PHYSICAL_ADDRESS        Address;
     NTSTATUS                status;
 
-    KeAcquireSpinLock(&Context->Lock, &Irql);
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
+    ExAcquireFastMutex(&Context->FastMutex);
 
     if (Context->References++ != 0)
         goto done;
@@ -733,7 +765,7 @@ ConsoleAcquire(
     Trace("<====\n");
 
 done:
-    KeReleaseSpinLock(&Context->Lock, Irql);
+    ExReleaseFastMutex(&Context->FastMutex);
 
     return STATUS_SUCCESS;
 
@@ -785,20 +817,21 @@ fail1:
 
     --Context->References;
     ASSERT3U(Context->References, ==, 0);
-    KeReleaseSpinLock(&Context->Lock, Irql);
+    ExReleaseFastMutex(&Context->FastMutex);
 
     return status;
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static VOID
 ConsoleRelease(
     IN  PINTERFACE          Interface
     )
 {
     PXENBUS_CONSOLE_CONTEXT Context = Interface->Context;
-    KIRQL                   Irql;
 
-    KeAcquireSpinLock(&Context->Lock, &Irql);
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
+    ExAcquireFastMutex(&Context->FastMutex);
 
     if (--Context->References > 0)
         goto done;
@@ -836,7 +869,7 @@ ConsoleRelease(
     Trace("<====\n");
 
 done:
-    KeReleaseSpinLock(&Context->Lock, Irql);
+    ExReleaseFastMutex(&Context->FastMutex);
 }
 
 static struct _XENBUS_CONSOLE_INTERFACE_V1 ConsoleInterfaceVersion1 = {
@@ -851,6 +884,7 @@ static struct _XENBUS_CONSOLE_INTERFACE_V1 ConsoleInterfaceVersion1 = {
     ConsoleWakeupRemove
 };
 
+_IRQL_requires_(PASSIVE_LEVEL)
 NTSTATUS
 ConsoleInitialize(
     IN  PXENBUS_FDO             Fdo,
@@ -858,6 +892,8 @@ ConsoleInitialize(
     )
 {
     NTSTATUS                    status;
+
+    ASSERT3U(KeGetCurrentIrql(), ==, PASSIVE_LEVEL);
 
     Trace("====>\n");
 
@@ -895,10 +931,13 @@ ConsoleInitialize(
     ASSERT(NT_SUCCESS(status));
     ASSERT((*Context)->DebugInterface.Interface.Context != NULL);
 
-    KeInitializeSpinLock(&(*Context)->Lock);
+    ExInitializeFastMutex(&(*Context)->FastMutex);
     InitializeHighLock(&(*Context)->RingLock);
 
     InitializeListHead(&(*Context)->WakeupList);
+
+    status = ThreadCreate(PollConsole, *Context, &(*Context)->PollThread);
+    ASSERT(NT_SUCCESS(status));
 
     KeInitializeDpc(&(*Context)->Dpc, ConsoleDpc, *Context);
 
@@ -960,6 +999,7 @@ ConsoleGetReferences(
     return Context->References;
 }
 
+_IRQL_requires_(PASSIVE_LEVEL)
 VOID
 ConsoleTeardown(
     IN  PXENBUS_CONSOLE_CONTEXT   Context
@@ -968,7 +1008,12 @@ ConsoleTeardown(
     Trace("====>\n");
 
     ASSERT3U(KeGetCurrentIrql(), ==, PASSIVE_LEVEL);
+
     KeFlushQueuedDpcs();
+
+    ThreadAlert(Context->PollThread);
+    ThreadJoin(Context->PollThread);
+    Context->PollThread = NULL;
 
     Context->Dpcs = 0;
     Context->Events = 0;
@@ -980,7 +1025,7 @@ ConsoleTeardown(
     RtlZeroMemory(&Context->WakeupList, sizeof (LIST_ENTRY));
 
     RtlZeroMemory(&Context->RingLock, sizeof (HIGH_LOCK));
-    RtlZeroMemory(&Context->Lock, sizeof (KSPIN_LOCK));
+    RtlZeroMemory(&Context->FastMutex, sizeof (FAST_MUTEX));
 
     RtlZeroMemory(&Context->DebugInterface,
                   sizeof (XENBUS_DEBUG_INTERFACE));

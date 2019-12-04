@@ -28,6 +28,7 @@
 #include <pci/dev.h>
 #include <xen/domain.h>
 #include <xen/platform_pci.h>
+#include <printv.h>
 
 using namespace bfvmm::intel_x64;
 using namespace microv;
@@ -74,6 +75,8 @@ domain::domain(id_t domainid, struct domain_info *info) :
     m_sod_info.copy(info);
     m_eptp = init_eptp(m_ept_map.pml4_phys());
 
+    printv("NEW DOMAIN 0x%lx EPTP = 0x%lx\n", domainid, m_eptp);
+
     if (domainid == 0) {
         this->setup_dom0();
     }
@@ -116,7 +119,11 @@ void domain::setup_dom0()
         m_xen_domid = create_xen_domain(this, nullptr);
         m_xen_dom = get_xen_domain(m_xen_domid);
 
-        enable_xen_platform_pci();
+        if (g_disable_xen_pfd) {
+            disable_xen_platform_pci();
+        } else {
+            enable_xen_platform_pci();
+        }
     }
 }
 

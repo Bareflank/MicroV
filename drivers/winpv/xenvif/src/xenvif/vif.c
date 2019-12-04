@@ -1,31 +1,31 @@
 /* Copyright (c) Citrix Systems Inc.
  * All rights reserved.
- * 
- * Redistribution and use in source and binary forms, 
- * with or without modification, are permitted provided 
+ *
+ * Redistribution and use in source and binary forms,
+ * with or without modification, are permitted provided
  * that the following conditions are met:
- * 
- * *   Redistributions of source code must retain the above 
- *     copyright notice, this list of conditions and the 
+ *
+ * *   Redistributions of source code must retain the above
+ *     copyright notice, this list of conditions and the
  *     following disclaimer.
- * *   Redistributions in binary form must reproduce the above 
- *     copyright notice, this list of conditions and the 
- *     following disclaimer in the documentation and/or other 
+ * *   Redistributions in binary form must reproduce the above
+ *     copyright notice, this list of conditions and the
+ *     following disclaimer in the documentation and/or other
  *     materials provided with the distribution.
- * 
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND 
- * CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, 
- * INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF 
- * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE 
- * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR 
- * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, 
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, 
- * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR 
- * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS 
- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, 
- * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING 
- * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE 
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF 
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND
+ * CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES,
+ * INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR
+ * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+ * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+ * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
 
@@ -38,7 +38,6 @@
 #include "pdo.h"
 #include "parse.h"
 #include "vif.h"
-#include "mrsw.h"
 #include "thread.h"
 #include "dbg_print.h"
 #include "assert.h"
@@ -46,7 +45,7 @@
 
 struct _XENVIF_VIF_CONTEXT {
     PXENVIF_PDO                 Pdo;
-    XENVIF_MRSW_LOCK            Lock;
+    ERESOURCE                   Resource;
     LONG                        References;
     PXENVIF_FRONTEND            Frontend;
     BOOLEAN                     Enabled;
@@ -58,6 +57,8 @@ struct _XENVIF_VIF_CONTEXT {
     XENBUS_SUSPEND_INTERFACE    SuspendInterface;
     PXENBUS_SUSPEND_CALLBACK    SuspendCallbackLate;
 };
+
+C_ASSERT((FIELD_OFFSET(XENVIF_VIF_CONTEXT, Resource) & 0x7) == 0);
 
 #define XENVIF_VIF_TAG  'FIV'
 
@@ -75,6 +76,45 @@ __VifFree(
     )
 {
     __FreePoolWithTag(Buffer, XENVIF_VIF_TAG);
+}
+
+static FORCEINLINE VOID
+__AcquireLockShared(
+    IN PXENVIF_VIF_CONTEXT Context
+)
+{
+    BOOLEAN Wait = TRUE;
+
+    KeEnterCriticalRegion();
+    ExAcquireResourceSharedLite(&Context->Resource, Wait);
+}
+
+static FORCEINLINE VOID
+__AcquireLockExclusive(
+    IN PXENVIF_VIF_CONTEXT Context
+)
+{
+    BOOLEAN Wait = TRUE;
+
+    KeEnterCriticalRegion();
+    ExAcquireResourceExclusiveLite(&Context->Resource, Wait);
+}
+
+static FORCEINLINE VOID
+__ReleaseLock(
+    IN PXENVIF_VIF_CONTEXT Context
+)
+{
+    ExReleaseResourceLite(&Context->Resource);
+    KeLeaveCriticalRegion();
+}
+
+static FORCEINLINE VOID
+__ConvertLockExclusiveToShared(
+    IN PXENVIF_VIF_CONTEXT Context
+)
+{
+    ExConvertExclusiveToSharedLite(&Context->Resource);
 }
 
 static NTSTATUS
@@ -104,7 +144,7 @@ VifMac(
 
         if (ThreadIsAlerted(Self))
             break;
-        
+
         if (Context->Enabled)
             Context->Callback(Context->Argument,
                               XENVIF_MAC_STATE_CHANGE);
@@ -145,21 +185,17 @@ VifEnable(
     )
 {
     PXENVIF_VIF_CONTEXT     Context = Interface->Context;
-    KIRQL                   Irql;
-    BOOLEAN                 Exclusive;
     NTSTATUS                status;
 
     Trace("====>\n");
 
-    AcquireMrswLockExclusive(&Context->Lock, &Irql);
-    Exclusive = TRUE;
+    __AcquireLockExclusive(Context);
 
     if (Context->Enabled)
         goto done;
 
     Context->Callback = Callback;
     Context->Argument = Argument;
-
     Context->Enabled = TRUE;
 
     KeMemoryBarrier();
@@ -182,8 +218,7 @@ VifEnable(
         goto fail3;
 
 done:
-    ASSERT(Exclusive);
-    ReleaseMrswLockExclusive(&Context->Lock, Irql, FALSE);
+    __ReleaseLock(Context);
 
     Trace("<====\n");
 
@@ -194,8 +229,7 @@ fail3:
 
     (VOID) FrontendSetState(Context->Frontend, FRONTEND_CONNECTED);
 
-    ReleaseMrswLockExclusive(&Context->Lock, Irql, TRUE);
-    Exclusive = FALSE;
+    __ConvertLockExclusiveToShared(Context);
 
     ReceiverWaitForPackets(FrontendGetReceiver(Context->Frontend));
     TransmitterAbortPackets(FrontendGetTransmitter(Context->Frontend));
@@ -228,10 +262,7 @@ fail1:
     Context->Argument = NULL;
     Context->Callback = NULL;
 
-    if (Exclusive)
-        ReleaseMrswLockExclusive(&Context->Lock, Irql, FALSE);
-    else
-        ReleaseMrswLockShared(&Context->Lock);
+    __ReleaseLock(Context);
 
     return status;
 }
@@ -242,14 +273,13 @@ VifDisable(
     )
 {
     PXENVIF_VIF_CONTEXT Context = Interface->Context;
-    KIRQL               Irql;
 
     Trace("====>\n");
 
-    AcquireMrswLockExclusive(&Context->Lock, &Irql);
+    __AcquireLockExclusive(Context);
 
     if (!Context->Enabled) {
-        ReleaseMrswLockExclusive(&Context->Lock, Irql, FALSE);
+        __ReleaseLock(Context);
         goto done;
     }
 
@@ -264,7 +294,7 @@ VifDisable(
 
     (VOID) FrontendSetState(Context->Frontend, FRONTEND_CONNECTED);
 
-    ReleaseMrswLockExclusive(&Context->Lock, Irql, TRUE);
+    __ConvertLockExclusiveToShared(Context);
 
     ReceiverWaitForPackets(FrontendGetReceiver(Context->Frontend));
     TransmitterAbortPackets(FrontendGetTransmitter(Context->Frontend));
@@ -287,7 +317,7 @@ VifDisable(
     Context->Argument = NULL;
     Context->Callback = NULL;
 
-    ReleaseMrswLockShared(&Context->Lock);
+    __ReleaseLock(Context);
 
 done:
     Trace("<====\n");
@@ -306,12 +336,11 @@ VifQueryStatistic(
     status = STATUS_INVALID_PARAMETER;
     if (Index >= XENVIF_VIF_STATISTIC_COUNT)
         goto done;
-        
-    AcquireMrswLockShared(&Context->Lock);
 
+    __AcquireLockShared(Context);
     FrontendQueryStatistic(Context->Frontend, Index, Value);
+    __ReleaseLock(Context);
 
-    ReleaseMrswLockShared(&Context->Lock);
     status = STATUS_SUCCESS;
 
 done:
@@ -326,11 +355,9 @@ VifQueryRingCount(
 {
     PXENVIF_VIF_CONTEXT Context = Interface->Context;
 
-    AcquireMrswLockShared(&Context->Lock);
-
+    __AcquireLockShared(Context);
     *Count = FrontendGetNumQueues(Context->Frontend);
-
-    ReleaseMrswLockShared(&Context->Lock);
+    __ReleaseLock(Context);
 }
 
 static NTSTATUS
@@ -343,13 +370,12 @@ VifUpdateHashMapping(
     PXENVIF_VIF_CONTEXT     Context = Interface->Context;
     NTSTATUS                status;
 
-    AcquireMrswLockShared(&Context->Lock);
+    __AcquireLockShared(Context);
 
     status = ReceiverUpdateHashMapping(FrontendGetReceiver(Context->Frontend),
                                        Mapping,
                                        Order);
-
-    ReleaseMrswLockShared(&Context->Lock);
+    __ReleaseLock(Context);
 
     return status;
 }
@@ -362,12 +388,9 @@ VifReceiverReturnPacket(
 {
     PXENVIF_VIF_CONTEXT Context = Interface->Context;
 
-    AcquireMrswLockShared(&Context->Lock);
-
-    ReceiverReturnPacket(FrontendGetReceiver(Context->Frontend),
-                         Cookie);
-
-    ReleaseMrswLockShared(&Context->Lock);
+    __AcquireLockShared(Context);
+    ReceiverReturnPacket(FrontendGetReceiver(Context->Frontend), Cookie);
+    __ReleaseLock(Context);
 }
 
 static NTSTATUS
@@ -386,7 +409,7 @@ VifTransmitterQueuePacketVersion6(
     PXENVIF_VIF_CONTEXT             Context = Interface->Context;
     NTSTATUS                        status;
 
-    AcquireMrswLockShared(&Context->Lock);
+    __AcquireLockShared(Context);
 
     status = STATUS_UNSUCCESSFUL;
     if (!Context->Enabled)
@@ -404,11 +427,12 @@ VifTransmitterQueuePacketVersion6(
                                     Cookie);
 
 done:
-    ReleaseMrswLockShared(&Context->Lock);
+    __ReleaseLock(Context);
 
     return status;
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static NTSTATUS
 VifTransmitterQueuePacket(
     IN  PINTERFACE                  Interface,
@@ -426,7 +450,9 @@ VifTransmitterQueuePacket(
     PXENVIF_VIF_CONTEXT             Context = Interface->Context;
     NTSTATUS                        status;
 
-    AcquireMrswLockShared(&Context->Lock);
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
+
+    __AcquireLockShared(Context);
 
     status = STATUS_UNSUCCESSFUL;
     if (!Context->Enabled)
@@ -444,11 +470,12 @@ VifTransmitterQueuePacket(
                                     Cookie);
 
 done:
-    ReleaseMrswLockShared(&Context->Lock);
+    __ReleaseLock(Context);
 
     return status;
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static VOID
 VifTransmitterQueryOffloadOptions(
     IN  PINTERFACE                  Interface,
@@ -457,14 +484,16 @@ VifTransmitterQueryOffloadOptions(
 {
     PXENVIF_VIF_CONTEXT             Context = Interface->Context;
 
-    AcquireMrswLockShared(&Context->Lock);
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
+
+    __AcquireLockShared(Context);
 
     TransmitterQueryOffloadOptions(FrontendGetTransmitter(Context->Frontend),
                                    Options);
-
-    ReleaseMrswLockShared(&Context->Lock);
+    __ReleaseLock(Context);
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static VOID
 VifTransmitterQueryLargePacketSize(
     IN  PINTERFACE      Interface,
@@ -474,15 +503,17 @@ VifTransmitterQueryLargePacketSize(
 {
     PXENVIF_VIF_CONTEXT Context = Interface->Context;
 
-    AcquireMrswLockShared(&Context->Lock);
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
+
+    __AcquireLockShared(Context);
 
     TransmitterQueryLargePacketSize(FrontendGetTransmitter(Context->Frontend),
                                     Version,
                                     Size);
-
-    ReleaseMrswLockShared(&Context->Lock);
+    __ReleaseLock(Context);
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static VOID
 VifReceiverSetOffloadOptions(
     IN  PINTERFACE                  Interface,
@@ -491,14 +522,16 @@ VifReceiverSetOffloadOptions(
 {
     PXENVIF_VIF_CONTEXT             Context = Interface->Context;
 
-    AcquireMrswLockShared(&Context->Lock);
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
+
+    __AcquireLockShared(Context);
 
     ReceiverSetOffloadOptions(FrontendGetReceiver(Context->Frontend),
                               Options);
-
-    ReleaseMrswLockShared(&Context->Lock);
+    __ReleaseLock(Context);
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static VOID
 VifReceiverSetBackfillSize(
     IN  PINTERFACE      Interface,
@@ -507,14 +540,16 @@ VifReceiverSetBackfillSize(
 {
     PXENVIF_VIF_CONTEXT Context = Interface->Context;
 
-    AcquireMrswLockShared(&Context->Lock);
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
+
+    __AcquireLockShared(Context);
 
     ReceiverSetBackfillSize(FrontendGetReceiver(Context->Frontend),
                             Size);
-
-    ReleaseMrswLockShared(&Context->Lock);
+    __ReleaseLock(Context);
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static NTSTATUS
 VifReceiverSetHashAlgorithm(
     IN  PINTERFACE                      Interface,
@@ -524,16 +559,18 @@ VifReceiverSetHashAlgorithm(
     PXENVIF_VIF_CONTEXT                 Context = Interface->Context;
     NTSTATUS                            status;
 
-    AcquireMrswLockShared(&Context->Lock);
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
+
+    __AcquireLockShared(Context);
 
     status = ReceiverSetHashAlgorithm(FrontendGetReceiver(Context->Frontend),
                                       Algorithm);
-
-    ReleaseMrswLockShared(&Context->Lock);
+    __ReleaseLock(Context);
 
     return status;
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static NTSTATUS
 VifReceiverQueryHashCapabilities(
     IN  PINTERFACE      Interface,
@@ -545,22 +582,23 @@ VifReceiverQueryHashCapabilities(
     PULONG              Types;
     NTSTATUS            status;
 
-    AcquireMrswLockShared(&Context->Lock);
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
+
+    __AcquireLockShared(Context);
 
     va_start(Arguments, Interface);
-
     Types = va_arg(Arguments, PULONG);
 
     status = ReceiverQueryHashCapabilities(FrontendGetReceiver(Context->Frontend),
                                            Types);
-
     va_end(Arguments);
 
-    ReleaseMrswLockShared(&Context->Lock);
+    __ReleaseLock(Context);
 
     return status;
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static NTSTATUS
 VifReceiverUpdateHashParameters(
     IN  PINTERFACE      Interface,
@@ -573,24 +611,25 @@ VifReceiverUpdateHashParameters(
     PUCHAR              Key;
     NTSTATUS            status;
 
-    AcquireMrswLockShared(&Context->Lock);
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
+
+    __AcquireLockShared(Context);
 
     va_start(Arguments, Interface);
-
     Types = va_arg(Arguments, ULONG);
     Key = va_arg(Arguments, PUCHAR);
 
     status = ReceiverUpdateHashParameters(FrontendGetReceiver(Context->Frontend),
                                           Types,
                                           Key);
-
     va_end(Arguments);
 
-    ReleaseMrswLockShared(&Context->Lock);
+    __ReleaseLock(Context);
 
     return status;
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static VOID
 VifMacQueryState(
     IN  PINTERFACE                  Interface,
@@ -601,16 +640,19 @@ VifMacQueryState(
 {
     PXENVIF_VIF_CONTEXT             Context = Interface->Context;
 
-    AcquireMrswLockShared(&Context->Lock);
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
+
+    __AcquireLockShared(Context);
 
     MacQueryState(FrontendGetMac(Context->Frontend),
                   MediaConnectState,
                   LinkSpeed,
                   MediaDuplexState);
 
-    ReleaseMrswLockShared(&Context->Lock);
+    __ReleaseLock(Context);
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static VOID
 VifMacQueryMaximumFrameSize(
     IN  PINTERFACE      Interface,
@@ -619,13 +661,14 @@ VifMacQueryMaximumFrameSize(
 {
     PXENVIF_VIF_CONTEXT Context = Interface->Context;
 
-    AcquireMrswLockShared(&Context->Lock);
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
 
+    __AcquireLockShared(Context);
     MacQueryMaximumFrameSize(FrontendGetMac(Context->Frontend), Size);
-
-    ReleaseMrswLockShared(&Context->Lock);
+    __ReleaseLock(Context);
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static VOID
 VifMacQueryPermanentAddress(
     IN  PINTERFACE          Interface,
@@ -634,13 +677,14 @@ VifMacQueryPermanentAddress(
 {
     PXENVIF_VIF_CONTEXT     Context = Interface->Context;
 
-    AcquireMrswLockShared(&Context->Lock);
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
 
+    __AcquireLockShared(Context);
     MacQueryPermanentAddress(FrontendGetMac(Context->Frontend), Address);
-
-    ReleaseMrswLockShared(&Context->Lock);
+    __ReleaseLock(Context);
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static VOID
 VifMacQueryCurrentAddress(
     IN  PINTERFACE          Interface,
@@ -649,13 +693,14 @@ VifMacQueryCurrentAddress(
 {
     PXENVIF_VIF_CONTEXT     Context = Interface->Context;
 
-    AcquireMrswLockShared(&Context->Lock);
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
 
+    __AcquireLockShared(Context);
     MacQueryCurrentAddress(FrontendGetMac(Context->Frontend), Address);
-
-    ReleaseMrswLockShared(&Context->Lock);
+    __ReleaseLock(Context);
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static NTSTATUS
 VifMacQueryMulticastAddresses(
     IN      PINTERFACE          Interface,
@@ -666,17 +711,19 @@ VifMacQueryMulticastAddresses(
     PXENVIF_VIF_CONTEXT         Context = Interface->Context;
     NTSTATUS                    status;
 
-    AcquireMrswLockShared(&Context->Lock);
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
+
+    __AcquireLockShared(Context);
 
     status = MacQueryMulticastAddresses(FrontendGetMac(Context->Frontend),
                                         Address,
                                         Count);
-
-    ReleaseMrswLockShared(&Context->Lock);
+    __ReleaseLock(Context);
 
     return status;
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static NTSTATUS
 VifMacSetMulticastAddresses(
     IN  PINTERFACE          Interface,
@@ -688,24 +735,26 @@ VifMacSetMulticastAddresses(
     ULONG                   Index;
     NTSTATUS                status;
 
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
+
     status = STATUS_INVALID_PARAMETER;
     for (Index = 0; Index < Count; Index++) {
         if (!(Address[Index].Byte[0] & 0x01))
             goto done;
     }
 
-    AcquireMrswLockShared(&Context->Lock);
+    __AcquireLockShared(Context);
 
     status = FrontendSetMulticastAddresses(Context->Frontend,
                                            Address,
                                            Count);
-
-    ReleaseMrswLockShared(&Context->Lock);
+    __ReleaseLock(Context);
 
 done:
     return status;
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static NTSTATUS
 VifMacQueryFilterLevel(
     IN  PINTERFACE                  Interface,
@@ -716,17 +765,19 @@ VifMacQueryFilterLevel(
     PXENVIF_VIF_CONTEXT             Context = Interface->Context;
     NTSTATUS                status;
 
-    AcquireMrswLockShared(&Context->Lock);
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
+
+    __AcquireLockShared(Context);
 
     status = MacQueryFilterLevel(FrontendGetMac(Context->Frontend),
                                  Type,
                                  Level);
-
-    ReleaseMrswLockShared(&Context->Lock);
+    __ReleaseLock(Context);
 
     return status;
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static NTSTATUS
 VifMacSetFilterLevel(
     IN  PINTERFACE                  Interface,
@@ -737,15 +788,16 @@ VifMacSetFilterLevel(
     PXENVIF_VIF_CONTEXT             Context = Interface->Context;
     NTSTATUS                        status;
 
-    AcquireMrswLockShared(&Context->Lock);
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
 
+    __AcquireLockShared(Context);
     status = FrontendSetFilterLevel(Context->Frontend, Type, Level);
-
-    ReleaseMrswLockShared(&Context->Lock);
+    __ReleaseLock(Context);
 
     return status;
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static VOID
 VifReceiverQueryRingSize(
     IN  PINTERFACE          Interface,
@@ -754,13 +806,14 @@ VifReceiverQueryRingSize(
 {
     PXENVIF_VIF_CONTEXT     Context = Interface->Context;
 
-    AcquireMrswLockShared(&Context->Lock);
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
 
+    __AcquireLockShared(Context);
     ReceiverQueryRingSize(FrontendGetReceiver(Context->Frontend), Size);
-
-    ReleaseMrswLockShared(&Context->Lock);
+    __ReleaseLock(Context);
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static VOID
 VifTransmitterQueryRingSize(
     IN  PINTERFACE          Interface,
@@ -769,22 +822,24 @@ VifTransmitterQueryRingSize(
 {
     PXENVIF_VIF_CONTEXT     Context = Interface->Context;
 
-    AcquireMrswLockShared(&Context->Lock);
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
 
+    __AcquireLockShared(Context);
     TransmitterQueryRingSize(FrontendGetTransmitter(Context->Frontend), Size);
-
-    ReleaseMrswLockShared(&Context->Lock);
+    __ReleaseLock(Context);
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static NTSTATUS
 VifAcquire(
     PINTERFACE              Interface
     )
 {
     PXENVIF_VIF_CONTEXT     Context = Interface->Context;
-    KIRQL                   Irql;
 
-    AcquireMrswLockExclusive(&Context->Lock, &Irql);
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
+
+    __AcquireLockExclusive(Context);
 
     if (Context->References++ != 0)
         goto done;
@@ -797,20 +852,22 @@ VifAcquire(
     Trace("<====\n");
 
 done:
-    ReleaseMrswLockExclusive(&Context->Lock, Irql, FALSE);
+    __ReleaseLock(Context);
 
     return STATUS_SUCCESS;
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 VOID
 VifRelease(
     IN  PINTERFACE          Interface
     )
 {
     PXENVIF_VIF_CONTEXT     Context = Interface->Context;
-    KIRQL                   Irql;
 
-    AcquireMrswLockExclusive(&Context->Lock, &Irql);
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
+
+    __AcquireLockExclusive(Context);
 
     if (--Context->References > 0)
         goto done;
@@ -825,7 +882,7 @@ VifRelease(
     Trace("<====\n");
 
 done:
-    ReleaseMrswLockExclusive(&Context->Lock, Irql, FALSE);
+    __ReleaseLock(Context);
 }
 
 static struct _XENVIF_VIF_INTERFACE_V6 VifInterfaceVersion6 = {
@@ -934,7 +991,7 @@ VifInitialize(
     if (*Context == NULL)
         goto fail1;
 
-    InitializeMrswLock(&(*Context)->Lock);
+    ExInitializeResourceLite(&(*Context)->Resource);
 
     FdoGetSuspendInterface(PdoGetFdo(Pdo),&(*Context)->SuspendInterface);
 
@@ -960,7 +1017,8 @@ fail2:
     RtlZeroMemory(&(*Context)->SuspendInterface,
                   sizeof (XENBUS_SUSPEND_INTERFACE));
 
-    RtlZeroMemory(&(*Context)->Lock, sizeof (XENVIF_MRSW_LOCK));
+    ExDeleteResourceLite(&(*Context)->Resource);
+    RtlZeroMemory(&(*Context)->Resource, sizeof (ERESOURCE));
 
     ASSERT(IsZeroMemory(*Context, sizeof (XENVIF_VIF_CONTEXT)));
     __VifFree(*Context);
@@ -1039,7 +1097,7 @@ VifGetInterface(
     }
 
     return status;
-}   
+}
 
 VOID
 VifTeardown(
@@ -1060,7 +1118,8 @@ VifTeardown(
     RtlZeroMemory(&Context->SuspendInterface,
                   sizeof (XENBUS_SUSPEND_INTERFACE));
 
-    RtlZeroMemory(&Context->Lock, sizeof (XENVIF_MRSW_LOCK));
+    ExDeleteResourceLite(&Context->Resource);
+    RtlZeroMemory(&Context->Resource, sizeof (ERESOURCE));
 
     ASSERT(IsZeroMemory(Context, sizeof (XENVIF_VIF_CONTEXT)));
     __VifFree(Context);
@@ -1164,6 +1223,7 @@ __VifReceiverQueuePacket(
 
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 VOID
 VifReceiverQueuePacket(
     IN  PXENVIF_VIF_CONTEXT             Context,
@@ -1180,10 +1240,6 @@ VifReceiverQueuePacket(
     IN  PVOID                           Cookie
     )
 {
-    KIRQL                               Irql;
-
-    KeRaiseIrql(DISPATCH_LEVEL, &Irql);
-
     switch (Context->Version) {
     case 6:
         __VifReceiverQueuePacketVersion6(Context,
@@ -1234,10 +1290,9 @@ VifReceiverQueuePacket(
         ASSERT(FALSE);
         break;
     }
-
-    KeLowerIrql(Irql);
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 VOID
 VifTransmitterReturnPacket(
     IN  PXENVIF_VIF_CONTEXT                         Context,

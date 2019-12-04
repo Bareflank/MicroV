@@ -61,6 +61,7 @@ parse_args(int argc, char *argv[])
     ("xenpfd-enable", "Enable the Xen Platform PCI device")
     ("xenpfd-disable", "Disable the Xen Platform PCI device")
     ("reset-xue", "Reset the xue debugger")
+    ("xenstore-ready", "Tell the VMM that xenstore is ready for the root domain to use")
     ("dump-iommu", "Dump IOMMU faults");
 
     auto args = options.parse(argc, argv);

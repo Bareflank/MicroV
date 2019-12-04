@@ -67,6 +67,7 @@
     <ClCompile Include="../../src/xennet/receiver.c" />
     <ClCompile Include="../../src/xennet/string.c" />
     <ClCompile Include="../../src/xennet/transmitter.c" />
+    <ClCompile Include="../../src/xennet/thread.c" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="..\..\src\xennet\xennet.rc" />

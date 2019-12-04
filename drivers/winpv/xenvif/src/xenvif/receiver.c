@@ -1,31 +1,31 @@
 /* Copyright (c) Citrix Systems Inc.
  * All rights reserved.
- * 
- * Redistribution and use in source and binary forms, 
- * with or without modification, are permitted provided 
+ *
+ * Redistribution and use in source and binary forms,
+ * with or without modification, are permitted provided
  * that the following conditions are met:
- * 
- * *   Redistributions of source code must retain the above 
- *     copyright notice, this list of conditions and the 
+ *
+ * *   Redistributions of source code must retain the above
+ *     copyright notice, this list of conditions and the
  *     following disclaimer.
- * *   Redistributions in binary form must reproduce the above 
- *     copyright notice, this list of conditions and the 
- *     following disclaimer in the documentation and/or other 
+ * *   Redistributions in binary form must reproduce the above
+ *     copyright notice, this list of conditions and the
+ *     following disclaimer in the documentation and/or other
  *     materials provided with the distribution.
- * 
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND 
- * CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, 
- * INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF 
- * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE 
- * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR 
- * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, 
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, 
- * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR 
- * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS 
- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, 
- * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING 
- * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE 
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF 
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND
+ * CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES,
+ * INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR
+ * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+ * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+ * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
 
@@ -80,7 +80,7 @@ typedef struct _XENVIF_RECEIVER_RING {
     PXENVIF_RECEIVER            Receiver;
     ULONG                       Index;
     PCHAR                       Path;
-    KSPIN_LOCK                  Lock;
+    FAST_MUTEX                  FastMutex;
     PXENBUS_CACHE               PacketCache;
     PXENBUS_CACHE               FragmentCache;
     PXENBUS_GNTTAB_CACHE        GnttabCache;
@@ -103,11 +103,16 @@ typedef struct _XENVIF_RECEIVER_RING {
     ULONG                       BackfillSize;
     PXENBUS_DEBUG_CALLBACK      DebugCallback;
     PXENVIF_THREAD              WatchdogThread;
+    PXENVIF_THREAD              PollThread;
+    PXENVIF_THREAD              SwizzleThread;
+    PXENVIF_THREAD              NdisRecvThread;
     PLIST_ENTRY                 PacketQueue;
     KDPC                        QueueDpc;
     ULONG                       QueueDpcs;
     LIST_ENTRY                  PacketComplete;
     XENVIF_RECEIVER_HASH        Hash;
+    KSPIN_LOCK                  NdisLock;
+    LIST_ENTRY                  PacketFromNdis;
 } XENVIF_RECEIVER_RING, *PXENVIF_RECEIVER_RING;
 
 typedef struct _XENVIF_RECEIVER_PACKET {
@@ -216,7 +221,7 @@ ReceiverPacketCtor(
 
 fail1:
     Error("fail1 (%08x)\n", status);
-    
+
     ASSERT(IsZeroMemory(Packet, sizeof (XENVIF_RECEIVER_PACKET)));
 
     return status;
@@ -245,6 +250,7 @@ ReceiverPacketDtor(
     ASSERT(IsZeroMemory(Packet, sizeof (XENVIF_RECEIVER_PACKET)));
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static FORCEINLINE PXENVIF_RECEIVER_PACKET
 __ReceiverRingGetPacket(
     IN  PXENVIF_RECEIVER_RING   Ring,
@@ -254,6 +260,8 @@ __ReceiverRingGetPacket(
     PXENVIF_RECEIVER            Receiver;
     PXENVIF_FRONTEND            Frontend;
     PXENVIF_RECEIVER_PACKET     Packet;
+
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
 
     Receiver = Ring->Receiver;
     Frontend = Receiver->Frontend;
@@ -269,6 +277,7 @@ __ReceiverRingGetPacket(
     return Packet;
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static FORCEINLINE VOID
 __ReceiverRingPutPacket(
     IN  PXENVIF_RECEIVER_RING   Ring,
@@ -282,6 +291,7 @@ __ReceiverRingPutPacket(
     Receiver = Ring->Receiver;
     Frontend = Receiver->Frontend;
 
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
     ASSERT3P(Packet->Ring, ==, Ring);
     ASSERT(IsZeroMemory(&Packet->ListEntry, sizeof (LIST_ENTRY)));
 
@@ -305,6 +315,7 @@ __ReceiverRingPutPacket(
                  Locked);
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static FORCEINLINE PMDL
 __ReceiverRingGetMdl(
     IN  PXENVIF_RECEIVER_RING   Ring,
@@ -313,6 +324,8 @@ __ReceiverRingGetMdl(
 {
     PXENVIF_RECEIVER_PACKET     Packet;
 
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
+
     Packet = __ReceiverRingGetPacket(Ring, Locked);
     if (Packet == NULL)
         return NULL;
@@ -320,6 +333,7 @@ __ReceiverRingGetMdl(
     return &Packet->Mdl;
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static FORCEINLINE VOID
 __ReceiverRingPutMdl(
     IN  PXENVIF_RECEIVER_RING   Ring,
@@ -328,6 +342,8 @@ __ReceiverRingPutMdl(
     )
 {
     PXENVIF_RECEIVER_PACKET     Packet;
+
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
 
     Packet = CONTAINING_RECORD(Mdl, XENVIF_RECEIVER_PACKET, Mdl);
     __ReceiverRingPutPacket(Ring, Packet, Locked);
@@ -361,6 +377,7 @@ ReceiverFragmentDtor(
     ASSERT(IsZeroMemory(Fragment, sizeof (XENVIF_RECEIVER_FRAGMENT)));
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static FORCEINLINE PXENVIF_RECEIVER_FRAGMENT
 __ReceiverRingGetFragment(
     IN  PXENVIF_RECEIVER_RING   Ring
@@ -368,6 +385,8 @@ __ReceiverRingGetFragment(
 {
     PXENVIF_RECEIVER            Receiver;
     PXENVIF_FRONTEND            Frontend;
+
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
 
     Receiver = Ring->Receiver;
     Frontend = Receiver->Frontend;
@@ -378,6 +397,7 @@ __ReceiverRingGetFragment(
                         TRUE);
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static FORCEINLINE
 __ReceiverRingPutFragment(
     IN  PXENVIF_RECEIVER_RING       Ring,
@@ -386,6 +406,8 @@ __ReceiverRingPutFragment(
 {
     PXENVIF_RECEIVER                Receiver;
     PXENVIF_FRONTEND                Frontend;
+
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
 
     Receiver = Ring->Receiver;
     Frontend = Receiver->Frontend;
@@ -575,7 +597,7 @@ ReceiverRingProcessChecksum(
         } else {
             Packet->Flags.TcpChecksumNotValidated = 1;
         }
-        
+
         if ((Ring->OffloadOptions.NeedChecksumValue ||
              Receiver->CalculateChecksums != 0) &&
             (flags & NETRXF_data_validated)) {
@@ -641,6 +663,7 @@ ReceiverRingProcessChecksum(
     }
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static BOOLEAN
 ReceiverRingPullup(
     IN      PVOID                   Argument,
@@ -653,6 +676,7 @@ ReceiverRingPullup(
 
     Mdl = Payload->Mdl;
     ASSERT3U(Payload->Offset, ==, 0);
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
 
     if (Payload->Length < Length)
         goto fail1;
@@ -699,6 +723,7 @@ fail1:
     return FALSE;
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static FORCEINLINE VOID
 __ReceiverRingPullupPacket(
     IN  PXENVIF_RECEIVER_RING   Ring,
@@ -709,6 +734,7 @@ __ReceiverRingPullupPacket(
     XENVIF_PACKET_PAYLOAD       Payload;
     ULONG                       Length;
 
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
     ASSERT(Packet->Mdl.MdlFlags & MDL_MAPPED_TO_SYSTEM_VA);
     BaseVa = Packet->Mdl.MappedSystemVa;
     ASSERT(BaseVa != NULL);
@@ -730,6 +756,7 @@ __ReceiverRingPullupPacket(
     }
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static FORCEINLINE PXENVIF_RECEIVER_PACKET
 __ReceiverRingBuildSegment(
     IN  PXENVIF_RECEIVER_RING   Ring,
@@ -753,6 +780,7 @@ __ReceiverRingBuildSegment(
 
     Info = &Packet->Info;
 
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
     ASSERT(Packet->Mdl.MdlFlags & MDL_MAPPED_TO_SYSTEM_VA);
     InfoVa = Packet->Mdl.MappedSystemVa;
     ASSERT(InfoVa != NULL);
@@ -821,9 +849,9 @@ __ReceiverRingBuildSegment(
         ULONG   PacketLength;
 
         PacketLength = Info->IpHeader.Length +
-                       Info->IpOptions.Length + 
-                       Info->TcpHeader.Length + 
-                       Info->TcpOptions.Length + 
+                       Info->IpOptions.Length +
+                       Info->TcpHeader.Length +
+                       Info->TcpOptions.Length +
                        SegmentSize;
 
         IpHeader->Version4.PacketLength = HTONS((USHORT)PacketLength);
@@ -833,9 +861,9 @@ __ReceiverRingBuildSegment(
 
         ASSERT3U(IpHeader->Version, ==, 6);
 
-        PayloadLength = Info->IpOptions.Length + 
-                        Info->TcpHeader.Length + 
-                        Info->TcpOptions.Length + 
+        PayloadLength = Info->IpOptions.Length +
+                        Info->TcpHeader.Length +
+                        Info->TcpOptions.Length +
                         SegmentSize;
 
         IpHeader->Version6.PayloadLength = HTONS((USHORT)PayloadLength);
@@ -851,7 +879,7 @@ __ReceiverRingBuildSegment(
         ULONG   Length;
 
         Mdl->Next = __ReceiverRingGetMdl(Ring, FALSE);
-            
+
         status = STATUS_NO_MEMORY;
         if (Mdl->Next == NULL)
             goto fail2;
@@ -909,7 +937,7 @@ fail2:
 
 fail1:
     Error("fail1 (%08x)\n", status);
-    
+
     return NULL;
 }
 
@@ -926,6 +954,7 @@ ReceiverRingCompletePacket(
     InsertTailList(&Ring->PacketComplete, &Packet->ListEntry);
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static VOID
 ReceiverRingProcessLargePacket(
     IN  PXENVIF_RECEIVER_RING   Ring,
@@ -943,13 +972,15 @@ ReceiverRingProcessLargePacket(
     ULONG                       Length;
     NTSTATUS                    status;
 
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
+
     Receiver = Ring->Receiver;
     Frontend = Receiver->Frontend;
 
     Info = &Packet->Info;
     ASSERT(Info->IpHeader.Offset != 0);
     ASSERT(Info->TcpHeader.Offset != 0);
-    
+
     flags = (uint16_t)Packet->Flags.Value;
     ASSERT(flags & NETRXF_csum_blank);
     ASSERT(flags & NETRXF_data_validated);
@@ -979,11 +1010,11 @@ ReceiverRingProcessLargePacket(
         USHORT  PacketLength;
 
         PacketLength = NTOHS(IpHeader->Version4.PacketLength);
-        
+
         Length = (ULONG)PacketLength -
                  Info->TcpOptions.Length -
                  Info->TcpHeader.Length -
-                 Info->IpOptions.Length - 
+                 Info->IpOptions.Length -
                  Info->IpHeader.Length;
     } else {
         USHORT  PayloadLength;
@@ -1032,13 +1063,13 @@ ReceiverRingProcessLargePacket(
             USHORT  PacketLength;
 
             PacketLength = NTOHS(IpHeader->Version4.PacketLength);
-        
+
             ASSERT3U(Length,
                      ==,
                      (ULONG)PacketLength -
                      Info->TcpOptions.Length -
                      Info->TcpHeader.Length -
-                     Info->IpOptions.Length - 
+                     Info->IpOptions.Length -
                      Info->IpHeader.Length);
 
             IpHeader->Version4.Checksum = ChecksumIpVersion4Header(InfoVa, Info);
@@ -1100,6 +1131,7 @@ fail1:
                                1);
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static VOID
 ReceiverRingProcessStandardPacket(
     IN  PXENVIF_RECEIVER_RING   Ring,
@@ -1113,6 +1145,8 @@ ReceiverRingProcessStandardPacket(
     XENVIF_PACKET_PAYLOAD       Payload;
     ULONG                       MaximumFrameSize;
     NTSTATUS                    status;
+
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
 
     Receiver = Ring->Receiver;
     Frontend = Receiver->Frontend;
@@ -1203,6 +1237,7 @@ fail1:
                                1);
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static VOID
 ReceiverRingProcessPacket(
     IN  PXENVIF_RECEIVER_RING       Ring,
@@ -1220,6 +1255,8 @@ ReceiverRingProcessPacket(
     PETHERNET_HEADER                EthernetHeader;
     PETHERNET_ADDRESS               DestinationAddress;
     NTSTATUS                        status;
+
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
 
     Receiver = Ring->Receiver;
     Frontend = Receiver->Frontend;
@@ -1327,6 +1364,7 @@ fail1:
                                1);
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static FORCEINLINE VOID
 __ReceiverRingSwizzle(
     IN  PXENVIF_RECEIVER_RING   Ring
@@ -1337,6 +1375,8 @@ __ReceiverRingSwizzle(
     PXENVIF_VIF_CONTEXT         Context;
     LIST_ENTRY                  List;
     PLIST_ENTRY                 ListEntry;
+
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
 
     Receiver = Ring->Receiver;
     Frontend = Receiver->Frontend;
@@ -1541,17 +1581,22 @@ __ReceiverRingSwizzle(
     }
 }
 
+_IRQL_requires_max_(APC_LEVEL)
+_IRQL_raises_(APC_LEVEL)
+_IRQL_saves_global_(OldIrql, Ring)
 static FORCEINLINE VOID
-__drv_requiresIRQL(DISPATCH_LEVEL)
 __ReceiverRingAcquireLock(
     IN  PXENVIF_RECEIVER_RING   Ring
     )
 {
-    ASSERT3U(KeGetCurrentIrql(), ==, DISPATCH_LEVEL);
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
 
-    KeAcquireSpinLockAtDpcLevel(&Ring->Lock);
+    ExAcquireFastMutex(&Ring->FastMutex);
 }
 
+_IRQL_requires_max_(APC_LEVEL)
+_IRQL_raises_(APC_LEVEL)
+_IRQL_saves_global_(OldIrql, Ring)
 static DECLSPEC_NOINLINE VOID
 ReceiverRingAcquireLock(
     IN  PXENVIF_RECEIVER_RING   Ring
@@ -1560,18 +1605,20 @@ ReceiverRingAcquireLock(
     __ReceiverRingAcquireLock(Ring);
 }
 
+_IRQL_requires_(APC_LEVEL)
+_IRQL_restores_global_(OldIrql, Ring)
 static FORCEINLINE VOID
-__drv_requiresIRQL(DISPATCH_LEVEL)
 __ReceiverRingReleaseLock(
     IN  PXENVIF_RECEIVER_RING   Ring
     )
 {
-    ASSERT3U(KeGetCurrentIrql(), ==, DISPATCH_LEVEL);
+    ASSERT3U(KeGetCurrentIrql(), ==, APC_LEVEL);
 
-#pragma prefast(disable:26110)
-    KeReleaseSpinLockFromDpcLevel(&Ring->Lock);
+    ExReleaseFastMutex(&Ring->FastMutex);
 }
 
+_IRQL_requires_(APC_LEVEL)
+_IRQL_restores_global_(OldIrql, Ring)
 static DECLSPEC_NOINLINE VOID
 ReceiverRingReleaseLock(
     IN  PXENVIF_RECEIVER_RING   Ring
@@ -1600,7 +1647,7 @@ ReceiverRingQueueDpc(
 
     ASSERT(Ring != NULL);
 
-    __ReceiverRingSwizzle(Ring);
+    ThreadWake(Ring->SwizzleThread);
 }
 
 static FORCEINLINE VOID
@@ -1627,6 +1674,7 @@ __ReceiverRingIsStopped(
     return Ring->Stopped;
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static FORCEINLINE VOID
 __ReceiverRingTrigger(
     IN  PXENVIF_RECEIVER_RING   Ring,
@@ -1636,6 +1684,7 @@ __ReceiverRingTrigger(
     PXENVIF_RECEIVER            Receiver;
 
     Receiver = Ring->Receiver;
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
 
     if (!Locked)
         __ReceiverRingAcquireLock(Ring);
@@ -1649,6 +1698,7 @@ __ReceiverRingTrigger(
         __ReceiverRingReleaseLock(Ring);
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static FORCEINLINE VOID
 __ReceiverRingSend(
     IN  PXENVIF_RECEIVER_RING   Ring,
@@ -1656,6 +1706,7 @@ __ReceiverRingSend(
     )
 {
     PXENVIF_RECEIVER            Receiver;
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
 
     Receiver = Ring->Receiver;
 
@@ -1671,6 +1722,7 @@ __ReceiverRingSend(
         __ReceiverRingReleaseLock(Ring);
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static FORCEINLINE VOID
 __ReceiverRingReturnPacket(
     IN  PXENVIF_RECEIVER_RING   Ring,
@@ -1680,6 +1732,7 @@ __ReceiverRingReturnPacket(
 {
     PMDL                        Mdl;
 
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
     Mdl = &Packet->Mdl;
 
     while (Mdl != NULL) {
@@ -1694,10 +1747,6 @@ __ReceiverRingReturnPacket(
     }
 
     if (__ReceiverRingIsStopped(Ring)) {
-        KIRQL   Irql;
-
-        KeRaiseIrql(DISPATCH_LEVEL, &Irql);
-
         if (!Locked)
             __ReceiverRingAcquireLock(Ring);
 
@@ -1708,17 +1757,18 @@ __ReceiverRingReturnPacket(
 
         if (!Locked)
             __ReceiverRingReleaseLock(Ring);
-
-        KeLowerIrql(Irql);
     }
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static FORCEINLINE PXENVIF_RECEIVER_FRAGMENT
 __ReceiverRingPreparePacket(
     IN  PXENVIF_RECEIVER_RING   Ring,
     IN  PXENVIF_RECEIVER_PACKET Packet
     )
 {
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
+
     PXENVIF_RECEIVER            Receiver;
     PXENVIF_FRONTEND            Frontend;
     PXENVIF_RECEIVER_FRAGMENT   Fragment;
@@ -1761,16 +1811,18 @@ fail1:
     Error("fail1 (%08x)\n", status);
 
     __ReceiverRingPutFragment(Ring, Fragment);
-    
+
     return NULL;
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static FORCEINLINE VOID
 __ReceiverRingPushRequests(
     IN  PXENVIF_RECEIVER_RING   Ring
     )
 {
     BOOLEAN                     Notify;
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
 
     if (Ring->RequestsPosted == Ring->RequestsPushed)
         return;
@@ -1789,11 +1841,14 @@ __ReceiverRingPushRequests(
     Ring->RequestsPushed = Ring->RequestsPosted;
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static VOID
 ReceiverRingFill(
     IN  PXENVIF_RECEIVER_RING   Ring
     )
 {
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
+
     PXENVIF_RECEIVER            Receiver;
     PXENVIF_FRONTEND            Frontend;
     RING_IDX                    req_prod;
@@ -1823,7 +1878,7 @@ ReceiverRingFill(
         }
 
         Fragment = __ReceiverRingPreparePacket(Ring, Packet);
-        
+
         if (Fragment == NULL) {
             __ReceiverRingPutPacket(Ring, Packet, TRUE);
             break;
@@ -1852,11 +1907,14 @@ ReceiverRingFill(
     __ReceiverRingPushRequests(Ring);
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static FORCEINLINE VOID
 __ReceiverRingEmpty(
     IN  PXENVIF_RECEIVER_RING   Ring
     )
 {
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
+
     PXENVIF_RECEIVER            Receiver;
     PXENVIF_FRONTEND            Frontend;
     uint16_t                    id;
@@ -1975,6 +2033,7 @@ __ReceiverRingQueuePacket(
     } while (InterlockedCompareExchangePointer(&Ring->PacketQueue, (PVOID)New, (PVOID)Old) != Old);
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static DECLSPEC_NOINLINE ULONG
 ReceiverRingPoll(
     IN  PXENVIF_RECEIVER_RING   Ring
@@ -2259,25 +2318,173 @@ ReceiverRingPollDpc(
     )
 {
     PXENVIF_RECEIVER_RING   Ring = Context;
-    ULONG                   Count;
 
     UNREFERENCED_PARAMETER(Dpc);
     UNREFERENCED_PARAMETER(Argument1);
     UNREFERENCED_PARAMETER(Argument2);
 
     ASSERT(Ring != NULL);
+    ThreadWake(Ring->PollThread);
+}
 
-    Count = 0;
+static NTSTATUS
+SwizzleRing(
+    IN  PXENVIF_THREAD      Self,
+    IN  PVOID               Context
+    )
+{
+    PXENVIF_RECEIVER_RING   Ring = Context;
+    PROCESSOR_NUMBER        ProcNumber;
+    GROUP_AFFINITY          Affinity;
+    NTSTATUS                status;
+
+    status = KeGetProcessorNumberFromIndex(Ring->Index, &ProcNumber);
+    ASSERT(NT_SUCCESS(status));
+
+    Affinity.Group = ProcNumber.Group;
+    Affinity.Mask = (KAFFINITY)1 << ProcNumber.Number;
+    KeSetSystemGroupAffinityThread(&Affinity, NULL);
 
     for (;;) {
-        __ReceiverRingAcquireLock(Ring);
-        Count += ReceiverRingPoll(Ring);
-        __ReceiverRingReleaseLock(Ring);
+        PKEVENT Event;
 
-        if (__ReceiverRingUnmask(Ring,
-                                 (Count > XENVIF_RECEIVER_RING_SIZE)))
+        Event = ThreadGetEvent(Self);
+
+        (VOID) KeWaitForSingleObject(Event,
+                                     Executive,
+                                     KernelMode,
+                                     FALSE,
+                                     NULL);
+        KeClearEvent(Event);
+
+        if (ThreadIsAlerted(Self))
             break;
+
+        __ReceiverRingSwizzle(Ring);
     }
+
+    return STATUS_SUCCESS;
+}
+
+static NTSTATUS
+PollRing(
+    IN  PXENVIF_THREAD      Self,
+    IN  PVOID               Context
+    )
+{
+    PXENVIF_RECEIVER_RING   Ring = Context;
+    PROCESSOR_NUMBER        ProcNumber;
+    GROUP_AFFINITY          Affinity;
+    NTSTATUS                status;
+
+    status = KeGetProcessorNumberFromIndex(Ring->Index, &ProcNumber);
+    ASSERT(NT_SUCCESS(status));
+
+    Affinity.Group = ProcNumber.Group;
+    Affinity.Mask = (KAFFINITY)1 << ProcNumber.Number;
+    KeSetSystemGroupAffinityThread(&Affinity, NULL);
+
+    for (;;) {
+        PKEVENT Event;
+        ULONG   Count = 0;
+
+        Event = ThreadGetEvent(Self);
+
+        (VOID) KeWaitForSingleObject(Event,
+                                     Executive,
+                                     KernelMode,
+                                     FALSE,
+                                     NULL);
+        KeClearEvent(Event);
+
+        if (ThreadIsAlerted(Self))
+            break;
+
+        for (;;) {
+            __ReceiverRingAcquireLock(Ring);
+            Count += ReceiverRingPoll(Ring);
+            __ReceiverRingReleaseLock(Ring);
+
+            if (__ReceiverRingUnmask(Ring,
+                                     (Count > XENVIF_RECEIVER_RING_SIZE)))
+                break;
+        }
+    }
+
+    return STATUS_SUCCESS;
+}
+
+static NTSTATUS
+RecvFromNdis(
+    IN  PXENVIF_THREAD      Self,
+    IN  PVOID               Context
+    )
+{
+    PXENVIF_RECEIVER_RING   Ring = Context;
+    PXENVIF_RECEIVER        Receiver = Ring->Receiver;
+    PROCESSOR_NUMBER        ProcNumber;
+    GROUP_AFFINITY          Affinity;
+    NTSTATUS                status;
+
+    status = KeGetProcessorNumberFromIndex(Ring->Index, &ProcNumber);
+    ASSERT(NT_SUCCESS(status));
+
+    Affinity.Group = ProcNumber.Group;
+    Affinity.Mask = (KAFFINITY)1 << ProcNumber.Number;
+    KeSetSystemGroupAffinityThread(&Affinity, NULL);
+
+    for (;;) {
+        PKEVENT                  Event;
+        KIRQL                    Irql;
+        PXENVIF_RECEIVER_PACKET  Packet;
+        PLIST_ENTRY              ListEntry;
+        LONG                     Loaned;
+        LONG                     Returned;
+
+        Event = ThreadGetEvent(Self);
+
+        (VOID) KeWaitForSingleObject(Event,
+                                     Executive,
+                                     KernelMode,
+                                     FALSE,
+                                     NULL);
+        KeClearEvent(Event);
+
+        if (ThreadIsAlerted(Self))
+            break;
+
+        for (;;) {
+            // Here we move packets off the Ndis List and onto the internal one
+            KeAcquireSpinLock(&Ring->NdisLock, &Irql);
+
+            if (IsListEmpty(&Ring->PacketFromNdis)) {
+                KeReleaseSpinLock(&Ring->NdisLock, Irql);
+                break;
+            }
+
+            ListEntry = RemoveHeadList(&Ring->PacketFromNdis);
+            KeReleaseSpinLock(&Ring->NdisLock, Irql);
+
+            Packet = CONTAINING_RECORD(ListEntry, XENVIF_RECEIVER_PACKET, ListEntry);
+            RtlZeroMemory(ListEntry, sizeof (LIST_ENTRY));
+
+            __ReceiverRingReturnPacket(Ring, Packet, FALSE);
+
+            KeMemoryBarrier();
+
+            Returned = InterlockedIncrement(&Receiver->Returned);
+
+            // Make sure Loaned is not sampled before Returned
+            KeMemoryBarrier();
+
+            Loaned = Receiver->Loaned;
+
+            ASSERT3S(Loaned - Returned, >=, 0);
+            KeSetEvent(&Receiver->Event, 0, FALSE);
+        }
+    }
+
+    return STATUS_SUCCESS;
 }
 
 KSERVICE_ROUTINE    ReceiverRingEvtchnCallback;
@@ -2354,11 +2561,8 @@ ReceiverRingWatchdog(
     rsp_prod = 0;
     rsp_cons = 0;
 
-    for (;;) { 
-        PKEVENT Event;
-        KIRQL   Irql;
-
-        Event = ThreadGetEvent(Self);
+    for (;;) {
+        PKEVENT Event = ThreadGetEvent(Self);
 
         (VOID) KeWaitForSingleObject(Event,
                                      Executive,
@@ -2370,7 +2574,6 @@ ReceiverRingWatchdog(
         if (ThreadIsAlerted(Self))
             break;
 
-        KeRaiseIrql(DISPATCH_LEVEL, &Irql);
         __ReceiverRingAcquireLock(Ring);
 
         if (Ring->Enabled) {
@@ -2398,7 +2601,6 @@ ReceiverRingWatchdog(
         }
 
         __ReceiverRingReleaseLock(Ring);
-        KeLowerIrql(Irql);
     }
 
     Trace("<====\n");
@@ -2425,7 +2627,8 @@ __ReceiverRingInitialize(
     if (Ring == NULL)
         goto fail1;
 
-    KeInitializeSpinLock(&(*Ring)->Lock);
+    ExInitializeFastMutex(&(*Ring)->FastMutex);
+    KeInitializeSpinLock(&(*Ring)->NdisLock);
 
     (*Ring)->Receiver = Receiver;
     (*Ring)->Index = Index;
@@ -2435,6 +2638,7 @@ __ReceiverRingInitialize(
         goto fail2;
 
     InitializeListHead(&(*Ring)->PacketComplete);
+    InitializeListHead(&(*Ring)->PacketFromNdis);
 
     KeInitializeDpc(&(*Ring)->PollDpc, ReceiverRingPollDpc, *Ring);
 
@@ -2496,9 +2700,42 @@ __ReceiverRingInitialize(
     if (!NT_SUCCESS(status))
         goto fail7;
 
+    status = ThreadCreate(PollRing, *Ring, &(*Ring)->PollThread);
+    if (!NT_SUCCESS(status))
+        goto fail8;
+
+    status = ThreadCreate(SwizzleRing, *Ring, &(*Ring)->SwizzleThread);
+    if (!NT_SUCCESS(status))
+        goto fail9;
+
+    status = ThreadCreate(RecvFromNdis, *Ring, &(*Ring)->NdisRecvThread);
+    if (!NT_SUCCESS(status))
+        goto fail10;
+
     KeInitializeThreadedDpc(&(*Ring)->QueueDpc, ReceiverRingQueueDpc, *Ring);
 
     return STATUS_SUCCESS;
+
+fail10:
+    Error("fail10\n");
+
+    ThreadAlert((*Ring)->SwizzleThread);
+    ThreadJoin((*Ring)->SwizzleThread);
+    (*Ring)->SwizzleThread = NULL;
+
+fail9:
+    Error("fail9\n");
+
+    ThreadAlert((*Ring)->PollThread);
+    ThreadJoin((*Ring)->PollThread);
+    (*Ring)->PollThread = NULL;
+
+fail8:
+    Error("fail8\n");
+
+    ThreadAlert((*Ring)->WatchdogThread);
+    ThreadJoin((*Ring)->WatchdogThread);
+    (*Ring)->WatchdogThread = NULL;
 
 fail7:
     Error("fail7\n");
@@ -2528,6 +2765,7 @@ fail3:
     RtlZeroMemory(&(*Ring)->PollDpc, sizeof (KDPC));
 
     RtlZeroMemory(&(*Ring)->PacketComplete, sizeof (LIST_ENTRY));
+    RtlZeroMemory(&(*Ring)->PacketFromNdis, sizeof (LIST_ENTRY));
 
     FrontendFreePath(Frontend, (*Ring)->Path);
     (*Ring)->Path = NULL;
@@ -2538,7 +2776,8 @@ fail2:
     (*Ring)->Index = 0;
     (*Ring)->Receiver = NULL;
 
-    RtlZeroMemory(&(*Ring)->Lock, sizeof (KSPIN_LOCK));
+    RtlZeroMemory(&(*Ring)->FastMutex, sizeof (FAST_MUTEX));
+    RtlZeroMemory(&(*Ring)->NdisLock, sizeof (KSPIN_LOCK));
 
     ASSERT(IsZeroMemory(*Ring, sizeof (XENVIF_RECEIVER_RING)));
     __ReceiverFree(*Ring);
@@ -2603,7 +2842,7 @@ __ReceiverRingConnect(
     ASSERT3P(Ring->Front.sring, ==, Ring->Shared);
 
     Pfn = MmGetMdlPfnArray(Ring->Mdl)[0];
-    
+
     status = XENBUS_GNTTAB(PermitForeignAccess,
                            &Receiver->GnttabInterface,
                            Ring->GnttabCache,
@@ -2614,6 +2853,8 @@ __ReceiverRingConnect(
                            &Ring->Entry);
     if (!NT_SUCCESS(status))
         goto fail4;
+
+    Info("Granted receiver PFN: 0x%llx\n", Pfn);
 
     status = RtlStringCbPrintfA(Name,
                                 sizeof (Name),
@@ -2723,6 +2964,7 @@ fail1:
     return status;
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static FORCEINLINE NTSTATUS
 __ReceiverRingStoreWrite(
     IN  PXENVIF_RECEIVER_RING       Ring,
@@ -2734,6 +2976,8 @@ __ReceiverRingStoreWrite(
     ULONG                           Port;
     PCHAR                           Path;
     NTSTATUS                        status;
+
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
 
     Receiver = Ring->Receiver;
     Frontend = Receiver->Frontend;
@@ -2779,6 +3023,7 @@ fail1:
     return status;
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static FORCEINLINE NTSTATUS
 __ReceiverRingEnable(
     IN  PXENVIF_RECEIVER_RING   Ring
@@ -2787,6 +3032,8 @@ __ReceiverRingEnable(
     PXENVIF_RECEIVER            Receiver;
     PXENVIF_FRONTEND            Frontend;
     NTSTATUS                    status;
+
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
 
     Receiver = Ring->Receiver;
     Frontend = Receiver->Frontend;
@@ -2825,13 +3072,16 @@ fail1:
     return status;
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static FORCEINLINE VOID
 __ReceiverRingDisable(
     IN  PXENVIF_RECEIVER_RING   Ring
     )
-{    
+{
     PXENVIF_RECEIVER            Receiver;
     PXENVIF_FRONTEND            Frontend;
+
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
 
     Receiver = Ring->Receiver;
     Frontend = Receiver->Frontend;
@@ -2939,6 +3189,18 @@ __ReceiverRingTeardown(
     ThreadJoin(Ring->WatchdogThread);
     Ring->WatchdogThread = NULL;
 
+    ThreadAlert(Ring->PollThread);
+    ThreadJoin(Ring->PollThread);
+    Ring->PollThread = NULL;
+
+    ThreadAlert(Ring->SwizzleThread);
+    ThreadJoin(Ring->SwizzleThread);
+    Ring->SwizzleThread = NULL;
+
+    ThreadAlert(Ring->NdisRecvThread);
+    ThreadJoin(Ring->NdisRecvThread);
+    Ring->NdisRecvThread = NULL;
+
     XENBUS_CACHE(Destroy,
                  &Receiver->CacheInterface,
                  Ring->FragmentCache);
@@ -2951,6 +3213,7 @@ __ReceiverRingTeardown(
 
     ASSERT(IsListEmpty(&Ring->PacketComplete));
     RtlZeroMemory(&Ring->PacketComplete, sizeof (LIST_ENTRY));
+    RtlZeroMemory(&Ring->PacketFromNdis, sizeof (LIST_ENTRY));
 
     FrontendFreePath(Frontend, Ring->Path);
     Ring->Path = NULL;
@@ -2958,44 +3221,39 @@ __ReceiverRingTeardown(
     Ring->Index = 0;
     Ring->Receiver = NULL;
 
-    RtlZeroMemory(&Ring->Lock, sizeof (KSPIN_LOCK));
+    RtlZeroMemory(&Ring->FastMutex, sizeof (FAST_MUTEX));
+    RtlZeroMemory(&Ring->NdisLock, sizeof (KSPIN_LOCK));
 
     ASSERT(IsZeroMemory(Ring, sizeof (XENVIF_RECEIVER_RING)));
     __ReceiverFree(Ring);
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static FORCEINLINE VOID
 __ReceiverRingSetOffloadOptions(
     IN  PXENVIF_RECEIVER_RING       Ring,
     IN  XENVIF_VIF_OFFLOAD_OPTIONS  Options
     )
 {
-    KIRQL                           Irql;
-
-    KeRaiseIrql(DISPATCH_LEVEL, &Irql);
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
 
     __ReceiverRingAcquireLock(Ring);
     Ring->OffloadOptions = Options;
     __ReceiverRingReleaseLock(Ring);
-
-    KeLowerIrql(Irql);
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static FORCEINLINE VOID
 __ReceiverRingSetBackfillSize(
     IN  PXENVIF_RECEIVER_RING   Ring,
     IN  ULONG                   Size
     )
 {
-    KIRQL                       Irql;
-
-    KeRaiseIrql(DISPATCH_LEVEL, &Irql);
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
 
     __ReceiverRingAcquireLock(Ring);
     Ring->BackfillSize = Size;
     __ReceiverRingReleaseLock(Ring);
-
-    KeLowerIrql(Irql);
 }
 
 static VOID
@@ -3226,7 +3484,7 @@ ReceiverConnect(
             goto fail5;
 
         Index++;
-    }    
+    }
 
     status = XENBUS_DEBUG(Register,
                           &Receiver->DebugInterface,
@@ -3277,6 +3535,7 @@ fail1:
     return status;
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static FORCEINLINE NTSTATUS
 __ReceiverSetGsoFeatureFlag(
     IN  PXENVIF_RECEIVER            Receiver,
@@ -3285,6 +3544,8 @@ __ReceiverSetGsoFeatureFlag(
 {
     PXENVIF_FRONTEND                Frontend;
     NTSTATUS                        status;
+
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
 
     Frontend = Receiver->Frontend;
 
@@ -3331,6 +3592,7 @@ fail1:
     return status;
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static FORCEINLINE NTSTATUS
 __ReceiverSetChecksumFeatureFlag(
     IN  PXENVIF_RECEIVER            Receiver,
@@ -3339,6 +3601,8 @@ __ReceiverSetChecksumFeatureFlag(
 {
     PXENVIF_FRONTEND                Frontend;
     NTSTATUS                        status;
+
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
 
     Frontend = Receiver->Frontend;
 
@@ -3373,6 +3637,7 @@ fail1:
     return status;
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 NTSTATUS
 ReceiverStoreWrite(
     IN  PXENVIF_RECEIVER            Receiver,
@@ -3382,6 +3647,8 @@ ReceiverStoreWrite(
     PXENVIF_FRONTEND                Frontend;
     LONG                            Index;
     NTSTATUS                        status;
+
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
 
     Frontend = Receiver->Frontend;
 
@@ -3432,7 +3699,7 @@ ReceiverStoreWrite(
             goto fail6;
 
         Index++;
-    }    
+    }
 
     return STATUS_SUCCESS;
 
@@ -3479,7 +3746,7 @@ ReceiverEnable(
             goto fail1;
 
         Index++;
-    }    
+    }
 
     Trace("<====\n");
     return STATUS_SUCCESS;
@@ -3644,7 +3911,7 @@ ReceiverSetOffloadOptions(
             break;
 
         __ReceiverRingSetOffloadOptions(Ring, Options);
-    }    
+    }
 }
 
 VOID
@@ -3684,33 +3951,27 @@ ReceiverQueryRingSize(
     *Size = XENVIF_RECEIVER_RING_SIZE;
 }
 
+// Called by NDIS at <= DISPATCH_LEVEL
+_IRQL_requires_max_(DISPATCH_LEVEL)
 VOID
 ReceiverReturnPacket(
     IN  PXENVIF_RECEIVER    Receiver,
     IN  PVOID               Cookie
     )
 {
+    UNREFERENCED_PARAMETER(Receiver);
+
+    ASSERT3U(KeGetCurrentIrql(), <=, DISPATCH_LEVEL);
+
+    KIRQL                   Irql;
     PXENVIF_RECEIVER_PACKET Packet = Cookie;
-    PXENVIF_RECEIVER_RING   Ring;
-    LONG                    Loaned;
-    LONG                    Returned;
+    PXENVIF_RECEIVER_RING   Ring = Packet->Ring;
 
-    Ring = Packet->Ring;
+    KeAcquireSpinLock(&Ring->NdisLock, &Irql);
+    InsertTailList(&Ring->PacketFromNdis, &Packet->ListEntry);
+    KeReleaseSpinLock(&Ring->NdisLock, Irql);
 
-    __ReceiverRingReturnPacket(Ring, Packet, FALSE);
-
-    KeMemoryBarrier();
-
-    Returned = InterlockedIncrement(&Receiver->Returned);
-
-    // Make sure Loaned is not sampled before Returned
-    KeMemoryBarrier();
-
-    Loaned = Receiver->Loaned;
-
-    ASSERT3S(Loaned - Returned, >=, 0);
-
-    KeSetEvent(&Receiver->Event, 0, FALSE);
+    ThreadWake(Ring->NdisRecvThread);
 }
 
 #define XENVIF_RECEIVER_PACKET_WAIT_PERIOD 10
@@ -3798,7 +4059,6 @@ ReceiverSetHashAlgorithm(
     )
 {
     PXENVIF_FRONTEND                    Frontend;
-    KIRQL                               Irql;
     LONG                                Index;
     NTSTATUS                            status;
 
@@ -3807,8 +4067,6 @@ ReceiverSetHashAlgorithm(
     status = FrontendSetHashAlgorithm(Frontend, Algorithm);
     if (!NT_SUCCESS(status))
         goto fail1;
-
-    KeRaiseIrql(DISPATCH_LEVEL, &Irql);
 
     for (Index = 0;
          Index < (LONG)FrontendGetMaxQueues(Frontend);
@@ -3823,8 +4081,6 @@ ReceiverSetHashAlgorithm(
         Ring->Hash.Algorithm = Algorithm;
         __ReceiverRingReleaseLock(Ring);
     }
-
-    KeLowerIrql(Irql);
 
     return STATUS_SUCCESS;
 
@@ -3865,13 +4121,10 @@ ReceiverUpdateHashParameters(
     )
 {
     PXENVIF_FRONTEND        Frontend;
-    KIRQL                   Irql;
     LONG                    Index;
     NTSTATUS                status;
 
     Frontend = Receiver->Frontend;
-
-    KeRaiseIrql(DISPATCH_LEVEL, &Irql);
 
     for (Index = 0;
          Index < (LONG)FrontendGetMaxQueues(Frontend);
@@ -3886,8 +4139,6 @@ ReceiverUpdateHashParameters(
         Ring->Hash.Types = Types;
         __ReceiverRingReleaseLock(Ring);
     }
-
-    KeLowerIrql(Irql);
 
     status = FrontendSetHashTypes(Frontend, Types);
     if (!NT_SUCCESS(status))

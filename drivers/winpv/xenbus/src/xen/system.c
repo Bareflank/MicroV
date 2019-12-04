@@ -40,7 +40,6 @@
 
 #include "registry.h"
 #include "system.h"
-#include "acpi.h"
 #include "names.h"
 #include "dbg_print.h"
 #include "assert.h"
@@ -52,12 +51,10 @@ typedef struct _SYSTEM_PROCESSOR {
     KDPC    Dpc;
     CHAR    Manufacturer[13];
     UCHAR   ApicID;
-    UCHAR   ProcessorID;
 } SYSTEM_PROCESSOR, *PSYSTEM_PROCESSOR;
 
 typedef struct _SYSTEM_CONTEXT {
     LONG                References;
-    PACPI_MADT          Madt;
     PSYSTEM_PROCESSOR   Processor;
     ULONG               ProcessorCount;
     PVOID               PowerStateHandle;
@@ -268,77 +265,6 @@ fail1:
 
     return status;
 }
-
-static NTSTATUS
-SystemGetAcpiInformation(
-    VOID
-    )
-{
-    PSYSTEM_CONTEXT Context = &SystemContext;
-    ULONG           Length;
-    NTSTATUS        status;
-
-    status = AcpiGetTable("APIC", NULL, &Length);
-    if (status != STATUS_BUFFER_OVERFLOW)
-        goto fail1;
-
-    Context->Madt = __SystemAllocate(Length);
-
-    status = STATUS_NO_MEMORY;
-    if (Context->Madt == NULL)
-        goto fail2;
-
-    status = AcpiGetTable("APIC", Context->Madt, &Length);
-    if (!NT_SUCCESS(status))
-        goto fail3;
-
-    return STATUS_SUCCESS;
-
-fail3:
-    Error("fail3\n");
-
-fail2:
-    Error("fail2\n");
-
-fail1:
-    Error("fail1 (%08x)\n", status);
-
-    return status;
-}
-
-#pragma warning(push)
-#pragma warning(disable:4715)
-
-static UCHAR
-SystemApicIDToProcessorID(
-    IN  UCHAR   ApicID
-    )
-{
-    PSYSTEM_CONTEXT Context = &SystemContext;
-    PACPI_MADT      Madt = Context->Madt;
-    ULONG           Offset;
-
-    Offset = sizeof (ACPI_MADT);
-    while (Offset < Madt->Header.Length) {
-        PACPI_MADT_HEADER       Header;
-        PACPI_MADT_LOCAL_APIC   Apic;
-
-        Header = (PACPI_MADT_HEADER)((PUCHAR)Madt + Offset);
-        Offset += Header->Length;
-
-        if (Header->Type != ACPI_MADT_TYPE_LOCAL_APIC)
-            continue;
-
-        Apic = CONTAINING_RECORD(Header, ACPI_MADT_LOCAL_APIC, Header);
-
-        if (Apic->ApicID == ApicID)
-            return Apic->ProcessorID;
-    }
-
-    BUG(__FUNCTION__);
-}
-
-#pragma warning(pop)
 
 static VOID
 SystemViridianInformation(
@@ -614,11 +540,9 @@ SystemProcessorInformation(
     __CpuId(1, NULL, &EBX, NULL, NULL);
 
     Processor->ApicID = EBX >> 24;
-    Processor->ProcessorID = SystemApicIDToProcessorID(Processor->ApicID);
 
     Info("Manufacturer: %s\n", Processor->Manufacturer);
     Info("APIC ID: %02X\n", Processor->ApicID);
-    Info("PROCESSOR ID: %02X\n", Processor->ProcessorID);
 
     KeSetEvent(Event, IO_NO_INCREMENT, FALSE);
 
@@ -985,39 +909,29 @@ SystemInitialize(
     if (!NT_SUCCESS(status))
         goto fail4;
 
-    status = SystemGetAcpiInformation();
+    status = SystemRegisterProcessorChangeCallback();
     if (!NT_SUCCESS(status))
         goto fail5;
 
-    status = SystemRegisterProcessorChangeCallback();
+    status = SystemRegisterPowerStateCallback();
     if (!NT_SUCCESS(status))
         goto fail6;
 
-    status = SystemRegisterPowerStateCallback();
+    status = SystemGetTimeInformation();
     if (!NT_SUCCESS(status))
         goto fail7;
 
-    status = SystemGetTimeInformation();
-    if (!NT_SUCCESS(status))
-        goto fail8;
-
     return STATUS_SUCCESS;
-
-fail8:
-    Error("fail8\n");
-
-    SystemDeregisterPowerStateCallback();
 
 fail7:
     Error("fail7\n");
 
-    SystemDeregisterProcessorChangeCallback();
+    SystemDeregisterPowerStateCallback();
 
 fail6:
     Error("fail6\n");
 
-    __SystemFree(Context->Madt);
-    Context->Madt = NULL;
+    SystemDeregisterProcessorChangeCallback();
 
 fail5:
     Error("fail5\n");
@@ -1112,9 +1026,6 @@ SystemTeardown(
     SystemDeregisterPowerStateCallback();
 
     SystemDeregisterProcessorChangeCallback();
-
-    __SystemFree(Context->Madt);
-    Context->Madt = NULL;
 
     Context->MaximumPhysicalAddress.QuadPart = 0;
 

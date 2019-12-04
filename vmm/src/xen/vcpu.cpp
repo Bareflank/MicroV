@@ -60,6 +60,7 @@
 
 namespace microv {
 
+static uint64_t xenstore_ready = 0;
 static constexpr auto self_ipi_msr = 0x83F;
 
 static bool xlboot_io_in(base_vcpu *v, io_insn_handler::info_t &info)
@@ -459,7 +460,12 @@ bool xen_vcpu::handle_domctl()
 bool xen_vcpu::handle_grant_table_op()
 {
     try {
-        expects(m_uv_vcpu->rdx() > 0);
+
+        if (m_uv_vcpu->rdx() == 0) {
+            printv("Received gnttabop %lu with count == 0\n", m_uv_vcpu->rdi());
+            m_uv_vcpu->set_rax(0);
+            return true;
+        }
 
         switch (m_uv_vcpu->rdi()) {
         case GNTTABOP_map_grant_ref:
@@ -821,6 +827,36 @@ bool xen_vcpu::handle_pet(base_vcpu *vcpu)
     return true;
 }
 
+void xen_vcpu::push_external_interrupt(uint64_t vector)
+{
+    if (m_uv_vcpu->is_root_vcpu()) {
+        m_uv_vcpu->write_ipi(vector);
+        return;
+    }
+
+    m_uv_vcpu->push_external_interrupt(vector);
+}
+
+void xen_vcpu::queue_external_interrupt(uint64_t vector)
+{
+    if (m_uv_vcpu->is_root_vcpu()) {
+        m_uv_vcpu->write_ipi(vector);
+        return;
+    }
+
+    m_uv_vcpu->queue_external_interrupt(vector);
+}
+
+void xen_vcpu::inject_external_interrupt(uint64_t vector)
+{
+    if (m_uv_vcpu->is_root_vcpu()) {
+        m_uv_vcpu->write_ipi(vector);
+        return;
+    }
+
+    m_uv_vcpu->inject_external_interrupt(vector);
+}
+
 /*
  * This will be called *anytime* an interrupt arrives while the guest is running.
  * Care must be taken to ensure that all the structures referenced here are
@@ -921,6 +957,10 @@ bool xen_vcpu::debug_hypercall(microv_vcpu *vcpu)
     const auto rax = vcpu->rax();
     const auto rdi = vcpu->rdi();
 
+    if (rax == __HYPERVISOR_event_channel_op) {
+        return false;
+    }
+
     if (vcpu->is_root_vcpu()) {
         if (rax == __HYPERVISOR_event_channel_op && rdi == EVTCHNOP_send) {
             return false;
@@ -944,6 +984,15 @@ bool xen_vcpu::debug_hypercall(microv_vcpu *vcpu)
         if (rax == __HYPERVISOR_grant_table_op && rdi == GNTTABOP_copy) {
             return false;
         }
+
+        if (rax == __HYPERVISOR_grant_table_op && rdi == GNTTABOP_map_grant_ref) {
+            return false;
+        }
+
+        if (rax == __HYPERVISOR_grant_table_op && rdi == GNTTABOP_unmap_grant_ref) {
+            return false;
+        }
+
         return true;
     }
 
@@ -1136,6 +1185,11 @@ xen_vcpu::xen_vcpu(microv_vcpu *vcpu) :
         vcpu->add_cpuid_emulator(CLSIZE_LEAF, {cpuid_passthrough});
         vcpu->add_cpuid_emulator(INVARIANT_TSC_LEAF, {cpuid_passthrough});
         vcpu->add_cpuid_emulator(ADDR_SIZE_LEAF, {cpuid_passthrough});
+
+        vcpu->emulate_io_instruction(0x61, {xlboot_io_in}, {xlboot_io_out});
+
+        m_event_op_hdlr =
+            std::make_unique<intel_x64::vmcall_event_op_handler>(vcpu);
     }
 }
 }

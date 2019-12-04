@@ -200,7 +200,7 @@ DllInitialize(
 
     status = RegistryCreateSubKey(ServiceKey,
                                 "Parameters",
-                                REG_OPTION_NON_VOLATILE,
+                                REG_OPTION_VOLATILE,
                                 &ParametersKey);
     if (!NT_SUCCESS(status))
         goto fail4;
@@ -243,7 +243,7 @@ DllInitialize(
 
     status = RegistryCreateSubKey(ServiceKey,
                                   "Unplug",
-                                  REG_OPTION_NON_VOLATILE,
+                                  REG_OPTION_VOLATILE,
                                   &UnplugKey);
     if (!NT_SUCCESS(status))
         goto fail5;
@@ -254,31 +254,27 @@ DllInitialize(
     if (!NT_SUCCESS(status))
         goto fail6;
 
-    status = AcpiInitialize();
-    if (!NT_SUCCESS(status))
-        goto fail7;
-
     status = SystemInitialize();
     if (!NT_SUCCESS(status))
-        goto fail8;
+        goto fail7;
 
     HypercallInitialize();
 
     status = BugCheckInitialize();
     if (!NT_SUCCESS(status))
-        goto fail9;
+        goto fail8;
 
     status = ModuleInitialize();
     if (!NT_SUCCESS(status))
-        goto fail10;
+        goto fail9;
 
     status = ProcessInitialize();
     if (!NT_SUCCESS(status))
-        goto fail11;
+        goto fail10;
 
     status = UnplugInitialize();
     if (!NT_SUCCESS(status))
-        goto fail12;
+        goto fail11;
 
     RegistryCloseKey(ParametersKey);
 
@@ -288,32 +284,26 @@ DllInitialize(
 
     return STATUS_SUCCESS;
 
-fail12:
-    Error("fail12\n");
-
-    ProcessTeardown();
-
 fail11:
     Error("fail11\n");
 
-    ModuleTeardown();
+    ProcessTeardown();
 
 fail10:
     Error("fail10\n");
 
-    BugCheckTeardown();
-
-    HypercallTeardown();
+    ModuleTeardown();
 
 fail9:
     Error("fail9\n");
 
-    SystemTeardown();
+    BugCheckTeardown();
 
 fail8:
     Error("fail8\n");
 
-    AcpiTeardown();
+    HypercallTeardown();
+    SystemTeardown();
 
 fail7:
     Error("fail7\n");

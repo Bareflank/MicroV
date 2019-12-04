@@ -22,6 +22,7 @@
 #ifndef LAPIC_INTEL_X64_MICROV_H
 #define LAPIC_INTEL_X64_MICROV_H
 
+#include <mutex>
 #include <bftypes.h>
 #include <bfvmm/hve/arch/intel_x64/vcpu.h>
 #include <hve/arch/intel_x64/vcpu.h>
@@ -49,6 +50,7 @@ private:
     uintptr_t m_xapic_hpa{};
     uintptr_t m_base_addr{};
     struct access_ops m_ops{};
+    std::mutex m_mutex{};
 
     void init_xapic();
     void init_x2apic();
@@ -58,8 +60,6 @@ private:
     bool emulate_wrmsr_base(base_vcpu *v, wrmsr_handler::info_t &info);
 
 public:
-
-    void write_eoi();
 
     /* Destination model. Only relevant when dest_mode is logical */
     enum {
@@ -84,12 +84,15 @@ public:
     bool is_xapic() const;
     bool is_x2apic() const;
 
+    void write_eoi();
+    void write_ipi(uint64_t vector, uint64_t vcpuid);
+
     /// @cond
 
     ~lapic() = default;
 
-    lapic(lapic &&) = default;
-    lapic &operator=(lapic &&) = default;
+    lapic(lapic &&) = delete;
+    lapic &operator=(lapic &&) = delete;
 
     lapic(const lapic &) = delete;
     lapic &operator=(const lapic &) = delete;

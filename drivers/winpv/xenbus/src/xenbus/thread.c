@@ -38,15 +38,6 @@
 
 #define THREAD_TAG 'ERHT'
 
-struct _XENBUS_THREAD {
-    XENBUS_THREAD_FUNCTION  Function;
-    PVOID                   Context;
-    KEVENT                  Event;
-    BOOLEAN                 Alerted;
-    LONG                    References;
-    PKTHREAD                Thread;
-};
-
 static FORCEINLINE PVOID
 __ThreadAllocate(
     IN  ULONG   Length

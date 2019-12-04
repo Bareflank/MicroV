@@ -1,31 +1,31 @@
 /* Copyright (c) Citrix Systems Inc.
  * All rights reserved.
- * 
- * Redistribution and use in source and binary forms, 
- * with or without modification, are permitted provided 
+ *
+ * Redistribution and use in source and binary forms,
+ * with or without modification, are permitted provided
  * that the following conditions are met:
- * 
- * *   Redistributions of source code must retain the above 
- *     copyright notice, this list of conditions and the 
+ *
+ * *   Redistributions of source code must retain the above
+ *     copyright notice, this list of conditions and the
  *     following disclaimer.
- * *   Redistributions in binary form must reproduce the above 
- *     copyright notice, this list of conditions and the 
- *     following disclaimer in the documentation and/or other 
+ * *   Redistributions in binary form must reproduce the above
+ *     copyright notice, this list of conditions and the
+ *     following disclaimer in the documentation and/or other
  *     materials provided with the distribution.
- * 
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND 
- * CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, 
- * INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF 
- * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE 
- * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR 
- * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, 
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, 
- * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR 
- * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS 
- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, 
- * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING 
- * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE 
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF 
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND
+ * CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES,
+ * INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR
+ * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+ * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+ * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
 
@@ -720,7 +720,7 @@ __FdoEnumerate(
     IN  PANSI_STRING    Devices
     )
 {
-    BOOLEAN             NeedInvalidate; 
+    BOOLEAN             NeedInvalidate;
     HANDLE              ParametersKey;
     ULONG               Enumerate;
     PLIST_ENTRY         ListEntry;
@@ -913,7 +913,7 @@ __FdoFreeAnsi(
 
     for (Index = 0; Ansi[Index].Buffer != NULL; Index++)
         __FdoFree(Ansi[Index].Buffer);
-        
+
     __FdoFree(Ansi);
 }
 
@@ -990,7 +990,7 @@ FdoScan(
         }
 
         // NULL out anything in the Devices list that is in the
-        // UnsupportedDevices list    
+        // UnsupportedDevices list
         for (Index = 0; Devices[Index].Buffer != NULL; Index++) {
             PANSI_STRING    Device = &Devices[Index];
             ULONG           Entry;
@@ -1022,7 +1022,7 @@ FdoScan(
 
         if (NeedInvalidate) {
             NeedInvalidate = FALSE;
-            IoInvalidateDeviceRelations(__FdoGetPhysicalDeviceObject(Fdo), 
+            IoInvalidateDeviceRelations(__FdoGetPhysicalDeviceObject(Fdo),
                                         BusRelations);
         }
 
@@ -1309,7 +1309,7 @@ __FdoD3ToD0(
 
     Trace("====>\n");
 
-    ASSERT3U(KeGetCurrentIrql(), ==, DISPATCH_LEVEL);
+    ASSERT3U(KeGetCurrentIrql(), ==, PASSIVE_LEVEL);
 
     (VOID) FdoSetDistribution(Fdo);
 
@@ -1347,7 +1347,7 @@ __FdoD0ToD3(
 {
     Trace("====>\n");
 
-    ASSERT3U(KeGetCurrentIrql(), ==, DISPATCH_LEVEL);
+    ASSERT3U(KeGetCurrentIrql(), ==, PASSIVE_LEVEL);
 
     (VOID) XENBUS_STORE(Remove,
                         &Fdo->StoreInterface,
@@ -1386,7 +1386,6 @@ FdoD3ToD0(
     )
 {
     POWER_STATE     PowerState;
-    KIRQL           Irql;
     PLIST_ENTRY     ListEntry;
     NTSTATUS        status;
 
@@ -1394,8 +1393,6 @@ FdoD3ToD0(
     ASSERT3U(__FdoGetDevicePowerState(Fdo), ==, PowerDeviceD3);
 
     Trace("====>\n");
-
-    KeRaiseIrql(DISPATCH_LEVEL, &Irql);
 
     status = XENBUS_SUSPEND(Acquire, &Fdo->SuspendInterface);
     if (!NT_SUCCESS(status))
@@ -1417,8 +1414,6 @@ FdoD3ToD0(
                             &Fdo->SuspendCallbackLate);
     if (!NT_SUCCESS(status))
         goto fail4;
-
-    KeLowerIrql(Irql);
 
     __FdoSetDevicePowerState(Fdo, PowerDeviceD0);
 
@@ -1467,8 +1462,6 @@ fail2:
 fail1:
     Error("fail1 (%08x)\n", status);
 
-    KeLowerIrql(Irql);
-
     return status;
 }
 
@@ -1480,7 +1473,6 @@ FdoD0ToD3(
 {
     POWER_STATE     PowerState;
     PLIST_ENTRY     ListEntry;
-    KIRQL           Irql;
 
     ASSERT3U(KeGetCurrentIrql(), ==, PASSIVE_LEVEL);
     ASSERT3U(__FdoGetDevicePowerState(Fdo), ==, PowerDeviceD0);
@@ -1513,8 +1505,6 @@ FdoD0ToD3(
 
     __FdoSetDevicePowerState(Fdo, PowerDeviceD3);
 
-    KeRaiseIrql(DISPATCH_LEVEL, &Irql);
-
     XENBUS_SUSPEND(Deregister,
                    &Fdo->SuspendInterface,
                    Fdo->SuspendCallbackLate);
@@ -1525,8 +1515,6 @@ FdoD0ToD3(
     XENBUS_STORE(Release, &Fdo->StoreInterface);
 
     XENBUS_SUSPEND(Release, &Fdo->SuspendInterface);
-
-    KeLowerIrql(Irql);
 
     Trace("<====\n");
 }
@@ -2030,7 +2018,7 @@ FdoDeviceUsageNotification(
     if (!NT_SUCCESS(status))
         goto fail1;
 
-    NotDisableable = FALSE;    
+    NotDisableable = FALSE;
     for (Type = 0; Type <= DeviceUsageTypeDumpFile; Type++) {
         if (Fdo->Usage[Type] != 0) {
             NotDisableable = TRUE;
@@ -2042,7 +2030,7 @@ FdoDeviceUsageNotification(
 
     if (Fdo->NotDisableable != NotDisableable) {
         Fdo->NotDisableable = NotDisableable;
-    
+
         IoInvalidateDeviceState(__FdoGetPhysicalDeviceObject(Fdo));
     }
 
@@ -2101,8 +2089,8 @@ FdoDispatchPnp(
     MinorFunction = StackLocation->MinorFunction;
 
     Trace("====> (%02x:%s)\n",
-          MinorFunction, 
-          PnpMinorFunctionName(MinorFunction)); 
+          MinorFunction,
+          PnpMinorFunctionName(MinorFunction));
 
     switch (StackLocation->MinorFunction) {
     case IRP_MN_START_DEVICE:
@@ -2160,9 +2148,9 @@ FdoDispatchPnp(
     }
 
     Trace("<==== (%02x:%s)(%08x)\n",
-          MinorFunction, 
+          MinorFunction,
           PnpMinorFunctionName(MinorFunction),
-          status); 
+          status);
 
     return status;
 }
@@ -2252,7 +2240,7 @@ __FdoSetDevicePower(
     PowerAction = StackLocation->Parameters.Power.ShutdownType;
 
     Trace("====> (%s:%s)\n",
-          PowerDeviceStateName(DeviceState), 
+          PowerDeviceStateName(DeviceState),
           PowerActionName(PowerAction));
 
     ASSERT3U(PowerAction, <, PowerActionShutdown);
@@ -2270,7 +2258,7 @@ __FdoSetDevicePower(
 
 done:
     Trace("<==== (%s:%s)(%08x)\n",
-          PowerDeviceStateName(DeviceState), 
+          PowerDeviceStateName(DeviceState),
           PowerActionName(PowerAction),
           status);
     return status;
@@ -2429,7 +2417,7 @@ __FdoSetSystemPower(
     PowerAction = StackLocation->Parameters.Power.ShutdownType;
 
     Trace("====> (%s:%s)\n",
-          PowerSystemStateName(SystemState), 
+          PowerSystemStateName(SystemState),
           PowerActionName(PowerAction));
 
     ASSERT3U(PowerAction, <, PowerActionShutdown);
@@ -2447,7 +2435,7 @@ __FdoSetSystemPower(
 
 done:
     Trace("<==== (%s:%s)(%08x)\n",
-          PowerSystemStateName(SystemState), 
+          PowerSystemStateName(SystemState),
           PowerActionName(PowerAction),
           status);
     return status;
@@ -2513,7 +2501,7 @@ __FdoQueryDevicePower(
     PowerAction = StackLocation->Parameters.Power.ShutdownType;
 
     Trace("====> (%s:%s)\n",
-          PowerDeviceStateName(DeviceState), 
+          PowerDeviceStateName(DeviceState),
           PowerActionName(PowerAction));
 
     ASSERT3U(PowerAction, <, PowerActionShutdown);
@@ -2531,7 +2519,7 @@ __FdoQueryDevicePower(
 
 done:
     Trace("<==== (%s:%s)(%08x)\n",
-          PowerDeviceStateName(DeviceState), 
+          PowerDeviceStateName(DeviceState),
           PowerActionName(PowerAction),
           status);
     return status;
@@ -2665,7 +2653,7 @@ __FdoQuerySystemPower(
     PowerAction = StackLocation->Parameters.Power.ShutdownType;
 
     Trace("====> (%s:%s)\n",
-          PowerSystemStateName(SystemState), 
+          PowerSystemStateName(SystemState),
           PowerActionName(PowerAction));
 
     ASSERT3U(PowerAction, <, PowerActionShutdown);
@@ -2683,7 +2671,7 @@ __FdoQuerySystemPower(
 
 done:
     Trace("<==== (%s:%s)(%08x)\n",
-          PowerSystemStateName(SystemState), 
+          PowerSystemStateName(SystemState),
           PowerActionName(PowerAction),
           status);
 
@@ -2955,7 +2943,7 @@ FdoQueryInterface(
     StackLocation->Parameters.QueryInterface.Size = (USHORT)Size;
     StackLocation->Parameters.QueryInterface.Version = (USHORT)Version;
     StackLocation->Parameters.QueryInterface.Interface = Interface;
-    
+
     Irp->IoStatus.Status = STATUS_NOT_SUPPORTED;
 
     status = IoCallDriver(Fdo->LowerDeviceObject, Irp);
@@ -3228,14 +3216,14 @@ fail5:
     ThreadAlert(Fdo->DevicePowerThread);
     ThreadJoin(Fdo->DevicePowerThread);
     Fdo->DevicePowerThread = NULL;
-    
+
 fail4:
     Error("fail4\n");
 
     ThreadAlert(Fdo->SystemPowerThread);
     ThreadJoin(Fdo->SystemPowerThread);
     Fdo->SystemPowerThread = NULL;
-    
+
 fail3:
     Error("fail3\n");
 

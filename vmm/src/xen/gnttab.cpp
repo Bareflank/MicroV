@@ -285,7 +285,7 @@ static void xen_gnttab_map_grant_ref(xen_vcpu *vcpu,
             fpg = fmem->find_page(fgfn);
             ensures(fpg);
 
-            printf("%s: mapped root page: 0x%lx\n", __func__, fgfn);
+            //printf("%s: mapped root page: 0x%lx\n", __func__, fgfn);
         } else {
             printv("%s: gfn 0x%lx not mapped in dom 0x%x\n",
                    __func__, fgfn, fdomid);
@@ -493,16 +493,36 @@ static void xen_gnttab_copy(xen_vcpu *vcpu, gnttab_copy_t *copy)
 
     src_pg = src_dom->m_memory.get()->find_page(src_gfn);
     if (!src_pg) {
-        printv("%s: src_gfn:0x%lx doesnt map to page\n", __func__, src_gfn);
-        rc = GNTST_general_error;
-        goto put_dst_dom;
+        if (src->domid == DOMID_WINPV) {
+            src_dom->m_memory.get()->add_root_backed_page(src_gfn,
+                                                          pg_perm_rw,
+                                                          pg_mtype_wb,
+                                                          src_gfn,
+                                                          false);
+            src_pg = src_dom->m_memory.get()->find_page(src_gfn);
+            ensures(src_pg);
+        } else {
+            printv("%s: src_gfn:0x%lx doesnt map to page\n", __func__, src_gfn);
+            rc = GNTST_general_error;
+            goto put_dst_dom;
+        }
     }
 
     dst_pg = dst_dom->m_memory.get()->find_page(dst_gfn);
     if (!dst_pg) {
-        printv("%s: dst_gfn:0x%lx doesnt map to page\n", __func__, dst_gfn);
-        rc = GNTST_general_error;
-        goto put_dst_dom;
+        if (dst->domid == DOMID_WINPV) {
+            dst_dom->m_memory.get()->add_root_backed_page(dst_gfn,
+                                                          pg_perm_rw,
+                                                          pg_mtype_wb,
+                                                          dst_gfn,
+                                                          false);
+            dst_pg = dst_dom->m_memory.get()->find_page(dst_gfn);
+            ensures(dst_pg);
+        } else {
+            printv("%s: dst_gfn:0x%lx doesnt map to page\n", __func__, dst_gfn);
+            rc = GNTST_general_error;
+            goto put_dst_dom;
+        }
     }
 
     src_buf = map_xen_page(src_pg);

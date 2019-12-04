@@ -1,31 +1,31 @@
 /* Copyright (c) Citrix Systems Inc.
  * All rights reserved.
- * 
- * Redistribution and use in source and binary forms, 
- * with or without modification, are permitted provided 
+ *
+ * Redistribution and use in source and binary forms,
+ * with or without modification, are permitted provided
  * that the following conditions are met:
- * 
- * *   Redistributions of source code must retain the above 
- *     copyright notice, this list of conditions and the 
+ *
+ * *   Redistributions of source code must retain the above
+ *     copyright notice, this list of conditions and the
  *     following disclaimer.
- * *   Redistributions in binary form must reproduce the above 
- *     copyright notice, this list of conditions and the 
- *     following disclaimer in the documentation and/or other 
+ * *   Redistributions in binary form must reproduce the above
+ *     copyright notice, this list of conditions and the
+ *     following disclaimer in the documentation and/or other
  *     materials provided with the distribution.
- * 
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND 
- * CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, 
- * INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF 
- * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE 
- * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR 
- * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, 
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, 
- * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR 
- * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS 
- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, 
- * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING 
- * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE 
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF 
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND
+ * CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES,
+ * INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR
+ * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+ * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+ * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
 
@@ -270,9 +270,9 @@ __PdoSetName(
     PXENVIF_DX      Dx = Pdo->Dx;
     NTSTATUS        status;
 
-    status = RtlStringCbPrintfA(Dx->Name, 
-                                MAX_DEVICE_ID_LEN, 
-                                "%u", 
+    status = RtlStringCbPrintfA(Dx->Name,
+                                MAX_DEVICE_ID_LEN,
+                                "%u",
                                 Number);
     ASSERT(NT_SUCCESS(status));
 }
@@ -461,7 +461,7 @@ __PdoSetContainerID(
     ContainerID.Data3 &= 0x0FFF;     // Clear the version number
     ContainerID.Data3 |= (5 << 12);  // Set version = (name-based SHA1) = 5
     ContainerID.Data4[0] &= 0x3F;    // Clear the variant bits
-    ContainerID.Data4[0] |= 0x80;           
+    ContainerID.Data4[0] |= 0x80;
 
     status = RtlStringFromGUID(&ContainerID, &Pdo->ContainerID);
     if (!NT_SUCCESS(status))
@@ -608,7 +608,7 @@ __PdoGetDeviceObject(
 
     return (Dx->DeviceObject);
 }
-    
+
 PDEVICE_OBJECT
 PdoGetDeviceObject(
     IN  PXENVIF_PDO Pdo
@@ -960,7 +960,7 @@ __PdoD3ToD0(
 
     Trace("(%s) ====>\n", __PdoGetName(Pdo));
 
-    ASSERT3U(KeGetCurrentIrql(), ==, DISPATCH_LEVEL);
+    ASSERT3U(KeGetCurrentIrql(), <=, PASSIVE_LEVEL);
     ASSERT3U(__PdoGetDevicePowerState(Pdo), ==, PowerDeviceD3);
 
     status = FrontendSetState(__PdoGetFrontend(Pdo), FRONTEND_CONNECTED);
@@ -993,7 +993,7 @@ __PdoD0ToD3(
 
     Trace("(%s) ====>\n", __PdoGetName(Pdo));
 
-    ASSERT3U(KeGetCurrentIrql(), ==, DISPATCH_LEVEL);
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
     ASSERT3U(__PdoGetDevicePowerState(Pdo), ==, PowerDeviceD0);
 
     PowerState.DeviceState = PowerDeviceD3;
@@ -1028,12 +1028,9 @@ PdoD3ToD0(
     IN  PXENVIF_PDO Pdo
     )
 {
-    KIRQL           Irql;
     NTSTATUS        status;
 
-    ASSERT3U(KeGetCurrentIrql(), ==, PASSIVE_LEVEL);
-
-    KeRaiseIrql(DISPATCH_LEVEL, &Irql);
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
 
     status = XENBUS_SUSPEND(Acquire, &Pdo->SuspendInterface);
     if (!NT_SUCCESS(status))
@@ -1052,8 +1049,6 @@ PdoD3ToD0(
     if (!NT_SUCCESS(status))
         goto fail3;
 
-    KeLowerIrql(Irql);
-
     return STATUS_SUCCESS;
 
 fail3:
@@ -1069,8 +1064,6 @@ fail2:
 fail1:
     Error("fail1 (%08x)\n", status);
 
-    KeLowerIrql(Irql);
-
     return status;
 }
 
@@ -1080,11 +1073,7 @@ PdoD0ToD3(
     IN  PXENVIF_PDO Pdo
     )
 {
-    KIRQL           Irql;
-
     ASSERT3U(KeGetCurrentIrql(), ==, PASSIVE_LEVEL);
-
-    KeRaiseIrql(DISPATCH_LEVEL, &Irql);
 
     XENBUS_SUSPEND(Deregister,
                    &Pdo->SuspendInterface,
@@ -1094,8 +1083,6 @@ PdoD0ToD3(
     __PdoD0ToD3(Pdo);
 
     XENBUS_SUSPEND(Release, &Pdo->SuspendInterface);
-
-    KeLowerIrql(Irql);
 }
 
 // This function must not touch pageable code or data
@@ -1567,7 +1554,7 @@ done:
     FdoReleaseMutex(Fdo);
 
     if (NeedInvalidate)
-        IoInvalidateDeviceRelations(FdoGetPhysicalDeviceObject(Fdo), 
+        IoInvalidateDeviceRelations(FdoGetPhysicalDeviceObject(Fdo),
                                     BusRelations);
 
     status = STATUS_SUCCESS;
@@ -1638,7 +1625,7 @@ PdoQueryBusInterface(
     PBUS_INTERFACE_STANDARD BusInterface;
     NTSTATUS                status;
 
-    status = Irp->IoStatus.Status;        
+    status = Irp->IoStatus.Status;
 
     StackLocation = IoGetCurrentIrpStackLocation(Irp);
     Size = StackLocation->Parameters.QueryInterface.Size;
@@ -1648,7 +1635,7 @@ PdoQueryBusInterface(
     if (Version != 1)
         goto done;
 
-    status = STATUS_BUFFER_TOO_SMALL;        
+    status = STATUS_BUFFER_TOO_SMALL;
     if (Size < sizeof (BUS_INTERFACE_STANDARD))
         goto done;
 
@@ -1675,7 +1662,7 @@ PdoQueryVifInterface(
     PVOID                   Context;
     NTSTATUS                status;
 
-    status = Irp->IoStatus.Status;        
+    status = Irp->IoStatus.Status;
 
     StackLocation = IoGetCurrentIrpStackLocation(Irp);
     Size = StackLocation->Parameters.QueryInterface.Size;
@@ -1725,7 +1712,7 @@ PdoQueryInterface(
     USHORT                  Version;
     NTSTATUS                status;
 
-    status = Irp->IoStatus.Status;        
+    status = Irp->IoStatus.Status;
 
     if (status != STATUS_NOT_SUPPORTED)
         goto done;
@@ -2211,7 +2198,7 @@ PdoDispatchPnp(
 
     Trace("====> (%s) (%02x:%s)\n",
           __PdoGetName(Pdo),
-          MinorFunction, 
+          MinorFunction,
           PnpMinorFunctionName(MinorFunction));
 
     switch (StackLocation->MinorFunction) {
@@ -2294,7 +2281,7 @@ PdoDispatchPnp(
     }
 
     Trace("<==== (%02x:%s)(%08x)\n",
-          MinorFunction, 
+          MinorFunction,
           PnpMinorFunctionName(MinorFunction),
           status);
 
@@ -2318,7 +2305,7 @@ __PdoSetDevicePower(
 
     Trace("====> (%s) (%s:%s)\n",
           __PdoGetName(Pdo),
-          PowerDeviceStateName(DeviceState), 
+          PowerDeviceStateName(DeviceState),
           PowerActionName(PowerAction));
 
     ASSERT3U(PowerAction, <, PowerActionShutdown);
@@ -2346,7 +2333,7 @@ __PdoSetDevicePower(
     IoCompleteRequest(Irp, IO_NO_INCREMENT);
 
     Trace("<==== (%s:%s)\n",
-          PowerDeviceStateName(DeviceState), 
+          PowerDeviceStateName(DeviceState),
           PowerActionName(PowerAction));
 
     return STATUS_SUCCESS;
@@ -2408,7 +2395,7 @@ __PdoSetSystemPower(
 
     Trace("====> (%s) (%s:%s)\n",
           __PdoGetName(Pdo),
-          PowerSystemStateName(SystemState), 
+          PowerSystemStateName(SystemState),
           PowerActionName(PowerAction));
 
     ASSERT3U(PowerAction, <, PowerActionShutdown);
@@ -2443,7 +2430,7 @@ __PdoSetSystemPower(
     IoCompleteRequest(Irp, IO_NO_INCREMENT);
 
     Trace("<==== (%s:%s)\n",
-          PowerSystemStateName(SystemState), 
+          PowerSystemStateName(SystemState),
           PowerActionName(PowerAction));
 
     return STATUS_SUCCESS;
@@ -2499,7 +2486,7 @@ PdoSetPower(
     POWER_STATE_TYPE    PowerType;
     POWER_ACTION        PowerAction;
     NTSTATUS            status;
-    
+
     StackLocation = IoGetCurrentIrpStackLocation(Irp);
     PowerType = StackLocation->Parameters.Power.Type;
     PowerAction = StackLocation->Parameters.Power.ShutdownType;
@@ -2544,7 +2531,7 @@ PdoSetPower(
         break;
     }
 
-done:    
+done:
     return status;
 }
 
@@ -2555,14 +2542,14 @@ PdoQueryPower(
     )
 {
     NTSTATUS            status;
-    
+
     UNREFERENCED_PARAMETER(Pdo);
 
     Irp->IoStatus.Status = STATUS_SUCCESS;
 
     status = Irp->IoStatus.Status;
     IoCompleteRequest(Irp, IO_NO_INCREMENT);
-    
+
     return status;
 }
 
@@ -2864,7 +2851,7 @@ PdoDestroy(
                   sizeof (XENBUS_SUSPEND_INTERFACE));
 
     FrontendTeardown(__PdoGetFrontend(Pdo));
-    Pdo->Frontend = NULL;    
+    Pdo->Frontend = NULL;
 
     VifTeardown(Pdo->VifContext);
     Pdo->VifContext = NULL;

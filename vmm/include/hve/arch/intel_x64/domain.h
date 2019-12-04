@@ -471,6 +471,7 @@ public:
     { m_vcpuid.emplace_back(vcpuid); }
 
     std::mutex e820_mtx;
+    uint64_t m_xenstore_ready{};
 
 private:
     friend class microv::xen_domain;

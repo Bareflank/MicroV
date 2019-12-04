@@ -54,6 +54,7 @@ MiniportSetOptions(
     return NDIS_STATUS_SUCCESS;
 }
 
+// Called at PASSIVE_LEVEL
 static
 _Function_class_(MINIPORT_INITIALIZE)
 NDIS_STATUS
@@ -81,6 +82,7 @@ fail1:
     return NdisStatus;
 }
 
+// Called at PASSIVE_LEVEL
 static
 _Function_class_(MINIPORT_HALT)
 VOID
@@ -109,6 +111,7 @@ MiniportDriverUnload(
     DriverUnload(DriverObject);
 }
 
+// Called at PASSIVE_LEVEL
 static
 _Function_class_(MINIPORT_PAUSE)
 NDIS_STATUS
@@ -126,6 +129,7 @@ MiniportPause(
     return NDIS_STATUS_SUCCESS;
 }
 
+// Called at PASSIVE_LEVEL
 static
 _Function_class_(MINIPORT_RESTART)
 NDIS_STATUS
@@ -144,6 +148,7 @@ MiniportRestart(
     return NdisStatus;
 }
 
+// Called at PASSIVE_LEVEL
 static
 _Function_class_(MINIPORT_OID_REQUEST)
 NDIS_STATUS
@@ -173,6 +178,7 @@ MiniportOidRequest(
     return NdisStatus;
 }
 
+// Called at <= DISPATCH_LEVEL
 static
 _Function_class_(MINIPORT_SEND_NET_BUFFER_LISTS)
 VOID
@@ -192,6 +198,7 @@ MiniportSendNetBufferLists(
                                   SendFlags);
 }
 
+// Called at <= DISPATCH_LEVEL
 static
 _Function_class_(MINIPORT_RETURN_NET_BUFFER_LISTS)
 VOID
@@ -264,6 +271,7 @@ MiniportDevicePnPEventNotify(
     Trace("<===>\n");
 }
 
+// Called at <= HIGH_LEVEL
 static
 _Function_class_(MINIPORT_SHUTDOWN)
 VOID

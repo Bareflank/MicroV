@@ -230,44 +230,14 @@ static int read_xs_params(uint64_t *xs_pfn, uint64_t *xs_chn)
     return 0;
 }
 
+static void _vmcall(uint64_t rax, uint64_t rbx, uint64_t rcx, uint64_t rdx)
+{
+    __asm volatile("vmcall" :: "a"(rax), "b"(rbx), "c"(rcx), "d"(rdx));
+}
+
+#define __enum_event_op__set_xenstore_ready 0x3UL
+
 int main(int argc, char** argv)
 {
-    uint64_t xs_pfn, xs_chn;
-    int err = 0;
-
-    xsh = xs_open(0);
-    if (!xsh) {
-        printf("winpv: xs_open failed\n");
-        return -1;
-    }
-
-    xch = xc_interface_open(NULL, NULL, 0);
-    if (!xch) {
-        printf("winpv: xc_interface_open failed\n");
-        err = -ENODEV;
-        goto close_xs;
-    }
-
-    err = make_xs_dirs();
-    if (err) {
-        printf("winpv: make_xs_dirs failed, rc=%d\n", err);
-        goto close_xc;
-    }
-
-    err = read_xs_params(&xs_pfn, &xs_chn);
-    if (err) {
-        printf("winpv: read_xs_params failed, rc=%d\n", err);
-        goto close_xc;
-    }
-
-    xs_introduce_domain(xsh, DOMID_WINPV, xs_pfn, xs_chn);
-    printf("winpv: introduced to xenstore\n");
-
-close_xc:
-    xc_interface_close(xch);
-
-close_xs:
-    xs_close(xsh);
-
-    return err;
+    _vmcall(0xBF06000000000000, __enum_event_op__set_xenstore_ready, 0, 0);
 }

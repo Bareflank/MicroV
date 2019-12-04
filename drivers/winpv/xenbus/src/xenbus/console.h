@@ -40,6 +40,7 @@ typedef struct _XENBUS_CONSOLE_CONTEXT  XENBUS_CONSOLE_CONTEXT, *PXENBUS_CONSOLE
 
 #include "fdo.h"
 
+_IRQL_requires_(PASSIVE_LEVEL)
 extern NTSTATUS
 ConsoleInitialize(
     IN  PXENBUS_FDO             Fdo,
@@ -59,6 +60,7 @@ ConsoleGetReferences(
     IN  PXENBUS_CONSOLE_CONTEXT Context
     );
 
+_IRQL_requires_(PASSIVE_LEVEL)
 extern VOID
 ConsoleTeardown(
     IN  PXENBUS_CONSOLE_CONTEXT Context

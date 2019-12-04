@@ -1,31 +1,31 @@
 /* Copyright (c) Citrix Systems Inc.
  * All rights reserved.
- * 
- * Redistribution and use in source and binary forms, 
- * with or without modification, are permitted provided 
+ *
+ * Redistribution and use in source and binary forms,
+ * with or without modification, are permitted provided
  * that the following conditions are met:
- * 
- * *   Redistributions of source code must retain the above 
- *     copyright notice, this list of conditions and the 
+ *
+ * *   Redistributions of source code must retain the above
+ *     copyright notice, this list of conditions and the
  *     following disclaimer.
- * *   Redistributions in binary form must reproduce the above 
- *     copyright notice, this list of conditions and the 
+ * *   Redistributions in binary form must reproduce the above
+ *     copyright notice, this list of conditions and the
  *     following disclaimer in the documetation and/or other
  *     materials provided with the distribution.
- * 
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND 
- * CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, 
- * INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF 
- * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE 
- * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR 
- * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, 
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, 
- * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR 
- * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS 
- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, 
- * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING 
- * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE 
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF 
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND
+ * CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES,
+ * INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR
+ * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+ * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+ * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
 
@@ -65,6 +65,11 @@
 #define MAXNAMELEN  128
 
 #define XENVIF_TRANSMITTER_MAXIMUM_HEADER_LENGTH    512
+
+#define TIME_US(_us)        ((_us) * 10)
+#define TIME_MS(_ms)        (TIME_US((_ms) * 1000))
+#define TIME_S(_s)          (TIME_MS((_s) * 1000))
+#define TIME_RELATIVE(_t)   (-(_t))
 
 typedef struct _XENVIF_TRANSMITTER_PACKET {
     LIST_ENTRY                                  ListEntry;
@@ -206,6 +211,7 @@ typedef struct _XENVIF_TRANSMITTER_RING {
     ULONG                           PacketsCompleted;
     PXENBUS_DEBUG_CALLBACK          DebugCallback;
     PXENVIF_THREAD                  WatchdogThread;
+    PXENVIF_THREAD                  PollThread;
 } XENVIF_TRANSMITTER_RING, *PXENVIF_TRANSMITTER_RING;
 
 struct _XENVIF_TRANSMITTER {
@@ -221,7 +227,7 @@ struct _XENVIF_TRANSMITTER {
     ULONG                       AlwaysCopy;
     ULONG                       ValidateChecksums;
     ULONG                       DisableMulticastControl;
-    KSPIN_LOCK                  Lock;
+    FAST_MUTEX                  FastMutex;
     PXENBUS_CACHE               PacketCache;
     XENBUS_STORE_INTERFACE      StoreInterface;
     XENBUS_DEBUG_INTERFACE      DebugInterface;
@@ -247,16 +253,22 @@ __TransmitterFree(
     __FreePoolWithTag(Buffer, XENVIF_TRANSMITTER_TAG);
 }
 
+_IRQL_requires_max_(APC_LEVEL)
+_IRQL_raises_(APC_LEVEL)
+_IRQL_saves_global_(OldIrql, Argument)
 static VOID
 TransmitterPacketAcquireLock(
     IN  PVOID           Argument
     )
 {
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
     PXENVIF_TRANSMITTER Transmitter = Argument;
 
-    KeAcquireSpinLockAtDpcLevel(&Transmitter->Lock);
+    ExAcquireFastMutex(&Transmitter->FastMutex);
 }
 
+_IRQL_requires_(APC_LEVEL)
+_IRQL_restores_global_(OldIrql, Argument)
 static VOID
 TransmitterPacketReleaseLock(
     IN  PVOID           Argument
@@ -264,10 +276,10 @@ TransmitterPacketReleaseLock(
 {
     PXENVIF_TRANSMITTER Transmitter = Argument;
 
-#pragma prefast(suppress:26110)
-    KeReleaseSpinLockFromDpcLevel(&Transmitter->Lock);
+    ExReleaseFastMutex(&Transmitter->FastMutex);
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static NTSTATUS
 TransmitterPacketCtor(
     IN  PVOID                   Argument,
@@ -300,6 +312,7 @@ fail1:
     return status;
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static VOID
 TransmitterPacketDtor(
     IN  PVOID                   Argument,
@@ -320,6 +333,7 @@ TransmitterPacketDtor(
     ASSERT(IsZeroMemory(Packet, sizeof (XENVIF_TRANSMITTER_PACKET)));
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static FORCEINLINE PXENVIF_TRANSMITTER_PACKET
 __TransmitterGetPacket(
     IN  PXENVIF_TRANSMITTER         Transmitter
@@ -331,6 +345,7 @@ __TransmitterGetPacket(
                         FALSE);
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static FORCEINLINE VOID
 __TransmitterPutPacket(
     IN  PXENVIF_TRANSMITTER         Transmitter,
@@ -417,6 +432,7 @@ TransmitterBufferDtor(
     ASSERT(IsZeroMemory(Buffer, sizeof (XENVIF_TRANSMITTER_BUFFER)));
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static FORCEINLINE PXENVIF_TRANSMITTER_BUFFER
 __TransmitterGetBuffer(
     IN  PXENVIF_TRANSMITTER_RING    Ring
@@ -426,6 +442,7 @@ __TransmitterGetBuffer(
     PXENVIF_FRONTEND                Frontend;
     PXENVIF_TRANSMITTER_BUFFER      Buffer;
 
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
     Transmitter = Ring->Transmitter;
     Frontend = Transmitter->Frontend;
 
@@ -439,6 +456,7 @@ __TransmitterGetBuffer(
     return Buffer;
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static FORCEINLINE VOID
 __TransmitterPutBuffer(
     IN  PXENVIF_TRANSMITTER_RING    Ring,
@@ -448,6 +466,7 @@ __TransmitterPutBuffer(
     PXENVIF_TRANSMITTER             Transmitter;
     PXENVIF_FRONTEND                Frontend;
 
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
     Transmitter = Ring->Transmitter;
     Frontend = Transmitter->Frontend;
 
@@ -485,6 +504,7 @@ TransmitterMulticastControlDtor(
     UNREFERENCED_PARAMETER(Object);
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static FORCEINLINE PXENVIF_TRANSMITTER_MULTICAST_CONTROL
 __TransmitterGetMulticastControl(
     IN  PXENVIF_TRANSMITTER_RING            Ring
@@ -494,6 +514,7 @@ __TransmitterGetMulticastControl(
     PXENVIF_FRONTEND                        Frontend;
     PXENVIF_TRANSMITTER_MULTICAST_CONTROL   Control;
 
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
     Transmitter = Ring->Transmitter;
     Frontend = Transmitter->Frontend;
 
@@ -505,6 +526,7 @@ __TransmitterGetMulticastControl(
     return Control;
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static FORCEINLINE VOID
 __TransmitterPutMulticastControl(
     IN  PXENVIF_TRANSMITTER_RING                Ring,
@@ -514,6 +536,7 @@ __TransmitterPutMulticastControl(
     PXENVIF_TRANSMITTER                         Transmitter;
     PXENVIF_FRONTEND                            Frontend;
 
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
     Transmitter = Ring->Transmitter;
     Frontend = Transmitter->Frontend;
 
@@ -591,6 +614,7 @@ TransmitterFragmentDtor(
     ASSERT(IsZeroMemory(Fragment, sizeof (XENVIF_TRANSMITTER_FRAGMENT)));
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static FORCEINLINE PXENVIF_TRANSMITTER_FRAGMENT
 __TransmitterGetFragment(
     IN  PXENVIF_TRANSMITTER_RING    Ring
@@ -599,6 +623,7 @@ __TransmitterGetFragment(
     PXENVIF_TRANSMITTER             Transmitter;
     PXENVIF_FRONTEND                Frontend;
 
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
     Transmitter = Ring->Transmitter;
     Frontend = Transmitter->Frontend;
 
@@ -608,6 +633,7 @@ __TransmitterGetFragment(
                         TRUE);
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static FORCEINLINE
 __TransmitterPutFragment(
     IN  PXENVIF_TRANSMITTER_RING        Ring,
@@ -617,6 +643,7 @@ __TransmitterPutFragment(
     PXENVIF_TRANSMITTER                 Transmitter;
     PXENVIF_FRONTEND                    Frontend;
 
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
     Transmitter = Ring->Transmitter;
     Frontend = Transmitter->Frontend;
 
@@ -656,6 +683,7 @@ TransmitterRequestDtor(
     UNREFERENCED_PARAMETER(Object);
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static FORCEINLINE PXENVIF_TRANSMITTER_REQUEST
 __TransmitterGetRequest(
     IN  PXENVIF_TRANSMITTER_RING    Ring
@@ -664,6 +692,7 @@ __TransmitterGetRequest(
     PXENVIF_TRANSMITTER             Transmitter;
     PXENVIF_TRANSMITTER_REQUEST     Request;
 
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
     Transmitter = Ring->Transmitter;
 
     Request = XENBUS_CACHE(Get,
@@ -674,6 +703,7 @@ __TransmitterGetRequest(
     return Request;
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static FORCEINLINE VOID
 __TransmitterPutRequest(
     IN  PXENVIF_TRANSMITTER_RING    Ring,
@@ -682,6 +712,7 @@ __TransmitterPutRequest(
 {
     PXENVIF_TRANSMITTER             Transmitter;
 
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
     Transmitter = Ring->Transmitter;
 
     ASSERT3U(Request->Type, ==, XENVIF_TRANSMITTER_REQUEST_TYPE_INVALID);
@@ -838,6 +869,7 @@ fail1:
     return FALSE;
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static FORCEINLINE NTSTATUS
 __TransmitterRingCopyPayload(
     IN  PXENVIF_TRANSMITTER_RING    Ring
@@ -852,6 +884,7 @@ __TransmitterRingCopyPayload(
     PXENVIF_TRANSMITTER_BUFFER      Buffer;
     NTSTATUS                        status;
 
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
     Transmitter = Ring->Transmitter;
     Frontend = Transmitter->Frontend;
 
@@ -942,7 +975,7 @@ fail2:
     Error("fail2\n");
 
     ASSERT3P(Buffer->Context, ==, Packet);
-    Buffer->Context = NULL;        
+    Buffer->Context = NULL;
 
     --Packet->Reference;
 
@@ -985,7 +1018,7 @@ fail1:
         __TransmitterPutFragment(Ring, Fragment);
 
         ASSERT3P(Buffer->Context, ==, Packet);
-        Buffer->Context = NULL;        
+        Buffer->Context = NULL;
 
         --Packet->Reference;
 
@@ -995,6 +1028,7 @@ fail1:
     return status;
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static FORCEINLINE NTSTATUS
 __TransmitterRingGrantPayload(
     IN  PXENVIF_TRANSMITTER_RING    Ring
@@ -1011,6 +1045,7 @@ __TransmitterRingGrantPayload(
     PXENVIF_TRANSMITTER_FRAGMENT    Fragment;
     NTSTATUS                        status;
 
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
     Transmitter = Ring->Transmitter;
     Frontend = Transmitter->Frontend;
 
@@ -1151,6 +1186,7 @@ fail1:
     return status;
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static FORCEINLINE NTSTATUS
 __TransmitterRingPrepareHeader(
     IN  PXENVIF_TRANSMITTER_RING    Ring
@@ -1172,6 +1208,7 @@ __TransmitterRingPrepareHeader(
     BOOLEAN                         SquashError;
     NTSTATUS                        status;
 
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
     Transmitter = Ring->Transmitter;
     Frontend = Transmitter->Frontend;
     Mac = FrontendGetMac(Frontend);
@@ -1217,7 +1254,7 @@ __TransmitterRingPrepareHeader(
 
     Fragment->Type = XENVIF_TRANSMITTER_FRAGMENT_TYPE_BUFFER;
     Fragment->Context = Buffer;
- 
+
     Buffer->Reference++;
 
     Pfn = MmGetMdlPfnArray(Mdl)[0];
@@ -1296,9 +1333,9 @@ __TransmitterRingPrepareHeader(
 
         // Fix up the IP packet length
         Length = Info->IpHeader.Length +
-                 Info->IpOptions.Length + 
-                 Info->TcpHeader.Length + 
-                 Info->TcpOptions.Length + 
+                 Info->IpOptions.Length +
+                 Info->TcpHeader.Length +
+                 Info->TcpOptions.Length +
                  Payload->Length;
 
         ASSERT3U((USHORT)Length, ==, Length);
@@ -1319,7 +1356,7 @@ __TransmitterRingPrepareHeader(
         if (Packet->MaximumSegmentSize == Payload->Length)
             Packet->OffloadOptions.OffloadIpVersion4LargePacket = 0;
     }
-    
+
     if (Packet->OffloadOptions.OffloadIpVersion6LargePacket) {
         PIP_HEADER  IpHeader;
         PTCP_HEADER TcpHeader;
@@ -1334,9 +1371,9 @@ __TransmitterRingPrepareHeader(
         TcpHeader = (PTCP_HEADER)(BaseVa + Info->TcpHeader.Offset);
 
         // Fix up the IP payload length
-        Length = Info->IpOptions.Length + 
-                 Info->TcpHeader.Length + 
-                 Info->TcpOptions.Length + 
+        Length = Info->IpOptions.Length +
+                 Info->TcpHeader.Length +
+                 Info->TcpOptions.Length +
                  Payload->Length;
 
         ASSERT3U((USHORT)Length, ==, Length);
@@ -1361,7 +1398,7 @@ __TransmitterRingPrepareHeader(
         ULONG   MaximumFrameSize;
 
         MacQueryMaximumFrameSize(Mac, &MaximumFrameSize);
-        
+
         if (Fragment->Length > MaximumFrameSize) {
             status = STATUS_INVALID_PARAMETER;
             SquashError = TRUE;
@@ -1519,6 +1556,7 @@ fail1:
     return status;
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static FORCEINLINE PXENVIF_TRANSMITTER_PACKET
 __TransmitterRingUnprepareFragments(
     IN  PXENVIF_TRANSMITTER_RING    Ring
@@ -1530,6 +1568,7 @@ __TransmitterRingUnprepareFragments(
     ULONG                           Count;
     PXENVIF_TRANSMITTER_PACKET      Packet;
 
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
     Transmitter = Ring->Transmitter;
     Frontend = Transmitter->Frontend;
 
@@ -1638,6 +1677,7 @@ __TransmitterRingUnprepareFragments(
     return Packet;
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static FORCEINLINE NTSTATUS
 __TransmitterRingPreparePacket(
     IN  PXENVIF_TRANSMITTER_RING    Ring,
@@ -1650,6 +1690,7 @@ __TransmitterRingPreparePacket(
     PXENVIF_PACKET_INFO             Info;
     NTSTATUS                        status;
 
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
     ASSERT(IsZeroMemory(&Ring->State, sizeof (XENVIF_TRANSMITTER_STATE)));
 
     Transmitter = Ring->Transmitter;
@@ -1753,6 +1794,7 @@ fail1:
     return status;
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static FORCEINLINE NTSTATUS
 __TransmitterRingPrepareArp(
     IN  PXENVIF_TRANSMITTER_RING    Ring,
@@ -1776,6 +1818,7 @@ __TransmitterRingPrepareArp(
     PFN_NUMBER                      Pfn;
     NTSTATUS                        status;
 
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
     ASSERT(IsZeroMemory(&Ring->State, sizeof (XENVIF_TRANSMITTER_STATE)));
 
     Transmitter = Ring->Transmitter;
@@ -1895,6 +1938,7 @@ fail1:
     return status;
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static FORCEINLINE NTSTATUS
 __TransmitterRingPrepareNeighbourAdvertisement(
     IN  PXENVIF_TRANSMITTER_RING    Ring,
@@ -1919,6 +1963,7 @@ __TransmitterRingPrepareNeighbourAdvertisement(
     PFN_NUMBER                      Pfn;
     NTSTATUS                        status;
 
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
     ASSERT(IsZeroMemory(&Ring->State, sizeof (XENVIF_TRANSMITTER_STATE)));
 
     Transmitter = Ring->Transmitter;
@@ -1957,7 +2002,7 @@ __TransmitterRingPrepareNeighbourAdvertisement(
     IpHeader->NextHeader = IPPROTO_ICMPV6;
     IpHeader->HopLimit = 255;
 
-    RtlCopyMemory(IpHeader->SourceAddress.Byte, 
+    RtlCopyMemory(IpHeader->SourceAddress.Byte,
                   Address,
                   IPV6_ADDRESS_LENGTH);
 
@@ -2063,6 +2108,7 @@ fail1:
     return status;
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static FORCEINLINE NTSTATUS
 __TransmitterRingPrepareMulticastControl(
     IN  PXENVIF_TRANSMITTER_RING            Ring,
@@ -2075,6 +2121,7 @@ __TransmitterRingPrepareMulticastControl(
     PXENVIF_TRANSMITTER_MULTICAST_CONTROL   Control;
     NTSTATUS                                status;
 
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
     ASSERT(IsZeroMemory(&Ring->State, sizeof (XENVIF_TRANSMITTER_STATE)));
 
     State = &Ring->State;
@@ -2124,6 +2171,7 @@ fail1:
 #define RING_SLOTS_AVAILABLE(_Front, _req_prod, _rsp_cons)   \
         (RING_SIZE(_Front) - ((_req_prod) - (_rsp_cons)))
 
+_IRQL_requires_max_(APC_LEVEL)
 static FORCEINLINE NTSTATUS
 __TransmitterRingPostFragments(
     IN  PXENVIF_TRANSMITTER_RING    Ring
@@ -2145,6 +2193,7 @@ __TransmitterRingPostFragments(
     netif_tx_request_t              *req;
     NTSTATUS                        status;
 
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
     Transmitter = Ring->Transmitter;
     Frontend = Transmitter->Frontend;
 
@@ -2372,6 +2421,7 @@ fail1:
 
 #undef  RING_SLOTS_AVAILABLE
 
+_IRQL_requires_max_(APC_LEVEL)
 static FORCEINLINE VOID
 __TransmitterRingFakeResponses(
     IN  PXENVIF_TRANSMITTER_RING    Ring
@@ -2380,6 +2430,8 @@ __TransmitterRingFakeResponses(
     RING_IDX                        rsp_prod;
     USHORT                          id;
     ULONG                           Count;
+
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
 
     // This is only called when the backend went away. We need
     // to mimic the behavior of the backend and turn requests into
@@ -2452,6 +2504,7 @@ __TransmitterRingCompletePacket(
     Ring->PacketsCompleted++;
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static DECLSPEC_NOINLINE ULONG
 TransmitterRingPoll(
     IN  PXENVIF_TRANSMITTER_RING    Ring
@@ -2460,6 +2513,8 @@ TransmitterRingPoll(
     PXENVIF_TRANSMITTER             Transmitter;
     PXENVIF_FRONTEND                Frontend;
     ULONG                           Count;
+
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
 
     Transmitter = Ring->Transmitter;
     Frontend = Transmitter->Frontend;
@@ -2632,6 +2687,7 @@ done:
     return Count;
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static FORCEINLINE VOID
 __TransmitterRingTrigger(
     IN  PXENVIF_TRANSMITTER_RING    Ring
@@ -2639,6 +2695,8 @@ __TransmitterRingTrigger(
 {
     PXENVIF_TRANSMITTER             Transmitter;
     PXENVIF_FRONTEND                Frontend;
+
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
 
     Transmitter = Ring->Transmitter;
     Frontend = Transmitter->Frontend;
@@ -2658,6 +2716,7 @@ __TransmitterRingTrigger(
     }
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static FORCEINLINE VOID
 __TransmitterRingSend(
     IN  PXENVIF_TRANSMITTER_RING    Ring
@@ -2665,6 +2724,8 @@ __TransmitterRingSend(
 {
     PXENVIF_TRANSMITTER             Transmitter;
     PXENVIF_FRONTEND                Frontend;
+
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
 
     Transmitter = Ring->Transmitter;
     Frontend = Transmitter->Frontend;
@@ -2684,12 +2745,14 @@ __TransmitterRingSend(
     }
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static FORCEINLINE VOID
 __TransmitterRingPushRequests(
     IN  PXENVIF_TRANSMITTER_RING    Ring
     )
 {
     BOOLEAN                         Notify;
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
 
     if (Ring->RequestsPosted == Ring->RequestsPushed)
         return;
@@ -2712,6 +2775,7 @@ __TransmitterRingPushRequests(
 
 #define XENVIF_TRANSMITTER_LOCK_BIT ((ULONG_PTR)1)
 
+_IRQL_requires_max_(APC_LEVEL)
 static DECLSPEC_NOINLINE VOID
 TransmitterRingSwizzle(
     IN  PXENVIF_TRANSMITTER_RING    Ring
@@ -2723,11 +2787,12 @@ TransmitterRingSwizzle(
     LIST_ENTRY                      List;
     ULONG                           Count;
 
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
     ASSERT3P(Ring->LockThread, ==, KeGetCurrentThread());
 
     InitializeListHead(&List);
 
-    New = XENVIF_TRANSMITTER_LOCK_BIT;    
+    New = XENVIF_TRANSMITTER_LOCK_BIT;
     Old = (ULONG_PTR)InterlockedExchangePointer(&Ring->Lock, (PVOID)New);
 
     ASSERT(Old & XENVIF_TRANSMITTER_LOCK_BIT);
@@ -2761,6 +2826,7 @@ TransmitterRingSwizzle(
     }
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static DECLSPEC_NOINLINE VOID
 TransmitterRingSchedule(
     IN  PXENVIF_TRANSMITTER_RING    Ring
@@ -2768,6 +2834,8 @@ TransmitterRingSchedule(
 {
     PXENVIF_TRANSMITTER_STATE       State;
     BOOLEAN                         Polled;
+
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
 
     if(!Ring->Enabled)
         return;
@@ -2885,6 +2953,7 @@ TransmitterRingSchedule(
     __TransmitterRingPushRequests(Ring);
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static FORCEINLINE VOID
 __TransmitterSetCompletionInfo(
     IN  PXENVIF_TRANSMITTER         Transmitter,
@@ -2898,6 +2967,8 @@ __TransmitterSetCompletionInfo(
     PETHERNET_HEADER                EthernetHeader;
     PETHERNET_ADDRESS               DestinationAddress;
     ETHERNET_ADDRESS_TYPE           Type;
+
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
 
     Frontend = Transmitter->Frontend;
 
@@ -3051,6 +3122,7 @@ __TransmitterSetCompletionInfo(
     Packet->Completion.PayloadLength = (USHORT)Payload->Length;
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static FORCEINLINE VOID
 __TransmitterReturnPackets(
     IN  PXENVIF_TRANSMITTER Transmitter,
@@ -3059,6 +3131,8 @@ __TransmitterReturnPackets(
 {
     PXENVIF_FRONTEND        Frontend;
     PXENVIF_VIF_CONTEXT     Context;
+
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
 
     Frontend = Transmitter->Frontend;
     Context = PdoGetVifContext(FrontendGetPdo(Frontend));
@@ -3086,8 +3160,8 @@ __TransmitterReturnPackets(
     }
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static FORCEINLINE BOOLEAN
-__drv_requiresIRQL(DISPATCH_LEVEL)
 __TransmitterRingTryAcquireLock(
     IN  PXENVIF_TRANSMITTER_RING    Ring
     )
@@ -3096,8 +3170,7 @@ __TransmitterRingTryAcquireLock(
     ULONG_PTR                       New;
     BOOLEAN                         Acquired;
 
-    ASSERT3U(KeGetCurrentIrql(), ==, DISPATCH_LEVEL);
-
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
     KeMemoryBarrier();
 
     Old = (ULONG_PTR)Ring->Lock & ~XENVIF_TRANSMITTER_LOCK_BIT;
@@ -3118,32 +3191,39 @@ __TransmitterRingTryAcquireLock(
     return Acquired;
 }
 
+#define ACQUIRE_PERIOD 5
+
+_IRQL_requires_max_(APC_LEVEL)
 static FORCEINLINE VOID
-__drv_requiresIRQL(DISPATCH_LEVEL)
 __TransmitterRingAcquireLock(
     IN  PXENVIF_TRANSMITTER_RING    Ring
     )
 {
-    ASSERT3U(KeGetCurrentIrql(), ==, DISPATCH_LEVEL);
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
 
     for (;;) {
+        LARGE_INTEGER Timeout;
+
         if (__TransmitterRingTryAcquireLock(Ring))
             break;
 
-        _mm_pause();
+        Timeout.QuadPart = TIME_RELATIVE(TIME_MS(ACQUIRE_PERIOD));
+        KeDelayExecutionThread(KernelMode, FALSE, &Timeout);
     }
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static VOID
 TransmitterRingAcquireLock(
     IN  PXENVIF_TRANSMITTER_RING    Ring
     )
 {
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
     __TransmitterRingAcquireLock(Ring);
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static FORCEINLINE BOOLEAN
-__drv_requiresIRQL(DISPATCH_LEVEL)
 __TransmitterRingTryReleaseLock(
     IN  PXENVIF_TRANSMITTER_RING    Ring
     )
@@ -3152,7 +3232,6 @@ __TransmitterRingTryReleaseLock(
     ULONG_PTR                       New;
     BOOLEAN                         Released;
 
-    ASSERT3U(KeGetCurrentIrql(), ==, DISPATCH_LEVEL);
     ASSERT3P(KeGetCurrentThread(), ==, Ring->LockThread);
 
     Old = XENVIF_TRANSMITTER_LOCK_BIT;
@@ -3177,17 +3256,16 @@ __TransmitterRingTryReleaseLock(
     return Released;
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static FORCEINLINE VOID
-__drv_requiresIRQL(DISPATCH_LEVEL)
 __TransmitterRingReleaseLock(
     IN  PXENVIF_TRANSMITTER_RING    Ring
     )
 {
     LIST_ENTRY                      List;
 
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
     InitializeListHead(&List);
-
-    ASSERT3U(KeGetCurrentIrql(), ==, DISPATCH_LEVEL);
 
     // As lock holder it is our responsibility to drain the atomic
     // packet list into the transmit queue before we actually drop the
@@ -3216,11 +3294,13 @@ __TransmitterRingReleaseLock(
     }
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static DECLSPEC_NOINLINE VOID
 TransmitterRingReleaseLock(
     IN  PXENVIF_TRANSMITTER_RING    Ring
     )
 {
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
     __TransmitterRingReleaseLock(Ring);
 }
 
@@ -3260,25 +3340,62 @@ TransmitterRingPollDpc(
     )
 {
     PXENVIF_TRANSMITTER_RING    Ring = Context;
-    ULONG                       Count;
 
     UNREFERENCED_PARAMETER(Dpc);
     UNREFERENCED_PARAMETER(Argument1);
     UNREFERENCED_PARAMETER(Argument2);
 
     ASSERT(Ring != NULL);
+    ThreadWake(Ring->PollThread);
+}
 
-    Count = 0;
+static NTSTATUS
+PollRing(
+    IN  PXENVIF_THREAD         Self,
+    IN  PVOID                  Context
+    )
+{
+    PXENVIF_TRANSMITTER_RING   Ring = Context;
+    PROCESSOR_NUMBER           ProcNumber;
+    GROUP_AFFINITY             Affinity;
+    NTSTATUS                   status;
+
+    status = KeGetProcessorNumberFromIndex(Ring->Index, &ProcNumber);
+    ASSERT(NT_SUCCESS(status));
+
+    Affinity.Group = ProcNumber.Group;
+    Affinity.Mask = (KAFFINITY)1 << ProcNumber.Number;
+    KeSetSystemGroupAffinityThread(&Affinity, NULL);
 
     for (;;) {
-        __TransmitterRingAcquireLock(Ring);
-        Count += TransmitterRingPoll(Ring);
-        __TransmitterRingReleaseLock(Ring);
+        PKEVENT Event;
+        ULONG   Count = 0;
 
-        if (__TransmitterRingUnmask(Ring,
-                                    (Count > XENVIF_TRANSMITTER_RING_SIZE)))
+        Event = ThreadGetEvent(Self);
+
+        (VOID) KeWaitForSingleObject(Event,
+                                     Executive,
+                                     KernelMode,
+                                     FALSE,
+                                     NULL);
+        KeClearEvent(Event);
+
+        if (ThreadIsAlerted(Self))
             break;
+
+        for (;;) {
+            __TransmitterRingAcquireLock(Ring);
+            Count += TransmitterRingPoll(Ring);
+            __TransmitterRingReleaseLock(Ring);
+
+            if (__TransmitterRingUnmask(Ring,
+                                        (Count > XENVIF_TRANSMITTER_RING_SIZE)))
+                break;
+        }
+
     }
+
+    return STATUS_SUCCESS;
 }
 
 KSERVICE_ROUTINE    TransmitterRingEvtchnCallback;
@@ -3309,11 +3426,6 @@ TransmitterRingEvtchnCallback(
 
     return TRUE;
 }
-
-#define TIME_US(_us)        ((_us) * 10)
-#define TIME_MS(_ms)        (TIME_US((_ms) * 1000))
-#define TIME_S(_s)          (TIME_MS((_s) * 1000))
-#define TIME_RELATIVE(_t)   (-(_t))
 
 #define XENVIF_TRANSMITTER_WATCHDOG_PERIOD  30
 
@@ -3350,9 +3462,8 @@ TransmitterRingWatchdog(
     Timeout.QuadPart = TIME_RELATIVE(TIME_S(XENVIF_TRANSMITTER_WATCHDOG_PERIOD));
     PacketsQueued = 0;
 
-    for (;;) { 
+    for (;;) {
         PKEVENT Event;
-        KIRQL   Irql;
 
         Event = ThreadGetEvent(Self);
 
@@ -3366,7 +3477,6 @@ TransmitterRingWatchdog(
         if (ThreadIsAlerted(Self))
             break;
 
-        KeRaiseIrql(DISPATCH_LEVEL, &Irql);
         __TransmitterRingAcquireLock(Ring);
 
         if (Ring->Enabled) {
@@ -3389,7 +3499,6 @@ TransmitterRingWatchdog(
         }
 
         __TransmitterRingReleaseLock(Ring);
-        KeLowerIrql(Irql);
     }
 
     Trace("<====\n");
@@ -3397,6 +3506,7 @@ TransmitterRingWatchdog(
     return STATUS_SUCCESS;
 }
 
+_IRQL_requires_(PASSIVE_LEVEL)
 static FORCEINLINE NTSTATUS
 __TransmitterRingInitialize(
     IN  PXENVIF_TRANSMITTER         Transmitter,
@@ -3408,6 +3518,7 @@ __TransmitterRingInitialize(
     CHAR                            Name[MAXNAMELEN];
     NTSTATUS                        status;
 
+    ASSERT3U(KeGetCurrentIrql(), ==, PASSIVE_LEVEL);
     Frontend = Transmitter->Frontend;
 
     *Ring = __TransmitterAllocate(sizeof (XENVIF_TRANSMITTER_RING));
@@ -3565,7 +3676,18 @@ __TransmitterRingInitialize(
     if (!NT_SUCCESS(status))
         goto fail14;
 
+    status = ThreadCreate(PollRing, *Ring, &(*Ring)->PollThread);
+    if (!NT_SUCCESS(status))
+        goto fail15;
+
     return STATUS_SUCCESS;
+
+fail15:
+    Error("fail15\n");
+
+    ThreadAlert((*Ring)->WatchdogThread);
+    ThreadJoin((*Ring)->WatchdogThread);
+    (*Ring)->WatchdogThread = NULL;
 
 fail14:
     Error("fail14\n");
@@ -3659,6 +3781,7 @@ fail1:
     return status;
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static FORCEINLINE NTSTATUS
 __TransmitterRingConnect(
     IN  PXENVIF_TRANSMITTER_RING    Ring
@@ -3672,6 +3795,7 @@ __TransmitterRingConnect(
     PROCESSOR_NUMBER                ProcNumber;
     NTSTATUS                        status;
 
+    ASSERT3U(KeGetCurrentIrql(), <, DISPATCH_LEVEL);
     ASSERT(!Ring->Connected);
 
     Transmitter = Ring->Transmitter;
@@ -3723,6 +3847,9 @@ __TransmitterRingConnect(
                            Pfn,
                            FALSE,
                            &Ring->Entry);
+
+    Info("Granted transmitter PFN: 0x%llx\n", Pfn);
+
     if (!NT_SUCCESS(status))
         goto fail4;
 
@@ -3732,8 +3859,6 @@ __TransmitterRingConnect(
                                 Ring->Index);
     if (!NT_SUCCESS(status))
         goto fail5;
-
-    ASSERT3U(KeGetCurrentIrql(), ==, DISPATCH_LEVEL);
 
     if (FrontendIsSplit(Frontend)) {
         Ring->Channel = XENBUS_EVTCHN(Open,
@@ -3829,6 +3954,7 @@ fail1:
     return status;
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static FORCEINLINE NTSTATUS
 __TransmitterRingStoreWrite(
     IN  PXENVIF_TRANSMITTER_RING    Ring,
@@ -3840,6 +3966,8 @@ __TransmitterRingStoreWrite(
     ULONG                           Port;
     PCHAR                           Path;
     NTSTATUS                        status;
+
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
 
     Transmitter = Ring->Transmitter;
     Frontend = Transmitter->Frontend;
@@ -3889,6 +4017,7 @@ fail1:
     return status;
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static FORCEINLINE NTSTATUS
 __TransmitterRingEnable(
     IN  PXENVIF_TRANSMITTER_RING    Ring
@@ -3896,6 +4025,8 @@ __TransmitterRingEnable(
 {
     PXENVIF_TRANSMITTER             Transmitter;
     PXENVIF_FRONTEND                Frontend;
+
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
 
     Transmitter = Ring->Transmitter;
     Frontend = Transmitter->Frontend;
@@ -3920,18 +4051,20 @@ __TransmitterRingEnable(
     return STATUS_SUCCESS;
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static FORCEINLINE VOID
 __TransmitterRingDisable(
     IN  PXENVIF_TRANSMITTER_RING    Ring
     )
-{    
+{
     PXENVIF_TRANSMITTER             Transmitter;
     PXENVIF_FRONTEND                Frontend;
     PXENVIF_TRANSMITTER_PACKET      Packet;
     PCHAR                           Buffer;
     XenbusState                     State;
-    ULONG                           Attempt;
     NTSTATUS                        status;
+
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
 
     Transmitter = Ring->Transmitter;
     Frontend = Transmitter->Frontend;
@@ -3983,11 +4116,10 @@ __TransmitterRingDisable(
                      Buffer);
     }
 
-    Attempt = 0;
     ASSERT3U(Ring->RequestsPushed, ==, Ring->RequestsPosted);
+
     while (Ring->ResponsesProcessed != Ring->RequestsPushed) {
-        Attempt++;
-        ASSERT(Attempt < 100);
+        LARGE_INTEGER Timeout;
 
         // Try to move things along
         __TransmitterRingSend(Ring);
@@ -3996,12 +4128,10 @@ __TransmitterRingDisable(
         if (State != XenbusStateConnected)
             __TransmitterRingFakeResponses(Ring);
 
-        // We are waiting for a watch event at DISPATCH_LEVEL so
-        // it is our responsibility to poll the store ring.
-        XENBUS_STORE(Poll,
-                     &Transmitter->StoreInterface);
+        XENBUS_STORE(Poll, &Transmitter->StoreInterface);
 
-        KeStallExecutionProcessor(1000);    // 1ms
+        Timeout.QuadPart = TIME_RELATIVE(TIME_MS(1));
+        KeDelayExecutionThread(KernelMode, FALSE, &Timeout);
     }
 
     Ring->Enabled = FALSE;
@@ -4013,6 +4143,7 @@ __TransmitterRingDisable(
          Ring->Index);
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static FORCEINLINE VOID
 __TransmitterRingDisconnect(
     IN  PXENVIF_TRANSMITTER_RING    Ring
@@ -4021,6 +4152,7 @@ __TransmitterRingDisconnect(
     PXENVIF_TRANSMITTER             Transmitter;
     PXENVIF_FRONTEND                Frontend;
 
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
     ASSERT(Ring->Connected);
     Ring->Connected = FALSE;
 
@@ -4070,6 +4202,7 @@ __TransmitterRingDisconnect(
     Ring->GnttabCache = NULL;
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static FORCEINLINE VOID
 __TransmitterRingTeardown(
     IN  PXENVIF_TRANSMITTER_RING    Ring
@@ -4077,6 +4210,8 @@ __TransmitterRingTeardown(
 {
     PXENVIF_TRANSMITTER             Transmitter;
     PXENVIF_FRONTEND                Frontend;
+
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
 
     Transmitter = Ring->Transmitter;
     Frontend = Transmitter->Frontend;
@@ -4102,6 +4237,10 @@ __TransmitterRingTeardown(
     ThreadAlert(Ring->WatchdogThread);
     ThreadJoin(Ring->WatchdogThread);
     Ring->WatchdogThread = NULL;
+
+    ThreadAlert(Ring->PollThread);
+    ThreadJoin(Ring->PollThread);
+    Ring->PollThread = NULL;
 
     XENBUS_CACHE(Destroy,
                  &Transmitter->CacheInterface,
@@ -4153,6 +4292,7 @@ __TransmitterRingTeardown(
     __TransmitterFree(Ring);
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static FORCEINLINE VOID
 __TransmitterRingQueuePacket(
     IN  PXENVIF_TRANSMITTER_RING    Ring,
@@ -4165,6 +4305,7 @@ __TransmitterRingQueuePacket(
     ULONG_PTR                       LockBit;
     ULONG_PTR                       New;
 
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
     ListEntry = &Packet->ListEntry;
 
     do {
@@ -4189,6 +4330,8 @@ __TransmitterRingQueuePacket(
         __TransmitterRingReleaseLock(Ring);
 }
 
+_IRQL_requires_same_
+_IRQL_requires_max_(APC_LEVEL)
 static FORCEINLINE VOID
 __TransmitterRingAbortPackets(
     IN  PXENVIF_TRANSMITTER_RING    Ring
@@ -4197,6 +4340,8 @@ __TransmitterRingAbortPackets(
     PXENVIF_TRANSMITTER             Transmitter;
     PXENVIF_FRONTEND                Frontend;
     ULONG                           Count;
+
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
 
     Transmitter = Ring->Transmitter;
     Frontend = Transmitter->Frontend;
@@ -4209,7 +4354,7 @@ __TransmitterRingAbortPackets(
     while (!IsListEmpty(&Ring->PacketQueue)) {
         PLIST_ENTRY                 ListEntry;
         PXENVIF_TRANSMITTER_PACKET  Packet;
-        
+
         ListEntry = RemoveHeadList(&Ring->PacketQueue);
         ASSERT3P(ListEntry, !=, &Ring->PacketQueue);
 
@@ -4240,6 +4385,8 @@ __TransmitterRingAbortPackets(
     __TransmitterRingReleaseLock(Ring);
 }
 
+_IRQL_requires_same_
+_IRQL_requires_max_(APC_LEVEL)
 static FORCEINLINE NTSTATUS
 __TransmitterRingQueueArp(
     IN  PXENVIF_TRANSMITTER_RING    Ring,
@@ -4250,6 +4397,8 @@ __TransmitterRingQueueArp(
     PXENVIF_FRONTEND                Frontend;
     PXENVIF_TRANSMITTER_REQUEST     Request;
     NTSTATUS                        status;
+
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
 
     Transmitter = Ring->Transmitter;
     Frontend = Transmitter->Frontend;
@@ -4290,6 +4439,8 @@ fail1:
     return status;
 }
 
+_IRQL_requires_same_
+_IRQL_requires_max_(APC_LEVEL)
 static FORCEINLINE NTSTATUS
 __TransmitterRingQueueNeighbourAdvertisement(
     IN  PXENVIF_TRANSMITTER_RING    Ring,
@@ -4300,6 +4451,8 @@ __TransmitterRingQueueNeighbourAdvertisement(
     PXENVIF_FRONTEND                Frontend;
     PXENVIF_TRANSMITTER_REQUEST     Request;
     NTSTATUS                        status;
+
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
 
     Transmitter = Ring->Transmitter;
     Frontend = Transmitter->Frontend;
@@ -4360,6 +4513,8 @@ TransmitterHasMulticastControl(
     return __TransmitterHasMulticastControl(Transmitter);
 }
 
+_IRQL_requires_same_
+_IRQL_requires_max_(APC_LEVEL)
 static FORCEINLINE NTSTATUS
 __TransmitterRingQueueMulticastControl(
     IN  PXENVIF_TRANSMITTER_RING    Ring,
@@ -4372,6 +4527,7 @@ __TransmitterRingQueueMulticastControl(
     PXENVIF_TRANSMITTER_REQUEST     Request;
     NTSTATUS                        status;
 
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
     Transmitter = Ring->Transmitter;
 
     status = STATUS_NOT_SUPPORTED;
@@ -4431,6 +4587,7 @@ TransmitterDebugCallback(
     UNREFERENCED_PARAMETER(Crashing);
 }
 
+_IRQL_requires_(PASSIVE_LEVEL)
 NTSTATUS
 TransmitterInitialize(
     IN  PXENVIF_FRONTEND    Frontend,
@@ -4442,6 +4599,8 @@ TransmitterInitialize(
     LONG                    MaxQueues;
     LONG                    Index;
     NTSTATUS                status;
+
+    ASSERT3U(KeGetCurrentIrql(), ==, PASSIVE_LEVEL);
 
     *Transmitter = __TransmitterAllocate(sizeof (XENVIF_TRANSMITTER));
 
@@ -4514,7 +4673,7 @@ TransmitterInitialize(
                           &(*Transmitter)->EvtchnInterface);
 
     (*Transmitter)->Frontend = Frontend;
-    KeInitializeSpinLock(&(*Transmitter)->Lock);
+    ExInitializeFastMutex(&(*Transmitter)->FastMutex);
 
     status = XENBUS_RANGE_SET(Acquire, &(*Transmitter)->RangeSetInterface);
     if (!NT_SUCCESS(status))
@@ -4611,8 +4770,8 @@ fail2:
 
     (*Transmitter)->Frontend = NULL;
 
-    RtlZeroMemory(&(*Transmitter)->Lock,
-                  sizeof (KSPIN_LOCK));
+    RtlZeroMemory(&(*Transmitter)->FastMutex,
+                  sizeof (FAST_MUTEX));
 
     RtlZeroMemory(&(*Transmitter)->GnttabInterface,
                   sizeof (XENBUS_GNTTAB_INTERFACE));
@@ -4634,7 +4793,7 @@ fail2:
     (*Transmitter)->AlwaysCopy = 0;
     (*Transmitter)->ValidateChecksums = 0;
     (*Transmitter)->DisableMulticastControl = 0;
-    
+
     ASSERT(IsZeroMemory(*Transmitter, sizeof (XENVIF_TRANSMITTER)));
     __TransmitterFree(*Transmitter);
 
@@ -4644,6 +4803,7 @@ fail1:
     return status;
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 NTSTATUS
 TransmitterConnect(
     IN  PXENVIF_TRANSMITTER     Transmitter
@@ -4653,6 +4813,8 @@ TransmitterConnect(
     PCHAR                       Buffer;
     LONG                        Index;
     NTSTATUS                    status;
+
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
 
     Trace("====>\n");
 
@@ -4699,7 +4861,7 @@ TransmitterConnect(
             goto fail5;
 
         Index++;
-    }    
+    }
 
     status = XENBUS_DEBUG(Register,
                           &Transmitter->DebugInterface,
@@ -4754,6 +4916,8 @@ fail1:
     return status;
 }
 
+_IRQL_requires_same_
+_IRQL_requires_max_(APC_LEVEL)
 static FORCEINLINE NTSTATUS
 __TransmitterRequestMulticastControl(
     IN  PXENVIF_TRANSMITTER         Transmitter,
@@ -4764,6 +4928,7 @@ __TransmitterRequestMulticastControl(
     PXENVIF_FRONTEND                Frontend;
     NTSTATUS                        status;
 
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
     Frontend = Transmitter->Frontend;
 
     status = XENBUS_STORE(Printf,
@@ -4784,6 +4949,8 @@ fail1:
     return status;
 }
 
+_IRQL_requires_same_
+_IRQL_requires_max_(APC_LEVEL)
 NTSTATUS
 TransmitterRequestMulticastControl(
     IN  PXENVIF_TRANSMITTER Transmitter,
@@ -4791,6 +4958,8 @@ TransmitterRequestMulticastControl(
     )
 {
     NTSTATUS                status;
+
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
 
     status = STATUS_NOT_SUPPORTED;
     if (!__TransmitterHasMulticastControl(Transmitter))
@@ -4808,6 +4977,8 @@ fail1:
     return status;
 }
 
+_IRQL_requires_same_
+_IRQL_requires_max_(APC_LEVEL)
 NTSTATUS
 TransmitterStoreWrite(
     IN  PXENVIF_TRANSMITTER         Transmitter,
@@ -4818,6 +4989,7 @@ TransmitterStoreWrite(
     NTSTATUS                        status;
     LONG                            Index;
 
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
     Frontend = Transmitter->Frontend;
 
     if (__TransmitterHasMulticastControl(Transmitter)) {
@@ -4837,7 +5009,7 @@ TransmitterStoreWrite(
             goto fail2;
 
         Index++;
-    }    
+    }
 
     return STATUS_SUCCESS;
 
@@ -4850,6 +5022,8 @@ fail1:
     return status;
 }
 
+_IRQL_requires_same_
+_IRQL_requires_max_(APC_LEVEL)
 NTSTATUS
 TransmitterEnable(
     IN  PXENVIF_TRANSMITTER Transmitter
@@ -4857,6 +5031,8 @@ TransmitterEnable(
 {
     PXENVIF_FRONTEND        Frontend;
     LONG                    Index;
+
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
 
     Trace("====>\n");
 
@@ -4868,12 +5044,14 @@ TransmitterEnable(
 
         __TransmitterRingEnable(Ring);
         Index++;
-    }    
+    }
 
     Trace("<====\n");
     return STATUS_SUCCESS;
 }
 
+_IRQL_requires_same_
+_IRQL_requires_max_(APC_LEVEL)
 VOID
 TransmitterDisable(
     IN  PXENVIF_TRANSMITTER Transmitter
@@ -4882,6 +5060,7 @@ TransmitterDisable(
     PXENVIF_FRONTEND       Frontend;
     LONG                   Index;
 
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
     Trace("====>\n");
 
     Frontend = Transmitter->Frontend;
@@ -4933,6 +5112,8 @@ TransmitterDisconnect(
     Trace("<====\n");
 }
 
+_IRQL_requires_same_
+_IRQL_requires_max_(PASSIVE_LEVEL)
 VOID
 TransmitterTeardown(
     IN  PXENVIF_TRANSMITTER Transmitter
@@ -4968,8 +5149,8 @@ TransmitterTeardown(
 
     Transmitter->Frontend = NULL;
 
-    RtlZeroMemory(&Transmitter->Lock,
-                  sizeof (KSPIN_LOCK));
+    RtlZeroMemory(&Transmitter->FastMutex,
+                  sizeof (FAST_MUTEX));
 
     RtlZeroMemory(&Transmitter->GnttabInterface,
                   sizeof (XENBUS_GNTTAB_INTERFACE));
@@ -4999,6 +5180,8 @@ TransmitterTeardown(
     __TransmitterFree(Transmitter);
 }
 
+_IRQL_requires_same_
+_IRQL_requires_max_(APC_LEVEL)
 static FORCEINLINE VOID
 __TransmitterHashAccumulate(
     IN OUT  PULONG  Accumulator,
@@ -5009,6 +5192,7 @@ __TransmitterHashAccumulate(
     ULONG           Current;
     ULONG           Index;
 
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
     Current = *Accumulator;
 
     for (Index = 0; Index < Length; Index++) {
@@ -5026,6 +5210,8 @@ __TransmitterHashAccumulate(
     *Accumulator = Current;
 }
 
+_IRQL_requires_same_
+_IRQL_requires_max_(APC_LEVEL)
 static FORCEINLINE ULONG
 __TransmitterHashPacket(
     IN  PXENVIF_TRANSMITTER         Transmitter,
@@ -5038,6 +5224,7 @@ __TransmitterHashPacket(
     PIP_HEADER                      IpHeader;
     ULONG                           Value;
 
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
     Frontend = Transmitter->Frontend;
 
     BaseVa = Packet->Header;
@@ -5107,6 +5294,8 @@ done:
     return Value;
 }
 
+_IRQL_requires_same_
+_IRQL_requires_max_(APC_LEVEL)
 NTSTATUS
 TransmitterQueuePacket(
     IN  PXENVIF_TRANSMITTER         Transmitter,
@@ -5132,6 +5321,7 @@ TransmitterQueuePacket(
     PXENVIF_TRANSMITTER_RING        Ring;
     NTSTATUS                        status;
 
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
     Frontend = Transmitter->Frontend;
 
     Packet = __TransmitterGetPacket(Transmitter);
@@ -5196,51 +5386,57 @@ fail1:
     return status;
 }
 
+_IRQL_requires_same_
+_IRQL_requires_max_(APC_LEVEL)
 VOID
 TransmitterAbortPackets(
     IN  PXENVIF_TRANSMITTER Transmitter
     )
 {
     PXENVIF_FRONTEND        Frontend;
-    KIRQL                   Irql;
     LONG                    Index;
 
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
     Frontend = Transmitter->Frontend;
-
-    KeRaiseIrql(DISPATCH_LEVEL, &Irql);
 
     Index = FrontendGetNumQueues(Frontend);
     while (--Index >= 0) {
         PXENVIF_TRANSMITTER_RING    Ring = Transmitter->Ring[Index];
 
         __TransmitterRingAbortPackets(Ring);
-    }    
-
-    KeLowerIrql(Irql);
+    }
 }
 
+_IRQL_requires_same_
+_IRQL_requires_max_(APC_LEVEL)
 VOID
 TransmitterQueueArp(
     IN  PXENVIF_TRANSMITTER     Transmitter,
     IN  PIPV4_ADDRESS           Address
     )
 {
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
     PXENVIF_TRANSMITTER_RING    Ring = Transmitter->Ring[0];
 
     (VOID) __TransmitterRingQueueArp(Ring, Address);
 }
 
+_IRQL_requires_same_
+_IRQL_requires_max_(APC_LEVEL)
 VOID
 TransmitterQueueNeighbourAdvertisement(
     IN  PXENVIF_TRANSMITTER     Transmitter,
     IN  PIPV6_ADDRESS           Address
     )
 {
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
     PXENVIF_TRANSMITTER_RING    Ring = Transmitter->Ring[0];
 
     (VOID) __TransmitterRingQueueNeighbourAdvertisement(Ring, Address);
 }
 
+_IRQL_requires_same_
+_IRQL_requires_max_(APC_LEVEL)
 VOID
 TransmitterQueueMulticastControl(
     IN  PXENVIF_TRANSMITTER     Transmitter,
@@ -5248,6 +5444,7 @@ TransmitterQueueMulticastControl(
     IN  BOOLEAN                 Add
     )
 {
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
     PXENVIF_TRANSMITTER_RING    Ring = Transmitter->Ring[0];
 
     (VOID) __TransmitterRingQueueMulticastControl(Ring, Address, Add);
@@ -5283,6 +5480,8 @@ TransmitterNotify(
         Ring->PollDpcs++;
 }
 
+_IRQL_requires_same_
+_IRQL_requires_max_(APC_LEVEL)
 VOID
 TransmitterQueryOffloadOptions(
     IN  PXENVIF_TRANSMITTER         Transmitter,
@@ -5293,6 +5492,7 @@ TransmitterQueryOffloadOptions(
     PCHAR                           Buffer;
     NTSTATUS                        status;
 
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
     Frontend = Transmitter->Frontend;
 
     Options->Value = 0;
@@ -5403,6 +5603,8 @@ TransmitterQueryOffloadOptions(
                                                          MAXIMUM_IPV6_OPTIONS_LENGTH -          \
                                                          MAXIMUM_TCP_HEADER_LENGTH)
 
+_IRQL_requires_same_
+_IRQL_requires_max_(APC_LEVEL)
 VOID
 TransmitterQueryLargePacketSize(
     IN  PXENVIF_TRANSMITTER     Transmitter,
@@ -5415,6 +5617,7 @@ TransmitterQueryLargePacketSize(
     ULONG                       OffloadIpLargePacket;
     NTSTATUS                    status;
 
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
     Frontend = Transmitter->Frontend;
 
     if (Version == 4) {

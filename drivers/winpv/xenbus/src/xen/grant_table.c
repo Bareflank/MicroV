@@ -74,7 +74,7 @@ static LONG_PTR
 GrantTableOp(
     IN  ULONG   Command,
     IN  PVOID   Argument,
-    IN  ULONG   Count
+    IN  ULONG64 Count
     )
 {
     return HYPERCALL(LONG_PTR, grant_table_op, 3, Command, Argument, Count);
@@ -93,7 +93,7 @@ GrantTableSetVersion(
 
     op.version = Version;
 
-    rc = GrantTableOp(GNTTABOP_set_version, &op, 1);
+    rc = GrantTableOp(GNTTABOP_set_version, &op, 1ULL);
 
     if (rc < 0) {
         ERRNO_TO_STATUS(-rc, status);
@@ -121,7 +121,7 @@ GrantTableGetVersion(
 
     op.dom = DOMID_SELF;
 
-    rc = GrantTableOp(GNTTABOP_get_version, &op, 1);
+    rc = GrantTableOp(GNTTABOP_get_version, &op, 1ULL);
 
     if (rc < 0) {
         ERRNO_TO_STATUS(-rc, status);
@@ -149,7 +149,7 @@ GrantTableCopy(
     LONG_PTR                rc;
     NTSTATUS                status;
 
-    rc = GrantTableOp(GNTTABOP_copy, &op[0], Count);
+    rc = GrantTableOp(GNTTABOP_copy, &op[0], (ULONG64)Count);
 
     if (rc < 0) {
         ERRNO_TO_STATUS(-rc, status);
@@ -187,7 +187,7 @@ GrantTableMapForeignPage(
         op.flags |= GNTMAP_readonly;
     op.host_addr = Address.QuadPart;
 
-    rc = GrantTableOp(GNTTABOP_map_grant_ref, &op, 1);
+    rc = GrantTableOp(GNTTABOP_map_grant_ref, &op, 1ULL);
 
     if (rc < 0) {
         ERRNO_TO_STATUS(-rc, status);
@@ -235,7 +235,7 @@ GrantTableUnmapForeignPage(
     op.handle = Handle;
     op.host_addr = Address.QuadPart;
 
-    rc = GrantTableOp(GNTTABOP_unmap_grant_ref, &op, 1);
+    rc = GrantTableOp(GNTTABOP_unmap_grant_ref, &op, 1ULL);
 
     if (rc < 0) {
         ERRNO_TO_STATUS(-rc, status);
@@ -277,7 +277,7 @@ GrantTableQuerySize(
 
     op.dom = DOMID_SELF;
 
-    rc = GrantTableOp(GNTTABOP_query_size, &op, 1);
+    rc = GrantTableOp(GNTTABOP_query_size, &op, 1ULL);
 
     if (rc < 0) {
         ERRNO_TO_STATUS(-rc, status);

@@ -121,7 +121,7 @@ typedef struct _XENBUS_STORE_BUFFER {
 
 struct _XENBUS_STORE_CONTEXT {
     PXENBUS_FDO                         Fdo;
-    KSPIN_LOCK                          Lock;
+    FAST_MUTEX                          FastMutex;
     LONG                                References;
     struct xenstore_domain_interface    *Shared;
     USHORT                              RequestId;
@@ -146,6 +146,7 @@ struct _XENBUS_STORE_CONTEXT {
     PXENBUS_SUSPEND_CALLBACK            SuspendCallbackLate;
     PXENBUS_DEBUG_CALLBACK              DebugCallback;
     PXENBUS_THREAD                      WatchdogThread;
+    PXENBUS_THREAD                      WorkThread;
     BOOLEAN                             Enabled;
 };
 
@@ -179,12 +180,12 @@ StorePrepareRequest(
     )
 {
     ULONG                           Id;
-    KIRQL                           Irql;
     PXENBUS_STORE_SEGMENT           Segment;
     va_list                         Arguments;
     NTSTATUS                        status;
 
     ASSERT(IsZeroMemory(Request, sizeof (XENBUS_STORE_REQUEST)));
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
 
     if (Transaction != NULL) {
         status = STATUS_UNSUCCESSFUL;
@@ -200,9 +201,9 @@ StorePrepareRequest(
     Request->Header.tx_id = Id;
     Request->Header.len = 0;
 
-    KeAcquireSpinLock(&Context->Lock, &Irql);
+    ExAcquireFastMutex(&Context->FastMutex);
     Request->Header.req_id = Context->RequestId++;
-    KeReleaseSpinLock(&Context->Lock, Irql);
+    ExReleaseFastMutex(&Context->FastMutex);
 
     Request->Count = 0;
     Segment = &Request->Segment[Request->Count++];
@@ -824,6 +825,7 @@ StoreProcessResponse(
     KeMemoryBarrier();
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static VOID
 StorePollLocked(
     IN  PXENBUS_STORE_CONTEXT   Context
@@ -832,8 +834,6 @@ StorePollLocked(
     ULONG                       Read;
     ULONG                       Written;
     NTSTATUS                    status;
-
-    ASSERT3U(KeGetCurrentIrql(), ==, DISPATCH_LEVEL);
 
     Context->Polls++;
 
@@ -880,10 +880,7 @@ StoreDpc(
 
     ASSERT(Context != NULL);
 
-    KeAcquireSpinLockAtDpcLevel(&Context->Lock);
-    if (Context->References != 0)
-        StorePollLocked(Context);
-    KeReleaseSpinLockFromDpcLevel(&Context->Lock);
+    KeSetEvent(&Context->WorkThread->Event, IO_NO_INCREMENT, FALSE);
 }
 
 #define TIME_US(_us)        ((_us) * 10)
@@ -893,6 +890,7 @@ StoreDpc(
 
 #define XENBUS_STORE_POLL_PERIOD 5
 
+_IRQL_requires_max_(APC_LEVEL)
 static PXENBUS_STORE_RESPONSE
 StoreSubmitRequest(
     IN  PXENBUS_STORE_CONTEXT   Context,
@@ -900,51 +898,26 @@ StoreSubmitRequest(
     )
 {
     PXENBUS_STORE_RESPONSE      Response;
-    KIRQL                       Irql;
-    ULONG                       Count;
     LARGE_INTEGER               Timeout;
 
     ASSERT3U(Request->State, ==, XENBUS_STORE_REQUEST_PREPARED);
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
 
-    // Make sure we don't suspend
-    ASSERT3U(KeGetCurrentIrql(), <=, DISPATCH_LEVEL);
-    KeRaiseIrql(DISPATCH_LEVEL, &Irql);
-
-    KeAcquireSpinLockAtDpcLevel(&Context->Lock);
+    ExAcquireFastMutex(&Context->FastMutex);
 
     InsertTailList(&Context->SubmittedList, &Request->ListEntry);
-
     Request->State = XENBUS_STORE_REQUEST_SUBMITTED;
-
-    Count = XENBUS_EVTCHN(GetCount,
-                          &Context->EvtchnInterface,
-                          Context->Channel);
-
     StorePollLocked(Context);
     KeMemoryBarrier();
-
-    Timeout.QuadPart = TIME_RELATIVE(TIME_S(XENBUS_STORE_POLL_PERIOD));
+    Timeout.QuadPart = TIME_RELATIVE(TIME_MS(XENBUS_STORE_POLL_PERIOD * 20));
 
     while (Request->State != XENBUS_STORE_REQUEST_COMPLETED) {
-        NTSTATUS    status;
-
-        status = XENBUS_EVTCHN(Wait,
-                               &Context->EvtchnInterface,
-                               Context->Channel,
-                               Count + 1,
-                               &Timeout);
-        if (status == STATUS_TIMEOUT)
-            Warning("TIMED OUT\n");
-
-        Count = XENBUS_EVTCHN(GetCount,
-                              &Context->EvtchnInterface,
-                              Context->Channel);
-
+        KeDelayExecutionThread(KernelMode, FALSE, &Timeout);
         StorePollLocked(Context);
         KeMemoryBarrier();
     }
 
-    KeReleaseSpinLockFromDpcLevel(&Context->Lock);
+    ExReleaseFastMutex(&Context->FastMutex);
 
     Response = Request->Response;
     ASSERT(Response == NULL ||
@@ -952,8 +925,6 @@ StoreSubmitRequest(
            Response->Header.type == Request->Header.type);
 
     RtlZeroMemory(Request, sizeof (XENBUS_STORE_REQUEST));
-
-    KeLowerIrql(Irql);
 
     return Response;
 }
@@ -1008,7 +979,6 @@ StoreCopyPayload(
     PCHAR                       Data;
     ULONG                       Length;
     PXENBUS_STORE_BUFFER        Buffer;
-    KIRQL                       Irql;
     NTSTATUS                    status;
 
     Data = Response->Segment[XENBUS_STORE_RESPONSE_PAYLOAD_SEGMENT].Data;
@@ -1027,9 +997,11 @@ StoreCopyPayload(
 
     RtlCopyMemory(Buffer->Data, Data, Length);
 
-    KeAcquireSpinLock(&Context->Lock, &Irql);
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
+
+    ExAcquireFastMutex(&Context->FastMutex);
     InsertTailList(&Context->BufferList, &Buffer->ListEntry);
-    KeReleaseSpinLock(&Context->Lock, Irql);
+    ExReleaseFastMutex(&Context->FastMutex);
 
     return Buffer;
 
@@ -1039,19 +1011,19 @@ fail1:
     return NULL;
 }
 
+_IRQL_requires_max_(APC_LEVEL)
 static VOID
 StoreFreePayload(
     IN  PXENBUS_STORE_CONTEXT   Context,
     IN  PXENBUS_STORE_BUFFER    Buffer
     )
 {
-    KIRQL                       Irql;
-
     ASSERT3U(Buffer->Magic, ==, XENBUS_STORE_BUFFER_MAGIC);
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
 
-    KeAcquireSpinLock(&Context->Lock, &Irql);
+    ExAcquireFastMutex(&Context->FastMutex);
     RemoveEntryList(&Buffer->ListEntry);
-    KeReleaseSpinLock(&Context->Lock, Irql);
+    ExReleaseFastMutex(&Context->FastMutex);
 
     __StoreFree(Buffer);
 }
@@ -1453,7 +1425,6 @@ StoreTransactionStart(
     PXENBUS_STORE_CONTEXT           Context = Interface->Context;
     XENBUS_STORE_REQUEST            Request;
     PXENBUS_STORE_RESPONSE          Response;
-    KIRQL                           Irql;
     NTSTATUS                        status;
 
     *Transaction = __StoreAllocate(sizeof (XENBUS_STORE_TRANSACTION));
@@ -1492,11 +1463,12 @@ StoreTransactionStart(
 
     StoreFreeResponse(Response);
     ASSERT(IsZeroMemory(&Request, sizeof (XENBUS_STORE_REQUEST)));
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
 
-    KeAcquireSpinLock(&Context->Lock, &Irql);
+    ExAcquireFastMutex(&Context->FastMutex);
     (*Transaction)->Active = TRUE;
     InsertTailList(&Context->TransactionList, &(*Transaction)->ListEntry);
-    KeReleaseSpinLock(&Context->Lock, Irql);
+    ExReleaseFastMutex(&Context->FastMutex);
 
     return STATUS_SUCCESS;
 
@@ -1531,18 +1503,18 @@ StoreTransactionEnd(
     PXENBUS_STORE_CONTEXT           Context = Interface->Context;
     XENBUS_STORE_REQUEST            Request;
     PXENBUS_STORE_RESPONSE          Response;
-    KIRQL                           Irql;
     NTSTATUS                        status;
 
     ASSERT3U(Transaction->Magic, ==, STORE_TRANSACTION_MAGIC);
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
 
-    KeAcquireSpinLock(&Context->Lock, &Irql);
+    ExAcquireFastMutex(&Context->FastMutex);
 
     status = STATUS_RETRY;
     if (!Transaction->Active)
         goto done;
 
-    KeReleaseSpinLock(&Context->Lock, Irql);
+    ExReleaseFastMutex(&Context->FastMutex);
 
     RtlZeroMemory(&Request, sizeof (XENBUS_STORE_REQUEST));
 
@@ -1566,13 +1538,14 @@ StoreTransactionEnd(
 
     StoreFreeResponse(Response);
     ASSERT(IsZeroMemory(&Request, sizeof (XENBUS_STORE_REQUEST)));
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
 
-    KeAcquireSpinLock(&Context->Lock, &Irql);
+    ExAcquireFastMutex(&Context->FastMutex);
     Transaction->Active = FALSE;
 
 done:
     RemoveEntryList(&Transaction->ListEntry);
-    KeReleaseSpinLock(&Context->Lock, Irql);
+    ExReleaseFastMutex(&Context->FastMutex);
 
     RtlZeroMemory(&Transaction->ListEntry, sizeof (LIST_ENTRY));
 
@@ -1612,7 +1585,6 @@ StoreWatchAdd(
     CHAR                        Token[TOKEN_LENGTH];
     XENBUS_STORE_REQUEST        Request;
     PXENBUS_STORE_RESPONSE      Response;
-    KIRQL                       Irql;
     NTSTATUS                    status;
 
     *Watch = __StoreAllocate(sizeof (XENBUS_STORE_WATCH));
@@ -1643,11 +1615,13 @@ StoreWatchAdd(
     (*Watch)->Path = Path;
     (*Watch)->Event = Event;
 
-    KeAcquireSpinLock(&Context->Lock, &Irql);
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
+
+    ExAcquireFastMutex(&Context->FastMutex);
     (*Watch)->Id = StoreNextWatchId(Context);
     (*Watch)->Active = TRUE;
     InsertTailList(&Context->WatchList, &(*Watch)->ListEntry);
-    KeReleaseSpinLock(&Context->Lock, Irql);
+    ExReleaseFastMutex(&Context->FastMutex);
 
     status = RtlStringCbPrintfA(Token,
                                 sizeof (Token),
@@ -1694,12 +1668,13 @@ fail3:
     Error("fail3\n");
 
     ASSERT(IsZeroMemory(&Request, sizeof (XENBUS_STORE_REQUEST)));
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
 
-    KeAcquireSpinLock(&Context->Lock, &Irql);
+    ExAcquireFastMutex(&Context->FastMutex);
     (*Watch)->Active = FALSE;
     (*Watch)->Id = 0;
     RemoveEntryList(&(*Watch)->ListEntry);
-    KeReleaseSpinLock(&Context->Lock, Irql);
+    ExReleaseFastMutex(&Context->FastMutex);
 
     RtlZeroMemory(&(*Watch)->ListEntry, sizeof (LIST_ENTRY));
 
@@ -1734,19 +1709,19 @@ StoreWatchRemove(
     CHAR                        Token[TOKEN_LENGTH];
     XENBUS_STORE_REQUEST        Request;
     PXENBUS_STORE_RESPONSE      Response;
-    KIRQL                       Irql;
     NTSTATUS                    status;
 
     ASSERT3U(Watch->Magic, ==, STORE_WATCH_MAGIC);
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
 
     Path = Watch->Path;
 
-    KeAcquireSpinLock(&Context->Lock, &Irql);
+    ExAcquireFastMutex(&Context->FastMutex);
 
     if (!Watch->Active)
         goto done;
 
-    KeReleaseSpinLock(&Context->Lock, Irql);
+    ExReleaseFastMutex(&Context->FastMutex);
 
     status = RtlStringCbPrintfA(Token,
                                 sizeof (Token),
@@ -1781,14 +1756,15 @@ StoreWatchRemove(
 
     StoreFreeResponse(Response);
     ASSERT(IsZeroMemory(&Request, sizeof (XENBUS_STORE_REQUEST)));
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
 
-    KeAcquireSpinLock(&Context->Lock, &Irql);
+    ExAcquireFastMutex(&Context->FastMutex);
     Watch->Active = FALSE;
 
 done:
     Watch->Id = 0;
     RemoveEntryList(&Watch->ListEntry);
-    KeReleaseSpinLock(&Context->Lock, Irql);
+    ExReleaseFastMutex(&Context->FastMutex);
 
     RtlZeroMemory(&Watch->ListEntry, sizeof (LIST_ENTRY));
 
@@ -1824,11 +1800,45 @@ StorePoll(
     )
 {
     PXENBUS_STORE_CONTEXT   Context = Interface->Context;
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
 
-    KeAcquireSpinLockAtDpcLevel(&Context->Lock);
+    ExAcquireFastMutex(&Context->FastMutex);
     if (Context->References != 0)
         StorePollLocked(Context);
-    KeReleaseSpinLockFromDpcLevel(&Context->Lock);
+    ExReleaseFastMutex(&Context->FastMutex);
+}
+
+static NTSTATUS
+StoreWork(
+    IN  PXENBUS_THREAD                  Self,
+    IN  PVOID                           _Context
+    )
+{
+    PXENBUS_STORE_CONTEXT               Context = _Context;
+
+    for (;;) {
+        PKEVENT Event = ThreadGetEvent(Self);
+
+        (VOID) KeWaitForSingleObject(Event,
+                                     Executive,
+                                     KernelMode,
+                                     FALSE,
+                                     NULL);
+        KeClearEvent(Event);
+
+        if (ThreadIsAlerted(Self))
+            break;
+
+        ExAcquireFastMutex(&Context->FastMutex);
+
+        if (Context->Enabled) {
+            StorePollLocked(Context);
+        }
+
+        ExReleaseFastMutex(&Context->FastMutex);
+    }
+
+    return STATUS_SUCCESS;
 }
 
 #define TIME_US(_us)        ((_us) * 10)
@@ -1862,7 +1872,6 @@ StoreWatchdog(
 
     for (;;) {
         PKEVENT Event;
-        KIRQL   Irql;
 
         Event = ThreadGetEvent(Self);
 
@@ -1876,8 +1885,7 @@ StoreWatchdog(
         if (ThreadIsAlerted(Self))
             break;
 
-        KeRaiseIrql(DISPATCH_LEVEL, &Irql);
-        KeAcquireSpinLockAtDpcLevel(&Context->Lock);
+        ExAcquireFastMutex(&Context->FastMutex);
 
         if (Context->Enabled) {
             struct xenstore_domain_interface    *Shared;
@@ -1909,8 +1917,7 @@ StoreWatchdog(
             rsp_cons = Shared->rsp_cons;
         }
 
-        KeReleaseSpinLockFromDpcLevel(&Context->Lock);
-        KeLowerIrql(Irql);
+        ExReleaseFastMutex(&Context->FastMutex);
     }
 
     Trace("<====\n");
@@ -2238,11 +2245,11 @@ StoreSuspendCallbackLate(
 {
     PXENBUS_STORE_CONTEXT               Context = Argument;
     PLIST_ENTRY                         ListEntry;
-    KIRQL                               Irql;
     PHYSICAL_ADDRESS                    Address;
     NTSTATUS                            status;
 
-    KeAcquireSpinLock(&Context->Lock, &Irql);
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
+    ExAcquireFastMutex(&Context->FastMutex);
 
     status = StoreGetAddress(Context, &Address);
     ASSERT(NT_SUCCESS(status));
@@ -2262,7 +2269,7 @@ StoreSuspendCallbackLate(
         KeSetEvent(Watch->Event, 0, FALSE);
     }
 
-    KeReleaseSpinLock(&Context->Lock, Irql);
+    ExReleaseFastMutex(&Context->FastMutex);
 }
 
 static VOID
@@ -2422,11 +2429,11 @@ StoreAcquire(
     )
 {
     PXENBUS_STORE_CONTEXT   Context = Interface->Context;
-    KIRQL                   Irql;
     PHYSICAL_ADDRESS        Address;
     NTSTATUS                status;
 
-    KeAcquireSpinLock(&Context->Lock, &Irql);
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
+    ExAcquireFastMutex(&Context->FastMutex);
 
     if (Context->References++ != 0)
         goto done;
@@ -2456,31 +2463,9 @@ StoreAcquire(
     StoreResetResponse(Context);
     StoreEnable(Context);
 
-    status = XENBUS_SUSPEND(Acquire, &Context->SuspendInterface);
-    if (!NT_SUCCESS(status))
-        goto fail5;
-
-    status = XENBUS_SUSPEND(Register,
-                            &Context->SuspendInterface,
-                            SUSPEND_CALLBACK_EARLY,
-                            StoreSuspendCallbackEarly,
-                            Context,
-                            &Context->SuspendCallbackEarly);
-    if (!NT_SUCCESS(status))
-        goto fail6;
-
-    status = XENBUS_SUSPEND(Register,
-                            &Context->SuspendInterface,
-                            SUSPEND_CALLBACK_LATE,
-                            StoreSuspendCallbackLate,
-                            Context,
-                            &Context->SuspendCallbackLate);
-    if (!NT_SUCCESS(status))
-        goto fail7;
-
     status = XENBUS_DEBUG(Acquire, &Context->DebugInterface);
     if (!NT_SUCCESS(status))
-        goto fail8;
+        goto fail5;
 
     status = XENBUS_DEBUG(Register,
                           &Context->DebugInterface,
@@ -2489,40 +2474,19 @@ StoreAcquire(
                           Context,
                           &Context->DebugCallback);
     if (!NT_SUCCESS(status))
-        goto fail9;
+        goto fail6;
 
     Trace("<====\n");
 
 done:
-    KeReleaseSpinLock(&Context->Lock, Irql);
+    ExReleaseFastMutex(&Context->FastMutex);
 
     return STATUS_SUCCESS;
-
-fail9:
-    Error("fail9\n");
-
-    XENBUS_DEBUG(Release, &Context->DebugInterface);
-
-fail8:
-    Error("fail8\n");
-
-    XENBUS_SUSPEND(Deregister,
-                   &Context->SuspendInterface,
-                   Context->SuspendCallbackLate);
-    Context->SuspendCallbackLate = NULL;
-
-fail7:
-    Error("fail7\n");
-
-    XENBUS_SUSPEND(Deregister,
-                   &Context->SuspendInterface,
-                   Context->SuspendCallbackEarly);
-    Context->SuspendCallbackEarly = NULL;
 
 fail6:
     Error("fail6\n");
 
-    XENBUS_SUSPEND(Release, &Context->SuspendInterface);
+    XENBUS_DEBUG(Release, &Context->DebugInterface);
 
 fail5:
     Error("fail5\n");
@@ -2555,7 +2519,7 @@ fail1:
 
     --Context->References;
     ASSERT3U(Context->References, ==, 0);
-    KeReleaseSpinLock(&Context->Lock, Irql);
+    ExReleaseFastMutex(&Context->FastMutex);
 
     return status;
 }
@@ -2566,9 +2530,9 @@ StoreRelease(
     )
 {
     PXENBUS_STORE_CONTEXT   Context = Interface->Context;
-    KIRQL                   Irql;
 
-    KeAcquireSpinLock(&Context->Lock, &Irql);
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
+    ExAcquireFastMutex(&Context->FastMutex);
 
     if (--Context->References > 0)
         goto done;
@@ -2591,18 +2555,6 @@ StoreRelease(
 
     XENBUS_DEBUG(Release, &Context->DebugInterface);
 
-    XENBUS_SUSPEND(Deregister,
-                   &Context->SuspendInterface,
-                   Context->SuspendCallbackLate);
-    Context->SuspendCallbackLate = NULL;
-
-    XENBUS_SUSPEND(Deregister,
-                   &Context->SuspendInterface,
-                   Context->SuspendCallbackEarly);
-    Context->SuspendCallbackEarly = NULL;
-
-    XENBUS_SUSPEND(Release, &Context->SuspendInterface);
-
     StoreDisable(Context);
     StorePollLocked(Context);
     RtlZeroMemory(&Context->Response, sizeof (XENBUS_STORE_RESPONSE));
@@ -2619,7 +2571,7 @@ StoreRelease(
     Trace("<====\n");
 
 done:
-    KeReleaseSpinLock(&Context->Lock, Irql);
+    ExReleaseFastMutex(&Context->FastMutex);
 }
 
 static struct _XENBUS_STORE_INTERFACE_V1 StoreInterfaceVersion1 = {
@@ -2701,7 +2653,7 @@ StoreInitialize(
     ASSERT(NT_SUCCESS(status));
     ASSERT((*Context)->DebugInterface.Interface.Context != NULL);
 
-    KeInitializeSpinLock(&(*Context)->Lock);
+    ExInitializeFastMutex(&(*Context)->FastMutex);
 
     KeQuerySystemTime(&Now);
     Seed = Now.LowPart;
@@ -2718,6 +2670,10 @@ StoreInitialize(
     InitializeListHead(&(*Context)->BufferList);
 
     KeInitializeDpc(&(*Context)->Dpc, StoreDpc, *Context);
+
+    status = ThreadCreate(StoreWork,
+                          *Context,
+                          &(*Context)->WorkThread);
 
     status = ThreadCreate(StoreWatchdog,
                           *Context,
@@ -2747,7 +2703,7 @@ fail2:
     RtlZeroMemory(&(*Context)->SubmittedList, sizeof (LIST_ENTRY));
     (*Context)->RequestId = 0;
 
-    RtlZeroMemory(&(*Context)->Lock, sizeof (KSPIN_LOCK));
+    RtlZeroMemory(&(*Context)->FastMutex, sizeof (FAST_MUTEX));
 
     RtlZeroMemory(&(*Context)->DebugInterface,
                   sizeof (XENBUS_DEBUG_INTERFACE));
@@ -2840,6 +2796,10 @@ StoreTeardown(
 {
     Trace("====>\n");
 
+    ThreadAlert(Context->WorkThread);
+    ThreadJoin(Context->WorkThread);
+    Context->WorkThread = NULL;
+
     ThreadAlert(Context->WatchdogThread);
     ThreadJoin(Context->WatchdogThread);
     Context->WatchdogThread = NULL;
@@ -2866,7 +2826,7 @@ StoreTeardown(
     RtlZeroMemory(&Context->SubmittedList, sizeof (LIST_ENTRY));
     Context->RequestId = 0;
 
-    RtlZeroMemory(&Context->Lock, sizeof (KSPIN_LOCK));
+    RtlZeroMemory(&Context->FastMutex, sizeof (FAST_MUTEX));
 
     RtlZeroMemory(&Context->DebugInterface,
                   sizeof (XENBUS_DEBUG_INTERFACE));

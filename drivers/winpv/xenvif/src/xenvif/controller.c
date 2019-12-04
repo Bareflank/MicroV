@@ -62,7 +62,7 @@ RtlRandomEx (
 
 struct _XENVIF_CONTROLLER {
     PXENVIF_FRONTEND                    Frontend;
-    KSPIN_LOCK                          Lock;
+    FAST_MUTEX                          FastMutex;
     PXENBUS_GNTTAB_CACHE                GnttabCache;
     PMDL                                Mdl;
     xen_netif_ctrl_front_ring_t         Front;
@@ -99,41 +99,25 @@ __ControllerFree(
     __FreePoolWithTag(Buffer, XENVIF_CONTROLLER_TAG);
 }
 
-static FORCEINLINE VOID
-__drv_requiresIRQL(DISPATCH_LEVEL)
-__ControllerAcquireLock(
-    IN  PXENVIF_CONTROLLER  Controller
-    )
-{
-    ASSERT3U(KeGetCurrentIrql(), ==, DISPATCH_LEVEL);
-
-    KeAcquireSpinLockAtDpcLevel(&Controller->Lock);
-}
-
-static FORCEINLINE VOID
-__drv_requiresIRQL(DISPATCH_LEVEL)
-__ControllerReleaseLock(
-    IN  PXENVIF_CONTROLLER  Controller
-    )
-{
-#pragma prefast(suppress:26110) // Caller failing to hold lock
-    KeReleaseSpinLockFromDpcLevel(&Controller->Lock);
-}
-
+_IRQL_requires_max_(APC_LEVEL)
+_IRQL_raises_(APC_LEVEL)
+_IRQL_saves_global_(OldIrql, Controller)
 static VOID
 ControllerAcquireLock(
     IN  PXENVIF_CONTROLLER  Controller
     )
 {
-    __ControllerAcquireLock(Controller);
+    ExAcquireFastMutex(&Controller->FastMutex);
 }
 
+_IRQL_requires_(APC_LEVEL)
+_IRQL_restores_global_(OldIrql, Controller)
 static VOID
 ControllerReleaseLock(
     IN  PXENVIF_CONTROLLER  Controller
     )
 {
-    __ControllerReleaseLock(Controller);
+    ExReleaseFastMutex(&Controller->FastMutex);
 }
 
 static FORCEINLINE VOID
@@ -247,6 +231,8 @@ fail1:
 
 #define XENVIF_CONTROLLER_POLL_PERIOD 100 // ms
 
+_IRQL_requires_same_
+_IRQL_requires_max_(APC_LEVEL)
 static NTSTATUS
 ControllerGetResponse(
     IN  PXENVIF_CONTROLLER          Controller,
@@ -256,28 +242,19 @@ ControllerGetResponse(
     LARGE_INTEGER                   Timeout;
     NTSTATUS                        status;
 
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
+
     Timeout.QuadPart = TIME_RELATIVE(TIME_MS(XENVIF_CONTROLLER_POLL_PERIOD));
 
     for (;;) {
-        ULONG   Count;
-
-        Count = XENBUS_EVTCHN(GetCount,
-                              &Controller->EvtchnInterface,
-                              Controller->Channel);
-
         ControllerPoll(Controller);
         KeMemoryBarrier();
 
         if (Controller->Response.id == Controller->Request.id)
             break;
 
-        status = XENBUS_EVTCHN(Wait,
-                               &Controller->EvtchnInterface,
-                               Controller->Channel,
-                               Count + 1,
-                               &Timeout);
-        if (status == STATUS_TIMEOUT)
-            __ControllerSend(Controller);
+        KeDelayExecutionThread(KernelMode, FALSE, &Timeout);
+        __ControllerSend(Controller);
     }
 
     ASSERT3U(Controller->Response.type, ==, Controller->Request.type);
@@ -372,7 +349,7 @@ ControllerInitialize(
     FdoGetEvtchnInterface(PdoGetFdo(FrontendGetPdo(Frontend)),
                           &(*Controller)->EvtchnInterface);
 
-    KeInitializeSpinLock(&(*Controller)->Lock);
+    ExInitializeFastMutex(&(*Controller)->FastMutex);
 
     KeQuerySystemTime(&Now);
     Seed = Now.LowPart;
@@ -389,6 +366,8 @@ fail1:
     return status;
 }
 
+_IRQL_requires_same_
+_IRQL_requires_max_(APC_LEVEL)
 NTSTATUS
 ControllerConnect(
     IN  PXENVIF_CONTROLLER      Controller
@@ -410,17 +389,25 @@ ControllerConnect(
     if (!NT_SUCCESS(status))
         goto fail1;
 
+    Info("Acquired DEBUG interface\n");
+
     status = XENBUS_STORE(Acquire, &Controller->StoreInterface);
     if (!NT_SUCCESS(status))
         goto fail2;
+
+    Info("Acquired STORE interface\n");
 
     status = XENBUS_EVTCHN(Acquire, &Controller->EvtchnInterface);
     if (!NT_SUCCESS(status))
         goto fail3;
 
+    Info("Acquired EVTCHN interface\n");
+
     status = XENBUS_GNTTAB(Acquire, &Controller->GnttabInterface);
     if (!NT_SUCCESS(status))
         goto fail4;
+
+    Info("Acquired GNTTAB interface\n");
 
     status = XENBUS_STORE(Read,
                           &Controller->StoreInterface,
@@ -463,6 +450,8 @@ ControllerConnect(
     if (!NT_SUCCESS(status))
         goto fail6;
 
+    Info("Created GNTTAB cache\n");
+
     Controller->Mdl = __AllocatePage();
 
     status = STATUS_NO_MEMORY;
@@ -490,6 +479,8 @@ ControllerConnect(
     if (!NT_SUCCESS(status))
         goto fail8;
 
+    Info("Granted controller PFN: 0x%llx\n", Pfn);
+
     Controller->Channel = XENBUS_EVTCHN(Open,
                                         &Controller->EvtchnInterface,
                                         XENBUS_EVTCHN_TYPE_UNBOUND,
@@ -497,6 +488,8 @@ ControllerConnect(
                                         Controller,
                                         FrontendGetBackendDomain(Frontend),
                                         FALSE);
+
+    Info("Opened event channel\n");
 
     status = STATUS_UNSUCCESSFUL;
     if (Controller->Channel == NULL)
@@ -508,6 +501,8 @@ ControllerConnect(
                          FALSE,
                          TRUE);
 
+    Info("Unmask event channel\n");
+
     status = XENBUS_DEBUG(Register,
                           &Controller->DebugInterface,
                           __MODULE__ "|CONTROLLER",
@@ -517,11 +512,13 @@ ControllerConnect(
     if (!NT_SUCCESS(status))
         goto fail10;
 
-    __ControllerAcquireLock(Controller);
+    Info("Registered DEBUG callback\n");
 
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
+
+    ExAcquireFastMutex(&Controller->FastMutex);
     Controller->Connected = TRUE;
-
-    __ControllerReleaseLock(Controller);
+    ExReleaseFastMutex(&Controller->FastMutex);
 
 done:
     Trace("<====\n");
@@ -595,6 +592,8 @@ fail1:
     return status;
 }
 
+_IRQL_requires_same_
+_IRQL_requires_max_(APC_LEVEL)
 NTSTATUS
 ControllerStoreWrite(
     IN  PXENVIF_CONTROLLER          Controller,
@@ -604,6 +603,8 @@ ControllerStoreWrite(
     PXENVIF_FRONTEND                Frontend;
     ULONG                           Port;
     NTSTATUS                        status;
+
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
 
     if (!Controller->Connected)
         goto done;
@@ -668,6 +669,8 @@ ControllerDisable(
     Trace("<===>\n");
 }
 
+_IRQL_requires_same_
+_IRQL_requires_max_(APC_LEVEL)
 VOID
 ControllerDisconnect(
     IN  PXENVIF_CONTROLLER  Controller
@@ -675,16 +678,17 @@ ControllerDisconnect(
 {
     Trace("====>\n");
 
-    __ControllerAcquireLock(Controller);
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
+    ExAcquireFastMutex(&Controller->FastMutex);
 
     if (!Controller->Connected) {
-        __ControllerReleaseLock(Controller);
+        ExReleaseFastMutex(&Controller->FastMutex);
         goto done;
     }
 
     Controller->Connected = FALSE;
 
-    __ControllerReleaseLock(Controller);
+    ExReleaseFastMutex(&Controller->FastMutex);
 
     XENBUS_DEBUG(Deregister,
                  &Controller->DebugInterface,
@@ -730,6 +734,8 @@ done:
     Trace("<====\n");
 }
 
+_IRQL_requires_same_
+_IRQL_requires_max_(PASSIVE_LEVEL)
 VOID
 ControllerTeardown(
     IN  PXENVIF_CONTROLLER  Controller
@@ -741,8 +747,8 @@ ControllerTeardown(
 
     Controller->RequestId = 0;
 
-    RtlZeroMemory(&Controller->Lock,
-                  sizeof (KSPIN_LOCK));
+    RtlZeroMemory(&Controller->FastMutex,
+                  sizeof (FAST_MUTEX));
 
     RtlZeroMemory(&Controller->GnttabInterface,
                   sizeof (XENBUS_GNTTAB_INTERFACE));
@@ -760,6 +766,8 @@ ControllerTeardown(
     __ControllerFree(Controller);
 }
 
+_IRQL_requires_same_
+_IRQL_requires_max_(APC_LEVEL)
 NTSTATUS
 ControllerSetHashAlgorithm(
     IN  PXENVIF_CONTROLLER  Controller,
@@ -771,7 +779,8 @@ ControllerSetHashAlgorithm(
 
     Frontend = Controller->Frontend;
 
-    __ControllerAcquireLock(Controller);
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
+    ExAcquireFastMutex(&Controller->FastMutex);
 
     status = ControllerPutRequest(Controller,
                                   XEN_NETIF_CTRL_TYPE_SET_HASH_ALGORITHM,
@@ -785,7 +794,7 @@ ControllerSetHashAlgorithm(
     if (!NT_SUCCESS(status))
         goto fail2;
 
-    __ControllerReleaseLock(Controller);
+    ExReleaseFastMutex(&Controller->FastMutex);
 
     return STATUS_SUCCESS;
 
@@ -795,11 +804,13 @@ fail2:
 fail1:
     Error("fail1 (%08x)\n", status);
 
-    __ControllerReleaseLock(Controller);
+    ExReleaseFastMutex(&Controller->FastMutex);
 
     return status;
 }
 
+_IRQL_requires_same_
+_IRQL_requires_max_(APC_LEVEL)
 NTSTATUS
 ControllerGetHashFlags(
     IN  PXENVIF_CONTROLLER  Controller,
@@ -811,7 +822,8 @@ ControllerGetHashFlags(
 
     Frontend = Controller->Frontend;
 
-    __ControllerAcquireLock(Controller);
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
+    ExAcquireFastMutex(&Controller->FastMutex);
 
     status = ControllerPutRequest(Controller,
                                   XEN_NETIF_CTRL_TYPE_GET_HASH_FLAGS,
@@ -825,7 +837,7 @@ ControllerGetHashFlags(
     if (!NT_SUCCESS(status))
         goto fail2;
 
-    __ControllerReleaseLock(Controller);
+    ExReleaseFastMutex(&Controller->FastMutex);
 
     return STATUS_SUCCESS;
 
@@ -835,11 +847,13 @@ fail2:
 fail1:
     Error("fail1 (%08x)\n", status);
 
-    __ControllerReleaseLock(Controller);
+    ExReleaseFastMutex(&Controller->FastMutex);
 
     return status;
 }
 
+_IRQL_requires_same_
+_IRQL_requires_max_(APC_LEVEL)
 NTSTATUS
 ControllerSetHashFlags(
     IN  PXENVIF_CONTROLLER  Controller,
@@ -851,7 +865,8 @@ ControllerSetHashFlags(
 
     Frontend = Controller->Frontend;
 
-    __ControllerAcquireLock(Controller);
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
+    ExAcquireFastMutex(&Controller->FastMutex);
 
     status = ControllerPutRequest(Controller,
                                   XEN_NETIF_CTRL_TYPE_SET_HASH_FLAGS,
@@ -865,7 +880,7 @@ ControllerSetHashFlags(
     if (!NT_SUCCESS(status))
         goto fail2;
 
-    __ControllerReleaseLock(Controller);
+    ExReleaseFastMutex(&Controller->FastMutex);
 
     return STATUS_SUCCESS;
 
@@ -875,11 +890,13 @@ fail2:
 fail1:
     Error("fail1 (%08x)\n", status);
 
-    __ControllerReleaseLock(Controller);
+    ExReleaseFastMutex(&Controller->FastMutex);
 
     return status;
 }
 
+_IRQL_requires_same_
+_IRQL_requires_max_(APC_LEVEL)
 NTSTATUS
 ControllerSetHashKey(
     IN  PXENVIF_CONTROLLER  Controller,
@@ -896,7 +913,8 @@ ControllerSetHashKey(
 
     Frontend = Controller->Frontend;
 
-    __ControllerAcquireLock(Controller);
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
+    ExAcquireFastMutex(&Controller->FastMutex);
 
     Mdl = __AllocatePage();
 
@@ -945,7 +963,7 @@ ControllerSetHashKey(
 
     __FreePage(Mdl);
 
-    __ControllerReleaseLock(Controller);
+    ExReleaseFastMutex(&Controller->FastMutex);
 
     return STATUS_SUCCESS;
 
@@ -969,11 +987,13 @@ fail2:
 fail1:
     Error("fail1 (%08x)\n", status);
 
-    __ControllerReleaseLock(Controller);
+    ExReleaseFastMutex(&Controller->FastMutex);
 
     return status;
 }
 
+_IRQL_requires_same_
+_IRQL_requires_max_(APC_LEVEL)
 NTSTATUS
 ControllerGetHashMappingSize(
     IN  PXENVIF_CONTROLLER  Controller,
@@ -985,7 +1005,8 @@ ControllerGetHashMappingSize(
 
     Frontend = Controller->Frontend;
 
-    __ControllerAcquireLock(Controller);
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
+    ExAcquireFastMutex(&Controller->FastMutex);
 
     status = ControllerPutRequest(Controller,
                                   XEN_NETIF_CTRL_TYPE_GET_HASH_MAPPING_SIZE,
@@ -999,7 +1020,7 @@ ControllerGetHashMappingSize(
     if (!NT_SUCCESS(status))
         goto fail2;
 
-    __ControllerReleaseLock(Controller);
+    ExReleaseFastMutex(&Controller->FastMutex);
 
     return STATUS_SUCCESS;
 
@@ -1009,11 +1030,13 @@ fail2:
 fail1:
     Error("fail1 (%08x)\n", status);
 
-    __ControllerReleaseLock(Controller);
+    ExReleaseFastMutex(&Controller->FastMutex);
 
     return status;
 }
 
+_IRQL_requires_same_
+_IRQL_requires_max_(APC_LEVEL)
 NTSTATUS
 ControllerSetHashMappingSize(
     IN  PXENVIF_CONTROLLER  Controller,
@@ -1025,7 +1048,8 @@ ControllerSetHashMappingSize(
 
     Frontend = Controller->Frontend;
 
-    __ControllerAcquireLock(Controller);
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
+    ExAcquireFastMutex(&Controller->FastMutex);
 
     status = ControllerPutRequest(Controller,
                                   XEN_NETIF_CTRL_TYPE_SET_HASH_MAPPING_SIZE,
@@ -1039,7 +1063,7 @@ ControllerSetHashMappingSize(
     if (!NT_SUCCESS(status))
         goto fail2;
 
-    __ControllerReleaseLock(Controller);
+    ExReleaseFastMutex(&Controller->FastMutex);
 
     return STATUS_SUCCESS;
 
@@ -1049,11 +1073,13 @@ fail2:
 fail1:
     Error("fail1 (%08x)\n", status);
 
-    __ControllerReleaseLock(Controller);
+    ExReleaseFastMutex(&Controller->FastMutex);
 
     return status;
 }
 
+_IRQL_requires_same_
+_IRQL_requires_max_(APC_LEVEL)
 NTSTATUS
 ControllerSetHashMapping(
     IN  PXENVIF_CONTROLLER  Controller,
@@ -1071,7 +1097,8 @@ ControllerSetHashMapping(
 
     Frontend = Controller->Frontend;
 
-    __ControllerAcquireLock(Controller);
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
+    ExAcquireFastMutex(&Controller->FastMutex);
 
     status = STATUS_INVALID_PARAMETER;
     if (Size * sizeof (ULONG) > PAGE_SIZE)
@@ -1124,7 +1151,7 @@ ControllerSetHashMapping(
 
     __FreePage(Mdl);
 
-    __ControllerReleaseLock(Controller);
+    ExReleaseFastMutex(&Controller->FastMutex);
 
     return STATUS_SUCCESS;
 
@@ -1151,7 +1178,7 @@ fail2:
 fail1:
     Error("fail1 (%08x)\n", status);
 
-    __ControllerReleaseLock(Controller);
+    ExReleaseFastMutex(&Controller->FastMutex);
 
     return status;
 }

@@ -85,45 +85,98 @@ static void reset_pci_cfg() noexcept
     pci_cfg[0xF] = (PCI_IRQ_PIN << 8) | PCI_IRQ_LINE;
 }
 
+static bool pfd_ioport_in(base_vcpu *vcpu, io_insn_handler::info_t &info)
+{
+    auto port = info.port_number;
+    auto size = info.size_of_access + 1;
+
+    if (port == PFD_IOPORT && size == 2) {
+        info.val = PFD_IOPORT_MAGIC;
+        printv("xen-pfd: guest read magic\n");
+        return true;
+    }
+
+    if (port == PFD_IOPORT + 2 && size == 1) {
+        info.val = 0;
+        printv("xen-pfd: guest read version\n");
+        return true;
+    }
+
+    printv("xen-pfd: invalid read: port=0x%lx, size=%lu\n", port, size);
+    return false;
+}
+
 static bool pfd_ioport_out(base_vcpu *vcpu, io_insn_handler::info_t &info)
 {
-    if (info.port_number != PFD_IOPORT + 2) {
-        return false;
-    }
-
+    auto port = info.port_number;
     auto size = info.size_of_access + 1;
-    if (size != 1) {
-        return false;
+
+    if (port == PFD_IOPORT && size == 2) {
+        const char *unplug_str;
+
+        switch (info.val) {
+        case 0x0001:
+            unplug_str = "disks";
+            break;
+        case 0x0002:
+            unplug_str = "nics";
+            break;
+        case 0x0004:
+            unplug_str = "aux disks";
+            break;
+        default:
+            unplug_str = "unknown";
+            break;
+        }
+
+        printv("xen-pfd: received %s unplug request\n", unplug_str);
+        return true;
     }
 
-    expects(info.reps > 1);
-    expects(info.reps <= 255);
+    if (port == PFD_IOPORT + 2 && size == 1) {
 
-    char buf[256]{};
-    auto len = info.reps + 1;
-    auto data = vcpu->map_gva_4k<char>(info.address, info.reps);
+        expects(info.reps >= 1);
+        expects(info.reps <= 255);
 
-    memcpy(buf, data.get(), info.reps);
+        char buf[256]{};
+        auto len = info.reps + 1;
+        auto data = vcpu->map_gva_4k<char>(info.address, info.reps);
 
-    if (buf[info.reps - 1] != '\n') {
-        buf[info.reps - 1] = '\n';
+        memcpy(buf, data.get(), info.reps);
+
+        if (buf[info.reps - 1] != '\n') {
+            buf[info.reps - 1] = '\n';
+        }
+
+        buf[len - 1] = 0;
+        printv("[winpv] %s", buf);
+
+        return true;
     }
 
-    buf[len - 1] = 0;
-    printv("[winpv-pfd] %s", buf);
-
-    return true;
+    printv("xen-pfd: invalid write: port=0x%lx, size=%lu\n", port, size);
+    return false;
 }
 
 static bool ioport_in(base_vcpu *vcpu, io_insn_handler::info_t &info)
 {
-    return false;
+    switch (info.port_number) {
+    case XEN_IOPORT:
+        printv("xen-pfd: read from xen debug port unsupported\n");
+        return false;
+    case PFD_IOPORT:
+    case PFD_IOPORT + 2:
+        return pfd_ioport_in(vcpu, info);
+    default:
+        return false;
+    }
 }
 
 static bool ioport_out(base_vcpu *vcpu, io_insn_handler::info_t &info)
 {
     switch (info.port_number) {
     case XEN_IOPORT:
+        printv("xen-pfd: write to xen debug port unsupported\n");
         return false;
     case PFD_IOPORT:
     case PFD_IOPORT + 2:

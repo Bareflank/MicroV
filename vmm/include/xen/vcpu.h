@@ -40,6 +40,10 @@
 
 namespace microv {
 
+namespace intel_x64 {
+    class vmcall_event_op_handler;
+}
+
 class xen_vcpu {
 public:
     xen_vcpu(microv_vcpu *vcpu);
@@ -48,6 +52,10 @@ public:
     void queue_virq(uint32_t virq);
     void init_shared_info(uintptr_t shinfo_gpfn);
     uint64_t runstate_time(int state);
+
+    void push_external_interrupt(uint64_t vector);
+    void queue_external_interrupt(uint64_t vector);
+    void inject_external_interrupt(uint64_t vector);
 
     /*
      * Provides raw access. Use only when certain the pointer is
@@ -58,6 +66,7 @@ public:
     xen_domain *m_xen_dom{};
     xen_vcpuid_t m_id{};
     int m_origin{};
+    std::unique_ptr<intel_x64::vmcall_event_op_handler> m_event_op_hdlr{};
 
 private:
     friend class xen_memory;

@@ -346,6 +346,11 @@ bool vcpu::handle_0x4BF00021(bfvmm::intel_x64::vcpu *vcpu)
     throw std::runtime_error("promote failed");
 }
 
+void vcpu::write_ipi(uint64_t vector)
+{
+    m_lapic->write_ipi(vector, this->id());
+}
+
 //------------------------------------------------------------------------------
 // Domain Info
 //------------------------------------------------------------------------------
@@ -484,6 +489,15 @@ vcpu::apic_timer_vector()
 //------------------------------------------------------------------------------
 // Setup Functions
 //------------------------------------------------------------------------------
+void vcpu::set_xenstore_ready() noexcept
+{
+    m_domain->m_xenstore_ready = 1;
+}
+
+uint64_t vcpu::is_xenstore_ready() noexcept
+{
+    return m_domain->m_xenstore_ready;
+}
 
 void
 vcpu::setup_default_controls()

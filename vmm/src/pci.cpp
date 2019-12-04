@@ -153,6 +153,11 @@ static void probe_bus(uint32_t b, struct pci_dev *bridge)
                 auto next = pci_bridge_sec_bus(reg6);
                 probe_bus(next, pdev);
             } else if (pdev->is_netdev()) {
+                if (g_no_pci_pt.count(addr)) {
+                    printv("%s: passthrough disabled\n", pdev->bdf_str());
+                    continue;
+                }
+
                 pdev->m_guest_owned = true;
                 pdev->parse_capabilities();
                 pdev->init_root_vcfg();

@@ -192,6 +192,11 @@ static int protected_main(const args_type &args)
         throw std::runtime_error("vmm not running");
     }
 
+    if (args.count("xenstore-ready")) {
+        __event_op__set_xenstore_ready();
+        return EXIT_SUCCESS;
+    }
+
     if (args.count("reset-xue")) {
         __xue_op(__enum_xue_op__reset, 0, 0);
         return EXIT_SUCCESS;

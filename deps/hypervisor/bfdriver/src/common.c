@@ -40,6 +40,11 @@
 
 int g_uefi_boot = 0;
 int g_enable_winpv = 0;
+int g_disable_xen_pfd = 0;
+
+#define NO_PCI_PT_LIST_SIZE 256
+uint64_t no_pci_pt_list[NO_PCI_PT_LIST_SIZE];
+uint64_t no_pci_pt_count = 0;
 
 #ifdef USE_XUE
 struct xue g_xue;
@@ -432,6 +437,7 @@ common_load_vmm(void)
 {
     int64_t ret = 0;
     int64_t ignore_ret = 0;
+    uint64_t i;
 
     switch (common_vmm_status()) {
         case VMM_CORRUPT:
@@ -486,9 +492,19 @@ common_load_vmm(void)
     ret = platform_call_vmm_on_core(0,
                                     BF_REQUEST_WINPV,
                                     (uint64_t)g_enable_winpv,
-                                    0);
+                                    (uint64_t)g_disable_xen_pfd);
     if (ret != BF_SUCCESS) {
         goto failure;
+    }
+
+    for (i = 0; i < no_pci_pt_count; i++) {
+        ret = platform_call_vmm_on_core(0,
+                                        BF_REQUEST_NO_PCI_PT,
+                                        no_pci_pt_list[i],
+                                        0);
+        if (ret != BF_SUCCESS) {
+            goto failure;
+        }
     }
 
     ret = private_add_modules_mdl();

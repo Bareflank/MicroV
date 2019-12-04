@@ -24,10 +24,13 @@
 
 #include <bfarch.h>
 #include <stdint.h>
+#include <unordered_set>
 
 inline uintptr_t g_rsdp = 0;
 inline bool g_uefi_boot = false;
 inline bool g_enable_winpv = false;
+inline bool g_disable_xen_pfd = false;
+inline std::unordered_set<uint32_t> g_no_pci_pt;
 
 #ifdef BF_X64
 #include <arch/x64/cache.h>

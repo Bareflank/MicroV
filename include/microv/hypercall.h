@@ -98,6 +98,8 @@ static inline status_t __iommu_op__dump(void)
 
 #define __enum_event_op__send_vector 0x1UL
 #define __enum_event_op__send_bdf 0x2UL
+#define __enum_event_op__set_xenstore_ready 0x3UL
+#define __enum_event_op__is_xenstore_ready 0x4UL
 
 static inline status_t
 __event_op__send_vector(uint64_t vector)
@@ -114,6 +116,24 @@ __event_op__send_bdf(uint64_t bdf)
     return _vmcall(0xBF06000000000000,
                    __enum_event_op__send_bdf,
                    bdf,
+                   0);
+}
+
+static inline status_t
+__event_op__set_xenstore_ready(void)
+{
+    return _vmcall(0xBF06000000000000,
+                   __enum_event_op__set_xenstore_ready,
+                   0,
+                   0);
+}
+
+static inline status_t
+__event_op__is_xenstore_ready(void)
+{
+    return _vmcall(0xBF06000000000000,
+                   __enum_event_op__is_xenstore_ready,
+                   0,
                    0);
 }
 
@@ -340,7 +360,7 @@ __uart_ndec_op(uint16_t port, uint64_t val)
 
 #define UART_MAX_BUFFER 0x4000
 #define HVC_RX_SIZE 256
-#define HVC_TX_SIZE 0x4000
+#define HVC_TX_SIZE 0x1000
 
 /* Is this a privileged xen domain? */
 #define DOMF_XENPRIV (1ULL << 0)
