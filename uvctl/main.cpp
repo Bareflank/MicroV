@@ -245,7 +245,7 @@ static int protected_main(const args_type &args)
     root_domain.launch();
 
     while (!nuke_vm) {
-        std::this_thread::sleep_for(200ms);
+        std::this_thread::sleep_for(1s);
     }
 
     try {
