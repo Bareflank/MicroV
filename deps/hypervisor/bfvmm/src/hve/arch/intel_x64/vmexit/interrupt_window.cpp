@@ -82,7 +82,7 @@ interrupt_window_handler::queue_external_interrupt(uint64_t vector)
     this->push_external_interrupt(vector);
 }
 
-inline void interrupt_window_handler::push_external_interrupt(uint64_t vector)
+void interrupt_window_handler::push_external_interrupt(uint64_t vector)
 {
     std::lock_guard<std::mutex> lock(m_mutex);
     m_interrupt_queue.push(vector);
