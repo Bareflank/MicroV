@@ -25,6 +25,7 @@
 #include <vector>
 
 #include "types.h"
+#include "../spin_lock.h"
 #include <public/event_channel.h>
 #include <public/hvm/hvm_op.h>
 #include <public/hvm/params.h>
@@ -44,11 +45,20 @@ bool xen_evtchn_send(xen_vcpu *v);
 bool xen_evtchn_status(xen_vcpu *v);
 bool xen_evtchn_unmask(xen_vcpu *v);
 
+/**
+ * struct event_channel
+ *
+ * This structure stores all the information specific to a single event. Pages
+ * of struct event_channel's are allocated on a per-domain basis and are
+ * associated with guest events via "ports" - numbers starting at 1 that serve
+ * as the handle of the event. The VMM binds an event_channel to a port in
+ * response to hypercalls invoked by domains. An event_channel is bound to at
+ * most one port at any given time.
+ */
 struct event_channel {
     static constexpr uint32_t invalid_virq = ~0;
     static constexpr uint32_t invalid_pirq = ~0;
     static constexpr xen_domid_t invalid_domid = ~0;
-    static constexpr evtchn_port_t invalid_port = 0;
 
     enum state : uint8_t {
         state_free,
@@ -63,24 +73,48 @@ struct event_channel {
     using state_t = enum state;
 
     state_t state{state_free};
-    uint32_t virq{invalid_virq};
-    uint32_t pirq{invalid_pirq};
-    xen_domid_t rdomid{invalid_domid};
-    evtchn_port_t rport{invalid_port};
 
-    bool is_pending{};
+    /* Defined when state == state_virq */
+    uint32_t virq{invalid_virq};
+
+    /* Defined when state == state_pirq */
+    uint32_t pirq{invalid_pirq};
+
+    /*
+     * These are defined by alloc_unbound and bind_interdomain.
+     * One domain does alloc_unbound which defines the local port
+     * (i.e. the "port" member defined below) and rdomid. The domain
+     * on the other end (with id = rdomid) does bind_interdomain
+     * which then sets rport here.
+     */
+    xen_domid_t rdomid{invalid_domid};
+    evtchn_port_t rport{0};
+
+    /* Priority determines what queue the event is on */
     uint8_t priority{EVTCHN_FIFO_PRIORITY_DEFAULT};
     uint8_t prev_priority{EVTCHN_FIFO_PRIORITY_DEFAULT};
+
+    /* The vcpu that gets an upcall when an event is ready */
     xen_vcpuid_t vcpuid{};
     xen_vcpuid_t prev_vcpuid{};
-    evtchn_port_t port{};
 
-    uint8_t pad[34];
+    /* The local port of the event */
+    evtchn_port_t port{0};
 
+    struct spin_lock lock;
+
+    /* Pad to a power of 2 */
+    uint8_t pad[2];
+
+    /*
+     * Note that the current implementation needs more work
+     * on reusing freed/closed events.
+     */
     void free() noexcept
     {
         state = state_free;
         vcpuid = 0;
+        prev_vcpuid = 0;
     }
 
     void reset(evtchn_port_t p) noexcept
@@ -89,39 +123,70 @@ struct event_channel {
         virq = invalid_virq;
         pirq = invalid_pirq;
         rdomid = invalid_domid;
-        rport = invalid_port;
-        is_pending = false;
+        rport = 0;
         priority = EVTCHN_FIFO_PRIORITY_DEFAULT;
         prev_priority = EVTCHN_FIFO_PRIORITY_DEFAULT;
         vcpuid = 0;
         prev_vcpuid = 0;
         port = p;
+        lock.release();
     }
+
+    event_channel(event_channel &&) = delete;
+    event_channel(const event_channel &) = delete;
+    event_channel &operator=(event_channel &&) = delete;
+    event_channel &operator=(const event_channel &) = delete;
 
 } __attribute__((packed));
 
+/**
+ * struct event_queue
+ *
+ * Represents a FIFO queue of events. The VMM produces events onto
+ * the tail of the queue and the guest vcpu consumes events off of
+ * the queue starting with the head.
+ *
+ * @lock spinlock to protect the queue against concurrent VMM accesses.
+ *
+ * @head a pointer to the head port of the queue. The pointer
+ * points to the queue's corresponding head value in the control block
+ * that is shared with the guest vcpu.
+ *
+ * @tail the port corresponding to the tail of the queue. This value
+ * is used by the VMM for internal bookkeeping.
+ *
+ * @priority the priority of the queue. This value corresponds to a
+ * bit in the ready field of the shared control block that is set
+ * whenever its corresponding queue is not empty.
+ */
 struct event_queue {
-    evtchn_port_t *head{};
+    struct spin_lock lock{};
+    std::atomic<evtchn_port_t> *head{};
+    evtchn_port_t tail{};
     uint8_t priority{EVTCHN_FIFO_PRIORITY_DEFAULT};
 };
 
+/* Per-vcpu event control structure */
 struct event_control {
-    uint32_t upcall_vector;
-    unique_map<uint8_t> map;
-    evtchn_fifo_control_block_t *blk;
+    uint32_t upcall_vector{};
+    unique_map<uint8_t> map{};
+    evtchn_fifo_control_block_t *blk{};
+    std::atomic<uint32_t> *ready{};
     std::array<struct event_queue, EVTCHN_FIFO_MAX_QUEUES> queue;
 
     event_control(microv_vcpu *uvv, evtchn_init_control *init)
     {
-        const auto gpa = xen_addr(init->control_gfn);
-        const auto off = init->offset;
+        auto gpa = xen_addr(init->control_gfn);
+        auto off = init->offset;
 
         upcall_vector = 0xFF;
         map = uvv->map_gpa_4k<uint8_t>(gpa);
         blk = reinterpret_cast<evtchn_fifo_control_block_t *>(map.get() + off);
+        ready = reinterpret_cast<std::atomic<uint32_t> *>(&blk->ready);
 
         for (auto i = 0U; i <= EVTCHN_FIFO_PRIORITY_MIN; i++) {
-            queue[i].head = &blk->head[i];
+            queue[i].head = reinterpret_cast<std::atomic<uint32_t> *>(&blk->head[i]);
+            queue[i].tail = 0;
             queue[i].priority = gsl::narrow_cast<uint8_t>(i);
         }
     }
@@ -136,7 +201,7 @@ public:
     static_assert(is_power_of_2(EVTCHN_FIFO_NR_CHANNELS));
     static_assert(is_power_of_2(sizeof(word_t)));
     static_assert(is_power_of_2(sizeof(chan_t)));
-    static_assert(::x64::pt::page_size > sizeof(chan_t));
+    static_assert(UV_PAGE_SIZE > sizeof(chan_t));
     static_assert(sizeof(chan_t) > sizeof(word_t));
     static_assert(word_t::is_always_lock_free);
 
@@ -165,15 +230,11 @@ public:
                          evtchn_port_t remote_port,
                          xen_domid_t remote_domid);
 
-    void upcall(evtchn_port_t port);
-
     static constexpr auto max_channels = EVTCHN_FIFO_NR_CHANNELS;
 
 private:
     friend class xen_evtchn;
 
-    // Static constants
-    //
     static constexpr auto bits_per_xen_ulong = sizeof(xen_ulong_t) * 8;
     static constexpr auto words_per_page = ::x64::pt::page_size / sizeof(word_t);
     static constexpr auto chans_per_page = ::x64::pt::page_size / sizeof(chan_t);
@@ -185,10 +246,6 @@ private:
     static constexpr auto word_page_shift = log2<words_per_page>();
     static constexpr auto chan_page_shift = log2<chans_per_page>();
 
-    static constexpr auto null_port = 0;
-
-    // Ports
-    //
     port_t bind(chan_t::state_t state);
     chan_t *port_to_chan(port_t port) const;
     word_t *port_to_word(port_t port) const;
@@ -209,31 +266,17 @@ private:
     void push_upcall(chan_t *chan);
     void queue_upcall(chan_t *chan);
     void inject_upcall(chan_t *chan);
-    int upcall(chan_t *chan);
-
-    bool set_link(word_t *word, event_word_t *val, port_t link);
-
-    // Interface for atomic accesses to shared memory
-    //
-    bool word_is_masked(word_t *word) const;
-    bool word_is_busy(word_t *word) const;
-    void word_set_pending(word_t *word);
-    void word_clr_mask(word_t *word);
+    bool raise(chan_t *chan);
+    struct event_queue *lock_old_queue(chan_t *chan);
 
     uint64_t m_allocated_chans{};
     uint64_t m_allocated_words{};
 
-    // Control blocks
-    //
-    std::vector<struct event_control> m_event_ctl{};
-
-    // VIRQ mapping
     std::array<port_t, NR_VIRQS> m_virq_to_port{0};
-
+    std::vector<std::unique_ptr<struct event_control>> m_event_ctl{};
     std::vector<unique_map<word_t>> m_word_pages{};
     std::vector<page_ptr<chan_t>> m_chan_pages{};
 
-    std::mutex m_mutex{};
     xen_domain *m_xen_dom{};
     port_t m_nr_ports{};
     port_t m_port_end{1};

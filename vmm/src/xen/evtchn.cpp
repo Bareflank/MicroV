@@ -19,8 +19,9 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#include <hve/arch/intel_x64/vcpu.h>
+#include <atomic_ops.h>
 #include <printv.h>
+#include <hve/arch/intel_x64/vcpu.h>
 #include <xen/domain.h>
 #include <xen/evtchn.h>
 #include <xen/virq.h>
@@ -28,7 +29,36 @@
 
 namespace microv {
 
-#define PAGE_SIZE 0x1000UL
+using word_t = xen_evtchn::word_t;
+using port_t = xen_evtchn::port_t;
+
+/**
+ * FIFO event channels
+ *
+ * This implementation of the Xen event channel interface as defined
+ * in deps/xen/xen/include/public/event_channel.h only supports
+ * the FIFO ABI (as opposed to the original "2l" ABI) for now.
+ *
+ * With the FIFO ABI, event words are the primary mechanism for
+ * controlling events between the VMM and a guest. Whenever a
+ * guest requires event services, it allocates a page of event words
+ * (i.e. uint32_t's) with each word's EVTCHN_FIFO_MASKED bit set. This page
+ * is then shared with the VMM via the EVTCHNOP_expand_array hypercall.
+ * The guest then associates a word with a port by allocating a port from
+ * the VMM (a port serves as the "address" of an event channel and is the
+ * main currency used throughout the ABI). When an event arrives
+ * at a given port, the VMM sets the EVTCHN_FIFO_PENDING bit in the
+ * corresponding event word, and adds the word onto the FIFO queue. The queue
+ * is defined by another page of shared memory initialized by the
+ * EVTCHNOP_init_control hypercall. After linking the word into the queue,
+ * the VMM injects an interrupt into the guest vcpu's "callback vector".
+ * The handler at this vector consumes each event on the queue, calling
+ * any registered callbacks as necessary.
+ *
+ * TODO: the code assumes that backing pages of words and chans stays valid
+ * after acquiring a pointer to one. To fully support suspend/resume a refcount
+ * or similar will need to be added to prevent use-after-free.
+ */
 
 bool xen_evtchn_init_control(xen_vcpu *v)
 {
@@ -71,7 +101,7 @@ bool xen_evtchn_status(xen_vcpu *v)
     auto sts = uvv->map_arg<evtchn_status_t>(uvv->rsi());
     auto domid = sts->dom;
 
-    if (domid == DOMID_SELF) {
+    if (domid == DOMID_SELF || domid == v->m_xen_dom->m_id) {
         return v->m_xen_dom->m_evtchn->status(v, sts.get());
     }
 
@@ -94,15 +124,15 @@ bool xen_evtchn_alloc_unbound(xen_vcpu *v)
     auto rc = -EINVAL;
     auto uvv = v->m_uv_vcpu;
     auto eau = uvv->map_arg<evtchn_alloc_unbound_t>(uvv->rsi());
+    auto domid = eau->dom;
 
-    if (eau->dom == DOMID_SELF || eau->dom == v->m_xen_dom->m_id) {
+    if (domid == DOMID_SELF || domid == v->m_xen_dom->m_id) {
         rc = v->m_xen_dom->m_evtchn->alloc_unbound(eau.get());
     } else {
-        auto domid = eau->dom;
         auto dom = get_xen_domain(domid);
         if (!dom) {
-            bferror_nhex(0, "eau: couldnt find domid", domid);
-            uvv->set_rax(-EINVAL);
+            printv("%s: dom:0x%x not found\n", __func__, domid);
+            uvv->set_rax(-ESRCH);
             return true;
         }
 
@@ -199,8 +229,8 @@ int xen_evtchn::set_upcall_vector(xen_vcpu *v, xen_hvm_param_t *param)
     }
 
     expects(m_event_ctl.size() > 0);
-    m_event_ctl.data()->upcall_vector = vector;
-    printv("Set global upcall vector: 0x%lx\n", vector);
+    m_event_ctl[0]->upcall_vector = vector;
+    printv("evtchn: set global upcall vector: 0x%lx\n", vector);
 
     return 0;
 }
@@ -219,16 +249,19 @@ int xen_evtchn::set_upcall_vector(xen_vcpu *v,
         return -ERANGE;
     }
 
-    auto ctl = &m_event_ctl.data()[arg->vcpu];
+    auto ctl = m_event_ctl[arg->vcpu].get();
     ctl->upcall_vector = arg->vector;
-    printv("Set upcall vector 0x%x on vcpu 0x%x\n", arg->vector, arg->vcpu);
+
+    printv("evtchn: set upcall vector 0x%x on vcpu 0x%x\n",
+           arg->vector,
+           arg->vcpu);
 
     return 0;
 }
 
 bool xen_evtchn::init_control(xen_vcpu *v, evtchn_init_control_t *ctl)
 {
-    expects(ctl->offset <= (PAGE_SIZE - sizeof(evtchn_fifo_control_block_t)));
+    expects(ctl->offset <= (UV_PAGE_SIZE - sizeof(evtchn_fifo_control_block_t)));
     expects((ctl->offset & 0x7) == 0);
 
     this->add_event_ctl(v, ctl);
@@ -240,20 +273,23 @@ bool xen_evtchn::expand_array(xen_vcpu *v, evtchn_expand_array_t *eea)
     auto uvv = v->m_uv_vcpu;
     this->make_word_page(uvv, eea->array_gfn);
 
-    printv("evtchn: expand_array\n");
+    printv("evtchn: added event word page at 0x%lx\n", xen_addr(eea->array_gfn));
     uvv->set_rax(0);
+
     return true;
 }
 
 bool xen_evtchn::set_priority(xen_vcpu *v, evtchn_set_priority_t *esp)
 {
     auto chan = this->port_to_chan(esp->port);
-
     expects(chan);
-    chan->priority = esp->priority;
 
-    printv("evtchn: set_priority\n");
+    printv("evtchn: set port %u priority: old=%u new=%u\n",
+           esp->port, chan->priority, esp->priority);
+
+    chan->priority = esp->priority;
     v->m_uv_vcpu->set_rax(0);
+
     return true;
 }
 
@@ -269,7 +305,7 @@ bool xen_evtchn::status(xen_vcpu *v, evtchn_status_t *sts)
         sts->status = EVTCHNSTAT_closed;
         break;
     case event_channel::state_reserved:
-        printv("%s: port:%x is reserved\n", __func__, sts->port);
+        printv("%s: port %u is reserved\n", __func__, sts->port);
         uvv->set_rax(-EINVAL);
         return true;
     case event_channel::state_unbound:
@@ -300,43 +336,27 @@ bool xen_evtchn::status(xen_vcpu *v, evtchn_status_t *sts)
     return true;
 }
 
-void xen_evtchn::word_clr_mask(word_t *word)
-{
-    word->fetch_and(~(1U << EVTCHN_FIFO_MASKED));
-}
-
 bool xen_evtchn::unmask(xen_vcpu *v, evtchn_unmask_t *unmask)
 {
-    auto uvv = v->m_uv_vcpu;
-
-    auto chan = this->port_to_chan(unmask->port);
-    expects(chan);
-
     auto word = this->port_to_word(unmask->port);
     expects(word);
 
-    word_clr_mask(word);
+    clear_bit(word, EVTCHN_FIFO_MASKED);
 
-    if (chan->is_pending) {
+    if (test_bit(word, EVTCHN_FIFO_PENDING)) {
+        auto chan = this->port_to_chan(unmask->port);
+        expects(chan);
         this->queue_upcall(chan);
-        chan->is_pending = false;
     }
 
+    v->m_uv_vcpu->set_rax(0);
     return true;
 }
 
 int xen_evtchn::alloc_unbound(evtchn_alloc_unbound_t *eau)
 {
-    std::lock_guard lock(m_mutex);
-
-    auto port = this->make_new_port();
+    auto port = this->bind(chan_t::state_unbound);
     auto chan = this->port_to_chan(port);
-
-    expects(chan);
-    expects(chan->port == port);
-
-    chan->state = chan_t::state_unbound;
-    eau->port = port;
 
     if (eau->remote_dom == DOMID_SELF) {
         chan->rdomid = m_xen_dom->m_id;
@@ -349,20 +369,22 @@ int xen_evtchn::alloc_unbound(evtchn_alloc_unbound_t *eau)
             m_xen_dom->m_id,
             chan->rdomid);
 
+    eau->port = port;
+
     return 0;
 }
 
-int xen_evtchn::bind_interdomain(evtchn_port_t local_port,
+int xen_evtchn::bind_interdomain(evtchn_port_t lport,
                                  evtchn_port_t rport,
                                  xen_domid_t rdomid)
 {
-    auto chan = this->port_to_chan(local_port);
+    auto chan = this->port_to_chan(lport);
 
     expects(chan);
-    expects(chan->port == local_port);
+    expects(chan->port == lport);
 
     printv("evtchn: bind_interdom(2): lport:%u ldom:0x%x rport:%u rdom:0x%x\n",
-            local_port, m_xen_dom->m_id, rport, rdomid);
+            lport, m_xen_dom->m_id, rport, rdomid);
 
     if (chan->state != chan_t::state_unbound) {
         return -EINVAL;
@@ -383,8 +405,8 @@ bool xen_evtchn::bind_interdomain(xen_vcpu *v, evtchn_bind_interdomain_t *ebi)
     auto uvv = v->m_uv_vcpu;
     bool put_remote = false;
 
-    const auto ldomid = v->m_xen_dom->m_id;
-    const auto rport = ebi->remote_port;
+    auto ldomid = v->m_xen_dom->m_id;
+    auto rport = ebi->remote_port;
     auto rdomid = ebi->remote_dom;
 
     if (rdomid == DOMID_SELF) {
@@ -406,15 +428,16 @@ bool xen_evtchn::bind_interdomain(xen_vcpu *v, evtchn_bind_interdomain_t *ebi)
     }
 
     try {
+        auto port = this->bind(chan_t::state_interdomain);
+
+        printv("evtchn: bind_interdom(1): lport:%u ldom:0x%x rport:%u rdom:0x%x\n",
+               port, ldomid, rport, rdomid);
         /*
          * Look up the channel at rport and ensure 1) its state
          * is unbound and 2) it's accepting connections from ldomid
          */
-        auto port = this->make_new_port();
-        printv("evtchn: bind_interdom(1): lport:%u ldom:0x%x rport:%u rdom:0x%x\n",
-                port, ldomid, rport, rdomid);
-
         auto err = remote->m_evtchn->bind_interdomain(rport, port, ldomid);
+
         if (err) {
             bferror_nhex(0, "failed to bind_interdomain on remote", rdomid);
             if (put_remote) {
@@ -431,15 +454,15 @@ bool xen_evtchn::bind_interdomain(xen_vcpu *v, evtchn_bind_interdomain_t *ebi)
         }
 
         auto chan = this->port_to_chan(port);
-        expects(chan);
-        expects(chan->port == port);
 
-        chan->state = chan_t::state_interdomain;
         chan->rdomid = rdomid;
         chan->rport = ebi->remote_port;
-        ebi->local_port = port;
 
+        this->queue_upcall(chan);
+
+        ebi->local_port = port;
         uvv->set_rax(0);
+
         return true;
     } catch (...) {
         if (put_remote) {
@@ -459,6 +482,7 @@ bool xen_evtchn::bind_vcpu(xen_vcpu *v, evtchn_bind_vcpu_t *ebv)
 
     printv("evtchn: bind_vcpu to port %u\n", ebv->port);
     v->m_uv_vcpu->set_rax(0);
+
     return true;
 }
 
@@ -568,14 +592,20 @@ void xen_evtchn::notify_remote(chan_t *chan)
     }
 
     /*
-     * Use upcall here so that we don't access the remote's vmcs.
+     * Use push_upcall here so that we don't access the remote's vmcs.
      * Alternatively, we could check the affinity of the remote vcpu
      * and if it is the same as us, we could vmcs->load() then queue_upcall.
      *
-     * N.B. this will not queue the callback vector into the remote,
-     * which means that the remote may not see this event until another
-     * comes along. This is fine assuming periodic idle; the latency
-     * is bounded above by the timer period.
+     * N.B. this will not queue the callback vector into the remote if it
+     * is a guest domain (as opposed to root domain), which means that the
+     * remote may not see this event until another comes along. This is fine
+     * assuming the guest kernel uses periodic idle because the timer tick will
+     * ensure forward progress.
+     *
+     * N.B. push_upcall acquires a lock of the channel referenced by the port
+     * argument. This is to ensure that VMM access to the channel's data and
+     * corresponding event word is synchronized. The other upcall variants
+     * are NOT locked right now, so dont use them here unless locks are added.
      */
 
     rdom->m_evtchn->push_upcall(chan->rport);
@@ -584,15 +614,13 @@ void xen_evtchn::notify_remote(chan_t *chan)
 
 bool xen_evtchn::send(xen_vcpu *v, evtchn_send_t *es)
 {
-    std::lock_guard lock(m_mutex);
-
     auto chan = this->port_to_chan(es->port);
-    if (!chan) {
+    if (GSL_UNLIKELY(!chan)) {
         bfalert_nhex(0, "evtchn::send: chan not found:", es->port);
         return false;
     }
 
-    /* xen allows interdomain and IPIs to be sent here */
+    /* Xen allows interdomain and IPIs to be sent here */
     switch (chan->state) {
     case chan_t::state_interdomain:
         this->notify_remote(chan);
@@ -646,14 +674,10 @@ void xen_evtchn::inject_virq(uint32_t virq)
     this->inject_upcall(chan);
 }
 
-// =============================================================================
-// Initialization
-// =============================================================================
-
 void xen_evtchn::add_event_ctl(xen_vcpu *v, evtchn_init_control_t *ctl)
 {
     auto uvv = v->m_uv_vcpu;
-    const auto vcpuid = ctl->vcpu;
+    auto vcpuid = ctl->vcpu;
 
     if (vcpuid >= m_xen_dom->m_nr_vcpus) {
         printv("%s: invalid vcpuid: %u (dom->nr_vcpus=%lu)\n",
@@ -668,7 +692,7 @@ void xen_evtchn::add_event_ctl(xen_vcpu *v, evtchn_init_control_t *ctl)
         return;
     }
 
-    m_event_ctl.emplace_back(uvv, ctl);
+    m_event_ctl.emplace_back(std::make_unique<struct event_control>(uvv, ctl));
     ctl->link_bits = EVTCHN_FIFO_LINK_BITS;
     uvv->set_rax(0);
 }
@@ -680,13 +704,13 @@ void xen_evtchn::setup_ports()
     expects(m_allocated_words == 0);
     expects(m_allocated_chans == 0);
 
-    this->make_chan_page(null_port);
-    this->port_to_chan(null_port)->state = chan_t::state_reserved;
+    this->make_chan_page(0);
+    this->port_to_chan(0)->state = chan_t::state_reserved;
 }
 
 xen_evtchn::port_t xen_evtchn::bind(chan_t::state_t state)
 {
-    const auto port = this->make_new_port();
+    auto port = this->make_new_port();
     auto chan = this->port_to_chan(port);
 
     expects(chan);
@@ -694,15 +718,6 @@ xen_evtchn::port_t xen_evtchn::bind(chan_t::state_t state)
     chan->state = state;
 
     return port;
-}
-
-bool xen_evtchn::set_link(word_t *word, event_word_t *val, port_t link)
-{
-    auto link_bits = (1U << EVTCHN_FIFO_LINKED) | link;
-    auto &expect = *val;
-    auto desire = (expect & ~((1 << EVTCHN_FIFO_BUSY) | port_mask)) | link_bits;
-
-    return word->compare_exchange_strong(expect, desire);
 }
 
 void xen_evtchn::push_upcall(port_t port)
@@ -715,7 +730,10 @@ void xen_evtchn::push_upcall(port_t port)
 
 void xen_evtchn::push_upcall(chan_t *chan)
 {
-    if (!this->upcall(chan)) {
+    spin_acquire(&chan->lock);
+    auto ___ = gsl::finally([chan](){ spin_release(&chan->lock); });
+
+    if (this->raise(chan)) {
         auto xend = m_xen_dom;
         auto xenv = xend->get_xen_vcpu(chan->vcpuid);
 
@@ -724,7 +742,7 @@ void xen_evtchn::push_upcall(chan_t *chan)
             return;
         }
 
-        auto ctl = &m_event_ctl.data()[chan->vcpuid];
+        auto ctl = m_event_ctl[chan->vcpuid].get();
         xenv->push_external_interrupt(ctl->upcall_vector);
         xend->put_xen_vcpu(chan->vcpuid);
     }
@@ -732,7 +750,7 @@ void xen_evtchn::push_upcall(chan_t *chan)
 
 void xen_evtchn::queue_upcall(chan_t *chan)
 {
-    if (!this->upcall(chan)) {
+    if (this->raise(chan)) {
         auto xend = m_xen_dom;
         auto xenv = xend->get_xen_vcpu(chan->vcpuid);
 
@@ -741,7 +759,7 @@ void xen_evtchn::queue_upcall(chan_t *chan)
             return;
         }
 
-        auto ctl = &m_event_ctl.data()[chan->vcpuid];
+        auto ctl = m_event_ctl[chan->vcpuid].get();
         xenv->queue_external_interrupt(ctl->upcall_vector);
         xend->put_xen_vcpu(chan->vcpuid);
     }
@@ -749,7 +767,7 @@ void xen_evtchn::queue_upcall(chan_t *chan)
 
 void xen_evtchn::inject_upcall(chan_t *chan)
 {
-    if (!this->upcall(chan)) {
+    if (this->raise(chan)) {
         auto xend = m_xen_dom;
         auto xenv = xend->get_xen_vcpu(chan->vcpuid);
 
@@ -758,80 +776,202 @@ void xen_evtchn::inject_upcall(chan_t *chan)
             return;
         }
 
-        auto ctl = &m_event_ctl.data()[chan->vcpuid];
+        auto ctl = m_event_ctl[chan->vcpuid].get();
         xenv->inject_external_interrupt(ctl->upcall_vector);
         xend->put_xen_vcpu(chan->vcpuid);
     }
 }
 
-void xen_evtchn::upcall(evtchn_port_t port)
+static int attempt_link(word_t *tail, event_word_t *w, port_t port) noexcept
 {
-    auto chan = this->port_to_chan(port);
-    expects(chan);
-
-    if (auto err = this->upcall(chan); err) {
-        printv("%s: upcall failed, rc=%d\n", __func__, err);
+    if (!(*w & (1 << EVTCHN_FIFO_LINKED))) {
+        return 0;
     }
+
+    event_word_t mask = (1 << EVTCHN_FIFO_BUSY) | EVTCHN_FIFO_LINK_MASK;
+    event_word_t &need = *w;
+    event_word_t want = (need & ~mask) | port;
+
+    return tail->compare_exchange_strong(need, want) ? 1 : -EAGAIN;
 }
 
-int xen_evtchn::upcall(chan_t *chan)
+/*
+ * Atomically set the LINK field iff it is still LINKED.
+ *
+ * The guest is only permitted to make the following changes to a
+ * LINKED event.
+ *
+ * - set MASKED
+ * - clear MASKED
+ * - clear PENDING
+ * - clear LINKED (and LINK)
+ *
+ * We block unmasking by the guest by marking the tail word as BUSY,
+ * therefore, the cmpxchg() may fail at most 4 times.
+ */
+static bool set_link(word_t *tail, port_t port) noexcept
 {
-    auto port = chan->port;
-    auto word = this->port_to_word(port);
-    if (!word) {
-        bferror_nhex(0, "port doesn't map to word", port);
-        chan->is_pending = true;
-        return -EADDRNOTAVAIL;
+    event_word_t w = read_atomic(tail);
+
+    int ret = attempt_link(tail, &w, port);
+    if (ret >= 0) {
+        return ret;
     }
 
-    /* Return if the guest has masked the event */
-    if (this->word_is_masked(word)) {
-        return -EBUSY;
-    }
+    /* Lock the word to prevent guest unmasking. */
+    set_bit(tail, EVTCHN_FIFO_BUSY);
 
-    if (chan->vcpuid >= m_event_ctl.size()) {
-        printv("%s: OOB vcpuid=%u, event_ctl.size=%lu\n",
-                __func__, chan->vcpuid, m_event_ctl.size());
-        return -EINVAL;
-    }
+    w = read_atomic(tail);
 
-    auto ctl = &m_event_ctl[chan->vcpuid];
-    auto p = chan->priority;
-    auto q = &ctl->queue.at(p);
+    for (auto attempt = 0; attempt < 4; attempt++) {
+        ret = attempt_link(tail, &w, port);
 
-    if (*q->head == null_port) {
-        *q->head = port;
-    } else if (*q->head != port) {
-        auto link = *q->head;
-        auto tail = *q->head;
-        do {
-            tail = link;
-            auto w = this->port_to_word(tail);
-            link = w->load() & EVTCHN_FIFO_LINK_MASK;
-        } while (link && link != port);
-
-        if (GSL_LIKELY(!link)) {
-            auto w = this->port_to_word(tail);
-            auto val = w->load();
-            if (!this->set_link(w, &val, port)) {
-                bferror_info(0, "evtchn: failed to set_link");
+        if (ret >= 0) {
+            if (ret == 0) {
+                clear_bit(tail, EVTCHN_FIFO_BUSY);
             }
+            return ret;
         }
     }
 
-    this->word_set_pending(word);
-    m_xen_dom->set_upcall_pending(chan->vcpuid);
-    ctl->blk->ready |= (1UL << p);
-    ::intel_x64::wmb();
+    bfalert_nhex(0, "evtchn: failed to set link", port);
+    clear_bit(tail, EVTCHN_FIFO_BUSY);
 
-    return 0;
+    return true;
 }
 
-// Ports
-//
-// A port is an address to two things: a chan_t and a word_t
-// Ports use a two-level addressing scheme.
-//
+struct event_queue *xen_evtchn::lock_old_queue(chan_t *chan)
+{
+    struct event_control *ctl;
+    struct event_queue *q, *oldq;
+
+    for (auto attempt = 0; attempt < 3; attempt++) {
+        ctl = m_event_ctl[chan->prev_vcpuid].get();
+        oldq = &ctl->queue[chan->prev_priority];
+
+        spin_acquire(&oldq->lock);
+
+        ctl = m_event_ctl[chan->prev_vcpuid].get();
+        q = &ctl->queue[chan->prev_priority];
+
+        if (oldq == q) {
+            return oldq;
+        }
+
+        spin_release(&oldq->lock);
+    }
+
+    printv("%s: ALERT: lost event at port %u (too many queue changes)\n",
+           __func__, chan->port);
+
+    return nullptr;
+}
+
+/*
+ * For further reference on the algorithm used here see:
+ *   https://xenbits.xenproject.org/people/dvrabel/event-channels-F.pdf
+ *
+ * Xen's implementation:
+ *   deps/xen/xen/common/events_fifo.c:evtchn_fifo_set_pending
+ *
+ * Linux guest side:
+ *   deps/linux/drivers/xen/events/events_fifo.c:__evtchn_fifo_handle_events
+ *
+ * Windows guest side:
+ *   drivers/winpv/xenbus/src/xenbus/evtchn_fifo.c:EvtchnFifoPoll
+ */
+
+bool xen_evtchn::raise(chan_t *chan)
+{
+    if (chan->vcpuid >= m_event_ctl.size()) {
+        printv("%s: OOB vcpuid=%u, event_ctl.size=%lu\n",
+                __func__, chan->vcpuid, m_event_ctl.size());
+        return false;
+    }
+
+    auto port = chan->port;
+    auto word = this->port_to_word(port);
+
+    if (!word) {
+        bferror_nhex(0, "port doesn't map to word", port);
+        return false;
+    }
+
+    set_bit(word, EVTCHN_FIFO_PENDING);
+
+    if (test_bit(word, EVTCHN_FIFO_MASKED)) {
+        return false;
+    }
+
+    if (test_bit(word, EVTCHN_FIFO_LINKED)) {
+        return false;
+    }
+
+    auto ctl = m_event_ctl[chan->vcpuid].get();
+    expects(chan->priority < EVTCHN_FIFO_MAX_QUEUES);
+
+    auto curq = &ctl->queue[chan->priority];
+    auto oldq = this->lock_old_queue(chan);
+
+    if (!oldq) {
+        return false;
+    }
+
+    if (test_and_set_bit(word, EVTCHN_FIFO_LINKED)) {
+        spin_release(&oldq->lock);
+        return false;
+    }
+
+    /*
+     * If this event was a tail, the old queue is now empty and
+     * its tail must be invalidated to prevent adding an event to
+     * the old queue from corrupting the new queue.
+     */
+    if (oldq->tail == port) {
+        oldq->tail = 0;
+    }
+
+    if (oldq != curq) {
+        chan->prev_vcpuid = chan->vcpuid;
+        chan->prev_priority = chan->priority;
+
+        spin_release(&oldq->lock);
+        spin_acquire(&curq->lock);
+    }
+
+    bool linked = false;
+
+    /*
+     * Write port into the link field of the tail word iff
+     * the tail word itself is linked.
+     */
+    if (curq->tail) {
+        auto tail_word = this->port_to_word(curq->tail);
+        linked = set_link(tail_word, port);
+    }
+
+    /*
+     * If the tail wasn't linked, the queue is empty. In this
+     * case we update head to point to the new event.
+     */
+    if (!linked) {
+        write_atomic(curq->head, port);
+    }
+
+    curq->tail = port;
+    spin_release(&curq->lock);
+
+    /*
+     * Only preform an upcall if the queue was empty and the queue's
+     * priority bit in the ready word transitions from 0 to 1.
+     */
+    if (!linked && !test_and_set_bit(ctl->ready, chan->priority)) {
+        m_xen_dom->set_upcall_pending(chan->vcpuid);
+        return true;
+    }
+
+    return false;
+}
 
 xen_evtchn::port_t xen_evtchn::make_new_port()
 {
@@ -849,8 +989,8 @@ xen_evtchn::port_t xen_evtchn::make_new_port()
 
 xen_evtchn::chan_t *xen_evtchn::port_to_chan(port_t port) const
 {
-    const auto size = m_chan_pages.size();
-    const auto page = (port & chan_page_mask) >> chan_page_shift;
+    auto size = m_chan_pages.size();
+    auto page = (port & chan_page_mask) >> chan_page_shift;
 
     if (page >= size) {
         return nullptr;
@@ -862,8 +1002,8 @@ xen_evtchn::chan_t *xen_evtchn::port_to_chan(port_t port) const
 
 xen_evtchn::word_t *xen_evtchn::port_to_word(port_t port) const
 {
-    const auto size = m_word_pages.size();
-    const auto page = (port & word_page_mask) >> word_page_shift;
+    auto size = m_word_pages.size();
+    auto page = (port & word_page_mask) >> word_page_shift;
 
     if (page >= size) {
         return nullptr;
@@ -880,15 +1020,16 @@ int xen_evtchn::make_port(port_t port)
                                     std::to_string(port));
     }
 
-    if (const auto chan = this->port_to_chan(port); chan) {
+    if (auto chan = this->port_to_chan(port); chan) {
         if (chan->state != chan_t::state_free) {
             return -EBUSY;
         }
 
         auto word = this->port_to_word(port);
-        if (word && this->word_is_busy(word)) {
+        if (word && test_bit(word, EVTCHN_FIFO_BUSY)) {
             return -EBUSY;
         }
+
         return 0;
     }
 
@@ -898,9 +1039,9 @@ int xen_evtchn::make_port(port_t port)
 
 void xen_evtchn::make_chan_page(port_t port)
 {
-    const auto indx = (port & chan_page_mask) >> chan_page_shift;
-    const auto size = m_chan_pages.size();
-    const auto cpty = m_chan_pages.capacity();
+    auto indx = (port & chan_page_mask) >> chan_page_shift;
+    auto size = m_chan_pages.size();
+    auto cpty = m_chan_pages.capacity();
 
     expects(size == indx);
     expects(size < cpty);
@@ -922,21 +1063,6 @@ void xen_evtchn::make_word_page(microv_vcpu *uvv, uintptr_t gfn)
 
     m_word_pages.push_back(uvv->map_gpa_4k<word_t>(xen_addr(gfn)));
     m_allocated_words += words_per_page;
-}
-
-bool xen_evtchn::word_is_masked(word_t *word) const
-{
-    return is_bit_set(word->load(), EVTCHN_FIFO_MASKED);
-}
-
-bool xen_evtchn::word_is_busy(word_t *word) const
-{
-    return is_bit_set(word->load(), EVTCHN_FIFO_BUSY);
-}
-
-void xen_evtchn::word_set_pending(word_t *word)
-{
-    word->fetch_or(1U << EVTCHN_FIFO_PENDING);
 }
 
 }

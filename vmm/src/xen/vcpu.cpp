@@ -957,6 +957,10 @@ bool xen_vcpu::debug_hypercall(microv_vcpu *vcpu)
     const auto rax = vcpu->rax();
     const auto rdi = vcpu->rdi();
 
+    if (rax == __HYPERVISOR_event_channel_op) {
+        return false;
+    }
+
     if (vcpu->is_root_vcpu()) {
         if (rax == __HYPERVISOR_event_channel_op && rdi == EVTCHNOP_send) {
             return false;
