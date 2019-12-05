@@ -31,20 +31,29 @@ while ($net -eq $null) {
                           -ErrorAction SilentlyContinue
 }
 
-Set-NetConnectionProfile -InterfaceIndex $net.InterfaceIndex `
-                         -NetworkCategory Public | Out-Null
+$index = $net.InterfaceIndex
+$addr = Get-NetIPAddress -InterfaceIndex $index -AddressFamily IPv4
 
-# Check if we've set IP info previously; if not, do so now
-$addr = Get-NetIPAddress -InterfaceIndex $net.InterfaceIndex
-if ($addr -eq $null) {
-    New-NetIPAddress -IPAddress 192.168.5.2 `
-                     -DefaultGateway 192.168.5.1 `
-                     -PrefixLength 24 `
-                     -InterfaceIndex $net.InterfaceIndex | Out-Null
+if ($addr -ne $null) {
+    Remove-NetIPAddress -InterfaceIndex $index -Confirm:$false
+    Remove-NetRoute     -InterfaceIndex $index -Confirm:$false
 }
 
-Set-DnsClientServerAddress -InterfaceIndex $net.InterfaceIndex `
-                           -ServerAddresses 8.8.8.8 | Out-Null
+New-NetIPAddress -IPAddress 192.168.5.2 `
+                 -DefaultGateway 192.168.5.1 `
+                 -AddressFamily IPv4 `
+                 -PrefixLength 24 `
+                 -Type Unicast `
+                 -InterfaceIndex $index `
+                 -Confirm:$false
+
+Set-NetConnectionProfile -InterfaceIndex $index `
+                         -NetworkCategory Public `
+                         -Confirm:$false
+
+Set-DnsClientServerAddress -InterfaceIndex $index `
+                           -ServerAddresses 8.8.8.8 `
+                           -Confirm:$false
 
 Write-Host "${desc}: NetworkCategory : Public"
 Write-Host "${desc}: IPv4            : 192.168.5.2"
