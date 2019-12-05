@@ -34,6 +34,7 @@ int xen_cpupool_mv_domain(xen_cpupoolid_t old_pool,
                           xen_cpupoolid_t new_pool,
                           xen_domid_t domid);
 bool xen_cpupool_op(xen_vcpu *vcpu, struct xen_sysctl *ctl);
+xen_cpupool *get_cpupool(xen_cpupoolid_t) noexcept;
 
 class xen_cpupool {
 public:

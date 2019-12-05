@@ -143,6 +143,14 @@ static bool cpupool_info(xen_vcpu *vcpu, struct xen_sysctl *ctl)
     return true;
 }
 
+static bool cpupool_free_info(xen_vcpu *vcpu, struct xen_sysctl *ctl)
+{
+    auto uvv = vcpu->m_uv_vcpu;
+
+    uvv->set_rax(0);
+    return true;
+}
+
 bool xen_cpupool_op(xen_vcpu *vcpu, struct xen_sysctl *ctl)
 {
     auto op = &ctl->u.cpupool_op;
@@ -155,11 +163,31 @@ bool xen_cpupool_op(xen_vcpu *vcpu, struct xen_sysctl *ctl)
         return cpupool_move_domain(vcpu, ctl);
     case XEN_SYSCTL_CPUPOOL_OP_INFO:
         return cpupool_info(vcpu, ctl);
+    case XEN_SYSCTL_CPUPOOL_OP_FREEINFO:
+        return cpupool_free_info(vcpu, ctl);
     default:
         bfalert_nhex(0, "unhandled cpupool op:", op->op);
         vcpu->m_uv_vcpu->set_rax(-EFAULT);
         return true;
     }
+}
+
+xen_cpupool *get_cpupool(xen_cpupoolid_t id) noexcept
+{
+    try {
+        std::lock_guard lock(cpupool_mutex);
+
+        auto itr = cpupool_map.find(id);
+        if (itr != cpupool_map.end()) {
+            return itr->second.get();
+        } else {
+            return nullptr;
+        }
+    } catch (...) {
+        printv("%s: threw exception for id 0x%x\n", __func__, id);
+        return nullptr;
+    }
+
 }
 
 xen_cpupool::xen_cpupool(xen_cpupoolid_t id)
