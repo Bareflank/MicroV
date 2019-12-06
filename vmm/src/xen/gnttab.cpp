@@ -316,57 +316,32 @@ put_domain:
 /*
  * map_xen_page
  *
- * Return virtual 4k-aligned address of the host frame referenced
- * by the xen_page argument. If the xen_page is not backed, it will
- * become backed.
- *
- * @ensures(pg->backed())
- * @ensures(pg->mapped_in_vmm())
+ * Return virtual 4k-aligned address mapped rw to the host
+ * frame referenced by the xen_page argument.
  *
  * @param pg the xen_page to map
- * @return the virtual address to access pg->page->hfn. Non-null guaranteed
+ * @return the virtual address to access pg->page->hfn.
  */
-static uint8_t *map_xen_page(class xen_page *pg)
+static inline uint8_t *map_xen_page(const class xen_page *pg)
 {
-    void *ptr{};
-
-    if (!pg->page) {
-        printv("%s: FATAL: pg->page is NULL, gfn:0x%lx\n",
-                __func__, pg->gfn);
-        return nullptr;
-    }
-
-    if (pg->mapped_in_vmm()) {
-        ptr = pg->page->ptr;
-        return reinterpret_cast<uint8_t *>(ptr);
-    }
-
-    if (pg->backed()) {
-        ptr = g_mm->alloc_map(UV_PAGE_SIZE);
-        g_cr3->map_4k(ptr, xen_addr(pg->page->hfn));
-        pg->page->ptr = ptr;
-    } else {
-        auto hfn = alloc_root_frame();
-
-        if (hfn != XEN_INVALID_PFN) {
-            pg->page->src = pg_src_root;
-            pg->page->ptr = g_mm->alloc_map(UV_PAGE_SIZE);
-            pg->page->hfn = hfn;
-            g_cr3->map_4k(ptr, xen_addr(hfn));
-        } else {
-            pg->page->src = pg_src_vmm;
-            pg->page->ptr = alloc_page();
-            pg->page->hfn = xen_frame(g_mm->virtptr_to_physint(pg->page->ptr));
-        }
-
-        ptr = pg->page->ptr;
-    }
-
-    ensures(ptr);
-    ensures(pg->backed());
-    ensures(pg->mapped_in_vmm());
+    void *ptr = g_mm->alloc_map(UV_PAGE_SIZE);
+    g_cr3->map_4k(ptr, xen_addr(pg->page->hfn));
 
     return reinterpret_cast<uint8_t *>(ptr);
+}
+
+/*
+ * unmap_xen_page
+ *
+ * Unmap the virtual address previously allocated with map_xen_page
+ *
+ * @param ptr the address previously returned from map_xen_page
+ */
+static inline void unmap_xen_page(uint8_t *ptr)
+{
+    g_cr3->unmap(ptr);
+    ::x64::tlb::invlpg(ptr);
+    g_mm->free_map(ptr);
 }
 
 static class xen_domain *get_copy_dom(const xen_vcpu *curv,
@@ -390,40 +365,62 @@ static void put_copy_dom(const xen_vcpu *curv,
     put_xen_domain(domid);
 }
 
-static void xen_gnttab_copy(xen_vcpu *vcpu, gnttab_copy_t *copy)
+static bool valid_copy_args(gnttab_copy_t *copy)
 {
-    auto rc = GNTST_okay;
     auto src = &copy->source;
     auto dst = &copy->dest;
 
-    const bool src_use_gfn = (copy->flags & GNTCOPY_source_gref) == 0;
+    auto src_use_gfn = (copy->flags & GNTCOPY_source_gref) == 0;
+    auto dst_use_gfn = (copy->flags & GNTCOPY_dest_gref) == 0;
+
     if (src_use_gfn && src->domid != DOMID_SELF) {
         copy->status = GNTST_permission_denied;
         printv("%s: src: only DOMID_SELF can use gfn-based copy", __func__);
-        return;
+        return false;
     }
 
-    const bool dst_use_gfn = (copy->flags & GNTCOPY_dest_gref) == 0;
     if (dst_use_gfn && dst->domid != DOMID_SELF) {
         printv("%s: dst: only DOMID_SELF can use gfn-based copy", __func__);
         copy->status = GNTST_permission_denied;
-        return;
+        return false;
     }
 
-    /* Check bounds */
     if (src->offset + copy->len > XEN_PAGE_SIZE) {
+        printv("%s: src: offset(%u) + len(%u) > XEN_PAGE_SIZE(%lu)",
+                __func__, src->offset, copy->len, XEN_PAGE_SIZE);
         copy->status = GNTST_bad_copy_arg;
-        return;
+        return false;
     }
 
     if (dst->offset + copy->len > XEN_PAGE_SIZE) {
+        printv("%s: dst: offset(%u) + len(%u) > XEN_PAGE_SIZE(%lu)",
+                __func__, src->offset, copy->len, XEN_PAGE_SIZE);
         copy->status = GNTST_bad_copy_arg;
+        return false;
+    }
+
+    return true;
+}
+
+static void xen_gnttab_copy(xen_vcpu *vcpu, gnttab_copy_t *copy)
+{
+    if (!valid_copy_args(copy)) {
         return;
     }
+
+    auto rc = GNTST_okay;
+    auto src = &copy->source;
+    auto dst = &copy->dest;
+    auto src_use_gfn = (copy->flags & GNTCOPY_source_gref) == 0;
+    auto dst_use_gfn = (copy->flags & GNTCOPY_dest_gref) == 0;
 
     class xen_domain *src_dom, *dst_dom;
     class xen_gnttab *src_gnt, *dst_gnt;
     class xen_page *src_pg, *dst_pg;
+
+    class page winpv_pg{0};
+    class xen_page winpv_xen_pg{0, pg_perm_rw, pg_mtype_wb, &winpv_pg};
+
     uint8_t *src_buf, *dst_buf;
     xen_pfn_t src_gfn, dst_gfn;
     grant_ref_t src_ref, dst_ref;
@@ -494,13 +491,11 @@ static void xen_gnttab_copy(xen_vcpu *vcpu, gnttab_copy_t *copy)
     src_pg = src_dom->m_memory.get()->find_page(src_gfn);
     if (!src_pg) {
         if (src->domid == DOMID_WINPV) {
-            src_dom->m_memory.get()->add_root_backed_page(src_gfn,
-                                                          pg_perm_rw,
-                                                          pg_mtype_wb,
-                                                          src_gfn,
-                                                          false);
-            src_pg = src_dom->m_memory.get()->find_page(src_gfn);
-            ensures(src_pg);
+            winpv_pg.ptr = nullptr;
+            winpv_pg.hfn = src_gfn;
+            winpv_pg.src = pg_src_root;
+            winpv_xen_pg.gfn = src_gfn;
+            src_pg = &winpv_xen_pg;
         } else {
             printv("%s: src_gfn:0x%lx doesnt map to page\n", __func__, src_gfn);
             rc = GNTST_general_error;
@@ -511,13 +506,11 @@ static void xen_gnttab_copy(xen_vcpu *vcpu, gnttab_copy_t *copy)
     dst_pg = dst_dom->m_memory.get()->find_page(dst_gfn);
     if (!dst_pg) {
         if (dst->domid == DOMID_WINPV) {
-            dst_dom->m_memory.get()->add_root_backed_page(dst_gfn,
-                                                          pg_perm_rw,
-                                                          pg_mtype_wb,
-                                                          dst_gfn,
-                                                          false);
-            dst_pg = dst_dom->m_memory.get()->find_page(dst_gfn);
-            ensures(dst_pg);
+            winpv_pg.ptr = nullptr;
+            winpv_pg.hfn = dst_gfn;
+            winpv_pg.src = pg_src_root;
+            winpv_xen_pg.gfn = dst_gfn;
+            dst_pg = &winpv_xen_pg;
         } else {
             printv("%s: dst_gfn:0x%lx doesnt map to page\n", __func__, dst_gfn);
             rc = GNTST_general_error;
@@ -525,18 +518,32 @@ static void xen_gnttab_copy(xen_vcpu *vcpu, gnttab_copy_t *copy)
         }
     }
 
-    src_buf = map_xen_page(src_pg);
-    if (!src_buf) {
-        printv("%s: failed to map src_pg\n", __func__);
-        rc = GNTST_general_error;
-        goto put_dst_dom;
+    expects(src_pg->backed());
+    expects(dst_pg->backed());
+
+    if (src_pg->page->ptr) {
+        src_buf = reinterpret_cast<uint8_t *>(src_pg->page->ptr);
+    } else {
+        src_buf = map_xen_page(src_pg);
+
+        if (!src_buf) {
+            printv("%s: failed to map src_pg: gfn=0x%lx hfn=0x%lx\n",
+                   __func__, src_pg->gfn, src_pg->page->hfn);
+            rc = GNTST_general_error;
+            goto put_dst_dom;
+        }
     }
 
-    dst_buf = map_xen_page(dst_pg);
-    if (!dst_buf) {
-        printv("%s: failed to map dst_pg\n", __func__);
-        rc = GNTST_general_error;
-        goto put_dst_dom;
+    if (dst_pg->page->ptr) {
+        dst_buf = reinterpret_cast<uint8_t *>(dst_pg->page->ptr);
+    } else {
+        dst_buf = map_xen_page(dst_pg);
+
+        if (!dst_buf) {
+            printv("%s: failed to map dst_pg\n", __func__);
+            rc = GNTST_general_error;
+            goto unmap_src_pg;
+        }
     }
 
     /* Finally, do the copy */
@@ -546,13 +553,18 @@ static void xen_gnttab_copy(xen_vcpu *vcpu, gnttab_copy_t *copy)
     memcpy(dst_buf, src_buf, copy->len);
     rc = GNTST_okay;
 
-    /* Debugging info */
-//    printv("%s: %03u bytes from (dom:0x%x,gfn:0x%lx) to ",
-//           __func__, copy->len, src_dom->m_id, src_gfn);
-//    printf("(dom:0x%x,gfn:0x%lx)\n", dst_dom->m_id, dst_gfn);
+    if (!dst_pg->page->ptr) {
+        unmap_xen_page(dst_buf);
+    }
+
+unmap_src_pg:
+    if (!src_pg->page->ptr) {
+        unmap_xen_page(src_buf);
+    }
 
 put_dst_dom:
     put_copy_dom(vcpu, dst->domid);
+
 put_src_dom:
     put_copy_dom(vcpu, src->domid);
 
