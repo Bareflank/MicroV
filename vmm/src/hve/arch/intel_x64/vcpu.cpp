@@ -87,6 +87,71 @@ ept_violation_handler(vcpu_t *vcpu)
     return true;
 }
 
+static std::mutex root_ept_mtx;
+
+static bool handle_root_ept_violation(
+    vcpu_t *vcpu,
+    bfvmm::intel_x64::ept_violation_handler::info_t &info)
+{
+
+    auto qual = info.exit_qualification;
+
+    switch (qual & 0x7) {
+    case 1:
+        printv("ALERT: EPT read  qual:0x%lx gva:0x%lx gpa:0x%lx ",
+               qual, info.gva, info.gpa);
+        break;
+    case 2:
+        printv("ALERT: EPT write qual:0x%lx gva:0x%lx gpa:0x%lx ",
+               qual, info.gva, info.gpa);
+        break;
+    case 4:
+        printv("ALERT: EPT exec  qual:0x%lx gva:0x%lx gpa:0x%lx ",
+               qual, info.gva, info.gpa);
+        break;
+    default:
+        printv("ERROR: EPT unexpected qual:0x%lx gva:0x%lx gpa:0x%lx\n",
+               qual, info.gva, info.gpa);
+        return false;
+    }
+
+    auto dom = vcpu_cast(vcpu)->dom();
+    auto ept = &dom->ept();
+
+    std::lock_guard lock(root_ept_mtx);
+
+    try {
+        auto entry_pair = ept->entry(info.gpa);
+        auto entry = &entry_pair.first.get();
+        auto from = entry_pair.second;
+
+        printv("(mapped from:%lu) entry:0x%lx\n", from, *entry);
+
+        *entry |= 0x7;
+        ::intel_x64::wmb();
+        vcpu->invept();
+        info.ignore_advance = true;
+
+    } catch (std::runtime_error &e) {
+        using namespace ::bfvmm::intel_x64::ept;
+
+        printv("(not mapped, e.what=%s)\n", e.what());
+
+        auto gpa_2m = bfn::upper(info.gpa, 21);
+
+        identity_map(*ept, gpa_2m, gpa_2m + (1 << 21));
+        ::intel_x64::wmb();
+        vcpu->invept();
+        info.ignore_advance = true;
+
+    } catch (std::exception &e) {
+        printv("(non-runtime_error caught: e.what=%s)\n", e.what());
+        info.ignore_advance = false;
+    }
+
+    return true;
+}
+
 //------------------------------------------------------------------------------
 // Implementation
 //------------------------------------------------------------------------------
@@ -162,9 +227,14 @@ vcpu::vcpu(
         }
 
         this->write_dom0_guest_state(domain);
+
+        this->add_ept_read_violation_handler({handle_root_ept_violation});
+        this->add_ept_write_violation_handler({handle_root_ept_violation});
+        this->add_ept_execute_violation_handler({handle_root_ept_violation});
     }
     else {
         this->write_domU_guest_state(domain);
+
         this->init_xstate();
         this->add_rdcr8_handler({&vcpu::handle_rdcr8, this});
         this->add_wrcr8_handler({&vcpu::handle_wrcr8, this});
