@@ -414,13 +414,14 @@ bool xenmem_acquire_resource(xen_vcpu *vcpu)
 
     auto map = uvv->map_gva_4k<xen_pfn_t>(res->frame_list.p, res->nr_frames);
     auto gfn = map.get();
+    auto mem = vcpu->m_xen_dom->m_memory.get();
 
     /* Now we add the pages into the caller's map */
     for (auto i = 0; i < res->nr_frames; i++) {
-        auto mem = vcpu->m_xen_dom->m_memory.get();
         mem->add_foreign_page(gfn[i], pg_perm_rw, pg_mtype_wb, pages[i]);
     }
 
+    mem->invept();
     put_xen_domain(res->domid);
     uvv->set_rax(0);
 
@@ -451,9 +452,11 @@ int xen_memory::back_page(class xen_page *pg)
 
         if (root_pool.size()) {
             class page *page = pg->page;
+
             page->hfn = root_pool.front();
             page->src = pg_src_root;
             root_pool.pop_front();
+
             return 0;
         }
     }
@@ -469,9 +472,11 @@ int xen_memory::back_page(class xen_page *pg)
 
     if (vmm_pool_pages() > 64) {
         class page *page = pg->page;
+
         page->ptr = g_mm->alloc_page();
         page->hfn = uv_frame(g_mm->virtptr_to_physint(page->ptr));
         page->src = pg_src_vmm;
+
         return 0;
     } else {
         return -ENOMEM;
@@ -839,6 +844,8 @@ bool xen_memory::add_to_physmap_batch(xen_vcpu *v,
         }
 
         this->add_foreign_page(*gpfn.get(), pg_perm_rw, pg_mtype_wb, pg->page);
+        this->invept();
+
         uvv->set_rax(0);
         put_xen_domain(fdomid);
 

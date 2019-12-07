@@ -53,6 +53,8 @@ public:
     void init_shared_info(uintptr_t shinfo_gpfn);
     uint64_t runstate_time(int state);
 
+    void invept() const { m_uv_dom->invept(); }
+
     void push_external_interrupt(uint64_t vector);
     void queue_external_interrupt(uint64_t vector);
     void inject_external_interrupt(uint64_t vector);

@@ -116,6 +116,10 @@ void xen_gnttab_unmap_grant_ref(xen_vcpu *vcpu, gnttab_unmap_grant_ref_t *unmap)
     const grant_ref_t fref = hdl & 0xFFFF;
     const xen_domid_t fdomid = hdl >> 16;
 
+    static_assert(std::atomic<uint16_t>::is_always_lock_free);
+    std::atomic<uint16_t> *atomic_flags;
+    uint16_t new_flags;
+
     auto ldom = vcpu->m_xen_dom;
     auto lgnt = ldom->m_gnttab.get();
     auto itr = lgnt->map_handles.find(hdl);
@@ -154,13 +158,15 @@ void xen_gnttab_unmap_grant_ref(xen_vcpu *vcpu, gnttab_unmap_grant_ref_t *unmap)
     }
 
     fhdr = fgnt->shared_header(fref);
-    fhdr->flags &= ~(GTF_reading | GTF_writing);
+    new_flags = fhdr->flags & ~(GTF_reading | GTF_writing);
+    atomic_flags = reinterpret_cast<std::atomic<uint16_t> *>(&fhdr->flags);
+    atomic_flags->exchange(new_flags);
 
 unmap:
     auto lmem = ldom->m_memory.get();
     auto lgfn = xen_frame(unmap->host_addr);
 
-    if (auto rc = lmem->remove_page(lgfn, true); rc) {
+    if (auto rc = lmem->remove_page(lgfn, false); rc) {
         printv("%s: failed to remove gfn:%lx, rc=%d\n", __func__, lgfn, rc);
         unmap->status = GNTST_general_error;
         put_xen_domain(fdomid);
@@ -177,11 +183,12 @@ static void xen_gnttab_map_grant_ref(xen_vcpu *vcpu,
 {
     grant_entry_header_t *fhdr;
     xen_domid_t ldomid;
-    uint16_t new_flags;
     xen_pfn_t fgfn, lgfn;
     class xen_memory *fmem, *lmem;
     class xen_page *fpg;
     uint32_t perm;
+    uint16_t new_flags;
+    std::atomic<uint16_t> *atomic_flags;
 
     int rc = GNTST_okay;
     auto uvv = vcpu->m_uv_vcpu;
@@ -259,14 +266,15 @@ static void xen_gnttab_map_grant_ref(xen_vcpu *vcpu,
     }
 
     if (already_mapped(fhdr->flags)) {
-        printv("%s: remapping entry: ref:0x%x dom:0x%x\n",
+        printv("%s: WARNING: remapping entry: ref:0x%x dom:0x%x\n",
                __func__, fref, fdomid);
         rc = GNTST_general_error;
         goto put_domain;
     }
 
     new_flags = fhdr->flags | GTF_reading | (map_ro ? 0 : GTF_writing);
-    fhdr->flags = new_flags;
+    atomic_flags = reinterpret_cast<std::atomic<uint16_t> *>(&fhdr->flags);
+    atomic_flags->exchange(new_flags);
 
     fgfn = fgnt->shared_gfn(fref);
     fmem = fdom->m_memory.get();
@@ -293,6 +301,7 @@ set_perms:
     }
 
     map->handle = new_hdl;
+
     if (!lgnt->map_handles.try_emplace(new_hdl, map->host_addr).second) {
         bferror_info(0, "failed to add map_handle");
         bferror_subnhex(0, "handle", new_hdl);
@@ -458,6 +467,7 @@ static void xen_gnttab_copy(xen_vcpu *vcpu, gnttab_copy_t *copy)
 //        }
 
         src_gfn = src_gnt->shared_gfn(src_ref);
+        /* TODO acquire the page for reading */
     }
 
     /* Resolve destination frame */
@@ -482,6 +492,7 @@ static void xen_gnttab_copy(xen_vcpu *vcpu, gnttab_copy_t *copy)
 //        }
 
         dst_gfn = dst_gnt->shared_gfn(dst_ref);
+        /* TODO acquire the page for writing */
     }
 
     src_pg = src_dom->m_memory.get()->find_page(src_gfn);
@@ -549,6 +560,8 @@ static void xen_gnttab_copy(xen_vcpu *vcpu, gnttab_copy_t *copy)
     memcpy(dst_buf, src_buf, copy->len);
     rc = GNTST_okay;
 
+    ::intel_x64::mb();
+
     if (!dst_pg->page->ptr) {
         unmap_xen_page(dst_buf);
     }
@@ -575,18 +588,20 @@ bool xen_gnttab_copy(xen_vcpu *vcpu)
     auto map = uvv->map_gva_4k<gnttab_copy_t>(uvv->rsi(), num);
     auto cop = map.get();
 
-    for (auto i = 0; i < num; i++) {
+    int rc;
+    int i;
+
+    for (i = 0; i < num; i++) {
         xen_gnttab_copy(vcpu, &cop[i]);
-        const auto rc = cop[i].status;
+        rc = cop[i].status;
 
         if (rc != GNTST_okay) {
             printv("%s: op[%u] failed, rc=%d\n", __func__, i, rc);
-            uvv->set_rax(rc);
-            return false;
+            break;
         }
     }
 
-    uvv->set_rax(0);
+    uvv->set_rax(rc);
     return true;
 }
 
@@ -597,18 +612,24 @@ bool xen_gnttab_map_grant_ref(xen_vcpu *vcpu)
     auto map = uvv->map_gva_4k<gnttab_map_grant_ref_t>(uvv->rsi(), num);
     auto ops = map.get();
 
-    for (auto i = 0; i < num; i++) {
+    int rc;
+    int i;
+
+    for (i = 0; i < num; i++) {
         xen_gnttab_map_grant_ref(vcpu, &ops[i]);
-        const auto rc = ops[i].status;
+        rc = ops[i].status;
 
         if (rc != GNTST_okay) {
-            printv("%s: op[%u] failed, rc=%d\n", __func__, i, rc);
-            uvv->set_rax(rc);
-            return false;
+            printv("%s: ERROR: op[%u] failed, rc=%d\n", __func__, i, rc);
+            break;
         }
     }
 
-    uvv->set_rax(0);
+    if (i > 0) {
+        vcpu->invept();
+    }
+
+    uvv->set_rax(rc);
     return true;
 }
 
@@ -619,18 +640,24 @@ bool xen_gnttab_unmap_grant_ref(xen_vcpu *vcpu)
     auto map = uvv->map_gva_4k<gnttab_unmap_grant_ref_t>(uvv->rsi(), num);
     auto ops = map.get();
 
-    for (auto i = 0; i < num; i++) {
+    int rc;
+    int i;
+
+    for (i = 0; i < num; i++) {
         xen_gnttab_unmap_grant_ref(vcpu, &ops[i]);
-        const auto rc = ops[i].status;
+        rc = ops[i].status;
 
         if (rc != GNTST_okay) {
-            printv("%s: op[%u] failed, rc=%d\n", __func__, i, rc);
-            uvv->set_rax(rc);
-            return false;
+            printv("%s: ERROR: op[%u] failed, rc=%d\n", __func__, i, rc);
+            break;
         }
     }
 
-    uvv->set_rax(0);
+    if (i > 0) {
+        vcpu->invept();
+    }
+
+    uvv->set_rax(rc);
     return true;
 }
 
@@ -1007,6 +1034,7 @@ bool xen_gnttab::mapspace_grant_table(xen_vcpu *vcpu, xen_add_to_physmap_t *atp)
         }
 
         xen_mem->add_local_page(gfn, pg_perm_rw, pg_mtype_wb, page);
+        xen_mem->invept();
         uvv->set_rax(0);
 
         return true;
@@ -1046,6 +1074,8 @@ bool xen_gnttab::mapspace_grant_table(xen_vcpu *vcpu, xen_add_to_physmap_t *atp)
             gte->flags = GTF_permit_access;
             gte->domid = 0;
             gte->frame = pfn;
+
+            ::intel_x64::wmb();
         }
 
         uvv->set_rax(0);

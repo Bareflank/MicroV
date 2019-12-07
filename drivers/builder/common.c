@@ -1222,7 +1222,9 @@ int64_t common_create_vm(struct create_vm_args *args)
         return ret;
     }
 
+    __domain_op__invept(vm->domainid);
     args->domainid = vm->domainid;
+
     return SUCCESS;
 }
 
