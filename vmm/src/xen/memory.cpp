@@ -90,6 +90,16 @@ class page *alloc_root_backed_page(xen_pfn_t hfn)
     return &it->second;
 }
 
+class page *alloc_raw_page(xen_pfn_t hfn)
+{
+    std::lock_guard lock(dom_pool_mtx);
+
+    auto id = dom_page_id++;
+    auto it = dom_pool.try_emplace(id, page(id, hfn, true)).first;
+
+    return &it->second;
+}
+
 class page *alloc_vmm_backed_page(void *ptr)
 {
     std::lock_guard lock(dom_pool_mtx);
@@ -104,6 +114,15 @@ void free_unbacked_page(class page *pg)
 {
     expects(!pg->refcnt);
     expects(pg->src == pg_src_none);
+
+    std::lock_guard page_lock(dom_pool_mtx);
+    dom_pool.erase(pg->id);
+}
+
+void free_raw_page(class page *pg)
+{
+    expects(!pg->refcnt);
+    expects(pg->src == pg_src_raw);
 
     std::lock_guard page_lock(dom_pool_mtx);
     dom_pool.erase(pg->id);
@@ -730,6 +749,17 @@ void xen_memory::add_local_page(xen_pfn_t gfn, uint32_t perms, uint32_t mtype,
     this->map_page(xenpg);
 }
 
+void xen_memory::add_raw_page(xen_pfn_t gfn, uint32_t perms, uint32_t mtype,
+                              xen_pfn_t hfn)
+{
+    expects(m_page_map.count(gfn) == 0);
+
+    auto pg = alloc_raw_page(hfn);
+    m_page_map.try_emplace(gfn, xen_page(gfn, perms, mtype, pg));
+
+    this->map_page(this->find_page(gfn));
+}
+
 class xen_page *xen_memory::find_page(xen_pfn_t gfn)
 {
     auto itr = m_page_map.find(gfn);
@@ -828,7 +858,7 @@ void xen_memory::unmap_page(class xen_page *pg)
     pg->present = false;
 }
 
-int xen_memory::remove_page(xen_pfn_t gfn)
+int xen_memory::remove_page(xen_pfn_t gfn, bool need_invept)
 {
     expects(m_xen_dom->m_id != DOMID_WINPV);
 
@@ -844,6 +874,10 @@ int xen_memory::remove_page(xen_pfn_t gfn)
     this->unmap_page(pg);
     pg->page->refcnt--;
 
+    if (need_invept) {
+        this->invept();
+    }
+
     /* Free the backing page if no other refs exist */
     if (!pg->page->refcnt) {
         switch (pg->page->src) {
@@ -855,6 +889,9 @@ int xen_memory::remove_page(xen_pfn_t gfn)
             break;
         case pg_src_none:
             free_unbacked_page(pg->page);
+            break;
+        case pg_src_raw:
+            free_raw_page(pg->page);
             break;
         default:
             printv("%s: unknown page src: %lu\n", __func__, pg->page->src);
@@ -882,8 +919,7 @@ bool xen_memory::decrease_reservation(xen_vcpu *v,
 
     if (uvv->is_guest_vcpu()) {
         for (auto i = 0U; i < rsv->nr_extents; i++) {
-            const auto err = this->remove_page(gfn[i]);
-            if (err) {
+            if (this->remove_page(gfn[i], false)) {
                 break;
             }
             nr_done++;
@@ -1034,8 +1070,7 @@ bool xen_memory::set_memory_map(xen_vcpu *v, xen_foreign_memory_map_t *fmap)
 
 bool xen_memory::remove_from_physmap(xen_vcpu *v, xen_remove_from_physmap_t *rmap)
 {
-    this->remove_page(rmap->gpfn);
-    this->invept();
+    this->remove_page(rmap->gpfn, true);
 
     v->m_uv_vcpu->set_rax(0);
     return true;

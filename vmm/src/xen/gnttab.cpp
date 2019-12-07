@@ -112,17 +112,14 @@ static inline bool has_write_access(xen_domid_t domid,
 
 void xen_gnttab_unmap_grant_ref(xen_vcpu *vcpu, gnttab_unmap_grant_ref_t *unmap)
 {
-    const auto hdl = unmap->handle;
-    const auto fref = hdl & 0xFFFF;
-    const auto fdomid = hdl >> 16;
-
-//    printv("%s: fdom:%x fref:%x lgpa:%lx\n",
-//           __func__, fdomid, fref, unmap->host_addr);
+    const grant_handle_t hdl = unmap->handle;
+    const grant_ref_t fref = hdl & 0xFFFF;
+    const xen_domid_t fdomid = hdl >> 16;
 
     auto ldom = vcpu->m_xen_dom;
     auto lgnt = ldom->m_gnttab.get();
-
     auto itr = lgnt->map_handles.find(hdl);
+
     if (itr == lgnt->map_handles.end()) {
         printv("%s: handle:%x not found\n", __func__, hdl);
         unmap->status = GNTST_bad_handle;
@@ -162,14 +159,14 @@ void xen_gnttab_unmap_grant_ref(xen_vcpu *vcpu, gnttab_unmap_grant_ref_t *unmap)
 unmap:
     auto lmem = ldom->m_memory.get();
     auto lgfn = xen_frame(unmap->host_addr);
-    if (auto rc = lmem->remove_page(lgfn); rc) {
+
+    if (auto rc = lmem->remove_page(lgfn, true); rc) {
         printv("%s: failed to remove gfn:%lx, rc=%d\n", __func__, lgfn, rc);
         unmap->status = GNTST_general_error;
         put_xen_domain(fdomid);
         return;
     }
 
-    lmem->invept();
     lgnt->map_handles.erase(hdl);
     unmap->status = GNTST_okay;
     put_xen_domain(fdomid);
@@ -276,17 +273,7 @@ static void xen_gnttab_map_grant_ref(xen_vcpu *vcpu,
     fpg = fmem->find_page(fgfn);
 
     if (!fpg) {
-        if (fdomid == DOMID_WINPV) {
-            fmem->add_root_backed_page(fgfn,
-                                       pg_perm_rw,
-                                       pg_mtype_wb,
-                                       fgfn,
-                                       false);
-            fpg = fmem->find_page(fgfn);
-            ensures(fpg);
-
-            //printf("%s: mapped root page: 0x%lx\n", __func__, fgfn);
-        } else {
+        if (fdomid != DOMID_WINPV) {
             printv("%s: gfn 0x%lx not mapped in dom 0x%x\n",
                    __func__, fgfn, fdomid);
             rc = GNTST_general_error;
@@ -298,10 +285,19 @@ set_perms:
     perm = (map_ro) ? pg_perm_r : pg_perm_rw;
     lmem = vcpu->m_xen_dom->m_memory.get();
     lgfn = xen_frame(map->host_addr);
-    lmem->add_foreign_page(lgfn, perm, pg_mtype_wb, fpg->page);
+
+    if (fpg) {
+        lmem->add_foreign_page(lgfn, perm, pg_mtype_wb, fpg->page);
+    } else {
+        lmem->add_raw_page(lgfn, perm, pg_mtype_wb, fgfn);
+    }
 
     map->handle = new_hdl;
-    lgnt->map_handles.try_emplace(new_hdl, map->host_addr);
+    if (!lgnt->map_handles.try_emplace(new_hdl, map->host_addr).second) {
+        bferror_info(0, "failed to add map_handle");
+        bferror_subnhex(0, "handle", new_hdl);
+        bferror_subnhex(0, "gpa", map->host_addr);
+    }
 
     map->dev_bus_addr = 0;
     rc = GNTST_okay;
