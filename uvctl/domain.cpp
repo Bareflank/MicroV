@@ -68,14 +68,29 @@ void uvc_domain::recv_hvc()
     uint64_t size{};
     std::array<char, HVC_TX_SIZE> array{0};
 
+#ifdef WIN64
+    /* Lock memory; this may fail the first attempt. */
+    if (!VirtualLock(array.data(), HVC_TX_SIZE)) {
+        std::cout << __func__ << ": Unable to lock array " << "(error: "
+                  << std::to_string(GetLastError()) << "), will reattempt\n";
+        if (!VirtualLock(array.data(), HVC_TX_SIZE)) {
+            std::cout << __func__ << ": Second attempt; unable to lock array "
+                      << "(error: " << std::to_string(GetLastError()) << ")\n";
+	      }
+#else
+    if (mlock(array.data(), HVC_TX_SIZE) == -1) {
+        std::cout << __func__ << ": Unable to lock array\n";
+#endif
+    }
+
     while (enable_hvc) {
         auto buf = static_cast<volatile char *>(array.data());
 
         /* Touch it to try to convince the OS to map it in */
         buf[0] = 0;
 
-        size = __domain_op__hvc_tx_get(id, (char *)buf, HVC_TX_SIZE);
-        std::cout.write((const char *)buf, (int)size);
+        size = __domain_op__hvc_tx_get(id, (char *) buf, HVC_TX_SIZE);
+        std::cout.write((const char *) buf, (int) size);
         std::cout.flush();
         std::this_thread::sleep_for(hvc_sleep);
     }
@@ -91,20 +106,35 @@ void uvc_domain::recv_hvc()
 
 void uvc_domain::send_hvc()
 {
-    std::array<char, HVC_RX_SIZE> buf{};
+    std::array<char, HVC_RX_SIZE> array{0};
+
+#ifdef WIN64
+    /* Lock memory; this may fail the first attempt. */
+    if (!VirtualLock(array.data(), HVC_RX_SIZE)) {
+        std::cout << __func__ << ": Unable to lock array " << "(error: "
+                  << std::to_string(GetLastError()) << "), will reattempt\n";
+        if (!VirtualLock(array.data(), HVC_RX_SIZE)) {
+            std::cout << __func__ << ": Second attempt; unable to lock array "
+                      << "(error: " << std::to_string(GetLastError()) << ")\n";
+        }
+#else
+    if (mlock(array.data(), HVC_RX_SIZE) == -1) {
+        std::cout << __func__ << ": Unable to lock array\n";
+#endif
+    }
 
     while (enable_hvc) {
-        std::cin.getline(buf.data(), buf.size());
-        buf.data()[std::cin.gcount() - 1] = '\n';
+        std::cin.getline(array.data(), array.size());
+        array.data()[std::cin.gcount() - 1] = '\n';
         auto count = std::cin.gcount();
 
         if (count == 2) {
-            const char ctrl_code = buf.data()[0];
+            const char ctrl_code = array.data()[0];
 
             switch (ctrl_code) {
             case HVC_CTRL_STOP_PROCESS:
                 /* Remap to ^C */
-                buf.data()[0] = 0x03;
+                array.data()[0] = 0x03;
                 break;
             case HVC_CTRL_EXIT_CONSOLE:
                 /* Only 1 char must be sent */
@@ -115,7 +145,7 @@ void uvc_domain::send_hvc()
             }
         }
 
-        __domain_op__hvc_rx_put(id, buf.data(), count);
+        __domain_op__hvc_rx_put(id, array.data(), count);
         std::this_thread::sleep_for(hvc_sleep);
     }
 }
