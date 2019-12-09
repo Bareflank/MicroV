@@ -133,7 +133,7 @@ uvctl_rw_ioctl(HANDLE fd, DWORD request, void *data, DWORD size)
 ioctl_private::ioctl_private()
 {
     if ((fd = uvctl_ioctl_open()) == INVALID_HANDLE_VALUE) {
-        throw std::runtime_error("failed to open uvbuilder");
+        throw std::runtime_error("Failed to open builder driver. Is it loaded?");
     }
 }
 
