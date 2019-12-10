@@ -58,6 +58,10 @@ vmcall_run_op_handler::dispatch(vcpu *root)
 
     try {
         auto child = root->find_child_vcpu(root->rbx());
+        if (!child) {
+            bfalert_nhex(0, "not child found with id = ", root->rbx());
+        }
+
         expects(child);
 
         child->set_root_vcpu(root);
