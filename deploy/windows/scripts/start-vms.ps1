@@ -19,4 +19,5 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-Start-Process -FilePath C:\cygwin64\home\dev\bf\mvb-vs2019\prefixes\x86_64-userspace-pe\bin\uvctl.exe -ArgumentList "--ram 550000000 --xsvm --cmdline `"xen-pciback.hide=(00:14.3)(01:00.0) xen-pciback.passthrough=1`" --kernel C:\images\xsvm-vmlinux --initrd C:\images\xsvm-rootfs.cpio.gz" -NoNewWindow -RedirectStandardOutput C:\images\xsvm-log.txt
+cd 'C:\Program Files\Beam'
+Start-Process -FilePath .\uvctl.exe -ArgumentList '--ram 300000000 --xsvm --cmdline "xen-pciback.hide=(00:14.3)(01:00.0) xen-pciback.passthrough=1" --kernel .\xsvm-vmlinux --initrd .\xsvm-rootfs.cpio.gz' -NoNewWindow -RedirectStandardOutput 'C:\Program Files\Beam\logs\uvctl-out-log.txt' -RedirectStandardError 'C:\Program Files\Beam\logs\uvctl-err-log.txt'
