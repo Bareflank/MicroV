@@ -15,7 +15,7 @@ winpv_drv="/local/domain/$winpv_domid/drivers/0"
 
 xl create /etc/xen/ndvm.cfg
 xl create /etc/xen/vpnvm.cfg
-xl network-attach vpnvm backend=ndvm
+xl network-attach vpnvm backend=ndvm mac=00:bf:bf:00:00:00
 
 #
 # "Create" the Windows PV domain and signal
@@ -40,7 +40,7 @@ done
 # Attach the Windows PV netfront to the netback in the VPNVM
 #
 
-xl network-attach winpv backend=vpnvm
+xl network-attach winpv backend=vpnvm mac=00:bf:bf:00:00:01
 
 #
 # Wait for xenvif to signal its connected
