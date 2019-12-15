@@ -68,7 +68,6 @@ Source: "drivers\visr.inf"; DestDir: "{app}\drivers\visr"
 Source: "drivers\visr.sys"; DestDir: "{app}\drivers\visr"
 Source: "drivers\visr.cat"; DestDir: "{app}\drivers\visr"
 Source: "scripts\start-vms.ps1"; DestDir: "{app}\scripts"
-Source: "scripts\start-net.ps1"; DestDir: "{app}\scripts"
 Source: "scripts\taskctl.ps1"; DestDir: "{app}\scripts"
 Source: "scripts\powerctl.ps1"; DestDir: "{app}\scripts"
 
@@ -77,7 +76,6 @@ Filename: "{#PS}"; Parameters: "-Command Set-ExecutionPolicy RemoteSigned"; Flag
 Filename: "{#PS}"; Parameters: "-Command New-Item -Path ""{app}"" -Name logs -ItemType ""directory"""; Flags: runhidden
 Filename: "{#PS}"; Parameters: "-File ""{app}\scripts\powerctl.ps1"" -Init"; Flags: runhidden
 Filename: "{#PS}"; Parameters: "-File ""{app}\scripts\taskctl.ps1"" -TaskPath ""{app}\scripts\start-vms.ps1"" -TaskName StartVms -Register"; Flags: runhidden
-Filename: "{#PS}"; Parameters: "-File ""{app}\scripts\taskctl.ps1"" -TaskPath ""{app}\scripts\start-net.ps1"" -TaskName StartNet -Register"; Flags: runhidden
 Filename: "{cmd}"; Parameters: "/C mountvol P: /D"; Flags: runhidden
 Filename: "{sys}\bcdedit.exe"; Parameters: "/set testsigning on"; Flags: runhidden
 Filename: "{sys}\bcdedit.exe"; Parameters: "/set {{bootmgr} path \EFI\Boot\bareflank.efi"; Flags: runhidden
@@ -99,7 +97,6 @@ Filename: "{sys}\bcdedit.exe"; Parameters: "/set testsigning off"; Flags: runhid
 Filename: "{cmd}"; Parameters: "/C mountvol P: /S"; Flags: runhidden
 Filename: "{cmd}"; Parameters: "/C del P:\EFI\Boot\bareflank.efi"; Flags: runhidden
 Filename: "{cmd}"; Parameters: "/C mountvol P: /D"; Flags: runhidden
-Filename: "{#PS}"; Parameters: "-File ""{app}\scripts\taskctl.ps1"" -TaskName StartNet -Unregister"; Flags: runhidden
 Filename: "{#PS}"; Parameters: "-File ""{app}\scripts\taskctl.ps1"" -TaskName StartVms -Unregister"; Flags: runhidden
 Filename: "{#PS}"; Parameters: "-File ""{app}\scripts\powerctl.ps1"" -Fini"; Flags: runhidden
 Filename: "{#PS}"; Parameters: "-Command Set-ExecutionPolicy Restricted"; Flags: runhidden

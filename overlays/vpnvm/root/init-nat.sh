@@ -22,6 +22,3 @@ iptables -A FORWARD -i $vif -o $phy -j ACCEPT
 
 iptables -I INPUT -p udp --dport 53 -s $cidr -j ACCEPT # DNS
 iptables -I INPUT -p tcp --dport 53 -s $cidr -j ACCEPT # DNS
-
-iptables -A INPUT -i $vif -p tcp --dport 67:68 --sport 67:68 -j DROP
-iptables -A INPUT -i $vif -p udp --dport 67:68 --sport 67:68 -j DROP
