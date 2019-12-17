@@ -1097,6 +1097,8 @@ bool xen_vcpu::root_hypercall(microv_vcpu *vcpu)
         case EVTCHNOP_send:
         case EVTCHNOP_bind_virq:
         case EVTCHNOP_alloc_unbound:
+        case EVTCHNOP_close:
+        case EVTCHNOP_reset:
             return this->handle_event_channel_op();
         default:
             return false;
@@ -1104,6 +1106,7 @@ bool xen_vcpu::root_hypercall(microv_vcpu *vcpu)
     case __HYPERVISOR_hvm_op:
         switch (vcpu->rdi()) {
         case HVMOP_get_param:
+        case HVMOP_set_param:
         case HVMOP_pagetable_dying:
         case HVMOP_set_evtchn_upcall_vector:
             return this->handle_hvm_op();

@@ -60,6 +60,21 @@ using port_t = xen_evtchn::port_t;
  * or similar will need to be added to prevent use-after-free.
  */
 
+bool xen_evtchn_reset(xen_vcpu *v)
+{
+    auto uvv = v->m_uv_vcpu;
+    auto arg = uvv->map_arg<evtchn_reset_t>(uvv->rsi());
+
+    expects(v->m_xen_dom);
+
+    if (arg->dom == DOMID_SELF || arg->dom == v->m_xen_dom->m_id) {
+        return v->m_xen_dom->m_evtchn->reset(v);
+    } else {
+        uvv->set_rax(-ESRCH);
+        return true;
+    }
+}
+
 bool xen_evtchn_init_control(xen_vcpu *v)
 {
     auto uvv = v->m_uv_vcpu;
@@ -217,19 +232,16 @@ xen_evtchn::xen_evtchn(xen_domain *dom) : m_xen_dom{dom}
 int xen_evtchn::set_upcall_vector(xen_vcpu *v, xen_hvm_param_t *param)
 {
     auto type = (param->value & HVM_PARAM_CALLBACK_IRQ_TYPE_MASK) >> 56;
-    if (type != HVM_PARAM_CALLBACK_TYPE_VECTOR) {
+    if (type != HVM_PARAM_CALLBACK_TYPE_VECTOR && type) {
         printv("%s: unsupported type: 0x%llx\n", __func__, type);
         return -EINVAL;
     }
 
     auto vector = param->value & 0xFFU;
-    if (vector < 0x20U) {
-        printv("%s: invalid vector: 0x%lx\n", __func__, vector);
-        return -ERANGE;
-    }
 
     expects(m_event_ctl.size() > 0);
     m_event_ctl[0]->upcall_vector = vector;
+
     printv("evtchn: set global upcall vector: 0x%lx\n", vector);
 
     return 0;
@@ -244,7 +256,7 @@ int xen_evtchn::set_upcall_vector(xen_vcpu *v,
         return -EINVAL;
     }
 
-    if (arg->vector < 0x20U || arg->vector >= 0xFFU) {
+    if (arg->vector >= 0xFFU) {
         printv("%s: invalid vector: 0x%x\n", __func__, arg->vector);
         return -ERANGE;
     }
@@ -508,17 +520,6 @@ bool xen_evtchn::bind_virq(xen_vcpu *v, evtchn_bind_virq_t *ebv)
     return true;
 }
 
-void xen_evtchn::unbind_interdomain(evtchn_port_t port, xen_domid_t rdomid)
-{
-    auto chan = this->port_to_chan(port);
-
-    expects(chan);
-    expects(chan->state == chan_t::state_interdomain);
-    expects(chan->rdomid == rdomid);
-
-    chan->state = chan_t::state_unbound;
-}
-
 bool xen_evtchn::close(xen_vcpu *v, evtchn_close_t *ec)
 {
     auto uvv = v->m_uv_vcpu;
@@ -527,49 +528,47 @@ bool xen_evtchn::close(xen_vcpu *v, evtchn_close_t *ec)
     expects(chan);
     printv("evtchn: close port %u\n", ec->port);
 
+    this->close(chan);
+    uvv->set_rax(0);
+
+    return true;
+}
+
+void xen_evtchn::close(chan_t *chan)
+{
+    spin_acquire(&chan->lock);
+
+    auto ___ = gsl::finally([chan](){ spin_release(&chan->lock); });
+
     switch (chan->state) {
     case chan_t::state_free:
     case chan_t::state_reserved:
-        printv("evtchn::close: invalid state: port:%u state:%u\n", ec->port,
-                chan->state);
-        uvv->set_rax(-EINVAL);
-        return true;
+        return;
     case chan_t::state_unbound:
-        break;
-    case chan_t::state_interdomain: {
-        auto rdom = get_xen_domain(chan->rdomid);
-        if (!rdom) {
-            printv("evtchn::close: remote 0x%x not found\n", chan->rdomid);
-            uvv->set_rax(-EINVAL);
-            return false;
-        }
-
-        try {
-            rdom->m_evtchn->unbind_interdomain(chan->rport, m_xen_dom->m_id);
-        } catch (...) {
-            put_xen_domain(chan->rdomid);
-            throw;
-        }
-
-        put_xen_domain(chan->rdomid);
-        break;
-    }
+    case chan_t::state_interdomain:
     case chan_t::state_pirq:
+    case chan_t::state_ipi:
         break;
     case chan_t::state_virq:
         expects(chan->virq < m_virq_to_port.size());
         m_virq_to_port[chan->virq] = 0;
         break;
-    case chan_t::state_ipi:
-        break;
     default:
         printv("evtchn::close: state %u unknown\n", chan->state);
-        uvv->set_rax(-EINVAL);
-        return false;
+        return;
     }
 
     chan->free();
-    uvv->set_rax(0);
+}
+
+bool xen_evtchn::reset(xen_vcpu *v)
+{
+    for (auto i = 1; i < m_allocated_chans; i++) {
+        auto chan = this->port_to_chan(i);
+        this->close(chan);
+    }
+
+    v->m_uv_vcpu->set_rax(0);
     return true;
 }
 
@@ -733,6 +732,10 @@ void xen_evtchn::push_upcall(chan_t *chan)
     spin_acquire(&chan->lock);
     auto ___ = gsl::finally([chan](){ spin_release(&chan->lock); });
 
+    if (chan->state == chan_t::state_free) {
+        return;
+    }
+
     if (this->raise(chan)) {
         auto xend = m_xen_dom;
         auto xenv = xend->get_xen_vcpu(chan->vcpuid);
@@ -743,7 +746,12 @@ void xen_evtchn::push_upcall(chan_t *chan)
         }
 
         auto ctl = m_event_ctl[chan->vcpuid].get();
-        xenv->push_external_interrupt(ctl->upcall_vector);
+        auto vec = ctl->upcall_vector;
+
+        if (vec) {
+            xenv->push_external_interrupt(vec);
+        }
+
         xend->put_xen_vcpu(chan->vcpuid);
     }
 }
@@ -760,7 +768,12 @@ void xen_evtchn::queue_upcall(chan_t *chan)
         }
 
         auto ctl = m_event_ctl[chan->vcpuid].get();
-        xenv->queue_external_interrupt(ctl->upcall_vector);
+        auto vec = ctl->upcall_vector;
+
+        if (vec) {
+            xenv->queue_external_interrupt(ctl->upcall_vector);
+        }
+
         xend->put_xen_vcpu(chan->vcpuid);
     }
 }
@@ -777,7 +790,12 @@ void xen_evtchn::inject_upcall(chan_t *chan)
         }
 
         auto ctl = m_event_ctl[chan->vcpuid].get();
-        xenv->inject_external_interrupt(ctl->upcall_vector);
+        auto vec = ctl->upcall_vector;
+
+        if (vec) {
+            xenv->inject_external_interrupt(ctl->upcall_vector);
+        }
+
         xend->put_xen_vcpu(chan->vcpuid);
     }
 }
