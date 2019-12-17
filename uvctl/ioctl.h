@@ -26,6 +26,7 @@
 
 #include <bfgsl.h>
 #include <microv/builderinterface.h>
+#include <microv/xenbusinterface.h>
 
 #ifdef _MSC_VER
 #pragma warning(push)
@@ -101,6 +102,13 @@ public:
     /// @param domainid the domain to destroy
     ///
     void call_ioctl_destroy(domainid_t domainid) noexcept;
+
+    /// Xenbus Acquire
+    ///
+    /// Notify xenbus that it we are ready for it to take a reference out
+    /// on us to prevent us from being terminated while in use by xenbus
+    ///
+    void call_ioctl_xenbus_acquire() noexcept;
 
 private:
 
