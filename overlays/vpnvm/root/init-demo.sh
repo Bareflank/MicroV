@@ -46,6 +46,9 @@ do
     present=$(ip a | grep $vpn)
 done
 
+# Signal xsvm that we are ready to attach to the frontend
+xenstore-write /local/domain/2/data 1
+
 #
 # Wait for the vif backend to come up
 #
