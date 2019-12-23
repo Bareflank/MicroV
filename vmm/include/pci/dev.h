@@ -52,7 +52,7 @@ struct pci_dev {
     uint32_t m_pcie_cap{};
     uintptr_t m_ecam_gpa{};
     uintptr_t m_ecam_hpa{};
-    char m_bdf_str[9]{};
+    char m_bdf_str[8]{};
     bool m_guest_owned{};
     vcpuid_t m_guest_vcpuid{};
 
