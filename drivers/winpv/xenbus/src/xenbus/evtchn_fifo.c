@@ -583,7 +583,7 @@ EvtchnFifoRelease(
 
     Trace("====>\n");
 
-    EvtchnReset();
+    //EvtchnReset();
 
     EvtchnFifoContract(Context);
 
