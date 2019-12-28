@@ -30,6 +30,8 @@
 #include <unordered_map>
 #include <vector>
 
+#include <asm/mmio.h>
+
 #include "dmar.h"
 #include "entry.h"
 #include "regs.h"
@@ -104,22 +106,26 @@ private:
 
     uint64_t read64(size_t offset) const
     {
-        return *reinterpret_cast<volatile uint64_t *>(m_reg_hva + offset);
+        uintptr_t addr = m_reg_hva + offset;
+        return ::microv::read64((volatile void __iomem *)addr);
     }
 
     uint32_t read32(size_t offset) const
     {
-        return *reinterpret_cast<volatile uint32_t *>(m_reg_hva + offset);
+        uintptr_t addr = m_reg_hva + offset;
+        return ::microv::read32((volatile void __iomem *)addr);
     }
 
     void write64(size_t offset, uint64_t val)
     {
-        *reinterpret_cast<volatile uint64_t *>(m_reg_hva + offset) = val;
+        uintptr_t addr = m_reg_hva + offset;
+        ::microv::write64(val, (volatile void __iomem *)addr);
     }
 
     void write32(size_t offset, uint32_t val)
     {
-        *reinterpret_cast<volatile uint32_t *>(m_reg_hva + offset) = val;
+        uintptr_t addr = m_reg_hva + offset;
+        ::microv::write32(val, (volatile void __iomem *)addr);
     }
 
     uint32_t read_gcmd() { return read32(gcmd_offset); }

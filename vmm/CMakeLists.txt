@@ -51,6 +51,10 @@ set(X64 $<STREQUAL:${BUILD_TARGET_ARCH},x86_64>)
 set(BUILD $<BOOL:$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}>>)
 set(BUILD_INCLUDE $<AND:$<COMPILE_LANGUAGE:CXX>,${BUILD}>)
 
+if(${BUILD_TARGET_ARCH} STREQUAL x86_64)
+    set(ASM_INCLUDE ${PROJECT_SOURCE_DIR}/include/arch/x64)
+endif()
+
 # -----------------------------------------------------------------------------
 # VMM
 # -----------------------------------------------------------------------------
