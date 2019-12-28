@@ -32,4 +32,10 @@
 #cmakedefine MICROV_SUBVERSION "@MICROV_SUBVERSION@"
 #cmakedefine MICROV_CHANGESET "@MICROV_CHANGESET@"
 
+#if __has_attribute(noderef)
+    #define __iomem __attribute__((noderef))
+#else
+    #define __iomem
+#endif
+
 #endif
