@@ -60,16 +60,51 @@ Source: "redist\x64\dpinst.exe"; DestDir: "{app}\util"
 Source: "redist\x64\vs2019\vcredist_x64.exe"; DestDir: "{app}\util"
 Source: "redist\wdf\WdfCoInstaller01011.dll"; DestDir: "{app}\drivers\builder"
 Source: "redist\wdf\WdfCoInstaller01011.dll"; DestDir: "{app}\drivers\visr"
-Source: "drivers\builder.cer"; DestDir: "{app}\drivers\builder"
-Source: "drivers\builder.inf"; DestDir: "{app}\drivers\builder"
-Source: "drivers\builder.sys"; DestDir: "{app}\drivers\builder"
-Source: "drivers\builder.cat"; DestDir: "{app}\drivers\builder"
-Source: "drivers\visr.inf"; DestDir: "{app}\drivers\visr"
-Source: "drivers\visr.sys"; DestDir: "{app}\drivers\visr"
-Source: "drivers\visr.cat"; DestDir: "{app}\drivers\visr"
+
+Source: "drivers\builder\builder.cer"; DestDir: "{app}\drivers\builder"
+Source: "drivers\builder\builder.inf"; DestDir: "{app}\drivers\builder"
+Source: "drivers\builder\builder.sys"; DestDir: "{app}\drivers\builder"
+Source: "drivers\builder\builder.cat"; DestDir: "{app}\drivers\builder"
+
+Source: "drivers\visr\visr.inf"; DestDir: "{app}\drivers\visr"
+Source: "drivers\visr\visr.sys"; DestDir: "{app}\drivers\visr"
+Source: "drivers\visr\visr.cat"; DestDir: "{app}\drivers\visr"
+
+Source: "drivers\xenbus\xen.pdb"; DestDir: "{app}\drivers\xenbus"
+Source: "drivers\xenbus\xen.sys"; DestDir: "{app}\drivers\xenbus"
+Source: "drivers\xenbus\xenbus.cat"; DestDir: "{app}\drivers\xenbus"
+Source: "drivers\xenbus\xenbus.cer"; DestDir: "{app}\drivers\xenbus"
+Source: "drivers\xenbus\xenbus.inf"; DestDir: "{app}\drivers\xenbus"
+Source: "drivers\xenbus\xenbus.pdb"; DestDir: "{app}\drivers\xenbus"
+Source: "drivers\xenbus\xenbus.sys"; DestDir: "{app}\drivers\xenbus"
+Source: "drivers\xenbus\xenbus_coinst.dll"; DestDir: "{app}\drivers\xenbus"
+Source: "drivers\xenbus\xenbus_coinst.pdb"; DestDir: "{app}\drivers\xenbus"
+Source: "drivers\xenbus\xenbus_monitor.dll"; DestDir: "{app}\drivers\xenbus"
+Source: "drivers\xenbus\xenbus_monitor.exe"; DestDir: "{app}\drivers\xenbus"
+Source: "drivers\xenbus\xenbus_monitor.pdb"; DestDir: "{app}\drivers\xenbus"
+Source: "drivers\xenbus\xenfilt.pdb"; DestDir: "{app}\drivers\xenbus"
+Source: "drivers\xenbus\xenfilt.sys"; DestDir: "{app}\drivers\xenbus"
+
+Source: "drivers\xenvif\xenvif.cat"; DestDir: "{app}\drivers\xenvif"
+Source: "drivers\xenvif\xenvif.cer"; DestDir: "{app}\drivers\xenvif"
+Source: "drivers\xenvif\xenvif.inf"; DestDir: "{app}\drivers\xenvif"
+Source: "drivers\xenvif\xenvif.pdb"; DestDir: "{app}\drivers\xenvif"
+Source: "drivers\xenvif\xenvif.sys"; DestDir: "{app}\drivers\xenvif"
+Source: "drivers\xenvif\xenvif_coinst.dll"; DestDir: "{app}\drivers\xenvif"
+Source: "drivers\xenvif\xenvif_coinst.pdb"; DestDir: "{app}\drivers\xenvif"
+
+Source: "drivers\xennet\xennet.cat"; DestDir: "{app}\drivers\xennet"
+Source: "drivers\xennet\xennet.cer"; DestDir: "{app}\drivers\xennet"
+Source: "drivers\xennet\xennet.inf"; DestDir: "{app}\drivers\xennet"
+Source: "drivers\xennet\xennet.pdb"; DestDir: "{app}\drivers\xennet"
+Source: "drivers\xennet\xennet.sys"; DestDir: "{app}\drivers\xennet"
+Source: "drivers\xennet\xennet_coinst.dll"; DestDir: "{app}\drivers\xennet"
+Source: "drivers\xennet\xennet_coinst.pdb"; DestDir: "{app}\drivers\xennet"
+
 Source: "scripts\start-vms.ps1"; DestDir: "{app}\scripts"
 Source: "scripts\taskctl.ps1"; DestDir: "{app}\scripts"
 Source: "scripts\powerctl.ps1"; DestDir: "{app}\scripts"
+Source: "scripts\rmfilters.ps1"; DestDir: "{app}\scripts"
 
 [Run]
 Filename: "{#PS}"; Parameters: "-Command Set-ExecutionPolicy RemoteSigned"; Flags: runhidden
@@ -80,10 +115,19 @@ Filename: "{cmd}"; Parameters: "/C mountvol P: /D"; Flags: runhidden
 Filename: "{sys}\bcdedit.exe"; Parameters: "/set testsigning on"; Flags: runhidden
 Filename: "{sys}\bcdedit.exe"; Parameters: "/set {{bootmgr} path \EFI\Boot\bareflank.efi"; Flags: runhidden
 Filename: "{app}\util\vcredist_x64.exe"; Parameters: "/install /quiet"; StatusMsg: "Installing VC++ libraries..."; Flags: runhidden
-Filename: "{app}\util\certmgr.exe"; Parameters: "/add ""{app}\drivers\builder\builder.cer"" /s /r localMachine root"; StatusMsg: "Installing WDK test certificate..."; Flags: runhidden
-Filename: "{app}\util\certmgr.exe"; Parameters: "/add ""{app}\drivers\builder\builder.cer"" /s /r localMachine trustedpublisher"; StatusMsg: "Installing WDK test certificate..."; Flags: runhidden
-Filename: "{app}\util\devcon.exe"; Parameters: "/install ""{app}\drivers\builder\builder.inf"" ROOT\builder"; StatusMsg: "Installing builder driver..."; Flags: runhidden
-Filename: "{app}\util\dpinst.exe"; Parameters: "/s /path ""{app}\drivers\visr"""; StatusMsg: "Installing visr driver..."; Flags: runhidden
+Filename: "{app}\util\certmgr.exe"; Parameters: "/add ""{app}\drivers\builder\builder.cer"" /s /r localMachine root"; StatusMsg: "Installing test certs..."; Flags: runhidden
+Filename: "{app}\util\certmgr.exe"; Parameters: "/add ""{app}\drivers\xenbus\xenbus.cer"" /s /r localMachine root"; StatusMsg: "Installing test certs..."; Flags: runhidden
+Filename: "{app}\util\certmgr.exe"; Parameters: "/add ""{app}\drivers\xenvif\xenvif.cer"" /s /r localMachine root"; StatusMsg: "Installing test certs..."; Flags: runhidden
+Filename: "{app}\util\certmgr.exe"; Parameters: "/add ""{app}\drivers\xennet\xennet.cer"" /s /r localMachine root"; StatusMsg: "Installing test certs..."; Flags: runhidden
+Filename: "{app}\util\certmgr.exe"; Parameters: "/add ""{app}\drivers\builder\builder.cer"" /s /r localMachine trustedpublisher"; StatusMsg: "Installing test certs..."; Flags: runhidden
+Filename: "{app}\util\certmgr.exe"; Parameters: "/add ""{app}\drivers\xenbus\xenbus.cer"" /s /r localMachine trustedpublisher"; StatusMsg: "Installing test certs..."; Flags: runhidden
+Filename: "{app}\util\certmgr.exe"; Parameters: "/add ""{app}\drivers\xenvif\xenvif.cer"" /s /r localMachine trustedpublisher"; StatusMsg: "Installing test certs..."; Flags: runhidden
+Filename: "{app}\util\certmgr.exe"; Parameters: "/add ""{app}\drivers\xennet\xennet.cer"" /s /r localMachine trustedpublisher"; StatusMsg: "Installing test certs..."; Flags: runhidden
+Filename: "{app}\util\devcon.exe"; Parameters: "/install ""{app}\drivers\builder\builder.inf"" ROOT\builder"; StatusMsg: "Installing drivers..."; Flags: runhidden
+Filename: "{app}\util\dpinst.exe"; Parameters: "/s /path ""{app}\drivers\visr"""; StatusMsg: "Installing drivers..."; Flags: runhidden
+Filename: "{app}\util\dpinst.exe"; Parameters: "/s /path ""{app}\drivers\xenbus"""; StatusMsg: "Installing drivers..."; Flags: runhidden
+Filename: "{app}\util\dpinst.exe"; Parameters: "/s /path ""{app}\drivers\xenvif"""; StatusMsg: "Installing drivers..."; Flags: runhidden
+Filename: "{app}\util\dpinst.exe"; Parameters: "/s /path ""{app}\drivers\xennet"""; StatusMsg: "Installing drivers..."; Flags: runhidden
 
 [UninstallRun]
 Filename: "{app}\util\dpinst.exe"; Parameters: "/s /d /u ""{app}\drivers\visr\visr.inf"""; Flags: runhidden
@@ -99,6 +143,7 @@ Filename: "{cmd}"; Parameters: "/C del P:\EFI\Boot\bareflank.efi"; Flags: runhid
 Filename: "{cmd}"; Parameters: "/C mountvol P: /D"; Flags: runhidden
 Filename: "{#PS}"; Parameters: "-File ""{app}\scripts\taskctl.ps1"" -TaskName StartVms -Unregister"; Flags: runhidden
 Filename: "{#PS}"; Parameters: "-File ""{app}\scripts\powerctl.ps1"" -Fini"; Flags: runhidden
+Filename: "{#PS}"; Parameters: "-File ""{app}\scripts\rmfilters.ps1"""; Flags: runhidden
 Filename: "{#PS}"; Parameters: "-Command Set-ExecutionPolicy Restricted"; Flags: runhidden
 
 [Code]
