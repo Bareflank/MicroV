@@ -101,49 +101,100 @@ Source: "drivers\xennet\xennet.sys"; DestDir: "{app}\drivers\xennet"
 Source: "drivers\xennet\xennet_coinst.dll"; DestDir: "{app}\drivers\xennet"
 Source: "drivers\xennet\xennet_coinst.pdb"; DestDir: "{app}\drivers\xennet"
 
-Source: "scripts\start-vms.ps1"; DestDir: "{app}\scripts"
+Source: "scripts\startvms.ps1"; DestDir: "{app}\scripts"
+Source: "scripts\netctl.ps1"; DestDir: "{app}\scripts"
 Source: "scripts\taskctl.ps1"; DestDir: "{app}\scripts"
 Source: "scripts\powerctl.ps1"; DestDir: "{app}\scripts"
 Source: "scripts\rmfilters.ps1"; DestDir: "{app}\scripts"
 
 [Run]
+; Allow our powershell scripts to run and create the log directory
 Filename: "{#PS}"; Parameters: "-Command Set-ExecutionPolicy RemoteSigned"; Flags: runhidden
 Filename: "{#PS}"; Parameters: "-Command New-Item -Path ""{app}"" -Name logs -ItemType ""directory"""; Flags: runhidden
-Filename: "{#PS}"; Parameters: "-File ""{app}\scripts\powerctl.ps1"" -Init"; Flags: runhidden
-Filename: "{#PS}"; Parameters: "-File ""{app}\scripts\taskctl.ps1"" -TaskPath ""{app}\scripts\start-vms.ps1"" -TaskName StartVms -Register"; Flags: runhidden
+
+; Install hypervisor and point bootmgr to the VMM's binary
 Filename: "{cmd}"; Parameters: "/C mountvol P: /D"; Flags: runhidden
-Filename: "{sys}\bcdedit.exe"; Parameters: "/set testsigning on"; Flags: runhidden
 Filename: "{sys}\bcdedit.exe"; Parameters: "/set {{bootmgr} path \EFI\Boot\bareflank.efi"; Flags: runhidden
+
+; Enable testsigning
+Filename: "{sys}\bcdedit.exe"; Parameters: "/set testsigning on"; Flags: runhidden
+
+; Install vs2019 redistributables (needed for uvctl.exe)
 Filename: "{app}\util\vcredist_x64.exe"; Parameters: "/install /quiet"; StatusMsg: "Installing VC++ libraries..."; Flags: runhidden
-Filename: "{app}\util\certmgr.exe"; Parameters: "/add ""{app}\drivers\builder\builder.cer"" /s /r localMachine root"; StatusMsg: "Installing test certs..."; Flags: runhidden
-Filename: "{app}\util\certmgr.exe"; Parameters: "/add ""{app}\drivers\xenbus\xenbus.cer"" /s /r localMachine root"; StatusMsg: "Installing test certs..."; Flags: runhidden
-Filename: "{app}\util\certmgr.exe"; Parameters: "/add ""{app}\drivers\xenvif\xenvif.cer"" /s /r localMachine root"; StatusMsg: "Installing test certs..."; Flags: runhidden
-Filename: "{app}\util\certmgr.exe"; Parameters: "/add ""{app}\drivers\xennet\xennet.cer"" /s /r localMachine root"; StatusMsg: "Installing test certs..."; Flags: runhidden
-Filename: "{app}\util\certmgr.exe"; Parameters: "/add ""{app}\drivers\builder\builder.cer"" /s /r localMachine trustedpublisher"; StatusMsg: "Installing test certs..."; Flags: runhidden
-Filename: "{app}\util\certmgr.exe"; Parameters: "/add ""{app}\drivers\xenbus\xenbus.cer"" /s /r localMachine trustedpublisher"; StatusMsg: "Installing test certs..."; Flags: runhidden
-Filename: "{app}\util\certmgr.exe"; Parameters: "/add ""{app}\drivers\xenvif\xenvif.cer"" /s /r localMachine trustedpublisher"; StatusMsg: "Installing test certs..."; Flags: runhidden
-Filename: "{app}\util\certmgr.exe"; Parameters: "/add ""{app}\drivers\xennet\xennet.cer"" /s /r localMachine trustedpublisher"; StatusMsg: "Installing test certs..."; Flags: runhidden
-Filename: "{app}\util\devcon.exe"; Parameters: "/install ""{app}\drivers\builder\builder.inf"" ROOT\builder"; StatusMsg: "Installing drivers..."; Flags: runhidden
-Filename: "{app}\util\dpinst.exe"; Parameters: "/s /path ""{app}\drivers\visr"""; StatusMsg: "Installing drivers..."; Flags: runhidden
-Filename: "{app}\util\dpinst.exe"; Parameters: "/s /path ""{app}\drivers\xenbus"""; StatusMsg: "Installing drivers..."; Flags: runhidden
-Filename: "{app}\util\dpinst.exe"; Parameters: "/s /path ""{app}\drivers\xenvif"""; StatusMsg: "Installing drivers..."; Flags: runhidden
-Filename: "{app}\util\dpinst.exe"; Parameters: "/s /path ""{app}\drivers\xennet"""; StatusMsg: "Installing drivers..."; Flags: runhidden
+
+; Install builder (and visr - they use the same) driver cert. Note that
+; "WDKTestCert dev" is the common name of the cert and "dev" is the name
+; of the user that built the drivers
+Filename: "{app}\util\certmgr.exe"; Parameters: "/add ""{app}\drivers\builder\builder.cer"" /s /r localMachine root"; StatusMsg: "Installing driver certs..."; Flags: runhidden
+Filename: "{app}\util\certmgr.exe"; Parameters: "/add ""{app}\drivers\builder\builder.cer"" /s /r localMachine trustedpublisher"; StatusMsg: "Installing driver certs..."; Flags: runhidden
+
+; Install Xen PV driver certs
+Filename: "{app}\util\certmgr.exe"; Parameters: "/add ""{app}\drivers\xenbus\xenbus.cer"" /s /r localMachine root"; StatusMsg: "Installing driver certs..."; Flags: runhidden
+Filename: "{app}\util\certmgr.exe"; Parameters: "/add ""{app}\drivers\xenvif\xenvif.cer"" /s /r localMachine root"; StatusMsg: "Installing driver certs..."; Flags: runhidden
+Filename: "{app}\util\certmgr.exe"; Parameters: "/add ""{app}\drivers\xennet\xennet.cer"" /s /r localMachine root"; StatusMsg: "Installing driver certs..."; Flags: runhidden
+Filename: "{app}\util\certmgr.exe"; Parameters: "/add ""{app}\drivers\xenbus\xenbus.cer"" /s /r localMachine trustedpublisher"; StatusMsg: "Installing driver certs..."; Flags: runhidden
+Filename: "{app}\util\certmgr.exe"; Parameters: "/add ""{app}\drivers\xenvif\xenvif.cer"" /s /r localMachine trustedpublisher"; StatusMsg: "Installing driver certs..."; Flags: runhidden
+Filename: "{app}\util\certmgr.exe"; Parameters: "/add ""{app}\drivers\xennet\xennet.cer"" /s /r localMachine trustedpublisher"; StatusMsg: "Installing driver certs..."; Flags: runhidden
+
+; Install driver binaries
+Filename: "{app}\util\devcon.exe"; Parameters: "/install ""{app}\drivers\builder\builder.inf"" ROOT\builder"; StatusMsg: "Installing driver binaries..."; Flags: runhidden
+Filename: "{app}\util\dpinst.exe"; Parameters: "/s /path ""{app}\drivers\visr"""; StatusMsg: "Installing driver binaries..."; Flags: runhidden
+Filename: "{app}\util\dpinst.exe"; Parameters: "/s /path ""{app}\drivers\xenbus"""; StatusMsg: "Installing driver binaries..."; Flags: runhidden
+Filename: "{app}\util\dpinst.exe"; Parameters: "/s /path ""{app}\drivers\xenvif"""; StatusMsg: "Installing driver binaries..."; Flags: runhidden
+Filename: "{app}\util\dpinst.exe"; Parameters: "/s /path ""{app}\drivers\xennet"""; StatusMsg: "Installing driver binaries..."; Flags: runhidden
+
+; Disable suspend/resume
+Filename: "{#PS}"; Parameters: "-File ""{app}\scripts\powerctl.ps1"" -Init"; Flags: runhidden
+
+; Register uvctl task
+;Filename: "{#PS}"; Parameters: "-File ""{app}\scripts\taskctl.ps1"" -TaskPath ""{app}\scripts\startvms.ps1"" -TaskName StartVms -Register"; Flags: runhidden
+
+; Disable PCI network devices
+Filename: "{#PS}"; Parameters: "-File ""{app}\scripts\netctl.ps1"" -Init"; Flags: runhidden
 
 [UninstallRun]
+; Remove builder and visr drivers. Note we dont remove the Xen PV drivers
+; because Windows fails to boot with a "Boot critical file is corrupt" error
+; pointing to xenbus.sys. We should fix this by determining what makes a file
+; "boot critical" and convince Windows that xenbus.sys and friends are not in
+; fact "boot critical".
+;
+; In the meantime, it should be harmless to not uninstall them since xenbus
+; is only loaded if the VMM is running and presents the Xen Platform PCI device
+; to Windows.
 Filename: "{app}\util\dpinst.exe"; Parameters: "/s /d /u ""{app}\drivers\visr\visr.inf"""; Flags: runhidden
 Filename: "{app}\util\dpinst.exe"; Parameters: "/s /d /u ""{app}\drivers\builder\builder.inf"""; Flags: runhidden
 Filename: "{app}\util\devcon.exe"; Parameters: "/remove ROOT\builder"; Flags: runhidden
 Filename: "{app}\util\certmgr.exe"; Parameters: "/del /c /n ""WDKTestCert dev"" /s /r localMachine trustedpublisher"; Flags: runhidden
 Filename: "{app}\util\certmgr.exe"; Parameters: "/del /c /n ""WDKTestCert dev"" /s /r localMachine root"; Flags: runhidden
+
+; Uninstall vs2019 redistributables
 Filename: "{app}\util\vcredist_x64.exe"; Parameters: "/uninstall /quiet"; Flags: runhidden
+
+; Point bootmgr to the standard Windows loader
 Filename: "{sys}\bcdedit.exe"; Parameters: "/set {{bootmgr} path \EFI\Boot\bootx64.efi"; Flags: runhidden
+
+; Disable testsigning
 Filename: "{sys}\bcdedit.exe"; Parameters: "/set testsigning off"; Flags: runhidden
+
+; Delete the VMM binary
 Filename: "{cmd}"; Parameters: "/C mountvol P: /S"; Flags: runhidden
 Filename: "{cmd}"; Parameters: "/C del P:\EFI\Boot\bareflank.efi"; Flags: runhidden
 Filename: "{cmd}"; Parameters: "/C mountvol P: /D"; Flags: runhidden
-Filename: "{#PS}"; Parameters: "-File ""{app}\scripts\taskctl.ps1"" -TaskName StartVms -Unregister"; Flags: runhidden
-Filename: "{#PS}"; Parameters: "-File ""{app}\scripts\powerctl.ps1"" -Fini"; Flags: runhidden
+
+; Remove xenfilt from the UpperFilters registry value in the system and hdc classes
 Filename: "{#PS}"; Parameters: "-File ""{app}\scripts\rmfilters.ps1"""; Flags: runhidden
+
+; Unregister the uvctl task
+;Filename: "{#PS}"; Parameters: "-File ""{app}\scripts\taskctl.ps1"" -TaskName StartVms -Unregister"; Flags: runhidden
+
+; Restore suspend/resume settings
+Filename: "{#PS}"; Parameters: "-File ""{app}\scripts\powerctl.ps1"" -Fini"; Flags: runhidden
+
+; Enable PCI network devices
+Filename: "{#PS}"; Parameters: "-File ""{app}\scripts\netctl.ps1"" -Fini"; Flags: runhidden
+
+; Restrict powershell execution
 Filename: "{#PS}"; Parameters: "-Command Set-ExecutionPolicy Restricted"; Flags: runhidden
 
 [Code]
