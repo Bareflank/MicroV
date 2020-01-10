@@ -20,10 +20,11 @@ done
 # The gateway IP is the IP of vif2.0 in the NDVM.
 #
 
+echo 'nameserver 8.8.8.8' > /etc/resolv.conf
+echo 'nameserver 8.8.4.4' >> /etc/resolv.conf
 ip addr add 169.254.249.58/16 dev $phy
 ip link set dev $phy up
 ip route add default via 169.254.249.59 dev $phy
-echo 'nameserver 8.8.8.8' > /etc/resolv.conf
 
 #
 # Start the wireguard tunnel on interface wg0.
@@ -44,6 +45,9 @@ do
     sleep 1
     present=$(ip a | grep $vpn)
 done
+
+# Signal xsvm that we are ready to attach to the frontend
+xenstore-write /local/domain/2/data 1
 
 #
 # Wait for the vif backend to come up

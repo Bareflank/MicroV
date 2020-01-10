@@ -4,6 +4,7 @@ connected=4
 vpnvm_domid=2
 winpv_domid=32751
 
+vpn_up="/local/domain/$vpnvm_domid/data"
 vif_backend="/local/domain/$vpnvm_domid/backend/vif/$winpv_domid/0"
 vif_frontend="/local/domain/$winpv_domid/device/vif/0"
 winpv_drv="/local/domain/$winpv_domid/drivers/0"
@@ -15,7 +16,14 @@ winpv_drv="/local/domain/$winpv_domid/drivers/0"
 
 xl create /etc/xen/ndvm.cfg
 xl create /etc/xen/vpnvm.cfg
-xl network-attach vpnvm backend=ndvm
+xl network-attach vpnvm backend=ndvm mac=00:bf:bf:00:00:00
+
+vpnvm_ready=$(xenstore-read $vpn_up | grep 1)
+while [[ $? -ne 0 ]];
+do
+    sleep 0.2
+    vpnvm_ready=$(xenstore-read $vpn_up | grep 1)
+done
 
 #
 # "Create" the Windows PV domain and signal
@@ -40,7 +48,7 @@ done
 # Attach the Windows PV netfront to the netback in the VPNVM
 #
 
-xl network-attach winpv backend=vpnvm
+xl network-attach winpv backend=vpnvm mac=00:bf:bf:00:00:01
 
 #
 # Wait for xenvif to signal its connected

@@ -33,6 +33,7 @@ target_include_directories(uvvmm_domain PUBLIC
     $<${BUILD_INCLUDE}:${PROJECT_SOURCE_DIR}/include>
     $<${BUILD_INCLUDE}:${PROJECT_SOURCE_DIR}/../include>
     $<${BUILD_INCLUDE}:${PROJECT_SOURCE_DIR}/../deps/xen/xen/include>
+    $<${BUILD_INCLUDE}:${ASM_INCLUDE}>
 )
 
 install(TARGETS uvvmm_domain DESTINATION lib EXPORT uvvmm-vmm-targets)

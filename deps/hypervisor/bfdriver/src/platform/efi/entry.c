@@ -200,7 +200,7 @@ load_start_vm(EFI_HANDLE ParentImage)
             continue;
         }
 
-        FilePath = FileDevicePath(FileSystemHandles[i], L"\\EFI\\shellx64_v2.efi");
+        FilePath = FileDevicePath(FileSystemHandles[i], L"\\EFI\\boot\\bootx64.efi");
 
         status =
             gBS->LoadImage(
@@ -339,6 +339,7 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *systab)
 #endif
 
     parse_cmdline(image);
+    g_enable_winpv = 1;
 
     ioctl_add_module((char *)vmm, vmm_len);
     ioctl_load_vmm();

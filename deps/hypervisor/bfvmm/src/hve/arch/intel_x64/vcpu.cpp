@@ -1107,7 +1107,8 @@ vcpu::gva_to_hpa(uint64_t gva)
 
         return this->gpa_to_hpa(ret.first);
     } catch (...) {
-        this->halt("gva_to_hpa failed");
+        bferror_nhex(0, "gva_to_hpa failed: gva=", gva);
+        throw;
     }
 }
 

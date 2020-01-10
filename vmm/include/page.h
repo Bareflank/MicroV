@@ -49,7 +49,8 @@ static inline uint64_t uv_align_page(uint64_t addr)
 enum uv_pg_src : uint64_t {
     pg_src_none,
     pg_src_root, /* Allocated from the root domain */
-    pg_src_vmm   /* Allocated from the VMM */
+    pg_src_vmm,  /* Allocated from the VMM */
+    pg_src_raw   /* Page present in the root domain (not from root pool) */
 };
 
 class page {
@@ -61,11 +62,11 @@ public:
         this->id = id;
     }
 
-    page(uint64_t id, uint64_t hfn) noexcept
+    page(uint64_t id, uint64_t hfn, bool raw = false) noexcept
     {
         this->id = id;
         this->hfn = hfn;
-        this->src = pg_src_root;
+        this->src = (raw) ? pg_src_raw : pg_src_root;
     }
 
     page(uint64_t id, void *ptr)

@@ -31,6 +31,7 @@
 #include <bfgsl.h>
 #include <bfdriverinterface.h>
 
+#include <Processthreadsapi.h>
 #include <SetupAPI.h>
 
 // -----------------------------------------------------------------------------
@@ -38,7 +39,7 @@
 // -----------------------------------------------------------------------------
 
 HANDLE
-uvctl_ioctl_open()
+uvctl_ioctl_open(const GUID *guid)
 {
     HANDLE hDevInfo;
     SP_INTERFACE_DEVICE_DETAIL_DATA *deviceDetailData = nullptr;
@@ -49,24 +50,27 @@ uvctl_ioctl_open()
     SP_INTERFACE_DEVICE_DATA ifInfo;
     ifInfo.cbSize = sizeof(SP_INTERFACE_DEVICE_DATA);
 
-    hDevInfo = SetupDiGetClassDevs(&GUID_DEVINTERFACE_builder,
+    hDevInfo = SetupDiGetClassDevs(guid,
                                    0,
                                    0,
                                    DIGCF_DEVICEINTERFACE | DIGCF_PRESENT);
 
     if (hDevInfo == INVALID_HANDLE_VALUE) {
+        std::cerr << "[ALERT]: SetupDiGetClassDevs failed\n";
         return hDevInfo;
     }
 
     if (!SetupDiEnumDeviceInfo(hDevInfo, 0, &devInfo)) {
+        std::cerr << "[ALERT]: SetupDiEnumDeviceInfo failed\n";
         return INVALID_HANDLE_VALUE;
     }
 
     if (!SetupDiEnumDeviceInterfaces(hDevInfo,
                                     &devInfo,
-                                    &(GUID_DEVINTERFACE_builder),
+                                    guid,
                                     0,
                                     &ifInfo)) {
+        std::cerr << "[ALERT]: SetupDiEnumDeviceInterfaces failed\n";
         return INVALID_HANDLE_VALUE;
     }
 
@@ -78,10 +82,12 @@ uvctl_ioctl_open()
                                         0,
                                         &requiredSize,
                                         NULL)) {
+        std::cerr << "[ALERT]: SetupDiGetDeviceInterfaceDetail failed (1)\n";
         return INVALID_HANDLE_VALUE;
     }
 
     if (GetLastError() != ERROR_INSUFFICIENT_BUFFER) {
+        std::cerr << "[ALERT]: SetupDiGetDeviceInterfaceDetail failed (2)\n";
         return INVALID_HANDLE_VALUE;
     }
 
@@ -103,14 +109,17 @@ uvctl_ioctl_open()
                                          requiredSize,
                                          NULL,
                                          NULL)) {
+        std::cerr << "[ALERT]: SetupDiGetDeviceInterfaceDetail failed (3)\n";
         return INVALID_HANDLE_VALUE;
     }
+
+    std::cout << "[DEBUG]: Creating file: " << deviceDetailData->DevicePath << '\n';
 
     return CreateFile(deviceDetailData->DevicePath,
                       GENERIC_READ | GENERIC_WRITE,
                       0,
                       NULL,
-                      CREATE_ALWAYS,
+                      OPEN_EXISTING,
                       FILE_ATTRIBUTE_NORMAL,
                       NULL);
 }
@@ -119,6 +128,7 @@ int64_t
 uvctl_rw_ioctl(HANDLE fd, DWORD request, void *data, DWORD size)
 {
     DWORD bytes = 0;
+
     if (!DeviceIoControl(fd, request, data, size, data, size, &bytes, NULL)) {
         return BF_IOCTL_FAILURE;
     }
@@ -132,31 +142,65 @@ uvctl_rw_ioctl(HANDLE fd, DWORD request, void *data, DWORD size)
 
 ioctl_private::ioctl_private()
 {
-    if ((fd = uvctl_ioctl_open()) == INVALID_HANDLE_VALUE) {
-        throw std::runtime_error("failed to open uvbuilder");
+    std::cout << "[DEBUG]: uvctl process id: " << GetCurrentProcessId() << '\n';
+
+    builder_fd = uvctl_ioctl_open(&GUID_DEVINTERFACE_builder);
+
+    if (builder_fd == INVALID_HANDLE_VALUE) {
+        throw std::runtime_error("Failed to open builder driver. Is it loaded?");
+    }
+
+    xenbus_fd = uvctl_ioctl_open(&GUID_DEVINTERFACE_XENBUS);
+    uint64_t rc = GetLastError();
+
+    if (xenbus_fd == INVALID_HANDLE_VALUE) {
+        std::cerr << "[ALERT]: Failed to open xenbus driver. Is it loaded?\n";
+        std::cerr << "[ALERT]:  - GetLastError() == " << rc << '\n';
     }
 }
 
 ioctl_private::~ioctl_private()
 {
-    CloseHandle(fd);
+    if (builder_fd != INVALID_HANDLE_VALUE) {
+        CloseHandle(builder_fd);
+    }
+
+    if (xenbus_fd != INVALID_HANDLE_VALUE) {
+        CloseHandle(xenbus_fd);
+    }
 }
 
 void ioctl_private::call_ioctl_create_vm(create_vm_args &args)
 {
+    auto fd = builder_fd;
     auto rc = uvctl_rw_ioctl(fd, IOCTL_CREATE_VM, &args, sizeof(create_vm_args));
+
     if (rc < 0) {
         throw std::runtime_error("ioctl failed: IOCTL_CREATE_VM");
     }
 }
 
-void ioctl_private::call_ioctl_destroy(domainid_t domainid) noexcept
+void ioctl_private::call_ioctl_destroy(domainid_t domid) noexcept
 {
-    auto rc = uvctl_rw_ioctl(fd,
-                            IOCTL_DESTROY_VM,
-                            &domainid,
-                            sizeof(domainid_t));
+    auto fd = builder_fd;
+    auto rc = uvctl_rw_ioctl(fd, IOCTL_DESTROY_VM, &domid, sizeof(domid));
+
     if (rc < 0) {
         std::cerr << "[ERROR] ioctl failed: IOCTL_DESTROY_VM\n";
+    }
+}
+
+void ioctl_private::call_ioctl_xenbus_acquire() noexcept
+{
+    if (xenbus_fd == INVALID_HANDLE_VALUE) {
+        return;
+    }
+
+    auto id = GetCurrentProcessId();
+    auto fd = xenbus_fd;
+    auto rc = uvctl_rw_ioctl(fd, IOCTL_XENBUS_ACQUIRE, &id, sizeof(id));
+
+    if (rc < 0) {
+        std::cerr << "[ERROR] ioctl failed: IOCTL_XENBUS_ACQUIRE\n";
     }
 }

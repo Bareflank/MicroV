@@ -245,7 +245,7 @@ static int protected_main(const args_type &args)
     root_domain.launch();
 
     while (!nuke_vm) {
-        std::this_thread::sleep_for(200ms);
+        std::this_thread::sleep_for(1s);
     }
 
     try {
@@ -260,11 +260,11 @@ static int protected_main(const args_type &args)
 
 int main(int argc, char *argv[])
 {
-    ctl = std::make_unique<ioctl>();
-    setup_kill_signal_handler();
-
     try {
+        ctl = std::make_unique<ioctl>();
+        setup_kill_signal_handler();
         args_type args = parse_args(argc, argv);
+
         return protected_main(args);
     }
     catch (const cxxopts::OptionException &e) {

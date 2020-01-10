@@ -106,6 +106,34 @@ static bool pfd_ioport_in(base_vcpu *vcpu, io_insn_handler::info_t &info)
     return false;
 }
 
+static bool xen_ioport_out(base_vcpu *vcpu, io_insn_handler::info_t &info)
+{
+    auto size = info.size_of_access + 1;
+
+    if (size != 1) {
+        printv("xen-dbg: invalid write: size=%lu\n", size);
+        return false;
+    }
+
+    expects(info.reps >= 1);
+    expects(info.reps <= 255);
+
+    char buf[256]{};
+    auto len = info.reps + 1;
+    auto data = vcpu->map_gva_4k<char>(info.address, info.reps);
+
+    memcpy(buf, data.get(), info.reps);
+
+    if (buf[info.reps - 1] != '\n') {
+        buf[info.reps - 1] = '\n';
+    }
+
+    buf[len - 1] = 0;
+    printv("[winpv] %s", buf);
+
+    return true;
+}
+
 static bool pfd_ioport_out(base_vcpu *vcpu, io_insn_handler::info_t &info)
 {
     auto port = info.port_number;
@@ -176,8 +204,7 @@ static bool ioport_out(base_vcpu *vcpu, io_insn_handler::info_t &info)
 {
     switch (info.port_number) {
     case XEN_IOPORT:
-        printv("xen-pfd: write to xen debug port unsupported\n");
-        return false;
+        return xen_ioport_out(vcpu, info);
     case PFD_IOPORT:
     case PFD_IOPORT + 2:
         return pfd_ioport_out(vcpu, info);

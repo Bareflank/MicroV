@@ -99,12 +99,14 @@ public:
                           class page *fpg);
     void add_local_page(xen_pfn_t gfn, uint32_t perms, uint32_t mtype,
                         class page *pg);
+    void add_raw_page(xen_pfn_t gfn, uint32_t perms, uint32_t mtype,
+                      xen_pfn_t hfn);
 
     void map_page(class xen_page *pg);
     void unmap_page(class xen_page *pg);
 
     int map_page(xen_pfn_t gfn, uint32_t perms);
-    int remove_page(xen_pfn_t gfn);
+    int remove_page(xen_pfn_t gfn, bool need_invept);
     int back_page(class xen_page *pg);
 
 public:

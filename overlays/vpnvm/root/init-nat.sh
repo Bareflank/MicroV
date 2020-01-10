@@ -20,6 +20,5 @@ iptables -t nat -A POSTROUTING -o $phy -j MASQUERADE
 iptables -A FORWARD -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
 iptables -A FORWARD -i $vif -o $phy -j ACCEPT
 
-iptables -I INPUT -p udp --dport 67 -i $vif -j ACCEPT # DHCP
 iptables -I INPUT -p udp --dport 53 -s $cidr -j ACCEPT # DNS
 iptables -I INPUT -p tcp --dport 53 -s $cidr -j ACCEPT # DNS

@@ -548,13 +548,11 @@ EvtchnFlush(
     ASSERT3U(Index, <, Context->ProcessorCount);
     Processor = &Context->Processor[Index];
 
-    if (Context->Interrupt == NULL) {
-        ASSERT3U(Processor->UpcallEnabled, ==, TRUE);
+    if (Processor->Interrupt) {
+        Interrupt = Processor->Interrupt;
+    } else {
+        return;
     }
-
-    Interrupt = (Processor->UpcallEnabled) ?
-                Processor->Interrupt :
-                Context->Interrupt;
 
     InitializeListHead(&List);
 

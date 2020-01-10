@@ -33,6 +33,7 @@
 
 namespace microv {
 
+bool xen_evtchn_reset(xen_vcpu *v);
 bool xen_evtchn_init_control(xen_vcpu *v);
 bool xen_evtchn_expand_array(xen_vcpu *v);
 bool xen_evtchn_set_priority(xen_vcpu *v);
@@ -218,13 +219,14 @@ public:
     bool bind_virq(xen_vcpu *v, evtchn_bind_virq_t *ebv);
     bool close(xen_vcpu *v, evtchn_close_t *ec);
     bool send(xen_vcpu *v, evtchn_send_t *es);
+    bool reset(xen_vcpu *v);
 
     int set_upcall_vector(xen_vcpu *v, xen_hvm_param_t *param);
     int set_upcall_vector(xen_vcpu *v, xen_hvm_evtchn_upcall_vector_t *arg);
 
+    void close(chan_t *chan);
     void queue_virq(uint32_t virq);
     void inject_virq(uint32_t virq);
-    void unbind_interdomain(evtchn_port_t port, xen_domid_t remote_domid);
     int alloc_unbound(evtchn_alloc_unbound_t *arg);
     int bind_interdomain(evtchn_port_t port,
                          evtchn_port_t remote_port,

@@ -241,10 +241,10 @@ pci_dev::pci_dev(uint32_t addr, struct pci_dev *parent_bridge)
     expects(pci_cfg_is_present(pci_cfg_read_reg(addr, 0)));
 
     m_cf8 = addr;
-    snprintf(m_bdf_str, sizeof(m_bdf_str), "%02x:%02x.%02x",
-             pci_cfg_bus(m_cf8),
-             pci_cfg_dev(m_cf8),
-             pci_cfg_fun(m_cf8));
+
+    snprintf(m_bdf_str, sizeof(m_bdf_str), "%02x:%02x.%01x",
+             pci_cfg_bus(m_cf8), pci_cfg_dev(m_cf8), pci_cfg_fun(m_cf8));
+
     ensures(!m_bdf_str[sizeof(m_bdf_str) - 1]);
 
     for (auto i = 0; i < m_cfg_reg.size(); i++) {

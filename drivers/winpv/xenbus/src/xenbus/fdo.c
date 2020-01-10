@@ -67,6 +67,7 @@
 #pragma warning(push)
 #pragma warning(disable:4142) // benign redefinition of types
 #include <microv/hypercall.h>
+#include <microv/xenbusinterface.h>
 #pragma warning(pop)
 
 #define XENBUS_FDO_TAG 'ODF'
@@ -113,7 +114,14 @@ struct _XENBUS_FDO {
     KEVENT                          SuspendEvent;
     PXENBUS_STORE_WATCH             SuspendWatch;
 
-    PXENBUS_THREAD                  StoreThread;
+    BOOLEAN                         StoreRunning;
+    PXENBUS_THREAD                  StoreD3ToD0Thread;
+    HANDLE                          StorePid;
+    BOOLEAN                         StorePsCbActive;
+    PVOID                           StorePsCbHandle;
+    UNICODE_STRING                  StorePsCbAltitude;
+    OB_CALLBACK_REGISTRATION        StorePsCbRegistration;
+    OB_OPERATION_REGISTRATION       StorePsOpRegistration;
 
     PCM_PARTIAL_RESOURCE_LIST       RawResourceList;
     PCM_PARTIAL_RESOURCE_LIST       TranslatedResourceList;
@@ -146,6 +154,10 @@ struct _XENBUS_FDO {
     PXENBUS_EVTCHN_CHANNEL          Channel;
     PXENBUS_SUSPEND_CALLBACK        SuspendCallbackLate;
     PLOG_DISPOSITION                LogDisposition;
+
+    UNICODE_STRING                  IoctlSymlink;
+    BOOLEAN                         IoctlRegistered;
+    BOOLEAN                         IoctlEnabled;
 };
 
 static FORCEINLINE PVOID
@@ -1437,7 +1449,7 @@ FdoScan(
             break;
 
         // It is not safe to use interfaces before this point
-        if (__FdoGetDevicePnpState(Fdo) != Started)
+        if (!Fdo->StoreRunning)
             goto loop;
 
         status = XENBUS_STORE(Directory,
@@ -1593,6 +1605,9 @@ FdoSuspend(
 
         // It is not safe to use interfaces before this point
         if (__FdoGetDevicePowerState(Fdo) != PowerDeviceD0)
+            goto loop;
+
+        if (!Fdo->StoreRunning)
             goto loop;
 
         status = XENBUS_STORE(Read,
@@ -2536,8 +2551,8 @@ FdoOutputBuffer(
                           (ULONG)(Cursor - FdoOutBuffer));
 }
 
-static VOID
-StoreD3ToD0(
+static NTSTATUS
+__StoreD3ToD0(
     IN PXENBUS_FDO Fdo
     )
 {
@@ -2546,13 +2561,13 @@ StoreD3ToD0(
     UINT64         Ready;
 
     Timeout.QuadPart = TIME_RELATIVE(TIME_MS(200));
+    Ready = __event_op__is_xenstore_ready();
+    ASSERT3U(Ready, <=, 1);
 
-    /* Sleep until the VMM signals that the xenstore backend is ready */
-    do {
+    if (!Ready) {
         KeDelayExecutionThread(KernelMode, FALSE, &Timeout);
-        Ready = __event_op__is_xenstore_ready();
-        ASSERT3U(Ready, <=, 1);
-    } while (!Ready);
+        return STATUS_TIMEOUT;
+    }
 
     /* Sleep one more time for good measure */
     KeDelayExecutionThread(KernelMode, FALSE, &Timeout);
@@ -2610,12 +2625,11 @@ StoreD3ToD0(
                         "%u",
                         1);
 
-    __FdoSetDevicePnpState(Fdo, Started);
+    (VOID) FdoSetDistribution(Fdo);
+    Fdo->StoreRunning = TRUE;
     ThreadWake(Fdo->ScanThread);
 
-    (VOID) FdoSetDistribution(Fdo);
-
-    return;
+    return STATUS_SUCCESS;
 
 fail4:
     Error("fail4\n");
@@ -2644,16 +2658,19 @@ fail2:
 
 fail1:
     Error("fail1 (%08x)\n", status);
+
+    return status;
 }
 
 static NTSTATUS
-FdoStore(
+FdoStoreD3ToD0(
     IN  PXENBUS_THREAD  Self,
     IN  PVOID           Context
     )
 {
     PXENBUS_FDO         Fdo = Context;
     PKEVENT             Event;
+    NTSTATUS            status;
 
     Event = ThreadGetEvent(Self);
 
@@ -2665,10 +2682,15 @@ FdoStore(
                                      NULL);
         KeClearEvent(Event);
 
-        if (ThreadIsAlerted(Self))
+again:
+        if (ThreadIsAlerted(Self)) {
             break;
+        }
 
-        StoreD3ToD0(Fdo);
+        status = __StoreD3ToD0(Fdo);
+        if (status == STATUS_TIMEOUT) {
+            goto again;
+        }
     }
 
     return STATUS_SUCCESS;
@@ -2681,7 +2703,7 @@ __FdoD3ToD0(
 {
     ASSERT3U(KeGetCurrentIrql(), ==, PASSIVE_LEVEL);
 
-    ThreadWake(Fdo->StoreThread);
+    ThreadWake(Fdo->StoreD3ToD0Thread);
     ThreadWake(Fdo->ScanThread);
 
     return STATUS_SUCCESS;
@@ -2692,37 +2714,45 @@ __FdoD0ToD3(
     IN  PXENBUS_FDO Fdo
     )
 {
-    Trace("====>\n");
+    Info("====>\n");
 
-    ASSERT3U(KeGetCurrentIrql(), ==, PASSIVE_LEVEL);
+    if (Fdo->StoreRunning) {
+        FdoClearDistribution(Fdo);
 
-    (VOID) XENBUS_STORE(Remove,
-                        &Fdo->StoreInterface,
-                        NULL,
-                        "control",
-                        "feature-suspend");
+        (VOID) XENBUS_STORE(Remove,
+                            &Fdo->StoreInterface,
+                            NULL,
+                            "control",
+                            "feature-suspend");
 
-    (VOID) XENBUS_STORE(WatchRemove,
-                        &Fdo->StoreInterface,
-                        Fdo->SuspendWatch);
-    Fdo->SuspendWatch = NULL;
+        (VOID) XENBUS_STORE(WatchRemove,
+                            &Fdo->StoreInterface,
+                            Fdo->SuspendWatch);
+        Fdo->SuspendWatch = NULL;
 
-    (VOID) XENBUS_STORE(WatchRemove,
-                        &Fdo->StoreInterface,
-                        Fdo->ScanWatch);
-    Fdo->ScanWatch = NULL;
+        (VOID) XENBUS_STORE(WatchRemove,
+                            &Fdo->StoreInterface,
+                            Fdo->ScanWatch);
+        Fdo->ScanWatch = NULL;
 
-    LogRemoveDisposition(Fdo->LogDisposition);
-    Fdo->LogDisposition = NULL;
+        XENBUS_STORE(Release, &Fdo->StoreInterface);
+    }
 
-    XENBUS_EVTCHN(Close,
-                  &Fdo->EvtchnInterface,
-                  Fdo->Channel);
-    Fdo->Channel = NULL;
+    if (Fdo->LogDisposition) {
+        LogRemoveDisposition(Fdo->LogDisposition);
+        Fdo->LogDisposition = NULL;
+    }
 
-    FdoClearDistribution(Fdo);
+    if (Fdo->Channel) {
+        XENBUS_EVTCHN(Close,
+                      &Fdo->EvtchnInterface,
+                      Fdo->Channel);
+        Fdo->Channel = NULL;
+    }
 
-    Trace("<====\n");
+    Fdo->StoreRunning = FALSE;
+
+    Info("<====\n");
 }
 
 static VOID
@@ -3052,7 +3082,7 @@ FdoD0ToD3(
     ASSERT3U(KeGetCurrentIrql(), ==, PASSIVE_LEVEL);
     ASSERT3U(__FdoGetDevicePowerState(Fdo), ==, PowerDeviceD0);
 
-    Trace("====>\n");
+    Info("====>\n");
 
     __FdoAcquireMutex(Fdo);
 
@@ -3083,7 +3113,7 @@ FdoD0ToD3(
     if (!__FdoIsActive(Fdo))
         goto not_active;
 
-    Trace("waiting for suspend thread...\n");
+    Info("waiting for suspend thread...\n");
 
     KeClearEvent(&Fdo->SuspendEvent);
     ThreadWake(Fdo->SuspendThread);
@@ -3094,7 +3124,7 @@ FdoD0ToD3(
                                  FALSE,
                                  NULL);
 
-    Trace("done\n");
+    Info("done\n");
 
     XENBUS_SUSPEND(Deregister,
                    &Fdo->SuspendInterface,
@@ -3104,8 +3134,6 @@ FdoD0ToD3(
     __FdoD0ToD3(Fdo);
 
     XENBUS_CONSOLE(Release, &Fdo->ConsoleInterface);
-
-    XENBUS_STORE(Release, &Fdo->StoreInterface);
 
     XENBUS_EVTCHN(Release, &Fdo->EvtchnInterface);
 
@@ -3118,7 +3146,7 @@ FdoD0ToD3(
     XENBUS_DEBUG(Release, &Fdo->DebugInterface);
 
 not_active:
-    Trace("<====\n");
+    Info("<====\n");
 }
 
 // This function must not touch pageable code or data
@@ -3205,8 +3233,118 @@ FdoFilterCmPartialResourceList(
     }
 }
 
-#define BALLOON_WARN_TIMEOUT        10
-#define BALLOON_BUGCHECK_TIMEOUT    1200
+static OB_PREOP_CALLBACK_STATUS
+StorePsPreOp(
+    PVOID Ctx,
+    POB_PRE_OPERATION_INFORMATION OpInfo
+    )
+{
+    PXENBUS_FDO Fdo = (PXENBUS_FDO)Ctx;
+    PEPROCESS Process = (PEPROCESS)OpInfo->Object;
+    HANDLE ProcessId = PsGetProcessId(Process);
+
+    if (Fdo->StorePid != ProcessId) {
+        return OB_PREOP_SUCCESS;
+    }
+
+    ACCESS_MASK PS_TERMINATE = 0x1;
+    ACCESS_MASK OriginalDesiredAccess = 0;
+    ACCESS_MASK *DesiredAccess = NULL;
+    CHAR *OpName = NULL;
+
+    switch (OpInfo->Operation) {
+    case OB_OPERATION_HANDLE_CREATE:
+        DesiredAccess = &OpInfo->Parameters->CreateHandleInformation.DesiredAccess;
+        OriginalDesiredAccess = OpInfo->Parameters->CreateHandleInformation.OriginalDesiredAccess;
+        OpName = "CREATE";
+        break;
+    case OB_OPERATION_HANDLE_DUPLICATE:
+        DesiredAccess = &OpInfo->Parameters->DuplicateHandleInformation.DesiredAccess;
+        OriginalDesiredAccess = OpInfo->Parameters->DuplicateHandleInformation.OriginalDesiredAccess;
+        OpName = "DUPLICATE";
+        break;
+    default:
+        Info("Invalid OB operation: 0x%x\n", OpInfo->Operation);
+        return OB_PREOP_SUCCESS;
+    }
+
+    *DesiredAccess &= ~PS_TERMINATE;
+
+    if (OriginalDesiredAccess & PS_TERMINATE) {
+        Info("Prevented xenstore process termination from %s op\n", OpName);
+    }
+
+    return OB_PREOP_SUCCESS;
+}
+
+static VOID
+StorePsPostOp(
+    PVOID Ctx,
+    POB_POST_OPERATION_INFORMATION OpInfo
+    )
+{
+    UNREFERENCED_PARAMETER(Ctx);
+    UNREFERENCED_PARAMETER(OpInfo);
+}
+
+static VOID
+__StorePsClear(
+    IN PXENBUS_FDO Fdo
+    )
+{
+    Fdo->StorePid = 0;
+    Fdo->StorePsCbActive = FALSE;
+    Fdo->StorePsCbHandle = NULL;
+
+    RtlZeroMemory(&Fdo->StorePsCbAltitude, sizeof (UNICODE_STRING));
+    RtlZeroMemory(&Fdo->StorePsCbRegistration, sizeof (OB_CALLBACK_REGISTRATION));
+    RtlZeroMemory(&Fdo->StorePsOpRegistration, sizeof (OB_OPERATION_REGISTRATION));
+}
+
+static VOID
+__StorePsProtect(
+    IN PXENBUS_FDO Fdo
+    )
+{
+    NTSTATUS status;
+
+    Fdo->StorePid = PsGetProcessId(PsGetCurrentProcess());
+
+    Fdo->StorePsOpRegistration.ObjectType = PsProcessType;
+    Fdo->StorePsOpRegistration.Operations = OB_OPERATION_HANDLE_CREATE;
+    Fdo->StorePsOpRegistration.Operations |= OB_OPERATION_HANDLE_DUPLICATE;
+    Fdo->StorePsOpRegistration.PreOperation = StorePsPreOp;
+    Fdo->StorePsOpRegistration.PostOperation = StorePsPostOp;
+
+    RtlInitUnicodeString(&Fdo->StorePsCbAltitude, L"429990");
+
+    Fdo->StorePsCbRegistration.Version = OB_FLT_REGISTRATION_VERSION;
+    Fdo->StorePsCbRegistration.OperationRegistrationCount = 1;
+    Fdo->StorePsCbRegistration.Altitude = Fdo->StorePsCbAltitude;
+    Fdo->StorePsCbRegistration.RegistrationContext = Fdo;
+    Fdo->StorePsCbRegistration.OperationRegistration = &Fdo->StorePsOpRegistration;
+
+    status = ObRegisterCallbacks(&Fdo->StorePsCbRegistration, &Fdo->StorePsCbHandle);
+
+    if (!NT_SUCCESS(status)) {
+        Info("Failed to register callbacks, status = %x\n", status);
+    } else {
+        Info("Registered callbacks on handle 0x%lx\n", Fdo->StorePsCbHandle);
+        Fdo->StorePsCbActive = TRUE;
+    }
+}
+
+static VOID
+__StorePsUnProtect(
+    IN PXENBUS_FDO Fdo
+    )
+{
+    if (Fdo->StorePsCbActive) {
+        ObUnRegisterCallbacks(Fdo->StorePsCbHandle);
+        __StorePsClear(Fdo);
+        Info("Unregistered callbacks\n");
+    }
+}
 
 __drv_requiresIRQL(PASSIVE_LEVEL)
 static NTSTATUS
@@ -3296,7 +3434,7 @@ FdoStartDevice(
     if (!NT_SUCCESS(status))
         goto fail6;
 
-    status = ThreadCreate(FdoStore, Fdo, &Fdo->StoreThread);
+    status = ThreadCreate(FdoStoreD3ToD0, Fdo, &Fdo->StoreD3ToD0Thread);
     if (!NT_SUCCESS(status))
         goto fail7;
 
@@ -3304,6 +3442,20 @@ not_active:
     status = FdoD3ToD0(Fdo);
     if (!NT_SUCCESS(status))
         goto fail8;
+
+    if (Fdo->IoctlRegistered) {
+        status = IoSetDeviceInterfaceState(&Fdo->IoctlSymlink, TRUE);
+
+        if (NT_SUCCESS(status) || status == STATUS_OBJECT_NAME_EXISTS) {
+            Info("DEVINTERFACE_XENBUS enabled\n");
+            Fdo->IoctlEnabled = TRUE;
+        } else {
+            Info("DEVINTERFACE_XENBUS failed to enable, status = 0x%x\n", status);
+            Fdo->IoctlEnabled = FALSE;
+        }
+    }
+
+    __FdoSetDevicePnpState(Fdo, Started);
 
     status = Irp->IoStatus.Status;
     IoCompleteRequest(Irp, IO_NO_INCREMENT);
@@ -3313,9 +3465,9 @@ not_active:
 fail8:
     Error("fail8\n");
 
-    ThreadAlert(Fdo->StoreThread);
-    ThreadJoin(Fdo->StoreThread);
-    Fdo->StoreThread = NULL;
+    ThreadAlert(Fdo->StoreD3ToD0Thread);
+    ThreadJoin(Fdo->StoreD3ToD0Thread);
+    Fdo->StoreD3ToD0Thread = NULL;
 
 fail7:
     Error("fail7\n");
@@ -3427,9 +3579,9 @@ FdoStopDevice(
 
     RtlZeroMemory(&Fdo->ScanEvent, sizeof (KEVENT));
 
-    ThreadAlert(Fdo->StoreThread);
-    ThreadJoin(Fdo->StoreThread);
-    Fdo->StoreThread = NULL;
+    ThreadAlert(Fdo->StoreD3ToD0Thread);
+    ThreadJoin(Fdo->StoreD3ToD0Thread);
+    Fdo->StoreD3ToD0Thread = NULL;
 
     FdoDestroyInterrupt(Fdo);
 
@@ -3442,6 +3594,8 @@ not_active:
 
     __FdoSetDevicePnpState(Fdo, Stopped);
     Irp->IoStatus.Status = STATUS_SUCCESS;
+
+    __StorePsUnProtect(Fdo);
 
     IoSkipCurrentIrpStackLocation(Irp);
     status = IoCallDriver(Fdo->LowerDeviceObject, Irp);
@@ -3532,9 +3686,15 @@ FdoRemoveDevice(
     NTSTATUS                            status;
 
     ASSERT3U(KeGetCurrentIrql(), ==, PASSIVE_LEVEL);
+    Info("====>\n");
 
-    if (__FdoGetPreviousDevicePnpState(Fdo) != Started)
+    if (__FdoGetPreviousDevicePnpState(Fdo) != Started) {
+        Info("Previous: %u Started: %u Current: %u\n",
+             __FdoGetPreviousDevicePnpState(Fdo),
+             Started,
+             __FdoGetDevicePnpState(Fdo));
         goto done;
+    }
 
     if (__FdoIsActive(Fdo)) {
         Trace("waiting for scan thread...\n");
@@ -3593,9 +3753,9 @@ FdoRemoveDevice(
 
     RtlZeroMemory(&Fdo->ScanEvent, sizeof (KEVENT));
 
-    ThreadAlert(Fdo->StoreThread);
-    ThreadJoin(Fdo->StoreThread);
-    Fdo->StoreThread = NULL;
+    ThreadAlert(Fdo->StoreD3ToD0Thread);
+    ThreadJoin(Fdo->StoreD3ToD0Thread);
+    Fdo->StoreD3ToD0Thread = NULL;
 
     FdoDestroyInterrupt(Fdo);
 
@@ -3608,6 +3768,8 @@ not_active:
 
 done:
     __FdoSetDevicePnpState(Fdo, Deleted);
+
+    __StorePsUnProtect(Fdo);
 
     // We must release our reference before the PDO is destroyed
     FdoReleaseLowerBusInterface(Fdo);
@@ -3628,6 +3790,7 @@ done:
         DriverReleaseMutex();
     }
 
+    Info("<====\n");
     return status;
 }
 
@@ -4723,6 +4886,44 @@ FdoDispatch(
         status = FdoDispatchPower(Fdo, Irp);
         break;
 
+    case IRP_MJ_DEVICE_CONTROL: {
+        ULONG code = StackLocation->Parameters.DeviceIoControl.IoControlCode;
+        Info("MJ_DEVICE_CONTROL: code=0x%x\n", code);
+        Irp->IoStatus.Status = STATUS_SUCCESS;
+        IoCompleteRequest(Irp, IO_NO_INCREMENT);
+        status = STATUS_SUCCESS;
+        break;
+    }
+
+    case IRP_MJ_CREATE:
+        Info("MJ_CREATE: Flags=0x%x,UserMode=%u\n", Irp->Flags, Irp->RequestorMode == UserMode);
+
+        if (Irp->RequestorMode == KernelMode) {
+            Irp->IoStatus.Information = FILE_DOES_NOT_EXIST;
+        } else {
+            Irp->IoStatus.Information = FILE_CREATED;
+            __StorePsProtect(Fdo);
+        }
+
+        Irp->IoStatus.Status = STATUS_SUCCESS;
+        IoCompleteRequest(Irp, IO_NO_INCREMENT);
+        status = STATUS_SUCCESS;
+        break;
+
+    case IRP_MJ_CLOSE:
+        Info("MJ_CLOSE\n");
+        Irp->IoStatus.Status = STATUS_SUCCESS;
+        IoCompleteRequest(Irp, IO_NO_INCREMENT);
+        status = STATUS_SUCCESS;
+        break;
+
+    case IRP_MJ_CLEANUP:
+        Info("MJ_CLEANUP\n");
+        Irp->IoStatus.Status = STATUS_SUCCESS;
+        IoCompleteRequest(Irp, IO_NO_INCREMENT);
+        status = STATUS_SUCCESS;
+        break;
+
     default:
         status = FdoDispatchDefault(Fdo, Irp);
         break;
@@ -5073,6 +5274,21 @@ done:
 
     DriverAddFunctionDeviceObject(Fdo);
 
+    status = IoRegisterDeviceInterface(Fdo->PhysicalDeviceObject,
+                                       &GUID_DEVINTERFACE_XENBUS,
+                                       NULL,
+                                       &Fdo->IoctlSymlink);
+    if (status == STATUS_OBJECT_NAME_EXISTS) {
+        Info("DEVINTERFACE_XENBUS exists\n");
+        Fdo->IoctlRegistered = TRUE;
+    } else if (!NT_SUCCESS(status)) {
+        Info("DEVINTERFACE_XENBUS failed to register, status = 0x%x\n", status);
+        Fdo->IoctlRegistered = FALSE;
+    } else {
+        Info("DEVINTERFACE_XENBUS registered\n");
+        Fdo->IoctlRegistered = TRUE;
+    }
+
     return STATUS_SUCCESS;
 
 fail19:
@@ -5205,6 +5421,17 @@ FdoDestroy(
     ASSERT(IsListEmpty(&Fdo->List));
     ASSERT3U(Fdo->References, ==, 0);
     ASSERT3U(__FdoGetDevicePnpState(Fdo), ==, Deleted);
+
+    if (Fdo->IoctlEnabled) {
+        IoSetDeviceInterfaceState(&Fdo->IoctlSymlink, FALSE);
+        Fdo->IoctlEnabled = FALSE;
+    }
+
+    if (Fdo->IoctlRegistered) {
+        RtlFreeUnicodeString(&Fdo->IoctlSymlink);
+        RtlZeroMemory(&Fdo->IoctlSymlink, sizeof (UNICODE_STRING));
+        Fdo->IoctlRegistered = FALSE;
+    }
 
     DriverRemoveFunctionDeviceObject(Fdo);
 

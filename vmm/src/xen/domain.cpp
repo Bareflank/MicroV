@@ -853,11 +853,11 @@ uint64_t xen_domain::init_shared_info(xen_vcpu *xen, uintptr_t shinfo_gpfn)
         const auto mtype = pg_mtype_wb;
 
         if (m_memory->find_page(shinfo_gpfn)) {
-            m_memory->remove_page(shinfo_gpfn);
+            m_memory->remove_page(shinfo_gpfn, false);
         }
 
         m_memory->add_vmm_backed_page(shinfo_gpfn, perms, mtype, m_shinfo);
-        xen->m_uv_vcpu->invept();
+        m_memory->invept();
 
         /* Set wallclock from start-of-day info */
         auto now = ::x64::read_tsc::get();
@@ -1475,14 +1475,14 @@ bool xen_domain::shadow_op(xen_vcpu *v, struct xen_domctl_shadow_op *shadow)
 
 bool xen_domain::set_cpuid(xen_vcpu *v, struct xen_domctl_cpuid *cpuid)
 {
-    printv("%s: leaf:%x subleaf:%x eax:%x ebx:%x ecx:%x edx:%x\n",
-            __func__,
-            cpuid->input[0],
-            cpuid->input[1],
-            cpuid->eax,
-            cpuid->ebx,
-            cpuid->ecx,
-            cpuid->edx);
+//    printv("%s: leaf:%x subleaf:%x eax:%x ebx:%x ecx:%x edx:%x\n",
+//            __func__,
+//            cpuid->input[0],
+//            cpuid->input[1],
+//            cpuid->eax,
+//            cpuid->ebx,
+//            cpuid->ecx,
+//            cpuid->edx);
 
     v->m_uv_vcpu->set_rax(0);
     return true;
@@ -1732,22 +1732,22 @@ bool xen_domain::get_sharing_shared_pages(xen_vcpu *v)
 
 size_t xen_domain::hvc_rx_put(const gsl::span<char> &span)
 {
-    return m_hvc_rx_ring->put(span);
+    return (m_hvc_rx_ring) ? m_hvc_rx_ring->put(span) : 0;
 }
 
 size_t xen_domain::hvc_rx_get(const gsl::span<char> &span)
 {
-    return m_hvc_rx_ring->get(span);
+    return (m_hvc_rx_ring) ? m_hvc_rx_ring->get(span) : 0;
 }
 
 size_t xen_domain::hvc_tx_put(const gsl::span<char> &span)
 {
-    return m_hvc_tx_ring->put(span);
+    return (m_hvc_tx_ring) ? m_hvc_tx_ring->put(span) : 0;
 }
 
 size_t xen_domain::hvc_tx_get(const gsl::span<char> &span)
 {
-    return m_hvc_tx_ring->get(span);
+    return (m_hvc_tx_ring) ? m_hvc_tx_ring->get(span) : 0;
 }
 
 }

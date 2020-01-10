@@ -225,6 +225,7 @@ __uart_ndec_op(uint16_t port, uint64_t val)
 #define __enum_domain_op__create_domain 0xBF02000000000100
 #define __enum_domain_op__destroy_domain 0xBF02000000000101
 #define __enum_domain_op__read_tsc 0xBF02000000000102
+#define __enum_domain_op__invept 0xBF02000000000103
 
 #define __enum_domain_op__set_uart 0xBF02000000000200
 #define __enum_domain_op__set_pt_uart 0xBF02000000000201
@@ -419,6 +420,12 @@ static inline uint64_t
 __domain_op__read_tsc(void)
 {
     return _vmcall(__enum_domain_op__read_tsc, 0, 0, 0);
+}
+
+static inline status_t
+__domain_op__invept(domainid_t did)
+{
+    return _vmcall(__enum_domain_op__invept, did, 0, 0);
 }
 
 static inline uint64_t

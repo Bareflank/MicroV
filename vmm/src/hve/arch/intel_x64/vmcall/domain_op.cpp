@@ -124,10 +124,15 @@ void vmcall_domain_op_handler::domain_op__hvc_rx_put(vcpu *vcpu)
         }
 
         auto len = vcpu->rdx();
+        if (!len) {
+            vcpu->set_rax(0);
+            return;
+        }
+
         auto buf = vcpu->map_gva_4k<char>(vcpu->rcx(), len);
         auto num = xend->hvc_rx_put(gsl::span(buf.get(), len));
-
         auto uvv = xend->get_xen_vcpu(0)->m_uv_vcpu;
+
         uvv->load();
         xend->queue_virq(VIRQ_CONSOLE);
         xend->put_xen_vcpu(0);
@@ -160,6 +165,11 @@ void vmcall_domain_op_handler::domain_op__hvc_tx_get(vcpu *vcpu)
         }
 
         auto len = vcpu->rdx();
+        if (!len) {
+            vcpu->set_rax(0);
+            return;
+        }
+
         auto buf = vcpu->map_gva_4k<char>(vcpu->rcx(), len);
         auto num = xen->hvc_tx_get(gsl::span(buf.get(), len));
 
@@ -167,6 +177,26 @@ void vmcall_domain_op_handler::domain_op__hvc_tx_get(vcpu *vcpu)
     }
     catchall({
         vcpu->set_rax(0);
+    })
+}
+
+void vmcall_domain_op_handler::domain_op__invept(vcpu *vcpu) noexcept
+{
+    try {
+        expects(foreign_domain(vcpu));
+
+        auto dom = vcpu->find_child_domain(vcpu->rbx());
+        if (!dom) {
+            bferror_nhex(0, "child domain not found", vcpu->rbx());
+            vcpu->set_rax(FAILURE);
+            return;
+        }
+
+        dom->invept();
+        vcpu->set_rax(SUCCESS);
+    }
+    catchall({
+        vcpu->set_rax(FAILURE);
     })
 }
 
@@ -581,6 +611,7 @@ vmcall_domain_op_handler::dispatch(vcpu *vcpu)
         dispatch_case(create_domain)
         dispatch_case(destroy_domain)
         dispatch_case(read_tsc)
+        dispatch_case(invept)
 
         dispatch_case(set_uart)
         dispatch_case(hvc_rx_put)
