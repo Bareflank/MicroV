@@ -7,9 +7,12 @@ xsvm is configured to build the xen toolstack so it is treated as dom0.
 
 The following instructions assume the following directory structure:
 
-workspace/microv
-workspace/cache
-workspace/build
+```
+workspace/
+├── build/
+├── cache/
+└── microv/
+```
 
 Where 'microv' is the cloned repo, 'cache' is the bareflank depends
 CACHE_DIR, and 'build' is the cmake build directory. With this layout,
@@ -18,13 +21,17 @@ microv can be built with the following commands:
 ```bash
 $ cd build
 $ cp ../microv/rundom0.sh .
-$ cmake ../microv/deps/hypervisor -DCACHE_DIR=../cache -DCONFIG=../microv/config.cmake
+$ cp ../microv/config.cmake ..
+$ cmake ../microv/deps/hypervisor -DCACHE_DIR=../cache -DCONFIG=../config.cmake
 $ make driver_quick
 $ make
 $ make quick
 $ make xsvm
 $ ./rundom0.sh
 ```
+
+To successfully complete the build, libelf-dev needs to be updated to version 
+0.176.
 
 If those steps succeed, you will see the guest booting and presenting you with
 a login prompt. The user name is 'root' and there is no password. From there
