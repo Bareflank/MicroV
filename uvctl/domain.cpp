@@ -23,7 +23,14 @@
 #include <functional>
 #include <iostream>
 #include <stdexcept>
+#include <string>
 #include <thread>
+
+#ifdef WIN64
+#include <windows.h>
+#else
+#include <sys/mman.h>
+#endif
 
 #include "domain.h"
 #include "vcpu.h"
@@ -71,10 +78,10 @@ void uvc_domain::recv_hvc()
 #ifdef WIN64
     /* Lock memory; this may fail the first attempt. */
     if (!VirtualLock(array.data(), HVC_TX_SIZE)) {
-        std::cout << __func__ << ": Unable to lock array " << "(error: "
+        std::cout << __func__ << ": Unable to lock HVC recv array " << "(error: "
                   << std::to_string(GetLastError()) << "), will reattempt\n";
         if (!VirtualLock(array.data(), HVC_TX_SIZE)) {
-            std::cout << __func__ << ": Second attempt; unable to lock array "
+            std::cout << __func__ << ": Second attempt; unable to lock HVC recv array "
                       << "(error: " << std::to_string(GetLastError()) << ")\n";
 	      }
 #else
@@ -86,11 +93,9 @@ void uvc_domain::recv_hvc()
     while (enable_hvc) {
         auto buf = static_cast<volatile char *>(array.data());
 
-        /* Touch it to try to convince the OS to map it in */
-        buf[0] = 0;
+        size = __domain_op__hvc_tx_get(id, (char *)buf, HVC_TX_SIZE);
 
-        size = __domain_op__hvc_tx_get(id, (char *) buf, HVC_TX_SIZE);
-        std::cout.write((const char *) buf, (int) size);
+        std::cout.write((const char *)buf, (int)size);
         std::cout.flush();
         std::this_thread::sleep_for(hvc_sleep);
     }
@@ -111,10 +116,10 @@ void uvc_domain::send_hvc()
 #ifdef WIN64
     /* Lock memory; this may fail the first attempt. */
     if (!VirtualLock(array.data(), HVC_RX_SIZE)) {
-        std::cout << __func__ << ": Unable to lock array " << "(error: "
+        std::cout << __func__ << ": Unable to lock HVC send array " << "(error: "
                   << std::to_string(GetLastError()) << "), will reattempt\n";
         if (!VirtualLock(array.data(), HVC_RX_SIZE)) {
-            std::cout << __func__ << ": Second attempt; unable to lock array "
+            std::cout << __func__ << ": Second attempt; unable to lock HVC send array "
                       << "(error: " << std::to_string(GetLastError()) << ")\n";
         }
 #else
