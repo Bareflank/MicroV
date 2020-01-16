@@ -1,0 +1,24 @@
+#include <windows.h>
+#include <ntverp.h>
+
+#undef VER_COMPANYNAME_STR
+#undef VER_PRODUCTNAME_STR
+#undef VER_PRODUCTVERSION
+#undef VER_PRODUCTVERSION_STR
+
+#include <version.h>
+
+#define VER_COMPANYNAME_STR         VENDOR_NAME_STR
+#define VER_LEGALCOPYRIGHT_STR      "Copyright (c) Invisible Things Lab"
+
+#define VER_PRODUCTNAME_STR         "XENIFACE"
+#define VER_PRODUCTVERSION          MAJOR_VERSION,MINOR_VERSION,MICRO_VERSION,BUILD_NUMBER
+#define VER_PRODUCTVERSION_STR      MAJOR_VERSION_STR "." MINOR_VERSION_STR "." MICRO_VERSION_STR "." BUILD_NUMBER_STR
+
+#define VER_INTERNALNAME_STR        "XENCONTROL.DLL"
+#define VER_FILEDESCRIPTION_STR     "Xen interface user library"
+
+#define VER_FILETYPE                VFT_DLL
+#define VER_FILESUBTYPE             0
+
+#include <common.ver>
