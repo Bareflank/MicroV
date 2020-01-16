@@ -20,4 +20,7 @@
 # SOFTWARE.
 
 cd 'C:\Program Files\Beam'
-Start-Process -FilePath .\uvctl.exe -ArgumentList '--ram 300000000 --xsvm --cmdline "xen-pciback.hide=(00:14.3)(01:00.0) xen-pciback.passthrough=1" --kernel .\xsvm-vmlinux --initrd .\xsvm-rootfs.cpio.gz' -NoNewWindow -RedirectStandardOutput 'C:\Program Files\Beam\logs\uvctl-out-log.txt' -RedirectStandardError 'C:\Program Files\Beam\logs\uvctl-err-log.txt'
+
+$timestamp = Get-Date -Format FileDateTime
+
+Start-Process -FilePath .\uvctl.exe -ArgumentList '--verbose --hvc --ram 550000000 --xsvm --cmdline "xen-pciback.hide=(00:14.3)(01:00.0) xen-pciback.passthrough=1" --kernel .\xsvm-vmlinux --initrd .\xsvm-rootfs.cpio.gz' -NoNewWindow -RedirectStandardOutput "C:\Windows\Temp\uvctl-out-$timestamp.txt" -RedirectStandardError "C:\Windows\Temp\uvctl-err-$timestamp.txt"

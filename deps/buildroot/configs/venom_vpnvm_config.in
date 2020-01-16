@@ -143,8 +143,8 @@ BR2_SSP_NONE=y
 # BR2_SSP_REGULAR is not set
 # BR2_SSP_STRONG is not set
 # BR2_SSP_ALL is not set
-# BR2_RELRO_NONE is not set
-BR2_RELRO_PARTIAL=y
+BR2_RELRO_NONE=y
+# BR2_RELRO_PARTIAL is not set
 # BR2_RELRO_FULL is not set
 BR2_FORTIFY_SOURCE_NONE=y
 # BR2_FORTIFY_SOURCE_1 is not set

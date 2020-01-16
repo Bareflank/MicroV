@@ -30,9 +30,6 @@ if ($Init) {
     foreach ($id in $($netdevs -split "`r`n")) {
         Disable-PnpDevice -InstanceId $id -Confirm:$false
     }
-
-    netsh int ip reset
-    ipconfig /release
 }
 
 if ($Fini) {
