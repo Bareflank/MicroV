@@ -12,7 +12,7 @@ param(
 # Script Body
 #
 
-Function Build {
+Function Win8Build {
 	param(
 		[string]$Arch,
 		[string]$Type
@@ -21,6 +21,25 @@ Function Build {
 	$visualstudioversion = $Env:VisualStudioVersion
 	$solutiondir = @{ "14.0" = "vs2015"; "15.0" = "vs2017"; "16.0" = "vs2019"; }
 	$configurationbase = @{ "14.0" = "Windows 8"; "15.0" = "Windows 8"; "16.0" = "Windows 8"; }
+
+	$params = @{
+		SolutionDir = $solutiondir[$visualstudioversion];
+		ConfigurationBase = $configurationbase[$visualstudioversion];
+		Arch = $Arch;
+		Type = $Type
+		}
+	& ".\msbuild.ps1" @params
+}
+
+Function Win10Build {
+	param(
+		[string]$Arch,
+		[string]$Type
+	)
+
+	$visualstudioversion = $Env:VisualStudioVersion
+	$solutiondir = @{ "14.0" = "vs2015"; "15.0" = "vs2017"; "16.0" = "vs2019"; }
+	$configurationbase = @{ "14.0" = "Windows 10"; "15.0" = "Windows 10"; "16.0" = "Windows 10"; }
 
 	$params = @{
 		SolutionDir = $solutiondir[$visualstudioversion];
@@ -63,10 +82,6 @@ if ([string]::IsNullOrEmpty($Env:PRODUCT_NAME)) {
 	Set-Item -Path Env:PRODUCT_NAME -Value 'Xen'
 }
 
-if ([string]::IsNullOrEmpty($Env:OBJECT_PREFIX)) {
-	Set-Item -Path Env:OBJECT_PREFIX -Value 'XenProject'
-}
-
 if ([string]::IsNullOrEmpty($Env:BUILD_NUMBER)) {
 	if (Test-Path ".build_number") {
 		$BuildNum = Get-Content -Path ".build_number"
@@ -78,12 +93,18 @@ if ([string]::IsNullOrEmpty($Env:BUILD_NUMBER)) {
 	Set-Item -Path Env:BUILD_NUMBER -Value $BuildNum
 }
 
+if ([string]::IsNullOrEmpty($Env:OBJECT_PREFIX)) {
+        Set-Item -Path Env:OBJECT_PREFIX -Value 'Beam'
+}
+
 Set-Item -Path Env:MAJOR_VERSION -Value '9'
-Set-Item -Path Env:MINOR_VERSION -Value '1'
+Set-Item -Path Env:MINOR_VERSION -Value '0'
 Set-Item -Path Env:MICRO_VERSION -Value '0'
 
-Build "x86" $Type
-Build "x64" $Type
+$redist = $PSScriptRoot + "\..\..\..\deploy\windows\redist"
+set-Item -Path Env:DPINST_REDIST -Value $redist
+
+Win10Build "x64" $Type
 
 if ($Sdv) {
 	SdvBuild

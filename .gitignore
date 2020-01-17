@@ -50,17 +50,22 @@ deps/hypervisor/bfdriver/src/platform/linux/Makefile
 
 *.vs
 *.VC.db
-drivers/builder/windows/x64
-drivers/visr/windows/x64
 
 deploy/windows/Input
 deploy/windows/Output
+deploy/windows/bareflank.efi
+deploy/windows/drivers/
+deploy/windows/uvctl.exe
+
 *.suo
 *.db
 *.testlog
 *.json
 *.sqlite
 *.manifest
+
+drivers/builder/windows/x64
+drivers/visr/windows/x64
 
 drivers/winpv/xenbus/.build_number
 drivers/winpv/xenbus/include/version.h
@@ -106,3 +111,16 @@ drivers/winpv/xenbus/vs2019/Windows10Debug/
 drivers/winpv/xennet/vs2019/Windows10Debug/
 drivers/winpv/xennet/vs2019/package/Windows10Debug/
 drivers/winpv/xennet/vs2019/xennet/Windows10Debug/
+
+drivers/winpv/xeniface/.build_number
+drivers/winpv/xeniface/include/version.h
+drivers/winpv/xeniface/src/xeniface/wmi.mof
+drivers/winpv/xeniface/src/xeniface/wmi_generated.h
+drivers/winpv/xeniface/vs2019/Windows10Debug/
+drivers/winpv/xeniface/vs2019/package/Windows10Debug/
+drivers/winpv/xeniface/vs2019/x64/
+drivers/winpv/xeniface/vs2019/xenagent/x64/
+drivers/winpv/xeniface/vs2019/xencontrol/x64/
+drivers/winpv/xeniface/vs2019/xeniface.inf
+drivers/winpv/xeniface/vs2019/xeniface/Windows10Debug/
+drivers/winpv/xeniface/vs2019/xeniface_coinst/x64/
