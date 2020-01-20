@@ -45,7 +45,7 @@ $(H_SRC): $(ACPI_BUILD_DIR)/%.h: %.asl iasl
 	iasl -vs -p $(ACPI_BUILD_DIR)/$*.$(TMP_SUFFIX) -tc $<
 	sed -e 's/AmlCode/$*/g' -e 's/_aml_code//g' $(ACPI_BUILD_DIR)/$*.hex >$@
 	rm -f $(addprefix $(ACPI_BUILD_DIR)/, $*.aml $*.hex)
- 
+
 $(MK_DSDT): mk_dsdt.c
 	$(HOSTCC) $(HOSTCFLAGS) $(MKDSDT_CFLAGS-y) $(CFLAGS_xeninclude) -D__XEN_TOOLS__ -o $@ mk_dsdt.c
 
@@ -86,10 +86,10 @@ iasl:
 	@echo "ACPI ASL compiler (iasl) is needed"
 	@echo "Download and install Intel ACPI CA from"
 	@echo "http://acpica.org/downloads/"
-	@echo 
+	@echo
 	@exit 1
 
-build.o: ssdt_s3.h ssdt_s4.h ssdt_pm.h ssdt_tpm.h ssdt_laptop_slate.h
+build.o: $(H_SRC)
 
 acpi.a: $(OBJS)
 	$(AR) rc $@ $(OBJS)
