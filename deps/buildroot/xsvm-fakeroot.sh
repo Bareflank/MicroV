@@ -4,6 +4,7 @@
 
 pushd $1
 
+rm -rf usr/lib/systemd/system/systemd-sysctl.service
 rm -rf usr/lib/systemd/system/systemd-modules-load.service
 rm -rf usr/lib/systemd/system/systemd-update-utmp.service
 rm -rf usr/lib/systemd/system/systemd-update-utmp-runlevel.service
@@ -13,14 +14,15 @@ rm -rf usr/lib/systemd/system/sysinit.target.wants/systemd-update-utmp-runlevel.
 rm -rf etc/systemd/system/network.service
 rm -rf etc/systemd/system/multi-user.target.wants/network.service
 rm -rf etc/systemd/system/multi-user.target.wants/xenconsoled.service
+rm -rf etc/systemd/system/multi-user.target.wants/demo.service
 
-#ln -s ../../../lib/systemd/system/xenconsoled.service \
-#      etc/systemd/system/multi-user.target.wants/xenconsoled.service
+ln -s ../../../lib/systemd/system/xenconsoled.service \
+      etc/systemd/system/multi-user.target.wants/xenconsoled.service
 ln -s ../../../lib/systemd/system/xenstored.service \
       etc/systemd/system/multi-user.target.wants/xenstored.service
 ln -s ../../../lib/systemd/system/xen-init-dom0.service \
       etc/systemd/system/multi-user.target.wants/xen-init-dom0.service
-ln -s ../../../lib/systemd/system/demo.service \
-      etc/systemd/system/multi-user.target.wants/demo.service
+#ln -s ../../../lib/systemd/system/demo.service \
+#      etc/systemd/system/multi-user.target.wants/demo.service
 
 popd
