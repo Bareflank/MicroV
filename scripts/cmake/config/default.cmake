@@ -54,12 +54,12 @@ set(LINUX_URL_MD5 "481f81505b4f73349e501f70c15a4946"
     "Linux URL MD5 hash"
 )
 
-set(XTOOLS_URL "https://github.com/connojd/xtools/releases/download/v0.8.0/xtools.tar.gz"
+set(XTOOLS_URL "https://github.com/connojd/xtools/releases/download/v0.9.0/xtools.tar.gz"
     CACHE INTERNAL FORCE
     "xtools URL"
 )
 
-set(XTOOLS_URL_MD5 "d025f4ad293a51ed77831d3e1245af62"
+set(XTOOLS_URL_MD5 "3b9e77e10c5764657bfb8e168b7c23b5"
     CACHE INTERNAL FORCE
     "xtools URL MD5"
 )
