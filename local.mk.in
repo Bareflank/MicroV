@@ -22,5 +22,5 @@
 # This file is configured by cmake and the resulting local.mk is copied to
 # the buildroot build directory.
 
-LINUX_OVERRIDE_SRCDIR = @MICROV_SOURCE_DEPS_DIR@/linux
+#LINUX_OVERRIDE_SRCDIR = /path/to/local/linux/dir
 XEN_OVERRIDE_SRCDIR = @MICROV_SOURCE_DEPS_DIR@/xen

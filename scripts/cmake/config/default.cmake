@@ -76,14 +76,6 @@ add_config(
 )
 
 add_config(
-    CONFIG_NAME KERNEL_BUILD_TYPE
-    CONFIG_TYPE STRING
-    DEFAULT_VAL debug
-    OPTIONS     debug release
-    DESCRIPTION "Build a debug or release kernel for guest images"
-)
-
-add_config(
     CONFIG_NAME GRAPH_GUEST_IMAGES
     CONFIG_TYPE BOOL
     DEFAULT_VAL OFF
