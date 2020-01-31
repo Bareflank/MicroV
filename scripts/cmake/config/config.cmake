@@ -19,41 +19,15 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-set(MICROV_SOURCE_ROOT_DIR ${CMAKE_CURRENT_LIST_DIR}/../../..
-    CACHE INTERNAL
-    "Microv root directory"
-)
+set_bfm_vmm(microv_vmm TARGET uvvmm)
+list(APPEND EXTENSION ${CMAKE_CURRENT_LIST_DIR}/microv)
 
-set(MICROV_SOURCE_CMAKE_DIR ${MICROV_SOURCE_ROOT_DIR}/scripts/cmake
-    CACHE INTERNAL
-    "Microv cmake scripts directory"
-)
-
-set(MICROV_SOURCE_DEPS_DIR ${MICROV_SOURCE_ROOT_DIR}/deps
-    CACHE INTERNAL
-    "Microv concurrently-developed dependencies directory"
-)
-
-set(MICROV_SOURCE_DEPENDS_DIR ${MICROV_SOURCE_ROOT_DIR}/scripts/cmake/depends
-    CACHE INTERNAL
-    "Microv static dependencies directory"
-)
-
-set(MICROV_SOURCE_UTIL_DIR ${MICROV_SOURCE_ROOT_DIR}/scripts/util
-    CACHE INTERNAL
-    "Microv utility scripts directory"
-)
-
-add_config(
-    CONFIG_NAME BUILD_BUILDER
-    CONFIG_TYPE BOOL
-    DEFAULT_VAL OFF
-    DESCRIPTION "Build driver for running guest VMs"
-)
-
-add_config(
-    CONFIG_NAME BUILD_VISR
-    CONFIG_TYPE BOOL
-    DEFAULT_VAL OFF
-    DESCRIPTION "Build driver for PCI passthrough"
-)
+set(CACHE_DIR ${CMAKE_CURRENT_LIST_DIR}/cache)
+set(CMAKE_BUILD_TYPE Debug)
+set(ENABLE_COMPILER_WARNINGS ON)
+set(ENABLE_BUILD_EFI OFF)
+set(ENABLE_BUILD_VMM ON)
+set(BUILD_XEN ON)
+set(BUILD_BUILDER ON)
+set(BUILD_VISR OFF)
+set(USE_XUE OFF)
