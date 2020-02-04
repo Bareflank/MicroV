@@ -1,26 +1,11 @@
 ## Getting Started
 
-The default `config.cmake` file will build the xen components and will
-also install the build dependencies for creating PVH guest images.
-The available targets can be listed with `make info`. By default,
-the EFI binary of the VMM is not built; set ENABLE_BUILD_EFI to "ON" in
-config.cmake to do so. The guest images are built under
-${CACHE_DIR}/brbuild/<image name>. The following image names are recognized:
+The default `scripts/cmake/config/config.cmake` file will build the xen
+components of the vmm. This can be controlled with the BUILD_XEN cmake
+variable. Also by default, the EFI binary of the VMM is not built; set
+ENABLE_BUILD_EFI to "ON" in your config.cmake to do so.
 
- - xsvm (contains xl toolstack, ndvm and vpnvm images, and pciback)
- - ndvm (contains drivers for supported NICs and netback)
- - vpnvm (contains wireguard VPN software, netback, and netfront)
-
-The following drivers are built into the NDVM:
-
-  - r8169 for Realtek devices
-  - iwlwifi for Intel 9560 wireless devices
-  - e1000e for Intel ethernet devices
-
-More can be added by modifying the NDVM linux kernel config via
-'make ndvm-linux-cfg'.
-
-## Building
+## Building the VMM
 
 The instructions below assume the following directory structure:
 
@@ -37,119 +22,90 @@ microv can be built with the following commands:
 
 ```bash
 $ cd build
-$ cp ../microv/config.cmake ..
-$ cmake ../microv/deps/hypervisor -DCACHE_DIR=../cache -DCONFIG=../config.cmake
+$ cp ../microv/scripts/cmake/config/config.cmake ..
+$ cmake ../microv/deps/hypervisor -DCONFIG=../config.cmake
 $ make
 ```
 
-MicroV comes with two drivers in addition to the upstream Bareflank driver:
-builder and visr. These driver build targets are added to the make driver_*
-commands whenever BUILD_BUILDER and BUILD_VISR cmake variables are enabled
-in your config.cmake. You can also control each build individually using
-the releveant commands listed in 'make info'.
+Note that, if desired, ninja may be used instead of make by passing '-G Ninja'
+to the cmake invocation above. Parallel builds are fully supported as well.
+The output of this step is a built vmm ready to run from late-launch.
+To be able run from early-launch (i.e. EFI), re-build with ENABLE_BUILD_EFI set
+to ON.
+
+## Building the drivers
+
+Microv comes with two drivers in addition to the upstream Bareflank driver:
+builder and visr. These drivers' build targets are added to the make driver_*
+commands whenever the BUILD_BUILDER and BUILD_VISR cmake variables are enabled
+in your config.cmake. You can also control each driver build individually using
+the relevant commands listed in 'make info'.
 
 The builder driver is responsible for allocating memory from the host OS and
 creating state necessary for the guest to be run with uvctl (which is a
 userspace component used to manage VMs, formerly known as bfexec).
 
 The visr driver is used to support PCI passthrough. It registers an interrupt
-handler with the host OS and forward each interrupt to the VMM so that it can
+handler with the host OS that forwards each interrupt to the VMM so that it can
 be delivered to the guest OS to which the interrupt has been assigned. Note
 that visr (and PCI passthrough) only work if the VMM has been booted from EFI.
 
-To clean, build, and load all the drivers, run:
+To clean, build, and load all the drivers that are currently enabled in
+the cmake config, run:
 
 ```bash
 cd build
 make driver_quick
 ```
 
-Once builder has been loaded, you can run virtual machines using uvctl. But
-before that the images must be built. This is done using the make commands
-listed in 'make info' that contain an image name in them. The supported names
-are vpnvm, ndvm, and xsvm. To build the vpnvm, ndvm, and xsvm, run the following:
+## Running the VMM
+
+To start the vmm from late-launch do the following:
 
 ```bash
-cd build
-make vpnvm
-make ndvm
-make xsvm
+$ make quick
 ```
 
-Note that to successfully complete the build, libelf needs to be updated to
-at least version 0.176. After those steps complete, you can run the xsvm:
+To start the vmm from EFI, copy bareflank.efi to your EFI partition and arrange
+for it to be run prior to your OS. I typically install a pre-compiled UEFI
+shell from the tianocore EDK2 github repo, then run bareflank.efi from there.
+This approach has the added advantage of being able to pass command line argumnets
+to bareflank.efi. The arguments it understands are contained in
+`deps\hypervisor\bfdriver\src\platform\efi\entry.c`. Also note that load_start_vm defined
+in that same file chooses the thing that bareflank.efi boots next (the default is
+EFI\boot\bootx64.efi. You will need to change this to point to, e.g. the shell or grub,
+if you don't want to boot into Windows.
 
-```bash
-cd build
-cp ../microv/rundom0.sh .
-./rundom0.sh
-```
+## Building Guest Images
 
-This will result in a prompt in the xsvm. You can run any command that is
-contained in the image which is basically just busybox and the xl toolstack.
-Currently, the following xl commands are supported: create, console, info, list,
-destroy, network-attach, pci-assignable-*. To destroy the VM and return to the
-host terminal, enter Ctrl-C. To exit a program running in the VM without killing
-the VM, enter Ctrl-S if you're using Linux and Ctrl-A if you're using Cygwin.
-
-In order to launch the NDVM from xsvm, you need to copy the NDVM's kernel and
-initramfs into the xsvm's overlay directory:
+Once the vmm has been started and builder has been loaded, you can run virtual
+machines using uvctl. But before that the images must be built. This is done using
+the br2-microv repo located at https://gitlab.ainfosec.com/bareflank/br2-microv.
+To build the images described there:
 
 ```bash
 $ cd workspace
-$ cp cache/brbuild/ndvm/images/vmlinux microv/overlays/xsvm/boot/ndvm-vmlinux
-$ cp cache/brbuild/ndvm/images/rootfs.cpio.gz microv/overlays/xsvm/boot/ndvm-rootfs.cpio.gz
-$ make xsvm
+$ git clone -b venom git@gitlab.ainfosec.com:bareflank/br2-microv.git
 ```
 
-Then re-run rundom0.sh and run the following from the xsvm command line:
+Then follow the steps in br2-microv/README.md. After you perform those steps,
+return to the section below for information on how to run them.
 
-```bash
-$ xl create /etc/xen/ndvm.cfg
-```
+## Running Guest Images
 
-This will create the NDVM and start it. You can console into the NDVM using
+uvctl is the userspace application used to launch guest vms. Before a VM is run,
+uvctl IOCTLs to the builder driver with the VM's parameters, such as RAM and the path
+to vmlinux and rootfs.cpio.gz, as produced by the build step above. Builder
+then allocates memory and performs hypercalls prior to the VMM starting the vcpu. Each
+vcpu is then associated with a uvctl thread. This thread is then scheduled by the host OS
+just like any other thread on the system. In addition, whenever --hvc is passed to uvctl,
+it forks a read thread and write thread for communicating with the VM's hvc console.
 
-```bash
-$ xl console ndvm
-```
+By default uvctl is located at `build/prefixes/x86_64-userspace-elf/bin`. You can see the
+available options by passing -h to uvctl. In addition, you can use the helper script
+located at `scripts/util/rundom0.sh` to use common values for the typical options.
+You may need to adjust the paths for your system; please read the script before running
+it so you understand what it does.
 
-You return back to the xsvm console with Ctrl-] (just like normal Xen). Note
-that the same process can be used for running the VPNVM.
-
-## PCI Passthrough
-
-Currently, PCI passthrough is only available when booting the VMM from EFI.
-By default, the VMM will hide each PCI network device from the root OS (i.e.
-the OS that is booted after the VMM's EFI binary starts up). The VMM presents
-a vendor of 0xBFBF, which is the vendor that the visr driver binds to. This
-allows visr to acquire a vector and register an interrupt handler
-with the root OS.
-
-To passthrough network devices to the NDVM, you first have to add the appropriate
-arguments to pciback in the *xsvm*. For example, to passthrough BDF 02:00.0, you
-would pass
-
-    --cmdline "xen-pciback.hide=(02:00.0) xen-pciback.passthrough=1"
-
-to uvctl in the rundom0.sh script. More that one device can be used in the hide
-parameter (google pciback for more info). In addition you can either add a pci
-entry to the guest config file (see overlays/xsvm/etc/xen/ndvm.cfg for an example)
-or you can assign the PCI device after the guest has booted with
-xl pci-assignable-add.
-
-## Windows PV drivers
-
-Initial support of the Windows PV xenbus, xenvif, and xennet drivers has been
-added. They are located at drivers/winpv. To build the drivers, you first need
-to download the latest EWDK and run LaunchBuildEnv.cmd as Administrator. Then
-from that environment navigate to drivers/winpv and run "powershell
-clean-build.ps1". This will build the xenbus, xenvif, and xennet drivers.
-Before running them, you need to add the *.pfx files located under
-drivers/winpv to the trustedpublisher and root certificate stores with certmgr
-(see deploy/windows/app.iss for examples on how to do this). Then you can
-install the driver packages with deploy/windows/redist/x64/dpinst and reboot.
-Note that you must run the VMM from EFI with the --enable-winpv option enabled
-in order for the xenbus driver to be loaded by Windows.
-
-
+Assuming you launched the xsvm with rundom0.sh, you can use xl to create domains
+you compiled in to xsvm (such as the ndvm) using the hvc console.

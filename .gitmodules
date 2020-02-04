@@ -1,4 +1,0 @@
-[submodule "deps/linux"]
-	path = deps/linux
-	url = git@gitlab.ainfosec.com:bareflank/linux.git
-	branch = venom-split
