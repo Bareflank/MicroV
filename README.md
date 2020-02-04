@@ -5,7 +5,7 @@ components of the vmm. This can be controlled with the BUILD_XEN cmake
 variable. Also by default, the EFI binary of the VMM is not built; set
 ENABLE_BUILD_EFI to "ON" in your config.cmake to do so.
 
-## Building
+## Building the VMM
 
 The instructions below assume the following directory structure:
 
@@ -29,8 +29,13 @@ $ make
 
 Note that, if desired, ninja may be used instead of make by passing '-G Ninja'
 to the cmake invocation above. Parallel builds are fully supported as well.
+The output of this step is a built vmm ready to run from late-launch.
+To be able run from early-launch (i.e. EFI), re-build with ENABLE_BUILD_EFI set
+to ON.
 
-MicroV comes with two drivers in addition to the upstream Bareflank driver:
+## Building the drivers
+
+Microv comes with two drivers in addition to the upstream Bareflank driver:
 builder and visr. These drivers' build targets are added to the make driver_*
 commands whenever the BUILD_BUILDER and BUILD_VISR cmake variables are enabled
 in your config.cmake. You can also control each driver build individually using
@@ -53,9 +58,54 @@ cd build
 make driver_quick
 ```
 
-Once builder has been loaded, you can run virtual machines using uvctl. But
-before that the images must be built. This is done using the brext-microv
-repo located at https://gitlab.ainfosec.com/bareflank/brext-microv. This
-repo is structured as a br2-external tree (see the upstream buildroot docs if
-you don't know what that is). Please see the README in that repo for more
-information on how to build and run VMs compatiable with microv.
+## Running the VMM
+
+To start the vmm from late-launch do the following:
+
+```bash
+$ make quick
+```
+
+To start the vmm from EFI, copy bareflank.efi to your EFI partition and arrange
+for it to be run prior to your OS. I typically install a pre-compiled UEFI
+shell from the tianocore EDK2 github repo, then run bareflank.efi from there.
+This approach has the added advantage of being able to pass command line argumnets
+to bareflank.efi. The arguments it understands are contained in
+`deps\hypervisor\bfdriver\src\platform\efi\entry.c`. Also note that load_start_vm defined
+in that same file chooses the thing that bareflank.efi boots next (the default is
+EFI\boot\bootx64.efi. You will need to change this to point to, e.g. the shell or grub,
+if you don't want to boot into Windows.
+
+## Building Guest Images
+
+Once the vmm has been started and builder has been loaded, you can run virtual
+machines using uvctl. But before that the images must be built. This is done using
+the br2-microv repo located at https://gitlab.ainfosec.com/bareflank/br2-microv.
+To build the images described there:
+
+```bash
+$ cd workspace
+$ git clone -b venom git@gitlab.ainfosec.com:bareflank/br2-microv.git
+```
+
+Then follow the steps in br2-microv/README.md. After you perform those steps,
+return to the section below for information on how to run them.
+
+## Running Guest Images
+
+uvctl is the userspace application used to launch guest vms. Before a VM is run,
+uvctl IOCTLs to the builder driver with the VM's parameters, such as RAM and the path
+to vmlinux and rootfs.cpio.gz, as produced by the build step above. Builder
+then allocates memory and performs hypercalls prior to the VMM starting the vcpu. Each
+vcpu is then associated with a uvctl thread. This thread is then scheduled by the host OS
+just like any other thread on the system. In addition, whenever --hvc is passed to uvctl,
+it forks a read thread and write thread for communicating with the VM's hvc console.
+
+By default uvctl is located at `build/prefixes/x86_64-userspace-elf/bin`. You can see the
+available options by passing -h to uvctl. In addition, you can use the helper script
+located at `scripts/util/rundom0.sh` to use common values for the typical options.
+You may need to adjust the paths for your system; please read the script before running
+it so you understand what it does.
+
+Assuming you launched the xsvm with rundom0.sh, you can use xl to create domains
+you compiled in to xsvm (such as the ndvm) using the hvc console.
