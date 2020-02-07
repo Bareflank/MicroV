@@ -60,7 +60,7 @@
  * increasing "K" by 1 will double the amount of memory.
  */
 #ifndef PAGE_POOL_K
-#define PAGE_POOL_K (17ULL)
+#define PAGE_POOL_K (18ULL)
 #endif
 
 /*
