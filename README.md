@@ -28,17 +28,19 @@ Once the drivers are loaded, you need to pass a `--cmdline` argument to uvctl
 that specifies the bus/device/function to hide using pciback. Please see the
 comments in [rundom0.sh](scripts/util/rundom0.sh) for more details.
 
-Microv also supports PV networking for Windows hosts. This is done with the
-Windows PV [drivers](drivers/winpv) in combination with PCI passthrough.
+On Windows, Microv supports PV networking via the winpv [drivers](drivers/winpv)
+and PCI passthrough. It also uses Inno Setup to package everything into a
+single installer binary.
 
 ## Building
 
 Microv plugs into the extension mechanism of Bareflank, so it is built using
-cmake. The default cmake [config](scripts/cmake/config/config.cmake)
-file will build the base VMM along with the [library](vmm/src/xen) that implement the Xen hypercall
-interface. Note that if you want to build the EFI loader, you will need to set
-`ENABLE_BUILD_EFI` to `ON` in your cmake config file. The following table
-depicts the tested build environments for various Microv components:
+cmake. The default cmake [config](scripts/cmake/config/config.cmake) file will
+build the base VMM along with the [library](vmm/src/xen) that implements the
+Xen hypercall interface. Note that if you want to build the EFI loader, you
+will need to set `ENABLE_BUILD_EFI` to `ON` in your cmake config file. The
+following table depicts the tested build environments for various Microv
+components:
 
 | Component | Build Environment |
 | ------ | ------ |
@@ -115,8 +117,8 @@ $ cp ../microv/scripts/cmake/config/config.cmake ..
 $ cmake ../microv/deps/hypervisor -DCONFIG=../config.cmake
 $ cmake ../microv/deps/hypervisor -DCONFIG=../config.cmake -G Ninja # use ninja instead of make
 ```
-If you are building uvctl from Visual Studio, then open the "x64 Developer Command Prompt"
-and run
+If you are building uvctl from Visual Studio, then open the "x64 Native Tools Command Prompt"
+program and run
 
 ```bash
 $ cmake ../microv/deps/hypervisor -DCONFIG=../config.cmake -G "Visual Studio 16 2019" -A x64
@@ -175,11 +177,29 @@ $ make
 ```
 
 ##### Build the Windows PV drivers
-- Ensure that powershell execution policy is unrestricted
+- Ensure that powershell execution policy is unrestricted:
+
+  ```powershell
+  PS> Set-ExecutionPolicy Unrestricted
+  ```
+
 - Click on the downloaded EWDK iso
 - Run `LaunchBuildEnv.cmd` as Administrator
-- Navigate to the winpv drivers' [source](drivers/winpv)
+- In the resulting cmd prompt, navigate to the winpv drivers' [source](drivers/winpv)
 - Run `powershell .\clean-build.ps1`
+
+##### Build the Windows installer
+- Install the [Inno Setup QuickStart Pack](https://www.jrsoftware.org/download.php/ispack.exe?site=1)
+  - Accept the defaults
+- Build bareflank.efi
+- Build uvctl.exe (a Release/x64 version using Visual Studio)
+- Build the xsvm and any desired child vms (ndvm, etc.) as discussed below
+- Build the visr, builder, and winpv drivers
+- Copy bareflank.efi and uvctl.exe to [deploy/windows](deploy/windows)
+- Copy the xsvm's vmlinux and rootfs.cpio.gz to [deploy/windows](deploy/windows) and prefix each with 'xsvm-'
+- Run [make-installer.ps1](scripts/deploy/make-installer.ps1)
+  - Supply the "product name" you want to use with `-ProductName <name>`
+  - This will create an installer binary `install-<name>.exe` in `deploy/windows/output`
 
 ## Running the VMM
 
@@ -191,9 +211,10 @@ $ make stop && make unload && make load && make start  # equivalent to make quic
 ```
 
 To start the VMM from EFI, copy bareflank.efi to your EFI partition and arrange
-for it to be run prior to your OS. I typically install a pre-compiled UEFI
-shell from the tianocore EDK2 github repo, then run bareflank.efi from there.
-This approach has the added advantage of being able to pass command line argumnets
+for it to be run prior to your OS. I typically install the pre-compiled UEFI
+[shell](https://github.com/tianocore/edk2/blob/UDK2018/ShellBinPkg/UefiShell/X64/Shell.efi),
+add it as a boot option with `efibootmgr`, then run bareflank.efi from the shell.
+This approach has the added advantage of being able to pass command line arguments
 to bareflank.efi. The arguments it understands are defined
 [here](https://gitlab.ainfosec.com/bareflank/microv/blob/venom/deps/hypervisor/bfdriver/src/platform/efi/entry.c#L54).
 Also note that bareflank.efi loads the next EFI binary as defined [here](https://gitlab.ainfosec.com/Bareflank/microv/blob/venom/deps/hypervisor/bfdriver/src/platform/efi/entry.c#L203).
