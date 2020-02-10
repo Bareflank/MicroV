@@ -216,10 +216,17 @@ for it to be run prior to your OS. I typically install the pre-compiled UEFI
 add it as a boot option with `efibootmgr`, then run bareflank.efi from the shell.
 This approach has the added advantage of being able to pass command line arguments
 to bareflank.efi. The arguments it understands are defined
-[here](https://gitlab.ainfosec.com/bareflank/microv/blob/venom/deps/hypervisor/bfdriver/src/platform/efi/entry.c#L54).
-Also note that bareflank.efi loads the next EFI binary as defined [here](https://gitlab.ainfosec.com/Bareflank/microv/blob/venom/deps/hypervisor/bfdriver/src/platform/efi/entry.c#L203).
-You can change that to point to whatever EFI binary you want to run after the
-VMM has started (e.g. back to the shell or grub).
+[here](deps/hypervisor/bfdriver/src/platform/efi/entry.c#L54).
+
+Also note that bareflank.efi loads the next EFI binary based on the cmake
+`EFI_BOOT_NEXT` config option. Set that value in your config.cmake to point to
+the EFI binary you want bareflank.efi to run after it has started the VMM. The
+path is Windows-style and relative to the mountpoint of your EFI system
+partition. It needs to be escaped as a wide-character C-string. The default
+value points to Windows Boot Manager and is found
+[here](scripts/cmake/config/default.cmake#L64). You can change that to point
+to whatever EFI binary you want to run after the VMM has started (e.g. back to
+the shell or grub).
 
 ## Building Guest Images
 
@@ -233,7 +240,7 @@ $ cd workspace
 $ git clone -b venom git@gitlab.ainfosec.com:bareflank/br2-microv.git
 ```
 
-Then follow the steps in the [README](https://gitlab.ainfosec.com/bareflank/br2-microv/blob/venom/README.md)
+Then follow the steps in the [README](https://gitlab.ainfosec.com/bareflank/br2-microv/blob/venom/README.md).
 After you perform those steps, return to the section below for information on
 how to run the images.
 
