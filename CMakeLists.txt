@@ -28,6 +28,13 @@ if(ENABLE_BUILD_VMM)
         DEPENDS bfvmm
         SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}/vmm
     )
+
+    if(ENABLE_BUILD_EFI)
+        message(STATUS "    efi binary to boot after bareflank.efi: ${EFI_BOOT_NEXT}")
+    endif()
+
+    message(STATUS "    build xen components: ${BUILD_XEN}")
+    message(STATUS "    use xue usb debugger: ${USE_XUE}")
 endif()
 
 if(ENABLE_BUILD_USERSPACE)

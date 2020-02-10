@@ -57,3 +57,10 @@ add_config(
     DEFAULT_VAL OFF
     DESCRIPTION "Build driver for PCI passthrough"
 )
+
+add_config(
+    CONFIG_NAME EFI_BOOT_NEXT
+    CONFIG_TYPE STRING
+    DEFAULT_VAL "L\"\\\\EFI\\\\boot\\\\bootx64.efi\""
+    DESCRIPTION "Path (relative to ESP mount point) to EFI binary to boot after bareflank.efi"
+)

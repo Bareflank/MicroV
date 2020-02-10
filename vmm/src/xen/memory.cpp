@@ -977,12 +977,16 @@ bool xen_memory::claim_pages(xen_vcpu *v, xen_memory_reservation_t *rsv)
     expects(!m_xen_dom->m_total_pages);
 
     /* Compare the requested amount to what we have available */
-    auto avail = root_frames() + vmm_pool_pages();
-    auto claim = rsv->nr_extents;
+    uint64_t root_pages = root_frames();
+    uint64_t vmm_pages = vmm_pool_pages();
+    uint64_t avail = vmm_pages + root_pages;
+    uint64_t claim = rsv->nr_extents;
+
+    printv("%s: claimed_pages:%lu root_pages:%lu vmm_pages:%lu\n",
+           __func__, claim, root_pages, vmm_pages);
 
     if (claim > avail) {
-        printv("%s: claim of %ld pages > available pages (%lu)",
-                __func__, claim, avail);
+        printv("%s: ERROR: can't claim amount requested\n");
         uvv->set_rax(-ENOMEM);
         return true;
     }

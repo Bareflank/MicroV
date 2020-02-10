@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="..\configs.props" />
+  <PropertyGroup Label="PropertySheets">
+    <DriverType>WDM</DriverType>
+    <PlatformToolset>WindowsKernelModeDriver10.0</PlatformToolset>
+    <ConfigurationType>Driver</ConfigurationType>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{22166290-65D8-49D2-BB88-33201797C7D8}</ProjectGuid>
+  </PropertyGroup>
+  <Import Project="..\targets.props" />
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <PropertyGroup>
+    <RunCodeAnalysis>true</RunCodeAnalysis>
+    <EnableInf2cat>false</EnableInf2cat>
+    <IntDir>..\$(ProjectName)\$(ConfigurationName)\$(Platform)\</IntDir>
+    <OutDir>..\$(ConfigurationName)\$(Platform)\</OutDir>
+  </PropertyGroup>
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <AdditionalIncludeDirectories>$(WindowsSdkDir)\include\km;..\..\include;</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>PROJECT=$(ProjectName);POOL_NX_OPTIN=1;NT_PROCESSOR_GROUPS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <WarningLevel>EnableAllWarnings</WarningLevel>
+      <DisableSpecificWarnings>4464;4711;4548;4770;4820;4668;4255;5045;6001;6054;26451;28160;30030;30029;%(DisableSpecificWarnings)</DisableSpecificWarnings>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <EnablePREfast>true</EnablePREfast>
+    </ClCompile>
+    <ResourceCompile>
+      <AdditionalIncludeDirectories>..\..\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ResourceCompile>
+    <Link>
+      <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
+      <AdditionalDependencies>$(DDK_LIB_PATH)\ntstrsafe.lib;$(DDK_LIB_PATH)\procgrp.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Platform)'=='Win32'">
+    <ClCompile>
+      <PreprocessorDefinitions>__i386__;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Platform)'=='x64'">
+    <ClCompile>
+      <PreprocessorDefinitions>__x86_64__;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)'=='Windows 8 Release'">
+    <ClCompile>
+      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+      <WholeProgramOptimization>true</WholeProgramOptimization>
+      <AdditionalOptions>/Qspectre %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <FilesToPackage Include="$(TargetPath)" />
+    <FilesToPackage Include="$(OutDir)$(TargetName).pdb" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\src\xeniface\ioctls.c" />
+    <ClCompile Include="..\..\src\xeniface\wmi.c" />
+    <ClCompile Include="..\..\src\xeniface\driver.c" />
+    <ClCompile Include="..\..\src\xeniface\fdo.c" />
+    <ClCompile Include="..\..\src\xeniface\registry.c" />
+    <ClCompile Include="..\..\src\xeniface\thread.c" />
+    <ClCompile Include="..\..\src\xeniface\ioctl_sharedinfo.c" />
+    <ClCompile Include="..\..\src\xeniface\ioctl_suspend.c" />
+    <ClCompile Include="..\..\src\xeniface\ioctl_evtchn.c" />
+    <ClCompile Include="..\..\src\xeniface\ioctl_gnttab.c" />
+    <ClCompile Include="..\..\src\xeniface\ioctl_store.c" />
+    <ClCompile Include="..\..\src\xeniface\irp_queue.c" />
+  </ItemGroup>
+  <ItemGroup>
+    <Mofcomp Include="../../src/xeniface/wmi.mof">
+      <CreateBinaryMofFile>$(IntDir)/wmi.bmf</CreateBinaryMofFile>
+    </Mofcomp>
+  </ItemGroup>
+  <ItemGroup>
+    <Wmimofck Include="$(IntDir)\wmi.bmf">
+      <HeaderOutputFile>..\..\src\xeniface\wmi_generated.h</HeaderOutputFile>
+    </Wmimofck>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="..\..\src\xeniface\xeniface.rc" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+</Project>

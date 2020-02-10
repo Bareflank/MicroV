@@ -1,0 +1,123 @@
+; Copyright (c) Citrix Systems Inc.
+; All rights reserved.
+;
+; Redistribution and use in source and binary forms, 
+; with or without modification, are permitted provided 
+; that the following conditions are met:
+;
+; *   Redistributions of source code must retain the above 
+;     copyright notice, this list of conditions and the 
+;     following disclaimer.
+; *   Redistributions in binary form must reproduce the above 
+;     copyright notice, this list of conditions and the 
+;     following disclaimer in the documentation and/or other 
+;     materials provided with the distribution.
+;
+; THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND 
+; CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, 
+; INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF 
+; MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE 
+; DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR 
+; CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, 
+; SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, 
+; BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR 
+; SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS 
+; INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, 
+; WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING 
+; NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE 
+; OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF 
+; SUCH DAMAGE.
+
+[Version]
+Signature="$WINDOWS NT$"
+Class=System
+ClassGUID={4d36e97d-e325-11ce-bfc1-08002be10318} 
+Provider=%Vendor%
+DriverVer=@INF_DATE@,@MAJOR_VERSION@.@MINOR_VERSION@.@MICRO_VERSION@.@BUILD_NUMBER@
+CatalogFile=xeniface.cat
+DriverPackageDisplayName=%DiskId1%
+
+[DestinationDirs]
+DefaultDestDir = 12
+Coinst.Copy = 11
+ServiceDestDir.Copy = 11
+
+[Manufacturer]
+%Vendor%=Inst,NT@INF_ARCH@
+
+[Inst.NT@INF_ARCH@]
+; DisplayName		    Section	      DeviceID
+; -----------		    -------	      --------
+
+%XenIfaceDevice.DeviceDesc% =XenIface_Device, XENBUS\VEN_@VENDOR_PREFIX@@VENDOR_DEVICE_ID@&DEV_IFACE&REV_09000006
+%XenIfaceDevice.DeviceDesc% =XenIface_Device, XENBUS\VEN_@VENDOR_PREFIX@0001&DEV_IFACE&REV_09000006
+%XenIfaceDevice.DeviceDesc% =XenIface_Device, XENBUS\VEN_@VENDOR_PREFIX@0002&DEV_IFACE&REV_09000006
+
+[XenIface_Device]
+CopyFiles=XenIface_Device.Copy
+CopyFiles=ServiceDestDir.Copy
+
+[XenIFace_Device.Copy]
+xeniface.sys
+
+[CoInst.Copy]
+xeniface_coinst_@MAJOR_VERSION@_@MINOR_VERSION@_@MICRO_VERSION@_@BUILD_NUMBER@.dll,xeniface_coinst.dll
+
+[ServiceDestDir.Copy]
+xenagent_@MAJOR_VERSION@_@MINOR_VERSION@_@MICRO_VERSION@_@BUILD_NUMBER@.exe,xenagent.exe
+xenagent_@MAJOR_VERSION@_@MINOR_VERSION@_@MICRO_VERSION@_@BUILD_NUMBER@.dll,xenagent.dll
+
+[Xeniface_Device.Services]
+AddService = xeniface, %SPSVCINST_ASSOCSERVICE%, xeniface_Service_Inst
+AddService = xenagent, %XENAGENT_FLAGS%, xenagent_Service_Inst,xenagent_EventLog
+
+[xeniface_Service_Inst]
+DisplayName    = %XenIfaceDevice.DeviceDesc%
+ServiceType    = 1               ; SERVICE_KERNEL_DRIVER
+StartType      = 3               ; SERVICE_DEMAND_START 
+ErrorControl   = 1               ; SERVICE_ERROR_NORMAL
+ServiceBinary  = %12%\xeniface.sys
+LoadOrderGroup = Extended Base
+AddReg = Xeniface_Parameters
+
+[Xeniface_Parameters]
+HKR,"Parameters",,0x00000010
+
+[Xeniface_Device.Coinstallers]
+CopyFiles=CoInst.Copy
+AddReg=CoInst_AddReg
+
+[CoInst_AddReg]
+HKR,,CoInstallers32,0x00010000,"xeniface_coinst_@MAJOR_VERSION@_@MINOR_VERSION@_@MICRO_VERSION@_@BUILD_NUMBER@.dll,Entry"
+
+[xenagent_Service_Inst]
+DisplayName    = %xenagent.SVCDESC%
+ServiceType    = 16              ; SERVICE_WIN32_OWN_PROCESS
+StartType      = 2               ; SERVICE_AUTO_START 
+ErrorControl   = 1               ; SERVICE_ERROR_NORMAL
+ServiceBinary  = %11%\xenagent_@MAJOR_VERSION@_@MINOR_VERSION@_@MICRO_VERSION@_@BUILD_NUMBER@.exe
+
+[xenagent_EventLog]
+AddReg=xenagent_EventLog_AddReg
+
+[xenagent_EventLog_AddReg]
+HKR,,EventMessageFile,0x00020000,"%%SystemRoot%%\System32\xenagent_@MAJOR_VERSION@_@MINOR_VERSION@_@MICRO_VERSION@_@BUILD_NUMBER@.dll"
+HKR,,TypesSupported,0x00010001,7
+
+[SourceDisksNames]
+1 = %DiskId1%,,,""
+
+[SourceDisksFiles]
+xeniface.sys  = 1,,
+xenagent.exe = 1,,
+xenagent.dll = 1,,
+xeniface_coinst.dll=1,,
+
+[Strings]
+SPSVCINST_ASSOCSERVICE= 0x00000002
+Vendor= "@VENDOR_NAME@" 
+DiskId1 = "@PRODUCT_NAME@ Interface Package"
+XenIfaceDevice.DeviceDesc = "@PRODUCT_NAME@ Interface"
+XENAGENT_FLAGS= 0x00000800
+xenagent.SVCDESC= "@PRODUCT_NAME@ Agent"
+

@@ -962,9 +962,6 @@ bool xen_vcpu::debug_hypercall(microv_vcpu *vcpu)
     }
 
     if (vcpu->is_root_vcpu()) {
-        if (rax == __HYPERVISOR_event_channel_op && rdi == EVTCHNOP_send) {
-            return false;
-        }
         return true;
     }
 
@@ -972,24 +969,20 @@ bool xen_vcpu::debug_hypercall(microv_vcpu *vcpu)
         return false;
     }
 
-    if (rax == __HYPERVISOR_event_channel_op && rdi == EVTCHNOP_send) {
+    if (rax == __HYPERVISOR_grant_table_op && rdi == GNTTABOP_copy) {
+        return false;
+    }
+
+    if (rax == __HYPERVISOR_grant_table_op && rdi == GNTTABOP_map_grant_ref) {
+        return false;
+    }
+
+    if (rax == __HYPERVISOR_grant_table_op && rdi == GNTTABOP_unmap_grant_ref) {
         return false;
     }
 
     if (!this->is_xenstore()) {
         if (rax == __HYPERVISOR_vcpu_op && rdi == VCPUOP_set_singleshot_timer) {
-            return false;
-        }
-
-        if (rax == __HYPERVISOR_grant_table_op && rdi == GNTTABOP_copy) {
-            return false;
-        }
-
-        if (rax == __HYPERVISOR_grant_table_op && rdi == GNTTABOP_map_grant_ref) {
-            return false;
-        }
-
-        if (rax == __HYPERVISOR_grant_table_op && rdi == GNTTABOP_unmap_grant_ref) {
             return false;
         }
 
@@ -1001,10 +994,6 @@ bool xen_vcpu::debug_hypercall(microv_vcpu *vcpu)
     }
 
     if (rax == __HYPERVISOR_vcpu_op && rdi == VCPUOP_set_singleshot_timer) {
-        return false;
-    }
-
-    if (rax == __HYPERVISOR_event_channel_op && rdi == EVTCHNOP_status) {
         return false;
     }
 

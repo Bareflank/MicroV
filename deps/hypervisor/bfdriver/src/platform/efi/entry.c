@@ -59,6 +59,10 @@ static const CHAR16 *opt_no_pci_pt = L"--no-pci-pt";
 extern uint64_t no_pci_pt_list[NO_PCI_PT_LIST_SIZE];
 extern uint64_t no_pci_pt_count;
 
+#ifndef EFI_BOOT_NEXT
+#define EFI_BOOT_NEXT L"\\EFI\\boot\\bootx64.efi"
+#endif
+
 static int64_t
 ioctl_add_module(const char *file, uint64_t len)
 {
@@ -200,7 +204,7 @@ load_start_vm(EFI_HANDLE ParentImage)
             continue;
         }
 
-        FilePath = FileDevicePath(FileSystemHandles[i], L"\\EFI\\boot\\bootx64.efi");
+        FilePath = FileDevicePath(FileSystemHandles[i], EFI_BOOT_NEXT);
 
         status =
             gBS->LoadImage(
@@ -239,7 +243,6 @@ load_start_vm(EFI_HANDLE ParentImage)
     }
 
     BFALERT("Unable to locate EFI bootloader\n");
-    __asm volatile("vmcall" :: "a"(0xBF07000000000000), "b"(1));
     return EFI_ABORTED;
 }
 

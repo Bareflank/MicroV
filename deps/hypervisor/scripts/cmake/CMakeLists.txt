@@ -255,12 +255,16 @@ target_compile_options(bfroot INTERFACE
     $<${EFI_C}:-std=c11>
     $<${EFI_C}:-U__linux__>
 )
+
+message(STATUS "EFI boot next: ${EFI_BOOT_NEXT}")
+
 target_compile_definitions(bfroot INTERFACE
     $<${EFI_C}:CONFIG_x86_64>
     $<${EFI_C}:GNU_EFI_USE_MS_ABI>
     $<${EFI_C}:__KERNEL__>
     $<${EFI_C}:KERNEL>
     $<${EFI_C}:EFI>
+    $<${EFI_C}:EFI_BOOT_NEXT=${EFI_BOOT_NEXT}>
     $<$<BOOL:${USE_XUE}>:USE_XUE>
 )
 target_include_directories(bfroot SYSTEM INTERFACE
