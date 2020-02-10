@@ -19,33 +19,41 @@
 ; OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 ; SOFTWARE.
 
-#define NAME_UC "Beam"
-#define NAME_LC "beam"
+#ifndef NAME_TITLE
+#define "Foo Bar"
+#endif
+
+#ifndef NAME_LOWER
+#define "foo-bar"
+#endif
+
+#ifndef PUBLISHER
 #define PUBLISHER "Assured Information Security, Inc."
-#define MAJOR "0"
-#define MINOR "9"
-#define PATCH "0"
+#endif
+
 #define PS "{sys}\WindowsPowerShell\v1.0\powershell.exe"
-#define POWER_BUTTONS_GUID
+#define MAJOR "1"
+#define MINOR "2"
+#define YEAR GetDateTimeString('yyyy', '', '')
 
 [Setup]
-AppName={#NAME_UC}
-AppVersion={#MAJOR}.{#MINOR}.{#PATCH}
+AppName={#NAME_TITLE}
+AppVersion={#MAJOR}.{#MINOR}
 AppPublisher={#PUBLISHER}
-AppCopyright=Copyright (C) 2019 {#PUBLISHER}
-DefaultDirName={commonpf}\{#NAME_UC}
-DefaultGroupName={#NAME_UC}
+AppCopyright=Copyright (C) {#YEAR} {#PUBLISHER}
+DefaultDirName={commonpf}\{#NAME_TITLE}
+DefaultGroupName={#NAME_TITLE}
 DirExistsWarning=no
 Compression=lzma2
 SolidCompression=yes
 AlwaysRestart=yes
 ArchitecturesInstallIn64BitMode=x64
-OutputBaseFilename=install-{#NAME_LC}
+OutputDir=output
+OutputBaseFilename=install-{#NAME_LOWER}
 PrivilegesRequired=admin
 SetupLogging=yes
 SetupIconFile=assets\beam-logo.ico
 UninstallDisplayIcon=assets\beam-logo.ico
-;WizardImageFile=assets\Francois.bmp
 WizardSmallImageFile=assets\beam-logo.bmp
 WizardStyle=modern
 
@@ -122,9 +130,7 @@ Filename: "{sys}\bcdedit.exe"; Parameters: "/set testsigning on"; Flags: runhidd
 ; Install vs2019 redistributables (needed for uvctl.exe)
 Filename: "{app}\util\vcredist_x64.exe"; Parameters: "/install /quiet"; StatusMsg: "Installing VC++ libraries..."; Flags: runhidden
 
-; Install builder (and visr - they use the same) driver cert. Note that
-; "WDKTestCert dev" is the common name of the cert and "dev" is the name
-; of the user that built the drivers
+; Install builder (and visr - they use the same) driver cert
 Filename: "{app}\util\certmgr.exe"; Parameters: "/add ""{app}\drivers\builder\builder.cer"" /s /r localMachine root"; StatusMsg: "Installing driver certs..."; Flags: runhidden
 Filename: "{app}\util\certmgr.exe"; Parameters: "/add ""{app}\drivers\builder\builder.cer"" /s /r localMachine trustedpublisher"; StatusMsg: "Installing driver certs..."; Flags: runhidden
 
@@ -165,8 +171,8 @@ Filename: "{#PS}"; Parameters: "-File ""{app}\scripts\netctl.ps1"" -Init"; Flags
 Filename: "{app}\util\dpinst.exe"; Parameters: "/s /d /u ""{app}\drivers\visr\visr.inf"""; Flags: runhidden
 Filename: "{app}\util\dpinst.exe"; Parameters: "/s /d /u ""{app}\drivers\builder\builder.inf"""; Flags: runhidden
 Filename: "{app}\util\devcon.exe"; Parameters: "/remove ROOT\builder"; Flags: runhidden
-Filename: "{app}\util\certmgr.exe"; Parameters: "/del /c /n ""WDKTestCert dev"" /s /r localMachine trustedpublisher"; Flags: runhidden
-Filename: "{app}\util\certmgr.exe"; Parameters: "/del /c /n ""WDKTestCert dev"" /s /r localMachine root"; Flags: runhidden
+Filename: "{app}\util\certmgr.exe"; Parameters: "/del /c /n ""{#WDK_CERT_CN}"" /s /r localMachine trustedpublisher"; Flags: runhidden
+Filename: "{app}\util\certmgr.exe"; Parameters: "/del /c /n ""{#WDK_CERT_CN}"" /s /r localMachine root"; Flags: runhidden
 
 ; Uninstall vs2019 redistributables
 Filename: "{app}\util\vcredist_x64.exe"; Parameters: "/uninstall /quiet"; Flags: runhidden
