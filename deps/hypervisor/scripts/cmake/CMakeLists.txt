@@ -264,7 +264,6 @@ target_compile_definitions(bfroot INTERFACE
     $<${EFI_C}:__KERNEL__>
     $<${EFI_C}:KERNEL>
     $<${EFI_C}:EFI>
-    $<${EFI_C}:EFI_BOOT_NEXT=${EFI_BOOT_NEXT}>
     $<$<BOOL:${USE_XUE}>:USE_XUE>
 )
 target_include_directories(bfroot SYSTEM INTERFACE

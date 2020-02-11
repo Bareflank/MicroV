@@ -221,9 +221,15 @@ to bareflank.efi. The arguments it understands are defined
 Also note that bareflank.efi loads the next EFI binary based on the cmake
 `EFI_BOOT_NEXT` config option. Set that value in your config.cmake to point to
 the EFI binary you want bareflank.efi to run after it has started the VMM. The
-path is Windows-style and relative to the mountpoint of your EFI system
-partition. It needs to be escaped as a wide-character C-string. The default
-value points to Windows Boot Manager and is found
+path is relative to the mountpoint of your EFI system partition (ESP). For example,
+if your ESP is mounted at `/boot/efi` and you want bareflank.efi to run
+`/boot/efi/EFI/grubx64.efi`, then you would use the following in your config.cmake:
+
+```cmake
+set(EFI_BOOT_NEXT "/EFI/grubx64.efi")
+```
+
+The default value points to Windows Boot Manager and is found
 [here](scripts/cmake/config/default.cmake#L64). You can change that to point
 to whatever EFI binary you want to run after the VMM has started (e.g. back to
 the shell or grub).

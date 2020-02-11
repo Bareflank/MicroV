@@ -61,6 +61,6 @@ add_config(
 add_config(
     CONFIG_NAME EFI_BOOT_NEXT
     CONFIG_TYPE STRING
-    DEFAULT_VAL "L\"\\\\EFI\\\\boot\\\\bootx64.efi\""
+    DEFAULT_VAL "/EFI/boot/bootx64.efi"
     DESCRIPTION "Path (relative to ESP mount point) to EFI binary to boot after bareflank.efi"
 )

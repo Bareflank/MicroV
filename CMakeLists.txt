@@ -19,7 +19,6 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-include(${CMAKE_CURRENT_LIST_DIR}/scripts/cmake/config/default.cmake)
 include(${MICROV_SOURCE_CMAKE_DIR}/targets.cmake)
 
 if(ENABLE_BUILD_VMM)
