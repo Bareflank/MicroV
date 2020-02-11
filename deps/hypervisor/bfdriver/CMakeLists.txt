@@ -52,6 +52,10 @@ configure_file(
 # ------------------------------------------------------------------------------
 
 if(${PREFIX} STREQUAL efi)
+    string(REPLACE "/" "\\\\" BOOT_NEXT_STR ${EFI_BOOT_NEXT})
+    string(APPEND BOOT_NEXT_STR "\"")
+    string(PREPEND BOOT_NEXT_STR "L\"")
+
     add_custom_command(
         OUTPUT ${CMAKE_BINARY_DIR}/vmm.h
         COMMAND ${CMAKE_COMMAND}
@@ -70,6 +74,8 @@ if(${PREFIX} STREQUAL efi)
     add_dependencies(bareflank bareflank_xxd)
 
     target_link_libraries(bareflank PRIVATE bfdriver)
+    target_compile_definitions(bareflank PRIVATE EFI_BOOT_NEXT=${BOOT_NEXT_STR})
+
     target_include_directories(bareflank PRIVATE
         $<${BUILD_INCLUDE}:${CMAKE_CURRENT_LIST_DIR}/include>
         $<${BUILD_INCLUDE}:${CMAKE_CURRENT_LIST_DIR}/../bfsdk/include>

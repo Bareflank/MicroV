@@ -93,6 +93,8 @@ endmacro(add_config)
 # ------------------------------------------------------------------------------
 
 macro(include_external_config)
+    list(LENGTH EXTENSION old_len)
+
     if(CONFIG)
         foreach(c ${CONFIG})
             if(EXISTS "${SOURCE_CONFIG_DIR}/${c}.cmake")
@@ -115,6 +117,21 @@ macro(include_external_config)
         get_filename_component(CONFIG "${CMAKE_SOURCE_DIR}/../config.cmake" ABSOLUTE)
         message(STATUS "Config: ${CONFIG}")
         include(${CONFIG})
+    endif()
+
+    list(LENGTH EXTENSION new_len)
+
+    if(${new_len} GREATER ${old_len})
+        list(SUBLIST EXTENSION ${old_len} -1 NEW_EXTENSION)
+
+        foreach(e ${NEW_EXTENSION})
+            if(NOT IS_ABSOLUTE "${e}")
+                get_filename_component(e "${BUILD_ROOT_DIR}/${e}" ABSOLUTE)
+            endif()
+            if(EXISTS "${e}/scripts/cmake/config/default.cmake")
+                include(${e}/scripts/cmake/config/default.cmake)
+            endif()
+        endforeach(e)
     endif()
 endmacro(include_external_config)
 
