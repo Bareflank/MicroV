@@ -21,7 +21,8 @@
 
 param(
     [parameter(mandatory)] [string] $ProductName,
-    [string] $IssPath
+    [string] $IssPath,
+    [switch] $UseShell
 )
 
 function parse-wdk-cert-cn {
@@ -70,9 +71,14 @@ if (!(Test-Path $IssPath)) {
 $wdk_cert_cn = parse-wdk-cert-cn
 
 $cmd = "& `'$iscc`' /F`"$installer`" "
-$cmd = $cmd + "`"/DNAME_LOWER=$name_lower`" "
-$cmd = $cmd + "`"/DNAME_TITLE=$name_title`" "
-$cmd = $cmd + "`"/DWDK_CERT_CN=$wdk_cert_cn`" "
-$cmd = $cmd + "`"$IssPath`""
+$cmd += "`"/DNAME_LOWER=$name_lower`" "
+$cmd += "`"/DNAME_TITLE=$name_title`" "
+$cmd += "`"/DWDK_CERT_CN=$wdk_cert_cn`" "
+
+if ($UseShell) {
+    $cmd += "`"/DBOOT_SHELL`" "
+}
+
+$cmd += "`"$IssPath`""
 
 iex $cmd

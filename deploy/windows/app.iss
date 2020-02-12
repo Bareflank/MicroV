@@ -20,11 +20,11 @@
 ; SOFTWARE.
 
 #ifndef NAME_TITLE
-#define "Foo Bar"
+#define NAME_TITLE "Foo Bar"
 #endif
 
 #ifndef NAME_LOWER
-#define "foo-bar"
+#define NAME_LOWER "foo-bar"
 #endif
 
 #ifndef PUBLISHER
@@ -58,6 +58,9 @@ WizardSmallImageFile=assets\beam-logo.bmp
 WizardStyle=modern
 
 [Files]
+#ifdef BOOT_SHELL
+Source: "shell.efi"; DestDir: "P:\EFI\Boot\"
+#endif
 Source: "bareflank.efi"; DestDir: "P:\EFI\Boot\"
 Source: "uvctl.exe"; DestDir: "{app}"
 Source: "xsvm-vmlinux"; DestDir: "{app}"
@@ -122,7 +125,11 @@ Filename: "{#PS}"; Parameters: "-Command New-Item -Path ""{app}"" -Name logs -It
 
 ; Install hypervisor and point bootmgr to the VMM's binary
 Filename: "{cmd}"; Parameters: "/C mountvol P: /D"; Flags: runhidden
+#ifdef BOOT_SHELL
+Filename: "{sys}\bcdedit.exe"; Parameters: "/set {{bootmgr} path \EFI\Boot\shell.efi"; Flags: runhidden
+#else
 Filename: "{sys}\bcdedit.exe"; Parameters: "/set {{bootmgr} path \EFI\Boot\bareflank.efi"; Flags: runhidden
+#endif
 
 ; Enable testsigning
 Filename: "{sys}\bcdedit.exe"; Parameters: "/set testsigning on"; Flags: runhidden
@@ -153,7 +160,7 @@ Filename: "{app}\util\dpinst.exe"; Parameters: "/s /path ""{app}\drivers\xennet"
 Filename: "{#PS}"; Parameters: "-File ""{app}\scripts\powerctl.ps1"" -Init"; Flags: runhidden
 
 ; Register uvctl task
-Filename: "{#PS}"; Parameters: "-File ""{app}\scripts\taskctl.ps1"" -TaskPath ""{app}\scripts\startvms.ps1"" -TaskName StartVms -Register"; Flags: runhidden
+;Filename: "{#PS}"; Parameters: "-File ""{app}\scripts\taskctl.ps1"" -TaskPath ""{app}\scripts\startvms.ps1"" -TaskName StartVms -Register"; Flags: runhidden
 
 ; Disable PCI network devices
 Filename: "{#PS}"; Parameters: "-File ""{app}\scripts\netctl.ps1"" -Init"; Flags: runhidden
@@ -185,6 +192,9 @@ Filename: "{sys}\bcdedit.exe"; Parameters: "/set testsigning off"; Flags: runhid
 
 ; Delete the VMM binary
 Filename: "{cmd}"; Parameters: "/C mountvol P: /S"; Flags: runhidden
+#ifdef BOOT_SHELL
+Filename: "{cmd}"; Parameters: "/C del P:\EFI\Boot\shell.efi"; Flags: runhidden
+#endif
 Filename: "{cmd}"; Parameters: "/C del P:\EFI\Boot\bareflank.efi"; Flags: runhidden
 Filename: "{cmd}"; Parameters: "/C mountvol P: /D"; Flags: runhidden
 
@@ -192,7 +202,7 @@ Filename: "{cmd}"; Parameters: "/C mountvol P: /D"; Flags: runhidden
 Filename: "{#PS}"; Parameters: "-File ""{app}\scripts\rmfilters.ps1"""; Flags: runhidden
 
 ; Unregister the uvctl task
-Filename: "{#PS}"; Parameters: "-File ""{app}\scripts\taskctl.ps1"" -TaskName StartVms -Unregister"; Flags: runhidden
+;Filename: "{#PS}"; Parameters: "-File ""{app}\scripts\taskctl.ps1"" -TaskName StartVms -Unregister"; Flags: runhidden
 
 ; Restore suspend/resume settings
 Filename: "{#PS}"; Parameters: "-File ""{app}\scripts\powerctl.ps1"" -Fini"; Flags: runhidden
