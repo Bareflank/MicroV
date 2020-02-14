@@ -63,8 +63,11 @@ Source: "shell.efi"; DestDir: "P:\EFI\Boot\"
 #endif
 Source: "bareflank.efi"; DestDir: "P:\EFI\Boot\"
 Source: "uvctl.exe"; DestDir: "{app}"
-Source: "xsvm-vmlinux"; DestDir: "{app}"
-Source: "xsvm-rootfs.cpio.gz"; DestDir: "{app}"
+Source: "images\xsvm-vmlinux"; DestDir: "{app}"
+Source: "images\xsvm-rootfs.cpio.gz"; DestDir: "{app}"
+Source: "images\ndvm-vmlinux"; DestDir: "{app}\storage\boot"
+Source: "images\ndvm-rootfs.cpio.gz"; DestDir: "{app}\storage\boot"
+Source: "images\ndvm-rootfs.raw"; DestDir: "{app}\storage\images"
 Source: "util\certmgr.exe"; DestDir: "{app}\util"
 Source: "util\devcon.exe"; DestDir: "{app}\util"
 Source: "redist\x64\dpinst.exe"; DestDir: "{app}\util"
@@ -117,6 +120,7 @@ Source: "scripts\netctl.ps1"; DestDir: "{app}\scripts"
 Source: "scripts\taskctl.ps1"; DestDir: "{app}\scripts"
 Source: "scripts\powerctl.ps1"; DestDir: "{app}\scripts"
 Source: "scripts\rmfilters.ps1"; DestDir: "{app}\scripts"
+Source: "scripts\smbshare.ps1"; DestDir: "{app}\scripts"
 
 [Run]
 ; Allow our powershell scripts to run and create the log directory
@@ -165,6 +169,9 @@ Filename: "{#PS}"; Parameters: "-File ""{app}\scripts\powerctl.ps1"" -Init"; Fla
 ; Disable PCI network devices
 Filename: "{#PS}"; Parameters: "-File ""{app}\scripts\netctl.ps1"" -Init"; Flags: runhidden
 
+; Create SMB share for persistent storage
+Filename: "{#PS}"; Parameters: "-File ""{app}\scripts\smbshare.ps1"" -RootDir ""{app}"" -Add"; Flags: runhidden
+
 [UninstallRun]
 ; Remove builder and visr drivers. Note we dont remove the Xen PV drivers
 ; because Windows fails to boot with a "Boot critical file is corrupt" error
@@ -200,6 +207,9 @@ Filename: "{cmd}"; Parameters: "/C mountvol P: /D"; Flags: runhidden
 
 ; Remove xenfilt from the UpperFilters registry value in the system and hdc classes
 Filename: "{#PS}"; Parameters: "-File ""{app}\scripts\rmfilters.ps1"""; Flags: runhidden
+
+; Remove SMB share
+Filename: "{#PS}"; Parameters: "-File ""{app}\scripts\smbshare.ps1"" -Remove"; Flags: runhidden
 
 ; Unregister the uvctl task
 ;Filename: "{#PS}"; Parameters: "-File ""{app}\scripts\taskctl.ps1"" -TaskName StartVms -Unregister"; Flags: runhidden
