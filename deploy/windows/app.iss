@@ -117,10 +117,12 @@ Source: "drivers\xennet\xennet_coinst.pdb"; DestDir: "{app}\drivers\xennet"
 
 Source: "scripts\startvms.ps1"; DestDir: "{app}\scripts"
 Source: "scripts\netctl.ps1"; DestDir: "{app}\scripts"
-Source: "scripts\taskctl.ps1"; DestDir: "{app}\scripts"
 Source: "scripts\powerctl.ps1"; DestDir: "{app}\scripts"
 Source: "scripts\rmfilters.ps1"; DestDir: "{app}\scripts"
 Source: "scripts\smbshare.ps1"; DestDir: "{app}\scripts"
+#ifdef AUTO_START
+Source: "scripts\taskctl.ps1"; DestDir: "{app}\scripts"
+#endif
 
 [Run]
 ; Allow our powershell scripts to run and create the log directory
@@ -163,8 +165,10 @@ Filename: "{app}\util\dpinst.exe"; Parameters: "/s /path ""{app}\drivers\xennet"
 ; Disable suspend/resume
 Filename: "{#PS}"; Parameters: "-File ""{app}\scripts\powerctl.ps1"" -Init"; Flags: runhidden
 
+#ifdef AUTO_START
 ; Register uvctl task
-;Filename: "{#PS}"; Parameters: "-File ""{app}\scripts\taskctl.ps1"" -TaskPath ""{app}\scripts\startvms.ps1"" -TaskName StartVms -Register"; Flags: runhidden
+Filename: "{#PS}"; Parameters: "-File ""{app}\scripts\taskctl.ps1"" -TaskPath ""{app}\scripts\startvms.ps1"" -TaskName StartVms -Register"; Flags: runhidden
+#endif
 
 ; Disable PCI network devices
 Filename: "{#PS}"; Parameters: "-File ""{app}\scripts\netctl.ps1"" -Init"; Flags: runhidden
@@ -211,8 +215,10 @@ Filename: "{#PS}"; Parameters: "-File ""{app}\scripts\rmfilters.ps1"""; Flags: r
 ; Remove SMB share
 Filename: "{#PS}"; Parameters: "-File ""{app}\scripts\smbshare.ps1"" -Remove"; Flags: runhidden
 
+#ifdef AUTO_START
 ; Unregister the uvctl task
-;Filename: "{#PS}"; Parameters: "-File ""{app}\scripts\taskctl.ps1"" -TaskName StartVms -Unregister"; Flags: runhidden
+Filename: "{#PS}"; Parameters: "-File ""{app}\scripts\taskctl.ps1"" -TaskName StartVms -Unregister"; Flags: runhidden
+#endif
 
 ; Restore suspend/resume settings
 Filename: "{#PS}"; Parameters: "-File ""{app}\scripts\powerctl.ps1"" -Fini"; Flags: runhidden
