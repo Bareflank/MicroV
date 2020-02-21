@@ -212,7 +212,7 @@ $ make stop && make unload && make load && make start  # equivalent to make quic
 
 To start the VMM from EFI, copy bareflank.efi to your EFI partition and arrange
 for it to be run prior to your OS. I typically install the pre-compiled UEFI
-[shell](https://github.com/tianocore/edk2/blob/UDK2018/ShellBinPkg/UefiShell/X64/Shell.efi),
+[shell](deploy/windows/shell.efi),
 add it as a boot option with `efibootmgr`, then run bareflank.efi from the shell.
 This approach has the added advantage of being able to pass command line arguments
 to bareflank.efi. The arguments it understands are defined
@@ -233,6 +233,13 @@ The default value points to Windows Boot Manager and is found
 [here](scripts/cmake/config/default.cmake#L64). You can change that to point
 to whatever EFI binary you want to run after the VMM has started (e.g. back to
 the shell or grub).
+
+Note that if you use the Windows installer, you dont need install
+the shell by hand as described above. Instead pass `-useshell` to
+[make-installer.ps1](scripts/deploy/make-installer.ps1). Then after running the
+installer itself and rebooting, you will automatically boot into the shell. From there
+you can run `bareflank.efi --enable-winpv` to start the VMM. Microv will boot
+the EFI entry given by `EFI_BOOT_NEXT` from your config.cmake like normal.
 
 ## Building Guest Images
 
