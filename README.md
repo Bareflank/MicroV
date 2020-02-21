@@ -127,7 +127,7 @@ physical piece of hardware.
   also often contains timing constraints in the interface designs that are
   even more difficult to ensure in software, especially when interactions
   with the emulated software can be preempted by another virtual machine.
-- Virtualization: Aother way to share a physical device is to create virtual
+- Virtualization: Another way to share a physical device is to create virtual
   devices. Virtual devices do not mimic real hardware and instead create a
   brand new, software defined virtual device with an interface that is designed
   specifically to be performance and reliable in virtual environments.
