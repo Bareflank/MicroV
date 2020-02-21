@@ -22,7 +22,8 @@
 param(
     [parameter(mandatory)] [string] $ProductName,
     [string] $IssPath,
-    [switch] $UseShell
+    [switch] $UseShell,
+    [switch] $AutoStart
 )
 
 function parse-wdk-cert-cn {
@@ -77,6 +78,10 @@ $cmd += "`"/DWDK_CERT_CN=$wdk_cert_cn`" "
 
 if ($UseShell) {
     $cmd += "`"/DBOOT_SHELL`" "
+}
+
+if ($AutoStart) {
+    $cmd += "`"/DAUTO_START`" "
 }
 
 $cmd += "`"$IssPath`""

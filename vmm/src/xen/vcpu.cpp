@@ -462,7 +462,7 @@ bool xen_vcpu::handle_grant_table_op()
     try {
 
         if (m_uv_vcpu->rdx() == 0) {
-            printv("Received gnttabop %lu with count == 0\n", m_uv_vcpu->rdi());
+            //printv("Received gnttabop %lu with count == 0\n", m_uv_vcpu->rdi());
             m_uv_vcpu->set_rax(0);
             return true;
         }
@@ -963,6 +963,14 @@ bool xen_vcpu::debug_hypercall(microv_vcpu *vcpu)
 
     if (vcpu->is_root_vcpu()) {
         return true;
+    }
+
+    if (rax == __HYPERVISOR_xen_version && rdi == XENVER_guest_handle) {
+        return false;
+    }
+
+    if (rax == __HYPERVISOR_platform_op && rdi == XENPF_settime64) {
+        return false;
     }
 
     if (rax == __HYPERVISOR_sched_op && rdi == SCHEDOP_yield) {
