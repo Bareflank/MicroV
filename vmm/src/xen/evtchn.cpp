@@ -228,49 +228,6 @@ xen_evtchn::xen_evtchn(xen_domain *dom) : m_xen_dom{dom}
     this->setup_ports();
 }
 
-/* This signature sets the vector for vcpu0 */
-int xen_evtchn::set_upcall_vector(xen_vcpu *v, xen_hvm_param_t *param)
-{
-    auto type = (param->value & HVM_PARAM_CALLBACK_IRQ_TYPE_MASK) >> 56;
-    if (type != HVM_PARAM_CALLBACK_TYPE_VECTOR && type) {
-        printv("%s: unsupported type: 0x%llx\n", __func__, type);
-        return -EINVAL;
-    }
-
-    auto vector = param->value & 0xFFU;
-
-    expects(m_event_ctl.size() > 0);
-    m_event_ctl[0]->upcall_vector = vector;
-
-    printv("evtchn: set global upcall vector: 0x%lx\n", vector);
-
-    return 0;
-}
-
-/* This signature sets the vector for the vcpu referenced in arg */
-int xen_evtchn::set_upcall_vector(xen_vcpu *v,
-                                  xen_hvm_evtchn_upcall_vector_t *arg)
-{
-    if (arg->vcpu >= m_event_ctl.size()) {
-        printv("%s: invalid vcpuid: 0x%x\n", __func__, arg->vcpu);
-        return -EINVAL;
-    }
-
-    if (arg->vector >= 0xFFU) {
-        printv("%s: invalid vector: 0x%x\n", __func__, arg->vector);
-        return -ERANGE;
-    }
-
-    auto ctl = m_event_ctl[arg->vcpu].get();
-    ctl->upcall_vector = arg->vector;
-
-    printv("evtchn: set upcall vector 0x%x on vcpu 0x%x\n",
-           arg->vector,
-           arg->vcpu);
-
-    return 0;
-}
-
 bool xen_evtchn::init_control(xen_vcpu *v, evtchn_init_control_t *ctl)
 {
     expects(ctl->offset <= (UV_PAGE_SIZE - sizeof(evtchn_fifo_control_block_t)));
@@ -745,10 +702,7 @@ void xen_evtchn::push_upcall(chan_t *chan)
             return;
         }
 
-        auto ctl = m_event_ctl[chan->vcpuid].get();
-        auto vec = ctl->upcall_vector;
-
-        if (vec) {
+        if (auto vec = xenv->m_upcall_vector; vec) {
             xenv->push_external_interrupt(vec);
         }
 
@@ -767,11 +721,8 @@ void xen_evtchn::queue_upcall(chan_t *chan)
             return;
         }
 
-        auto ctl = m_event_ctl[chan->vcpuid].get();
-        auto vec = ctl->upcall_vector;
-
-        if (vec) {
-            xenv->queue_external_interrupt(ctl->upcall_vector);
+        if (auto vec = xenv->m_upcall_vector; vec) {
+            xenv->queue_external_interrupt(vec);
         }
 
         xend->put_xen_vcpu(chan->vcpuid);
@@ -789,11 +740,8 @@ void xen_evtchn::inject_upcall(chan_t *chan)
             return;
         }
 
-        auto ctl = m_event_ctl[chan->vcpuid].get();
-        auto vec = ctl->upcall_vector;
-
-        if (vec) {
-            xenv->inject_external_interrupt(ctl->upcall_vector);
+        if (auto vec = xenv->m_upcall_vector; vec) {
+            xenv->inject_external_interrupt(vec);
         }
 
         xend->put_xen_vcpu(chan->vcpuid);

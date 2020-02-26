@@ -169,7 +169,6 @@ struct event_queue {
 
 /* Per-vcpu event control structure */
 struct event_control {
-    uint32_t upcall_vector{};
     unique_map<uint8_t> map{};
     evtchn_fifo_control_block_t *blk{};
     std::atomic<uint32_t> *ready{};
@@ -180,7 +179,6 @@ struct event_control {
         auto gpa = xen_addr(init->control_gfn);
         auto off = init->offset;
 
-        upcall_vector = 0xFF;
         map = uvv->map_gpa_4k<uint8_t>(gpa);
         blk = reinterpret_cast<evtchn_fifo_control_block_t *>(map.get() + off);
         ready = reinterpret_cast<std::atomic<uint32_t> *>(&blk->ready);
@@ -220,9 +218,6 @@ public:
     bool close(xen_vcpu *v, evtchn_close_t *ec);
     bool send(xen_vcpu *v, evtchn_send_t *es);
     bool reset(xen_vcpu *v);
-
-    int set_upcall_vector(xen_vcpu *v, xen_hvm_param_t *param);
-    int set_upcall_vector(xen_vcpu *v, xen_hvm_evtchn_upcall_vector_t *arg);
 
     void close(chan_t *chan);
     void queue_virq(uint32_t virq);

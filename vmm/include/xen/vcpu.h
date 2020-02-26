@@ -67,6 +67,7 @@ public:
     microv_domain *m_uv_dom{};
     xen_domain *m_xen_dom{};
     xen_vcpuid_t m_id{};
+    uint32_t m_upcall_vector{};
     int m_origin{};
     std::unique_ptr<intel_x64::vmcall_event_op_handler> m_event_op_hdlr{};
 

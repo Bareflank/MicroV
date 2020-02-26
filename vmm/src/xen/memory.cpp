@@ -986,7 +986,7 @@ bool xen_memory::claim_pages(xen_vcpu *v, xen_memory_reservation_t *rsv)
            __func__, claim, root_pages, vmm_pages);
 
     if (claim > avail) {
-        printv("%s: ERROR: can't claim amount requested\n");
+        printv("%s: ERROR: can't claim amount requested\n", __func__);
         uvv->set_rax(-ENOMEM);
         return true;
     }

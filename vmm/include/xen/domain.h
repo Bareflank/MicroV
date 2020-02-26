@@ -158,6 +158,12 @@ public:
     microv_domain *m_uv_dom{};
 
     /*
+     * Domain-wide upcall vector. Used for each vcpu unless the guest
+     * sets a per-vcpu vector with HVMOP_set_evtchn_upcall_vector
+     */
+    uint32_t m_upcall_vector{};
+
+    /*
      * We use this limit given by Xen as this is the max number of
      * vcpus that a given struct shared_info can store
      */
