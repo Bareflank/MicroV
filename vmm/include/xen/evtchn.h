@@ -252,7 +252,6 @@ private:
 
     port_t make_new_port();
     int make_port(port_t port);
-    void setup_ports();
     void add_event_ctl(xen_vcpu *v, evtchn_init_control_t *ctl);
 
     void make_chan_page(port_t port);

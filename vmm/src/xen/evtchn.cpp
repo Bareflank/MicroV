@@ -225,7 +225,15 @@ xen_evtchn::xen_evtchn(xen_domain *dom) : m_xen_dom{dom}
     ensures(m_word_pages.capacity() > 0);
     ensures(m_chan_pages.capacity() > 0);
 
-    this->setup_ports();
+    /*
+     * Allocate the first page of struct event_channels. Each
+     * channel is initialized to a default state == chan_t::state_free.
+     * We mark the first channel as chan_t::state_reserved, which in
+     * effect makes port 0 reserved, i.e., any port allocated for guest
+     * use must have a positive value.
+     */
+    this->make_chan_page(0);
+    this->port_to_chan(0)->state = chan_t::state_reserved;
 }
 
 bool xen_evtchn::init_control(xen_vcpu *v, evtchn_init_control_t *ctl)
@@ -651,17 +659,6 @@ void xen_evtchn::add_event_ctl(xen_vcpu *v, evtchn_init_control_t *ctl)
     m_event_ctl.emplace_back(std::make_unique<struct event_control>(uvv, ctl));
     ctl->link_bits = EVTCHN_FIFO_LINK_BITS;
     uvv->set_rax(0);
-}
-
-void xen_evtchn::setup_ports()
-{
-    expects(m_word_pages.size() == 0);
-    expects(m_chan_pages.size() == 0);
-    expects(m_allocated_words == 0);
-    expects(m_allocated_chans == 0);
-
-    this->make_chan_page(0);
-    this->port_to_chan(0)->state = chan_t::state_reserved;
 }
 
 xen_evtchn::port_t xen_evtchn::bind(chan_t::state_t state)
