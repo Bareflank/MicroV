@@ -74,6 +74,7 @@ struct event_channel {
     using state_t = enum state;
 
     state_t state{state_free};
+    struct spin_lock lock{};
 
     /* Defined when state == state_virq */
     uint32_t virq{invalid_virq};
@@ -102,10 +103,11 @@ struct event_channel {
     /* The local port of the event */
     evtchn_port_t port{0};
 
-    struct spin_lock lock;
+    /* Used to mark events pending when there is no word to back it yet */
+    bool pending{};
 
     /* Pad to a power of 2 */
-    uint8_t pad[2];
+    uint8_t pad[1]{};
 
     /*
      * Note that the current implementation needs more work
@@ -120,6 +122,7 @@ struct event_channel {
 
     void reset(evtchn_port_t p) noexcept
     {
+        memset(&lock, 0, sizeof(lock));
         state = state_free;
         virq = invalid_virq;
         pirq = invalid_pirq;
@@ -130,7 +133,7 @@ struct event_channel {
         vcpuid = 0;
         prev_vcpuid = 0;
         port = p;
-        memset(&lock, 0, sizeof(lock));
+        pending = false;
     }
 
     event_channel(event_channel &&) = delete;
@@ -207,7 +210,7 @@ public:
     xen_evtchn(xen_domain *dom);
 
     bool init_control(xen_vcpu *v, evtchn_init_control_t *eic);
-    bool expand_array(xen_vcpu *v, evtchn_expand_array_t *eea);
+    int expand_array(xen_vcpu *v, evtchn_expand_array_t *eea);
     int set_priority(xen_vcpu *v, const evtchn_set_priority_t *esp);
     int status(xen_vcpu *v, evtchn_status *sts);
     int unmask(xen_vcpu *v, const evtchn_unmask *unmask);
@@ -256,7 +259,7 @@ private:
     void add_event_ctl(xen_vcpu *v, evtchn_init_control_t *ctl);
 
     void make_chan_page(port_t port);
-    void make_word_page(microv_vcpu *uvv, uintptr_t gfn);
+    int make_word_page(microv_vcpu *uvv, uintptr_t gfn);
 
     void notify_remote(chan_t *chan);
     void push_upcall(port_t port);

@@ -98,9 +98,10 @@ bool xen_evtchn_expand_array(xen_vcpu *v)
 {
     auto uvv = v->m_uv_vcpu;
     auto eea = uvv->map_arg<evtchn_expand_array_t>(uvv->rsi());
+    auto ret = v->m_xen_dom->m_evtchn->expand_array(v, eea.get());
 
-    expects(v->m_xen_dom);
-    return v->m_xen_dom->m_evtchn->expand_array(v, eea.get());
+    uvv->set_rax(ret);
+    return true;
 }
 
 bool xen_evtchn_set_priority(xen_vcpu *v)
@@ -246,15 +247,10 @@ bool xen_evtchn::init_control(xen_vcpu *v, evtchn_init_control_t *ctl)
     return true;
 }
 
-bool xen_evtchn::expand_array(xen_vcpu *v, evtchn_expand_array_t *eea)
+int xen_evtchn::expand_array(xen_vcpu *v, evtchn_expand_array_t *eea)
 {
-    auto uvv = v->m_uv_vcpu;
-    this->make_word_page(uvv, eea->array_gfn);
-
-    printv("evtchn: added event word page at 0x%lx\n", xen_addr(eea->array_gfn));
-    uvv->set_rax(0);
-
-    return true;
+    std::lock_guard guard(m_event_lock);
+    return this->make_word_page(v->m_uv_vcpu, eea->array_gfn);
 }
 
 int xen_evtchn::set_priority(xen_vcpu *v, const evtchn_set_priority_t *esp)
@@ -319,6 +315,8 @@ int xen_evtchn::status(xen_vcpu *v, evtchn_status_t *sts)
 
 int xen_evtchn::unmask(xen_vcpu *v, const evtchn_unmask_t *unmask)
 {
+    std::lock_guard guard(m_event_lock);
+
     auto port = unmask->port;
     if (port >= m_allocated_chans) {
         return -EINVAL;
@@ -923,6 +921,7 @@ bool xen_evtchn::raise(chan_t *chan)
 
     if (!word) {
         bferror_nhex(0, "port doesn't map to word", port);
+        chan->pending = true;
         return false;
     }
 
@@ -1080,12 +1079,30 @@ void xen_evtchn::make_chan_page(port_t port)
     m_allocated_chans += chans_per_page;
 }
 
-void xen_evtchn::make_word_page(microv_vcpu *uvv, uintptr_t gfn)
+int xen_evtchn::make_word_page(microv_vcpu *uvv, uintptr_t gfn)
 {
-    expects(m_word_pages.size() < m_word_pages.capacity());
+    if (m_word_pages.size() >= m_word_pages.capacity()) {
+        printv("%s: ERROR: word pages maxed out, size=%lu, cap=%lu\n",
+               __func__, m_word_pages.size(), m_word_pages.capacity());
+        return -ENOSPC;
+    }
 
+    auto port = m_allocated_words;
     m_word_pages.push_back(uvv->map_gpa_4k<word_t>(xen_addr(gfn)));
     m_allocated_words += words_per_page;
+
+    for (; port < m_allocated_words; port++) {
+        if (port >= m_allocated_chans) {
+            break;
+        }
+
+        auto chan = this->port_to_chan(port);
+        if (chan->pending) {
+            this->queue_upcall(chan);
+        }
+    }
+
+    return 0;
 }
 
 }
