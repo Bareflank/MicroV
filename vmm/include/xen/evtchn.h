@@ -208,9 +208,9 @@ public:
 
     bool init_control(xen_vcpu *v, evtchn_init_control_t *eic);
     bool expand_array(xen_vcpu *v, evtchn_expand_array_t *eea);
-    bool set_priority(xen_vcpu *v, evtchn_set_priority_t *esp);
+    int set_priority(xen_vcpu *v, const evtchn_set_priority_t *esp);
     int status(xen_vcpu *v, evtchn_status *sts);
-    int unmask(xen_vcpu *v, evtchn_unmask *unmask);
+    int unmask(xen_vcpu *v, const evtchn_unmask *unmask);
     int alloc_unbound(xen_vcpu *v, evtchn_alloc_unbound_t *eau);
     int bind_interdomain(xen_vcpu *v, evtchn_bind_interdomain_t *ebi);
     int bind_vcpu(xen_vcpu *v, const evtchn_bind_vcpu_t *ebv);

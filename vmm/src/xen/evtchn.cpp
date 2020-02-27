@@ -107,9 +107,10 @@ bool xen_evtchn_set_priority(xen_vcpu *v)
 {
     auto uvv = v->m_uv_vcpu;
     auto esp = uvv->map_arg<evtchn_set_priority_t>(uvv->rsi());
+    auto ret = v->m_xen_dom->m_evtchn->set_priority(v, esp.get());
 
-    expects(v->m_xen_dom);
-    return v->m_xen_dom->m_evtchn->set_priority(v, esp.get());
+    uvv->set_rax(ret);
+    return true;
 }
 
 bool xen_evtchn_status(xen_vcpu *v)
@@ -256,18 +257,20 @@ bool xen_evtchn::expand_array(xen_vcpu *v, evtchn_expand_array_t *eea)
     return true;
 }
 
-bool xen_evtchn::set_priority(xen_vcpu *v, evtchn_set_priority_t *esp)
+int xen_evtchn::set_priority(xen_vcpu *v, const evtchn_set_priority_t *esp)
 {
-    auto chan = this->port_to_chan(esp->port);
-    expects(chan);
+    std::lock_guard guard(m_event_lock);
 
-    printv("evtchn: set port %u priority: old=%u new=%u\n",
-           esp->port, chan->priority, esp->priority);
+    if (esp->port >= m_allocated_chans) {
+        return -EINVAL;
+    }
 
-    chan->priority = esp->priority;
-    v->m_uv_vcpu->set_rax(0);
+    if (esp->priority > EVTCHN_FIFO_PRIORITY_MIN) {
+        return -EINVAL;
+    }
 
-    return true;
+    this->port_to_chan(esp->port)->priority = esp->priority;
+    return 0;
 }
 
 int xen_evtchn::status(xen_vcpu *v, evtchn_status_t *sts)
@@ -314,7 +317,7 @@ int xen_evtchn::status(xen_vcpu *v, evtchn_status_t *sts)
     return 0;
 }
 
-int xen_evtchn::unmask(xen_vcpu *v, evtchn_unmask_t *unmask)
+int xen_evtchn::unmask(xen_vcpu *v, const evtchn_unmask_t *unmask)
 {
     auto port = unmask->port;
     if (port >= m_allocated_chans) {
@@ -329,7 +332,7 @@ int xen_evtchn::unmask(xen_vcpu *v, evtchn_unmask_t *unmask)
     clear_bit(word, EVTCHN_FIFO_MASKED);
 
     if (test_bit(word, EVTCHN_FIFO_PENDING)) {
-        auto chan = this->port_to_chan(unmask->port);
+        auto chan = this->port_to_chan(port);
         this->queue_upcall(chan);
     }
 
