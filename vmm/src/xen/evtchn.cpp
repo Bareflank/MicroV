@@ -88,8 +88,10 @@ bool xen_evtchn_unmask(xen_vcpu *v)
 {
     auto uvv = v->m_uv_vcpu;
     auto arg = uvv->map_arg<evtchn_unmask_t>(uvv->rsi());
+    auto ret = v->m_xen_dom->m_evtchn->unmask(v, arg.get());
 
-    return v->m_xen_dom->m_evtchn->unmask(v, arg.get());
+    uvv->set_rax(ret);
+    return true;
 }
 
 bool xen_evtchn_expand_array(xen_vcpu *v)
@@ -112,30 +114,31 @@ bool xen_evtchn_set_priority(xen_vcpu *v)
 
 bool xen_evtchn_status(xen_vcpu *v)
 {
+    auto rc = -EINVAL;
     auto uvv = v->m_uv_vcpu;
     auto sts = uvv->map_arg<evtchn_status_t>(uvv->rsi());
     auto domid = sts->dom;
 
     if (domid == DOMID_SELF || domid == v->m_xen_dom->m_id) {
-        return v->m_xen_dom->m_evtchn->status(v, sts.get());
+        rc = v->m_xen_dom->m_evtchn->status(v, sts.get());
+    } else {
+        auto dom = get_xen_domain(domid);
+        if (!dom) {
+            printv("%s: dom:0x%x not found\n", __func__, domid);
+            uvv->set_rax(-ESRCH);
+            return true;
+        }
+
+        auto put_dom = gsl::finally([domid](){ put_xen_domain(domid); });
+        rc = dom->m_evtchn->status(v, sts.get());
     }
 
-    auto dom = get_xen_domain(domid);
-    if (!dom) {
-        printv("%s: dom:0x%x not found\n", __func__, domid);
-        uvv->set_rax(-ESRCH);
-        return true;
-    }
-
-    auto ret = dom->m_evtchn->status(v, sts.get());
-    put_xen_domain(domid);
-    return ret;
+    uvv->set_rax(rc);
+    return true;
 }
 
 bool xen_evtchn_alloc_unbound(xen_vcpu *v)
 {
-    expects(v->m_xen_dom);
-
     auto rc = -EINVAL;
     auto uvv = v->m_uv_vcpu;
     auto eau = uvv->map_arg<evtchn_alloc_unbound_t>(uvv->rsi());
@@ -267,21 +270,24 @@ bool xen_evtchn::set_priority(xen_vcpu *v, evtchn_set_priority_t *esp)
     return true;
 }
 
-bool xen_evtchn::status(xen_vcpu *v, evtchn_status_t *sts)
+int xen_evtchn::status(xen_vcpu *v, evtchn_status_t *sts)
 {
-    auto uvv = v->m_uv_vcpu;
-    auto chan = this->port_to_chan(sts->port);
+    std::lock_guard guard(m_event_lock);
 
-    expects(chan);
+    auto uvv = v->m_uv_vcpu;
+    auto port = sts->port;
+
+    if (port > m_allocated_chans) {
+        return -EINVAL;
+    }
+
+    auto chan = this->port_to_chan(port);
 
     switch (chan->state) {
     case event_channel::state_free:
+    case event_channel::state_reserved:
         sts->status = EVTCHNSTAT_closed;
         break;
-    case event_channel::state_reserved:
-        printv("%s: port %u is reserved\n", __func__, sts->port);
-        uvv->set_rax(-EINVAL);
-        return true;
     case event_channel::state_unbound:
         sts->status = EVTCHNSTAT_unbound;
         sts->u.unbound.dom = chan->rdomid;
@@ -305,26 +311,29 @@ bool xen_evtchn::status(xen_vcpu *v, evtchn_status_t *sts)
     }
 
     sts->vcpu = chan->vcpuid;
-    uvv->set_rax(0);
-
-    return true;
+    return 0;
 }
 
-bool xen_evtchn::unmask(xen_vcpu *v, evtchn_unmask_t *unmask)
+int xen_evtchn::unmask(xen_vcpu *v, evtchn_unmask_t *unmask)
 {
-    auto word = this->port_to_word(unmask->port);
-    expects(word);
+    auto port = unmask->port;
+    if (port >= m_allocated_chans) {
+        return -EINVAL;
+    }
+
+    auto word = this->port_to_word(port);
+    if (!word) {
+        return 0;
+    }
 
     clear_bit(word, EVTCHN_FIFO_MASKED);
 
     if (test_bit(word, EVTCHN_FIFO_PENDING)) {
         auto chan = this->port_to_chan(unmask->port);
-        expects(chan);
         this->queue_upcall(chan);
     }
 
-    v->m_uv_vcpu->set_rax(0);
-    return true;
+    return 0;
 }
 
 int xen_evtchn::alloc_unbound(evtchn_alloc_unbound_t *eau)
