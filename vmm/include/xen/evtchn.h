@@ -219,7 +219,7 @@ public:
     int bind_vcpu(xen_vcpu *v, const evtchn_bind_vcpu_t *ebv);
     int bind_virq(xen_vcpu *v, evtchn_bind_virq_t *ebv);
     bool close(xen_vcpu *v, evtchn_close_t *ec);
-    bool send(xen_vcpu *v, evtchn_send_t *es);
+    int send(const evtchn_send_t *es);
     bool reset(xen_vcpu *v);
 
     void close(chan_t *chan);

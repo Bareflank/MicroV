@@ -207,10 +207,11 @@ bool xen_evtchn_close(xen_vcpu *v)
 bool xen_evtchn_send(xen_vcpu *v)
 {
     auto uvv = v->m_uv_vcpu;
-    auto es = uvv->map_arg<evtchn_send_t>(uvv->rsi());
+    auto arg = uvv->map_arg<evtchn_send_t>(uvv->rsi());
+    auto ret = v->m_xen_dom->m_evtchn->send(arg.get());
 
-    expects(v->m_xen_dom);
-    return v->m_xen_dom->m_evtchn->send(v, es.get());
+    uvv->set_rax(ret);
+    return true;
 }
 
 xen_evtchn::xen_evtchn(xen_domain *dom) : m_xen_dom{dom}
@@ -643,13 +644,17 @@ bool xen_evtchn::reset(xen_vcpu *v)
 
 void xen_evtchn::notify_remote(chan_t *chan)
 {
-    const auto ldomid = m_xen_dom->m_id;
-    const auto rdomid = chan->rdomid;
+    auto ldomid = m_xen_dom->m_id;
+    auto rdomid = chan->rdomid;
+    auto rport = chan->rport;
 
     if (ldomid == rdomid) {
-        auto rchan = this->port_to_chan(chan->rport);
-        expects(rchan);
-        this->queue_upcall(rchan);
+        auto rchan = this->port_to_chan(rport);
+        if (!rchan) {
+            printv("%s: ALERT: rport %u is invalid\n", __func__, rport);
+        } else {
+            this->queue_upcall(rchan);
+        }
         return;
     }
 
@@ -658,6 +663,8 @@ void xen_evtchn::notify_remote(chan_t *chan)
         printv("%s: remote 0x%x not found\n", __func__, rdomid);
         return;
     }
+
+    auto put_rdom = gsl::finally([rdomid](){ put_xen_domain(rdomid); });
 
     /*
      * Use push_upcall here so that we don't access the remote's vmcs.
@@ -669,26 +676,20 @@ void xen_evtchn::notify_remote(chan_t *chan)
      * remote may not see this event until another comes along. This is fine
      * assuming the guest kernel uses periodic idle because the timer tick will
      * ensure forward progress.
-     *
-     * N.B. push_upcall acquires a lock of the channel referenced by the port
-     * argument. This is to ensure that VMM access to the channel's data and
-     * corresponding event word is synchronized. The other upcall variants
-     * are NOT locked right now, so dont use them here unless locks are added.
      */
 
-    rdom->m_evtchn->push_upcall(chan->rport);
-    put_xen_domain(rdomid);
+    rdom->m_evtchn->push_upcall(rport);
 }
 
-bool xen_evtchn::send(xen_vcpu *v, evtchn_send_t *es)
+int xen_evtchn::send(const evtchn_send_t *send)
 {
-    auto chan = this->port_to_chan(es->port);
-    if (GSL_UNLIKELY(!chan)) {
-        bfalert_nhex(0, "evtchn::send: chan not found:", es->port);
-        return false;
+    if (GSL_UNLIKELY(send->port >= m_allocated_chans)) {
+        return -EINVAL;
     }
 
-    /* Xen allows interdomain and IPIs to be sent here */
+    auto chan = this->port_to_chan(send->port);
+    std::lock_guard guard(chan->lock);
+
     switch (chan->state) {
     case chan_t::state_interdomain:
         this->notify_remote(chan);
@@ -697,15 +698,14 @@ bool xen_evtchn::send(xen_vcpu *v, evtchn_send_t *es)
         this->queue_upcall(chan);
         break;
     case chan_t::state_unbound:
+        printv("%s: ALERT: dropping unbound event\n", __func__);
         break;
     default:
-        v->m_uv_vcpu->set_rax(-EINVAL);
-        bfalert_nhex(0, "evtchn::send: unsupported state", chan->state);
-        return true;
+        printv("%s: ALERT: state %d unsupported\n", __func__, chan->state);
+        return -EINVAL;
     }
 
-    v->m_uv_vcpu->set_rax(0);
-    return true;
+    return 0;
 }
 
 void xen_evtchn::queue_virq(uint32_t virq)
@@ -752,12 +752,6 @@ void xen_evtchn::push_upcall(port_t port)
 
 void xen_evtchn::push_upcall(chan_t *chan)
 {
-    std::lock_guard guard(chan->lock);
-
-    if (chan->state == chan_t::state_free) {
-        return;
-    }
-
     if (this->raise(chan)) {
         auto xend = m_xen_dom;
         auto xenv = xend->get_xen_vcpu(chan->vcpuid);
