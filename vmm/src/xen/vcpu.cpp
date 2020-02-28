@@ -189,6 +189,11 @@ bool xen_vcpu::init_hypercall_page(base_vcpu *vcpu, wrmsr_handler::info_t &info)
     return true;
 }
 
+void xen_vcpu::init_event_ctl(evtchn_init_control_t *ctl)
+{
+    m_event_ctl = std::make_unique<struct event_control>(m_uv_vcpu, ctl);
+}
+
 static bool wrmsr_self_ipi(base_vcpu *vcpu, wrmsr_handler::info_t &info)
 {
     vcpu->queue_external_interrupt(info.val);

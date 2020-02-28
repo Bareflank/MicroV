@@ -209,7 +209,7 @@ public:
 
     xen_evtchn(xen_domain *dom);
 
-    bool init_control(xen_vcpu *v, evtchn_init_control_t *eic);
+    int init_control(xen_vcpu *v, evtchn_init_control_t *eic);
     int expand_array(xen_vcpu *v, evtchn_expand_array_t *eea);
     int set_priority(xen_vcpu *v, const evtchn_set_priority_t *esp);
     int status(xen_vcpu *v, evtchn_status *sts);
@@ -248,15 +248,11 @@ private:
     void double_event_unlock(struct xen_domain *ldom,
                              struct xen_domain *rdom) noexcept;
 
-    chan_t *port_to_chan(port_t port) const;
-    word_t *port_to_word(port_t port) const;
-
-    uint64_t port_to_chan_page(port_t port) const;
-    uint64_t port_to_word_page(port_t port) const;
+    chan_t *port_to_chan(port_t port) const noexcept;
+    word_t *port_to_word(port_t port) const noexcept;
 
     int64_t get_free_port();
     int64_t allocate_port(port_t p);
-    void add_event_ctl(xen_vcpu *v, evtchn_init_control_t *ctl);
 
     void make_chan_page(port_t port);
     int make_word_page(microv_vcpu *uvv, uintptr_t gfn);
@@ -267,7 +263,7 @@ private:
     void queue_upcall(chan_t *chan);
     void inject_upcall(chan_t *chan);
     bool raise(chan_t *chan);
-    struct event_queue *lock_old_queue(chan_t *chan);
+    struct event_queue *lock_old_queue(const chan_t *chan);
 
     struct spin_lock m_event_lock{};
     uint64_t m_allocated_chans{};

@@ -79,9 +79,10 @@ bool xen_evtchn_init_control(xen_vcpu *v)
 {
     auto uvv = v->m_uv_vcpu;
     auto eic = uvv->map_arg<evtchn_init_control_t>(uvv->rsi());
+    auto ret = v->m_xen_dom->m_evtchn->init_control(v, eic.get());
 
-    expects(v->m_xen_dom);
-    return v->m_xen_dom->m_evtchn->init_control(v, eic.get());
+    uvv->set_rax(ret);
+    return true;
 }
 
 bool xen_evtchn_unmask(xen_vcpu *v)
@@ -238,13 +239,39 @@ xen_evtchn::xen_evtchn(xen_domain *dom) : m_xen_dom{dom}
     this->port_to_chan(0)->state = chan_t::state_reserved;
 }
 
-bool xen_evtchn::init_control(xen_vcpu *v, evtchn_init_control_t *ctl)
+int xen_evtchn::init_control(xen_vcpu *v, evtchn_init_control_t *ctl)
 {
-    expects(ctl->offset <= (UV_PAGE_SIZE - sizeof(evtchn_fifo_control_block_t)));
-    expects((ctl->offset & 0x7) == 0);
+    auto vcpuid = ctl->vcpu;
+    auto offset = ctl->offset;
 
-    this->add_event_ctl(v, ctl);
-    return true;
+    if (vcpuid >= m_xen_dom->m_nr_vcpus) {
+        return -ENOENT;
+    }
+
+    if (offset > (UV_PAGE_SIZE - sizeof(evtchn_fifo_control_block_t))) {
+        return -EINVAL;
+    }
+
+    if ((offset & 0x7U) != 0U) {
+        return -EINVAL;
+    }
+
+    std::lock_guard guard(m_event_lock);
+
+    auto vcpu = m_xen_dom->get_xen_vcpu(vcpuid);
+    if (!vcpu) {
+        printv("%s: ERROR: unable to get vcpu %u\n", __func__, vcpuid);
+        return -ENOENT;
+    }
+
+    auto put_vcpu = gsl::finally([this, vcpuid](){
+        m_xen_dom->put_xen_vcpu(vcpuid);
+    });
+
+    vcpu->init_event_ctl(ctl);
+    ctl->link_bits = EVTCHN_FIFO_LINK_BITS;
+
+    return 0;
 }
 
 int xen_evtchn::expand_array(xen_vcpu *v, evtchn_expand_array_t *eea)
@@ -715,29 +742,6 @@ void xen_evtchn::inject_virq(uint32_t virq)
     this->inject_upcall(chan);
 }
 
-void xen_evtchn::add_event_ctl(xen_vcpu *v, evtchn_init_control_t *ctl)
-{
-    auto uvv = v->m_uv_vcpu;
-    auto vcpuid = ctl->vcpu;
-
-    if (vcpuid >= m_xen_dom->m_nr_vcpus) {
-        printv("%s: invalid vcpuid: %u (dom->nr_vcpus=%lu)\n",
-                __func__, vcpuid, m_xen_dom->m_nr_vcpus);
-        uvv->set_rax(-EINVAL);
-        return;
-    }
-
-    if (vcpuid != m_event_ctl.size()) {
-        printv("%s: vcpuid %u inserted out of order\n", __func__, vcpuid);
-        uvv->set_rax(-EINVAL);
-        return;
-    }
-
-    m_event_ctl.emplace_back(std::make_unique<struct event_control>(uvv, ctl));
-    ctl->link_bits = EVTCHN_FIFO_LINK_BITS;
-    uvv->set_rax(0);
-}
-
 void xen_evtchn::push_upcall(port_t port)
 {
     auto chan = this->port_to_chan(port);
@@ -867,18 +871,33 @@ static bool set_link(word_t *tail, port_t port) noexcept
     return true;
 }
 
-struct event_queue *xen_evtchn::lock_old_queue(chan_t *chan)
+struct event_queue *xen_evtchn::lock_old_queue(const chan_t *chan)
 {
-    struct event_control *ctl;
-    struct event_queue *q, *oldq;
+    struct event_queue *q{};
+    struct event_queue *oldq{};
 
     for (auto attempt = 0; attempt < 3; attempt++) {
-        ctl = m_event_ctl[chan->prev_vcpuid].get();
+        auto prev_vcpuid = chan->prev_vcpuid;
+        auto vcpu = m_xen_dom->get_xen_vcpu(prev_vcpuid);
+        if (!vcpu) {
+            printv("%s: ERROR: prev_vcpuid %u not found\n",
+                    __func__, prev_vcpuid);
+            return nullptr;
+        }
+
+        auto put_vcpu = gsl::finally([this, prev_vcpuid](){
+            m_xen_dom->put_xen_vcpu(prev_vcpuid);
+        });
+
+        auto ctl = vcpu->m_event_ctl.get();
+        if (!ctl) {
+            printv("%s: ERROR: prev_vcpuid %u has invalid event_control\n",
+                    __func__, prev_vcpuid);
+            return nullptr;
+        }
+
         oldq = &ctl->queue[chan->prev_priority];
-
         spin_acquire(&oldq->lock);
-
-        ctl = m_event_ctl[chan->prev_vcpuid].get();
         q = &ctl->queue[chan->prev_priority];
 
         if (oldq == q) {
@@ -910,12 +929,6 @@ struct event_queue *xen_evtchn::lock_old_queue(chan_t *chan)
 
 bool xen_evtchn::raise(chan_t *chan)
 {
-    if (chan->vcpuid >= m_event_ctl.size()) {
-        printv("%s: OOB vcpuid=%u, event_ctl.size=%lu\n",
-                __func__, chan->vcpuid, m_event_ctl.size());
-        return false;
-    }
-
     auto port = chan->port;
     auto word = this->port_to_word(port);
 
@@ -935,8 +948,22 @@ bool xen_evtchn::raise(chan_t *chan)
         return false;
     }
 
-    auto ctl = m_event_ctl[chan->vcpuid].get();
-    expects(chan->priority < EVTCHN_FIFO_MAX_QUEUES);
+    auto vcpu = m_xen_dom->get_xen_vcpu(chan->vcpuid);
+    if (!vcpu) {
+        printv("%s: vcpuid %u not found\n", __func__, chan->vcpuid);
+        return false;
+    }
+
+    auto put_vcpu = gsl::finally([this, chan](){
+        m_xen_dom->put_xen_vcpu(chan->vcpuid);
+    });
+
+    auto ctl = vcpu->m_event_ctl.get();
+    if (!ctl) {
+        printv("%s: vcpu %u has invalid event_control\n",
+                __func__, chan->vcpuid);
+        return false;
+    }
 
     auto curq = &ctl->queue[chan->priority];
     auto oldq = this->lock_old_queue(chan);
@@ -1033,7 +1060,7 @@ int64_t xen_evtchn::allocate_port(port_t p)
     return 0;
 }
 
-xen_evtchn::chan_t *xen_evtchn::port_to_chan(port_t port) const
+xen_evtchn::chan_t *xen_evtchn::port_to_chan(port_t port) const noexcept
 {
     auto size = m_chan_pages.size();
     auto page = (port & chan_page_mask) >> chan_page_shift;
@@ -1046,7 +1073,7 @@ xen_evtchn::chan_t *xen_evtchn::port_to_chan(port_t port) const
     return &chan[port & chan_mask];
 }
 
-xen_evtchn::word_t *xen_evtchn::port_to_word(port_t port) const
+xen_evtchn::word_t *xen_evtchn::port_to_word(port_t port) const noexcept
 {
     auto size = m_word_pages.size();
     auto page = (port & word_page_mask) >> word_page_shift;

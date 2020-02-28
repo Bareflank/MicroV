@@ -24,6 +24,7 @@
 
 #include "types.h"
 #include "domain.h"
+#include "evtchn.h"
 #include "flask.h"
 #include "gnttab.h"
 #include "memory.h"
@@ -51,6 +52,7 @@ public:
     bool is_xenstore();
     void queue_virq(uint32_t virq);
     void init_shared_info(uintptr_t shinfo_gpfn);
+    void init_event_ctl(evtchn_init_control_t *ctl);
     uint64_t runstate_time(int state);
 
     void invept() const { m_uv_dom->invept(); }
@@ -70,6 +72,7 @@ public:
     uint32_t m_upcall_vector{};
     int m_origin{};
     std::unique_ptr<intel_x64::vmcall_event_op_handler> m_event_op_hdlr{};
+    std::unique_ptr<struct event_control> m_event_ctl{};
 
 private:
     friend class xen_memory;
