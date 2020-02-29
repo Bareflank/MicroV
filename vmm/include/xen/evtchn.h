@@ -109,15 +109,10 @@ struct event_channel {
     /* Pad to a power of 2 */
     uint8_t pad[1]{};
 
-    /*
-     * Note that the current implementation needs more work
-     * on reusing freed/closed events.
-     */
     void free() noexcept
     {
         state = state_free;
         vcpuid = 0;
-        prev_vcpuid = 0;
     }
 
     void reset(evtchn_port_t p) noexcept
@@ -218,11 +213,10 @@ public:
     int bind_interdomain(xen_vcpu *v, evtchn_bind_interdomain_t *ebi);
     int bind_vcpu(xen_vcpu *v, const evtchn_bind_vcpu_t *ebv);
     int bind_virq(xen_vcpu *v, evtchn_bind_virq_t *ebv);
-    bool close(xen_vcpu *v, evtchn_close_t *ec);
-    int send(const evtchn_send_t *es);
-    bool reset(xen_vcpu *v);
+    int send(port_t port);
+    int close(port_t port);
+    int reset();
 
-    void close(chan_t *chan);
     void queue_virq(uint32_t virq);
     void inject_virq(uint32_t virq);
     int alloc_unbound(evtchn_alloc_unbound_t *arg);
@@ -262,6 +256,8 @@ private:
     void push_upcall(chan_t *chan);
     void queue_upcall(chan_t *chan);
     void inject_upcall(chan_t *chan);
+    void clear_pending(chan_t *chan) noexcept;
+    void free(chan_t *chan) noexcept;
     bool raise(chan_t *chan);
     struct event_queue *lock_old_queue(const chan_t *chan);
 
@@ -276,7 +272,6 @@ private:
 
     xen_domain *m_xen_dom{};
     port_t m_nr_ports{};
-    port_t m_port_end{1};
 
 public:
 

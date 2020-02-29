@@ -64,15 +64,14 @@ bool xen_evtchn_reset(xen_vcpu *v)
 {
     auto uvv = v->m_uv_vcpu;
     auto arg = uvv->map_arg<evtchn_reset_t>(uvv->rsi());
-
-    expects(v->m_xen_dom);
+    auto ret = -EINVAL;
 
     if (arg->dom == DOMID_SELF || arg->dom == v->m_xen_dom->m_id) {
-        return v->m_xen_dom->m_evtchn->reset(v);
-    } else {
-        uvv->set_rax(-ESRCH);
-        return true;
+        ret = v->m_xen_dom->m_evtchn->reset();
     }
+
+    uvv->set_rax(ret);
+    return true;
 }
 
 bool xen_evtchn_init_control(xen_vcpu *v)
@@ -198,17 +197,18 @@ bool xen_evtchn_bind_virq(xen_vcpu *v)
 bool xen_evtchn_close(xen_vcpu *v)
 {
     auto uvv = v->m_uv_vcpu;
-    auto ec = uvv->map_arg<evtchn_close_t>(uvv->rsi());
+    auto arg = uvv->map_arg<evtchn_close_t>(uvv->rsi());
+    auto ret = v->m_xen_dom->m_evtchn->close(arg->port);
 
-    expects(v->m_xen_dom);
-    return v->m_xen_dom->m_evtchn->close(v, ec.get());
+    uvv->set_rax(ret);
+    return true;
 }
 
 bool xen_evtchn_send(xen_vcpu *v)
 {
     auto uvv = v->m_uv_vcpu;
     auto arg = uvv->map_arg<evtchn_send_t>(uvv->rsi());
-    auto ret = v->m_xen_dom->m_evtchn->send(arg.get());
+    auto ret = v->m_xen_dom->m_evtchn->send(arg->port);
 
     uvv->set_rax(ret);
     return true;
@@ -304,7 +304,7 @@ int xen_evtchn::status(xen_vcpu *v, evtchn_status_t *sts)
     auto uvv = v->m_uv_vcpu;
     auto port = sts->port;
 
-    if (port > m_allocated_chans) {
+    if (port >= m_allocated_chans) {
         return -EINVAL;
     }
 
@@ -557,7 +557,7 @@ int xen_evtchn::bind_virq(xen_vcpu *v, evtchn_bind_virq_t *bind)
         return -EINVAL;
     }
 
-    if (virq_is_global(virq) && vcpu != 0) {
+    if (virq_is_global(virq) && vcpu != 0U) {
         return -EINVAL;
     }
 
@@ -567,7 +567,8 @@ int xen_evtchn::bind_virq(xen_vcpu *v, evtchn_bind_virq_t *bind)
 
     std::lock_guard evt_guard(m_event_lock);
 
-    if (m_virq_to_port[virq] != 0) {
+    if (m_virq_to_port[virq] != 0U) {
+        printv("%s: ALERT: virq %d already bound\n", __func__, virq);
         return -EEXIST;
     }
 
@@ -592,54 +593,161 @@ int xen_evtchn::bind_virq(xen_vcpu *v, evtchn_bind_virq_t *bind)
     return 0;
 }
 
-bool xen_evtchn::close(xen_vcpu *v, evtchn_close_t *ec)
+void xen_evtchn::clear_pending(chan_t *chan) noexcept
 {
-    auto uvv = v->m_uv_vcpu;
-    auto chan = this->port_to_chan(ec->port);
-
-    expects(chan);
-    printv("evtchn: close port %u\n", ec->port);
-
-    this->close(chan);
-    uvv->set_rax(0);
-
-    return true;
-}
-
-void xen_evtchn::close(chan_t *chan)
-{
-    std::lock_guard guard(chan->lock);
-
-    switch (chan->state) {
-    case chan_t::state_free:
-    case chan_t::state_reserved:
-        return;
-    case chan_t::state_unbound:
-    case chan_t::state_interdomain:
-    case chan_t::state_pirq:
-    case chan_t::state_ipi:
-        break;
-    case chan_t::state_virq:
-        expects(chan->virq < m_virq_to_port.size());
-        m_virq_to_port[chan->virq] = 0;
-        break;
-    default:
-        printv("evtchn::close: state %u unknown\n", chan->state);
+    auto word = this->port_to_word(chan->port);
+    if (!word) {
         return;
     }
 
+    clear_bit(word, EVTCHN_FIFO_PENDING);
+}
+
+void xen_evtchn::free(chan_t *chan) noexcept
+{
+    this->clear_pending(chan);
     chan->free();
 }
 
-bool xen_evtchn::reset(xen_vcpu *v)
+int xen_evtchn::close(port_t lport)
 {
-    for (auto i = 1; i < m_allocated_chans; i++) {
-        auto chan = this->port_to_chan(i);
-        this->close(chan);
+    int rc = 0;
+    port_t rport = 0;
+    chan_t *rchan = nullptr;
+    chan_t *lchan = nullptr;
+    class xen_domain *rdom = nullptr;
+    class xen_domain *ldom = m_xen_dom;
+    xen_domid_t rdomid = DOMID_INVALID;
+
+again:
+    spin_acquire(&ldom->m_evtchn->m_event_lock);
+
+    if (lport >= m_allocated_chans) {
+        rc = -EINVAL;
+        goto out;
     }
 
-    v->m_uv_vcpu->set_rax(0);
-    return true;
+    lchan = this->port_to_chan(lport);
+
+    switch (lchan->state) {
+    case chan_t::state_free:
+    case chan_t::state_reserved:
+        rc = -EINVAL;
+        goto out;
+    case chan_t::state_pirq:
+        printv("%s: ALERT: port %u is in pirq state\n", __func__, lport);
+        rc = -EINVAL;
+        goto out;
+    case chan_t::state_unbound:
+    case chan_t::state_ipi:
+        break;
+    case chan_t::state_virq:
+        if (lchan->virq < NR_VIRQS) {
+            m_virq_to_port[lchan->virq] = 0;
+        }
+        break;
+    case chan_t::state_interdomain:
+        if (!rdom) {
+            rdomid = lchan->rdomid;
+            rdom = get_xen_domain(rdomid);
+            if (!rdom) {
+                printv("%s: ERROR: unable to get rdom %u\n", __func__, rdomid);
+                rc = -ESRCH;
+                goto out;
+            }
+
+            if (ldom < rdom) {
+                spin_acquire(&rdom->m_evtchn->m_event_lock);
+            } else if (ldom != rdom) {
+                spin_release(&ldom->m_evtchn->m_event_lock);
+                spin_acquire(&rdom->m_evtchn->m_event_lock);
+                goto again;
+            }
+        } else if (rdom->m_id != lchan->rdomid) {
+            /*
+             * Comment from xen/common/event_channel.c applies here:
+             *
+             * We can only get here if the port was closed and re-bound after
+             * unlocking ldom but before locking rdom above. We could retry but
+             * it is easier to return the same error as if we had seen the port
+             * in the closed state. It must have passed through that state for
+             * us to end up here, so it's a valid error to return.
+             */
+            rc = -EINVAL;
+            goto out;
+        }
+
+        rport = lchan->rport;
+        if (rport >= rdom->m_evtchn->m_allocated_chans) {
+            printv("%s: ERROR: rport %u invalid\n", __func__, rport);
+            rc = -EINVAL;
+            goto out;
+        }
+
+        rchan = rdom->m_evtchn->port_to_chan(rport);
+        if (rchan->state != chan_t::state_interdomain) {
+            printv("%s: ERROR: rport %u invalid state %d \n",
+                    __func__, rport, rchan->state);
+            rc = -EINVAL;
+            goto out;
+        } else if (rchan->rdomid != ldom->m_id) {
+            printv("%s: ERROR: rport %u invalid rdom %u \n",
+                    __func__, rport, rchan->rdomid);
+            rc = -EINVAL;
+            goto out;
+        }
+
+        double_chan_lock(lchan, rchan);
+        this->free(lchan);
+        rchan->state = chan_t::state_unbound;
+        double_chan_unlock(lchan, rchan);
+
+        goto out;
+    default:
+        printv("%s: ERROR: invalid state %d\n", __func__, lchan->state);
+        goto out;
+    }
+
+    spin_acquire(&lchan->lock);
+    this->free(lchan);
+    spin_release(&lchan->lock);
+
+out:
+    if (rdom) {
+        if (ldom != rdom) {
+            spin_release(&rdom->m_evtchn->m_event_lock);
+        }
+        put_xen_domain(rdomid);
+    }
+
+    spin_release(&ldom->m_evtchn->m_event_lock);
+    return rc;
+}
+
+int xen_evtchn::reset()
+{
+    for (auto p = 0U; p < m_allocated_chans; p++) {
+        this->close(p);
+    }
+
+    std::lock_guard guard(m_event_lock);
+
+    for (auto i = 0U; i < m_xen_dom->m_nr_vcpus; i++) {
+        auto vcpu = m_xen_dom->get_xen_vcpu(i);
+        if (!vcpu) {
+            printv("%s: ALERT: vcpu %u not found\n", __func__, i);
+            continue;
+        }
+
+        auto put_vcpu = gsl::finally([this, i](){
+            m_xen_dom->put_xen_vcpu(i);
+        });
+
+        vcpu->m_event_ctl.reset(nullptr);
+    }
+
+    m_word_pages.clear();
+    return 0;
 }
 
 void xen_evtchn::notify_remote(chan_t *chan)
@@ -681,13 +789,13 @@ void xen_evtchn::notify_remote(chan_t *chan)
     rdom->m_evtchn->push_upcall(rport);
 }
 
-int xen_evtchn::send(const evtchn_send_t *send)
+int xen_evtchn::send(port_t port)
 {
-    if (GSL_UNLIKELY(send->port >= m_allocated_chans)) {
+    if (GSL_UNLIKELY(port >= m_allocated_chans)) {
         return -EINVAL;
     }
 
-    auto chan = this->port_to_chan(send->port);
+    auto chan = this->port_to_chan(port);
     std::lock_guard guard(chan->lock);
 
     switch (chan->state) {
