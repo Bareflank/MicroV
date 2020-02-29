@@ -213,7 +213,7 @@ public:
     int bind_interdomain(xen_vcpu *v, evtchn_bind_interdomain_t *ebi);
     int bind_vcpu(xen_vcpu *v, const evtchn_bind_vcpu_t *ebv);
     int bind_virq(xen_vcpu *v, evtchn_bind_virq_t *ebv);
-    int send(port_t port);
+    int send(xen_vcpu *v, port_t port);
     int close(port_t port);
     int reset();
 
@@ -251,7 +251,7 @@ private:
     void make_chan_page(port_t port);
     int make_word_page(microv_vcpu *uvv, uintptr_t gfn);
 
-    void notify_remote(chan_t *chan);
+    void notify_remote(xen_vcpu *v, chan_t *chan);
     void push_upcall(port_t port);
     void push_upcall(chan_t *chan);
     void queue_upcall(chan_t *chan);

@@ -89,8 +89,15 @@ void vmcall_event_op_handler::send_bdf(uint64_t bdf)
         return;
     }
 
-    guest->push_external_interrupt(guest_msi->vector());
-    put_vcpu(pdev->m_guest_vcpuid);
+    auto put_guest = gsl::finally([pdev]{ put_vcpu(pdev->m_guest_vcpuid); });
+
+    if (m_vcpu->pcpuid() == guest->pcpuid()) {
+        guest->load();
+        guest->queue_external_interrupt(guest_msi->vector());
+        m_vcpu->load();
+    } else {
+        guest->push_external_interrupt(guest_msi->vector());
+    }
 }
 
 void vmcall_event_op_handler::send_vector(uint64_t root_vector)
@@ -112,8 +119,15 @@ void vmcall_event_op_handler::send_vector(uint64_t root_vector)
         return;
     }
 
-    guest->push_external_interrupt(guest_msi->vector());
-    put_vcpu(pdev->m_guest_vcpuid);
+    auto put_guest = gsl::finally([pdev]{ put_vcpu(pdev->m_guest_vcpuid); });
+
+    if (m_vcpu->pcpuid() == guest->pcpuid()) {
+        guest->load();
+        guest->queue_external_interrupt(guest_msi->vector());
+        m_vcpu->load();
+    } else {
+        guest->push_external_interrupt(guest_msi->vector());
+    }
 }
 
 }

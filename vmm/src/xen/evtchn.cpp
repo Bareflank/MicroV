@@ -208,7 +208,7 @@ bool xen_evtchn_send(xen_vcpu *v)
 {
     auto uvv = v->m_uv_vcpu;
     auto arg = uvv->map_arg<evtchn_send_t>(uvv->rsi());
-    auto ret = v->m_xen_dom->m_evtchn->send(arg->port);
+    auto ret = v->m_xen_dom->m_evtchn->send(v, arg->port);
 
     uvv->set_rax(ret);
     return true;
@@ -750,7 +750,7 @@ int xen_evtchn::reset()
     return 0;
 }
 
-void xen_evtchn::notify_remote(chan_t *chan)
+void xen_evtchn::notify_remote(xen_vcpu *v, chan_t *chan)
 {
     auto ldomid = m_xen_dom->m_id;
     auto rdomid = chan->rdomid;
@@ -768,28 +768,48 @@ void xen_evtchn::notify_remote(chan_t *chan)
 
     auto rdom = get_xen_domain(rdomid);
     if (!rdom) {
-        printv("%s: remote 0x%x not found\n", __func__, rdomid);
+        printv("%s: ALERT: remote %u not found\n", __func__, rdomid);
         return;
     }
 
     auto put_rdom = gsl::finally([rdomid](){ put_xen_domain(rdomid); });
 
+    auto rchan = rdom->m_evtchn->port_to_chan(rport);
+    if (!rchan) {
+        printv("%s: ALERT: rport %u is invalid\n", __func__, rport);
+        return;
+    }
+
+    auto rvcpuid = rchan->vcpuid;
+    auto rvcpu = rdom->get_xen_vcpu(rvcpuid);
+    if (!rvcpu) {
+        printv("%s: ALERT: rvcpuid %u not found\n", __func__, rvcpuid);
+        return;
+    }
+
+    auto put_rvcpu = gsl::finally([rdom, rvcpuid]{
+        rdom->put_xen_vcpu(rvcpuid);
+    });
+
     /*
-     * Use push_upcall here so that we don't access the remote's vmcs.
-     * Alternatively, we could check the affinity of the remote vcpu
-     * and if it is the same as us, we could vmcs->load() then queue_upcall.
-     *
-     * N.B. this will not queue the callback vector into the remote if it
-     * is a guest domain (as opposed to root domain), which means that the
-     * remote may not see this event until another comes along. This is fine
-     * assuming the guest kernel uses periodic idle because the timer tick will
-     * ensure forward progress.
+     * Here we check if the physical cpu we are running on is the same
+     * one the remote vcpu is running on. If that is the case,
+     * then queue_upcall is preferred because it enables the interrupt
+     * window exit control in the vmcs immediately. OTOH, push_upcall
+     * must be used when the physical cpus differ, since VT-x does not
+     * allow a vmcs to be active on more than one vcpu at a time.
      */
 
-    rdom->m_evtchn->push_upcall(rport);
+    if (rvcpu->m_uv_vcpu->pcpuid() == v->m_uv_vcpu->pcpuid()) {
+        rvcpu->m_uv_vcpu->load();
+        rdom->m_evtchn->queue_upcall(rchan);
+        v->m_uv_vcpu->load();
+    } else {
+        rdom->m_evtchn->push_upcall(rport);
+    }
 }
 
-int xen_evtchn::send(port_t port)
+int xen_evtchn::send(xen_vcpu *v, port_t port)
 {
     if (GSL_UNLIKELY(port >= m_allocated_chans)) {
         return -EINVAL;
@@ -800,13 +820,12 @@ int xen_evtchn::send(port_t port)
 
     switch (chan->state) {
     case chan_t::state_interdomain:
-        this->notify_remote(chan);
+        this->notify_remote(v, chan);
         break;
     case chan_t::state_ipi:
         this->queue_upcall(chan);
         break;
     case chan_t::state_unbound:
-        printv("%s: ALERT: dropping unbound event\n", __func__);
         break;
     default:
         printv("%s: ALERT: state %d unsupported\n", __func__, chan->state);
