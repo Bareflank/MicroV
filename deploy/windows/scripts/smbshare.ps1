@@ -26,12 +26,14 @@ Param(
 )
 
 if ($Add) {
-    # TODO: use more restricted access with -NoAccess
+    # Make sure that file sharing is enabled
+    Set-NetFirewallRule -DisplayGroup "File And Printer Sharing" -Enabled True
 
     if (!(Test-Path "$RootDir\storage")) {
         mkdir -p "$RootDir\storage"
     }
 
+    # TODO: use more restricted access with -NoAccess
     New-SmbShare -Name "storage" -Path "$RootDir\storage" -FullAccess "Users"
 
     $acl = Get-Acl "$RootDir\storage"
@@ -43,4 +45,5 @@ if ($Add) {
 
 if ($Remove) {
     Remove-SmbShare -Name "storage" -Confirm:$False
+    Set-NetFirewallRule -DisplayGroup "File And Printer Sharing" -Enabled False
 }
