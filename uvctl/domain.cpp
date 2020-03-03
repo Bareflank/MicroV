@@ -76,6 +76,16 @@ void uvc_domain::recv_hvc()
     std::array<char, HVC_TX_SIZE> array{0};
 
 #ifdef WIN64
+    /*
+     * Lower this thread's base priority level below the process's
+     * priority class. Its just a console so we dont it to compete with
+     * the vcpu threads.
+     */
+    if (!SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_LOWEST)) {
+        std::cout << __func__ << ": Failed to set thread priority " << "(error: "
+                  << std::to_string(GetLastError()) << ")\n";
+    }
+
     /* Lock memory; this may fail the first attempt. */
     if (!VirtualLock(array.data(), HVC_TX_SIZE)) {
         std::cout << __func__ << ": Unable to lock HVC recv array " << "(error: "
@@ -83,7 +93,7 @@ void uvc_domain::recv_hvc()
         if (!VirtualLock(array.data(), HVC_TX_SIZE)) {
             std::cout << __func__ << ": Second attempt; unable to lock HVC recv array "
                       << "(error: " << std::to_string(GetLastError()) << ")\n";
-	      }
+	}
 #else
     if (mlock(array.data(), HVC_TX_SIZE) == -1) {
         std::cout << __func__ << ": Unable to lock array\n";
@@ -114,6 +124,11 @@ void uvc_domain::send_hvc()
     std::array<char, HVC_RX_SIZE> array{0};
 
 #ifdef WIN64
+    if (!SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_LOWEST)) {
+        std::cout << __func__ << ": Failed to set thread priority " << "(error: "
+                  << std::to_string(GetLastError()) << ")\n";
+    }
+
     /* Lock memory; this may fail the first attempt. */
     if (!VirtualLock(array.data(), HVC_RX_SIZE)) {
         std::cout << __func__ << ": Unable to lock HVC send array " << "(error: "

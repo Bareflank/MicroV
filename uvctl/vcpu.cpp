@@ -21,10 +21,16 @@
 
 #include <chrono>
 #include <functional>
+#include <iostream>
+#include <string>
 #include <stdio.h>
 
 #include "domain.h"
 #include "vcpu.h"
+
+#ifdef WIN64
+#include "windows.h"
+#endif
 
 using namespace std::chrono;
 using namespace std::chrono_literals;
@@ -86,6 +92,16 @@ void uvc_vcpu::notify(uint64_t event_code, uint64_t event_data) const
     domain->event_cond.notify_one();
 }
 
+static inline void set_priority()
+{
+#ifdef WIN64
+    if (!SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_HIGHEST)) {
+        std::cout << __func__ << ": SetThreadPriority failed (error: "
+                  << std::to_string(GetLastError()) << ")\n";
+    }
+#endif
+}
+
 /*
  * This is the primary thread that runs a vcpu. The function is marked const to
  * ensure that it doesn't modify the uvc_vcpu::state; any modification must be
@@ -99,6 +115,8 @@ void uvc_vcpu::notify(uint64_t event_code, uint64_t event_data) const
  */
 void uvc_vcpu::run() const
 {
+    set_priority();
+
     while (true) {
         /* Handle the current runstate */
         switch (state) {
