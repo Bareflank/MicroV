@@ -19,12 +19,22 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+param(
+    [switch] $Debug
+)
+
 $dir_list = Get-ChildItem $dir -Directory | Select-Object Name
+$build_type = "free"
+
+if ($Debug) {
+    $build_type = "checked"
+}
+
 
 foreach ($d in $dir_list)
 {
     pushd $d.Name
     .\clean.ps1
-    .\build.ps1 -type checked
+    .\build.ps1 -type $build_type
     popd
 }
