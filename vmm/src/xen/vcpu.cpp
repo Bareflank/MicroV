@@ -986,7 +986,7 @@ bool xen_vcpu::debug_hypercall(microv_vcpu *vcpu)
         return false;
     }
 
-    if (rax == __HYPERVISOR_platform_op && rdi == XENPF_settime64) {
+    if (rax == __HYPERVISOR_platform_op) {
         return false;
     }
 
