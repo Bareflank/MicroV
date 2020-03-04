@@ -96,9 +96,25 @@ bool xen_hvm_set_evtchn_upcall_vector(xen_vcpu *vcpu)
 {
     auto uvv = vcpu->m_uv_vcpu;
     auto arg = uvv->map_arg<xen_hvm_evtchn_upcall_vector_t>(uvv->rsi());
-    auto ret = vcpu->m_xen_dom->m_evtchn->set_upcall_vector(vcpu, arg.get());
+    auto vcpuid = arg->vcpu;
+    auto vector = arg->vector;
 
-    uvv->set_rax(ret);
+    if (vcpuid == vcpu->m_id) {
+        vcpu->m_upcall_vector = vector;
+    } else {
+        auto d = vcpu->m_xen_dom;
+        auto v = d->get_xen_vcpu(vcpuid);
+        if (!v) {
+            printv("%s: xen vcpu %u not found\n", __func__, vcpuid);
+            uvv->set_rax(-ESRCH);
+            return true;
+        }
+
+        v->m_upcall_vector = vector;
+        d->put_xen_vcpu(vcpuid);
+    }
+
+    uvv->set_rax(0);
     return true;
 }
 
@@ -189,9 +205,39 @@ bool xen_hvm::set_param(xen_vcpu *vcpu, xen_hvm_param_t *p)
     int err = 0;
 
     switch (p->index) {
-    case HVM_PARAM_CALLBACK_IRQ:
-        err = xen_dom->m_evtchn->set_upcall_vector(vcpu, p);
+    case HVM_PARAM_CALLBACK_IRQ: {
+        auto type = (p->value & HVM_PARAM_CALLBACK_IRQ_TYPE_MASK) >> 56;
+        if (type != HVM_PARAM_CALLBACK_TYPE_VECTOR && type) {
+            printv("%s: unsupported type: 0x%llx\n", __func__, type);
+            err = -EINVAL;
+            break;
+        }
+
+        auto vector = p->value & 0xFFU;
+        xen_dom->m_upcall_vector = vector;
+
+        printv("%s: domain upcall vector: 0x%lx\n", __func__, vector);
+
+        /*
+         * Go ahead and set each vcpu's m_upcall_vector to the value
+         * given here if it hasn't been set yet. This allows the evtchn
+         * code to reference the vcpu's m_upcall_vector in a uniform fashion.
+         */
+        for (auto i = 0; i < xen_dom->m_nr_vcpus; i++) {
+            auto v = xen_dom->get_xen_vcpu(i);
+            if (!v) {
+                continue;
+            }
+
+            if (!v->m_upcall_vector) {
+                v->m_upcall_vector = vector;
+            }
+
+            xen_dom->put_xen_vcpu(i);
+        }
+
         break;
+    }
     case HVM_PARAM_TIMER_MODE:
         err = xen_dom->set_timer_mode(p->value);
         break;

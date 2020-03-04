@@ -74,6 +74,7 @@ struct event_channel {
     using state_t = enum state;
 
     state_t state{state_free};
+    struct spin_lock lock{};
 
     /* Defined when state == state_virq */
     uint32_t virq{invalid_virq};
@@ -102,24 +103,21 @@ struct event_channel {
     /* The local port of the event */
     evtchn_port_t port{0};
 
-    struct spin_lock lock;
+    /* Used to mark events pending when there is no word to back it yet */
+    bool pending{};
 
     /* Pad to a power of 2 */
-    uint8_t pad[2];
+    uint8_t pad[1]{};
 
-    /*
-     * Note that the current implementation needs more work
-     * on reusing freed/closed events.
-     */
     void free() noexcept
     {
         state = state_free;
         vcpuid = 0;
-        prev_vcpuid = 0;
     }
 
     void reset(evtchn_port_t p) noexcept
     {
+        memset(&lock, 0, sizeof(lock));
         state = state_free;
         virq = invalid_virq;
         pirq = invalid_pirq;
@@ -130,7 +128,7 @@ struct event_channel {
         vcpuid = 0;
         prev_vcpuid = 0;
         port = p;
-        lock.release();
+        pending = false;
     }
 
     event_channel(event_channel &&) = delete;
@@ -169,7 +167,6 @@ struct event_queue {
 
 /* Per-vcpu event control structure */
 struct event_control {
-    uint32_t upcall_vector{};
     unique_map<uint8_t> map{};
     evtchn_fifo_control_block_t *blk{};
     std::atomic<uint32_t> *ready{};
@@ -180,7 +177,6 @@ struct event_control {
         auto gpa = xen_addr(init->control_gfn);
         auto off = init->offset;
 
-        upcall_vector = 0xFF;
         map = uvv->map_gpa_4k<uint8_t>(gpa);
         blk = reinterpret_cast<evtchn_fifo_control_block_t *>(map.get() + off);
         ready = reinterpret_cast<std::atomic<uint32_t> *>(&blk->ready);
@@ -208,29 +204,22 @@ public:
 
     xen_evtchn(xen_domain *dom);
 
-    bool init_control(xen_vcpu *v, evtchn_init_control_t *eic);
-    bool expand_array(xen_vcpu *v, evtchn_expand_array_t *eea);
-    bool set_priority(xen_vcpu *v, evtchn_set_priority_t *esp);
-    bool status(xen_vcpu *v, evtchn_status *sts);
-    bool unmask(xen_vcpu *v, evtchn_unmask *unmask);
-    bool alloc_unbound(xen_vcpu *v, evtchn_alloc_unbound_t *eau);
-    bool bind_interdomain(xen_vcpu *v, evtchn_bind_interdomain_t *ebi);
-    bool bind_vcpu(xen_vcpu *v, evtchn_bind_vcpu_t *ebv);
-    bool bind_virq(xen_vcpu *v, evtchn_bind_virq_t *ebv);
-    bool close(xen_vcpu *v, evtchn_close_t *ec);
-    bool send(xen_vcpu *v, evtchn_send_t *es);
-    bool reset(xen_vcpu *v);
+    int init_control(xen_vcpu *v, evtchn_init_control_t *eic);
+    int expand_array(xen_vcpu *v, evtchn_expand_array_t *eea);
+    int set_priority(xen_vcpu *v, const evtchn_set_priority_t *esp);
+    int status(xen_vcpu *v, evtchn_status *sts);
+    int unmask(xen_vcpu *v, const evtchn_unmask *unmask);
+    int alloc_unbound(xen_vcpu *v, evtchn_alloc_unbound_t *eau);
+    int bind_interdomain(xen_vcpu *v, evtchn_bind_interdomain_t *ebi);
+    int bind_vcpu(xen_vcpu *v, const evtchn_bind_vcpu_t *ebv);
+    int bind_virq(xen_vcpu *v, evtchn_bind_virq_t *ebv);
+    int send(xen_vcpu *v, port_t port);
+    int close(port_t port);
+    int reset();
 
-    int set_upcall_vector(xen_vcpu *v, xen_hvm_param_t *param);
-    int set_upcall_vector(xen_vcpu *v, xen_hvm_evtchn_upcall_vector_t *arg);
-
-    void close(chan_t *chan);
     void queue_virq(uint32_t virq);
     void inject_virq(uint32_t virq);
     int alloc_unbound(evtchn_alloc_unbound_t *arg);
-    int bind_interdomain(evtchn_port_t port,
-                         evtchn_port_t remote_port,
-                         xen_domid_t remote_domid);
 
     static constexpr auto max_channels = EVTCHN_FIFO_NR_CHANNELS;
 
@@ -248,29 +237,31 @@ private:
     static constexpr auto word_page_shift = log2<words_per_page>();
     static constexpr auto chan_page_shift = log2<chans_per_page>();
 
-    port_t bind(chan_t::state_t state);
-    chan_t *port_to_chan(port_t port) const;
-    word_t *port_to_word(port_t port) const;
+    void double_event_lock(struct xen_domain *ldom,
+                           struct xen_domain *rdom) noexcept;
+    void double_event_unlock(struct xen_domain *ldom,
+                             struct xen_domain *rdom) noexcept;
 
-    uint64_t port_to_chan_page(port_t port) const;
-    uint64_t port_to_word_page(port_t port) const;
+    chan_t *port_to_chan(port_t port) const noexcept;
+    word_t *port_to_word(port_t port) const noexcept;
 
-    port_t make_new_port();
-    int make_port(port_t port);
-    void setup_ports();
-    void add_event_ctl(xen_vcpu *v, evtchn_init_control_t *ctl);
+    int64_t get_free_port();
+    int64_t allocate_port(port_t p);
 
     void make_chan_page(port_t port);
-    void make_word_page(microv_vcpu *uvv, uintptr_t gfn);
+    int make_word_page(microv_vcpu *uvv, uintptr_t gfn);
 
-    void notify_remote(chan_t *chan);
+    void notify_remote(xen_vcpu *v, chan_t *chan);
     void push_upcall(port_t port);
     void push_upcall(chan_t *chan);
     void queue_upcall(chan_t *chan);
     void inject_upcall(chan_t *chan);
+    void clear_pending(chan_t *chan) noexcept;
+    void free(chan_t *chan) noexcept;
     bool raise(chan_t *chan);
-    struct event_queue *lock_old_queue(chan_t *chan);
+    struct event_queue *lock_old_queue(const chan_t *chan);
 
+    struct spin_lock m_event_lock{};
     uint64_t m_allocated_chans{};
     uint64_t m_allocated_words{};
 
@@ -281,7 +272,6 @@ private:
 
     xen_domain *m_xen_dom{};
     port_t m_nr_ports{};
-    port_t m_port_end{1};
 
 public:
 

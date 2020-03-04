@@ -51,14 +51,14 @@ inline std::array<struct virq, NR_VIRQS> virq_info = {{
     {"xenpmu", true, false, false},
     {"unused14", false, false, false},
     {"unused15", false, false, false},
-    {"arch0", true, false, false},
-    {"arch1", true, false, false},
-    {"arch2", true, false, false},
-    {"arch3", true, false, false},
-    {"arch4", true, false, false},
-    {"arch5", true, false, false},
-    {"arch6", true, false, false},
-    {"arch7", true, false, false}
+    {"arch0", true, false, true},
+    {"arch1", true, false, true},
+    {"arch2", true, false, true},
+    {"arch3", true, false, true},
+    {"arch4", true, false, true},
+    {"arch5", true, false, true},
+    {"arch6", true, false, true},
+    {"arch7", true, false, true}
 }};
 
 

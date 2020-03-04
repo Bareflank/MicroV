@@ -189,6 +189,11 @@ bool xen_vcpu::init_hypercall_page(base_vcpu *vcpu, wrmsr_handler::info_t &info)
     return true;
 }
 
+void xen_vcpu::init_event_ctl(evtchn_init_control_t *ctl)
+{
+    m_event_ctl = std::make_unique<struct event_control>(m_uv_vcpu, ctl);
+}
+
 static bool wrmsr_self_ipi(base_vcpu *vcpu, wrmsr_handler::info_t &info)
 {
     vcpu->queue_external_interrupt(info.val);
@@ -877,42 +882,54 @@ bool xen_vcpu::handle_interrupt(base_vcpu *vcpu, interrupt_handler::info_t &info
      */
     auto guest_msi = root->find_guest_msi(info.vector);
 
-    if (guest_msi) {
-        /*
-         * The vector is assigned to a guest, so we have to send the EOI.
-         * This is because the guest kernel only has access to a virtual APIC,
-         * and therefore the EOI written by the kernel never makes it to actual
-         * hardware.
-         */
-        root->m_lapic->write_eoi();
-
-        auto pdev = guest_msi->pdev;
-        expects(pdev);
-        std::lock_guard msi_lock(pdev->m_msi_mtx);
-
-        if (!guest_msi->is_enabled()) {
-            return true;
-        }
-
-        auto guest = get_vcpu(pdev->m_guest_vcpuid);
-        if (!guest) {
-            return true;
-        }
-
-        if (guest == m_uv_vcpu) {
-            guest->queue_external_interrupt(guest_msi->vector());
-        } else {
-            guest->push_external_interrupt(guest_msi->vector());
-        }
-
-        put_vcpu(pdev->m_guest_vcpuid);
-    } else {
+    if (!guest_msi) {
         m_uv_vcpu->save_xstate();
         this->update_runstate(RUNSTATE_runnable);
 
         root->load();
         root->queue_external_interrupt(info.vector);
         root->return_interrupted();
+
+        // unreachable
+        return false;
+    }
+
+    /*
+     * The vector is assigned to a guest, so we have to send the EOI.
+     * This is because the guest kernel only has access to a virtual APIC,
+     * and therefore the EOI written by the kernel never makes it to actual
+     * hardware.
+     */
+    root->m_lapic->write_eoi();
+
+    auto pdev = guest_msi->pdev;
+
+    expects(pdev);
+    std::lock_guard msi_lock(pdev->m_msi_mtx);
+
+    if (!guest_msi->is_enabled()) {
+        return true;
+    }
+
+    auto guest = get_vcpu(pdev->m_guest_vcpuid);
+    if (!guest) {
+        return true;
+    }
+
+    auto put_guest = gsl::finally([pdev]{
+        put_vcpu(pdev->m_guest_vcpuid);
+    });
+
+    if (guest->pcpuid() == m_uv_vcpu->pcpuid()) {
+        if (guest == m_uv_vcpu) {
+            guest->queue_external_interrupt(guest_msi->vector());
+        } else {
+            guest->load();
+            guest->queue_external_interrupt(guest_msi->vector());
+            m_uv_vcpu->load();
+        }
+    } else {
+        guest->push_external_interrupt(guest_msi->vector());
     }
 
     return true;
@@ -969,7 +986,7 @@ bool xen_vcpu::debug_hypercall(microv_vcpu *vcpu)
         return false;
     }
 
-    if (rax == __HYPERVISOR_platform_op && rdi == XENPF_settime64) {
+    if (rax == __HYPERVISOR_platform_op) {
         return false;
     }
 
@@ -1096,6 +1113,7 @@ bool xen_vcpu::root_hypercall(microv_vcpu *vcpu)
         case EVTCHNOP_alloc_unbound:
         case EVTCHNOP_close:
         case EVTCHNOP_reset:
+        case EVTCHNOP_unmask:
             return this->handle_event_channel_op();
         default:
             return false;

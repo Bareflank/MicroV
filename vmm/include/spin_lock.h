@@ -36,14 +36,14 @@ struct spin_lock {
         memset(&flag, 0, sizeof(flag));
     }
 
-    void acquire() noexcept
+    void lock() noexcept
     {
         while (flag.test_and_set()) {
             __asm volatile("pause");
         }
     }
 
-    void release() noexcept
+    void unlock() noexcept
     {
         flag.clear();
     }
@@ -56,12 +56,12 @@ struct spin_lock {
 
 static inline void spin_acquire(struct spin_lock *lock) noexcept
 {
-    lock->acquire();
+    lock->lock();
 }
 
 static inline void spin_release(struct spin_lock *lock) noexcept
 {
-    lock->release();
+    lock->unlock();
 }
 
 }
