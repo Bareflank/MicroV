@@ -53,8 +53,10 @@ deps/hypervisor/bfdriver/src/platform/linux/Makefile
 
 deploy/windows/Input
 deploy/windows/Output
+deploy/windows/output
 deploy/windows/bareflank.efi
 deploy/windows/drivers/
+deploy/windows/images
 deploy/windows/uvctl.exe
 
 *.suo
@@ -124,3 +126,7 @@ drivers/winpv/xeniface/vs2019/xencontrol/x64/
 drivers/winpv/xeniface/vs2019/xeniface.inf
 drivers/winpv/xeniface/vs2019/xeniface/Windows10Debug/
 drivers/winpv/xeniface/vs2019/xeniface_coinst/x64/
+drivers/winpv/xeniface/vs2019/Windows10Release/
+drivers/winpv/xeniface/vs2019/package/Windows10Release/
+drivers/winpv/xeniface/vs2019/version/.revision
+drivers/winpv/xeniface/vs2019/xeniface/Windows10Release/
