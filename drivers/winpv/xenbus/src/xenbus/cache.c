@@ -385,42 +385,42 @@ CacheDestroySlab(
         ASSERT(Slab->ListEntry.Flink == &Cache->SlabList);
         //ASSERT(Slab->ListEntry.Blink == &Cache->SlabList);
 
-        if (Slab->ListEntry.Blink != &Cache->SlabList) {
-            Info("ASSERT FAILED: Slab->ListEntry.Blink == &Cache->SlabList");
-            Info("   Cache->Name: %s\n", Cache->Name);
-            Info("   Slab->MaxOccupancy: %lu\n", Slab->MaximumOccupancy);
-            Info("   Slab->ListEntry.Blink:  0x%llx\n", Slab->ListEntry.Blink);
-            Info("   &Cache->SlabList:       0x%llx\n", &Cache->SlabList);
-            Info("   Cache->Cursor:          0x%llx\n", Cache->Cursor);
+        //if (Slab->ListEntry.Blink != &Cache->SlabList) {
+        //    Info("ASSERT FAILED: Slab->ListEntry.Blink == &Cache->SlabList");
+        //    Info("   Cache->Name: %s\n", Cache->Name);
+        //    Info("   Slab->MaxOccupancy: %lu\n", Slab->MaximumOccupancy);
+        //    Info("   Slab->ListEntry.Blink:  0x%llx\n", Slab->ListEntry.Blink);
+        //    Info("   &Cache->SlabList:       0x%llx\n", &Cache->SlabList);
+        //    Info("   Cache->Cursor:          0x%llx\n", Cache->Cursor);
 
-            PLIST_ENTRY         ListEntry;
+        //    PLIST_ENTRY         ListEntry;
 
-            //
-            // The cursor should point at the first slab that is not fully
-            // occupied.
-            //
-            for (ListEntry = Cache->SlabList.Flink;
-                 ListEntry != &Cache->SlabList;
-                 ListEntry = ListEntry->Flink) {
-                PXENBUS_CACHE_SLAB  LocalSlab;
+        //    //
+        //    // The cursor should point at the first slab that is not fully
+        //    // occupied.
+        //    //
+        //    for (ListEntry = Cache->SlabList.Flink;
+        //         ListEntry != &Cache->SlabList;
+        //         ListEntry = ListEntry->Flink) {
+        //        PXENBUS_CACHE_SLAB  LocalSlab;
 
-                LocalSlab = CONTAINING_RECORD(ListEntry,
-                                              XENBUS_CACHE_SLAB,
-                                              ListEntry);
+        //        LocalSlab = CONTAINING_RECORD(ListEntry,
+        //                                      XENBUS_CACHE_SLAB,
+        //                                      ListEntry);
 
-                Info("   SlabList Entry:         0x%llx, Cur=%u, Max=%u\n",
-                     ListEntry,
-                     LocalSlab->CurrentOccupancy,
-                     LocalSlab->MaximumOccupancy);
+        //        Info("   SlabList Entry:         0x%llx, Cur=%u, Max=%u\n",
+        //             ListEntry,
+        //             LocalSlab->CurrentOccupancy,
+        //             LocalSlab->MaximumOccupancy);
 
-                if (LocalSlab->CurrentOccupancy < LocalSlab->MaximumOccupancy) {
-                    if (Cache->Cursor != ListEntry) {
-                        Info("   BUG: Cache->Cursor doesn't point to first slab not fully occupied\n");
-                    }
-                    break;
-                }
-            }
-        }
+        //        if (LocalSlab->CurrentOccupancy < LocalSlab->MaximumOccupancy) {
+        //            if (Cache->Cursor != ListEntry) {
+        //                Info("   BUG: Cache->Cursor doesn't point to first slab not fully occupied\n");
+        //            }
+        //            break;
+        //        }
+        //    }
+        //}
 
         Cache->Cursor = &Cache->SlabList;
     }
