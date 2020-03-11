@@ -287,7 +287,14 @@ MiniportShutdownEx(
 
     Trace("====>\n");
 
-    AdapterDisable(Adapter);
+    // We dont call AdapterDisable on shutdown because doing so
+    // causes xenstore IO, but xenstore lives in a process that the
+    // OS is terminating in parallel to us. Once the kernel
+    // kills the xenstore process, any subsequent accesses done
+    // from this path will hang, causing the shutdown itself
+    // to hang.
+
+    //AdapterDisable(Adapter);
 
     Trace("<====\n");
 }
