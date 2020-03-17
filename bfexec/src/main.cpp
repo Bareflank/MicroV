@@ -61,6 +61,24 @@ _vmcall(uint64_t r1, uint64_t r2, uint64_t r3, uint64_t r4) noexcept
 #include <intrin.h>
 #endif
 
+#ifdef __CYGWIN__
+#define TIME_UTC 1
+#define timespec_get __timespec_get
+
+typedef int (* p_timespec_get)(void*, int);
+static p_timespec_get __timespec_get;
+
+void
+dl_timespec_get()
+{
+    timespec_get = (p_timespec_get) GetProcAddress(LoadLibrary(TEXT("ucrtbase.dll")), "_timespec64_get");
+    if (!timespec_get) {
+        std::cerr << "win32 error: " << GetLastError() << "\n";
+        throw std::runtime_error("Failed to load timespec_get dynamically.");
+    }
+}
+#endif
+
 inline uint64_t
 rdtsc()
 {
@@ -84,6 +102,10 @@ set_wallclock()
     struct timespec ts;
     uint64_t initial_tsc = 0;
     uint64_t current_tsc = 0;
+
+#ifdef __CYGWIN__
+    dl_timespec_get();
+#endif
 
     // Note:
     //
