@@ -125,6 +125,7 @@ static void init_mcfg()
     mcfg = find_acpi_table("MCFG");
     if (!mcfg) {
         bferror_info(0, "probe_pci: MCFG table not found");
+        return;
     }
 
     constexpr auto mca_offset = 44;

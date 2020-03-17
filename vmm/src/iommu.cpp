@@ -139,6 +139,7 @@ void init_vtd()
 
     if (memcmp(dmar->hva, "DMAR", 4)) {
         bferror_info(0, "init_vtd: Invalid DMAR signature");
+        return;
     }
 
     hide_acpi_table(dmar);

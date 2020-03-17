@@ -26,6 +26,7 @@
 #include <acpi.h>
 #include <microv/acpi.h>
 #include <hve/arch/intel_x64/vcpu.h>
+#include <printv.h>
 
 #define PAGE_SIZE_4K 0x1000UL
 #define XSDT_ENTRY_SIZE 8
@@ -131,7 +132,13 @@ int init_acpi()
 
     auto last = &table_list[table_list.size() - 1];
     auto base = bfn::upper(table_list[0].gpa, 21);
-    auto npgs = bfn::upper(last->gpa + last->len - 1, 21) - base + 1;
+    auto npgs = (bfn::upper(last->gpa + last->len - 1, 21) - base) >> 21;
+
+    if (npgs == 0) {
+        npgs = 1;
+    }
+
+    printv("acpi: reducing granularity of %uMB table region to 4KB\n", npgs * 2);
 
     /*
      * Reduce EPT granularity of the ACPI table region to 4K. This is to
@@ -142,9 +149,12 @@ int init_acpi()
 
         auto dom0 = vcpu0->dom();
         auto addr = base + (i * ::x64::pd::page_size);
+        auto from = dom0->ept().from(addr);
 
-        if (dom0->ept().from(addr) == ::x64::pd::from) {
+        if (from == ::x64::pd::from) {
             identity_map_convert_2m_to_4k(dom0->ept(), addr);
+        } else {
+            expects(from == ::x64::pt::from);
         }
     }
 
