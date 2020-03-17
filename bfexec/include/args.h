@@ -19,7 +19,16 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable : 4267)
+#endif
+
 #include "cxxopts.hpp"
+
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
 
 using args_type = cxxopts::ParseResult;
 
