@@ -24,6 +24,7 @@
 #include <bfstring.h>
 #include <bfaffinity.h>
 #include <bfbuilderinterface.h>
+#include <bftsc.h>
 
 #include <list>
 #include <memory>
@@ -71,7 +72,8 @@ static p_timespec_get __timespec_get;
 void
 dl_timespec_get()
 {
-    timespec_get = (p_timespec_get) GetProcAddress(LoadLibrary(TEXT("ucrtbase.dll")), "_timespec64_get");
+    timespec_get = (p_timespec_get) GetProcAddress(
+        LoadLibrary(TEXT("ucrtbase.dll")), "_timespec64_get");
     if (!timespec_get) {
         std::cerr << "win32 error: " << GetLastError() << "\n";
         throw std::runtime_error("Failed to load timespec_get dynamically.");
@@ -92,6 +94,23 @@ rdtsc()
 #endif
 }
 
+void
+init_tsc()
+{
+#ifdef __CYGWIN__
+    dl_timespec_get();
+#endif
+
+    // Note:
+    //
+    // Boxy doesn't support pre-skylake CPUs because of unreliable tsc freq.
+    // We don't actually need the tsc freq info here but we can use it to
+    // check whether the CPU is supported.
+    if (!calibrate_tsc_freq_khz()) {
+        throw std::runtime_error("missing tsc info. system not supported");
+    }
+}
+
 // -----------------------------------------------------------------------------
 // Wall Clock
 // -----------------------------------------------------------------------------
@@ -102,10 +121,6 @@ set_wallclock()
     struct timespec ts;
     uint64_t initial_tsc = 0;
     uint64_t current_tsc = 0;
-
-#ifdef __CYGWIN__
-    dl_timespec_get();
-#endif
 
     // Note:
     //
@@ -422,6 +437,7 @@ main(int argc, char *argv[])
     setup_kill_signal_handler();
 
     try {
+        init_tsc();
         args_type args = parse_args(argc, argv);
         return protected_main(args);
     }
