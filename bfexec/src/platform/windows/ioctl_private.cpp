@@ -38,7 +38,7 @@
 // -----------------------------------------------------------------------------
 
 HANDLE
-bfm_ioctl_open()
+bfm_ioctl_open(const GUID &guid_devinterface)
 {
     HANDLE hDevInfo;
     SP_INTERFACE_DEVICE_DETAIL_DATA *deviceDetailData = nullptr;
@@ -49,7 +49,7 @@ bfm_ioctl_open()
     SP_INTERFACE_DEVICE_DATA ifInfo;
     ifInfo.cbSize = sizeof(SP_INTERFACE_DEVICE_DATA);
 
-    hDevInfo = SetupDiGetClassDevs(&GUID_DEVINTERFACE_builder, 0, 0, DIGCF_DEVICEINTERFACE | DIGCF_PRESENT);
+    hDevInfo = SetupDiGetClassDevs(&guid_devinterface, 0, 0, DIGCF_DEVICEINTERFACE | DIGCF_PRESENT);
     if (hDevInfo == INVALID_HANDLE_VALUE) {
         return hDevInfo;
     }
@@ -58,7 +58,7 @@ bfm_ioctl_open()
         return INVALID_HANDLE_VALUE;
     }
 
-    if (SetupDiEnumDeviceInterfaces(hDevInfo, &devInfo, &(GUID_DEVINTERFACE_builder), 0, &ifInfo) == false) {
+    if (SetupDiEnumDeviceInterfaces(hDevInfo, &devInfo, &(guid_devinterface), 0, &ifInfo) == false) {
         return INVALID_HANDLE_VALUE;
     }
 
@@ -101,6 +101,7 @@ bfm_read_write_ioctl(HANDLE fd, DWORD request, void *data, DWORD size)
 {
     DWORD bytes = 0;
     if (!DeviceIoControl(fd, request, data, size, data, size, &bytes, NULL)) {
+        std::cerr << "Error DeviceIoControl " << GetLastError() << "\n";
         return BF_IOCTL_FAILURE;
     }
 
@@ -113,18 +114,24 @@ bfm_read_write_ioctl(HANDLE fd, DWORD request, void *data, DWORD size)
 
 ioctl_private::ioctl_private()
 {
-    if ((fd = bfm_ioctl_open()) == INVALID_HANDLE_VALUE) {
-        throw std::runtime_error("failed to open to builder");
+    if ((fd1 = bfm_ioctl_open(GUID_DEVINTERFACE_bareflank)) == INVALID_HANDLE_VALUE) {
+        throw std::runtime_error("failed to open to the bareflank driver");
+    }
+    if ((fd2 = bfm_ioctl_open(GUID_DEVINTERFACE_builder)) == INVALID_HANDLE_VALUE) {
+        throw std::runtime_error("failed to open to the bareflank builder driver");
     }
 }
 
 ioctl_private::~ioctl_private()
-{ CloseHandle(fd); }
+{
+    CloseHandle(fd1);
+    CloseHandle(fd2);
+}
 
 void
 ioctl_private::call_ioctl_create_vm_from_bzimage(create_vm_from_bzimage_args &args)
 {
-    if (bfm_read_write_ioctl(fd, IOCTL_CREATE_VM_FROM_BZIMAGE, &args, sizeof(create_vm_from_bzimage_args)) < 0) {
+    if (bfm_read_write_ioctl(fd2, IOCTL_CREATE_VM_FROM_BZIMAGE, &args, sizeof(create_vm_from_bzimage_args)) < 0) {
         throw std::runtime_error("ioctl failed: IOCTL_CREATE_VM_FROM_BZIMAGE");
     }
 }
@@ -132,7 +139,19 @@ ioctl_private::call_ioctl_create_vm_from_bzimage(create_vm_from_bzimage_args &ar
 void
 ioctl_private::call_ioctl_destroy(domainid_t domainid) noexcept
 {
-    if (bfm_read_write_ioctl(fd, IOCTL_DESTROY, &domainid, sizeof(domainid_t)) < 0) {
+    if (bfm_read_write_ioctl(fd2, IOCTL_DESTROY, &domainid, sizeof(domainid_t)) < 0) {
         std::cerr << "[ERROR] ioctl failed: IOCTL_DESTROY\n";
     }
+}
+
+uint64_t
+ioctl_private::call_ioctl_vmcall(uint64_t r1, uint64_t r2, uint64_t r3, uint64_t r4)
+{
+    ioctl_vmcall_args_t args = {r1, r2, r3, r4};
+
+    if (bfm_read_write_ioctl(fd1, IOCTL_VMCALL, &args, sizeof(ioctl_vmcall_args_t)) < 0) {
+        throw std::runtime_error("ioctl failed: IOCTL_VMCALL");
+    }
+
+    return args.reg1;
 }

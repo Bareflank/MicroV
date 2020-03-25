@@ -77,12 +77,12 @@ set(BOXY_SOURCE_BFVMM_DIR ${BOXY_SOURCE_ROOT_DIR}/bfvmm
 # Links
 # ------------------------------------------------------------------------------
 
-set(LINUX_URL "https://github.com/Bareflank/linux/archive/boxy_1.zip"
+set(LINUX_URL "https://github.com/Bareflank/linux/archive/boxy_1.01.zip"
     CACHE INTERNAL FORCE
     "Linux URL"
 )
 
-set(LINUX_URL_MD5 "481f81505b4f73349e501f70c15a4946"
+set(LINUX_URL_MD5 "d88e5c914161a6fce9f3d69f6a101f38"
     CACHE INTERNAL FORCE
     "Linux URL MD5 hash"
 )

@@ -26,18 +26,20 @@
 namespace boxy::intel_x64
 {
 
-vmcall_vcpu_op_handler::vmcall_vcpu_op_handler(
+vcpu_op_handler::vcpu_op_handler(
     gsl::not_null<vcpu *> vcpu
 ) :
     m_vcpu{vcpu}
 {
-    using namespace vmcs_n;
+    if (vcpu->is_domU()) {
+        return;
+    }
 
-    vcpu->add_vmcall_handler({&vmcall_vcpu_op_handler::dispatch, this});
+    vcpu->add_vmcall_handler({&vcpu_op_handler::dispatch, this});
 }
 
 void
-vmcall_vcpu_op_handler::vcpu_op__create_vcpu(vcpu *vcpu)
+vcpu_op_handler::vcpu_op__create_vcpu(vcpu *vcpu)
 {
     try {
         vcpu->set_rax(bfvmm::vcpu::generate_vcpuid());
@@ -49,7 +51,7 @@ vmcall_vcpu_op_handler::vcpu_op__create_vcpu(vcpu *vcpu)
 }
 
 void
-vmcall_vcpu_op_handler::vcpu_op__kill_vcpu(vcpu *vcpu)
+vcpu_op_handler::vcpu_op__kill_vcpu(vcpu *vcpu)
 {
     try {
         auto child_vcpu = get_vcpu(vcpu->rbx());
@@ -63,10 +65,10 @@ vmcall_vcpu_op_handler::vcpu_op__kill_vcpu(vcpu *vcpu)
 }
 
 void
-vmcall_vcpu_op_handler::vcpu_op__destroy_vcpu(vcpu *vcpu)
+vcpu_op_handler::vcpu_op__destroy_vcpu(vcpu *vcpu)
 {
     try {
-        g_vcm->destroy(vcpu->rbx(), nullptr);
+        g_vcm->destroy(vcpu->rbx());
         vcpu->set_rax(SUCCESS);
     }
     catchall({
@@ -75,22 +77,22 @@ vmcall_vcpu_op_handler::vcpu_op__destroy_vcpu(vcpu *vcpu)
 }
 
 bool
-vmcall_vcpu_op_handler::dispatch(vcpu *vcpu)
+vcpu_op_handler::dispatch(vcpu *vcpu)
 {
-    if (bfopcode(vcpu->rax()) != __enum_vcpu_op) {
+    if (bfopcode(vcpu->rax()) != hypercall_enum_vcpu_op) {
         return false;
     }
 
     switch (vcpu->rax()) {
-        case __enum_vcpu_op__create_vcpu:
+        case hypercall_enum_vcpu_op__create_vcpu:
             this->vcpu_op__create_vcpu(vcpu);
             return true;
 
-        case __enum_vcpu_op__kill_vcpu:
+        case hypercall_enum_vcpu_op__kill_vcpu:
             this->vcpu_op__kill_vcpu(vcpu);
             return true;
 
-        case __enum_vcpu_op__destroy_vcpu:
+        case hypercall_enum_vcpu_op__destroy_vcpu:
             this->vcpu_op__destroy_vcpu(vcpu);
             return true;
 

@@ -26,18 +26,20 @@
 namespace boxy::intel_x64
 {
 
-vmcall_domain_op_handler::vmcall_domain_op_handler(
+domain_op_handler::domain_op_handler(
     gsl::not_null<vcpu *> vcpu
 ) :
     m_vcpu{vcpu}
 {
-    using namespace vmcs_n;
+    if (vcpu->is_domU()) {
+        return;
+    }
 
-    vcpu->add_vmcall_handler({&vmcall_domain_op_handler::dispatch, this});
+    vcpu->add_vmcall_handler({&domain_op_handler::dispatch, this});
 }
 
 void
-vmcall_domain_op_handler::domain_op__create_domain(vcpu *vcpu)
+domain_op_handler::domain_op__create_domain(vcpu *vcpu)
 {
     try {
         vcpu->set_rax(domain::generate_domainid());
@@ -49,7 +51,7 @@ vmcall_domain_op_handler::domain_op__create_domain(vcpu *vcpu)
 }
 
 void
-vmcall_domain_op_handler::domain_op__destroy_domain(vcpu *vcpu)
+domain_op_handler::domain_op__destroy_domain(vcpu *vcpu)
 {
     try {
         if (vcpu->rbx() == self || vcpu->rbx() == vcpu->domid()) {
@@ -57,7 +59,7 @@ vmcall_domain_op_handler::domain_op__destroy_domain(vcpu *vcpu)
                 "domain_op__destroy_domain: self not supported");
         }
 
-        g_dm->destroy(vcpu->rbx(), nullptr);
+        g_dm->destroy(vcpu->rbx());
         vcpu->set_rax(SUCCESS);
     }
     catchall({
@@ -66,7 +68,7 @@ vmcall_domain_op_handler::domain_op__destroy_domain(vcpu *vcpu)
 }
 
 void
-vmcall_domain_op_handler::domain_op__set_uart(vcpu *vcpu)
+domain_op_handler::domain_op__set_uart(vcpu *vcpu)
 {
     try {
         if (vcpu->rbx() == self || vcpu->rbx() == vcpu->domid()) {
@@ -86,7 +88,7 @@ vmcall_domain_op_handler::domain_op__set_uart(vcpu *vcpu)
 }
 
 void
-vmcall_domain_op_handler::domain_op__set_pt_uart(vcpu *vcpu)
+domain_op_handler::domain_op__set_pt_uart(vcpu *vcpu)
 {
     try {
         if (vcpu->rbx() == self || vcpu->rbx() == vcpu->domid()) {
@@ -106,7 +108,7 @@ vmcall_domain_op_handler::domain_op__set_pt_uart(vcpu *vcpu)
 }
 
 void
-vmcall_domain_op_handler::domain_op__dump_uart(vcpu *vcpu)
+domain_op_handler::domain_op__dump_uart(vcpu *vcpu)
 {
     try {
         auto buffer =
@@ -125,7 +127,7 @@ vmcall_domain_op_handler::domain_op__dump_uart(vcpu *vcpu)
 }
 
 void
-vmcall_domain_op_handler::domain_op__share_page_r(vcpu *vcpu)
+domain_op_handler::domain_op__share_page_r(vcpu *vcpu)
 {
     try {
         if (vcpu->rbx() == self || vcpu->rbx() == vcpu->domid()) {
@@ -145,7 +147,7 @@ vmcall_domain_op_handler::domain_op__share_page_r(vcpu *vcpu)
 }
 
 void
-vmcall_domain_op_handler::domain_op__share_page_rw(vcpu *vcpu)
+domain_op_handler::domain_op__share_page_rw(vcpu *vcpu)
 {
     try {
         if (vcpu->rbx() == self || vcpu->rbx() == vcpu->domid()) {
@@ -165,7 +167,7 @@ vmcall_domain_op_handler::domain_op__share_page_rw(vcpu *vcpu)
 }
 
 void
-vmcall_domain_op_handler::domain_op__share_page_rwe(vcpu *vcpu)
+domain_op_handler::domain_op__share_page_rwe(vcpu *vcpu)
 {
     try {
         if (vcpu->rbx() == self || vcpu->rbx() == vcpu->domid()) {
@@ -185,7 +187,7 @@ vmcall_domain_op_handler::domain_op__share_page_rwe(vcpu *vcpu)
 }
 
 void
-vmcall_domain_op_handler::domain_op__donate_page_r(vcpu *vcpu)
+domain_op_handler::domain_op__donate_page_r(vcpu *vcpu)
 {
     // TODO:
     //
@@ -212,7 +214,7 @@ vmcall_domain_op_handler::domain_op__donate_page_r(vcpu *vcpu)
 }
 
 void
-vmcall_domain_op_handler::domain_op__donate_page_rw(vcpu *vcpu)
+domain_op_handler::domain_op__donate_page_rw(vcpu *vcpu)
 {
     // TODO:
     //
@@ -239,7 +241,7 @@ vmcall_domain_op_handler::domain_op__donate_page_rw(vcpu *vcpu)
 }
 
 void
-vmcall_domain_op_handler::domain_op__donate_page_rwe(vcpu *vcpu)
+domain_op_handler::domain_op__donate_page_rwe(vcpu *vcpu)
 {
     // TODO:
     //
@@ -268,7 +270,7 @@ vmcall_domain_op_handler::domain_op__donate_page_rwe(vcpu *vcpu)
 
 #define domain_op__reg(reg)                                                     \
     void                                                                        \
-    vmcall_domain_op_handler::domain_op__ ## reg(vcpu *vcpu)                    \
+    domain_op_handler::domain_op__ ## reg(vcpu *vcpu)                    \
     {                                                                           \
         try {                                                                   \
             vcpu->set_rax(get_domain(vcpu->rbx())->reg());                      \
@@ -280,7 +282,7 @@ vmcall_domain_op_handler::domain_op__donate_page_rwe(vcpu *vcpu)
 
 #define domain_op__set_reg(reg)                                                 \
     void                                                                        \
-    vmcall_domain_op_handler::domain_op__set_ ## reg(vcpu *vcpu)                \
+    domain_op_handler::domain_op__set_ ## reg(vcpu *vcpu)                \
     {                                                                           \
         try {                                                                   \
             get_domain(vcpu->rbx())->set_ ## reg(vcpu->rcx());                  \
@@ -410,14 +412,14 @@ domain_op__reg(ldtr_access_rights);
 domain_op__set_reg(ldtr_access_rights);
 
 #define dispatch_case(name)                                                     \
-    case __enum_domain_op__ ## name:                                            \
-    this->domain_op__ ## name(vcpu);                                        \
+    case hypercall_enum_domain_op__ ## name:                                    \
+    this->domain_op__ ## name(vcpu);                                            \
     return true;
 
 bool
-vmcall_domain_op_handler::dispatch(vcpu *vcpu)
+domain_op_handler::dispatch(vcpu *vcpu)
 {
-    if (bfopcode(vcpu->rax()) != __enum_domain_op) {
+    if (bfopcode(vcpu->rax()) != hypercall_enum_domain_op) {
         return false;
     }
 

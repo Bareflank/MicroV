@@ -43,8 +43,8 @@ msr_handler::msr_handler(
 {
     using namespace vmcs_n;
 
-    vcpu->add_run_delegate({&msr_handler::isolate_msr__on_run, this});
     vcpu->add_exit_handler({&msr_handler::isolate_msr__on_exit, this});
+    vcpu->add_resume_delegate({&msr_handler::isolate_msr__on_world_switch, this});
 
     if (vcpu->is_domU()) {
         vcpu->trap_on_all_rdmsr_accesses();
@@ -70,12 +70,9 @@ msr_handler::msr_handler(
     vcpu->pass_through_msr_access(::intel_x64::msrs::ia32_sysenter_esp::addr);
 
     EMULATE_MSR(0x00000034, handle_rdmsr_0x00000034, handle_wrmsr_0x00000034);
-    EMULATE_MSR(0x000000CE, handle_rdmsr_0x000000CE, handle_wrmsr_0x000000CE);
     EMULATE_MSR(0x00000140, handle_rdmsr_0x00000140, handle_wrmsr_0x00000140);
     EMULATE_MSR(0x000001A0, handle_rdmsr_0x000001A0, handle_wrmsr_0x000001A0);
-    EMULATE_MSR(0x00000606, handle_rdmsr_0x00000606, handle_wrmsr_0x00000606);
     EMULATE_MSR(0x0000064E, handle_rdmsr_0x0000064E, handle_wrmsr_0x0000064E);
-    EMULATE_MSR(0xC0000103, handle_rdmsr_0xC0000103, handle_wrmsr_0xC0000103);
 }
 
 // -----------------------------------------------------------------------------
@@ -94,11 +91,13 @@ msr_handler::isolate_msr(uint32_t msr)
 }
 
 void
-msr_handler::isolate_msr__on_run(bfobject *obj)
+msr_handler::isolate_msr__on_world_switch(vcpu_t *vcpu)
 {
+    bfignored(vcpu);
+
     // Note:
     //
-    // Note that this function is executed on every entry, so we want to
+    // Note that this function is executed on every world switch, so we want to
     // limit what we are doing here. This is an expensive function to
     // execute.
 
@@ -144,10 +143,8 @@ msr_handler::isolate_msr__on_run(bfobject *obj)
     //   every single VM exit.
     //
 
-    if (obj != nullptr) {
-        for (const auto &msr : m_msrs) {
-            ::x64::msrs::set(msr.first, msr.second);
-        }
+    for (const auto &msr : m_msrs) {
+        ::x64::msrs::set(msr.first, msr.second);
     }
 }
 
@@ -203,30 +200,6 @@ msr_handler::handle_wrmsr_0x00000034(
     bfignored(info);
 
     vcpu->halt("wrmsr to 0x34 is not supported");
-    return true;
-}
-bool
-msr_handler::handle_rdmsr_0x000000CE(
-    vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info)
-{
-    bfignored(vcpu);
-
-    info.val =
-        emulate_rdmsr(
-            gsl::narrow_cast<::x64::msrs::field_type>(vcpu->rcx())
-        );
-
-    info.val &= 0xFF00;
-    return true;
-}
-
-bool
-msr_handler::handle_wrmsr_0x000000CE(
-    vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info)
-{
-    bfignored(info);
-
-    vcpu->halt("wrmsr to 0xCE is not supported");
     return false;
 }
 
@@ -279,29 +252,6 @@ msr_handler::handle_wrmsr_0x000001A0(
 }
 
 bool
-msr_handler::handle_rdmsr_0x00000606(
-    vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info)
-{
-    bfignored(vcpu);
-
-    m_vcpu->inject_exception(13, 0);
-    info.ignore_write = true;
-    info.ignore_advance = true;
-
-    return true;
-}
-
-bool
-msr_handler::handle_wrmsr_0x00000606(
-    vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info)
-{
-    bfignored(info);
-
-    vcpu->halt("wrmsr to 0x606 is not supported");
-    return true;
-}
-
-bool
 msr_handler::handle_rdmsr_0x0000064E(
     vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info)
 {
@@ -318,27 +268,7 @@ msr_handler::handle_wrmsr_0x0000064E(
     bfignored(info);
 
     vcpu->halt("wrmsr to 0x64E is not supported");
-    return true;
-}
-
-bool
-msr_handler::handle_rdmsr_0xC0000103(
-    vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info)
-{
-    bfignored(vcpu);
-
-    info.val = m_0xC0000103 & 0xFFFFFFFF;
-    return true;
-}
-
-bool
-msr_handler::handle_wrmsr_0xC0000103(
-    vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info)
-{
-    bfignored(vcpu);
-
-    m_0xC0000103 = info.val & 0xFFFFFFFF;
-    return true;
+    return false;
 }
 
 }

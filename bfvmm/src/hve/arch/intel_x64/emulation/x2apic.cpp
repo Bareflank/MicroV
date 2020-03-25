@@ -20,7 +20,7 @@
 // SOFTWARE.
 
 #include <hve/arch/intel_x64/vcpu.h>
-#include <hve/arch/intel_x64/vmexit/msr.h>
+#include <hve/arch/intel_x64/emulation/x2apic.h>
 
 #include <iostream>
 
@@ -42,7 +42,7 @@ x2apic_handler::x2apic_handler(
 {
     using namespace vmcs_n;
 
-    if (vcpuid::is_host_vm_vcpu(vcpu->id())) {
+    if (vcpuid::is_host_vcpu(vcpu->id())) {
         return;
     }
 
@@ -51,8 +51,6 @@ x2apic_handler::x2apic_handler(
     EMULATE_MSR(0x00000802, handle_rdmsr_0x00000802, handle_wrmsr_0x00000802);
     EMULATE_MSR(0x00000803, handle_rdmsr_0x00000803, handle_wrmsr_0x00000803);
     EMULATE_MSR(0x00000808, handle_rdmsr_0x00000808, handle_wrmsr_0x00000808);
-    EMULATE_MSR(0x0000080B, handle_rdmsr_0x0000080B, handle_wrmsr_0x0000080B);
-    EMULATE_MSR(0x0000080D, handle_rdmsr_0x0000080D, handle_wrmsr_0x0000080D);
     EMULATE_MSR(0x0000080F, handle_rdmsr_0x0000080F, handle_wrmsr_0x0000080F);
     EMULATE_MSR(0x00000828, handle_rdmsr_0x00000828, handle_wrmsr_0x00000828);
 
@@ -74,23 +72,9 @@ x2apic_handler::x2apic_handler(
     EMULATE_MSR(0x00000826, handle_rdmsr_0x00000826, handle_wrmsr_0x00000826);
     EMULATE_MSR(0x00000827, handle_rdmsr_0x00000827, handle_wrmsr_0x00000827);
 
-    EMULATE_MSR(0x00000832, handle_rdmsr_0x00000832, handle_wrmsr_0x00000832);
     EMULATE_MSR(0x00000835, handle_rdmsr_0x00000835, handle_wrmsr_0x00000835);
     EMULATE_MSR(0x00000836, handle_rdmsr_0x00000836, handle_wrmsr_0x00000836);
     EMULATE_MSR(0x00000837, handle_rdmsr_0x00000837, handle_wrmsr_0x00000837);
-    EMULATE_MSR(0x00000838, handle_rdmsr_0x00000838, handle_wrmsr_0x00000838);
-}
-
-uint8_t
-x2apic_handler::timer_vector() const noexcept
-{
-    using namespace ::intel_x64::msrs::ia32_x2apic_lvt_timer;
-
-    if (timer_mode::get(m_0x00000832) != timer_mode::tsc_deadline) {
-        m_vcpu->halt("non-TSC deadline timer unsupported");
-    }
-
-    return gsl::narrow_cast<uint8_t>(vector::get(m_0x00000832));
 }
 
 // -----------------------------------------------------------------------------
@@ -181,48 +165,6 @@ x2apic_handler::handle_wrmsr_0x00000808(
         vcpu->halt("non-zero TPR not supported");
     }
 
-    return true;
-}
-
-bool
-x2apic_handler::handle_rdmsr_0x0000080B(
-    vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info)
-{
-    bfignored(info);
-
-    vcpu->halt("reading the APIC EOI is not supported");
-    return true;
-}
-
-bool
-x2apic_handler::handle_wrmsr_0x0000080B(
-    vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info)
-{
-    bfignored(vcpu);
-    bfignored(info);
-
-    return true;
-}
-
-bool
-x2apic_handler::handle_rdmsr_0x0000080D(
-    vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info)
-{
-    bfignored(vcpu);
-
-    bfalert_info(0, "unimplemented read from LDR");
-
-    info.val = 0;
-    return true;
-}
-
-bool
-x2apic_handler::handle_wrmsr_0x0000080D(
-    vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info)
-{
-    bfignored(info);
-
-    vcpu->halt("writing to APIC LDR not supported");
     return true;
 }
 
@@ -599,26 +541,6 @@ x2apic_handler::handle_wrmsr_0x00000827(
 // -----------------------------------------------------------------------------
 
 bool
-x2apic_handler::handle_rdmsr_0x00000832(
-    vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info)
-{
-    bfignored(vcpu);
-
-    info.val = m_0x00000832 & 0xFFFFFFFF;
-    return true;
-}
-
-bool
-x2apic_handler::handle_wrmsr_0x00000832(
-    vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info)
-{
-    bfignored(vcpu);
-
-    m_0x00000832 = info.val & 0xFFFFFFFF;
-    return true;
-}
-
-bool
 x2apic_handler::handle_rdmsr_0x00000835(
     vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info)
 {
@@ -679,27 +601,6 @@ x2apic_handler::handle_wrmsr_0x00000837(
     bfignored(vcpu);
 
     m_0x00000837 = info.val & 0xFFFFFFFF;
-    return true;
-}
-
-bool
-x2apic_handler::handle_rdmsr_0x00000838(
-    vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info)
-{
-    bfignored(vcpu);
-
-    info.val = 0;
-    return true;
-}
-
-bool
-x2apic_handler::handle_wrmsr_0x00000838(
-    vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info)
-{
-    if (info.val != 0) {
-        vcpu->halt("non-zero LVT initial count not supported");
-    }
-
     return true;
 }
 

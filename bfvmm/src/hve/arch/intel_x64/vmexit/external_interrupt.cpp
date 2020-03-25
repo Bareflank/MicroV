@@ -30,8 +30,6 @@ external_interrupt_handler::external_interrupt_handler(
 ) :
     m_vcpu{vcpu}
 {
-    using namespace vmcs_n;
-
     if (vcpu->is_dom0()) {
         return;
     }
@@ -53,7 +51,7 @@ external_interrupt_handler::handle(
 
     parent_vcpu->load();
     parent_vcpu->queue_external_interrupt(info.vector);
-    parent_vcpu->return_resume_after_interrupt();
+    parent_vcpu->return_continue();
 
     // Unreachable
     return true;

@@ -39,9 +39,11 @@ public:
 
     void call_ioctl_create_vm_from_bzimage(create_vm_from_bzimage_args &args);
     void call_ioctl_destroy(domainid_t domainid) noexcept;
+    uint64_t call_ioctl_vmcall(uint64_t r1, uint64_t r2, uint64_t r3, uint64_t r4);
 
 private:
-    HANDLE fd;
+    HANDLE fd1;
+    HANDLE fd2;
 };
 
 #ifdef _MSC_VER

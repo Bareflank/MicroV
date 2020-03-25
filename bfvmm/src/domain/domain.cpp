@@ -30,20 +30,20 @@ domain::domain(domainid_type domainid) :
 { }
 
 void
-domain::run(bfobject *obj)
-{ bfignored(obj); }
+domain::run()
+{ }
 
 void
-domain::hlt(bfobject *obj)
-{ bfignored(obj); }
+domain::hlt()
+{ }
 
 void
-domain::init(bfobject *obj)
-{ bfignored(obj); }
+domain::init()
+{ }
 
 void
-domain::fini(bfobject *obj)
-{ bfignored(obj); }
+domain::fini()
+{ }
 
 domain::domainid_type
 domain::id() const noexcept

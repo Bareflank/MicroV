@@ -19,11 +19,11 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#ifndef VMEXIT_IO_INSTRUCTION_INTEL_X64_BOXY_H
-#define VMEXIT_IO_INSTRUCTION_INTEL_X64_BOXY_H
+#ifndef EMULATION_CPUID_INTEL_X64_BOXY_H
+#define EMULATION_CPUID_INTEL_X64_BOXY_H
 
 #include <bfvmm/hve/arch/intel_x64/vcpu.h>
-#include <bfvmm/hve/arch/intel_x64/vmexit/io_instruction.h>
+#include <bfvmm/hve/arch/intel_x64/vmexit/cpuid.h>
 
 // -----------------------------------------------------------------------------
 // Definitions
@@ -34,7 +34,7 @@ namespace boxy::intel_x64
 
 class vcpu;
 
-class io_instruction_handler
+class cpuid_handler
 {
 public:
 
@@ -45,7 +45,7 @@ public:
     ///
     /// @param vcpu the vcpu object for this handler
     ///
-    io_instruction_handler(
+    cpuid_handler(
         gsl::not_null<vcpu *> vcpu);
 
     /// Destructor
@@ -53,17 +53,48 @@ public:
     /// @expects
     /// @ensures
     ///
-    ~io_instruction_handler() = default;
+    ~cpuid_handler() = default;
 
 public:
 
     /// @cond
 
-    io_instruction_handler(io_instruction_handler &&) = default;
-    io_instruction_handler &operator=(io_instruction_handler &&) = default;
+    bool handle_0x00000000(vcpu_t *vcpu);
+    bool handle_0x00000001(vcpu_t *vcpu);
+    bool handle_0x00000002(vcpu_t *vcpu);
+    bool handle_0x00000004(vcpu_t *vcpu);
+    bool handle_0x00000006(vcpu_t *vcpu);
+    bool handle_0x00000007(vcpu_t *vcpu);
+    bool handle_0x0000000A(vcpu_t *vcpu);
+    bool handle_0x0000000B(vcpu_t *vcpu);
+    bool handle_0x0000000D(vcpu_t *vcpu);
+    bool handle_0x0000000F(vcpu_t *vcpu);
+    bool handle_0x00000010(vcpu_t *vcpu);
+    bool handle_0x80000000(vcpu_t *vcpu);
+    bool handle_0x80000001(vcpu_t *vcpu);
+    bool handle_0x80000002(vcpu_t *vcpu);
+    bool handle_0x80000003(vcpu_t *vcpu);
+    bool handle_0x80000004(vcpu_t *vcpu);
+    bool handle_0x80000007(vcpu_t *vcpu);
+    bool handle_0x80000008(vcpu_t *vcpu);
 
-    io_instruction_handler(const io_instruction_handler &) = delete;
-    io_instruction_handler &operator=(const io_instruction_handler &) = delete;
+    bool handle_0x40000000(vcpu_t *vcpu);
+
+    /// @endcond
+
+private:
+
+    vcpu *m_vcpu;
+
+public:
+
+    /// @cond
+
+    cpuid_handler(cpuid_handler &&) = default;
+    cpuid_handler &operator=(cpuid_handler &&) = default;
+
+    cpuid_handler(const cpuid_handler &) = delete;
+    cpuid_handler &operator=(const cpuid_handler &) = delete;
 
     /// @endcond
 };

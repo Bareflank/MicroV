@@ -26,9 +26,9 @@ namespace boxy
 {
 
 std::unique_ptr<domain>
-domain_factory::make(domain::domainid_type domainid, bfobject *obj)
+domain_factory::make(domain::domainid_type domainid, void *data)
 {
-    bfignored(obj);
+    bfignored(data);
     return std::make_unique<boxy::intel_x64::domain>(domainid);
 }
 

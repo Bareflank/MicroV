@@ -20,7 +20,7 @@
 // SOFTWARE.
 
 #include <hve/arch/intel_x64/vcpu.h>
-#include <hve/arch/intel_x64/vmexit/cpuid.h>
+#include <hve/arch/intel_x64/emulation/cpuid.h>
 
 #define EMULATE_CPUID(a,b)                                                     \
     m_vcpu->add_cpuid_emulator(a, {&cpuid_handler::b, this});
@@ -45,13 +45,6 @@ cpuid_handler::cpuid_handler(
 
     vcpu->enable_cpuid_whitelisting();
 
-    // Note:
-    //
-    // Every leaf that is supported is handled here. All reserved bits must
-    // be set to 0. Otherwise a new feature could be enabled that we are not
-    // aware of in the future.
-    //
-
     EMULATE_CPUID(0x00000000, handle_0x00000000);
     EMULATE_CPUID(0x00000001, handle_0x00000001);
     EMULATE_CPUID(0x00000002, handle_0x00000002);
@@ -63,8 +56,6 @@ cpuid_handler::cpuid_handler(
     EMULATE_CPUID(0x0000000D, handle_0x0000000D);
     EMULATE_CPUID(0x0000000F, handle_0x0000000F);
     EMULATE_CPUID(0x00000010, handle_0x00000010);
-    EMULATE_CPUID(0x00000015, handle_0x00000015);
-    EMULATE_CPUID(0x00000016, handle_0x00000016);
     EMULATE_CPUID(0x80000000, handle_0x80000000);
     EMULATE_CPUID(0x80000001, handle_0x80000001);
     EMULATE_CPUID(0x80000002, handle_0x80000002);
@@ -92,7 +83,7 @@ cpuid_handler::handle_0x00000001(vcpu_t *vcpu)
 {
     vcpu->execute_cpuid();
 
-    vcpu->set_rcx(vcpu->rcx() & 0x21FC3203);
+    vcpu->set_rcx(vcpu->rcx() & 0x61FC3203);
     vcpu->set_rdx(vcpu->rdx() & 0x1FCBFBFB);
 
     // Note:
@@ -210,28 +201,6 @@ cpuid_handler::handle_0x00000010(vcpu_t *vcpu)
 }
 
 bool
-cpuid_handler::handle_0x00000015(vcpu_t *vcpu)
-{
-    vcpu->execute_cpuid();
-
-    vcpu->set_rdx(0);
-    return vcpu->advance();
-}
-
-bool
-cpuid_handler::handle_0x00000016(vcpu_t *vcpu)
-{
-    vcpu->execute_cpuid();
-
-    vcpu->set_rax(vcpu->rax() & 0x0000FFFF);
-    vcpu->set_rbx(vcpu->rbx() & 0x0000FFFF);
-    vcpu->set_rcx(vcpu->rcx() & 0x0000FFFF);
-    vcpu->set_rdx(0);
-
-    return vcpu->advance();
-}
-
-bool
 cpuid_handler::handle_0x80000000(vcpu_t *vcpu)
 {
     vcpu->execute_cpuid();
@@ -250,7 +219,7 @@ cpuid_handler::handle_0x80000001(vcpu_t *vcpu)
 
     vcpu->set_rbx(0);
     vcpu->set_rcx(vcpu->rcx() & 0x00000121);
-    vcpu->set_rdx(vcpu->rdx() & 0x2C100800);
+    vcpu->set_rdx(vcpu->rdx() & 0x24100800);
 
     return vcpu->advance();
 }
@@ -281,14 +250,10 @@ cpuid_handler::handle_0x80000007(vcpu_t *vcpu)
 {
     vcpu->execute_cpuid();
 
-    if ((vcpu->rdx() & 0x100) == 0) {
-        bfalert_info(0, "Non-Invariant TSC not supported!!!");
-    }
-
     vcpu->set_rax(0);
     vcpu->set_rbx(0);
     vcpu->set_rcx(0);
-    vcpu->set_rdx(vcpu->rdx() & 0x00000100);
+    vcpu->set_rcx(0);
 
     return vcpu->advance();
 }

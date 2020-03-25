@@ -20,21 +20,29 @@
 // SOFTWARE.
 
 #include <hve/arch/intel_x64/vcpu.h>
-#include <hve/arch/intel_x64/vmexit/vmcall.h>
+#include <hve/arch/intel_x64/vmexit/hlt.h>
+
+// -----------------------------------------------------------------------------
+// Implementation
+// -----------------------------------------------------------------------------
 
 namespace boxy::intel_x64
 {
 
-vmcall_handler::vmcall_handler(
+hlt_handler::hlt_handler(
     gsl::not_null<vcpu *> vcpu
 ) :
     m_vcpu{vcpu}
 {
     using namespace vmcs_n;
 
+    if (vcpu->is_dom0()) {
+        return;
+    }
+
     vcpu->add_exit_handler_for_reason(
-        exit_reason::basic_exit_reason::vmcall,
-        {&vmcall_handler::handle, this}
+        exit_reason::basic_exit_reason::hlt,
+        {&hlt_handler::handle, this}
     );
 }
 
@@ -43,58 +51,56 @@ vmcall_handler::vmcall_handler(
 // -----------------------------------------------------------------------------
 
 void
-vmcall_handler::add_handler(
+hlt_handler::add_hlt_handler(
     const handler_delegate_t &d)
-{ m_handlers.push_back(d); }
+{ m_hlt_handlers.push_back(d); }
+
+void
+hlt_handler::add_yield_handler(
+    const handler_delegate_t &d)
+{ m_yield_handlers.push_back(d); }
 
 // -----------------------------------------------------------------------------
 // Handlers
 // -----------------------------------------------------------------------------
 
-static bool
-vmcall_error(gsl::not_null<vcpu *> vcpu, const std::string &str)
+template<typename T> bool
+dispatch(vcpu *vcpu, const T &handlers)
 {
-    bfdebug_transaction(0, [&](std::string * msg) {
-
-        bferror_lnbr(0, msg);
-        bferror_info(0, ("vmcall error: " + str).c_str(), msg);
-        bferror_brk1(0, msg);
-
-        bferror_subnhex(0, "rax", vcpu->rax(), msg);
-        bferror_subnhex(0, "rbx", vcpu->rbx(), msg);
-        bferror_subnhex(0, "rcx", vcpu->rcx(), msg);
-        bferror_subnhex(0, "rdx", vcpu->rdx(), msg);
-    });
-
-    if (vcpu->is_domU()) {
-        vcpu->halt(str);
+    for (const auto &d : handlers) {
+        if (d(vcpu)) {
+            return true;
+        }
     }
 
-    vcpu->set_rax(FAILURE);
-    return true;
+    return false;
 }
 
 bool
-vmcall_handler::handle(vcpu_t *vcpu)
+hlt_handler::handle(vcpu_t *vcpu)
 {
-    auto ___ = gsl::finally([&] {
-        vcpu->load();
-    });
+    bfignored(vcpu);
 
-    vcpu->advance();
+    // Notes:
+    //
+    // - The big difference between a hlt and a yield is that when the
+    //   guest attempts to execute a hlt it will first disable interrupts.
+    //   This is the guest's way of saying that it has nothing to do. If the
+    //   guest attempts to yield it will enable interrupts instead.
+    //
+    // - We disable blocking_by_sti because if the guest is trying to yield
+    //   it will execute an STI right before executing a hlt (to ensure that
+    //   interrupts are enabled) which triggers this flag. Since we have a VM
+    //   exit, the flag is meaningless but it will trigger a VM entry failure
+    //   when we attempt to inject.
+    //
 
-    try {
-        for (const auto &d : m_handlers) {
-            if (d(m_vcpu)) {
-                return true;
-            }
-        }
+    if (vmcs_n::guest_rflags::interrupt_enable_flag::is_disabled()) {
+        return dispatch(m_vcpu, m_hlt_handlers);
     }
-    catchall({
-        return vmcall_error(m_vcpu, "vmcall threw exception");
-    })
 
-    return vmcall_error(m_vcpu, "unknown vmcall");
+    vmcs_n::guest_interruptibility_state::blocking_by_sti::disable();
+    return dispatch(m_vcpu, m_yield_handlers);
 }
 
 }

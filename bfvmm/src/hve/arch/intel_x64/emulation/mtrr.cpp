@@ -20,7 +20,7 @@
 // SOFTWARE.
 
 #include <hve/arch/intel_x64/vcpu.h>
-#include <hve/arch/intel_x64/vmexit/mtrr.h>
+#include <hve/arch/intel_x64/emulation/mtrr.h>
 
 #define EMULATE_MSR(a,r,w)                                                      \
     m_vcpu->emulate_rdmsr(a, {&mtrr_handler::r, this});                         \

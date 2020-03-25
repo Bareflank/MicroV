@@ -41,13 +41,21 @@
 // -----------------------------------------------------------------------------
 
 int
-bfm_ioctl_open()
-{
-    return open("/dev/bareflank_builder", O_RDWR);
-}
+bfm_ioctl_open_bareflank()
+{ return open("/dev/bareflank", O_RDWR); }
+
+int
+bfm_ioctl_open_bareflank_builder()
+{ return open("/dev/bareflank_builder", O_RDWR); }
 
 int64_t
 bfm_write_ioctl(int fd, unsigned long request, const void *data)
+{
+    return ioctl(fd, request, data);
+}
+
+int64_t
+bfm_write_read_ioctl(int fd, unsigned long request, void *data)
 {
     return ioctl(fd, request, data);
 }
@@ -58,19 +66,26 @@ bfm_write_ioctl(int fd, unsigned long request, const void *data)
 
 ioctl_private::ioctl_private()
 {
-    if ((fd = bfm_ioctl_open()) < 0) {
-        throw std::runtime_error("failed to open to the builder driver");
+    if ((fd1 = bfm_ioctl_open_bareflank()) < 0) {
+        throw std::runtime_error("failed to open to the bareflank driver");
+    }
+
+    if ((fd2 = bfm_ioctl_open_bareflank_builder()) < 0) {
+        throw std::runtime_error("failed to open to the bareflank builder driver");
     }
 }
 
 ioctl_private::~ioctl_private()
-{ close(fd); }
+{
+    close(fd1);
+    close(fd2);
+}
 
 void
 ioctl_private::call_ioctl_create_vm_from_bzimage(
     create_vm_from_bzimage_args &args)
 {
-    if (bfm_write_ioctl(fd, IOCTL_CREATE_VM_FROM_BZIMAGE, &args) < 0) {
+    if (bfm_write_ioctl(fd2, IOCTL_CREATE_VM_FROM_BZIMAGE, &args) < 0) {
         throw std::runtime_error("ioctl failed: IOCTL_CREATE_VM_FROM_BZIMAGE");
     }
 }
@@ -78,7 +93,19 @@ ioctl_private::call_ioctl_create_vm_from_bzimage(
 void
 ioctl_private::call_ioctl_destroy(domainid_t domainid) noexcept
 {
-    if (bfm_write_ioctl(fd, IOCTL_DESTROY, &domainid) < 0) {
+    if (bfm_write_ioctl(fd2, IOCTL_DESTROY, &domainid) < 0) {
         std::cerr << "[ERROR] ioctl failed: IOCTL_DESTROY\n";
     }
+}
+
+uint64_t
+ioctl_private::call_ioctl_vmcall(uint64_t r1, uint64_t r2, uint64_t r3, uint64_t r4)
+{
+    ioctl_vmcall_args_t args = {r1, r2, r3, r4};
+
+    if (bfm_write_read_ioctl(fd1, IOCTL_VMCALL, &args) < 0) {
+        throw std::runtime_error("ioctl failed: IOCTL_VMCALL");
+    }
+
+    return args.reg1;
 }

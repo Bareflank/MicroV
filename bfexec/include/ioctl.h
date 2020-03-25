@@ -102,6 +102,23 @@ public:
     ///
     void call_ioctl_destroy(domainid_t domainid) noexcept;
 
+    /// VMCall
+    ///
+    /// Performs a VMCall through the Bareflank Driver. If
+    /// a VMCall cannot be made due to a suspend/resume,
+    /// a SUSPEND error will be returned.
+    ///
+    /// @expects none
+    /// @ensures none
+    ///
+    /// @param r1 vmcall arg 1
+    /// @param r2 vmcall arg 2
+    /// @param r3 vmcall arg 3
+    /// @param r4 vmcall arg 4
+    /// @return the return value of the VMCall
+    ///
+    uint64_t call_ioctl_vmcall(uint64_t r1, uint64_t r2, uint64_t r3, uint64_t r4);
+
 private:
 
     std::unique_ptr<ioctl_private_base> m_d;
