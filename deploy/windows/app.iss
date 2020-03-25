@@ -47,22 +47,47 @@ DirExistsWarning=no
 Compression=lzma2
 SolidCompression=yes
 AlwaysRestart=yes
+ArchitecturesAllowed=x64
 ArchitecturesInstallIn64BitMode=x64
 OutputDir=output
 OutputBaseFilename=install-{#NAME_LOWER}
 PrivilegesRequired=admin
+#ifdef DEBUG
 SetupLogging=yes
-SetupIconFile=assets\beam-logo.ico
-UninstallDisplayIcon=assets\beam-logo.ico
-WizardSmallImageFile=assets\beam-logo.bmp
+#endif
+SetupIconFile=assets\{#NAME_LOWER}-logo.ico
+UninstallDisplayIcon=assets\{#NAME_LOWER}-logo.ico
+WizardSmallImageFile=assets\{#NAME_LOWER}-logo.bmp
 WizardStyle=modern
 
+[Icons]
+Name: "{commondesktop}\{#NAME_TITLE}"; \
+    IconFileName: "{app}\assets\{#NAME_LOWER}-logo.ico"; \
+    Comment: "Run {#NAME_TITLE} in the background"; \
+    Filename: "{#PS}"; \
+    Parameters: "-File ""{app}\scripts\startvms.ps1"""
+
+#ifdef DEBUG
+Name: "{commondesktop}\{#NAME_TITLE} - With Console"; \
+    IconFileName: "{app}\assets\{#NAME_LOWER}-logo.ico"; \
+    Comment: "Run {#NAME_TITLE} with a developer console"; \
+    Filename: "{#PS}"; \
+    Parameters: "-File ""{app}\scripts\startvms.ps1"" -Console"
+#endif
+
+Name: "{commondesktop}\{#NAME_TITLE} - Submit Issue"; \
+    IconFileName: "{app}\assets\{#NAME_LOWER}-logo.ico"; \
+    Filename: "https://gitlab.ainfosec.com/{#NAME_LOWER}/programmatics/issues";
+
 [Files]
+Source: "assets\{#NAME_LOWER}-logo.ico"; DestDir: "{app}\assets"
+
 #ifdef BOOT_SHELL
 Source: "shell.efi"; DestDir: "P:\EFI\Boot\"
 #endif
 Source: "bareflank.efi"; DestDir: "P:\EFI\Boot\"
-Source: "uvctl.exe"; DestDir: "{app}"
+Source: "extras\uvctl.exe"; DestDir: "{app}\extras"
+Source: "extras\netctl-wifi-setup.exe"; DestDir: "{app}\extras"
 Source: "images\*"; DestDir: "{app}\storage\images"
 Source: "util\certmgr.exe"; DestDir: "{app}\util"
 Source: "util\devcon.exe"; DestDir: "{app}\util"
@@ -111,8 +136,11 @@ Source: "drivers\xennet\xennet.sys"; DestDir: "{app}\drivers\xennet"
 Source: "drivers\xennet\xennet_coinst.dll"; DestDir: "{app}\drivers\xennet"
 Source: "drivers\xennet\xennet_coinst.pdb"; DestDir: "{app}\drivers\xennet"
 
+Source: "scripts\setenv.ps1"; DestDir: "{app}\scripts"
 Source: "scripts\startvms.ps1"; DestDir: "{app}\scripts"
-Source: "scripts\netctl.ps1"; DestDir: "{app}\scripts"
+Source: "scripts\pcictl.ps1"; DestDir: "{app}\scripts"
+Source: "scripts\vifctl.ps1"; DestDir: "{app}\scripts"
+Source: "scripts\vifconnect.ps1"; DestDir: "{app}\scripts"
 Source: "scripts\powerctl.ps1"; DestDir: "{app}\scripts"
 Source: "scripts\rmfilters.ps1"; DestDir: "{app}\scripts"
 Source: "scripts\smbshare.ps1"; DestDir: "{app}\scripts"
@@ -121,9 +149,8 @@ Source: "scripts\taskctl.ps1"; DestDir: "{app}\scripts"
 #endif
 
 [Run]
-; Allow our powershell scripts to run and create the log directory
+; Allow our powershell scripts to run
 Filename: "{#PS}"; Parameters: "-Command Set-ExecutionPolicy RemoteSigned"; Flags: runhidden
-Filename: "{#PS}"; Parameters: "-Command New-Item -Path ""{app}"" -Name logs -ItemType ""directory"""; Flags: runhidden
 
 ; Install hypervisor and point bootmgr to the VMM's binary
 Filename: "{cmd}"; Parameters: "/C mountvol P: /D"; Flags: runhidden
@@ -158,6 +185,12 @@ Filename: "{app}\util\dpinst.exe"; Parameters: "/s /path ""{app}\drivers\xenbus"
 Filename: "{app}\util\dpinst.exe"; Parameters: "/s /path ""{app}\drivers\xenvif"""; StatusMsg: "Installing driver binaries..."; Flags: runhidden
 Filename: "{app}\util\dpinst.exe"; Parameters: "/s /path ""{app}\drivers\xennet"""; StatusMsg: "Installing driver binaries..."; Flags: runhidden
 
+; Install netctl-wifi gui. Use the /S parameter to run the installer silently
+Filename: "{app}\extras\netctl-wifi-setup.exe"; Parameters: "/S /D=""{app}\extras\netctl-wifi"""; StatusMsg: "Installing netctl wifi..."; Flags: runhidden
+
+; Set environment variables
+Filename: "{#PS}"; Parameters: "-File ""{app}\scripts\setenv.ps1"" -ProductName {#NAME_TITLE} -Init"; Flags: runhidden
+
 ; Disable suspend/resume
 Filename: "{#PS}"; Parameters: "-File ""{app}\scripts\powerctl.ps1"" -Init"; Flags: runhidden
 
@@ -167,12 +200,18 @@ Filename: "{#PS}"; Parameters: "-File ""{app}\scripts\taskctl.ps1"" -TaskPath ""
 #endif
 
 ; Disable PCI network devices
-Filename: "{#PS}"; Parameters: "-File ""{app}\scripts\netctl.ps1"" -Init"; Flags: runhidden
+Filename: "{#PS}"; Parameters: "-File ""{app}\scripts\pcictl.ps1"" -Init"; Flags: runhidden
+
+; Register vifconnect.ps1 as a handler for network connection events
+Filename: "{#PS}"; Parameters: "-File ""{app}\scripts\vifctl.ps1"" -ProductName {#NAME_LOWER} -Register"; Flags: runhidden
 
 ; Create SMB share for persistent storage
 Filename: "{#PS}"; Parameters: "-File ""{app}\scripts\smbshare.ps1"" -RootDir ""{app}"" -Add"; Flags: runhidden
 
 [UninstallRun]
+; Remove xenfilt from the UpperFilters registry value in the system and hdc classes
+Filename: "{#PS}"; Parameters: "-File ""{app}\scripts\rmfilters.ps1"""; Flags: runhidden
+
 ; Remove builder and visr drivers. Note we dont remove the Xen PV drivers
 ; because Windows fails to boot with a "Boot critical file is corrupt" error
 ; pointing to xenbus.sys. We should fix this by determining what makes a file
@@ -191,6 +230,9 @@ Filename: "{app}\util\certmgr.exe"; Parameters: "/del /c /n ""{#WDK_CERT_CN}"" /
 ; Uninstall vs2019 redistributables
 Filename: "{app}\util\vcredist_x64.exe"; Parameters: "/uninstall /quiet"; Flags: runhidden
 
+; Uninstall netctl-wifi gui
+Filename: "{app}\extras\netctl-wifi\Uninstall netctl-wifi.exe"; Parameters: "/S _?=""{app}\extras\netctl-wifi"""; Flags: runhidden
+
 ; Point bootmgr to the standard Windows loader
 Filename: "{sys}\bcdedit.exe"; Parameters: "/set {{bootmgr} path \EFI\Boot\bootx64.efi"; Flags: runhidden
 
@@ -205,11 +247,11 @@ Filename: "{cmd}"; Parameters: "/C del P:\EFI\Boot\shell.efi"; Flags: runhidden
 Filename: "{cmd}"; Parameters: "/C del P:\EFI\Boot\bareflank.efi"; Flags: runhidden
 Filename: "{cmd}"; Parameters: "/C mountvol P: /D"; Flags: runhidden
 
-; Remove xenfilt from the UpperFilters registry value in the system and hdc classes
-Filename: "{#PS}"; Parameters: "-File ""{app}\scripts\rmfilters.ps1"""; Flags: runhidden
-
 ; Remove SMB share
 Filename: "{#PS}"; Parameters: "-File ""{app}\scripts\smbshare.ps1"" -Remove"; Flags: runhidden
+
+; Unregister vifconnect.ps1 as a handler for network connection events
+Filename: "{#PS}"; Parameters: "-File ""{app}\scripts\vifctl.ps1"" -ProductName {#NAME_LOWER} -Unregister"; Flags: runhidden
 
 #ifdef AUTO_START
 ; Unregister the uvctl task
@@ -220,7 +262,10 @@ Filename: "{#PS}"; Parameters: "-File ""{app}\scripts\taskctl.ps1"" -TaskName St
 Filename: "{#PS}"; Parameters: "-File ""{app}\scripts\powerctl.ps1"" -Fini"; Flags: runhidden
 
 ; Enable PCI network devices
-Filename: "{#PS}"; Parameters: "-File ""{app}\scripts\netctl.ps1"" -Fini"; Flags: runhidden
+Filename: "{#PS}"; Parameters: "-File ""{app}\scripts\pcictl.ps1"" -Fini"; Flags: runhidden
+
+; Clear environment variables
+Filename: "{#PS}"; Parameters: "-File ""{app}\scripts\setenv.ps1"" -Fini"; Flags: runhidden
 
 ; Restrict powershell execution
 Filename: "{#PS}"; Parameters: "-Command Set-ExecutionPolicy Restricted"; Flags: runhidden
