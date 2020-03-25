@@ -45,10 +45,6 @@
 #include "domain.h"
 #include "vcpu.h"
 
-#ifdef WIN64
-#include "windows.h"
-#endif
-
 using namespace std::chrono;
 using namespace std::chrono_literals;
 
@@ -243,13 +239,6 @@ static int protected_main(const args_type &args)
 
         set_affinity(0);
     }
-
-#ifdef WIN64
-    if (!SetPriorityClass(GetCurrentProcess(), ABOVE_NORMAL_PRIORITY_CLASS)) {
-        std::cout << __func__ << ": SetPriorityClass failed (error: "
-                  << std::to_string(GetLastError()) << ")\n";
-    }
-#endif
 
     struct uvc_domain root_domain;
     create_vm(args, &root_domain);
