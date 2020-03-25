@@ -20,7 +20,7 @@
 # SOFTWARE.
 
 Param(
-    [parameter(mandatory)] [string] $RootDir,
+    [string] $RootDir,
     [switch] $Add,
     [switch] $Remove
 )
@@ -44,6 +44,10 @@ if ($Add) {
 }
 
 if ($Remove) {
-    Remove-SmbShare -Name "storage" -Confirm:$False
-    Set-NetFirewallRule -DisplayGroup "File And Printer Sharing" -Enabled False
+    Remove-SmbShare -Name "storage" `
+                    -Confirm:$false
+
+    Set-NetFirewallRule -DisplayGroup "File And Printer Sharing" `
+                        -Enabled False `
+                        -Confirm:$false
 }
