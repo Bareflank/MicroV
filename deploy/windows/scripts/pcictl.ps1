@@ -1,3 +1,4 @@
+
 #
 # Copyright (C) 2020 Assured Information Security, Inc.
 #
@@ -24,16 +25,48 @@ Param(
     [switch]$Fini
 )
 
-$netdevs = $(Get-PnpDevice -class net).instanceid | Select-String "^PCI"
+$net_devs = $(Get-PnpDevice -class net).instanceid | Select-String "^PCI"
 
 if ($Init) {
-    foreach ($id in $($netdevs -split "`r`n")) {
+    $net_info = Get-NetAdapterHardwareInfo
+
+    # Disable each network device. This is used as a workaround for a quirk
+    # that prevents integrated wifi devices from working properly in the NDVM
+    # the first time it tries to enumerate the device.
+
+    foreach ($id in $($net_devs -split "`r`n")) {
         Disable-PnpDevice -InstanceId $id -Confirm:$false
     }
+
+    # Now get the PCI BDFs of each network device and add them to the
+    # environment variable used by uvctl for passthrough. This value will
+    # be passed directly to xen-pciback.hide of the xsvm.
+
+    $pciback_hide = $null
+
+    foreach ($info in $net_info) {
+        $bus = $info.Bus
+        $dev = $info.Device
+        $fun = $info.Function
+
+        $pciback_hide += "({0:x2}:{1:x2}.{2:x1})" -f $bus, $dev, $fun
+    }
+
+    [System.Environment]::SetEnvironmentVariable(
+        'UVCTL_PCIBACK_HIDE',
+        $pciback_hide,
+        [System.EnvironmentVariableTarget]::Machine
+    )
 }
 
 if ($Fini) {
-    foreach ($id in $($netdevs -split "`r`n")) {
+    [System.Environment]::SetEnvironmentVariable(
+        'UVCTL_PCIBACK_HIDE',
+        $null,
+        [System.EnvironmentVariableTarget]::Machine
+    )
+
+    foreach ($id in $($net_devs -split "`r`n")) {
         Enable-PnpDevice -InstanceId $id -Confirm:$false
     }
 }
