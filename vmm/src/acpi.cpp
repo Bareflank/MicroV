@@ -38,53 +38,75 @@ namespace microv {
 
 using namespace bfvmm::x64;
 
-static std::unordered_map<uintptr_t, page_ptr<char>> hidden_tables;
 static std::vector<struct acpi_table> table_list;
-static bfvmm::x64::unique_map<char> table_region_map;
-static uintptr_t table_region_gpa;
-static size_t table_region_len;
+static std::unordered_set<uintptr_t> tables_2m_gpas;
+static std::unordered_map<uintptr_t, page_ptr<char>> tables_spoof;
 
-static uintptr_t parse_rsdp()
+static void acpi_table_add(uintptr_t gpa)
 {
-    auto rsdp = vcpu0->map_gpa_4k<rsdp_t>(g_rsdp, 1);
-    expects(rsdp->revision == 2);
-
-    return rsdp->xsdtphysicaladdress;
-}
-
-static void parse_xsdt(uintptr_t gpa, size_t len)
-{
-    expects(((len - HDR_SIZE) & (XSDT_ENTRY_SIZE - 1)) == 0);
-
-    auto xsdt = vcpu0->map_gpa_4k<char>(gpa, len);
-    auto nr_entries = (len - HDR_SIZE) / XSDT_ENTRY_SIZE;
-    auto entry = reinterpret_cast<uintptr_t *>(xsdt.get() + HDR_SIZE);
-
+    auto hdr = vcpu0->map_gpa_4k<acpi_header_t>(gpa, 1);
     struct acpi_table tab{};
 
-    memcpy(tab.sig.data(), "XSDT", tab.sig.size());
+    memcpy(tab.sig.data(), hdr->signature, sizeof(hdr->signature));
     tab.gpa = gpa;
-    tab.len = len;
-    tab.hva = 0;
+    tab.len = hdr->length;
     tab.hidden = false;
     table_list.push_back(tab);
 
-    for (auto i = 0; i < nr_entries; i++) {
-        memset(&tab, 0, sizeof(tab));
-        tab.gpa = entry[i];
-        tab.hidden = false;
-        table_list.push_back(tab);
+    auto gpa_base = bfn::upper(gpa, 21);
+    auto gpa_end = bfn::upper(gpa + hdr->length + (1 << 21) - 1, 21);
+    for (auto a = gpa_base; a < gpa_end; a += (1 << 21)) {
+        tables_2m_gpas.insert(a);
+    }
+}
+
+static void parse_rsdp()
+{
+    auto rsdp = vcpu0->map_gpa_4k<rsdp_t>(g_rsdp, 1);
+    auto sig_len = sizeof("RSD PTR ") - 1;
+
+    expects(!memcmp(rsdp->signature, "RSD PTR ", sig_len));
+    expects(rsdp->revision == 2);
+
+    /*
+     * Consider the RSDP as part of the ACPI mapped range, it may already be by
+     * being in a 4k-range already used for another ACPI table.
+     */
+    tables_2m_gpas.insert(bfn::upper(g_rsdp, 21));
+
+    printv("acpi: RSDP: %#lx-%#lx (%uB).\n",
+        g_rsdp, g_rsdp + rsdp->length - 1, rsdp->length);
+}
+
+static void parse_xsdt()
+{
+    auto rsdp = vcpu0->map_gpa_4k<rsdp_t>(g_rsdp, 1);
+    auto xsdt_gpa = rsdp->xsdtphysicaladdress;
+    auto xsdt_hdr = vcpu0->map_gpa_4k<acpi_header_t>(xsdt_gpa, 1);
+
+    expects(!memcmp(xsdt_hdr->signature, "XSDT", sizeof(xsdt_hdr->signature)));
+
+    acpi_table_add(xsdt_gpa);
+
+    auto entries_gpa = xsdt_gpa + HDR_SIZE;
+    auto entries_size = xsdt_hdr->length - HDR_SIZE;
+    auto entries_map = vcpu0->map_gpa_4k<uintptr_t>(entries_gpa, entries_size);
+    auto entries = reinterpret_cast<uintptr_t*>(entries_map.get());
+    auto n = entries_size / XSDT_ENTRY_SIZE;
+
+    for (auto i = 0; i < n; ++i) {
+        acpi_table_add(entries[i]);
     }
 }
 
 struct acpi_table *find_acpi_table(const acpi_sig_t &sig)
 {
-    expects(table_region_map);
-
     for (auto i = 0; i < table_list.size(); i++) {
         auto tab = &table_list[i];
+        auto gpa_base = bfn::upper(tab->gpa);
+        auto gpa_offset = bfn::lower(tab->gpa);
+
         if (!memcmp(tab->sig.data(), sig.data(), sig.size())) {
-            tab->hva = table_region_map.get() + (tab->gpa - table_region_gpa);
             return tab;
         }
     }
@@ -101,58 +123,33 @@ struct acpi_table *find_acpi_table(const char sig[4])
 
 int init_acpi()
 {
-    uintptr_t xsdt_gpa;
-    size_t xsdt_len;
-
     if (!vcpu0 || !g_rsdp) {
         return -EINVAL;
     }
 
-    xsdt_gpa = parse_rsdp();
-    {
-        auto hdr = vcpu0->map_gpa_4k<acpi_header_t>(xsdt_gpa, 1);
-        xsdt_len = hdr->length;
+    parse_rsdp();
+    parse_xsdt();
+
+    for (auto const& tab : table_list) {
+        printv("acpi: %c%c%c%c: %#lx-%#lx (%luB).\n",
+            tab.sig[0], tab.sig[1], tab.sig[2], tab.sig[3],
+            tab.gpa, tab.gpa + tab.len - 1, tab.len);
     }
-    parse_xsdt(xsdt_gpa, xsdt_len);
-
-    /* Store the length of each table */
-    for (auto i = 2; i < table_list.size(); i++) {
-        auto tab = &table_list[i];
-        auto hdr = vcpu0->map_gpa_4k<acpi_header_t>(tab->gpa, 1);
-        memcpy(tab->sig.data(), &hdr->signature[0], tab->sig.size());
-        tab->len = hdr->length;
-    }
-
-    /* Sort tables by address */
-    std::sort(
-        table_list.begin(),
-        table_list.end(),
-        [] (struct acpi_table l, struct acpi_table r) { return l.gpa < r.gpa; }
-    );
-
-    auto last = &table_list[table_list.size() - 1];
-    auto base = bfn::upper(table_list[0].gpa, 21);
-    auto npgs = (bfn::upper(last->gpa + last->len - 1, 21) - base) >> 21;
-
-    if (npgs == 0) {
-        npgs = 1;
-    }
-
-    printv("acpi: reducing granularity of %uMB table region to 4KB\n", npgs * 2);
 
     /*
      * Reduce EPT granularity of the ACPI table region to 4K. This is to
      * facilitate later remapping of individual tables like the DMAR
      */
-    for (auto i = 0; i < npgs; i++) {
+    printv("acpi: reducing granularity of %luMB table region to 4KB\n",
+        tables_2m_gpas.size() * 2);
+    for (auto const& gpa : tables_2m_gpas) {
         using namespace bfvmm::intel_x64::ept;
 
         auto dom0 = vcpu0->dom();
-        auto addr = base + (i * ::x64::pd::page_size);
-        auto from = dom0->ept().from(addr);
+        auto from = dom0->ept().from(gpa);
 
         if (from == ::x64::pd::from) {
-            identity_map_convert_2m_to_4k(dom0->ept(), addr);
+            identity_map_convert_2m_to_4k(dom0->ept(), gpa);
         } else {
             expects(from == ::x64::pt::from);
         }
@@ -160,49 +157,53 @@ int init_acpi()
 
     ::intel_x64::vmx::invept_global();
 
-    /*
-     * Map the table region into the VMM. Note this maps in every table that is
-     * directly referenced by the XSDT. Other tables that are indirectly
-     * referenced, like the FACS, may not mapped be in at this point
-     */
-    table_region_gpa = table_list[0].gpa;
-    table_region_len = (last->gpa + last->len) - table_region_gpa;
-    table_region_map = vcpu0->map_gpa_4k<char>(table_region_gpa,
-                                               table_region_len);
     return 0;
 }
 
 void hide_acpi_table(struct acpi_table *tab)
 {
-    auto gpa_4k = bfn::upper(tab->gpa, 12);
-    auto hva_4k = reinterpret_cast<const char *>(bfn::upper(tab->hva, 12));
-    auto offset = reinterpret_cast<uintptr_t>(tab->gpa - gpa_4k);
+    expects(tab);
 
-    expects(offset <= PAGE_SIZE_4K - ACPI_SIG_SIZE);
+    if (tab->hidden) {
+        return;
+    }
 
-    if (hidden_tables.count(gpa_4k)) {
-        auto iter = hidden_tables.find(gpa_4k);
-        char *copy = iter->second.get();
-        char *sig = copy + offset;
-        expects(!memcmp(sig, tab->sig.data(), ACPI_SIG_SIZE));
+    auto gpa = bfn::upper(tab->gpa);
+    auto offset = bfn::lower(tab->gpa);
+
+    expects(gpa);
+
+    if (tables_spoof.count(gpa)) {
+        auto iter = tables_spoof.find(gpa);
+        char *spoof = iter->second.get();
+        char *sig = spoof + offset;
+
         memset(sig, 0, ACPI_SIG_SIZE);
     } else {
-        auto iter = hidden_tables.try_emplace(gpa_4k, make_page<char>()).first;
-        char *copy = iter->second.get();
-        memcpy(copy, hva_4k, PAGE_SIZE_4K);
+        auto orig = vcpu0->map_gpa_4k<char>(gpa, PAGE_SIZE_4K);
+        auto iter = tables_spoof.try_emplace(gpa, make_page<char>()).first;
+        char *spoof = iter->second.get();
+        char *sig = spoof + offset;
 
-        char *sig = copy + offset;
+        memcpy(spoof, orig.get(), PAGE_SIZE_4K);
         expects(!memcmp(sig, tab->sig.data(), ACPI_SIG_SIZE));
         memset(sig, 0, ACPI_SIG_SIZE);
 
         auto dom0 = vcpu0->dom();
-        dom0->unmap(gpa_4k);
-        dom0->map_4k_rw(gpa_4k, g_mm->virtptr_to_physint(copy));
 
+        /* Replacing the signature only requires the first page, but we could
+         * wipe the table. */
+        dom0->unmap(gpa);
+        dom0->map_4k_rw(gpa, g_mm->virtptr_to_physint(spoof));
         ::intel_x64::vmx::invept_global();
     }
 
     tab->hidden = true;
+
+    printv("acpi: hiding table %c%c%c%c %#lx-%#lx (%luB).\n",
+            tab->sig[0], tab->sig[1], tab->sig[2], tab->sig[3],
+            tab->gpa, tab->gpa + tab->len - 1,
+            tab->len);
 }
 
 }
