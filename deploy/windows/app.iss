@@ -33,7 +33,7 @@
 
 #define PS "{sys}\WindowsPowerShell\v1.0\powershell.exe"
 #define MAJOR "1"
-#define MINOR "2"
+#define MINOR "4"
 #define YEAR GetDateTimeString('yyyy', '', '')
 
 [Setup]
