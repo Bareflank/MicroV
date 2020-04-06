@@ -56,8 +56,8 @@ deploy/windows/Output
 deploy/windows/output
 deploy/windows/bareflank.efi
 deploy/windows/drivers/
+deploy/windows/extras
 deploy/windows/images
-deploy/windows/uvctl.exe
 
 *.suo
 *.db
