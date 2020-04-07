@@ -588,6 +588,8 @@ vcpu::setup_default_controls()
     using namespace secondary_processor_based_vm_execution_controls;
     enable_invpcid::disable();
     enable_xsaves_xrstors::enable();
+    rdrand_exiting::disable();
+    rdseed_exiting::disable();
 }
 
 void
