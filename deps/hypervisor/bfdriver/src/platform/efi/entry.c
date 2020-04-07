@@ -54,6 +54,7 @@ struct pmodule_t pmodules[MAX_NUM_MODULES] = {{0}};
 
 static const CHAR16 *opt_disable_xen_pfd = L"--disable-xen-pfd";
 static const CHAR16 *opt_enable_winpv = L"--enable-winpv";
+static const CHAR16 *opt_disable_winpv = L"--disable-winpv";
 static const CHAR16 *opt_no_pci_pt = L"--no-pci-pt";
 static const CHAR16 *opt_enable_xue = L"--enable-xue";
 
@@ -266,6 +267,11 @@ void parse_cmdline(EFI_HANDLE image)
             g_enable_winpv = 1;
         }
 
+        if (!StrnCmp(opt_disable_winpv, argv[i], StrLen(opt_disable_winpv))) {
+            Print(L"Disabling Windows PV\n");
+            g_enable_winpv = 0;
+        }
+
         if (!StrnCmp(opt_disable_xen_pfd, argv[i], StrLen(opt_disable_xen_pfd))) {
             Print(L"Disabling Xen Platform PCI device\n");
             g_disable_xen_pfd = 1;
@@ -338,6 +344,7 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *systab)
         return EFI_ABORTED;
     }
 
+    g_enable_winpv = 1;
     parse_cmdline(image);
 
 #ifdef USE_XUE
