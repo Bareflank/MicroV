@@ -36,16 +36,40 @@ set(BUILD_INCLUDE $<AND:$<OR:${C},${CXX}>,${BUILD}>)
 set(BUILD_INCLUDE_CXX $<AND:${CXX},${BUILD}>)
 
 if(USE_XUE)
-    set(XUE_DEBUG "USE_XUE")
+    if(CMAKE_HOST_SYSTEM_NAME STREQUAL "CYGWIN" OR
+       CMAKE_HOST_SYSTEM_NAME STREQUAL "Windows")
+        set(XUE_DEBUG "USE_XUE;")
+        configure_file(
+            src/platform/windows/bareflank.vcxproj.in
+            ${PROJECT_SOURCE_DIR}/src/platform/windows/bareflank.vcxproj
+            @ONLY
+        )
+    else()
+        set(XUE_DEBUG "USE_XUE")
+        configure_file(
+            src/platform/linux/Makefile.in
+            ${PROJECT_SOURCE_DIR}/src/platform/linux/Makefile
+            @ONLY
+        )
+    endif()
 else()
-    set(XUE_DEBUG NO_XUE)
+    if(CMAKE_HOST_SYSTEM_NAME STREQUAL "CYGWIN" OR
+       CMAKE_HOST_SYSTEM_NAME STREQUAL "Windows")
+        set(XUE_DEBUG "")
+        configure_file(
+            src/platform/windows/bareflank.vcxproj.in
+            ${PROJECT_SOURCE_DIR}/src/platform/windows/bareflank.vcxproj
+            @ONLY
+        )
+    else()
+        set(XUE_DEBUG "NO_XUE")
+        configure_file(
+            src/platform/linux/Makefile.in
+            ${PROJECT_SOURCE_DIR}/src/platform/linux/Makefile
+            @ONLY
+        )
+    endif()
 endif()
-
-configure_file(
-    src/platform/linux/Makefile.in
-    ${PROJECT_SOURCE_DIR}/src/platform/linux/Makefile
-    @ONLY
-)
 
 # ------------------------------------------------------------------------------
 # EFI

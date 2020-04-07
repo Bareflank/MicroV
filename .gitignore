@@ -46,6 +46,7 @@ tags
 *.cache.mk
 
 deps/hypervisor/bfdriver/src/platform/linux/Makefile
+deps/hypervisor/bfdriver/src/platform/windows/bareflank.vcxproj
 *vmm/include/compiler.h
 
 *.vs

@@ -118,6 +118,9 @@ ioctl_load_vmm(void)
     int64_t ret;
 
     g_uefi_boot = 0;
+#ifdef USE_XUE
+    g_enable_xue = 1;
+#endif
 
     ret = common_load_vmm();
     if (ret != BF_SUCCESS) {
