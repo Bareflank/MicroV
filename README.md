@@ -42,11 +42,9 @@ Unlike existing hypervisors, MicroV's design has some unique advantages includin
   using the Linux kernel's device drivers. This is one way in which Xen is 
   more deprivileged than KVM. Unlike KVM which runs device drivers in Ring 0 
   of the host, Xen runs device drivers in Ring 0 of the guest (specifically 
-  in Dom 0). MicroV aims to take a similar approach to Xen, keeping all of 
-  the code in the host as small as possible, let the guest operating system 
-  manage the physical devices it is given. Unlike Xen however, MicroV runs all 
-  of the privileged components in the host, and MicroV supports more than just
-  Linux. 
+  in Dom 0). MicroV aims to take a similar approach to Xen, keeping  
+  the code in the host as small as possible, and instead, delegating the guest 
+  operating system to manage the physical devices it is given. 
 
 - **Performance:** Another important focus of the project is on performance.
   Existing hypervisors make heavy use of emulation where
@@ -93,6 +91,41 @@ Unlike existing hypervisors, MicroV's design has some unique advantages includin
   closed source commercial products. MicroV is licensed under MIT. Feel free to use
   it however you wish. All we ask is that if you find and fix something
   wrong with the open source code, that you work with us to upstream the fix.
+
+## Disadvantages:
+No design is without its disadvantages:
+- **Limited Guest VM Support**: As stated above, on Intel, the CPU is divided 
+  into the host and the guest. The hypervisor runs in the host, and the 
+  operating system runs in the guest. The main operating system, which Xen 
+  would call Dom 0 can be any operating system. Today, we currently support 
+  Windows and Linux, and we even have limited support for UEFI. From there, 
+  MicroV lets you create additional, very small guest virtual machines. 
+  Currently, MicroV only has support for enlightened operating systems running 
+  in these guest VMs. Because they are enligntened, we can keep their size 
+  really small, and in some cases, remove the need for emulation entirely, 
+  which is where the term MicroVM comes from (i.e., a really small VM that 
+  requires little to no emulation). This ultametly means MicroV supports 
+  Linux, unikernels and enlightened applications, with no support for more 
+  complicated operating systems like Windows and macOS. Support for these types 
+  of operating systems is possible, but thats a bridge we will cross in 
+  the future. 
+  
+- **VM DoS Attacks**:
+  Since the main operating system is responsible for scheduling micro VMs for 
+  execution, it is possible that an attack in this operating system could 
+  prevent the micro VMs from executing (i.e., DoS attack). For most 
+  applications, this type of attack is a non-issue as isolation is more 
+  important than reslience against DoS attacks. With that said, there is no 
+  reason why a micro VM could not be in charge of scheduling VMs with its own 
+  scheduling and power management software (just like it would be possible 
+  to run all of the toolstack software in a dedicated micro VM as well). Like Xen, 
+  MicroV is designed to ensure these facilities are not dependent on the main 
+  operating system. The upstream project simply defaults to this type of 
+  configuration as its the larger, more prevelant use case. And keep in 
+  mind that there is always a tradeoff. Although the upstream approach is 
+  vulnerable to DoS attacks, implementing your own scheduler and power 
+  management software is no easy task, and should be limited to specific 
+  use cases (unless performance and battery life is not important). 
 
 ## Interested In Working For AIS?
 Check out our Can You Hack It?® challenge and test your skills! Submit your 
