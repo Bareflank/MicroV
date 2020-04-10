@@ -2,8 +2,8 @@
 
 ## Description
 
-The MicroV Hypervisor is an open source, micro-hypervisor led by Assured 
-Information Security, Inc. (AIS), designed specifically to run micro VMs
+The MicroV Hypervisor is an open source, micro-hypervisor led by (Assured 
+Information Security, Inc.)[https://www.ainfosec.com/], designed specifically to run micro VMs
 (i.e., tiny virtual machines that require little or no emulation). 
 
 ## Advantages of MicroV:
