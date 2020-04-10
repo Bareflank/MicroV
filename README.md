@@ -6,7 +6,7 @@ The MicroV Hypervisor is an open source, micro-hypervisor led by [Assured
 Information Security, Inc.](https://www.ainfosec.com/), designed specifically to run micro VMs
 (i.e., tiny virtual machines that require little or no emulation). 
 
-## Advantages of MicroV:
+## Advantages:
 Unlike existing hypervisors, MicroV's design has some unique advantages including:
 - **Cross-Platform Support:** In open source, hypervisors that are capable of
   supporting guest virtual machines are mostly limited to Xen, KVM and
