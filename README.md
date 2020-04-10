@@ -20,7 +20,7 @@ Unlike existing hypervisors, MicroV's design has some unique advantages includin
   have a true focus on a reduced Trusted Computing Base (TCB). Xen comes the closest
   and has made amazing progress in this direction, but a fully disaggregated and
   deprivileged host has yet to be fully realized or supported. MicroV's design 
-  starts with a micro-kernel architecture inside the hypervisor, running most  
+  starts with a micro-kernel architecture inside the hypervisor, running most 
   of it's internal logic at lower privilege levels. On Intel, when virtualization 
   is enabled, the CPU is divided into the host and the guest. The hypervisor 
   runs in the host, while the operating system runs in the guest. *Both* the host
