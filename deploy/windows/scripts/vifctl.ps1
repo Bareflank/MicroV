@@ -97,7 +97,8 @@ if ($Register) {
     }
 
     $A = New-ScheduledTaskAction -Execute "$PSScriptRoot\..\extras\netctl-wifi\netctl-wifi.exe"
-    $I = New-ScheduledTask -Action $A -Settings $S -Principal $P
+    $T = New-ScheduledTaskTrigger -AtLogOn
+    $I = New-ScheduledTask -Action $A -Settings $S -Trigger $T
 
     Register-ScheduledTask -TaskName NetctlWifi -InputObject $I
 }

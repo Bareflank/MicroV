@@ -168,16 +168,6 @@ $adapters = Get-NetAdapter -Physical
 foreach ($a in $adapters) {
     if ($a.MacAddress -eq $VIF_MGMT_MAC) {
         Connect-VifMgmt $a.Name
-
-        # Start up the wifi menu if it isnt already running
-# TODO: activate this once netctl-wifi is working better
-#        $netctl_wifi = Get-ScheduledTask -TaskName NetctlWifi `
-#                                         -ErrorAction SilentlyContinue
-#        if ($netctl_wifi -ne $null) {
-#            if ($netctl_wifi.State -ne "Running") {
-#                Start-ScheduledTask -TaskName NetctlWifi
-#            }
-#        }
     } elseif ($a.MacAddress -eq $VIF_DIRTY_MAC) {
         Connect-VifDirty $a.Name
     } elseif ($a.MacAddress -eq $VIF_TUNNEL_MAC) {
