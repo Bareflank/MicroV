@@ -22,9 +22,7 @@
 param(
     [parameter(mandatory)] [string] $ProductName,
     [string] $IssPath,
-    [switch] $UseShell,
-    [switch] $AutoStart,
-    [switch] $DebugBuild
+    [switch] $AutoStart
 )
 
 function parse-wdk-cert-cn {
@@ -76,14 +74,6 @@ $cmd = "& `'$iscc`' /F`"$installer`" "
 $cmd += "`"/DNAME_LOWER=$name_lower`" "
 $cmd += "`"/DNAME_TITLE=$name_title`" "
 $cmd += "`"/DWDK_CERT_CN=$wdk_cert_cn`" "
-
-if ($DebugBuild) {
-    $cmd += "`"/DDEBUG`" "
-}
-
-if ($UseShell) {
-    $cmd += "`"/DBOOT_SHELL`" "
-}
 
 if ($AutoStart) {
     $cmd += "`"/DAUTO_START`" "
