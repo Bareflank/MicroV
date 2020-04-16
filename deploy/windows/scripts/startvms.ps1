@@ -48,11 +48,12 @@ if (!$principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
     return
 }
 
+# Check if started already
 $uvctl_ps = Get-Process "uvctl" -ErrorAction SilentlyContinue
 if ($uvctl_ps) {
     Add-Type -AssemblyName PresentationFramework
 
-    $message = "This application is already running. Reboot before starting again."
+    $message = "$product_name is already running. Reboot before starting again."
     $caption = "$product_name Runtime Error"
     $button = [System.Windows.MessageBoxButton]::OK
     $icon = "Warning"
@@ -62,6 +63,11 @@ if ($uvctl_ps) {
 }
 
 cd $PSScriptRoot
+
+$license = "$PSScriptRoot\..\storage\.license"
+if (!(Test-Path $license)) {
+    Set-Content $license "9999999999"
+}
 
 if ([string]::IsNullOrEmpty($CredFile)) {
     $CredFile = ".\cred.txt"
@@ -87,8 +93,13 @@ $cred = New-Object System.Management.Automation.PSCredential -ArgumentList $user
 $uvctl_user = "UVCTL_USER=$user"
 $uvctl_pass = "UVCTL_PASS=$($cred.GetNetworkCredential().Password)"
 
-$kernel_cmdline = " xen-pciback.passthrough=1"
-$kernel_cmdline += " xen-pciback.hide=$pciback_hide"
+$kernel_cmdline = ""
+
+if (![string]::IsNullOrEmpty($pciback_hide) -and ($pciback_hide -ne "NONE")) {
+    $kernel_cmdline += " xen-pciback.hide=$pciback_hide"
+}
+
+$kernel_cmdline += " xen-pciback.passthrough=1"
 $kernel_cmdline += " systemd.setenv=$uvctl_user"
 $kernel_cmdline += " systemd.setenv=$uvctl_pass"
 
