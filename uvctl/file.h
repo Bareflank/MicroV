@@ -40,7 +40,11 @@ public:
         m_path{filename},
         m_file{filename, std::ios::in | std::ios::binary},
         m_data{std::istreambuf_iterator<char>(m_file), std::istreambuf_iterator<char>()}
-    { }
+    {
+        if (m_file.fail()) {
+            std::cerr << "Failed to open " << filename << ", does it exist?\n";
+        }
+    }
 
     ~file()
     { }

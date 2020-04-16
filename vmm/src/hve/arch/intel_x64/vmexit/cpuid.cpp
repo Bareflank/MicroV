@@ -92,7 +92,7 @@ cpuid_handler::handle_0x00000001(vcpu_t *vcpu)
 {
     vcpu->execute_cpuid();
 
-    vcpu->set_rcx(vcpu->rcx() & 0x21FC3203);
+    vcpu->set_rcx(vcpu->rcx() & 0x61FC3203);
     vcpu->set_rdx(vcpu->rdx() & 0x1FCBFBFB);
 
     // Note:

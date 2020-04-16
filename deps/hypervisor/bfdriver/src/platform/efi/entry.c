@@ -36,6 +36,7 @@
 extern int g_uefi_boot;
 extern int g_enable_winpv;
 extern int g_disable_xen_pfd;
+extern int g_enable_xue;
 
 extern struct xue g_xue;
 extern struct xue_ops g_xue_ops;
@@ -53,7 +54,9 @@ struct pmodule_t pmodules[MAX_NUM_MODULES] = {{0}};
 
 static const CHAR16 *opt_disable_xen_pfd = L"--disable-xen-pfd";
 static const CHAR16 *opt_enable_winpv = L"--enable-winpv";
+static const CHAR16 *opt_disable_winpv = L"--disable-winpv";
 static const CHAR16 *opt_no_pci_pt = L"--no-pci-pt";
+static const CHAR16 *opt_enable_xue = L"--enable-xue";
 
 #define NO_PCI_PT_LIST_SIZE 256
 extern uint64_t no_pci_pt_list[NO_PCI_PT_LIST_SIZE];
@@ -254,9 +257,19 @@ void parse_cmdline(EFI_HANDLE image)
     argc = GetShellArgcArgv(image, &argv);
 
     for (i = 0; i < argc; i++) {
+        if (!StrnCmp(opt_enable_xue, argv[i], StrLen(opt_enable_xue))) {
+            Print(L"Enabling Xue USB Debugger\n");
+            g_enable_xue = 1;
+        }
+
         if (!StrnCmp(opt_enable_winpv, argv[i], StrLen(opt_enable_winpv))) {
             Print(L"Enabling Windows PV\n");
             g_enable_winpv = 1;
+        }
+
+        if (!StrnCmp(opt_disable_winpv, argv[i], StrLen(opt_disable_winpv))) {
+            Print(L"Disabling Windows PV\n");
+            g_enable_winpv = 0;
         }
 
         if (!StrnCmp(opt_disable_xen_pfd, argv[i], StrLen(opt_disable_xen_pfd))) {
@@ -331,17 +344,20 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *systab)
         return EFI_ABORTED;
     }
 
-#ifdef USE_XUE
-    xue_mset(&g_xue, 0, sizeof(g_xue));
-    xue_mset(&g_xue_ops, 0, sizeof(g_xue_ops));
-    xue_mset(&g_xue_efi, 0, sizeof(g_xue_efi));
-
-    g_xue_efi.img_hand = image;
-    g_xue.sysid = xue_sysid_efi;
-    xue_open(&g_xue, &g_xue_ops, &g_xue_efi);
-#endif
-
+    g_enable_winpv = 1;
     parse_cmdline(image);
+
+#ifdef USE_XUE
+    if (g_enable_xue) {
+        xue_mset(&g_xue, 0, sizeof(g_xue));
+        xue_mset(&g_xue_ops, 0, sizeof(g_xue_ops));
+        xue_mset(&g_xue_efi, 0, sizeof(g_xue_efi));
+
+        g_xue_efi.img_hand = image;
+        g_xue.sysid = xue_sysid_efi;
+        xue_open(&g_xue, &g_xue_ops, &g_xue_efi);
+    }
+#endif
 
     ioctl_add_module((char *)vmm, vmm_len);
     ioctl_load_vmm();

@@ -22,7 +22,6 @@
 param(
     [parameter(mandatory)] [string] $ProductName,
     [string] $IssPath,
-    [switch] $UseShell,
     [switch] $AutoStart
 )
 
@@ -75,10 +74,6 @@ $cmd = "& `'$iscc`' /F`"$installer`" "
 $cmd += "`"/DNAME_LOWER=$name_lower`" "
 $cmd += "`"/DNAME_TITLE=$name_title`" "
 $cmd += "`"/DWDK_CERT_CN=$wdk_cert_cn`" "
-
-if ($UseShell) {
-    $cmd += "`"/DBOOT_SHELL`" "
-}
 
 if ($AutoStart) {
     $cmd += "`"/DAUTO_START`" "

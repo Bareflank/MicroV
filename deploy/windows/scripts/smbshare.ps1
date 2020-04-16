@@ -20,30 +20,42 @@
 # SOFTWARE.
 
 Param(
-    [parameter(mandatory)] [string] $RootDir,
+    [string] $RootDir,
     [switch] $Add,
     [switch] $Remove
 )
 
+$share_name = "storage"
+$share_path = "$RootDir\$share_name"
+
 if ($Add) {
+    $share = Get-SmbShare | Where-Object -Property Path -Eq $share_path
+    if ($share -ne $null) {
+        return
+    }
+
     # Make sure that file sharing is enabled
     Set-NetFirewallRule -DisplayGroup "File And Printer Sharing" -Enabled True
 
-    if (!(Test-Path "$RootDir\storage")) {
-        mkdir -p "$RootDir\storage"
+    if (!(Test-Path $share_path)) {
+        mkdir -p $share_path
     }
 
     # TODO: use more restricted access with -NoAccess
-    New-SmbShare -Name "storage" -Path "$RootDir\storage" -FullAccess "Users"
+    New-SmbShare -Name $share_name -Path $share_path -FullAccess "Users"
 
-    $acl = Get-Acl "$RootDir\storage"
+    $acl = Get-Acl $share_path
     $ar = New-Object System.Security.AccessControl.FileSystemAccessRule("Users", "FullControl", "ContainerInherit,ObjectInherit", "None", "Allow")
     $acl.SetAccessRule($ar)
 
-    Set-Acl "$RootDir\storage" $acl
+    Set-Acl $share_path $acl
 }
 
 if ($Remove) {
-    Remove-SmbShare -Name "storage" -Confirm:$False
-    Set-NetFirewallRule -DisplayGroup "File And Printer Sharing" -Enabled False
+    Remove-SmbShare -Name $share_name `
+                    -Confirm:$false
+
+    Set-NetFirewallRule -DisplayGroup "File And Printer Sharing" `
+                        -Enabled False `
+                        -Confirm:$false
 }

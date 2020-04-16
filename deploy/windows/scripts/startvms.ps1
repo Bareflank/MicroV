@@ -19,8 +19,105 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-cd 'C:\Program Files\Beam'
+Param(
+    [string]$CredFile,
+    [switch]$Console
+)
 
-$timestamp = Get-Date -Format FileDateTime
+$product_name = [System.Environment]::GetEnvironmentVariable(
+                    'UVCTL_PRODUCT_NAME',
+                    [System.EnvironmentVariableTarget]::Machine
+                )
 
-Start-Process -FilePath .\uvctl.exe -ArgumentList '--verbose --hvc --ram 550000000 --xsvm --cmdline "xen-pciback.hide=(00:14.3)(01:00.0) xen-pciback.passthrough=1" --kernel .\xsvm-vmlinux --initrd .\xsvm-rootfs.cpio.gz' -NoNewWindow -RedirectStandardOutput "C:\Windows\Temp\uvctl-out-$timestamp.txt" -RedirectStandardError "C:\Windows\Temp\uvctl-err-$timestamp.txt"
+$pciback_hide = [System.Environment]::GetEnvironmentVariable(
+                    'UVCTL_PCIBACK_HIDE',
+                    [System.EnvironmentVariableTarget]::Machine
+                )
+
+# Check if running as admin
+$principal = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
+if (!$principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
+    Add-Type -AssemblyName PresentationFramework
+
+    $message = "This application must be run as Administrator"
+    $caption = "$product_name Runtime Error"
+    $button = [System.Windows.MessageBoxButton]::OK
+    $icon = "Error"
+
+    [System.Windows.MessageBox]::Show($message, $caption, $button, $icon)
+    return
+}
+
+# Check if started already
+$uvctl_ps = Get-Process "uvctl" -ErrorAction SilentlyContinue
+if ($uvctl_ps) {
+    Add-Type -AssemblyName PresentationFramework
+
+    $message = "$product_name is already running. Reboot before starting again."
+    $caption = "$product_name Runtime Error"
+    $button = [System.Windows.MessageBoxButton]::OK
+    $icon = "Warning"
+
+    [System.Windows.MessageBox]::Show($message, $caption, $button, $icon)
+    return
+}
+
+cd $PSScriptRoot
+
+$license = "$PSScriptRoot\..\storage\.license"
+if (!(Test-Path $license)) {
+    Set-Content $license "9999999999"
+}
+
+if ([string]::IsNullOrEmpty($CredFile)) {
+    $CredFile = ".\cred.txt"
+}
+
+if (!(Test-Path $CredFile)) {
+    $caption = "$product_name User Authentication"
+    $message = "Please enter your username and password:"
+
+    $cred = $host.ui.PromptForCredential($caption, $message, "", "")
+    $user = $cred.UserName
+    $pass = $cred.Password | ConvertFrom-SecureString
+
+    New-Item -Path $CredFile
+    Set-Content $CredFile "user:$user"
+    Add-Content $CredFile "pass:$pass"
+}
+
+$user = (Get-Content $CredFile)[0].split(":")[1]
+$pass = (Get-Content $CredFile)[1].split(":")[1] | ConvertTo-SecureString
+$cred = New-Object System.Management.Automation.PSCredential -ArgumentList $user, $pass
+
+$uvctl_user = "UVCTL_USER=$user"
+$uvctl_pass = "UVCTL_PASS=$($cred.GetNetworkCredential().Password)"
+
+$kernel_cmdline = ""
+
+if (![string]::IsNullOrEmpty($pciback_hide) -and ($pciback_hide -ne "NONE")) {
+    $kernel_cmdline += " xen-pciback.hide=$pciback_hide"
+}
+
+$kernel_cmdline += " xen-pciback.passthrough=1"
+$kernel_cmdline += " systemd.setenv=$uvctl_user"
+$kernel_cmdline += " systemd.setenv=$uvctl_pass"
+
+$uvctl_args = " --verbose --hvc --xsvm --ram 550000000"
+$uvctl_args += " --kernel .\..\storage\images\xsvm-vmlinux"
+$uvctl_args += " --initrd .\..\storage\images\xsvm-rootfs.cpio.gz"
+$uvctl_args += " --cmdline `"$kernel_cmdline`""
+
+$uvctl_path = ".\..\extras\uvctl.exe"
+
+if ($Console) {
+    Start-Process -Wait -NoNewWindow -FilePath $uvctl_path -ArgumentList $uvctl_args
+} else {
+    $timestamp = Get-Date -Format FileDateTime
+
+    Start-Process -FilePath $uvctl_path `
+                  -ArgumentList $uvctl_args `
+                  -NoNewWindow `
+                  -RedirectStandardOutput "C:\Windows\Temp\uvctl-out-$timestamp.txt" `
+                  -RedirectStandardError "C:\Windows\Temp\uvctl-err-$timestamp.txt"
+}

@@ -41,6 +41,7 @@
 int g_uefi_boot = 0;
 int g_enable_winpv = 0;
 int g_disable_xen_pfd = 0;
+int g_enable_xue = 0;
 
 #define NO_PCI_PT_LIST_SIZE 256
 uint64_t no_pci_pt_list[NO_PCI_PT_LIST_SIZE];
@@ -518,23 +519,25 @@ common_load_vmm(void)
     }
 
 #ifdef USE_XUE
-    if (!g_xue.open) {
-        platform_memset(&g_xue, 0, sizeof(g_xue));
-        platform_memset(&g_xue_ops, 0, sizeof(g_xue_ops));
-        g_xue.sysid = XUE_SYSID;
+    if (g_enable_xue) {
+        if (!g_xue.open) {
+            platform_memset(&g_xue, 0, sizeof(g_xue));
+            platform_memset(&g_xue_ops, 0, sizeof(g_xue_ops));
+            g_xue.sysid = XUE_SYSID;
 
-        if (g_xue.sysid != xue_sysid_windows) {
-            xue_open(&g_xue, &g_xue_ops, NULL);
+            if (g_xue.sysid != xue_sysid_windows) {
+                xue_open(&g_xue, &g_xue_ops, NULL);
+            }
         }
-    }
 
-    if (g_xue.open) {
-        add_xue_mdl();
-    }
+        if (g_xue.open) {
+            add_xue_mdl();
+        }
 
-    ret = platform_call_vmm_on_core(0, BF_REQUEST_INIT_XUE,  (uint64_t)&g_xue, 0);
-    if (ret != BF_SUCCESS) {
-        goto failure;
+        ret = platform_call_vmm_on_core(0, BF_REQUEST_INIT_XUE,  (uint64_t)&g_xue, 0);
+        if (ret != BF_SUCCESS) {
+            goto failure;
+        }
     }
 #endif
 
@@ -566,8 +569,10 @@ common_unload_vmm(void)
     }
 
 #ifdef USE_XUE
-    if (g_xue.sysid != xue_sysid_windows) {
-        xue_close(&g_xue);
+    if (g_enable_xue) {
+        if (g_xue.sysid != xue_sysid_windows) {
+            xue_close(&g_xue);
+        }
     }
 #endif
 

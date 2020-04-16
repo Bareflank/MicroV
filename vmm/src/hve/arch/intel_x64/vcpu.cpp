@@ -379,8 +379,10 @@ void vcpu::remove_child_domain(domainid_t child_id)
 bool vcpu::handle_0x4BF00010(bfvmm::intel_x64::vcpu *vcpu)
 {
 #ifdef USE_XUE
-    if (vcpu->id() == 0 && g_xue.sysid == xue_sysid_windows) {
-        xue_open(&g_xue, &g_xue_ops, NULL);
+    if (g_enable_xue) {
+        if (vcpu->id() == 0 && g_xue.sysid == xue_sysid_windows) {
+            xue_open(&g_xue, &g_xue_ops, NULL);
+        }
     }
 #endif
 
@@ -407,8 +409,10 @@ bool vcpu::handle_0x4BF00021(bfvmm::intel_x64::vcpu *vcpu)
     bfdebug_info(0, "host os is" bfcolor_red " not " bfcolor_end "in a vm");
 
 #ifdef USE_XUE
-    if (vcpu->id() == 0 && g_xue.sysid == xue_sysid_windows) {
-        xue_close(&g_xue);
+    if (g_enable_xue) {
+        if (vcpu->id() == 0 && g_xue.sysid == xue_sysid_windows) {
+            xue_close(&g_xue);
+        }
     }
 #endif
 
@@ -588,6 +592,8 @@ vcpu::setup_default_controls()
     using namespace secondary_processor_based_vm_execution_controls;
     enable_invpcid::disable();
     enable_xsaves_xrstors::enable();
+    rdrand_exiting::disable();
+    rdseed_exiting::disable();
 }
 
 void

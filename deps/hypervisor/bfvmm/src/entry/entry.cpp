@@ -70,6 +70,8 @@ struct xue_ops g_xue_ops{};
 extern "C" int64_t
 private_init_xue(struct xue *xue) noexcept
 {
+    g_enable_xue = true;
+
     g_xue.sysid = xue->sysid;
     if (xue->sysid == xue_sysid_windows) {
         return ENTRY_SUCCESS;

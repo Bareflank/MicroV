@@ -41,6 +41,7 @@
 #include <xue.h>
 
 extern int g_uefi_boot;
+extern int g_enable_xue;
 extern struct xue g_xue;
 extern struct xue_ops g_xue_ops;
 
@@ -179,6 +180,9 @@ ioctl_load_vmm(void)
     int64_t ret;
 
     g_uefi_boot = 0;
+#ifdef USE_XUE
+    g_enable_xue = 1;
+#endif
 
     ret = common_load_vmm();
     if (ret != BF_SUCCESS) {
@@ -267,7 +271,11 @@ static long
 ioctl_dump_xue(void)
 {
 #ifdef USE_XUE
-    xue_dump(&g_xue);
+    if (g_enable_xue) {
+        xue_dump(&g_xue);
+    } else {
+        printk("xue is not being used, g_enable_xue = 0\n");
+    }
 #else
     printk("xue not in use becuase USE_XUE is not defined");
 #endif
