@@ -28,6 +28,18 @@ Param(
 $net_devs = $(Get-PnpDevice -class net).instanceid | Select-String "^PCI"
 
 if ($Init) {
+    $pciback_hide = [System.Environment]::GetEnvironmentVariable(
+        'UVCTL_PCIBACK_HIDE',
+        [System.EnvironmentVariableTarget]::Machine
+    )
+
+    # If the env variable is set, we assume we've already been called from a
+    # previous install and just return.
+
+    if (![string]::IsNullOrEmpty($pciback_hide)) {
+        return
+    }
+
     $net_info = Get-NetAdapterHardwareInfo
 
     # Disable each network device. This is used as a workaround for a quirk
@@ -50,6 +62,10 @@ if ($Init) {
         $fun = $info.Function
 
         $pciback_hide += "({0:x2}:{1:x2}.{2:x1})" -f $bus, $dev, $fun
+    }
+
+    if ($pciback_hide -eq $null) {
+        $pciback_hide = "NONE"
     }
 
     [System.Environment]::SetEnvironmentVariable(
