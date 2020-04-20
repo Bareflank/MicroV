@@ -153,13 +153,14 @@ No design is without its disadvantages:
   use cases (unless performance and battery life is not important). 
 
 ## Interested In Working For AIS?
-<img src="https://github.com/Bareflank/MicroV/raw/master/docs/ais.png" alt="cross-platform" align="right" height="100" />
-Check out our Can You Hack It?® challenge and test your skills! Submit your 
+Check out our [Can You Hack It?®](www.canyouhackit.com) challenge and test your skills! Submit your 
 score to show us what you’ve got. We have offices across the country and offer 
 competitive pay and outstanding benefits. Join a team that is not only 
 committed to the future of cyberspace, but to our employee’s success as well.
 
-www.canyouhackit.com
+<p align="center">
+<img src="https://github.com/Bareflank/MicroV/raw/master/docs/ais.png" alt="cross-platform" height="100" />
+</p>
 
 ## Compilation Instructions
 TBD
