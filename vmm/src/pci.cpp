@@ -75,6 +75,7 @@ struct mcfg_alloc {
 } __attribute__((packed));
 
 static struct acpi_table *mcfg{};
+static bfvmm::x64::unique_map<char> mcfg_map{};
 static struct mcfg_alloc *mca_list{};
 static size_t mca_list_size{};
 
@@ -127,10 +128,12 @@ static void init_mcfg()
         bferror_info(0, "probe_pci: MCFG table not found");
         return;
     }
+    mcfg_map = vcpu0->map_gpa_4k<char>(mcfg->gpa, mcfg->len);
 
     constexpr auto mca_offset = 44;
+    auto mcfg_hva = mcfg_map.get() + mca_offset;
     mca_list_size = (mcfg->len - mca_offset) / sizeof(struct mcfg_alloc);
-    mca_list = reinterpret_cast<struct mcfg_alloc *>(mcfg->hva + mca_offset);
+    mca_list = reinterpret_cast<struct mcfg_alloc *>(mcfg_hva);
 
     hide_acpi_table(mcfg);
 }

@@ -40,13 +40,14 @@ using namespace bfvmm::intel_x64;
 namespace microv {
 
 static struct acpi_table *dmar{};
+static bfvmm::x64::unique_map<char> dmar_map{};
 static std::list<std::unique_ptr<class iommu>> iommu_list;
 static std::list<class iommu *> iommu_view;
 
 static void make_iommus(const struct acpi_table *dmar)
 {
-    auto drs = dmar->hva + drs_offset;
-    auto end = dmar->hva + dmar->len;
+    auto drs = dmar_map.get() + drs_offset;
+    auto end = dmar_map.get() + dmar->len;
 
     while (drs < end) {
         /* Read the type and size of the DMAR remapping structure */
@@ -74,8 +75,8 @@ static void make_iommus(const struct acpi_table *dmar)
 
 void parse_rmrrs(const struct acpi_table *dmar)
 {
-    auto drs = dmar->hva + drs_offset;
-    auto end = dmar->hva + dmar->len;
+    auto drs = dmar_map.get() + drs_offset;
+    auto end = dmar_map.get() + dmar->len;
 
     while (drs < end) {
         /* Read the type and size of the DMAR remapping structure */
@@ -136,8 +137,9 @@ void init_vtd()
         bferror_info(0, "init_vtd: DMAR not found");
         return;
     }
+    dmar_map = vcpu0->map_gpa_4k<char>(dmar->gpa, dmar->len);
 
-    if (memcmp(dmar->hva, "DMAR", 4)) {
+    if (memcmp(dmar_map.get(), "DMAR", 4)) {
         bferror_info(0, "init_vtd: Invalid DMAR signature");
         return;
     }

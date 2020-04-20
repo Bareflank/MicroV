@@ -33,7 +33,6 @@ struct acpi_table {
     acpi_sig_t sig;
     uintptr_t gpa;
     size_t len;
-    char *hva;
     bool hidden;
 };
 
