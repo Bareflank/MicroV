@@ -1145,6 +1145,9 @@ xen_vcpu::xen_vcpu(microv_vcpu *vcpu) :
     m_uv_dom{vcpu->dom()},
     m_xen_dom{m_uv_dom->xen_dom()}
 {
+    /* Set the reset value of MXCSR */
+    vcpu->set_mxcsr(0x1F80);
+
     m_id = m_xen_dom->add_vcpu(this);
 
     m_origin = m_xen_dom->m_uv_info->origin;

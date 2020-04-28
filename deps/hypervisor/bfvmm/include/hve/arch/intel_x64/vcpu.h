@@ -1814,6 +1814,8 @@ public:
     VIRTUAL void set_rip(uint64_t val) noexcept;
     VIRTUAL uint64_t rsp() const noexcept;
     VIRTUAL void set_rsp(uint64_t val) noexcept;
+    VIRTUAL uint32_t mxcsr() const noexcept;
+    VIRTUAL void set_mxcsr(uint32_t val) noexcept;
     VIRTUAL uint64_t gdt_base() const noexcept;
     VIRTUAL void set_gdt_base(uint64_t val) noexcept;
     VIRTUAL uint64_t gdt_limit() const noexcept;

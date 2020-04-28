@@ -56,24 +56,25 @@ struct vcpu_state_t {
 
     uint64_t reserved1;             // 0x0A8
     uint64_t reserved2;             // 0x0B0
-    uint64_t reserved3;             // 0x0B8
+    uint32_t reserved3;             // 0x0B8
+    uint32_t mxcsr;                 // 0x0BC
 
-    uint64_t ymm00[4];              // 0x0C0
-    uint64_t ymm01[4];              // 0x0E0
-    uint64_t ymm02[4];              // 0x100
-    uint64_t ymm03[4];              // 0x120
-    uint64_t ymm04[4];              // 0x140
-    uint64_t ymm05[4];              // 0x160
-    uint64_t ymm06[4];              // 0x180
-    uint64_t ymm07[4];              // 0x1A0
-    uint64_t ymm08[4];              // 0x1C0
-    uint64_t ymm09[4];              // 0x1E0
-    uint64_t ymm10[4];              // 0x200
-    uint64_t ymm11[4];              // 0x220
-    uint64_t ymm12[4];              // 0x240
-    uint64_t ymm13[4];              // 0x260
-    uint64_t ymm14[4];              // 0x280
-    uint64_t ymm15[4];              // 0x2A0
+    uint64_t xmm00[2];              // 0x0C0
+    uint64_t xmm01[2];              // 0x0D0
+    uint64_t xmm02[2];              // 0x0E0
+    uint64_t xmm03[2];              // 0x0F0
+    uint64_t xmm04[2];              // 0x100
+    uint64_t xmm05[2];              // 0x110
+    uint64_t xmm06[2];              // 0x120
+    uint64_t xmm07[2];              // 0x130
+    uint64_t xmm08[2];              // 0x140
+    uint64_t xmm09[2];              // 0x150
+    uint64_t xmm10[2];              // 0x160
+    uint64_t xmm11[2];              // 0x170
+    uint64_t xmm12[2];              // 0x180
+    uint64_t xmm13[2];              // 0x190
+    uint64_t xmm14[2];              // 0x1A0
+    uint64_t xmm15[2];              // 0x1B0
 };
 
 }

@@ -1351,6 +1351,14 @@ void
 vcpu::set_rsp(uint64_t val) noexcept
 { m_state.rsp = val; }
 
+uint32_t
+vcpu::mxcsr() const noexcept
+{ return m_state.mxcsr; }
+
+void
+vcpu::set_mxcsr(uint32_t val) noexcept
+{ m_state.mxcsr = val; }
+
 uint64_t
 vcpu::gdt_base() const noexcept
 { return vmcs_n::guest_gdtr_base::get(); }
