@@ -90,6 +90,8 @@ msr_handler::isolate_msr(uint32_t msr)
 
     if (m_vcpu->is_dom0()) {
         m_msrs[msr] = ::x64::msrs::get(msr);
+    } else {
+        m_msrs[msr] = 0;
     }
 }
 

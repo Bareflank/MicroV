@@ -674,6 +674,12 @@ vcpu::setup_default_register_state()
 
     guest_rflags::set(2);
     vmcs_link_pointer::set(0xFFFFFFFFFFFFFFFF);
+
+    guest_dr7::set(0x400);
+    guest_ia32_debugctl::set(0);
+    guest_ia32_sysenter_cs::set(0);
+    guest_ia32_sysenter_esp::set(0);
+    guest_ia32_sysenter_eip::set(0);
 }
 
 void vcpu::init_xstate()
