@@ -655,6 +655,33 @@ bool xen_vcpu::handle_vm_assist()
     }
 }
 
+static void puke_shutdown(unsigned int reason)
+{
+    switch (reason) {
+    case SHUTDOWN_poweroff:
+        printv("SCHEDOP_shutdown, reason=%s\n", "poweroff");
+        break;
+    case SHUTDOWN_reboot:
+        printv("SCHEDOP_shutdown, reason=%s\n", "reboot");
+        break;
+    case SHUTDOWN_suspend:
+        printv("SCHEDOP_shutdown, reason=%s\n", "suspend");
+        break;
+    case SHUTDOWN_crash:
+        printv("SCHEDOP_shutdown, reason=%s\n", "crash");
+        break;
+    case SHUTDOWN_watchdog:
+        printv("SCHEDOP_shutdown, reason=%s\n", "watchdog");
+        break;
+    case SHUTDOWN_soft_reset:
+        printv("SCHEDOP_shutdown, reason=%s\n", "soft_reset");
+        break;
+    default:
+        printv("SCHEDOP_shutdown, reason=INVALID(0x%x)\n", reason);
+        break;
+    }
+}
+
 bool xen_vcpu::handle_sched_op()
 {
     const auto cmd = m_uv_vcpu->rdi();
@@ -678,11 +705,24 @@ bool xen_vcpu::handle_sched_op()
         /* unreachable */
         return false;
     }
+    case SCHEDOP_shutdown: {
+        auto arg = m_uv_vcpu->map_arg<sched_shutdown_t>(m_uv_vcpu->rsi());
+        puke_shutdown(arg->reason);
 
+        /*
+         * Set an error code and return true. This allows use to get back into
+         * the guest which will then BUG(), giving us a nice stack trace to
+         * see how we got here.
+         */
+        m_uv_vcpu->set_rax(-EINVAL);
+        return true;
+    }
     default:
         printv("%s: cmd=%lu unhandled\n", __func__, cmd);
-        return false;
+        break;
     }
+
+    return false;
 }
 
 bool xen_vcpu::is_xenstore()
