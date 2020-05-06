@@ -180,7 +180,10 @@ static inline void handle_0x00000001_rcx(vcpu_t *vcpu)
 //  rcx |= ecx::pdcm::mask;
 
 //  bit 16 reserved
-//  rcx |= ecx::pcid::mask; // TODO: work on enabling this
+    using namespace ::intel_x64::vmcs::secondary_processor_based_vm_execution_controls;
+    if (enable_invpcid::is_enabled()) {
+        rcx |= ecx::pcid::mask;
+    }
 //  rcx |= ecx::dca::mask;
     rcx |= ecx::sse41::mask;
 
@@ -296,6 +299,10 @@ cpuid_handler::handle_0x00000004(vcpu_t *vcpu)
 bool
 cpuid_handler::handle_0x00000007(vcpu_t *vcpu)
 {
+    using namespace ::intel_x64::cpuid::extended_feature_flags::subleaf0;
+
+    uint64_t rbx{0};
+
     if (vcpu->rcx() > 0) {
         vcpu->set_rax(0);
         vcpu->set_rbx(0);
@@ -309,8 +316,42 @@ cpuid_handler::handle_0x00000007(vcpu_t *vcpu)
 
     vcpu->set_rax(0);
 
-    // TODO: look into passing through bit 10 (INVPCID)
-    vcpu->set_rbx(vcpu->rbx() & 0x219C23F9);
+    rbx |= ebx::fsgsbase::mask;
+//    rbx |= ebx::ia32_tsc_adjust::mask;
+//    rbx |= ebx::sgx::mask;
+    rbx |= ebx::bmi1::mask;
+
+    rbx |= ebx::hle::mask;
+    rbx |= ebx::avx2::mask;
+    rbx |= ebx::fdp_excptn_only::mask;
+    rbx |= ebx::smep::mask;
+
+    rbx |= ebx::bmi2::mask;
+    rbx |= ebx::movsb::mask;
+    using namespace ::intel_x64::vmcs::secondary_processor_based_vm_execution_controls;
+    if (enable_invpcid::is_enabled()) {
+        rbx |= ebx::invpcid::mask;
+    }
+//    rbx |= ebx::rtm::mask;
+
+//    rbx |= ebx::rtm_m::mask;
+    rbx |= ebx::fpucs_fpuds::mask;
+//    rbx |= ebx::mpx::mask;
+//    rbx |= ebx::rdt_a::mask;
+
+    rbx |= ebx::rdseed::mask;
+    rbx |= ebx::adx::mask;
+
+    rbx |= ebx::smap::mask;
+    rbx |= ebx::clflushopt::mask;
+
+    rbx |= ebx::clwb::mask;
+//    rbx |= ebx::trace::mask;
+
+    rbx |= ebx::sha::mask;
+
+    vcpu->set_rbx(vcpu->rbx() & rbx);
+
 
     // TODO: look into passing through bit 2 (UMIP)
     // TODO: look into passing through bit 25 (CLDEMOTE)
