@@ -993,6 +993,27 @@ bool xen_vcpu::debug_hypercall(microv_vcpu *vcpu)
         return false;
     }
 
+    if (rax == __HYPERVISOR_sysctl) {
+        auto ctl = vcpu->map_arg<xen_sysctl_t>(rdi);
+        switch (ctl->cmd) {
+            case XEN_SYSCTL_physinfo:
+            case XEN_SYSCTL_getdomaininfolist:
+                return false;
+            default:
+                break;
+        }
+    }
+
+    if (rax == __HYPERVISOR_xsm_op) {
+        auto op = vcpu->map_arg<xen_flask_op_t>(rdi);
+        switch (op->cmd) {
+            case FLASK_SID_TO_CONTEXT:
+                return false;
+            default:
+                break;
+        }
+    }
+
     if (vcpu->is_root_vcpu()) {
         return true;
     }
@@ -1021,14 +1042,6 @@ bool xen_vcpu::debug_hypercall(microv_vcpu *vcpu)
         return false;
     }
 
-    if (!this->is_xenstore()) {
-        if (rax == __HYPERVISOR_vcpu_op && rdi == VCPUOP_set_singleshot_timer) {
-            return false;
-        }
-
-        return true;
-    }
-
     if (rax == __HYPERVISOR_console_io) {
         return false;
     }
@@ -1050,6 +1063,14 @@ bool xen_vcpu::debug_hypercall(microv_vcpu *vcpu)
     }
 
     if (rax == __HYPERVISOR_memory_op && rdi == XENMEM_remove_from_physmap) {
+        return false;
+    }
+
+    if (rax == __HYPERVISOR_memory_op && rdi == XENMEM_get_sharing_freed_pages) {
+        return false;
+    }
+
+    if (rax == __HYPERVISOR_memory_op && rdi == XENMEM_get_sharing_shared_pages) {
         return false;
     }
 
