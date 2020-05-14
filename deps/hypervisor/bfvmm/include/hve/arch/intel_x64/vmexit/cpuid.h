@@ -202,6 +202,20 @@ public:
     void enable_whitelisting() noexcept
     { m_whitelist = true; }
 
+    /// Set Default Emulator
+    ///
+    /// Call this to set a catch-all emulator. This can be used to provide
+    /// a default emulation for unexpected CPUID leaves accessed from a
+    /// buggy or malicious guest. Note this is only called if no emulator
+    /// returns true at the given leaf and enable_whitelisting() has been
+    /// called.
+    ///
+    /// @expects
+    /// @ensures
+    ///
+    void set_default_emulator(const ::handler_delegate_t &d)
+    { m_default_emulator = d; }
+
 public:
 
     /// @cond
@@ -213,6 +227,7 @@ public:
 private:
 
     bool m_whitelist{false};
+    ::handler_delegate_t m_default_emulator{};
     std::unordered_map<leaf_t, std::list<handler_delegate_t>> m_handlers;
     std::unordered_map<leaf_t, std::list<handler_delegate_t>> m_emulators;
 

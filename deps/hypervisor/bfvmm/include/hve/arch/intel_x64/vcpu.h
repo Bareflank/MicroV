@@ -407,6 +407,17 @@ public:
     ///
     VIRTUAL void enable_cpuid_whitelisting() noexcept;
 
+    /// Add CPUID Default Emulator
+    ///
+    /// @expects
+    /// @ensures
+    ///
+    /// @param d the delegate to call when cpuid whitelisting has been enabled
+    ///        and no other emulator at the given leaf returns true.
+    ///
+    VIRTUAL void add_default_cpuid_emulator(
+        const ::handler_delegate_t &d) noexcept;
+
     //--------------------------------------------------------------------------
     // EPT Misconfiguration
     //--------------------------------------------------------------------------

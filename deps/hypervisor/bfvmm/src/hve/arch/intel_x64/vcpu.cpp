@@ -639,6 +639,10 @@ void
 vcpu::enable_cpuid_whitelisting() noexcept
 { m_cpuid_handler.enable_whitelisting(); }
 
+void
+vcpu::add_default_cpuid_emulator(const ::handler_delegate_t &d) noexcept
+{ m_cpuid_handler.set_default_emulator(d); }
+
 //--------------------------------------------------------------------------
 // EPT Misconfiguration
 //--------------------------------------------------------------------------

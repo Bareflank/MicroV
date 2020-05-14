@@ -48,11 +48,20 @@ static bfn::once_flag vtd_ready;
 static bfn::once_flag pci_ready;
 
 //------------------------------------------------------------------------------
-// Fault Handlers
+// Default Handlers/Emulators
 //------------------------------------------------------------------------------
 
-static bool
-rdmsr_handler(vcpu_t *vcpu)
+static bool cpuid_zeros_emulator(vcpu_t *vcpu)
+{
+    vcpu->set_rax(0);
+    vcpu->set_rbx(0);
+    vcpu->set_rcx(0);
+    vcpu->set_rdx(0);
+
+    return vcpu->advance();
+}
+
+static bool rdmsr_handler(vcpu_t *vcpu)
 {
     vcpu->halt("rdmsr_handler executed. unsupported!!!");
 
@@ -60,8 +69,7 @@ rdmsr_handler(vcpu_t *vcpu)
     return true;
 }
 
-static bool
-wrmsr_handler(vcpu_t *vcpu)
+static bool wrmsr_handler(vcpu_t *vcpu)
 {
     vcpu->halt("wrmsr_handler executed. unsupported!!!");
 
@@ -69,8 +77,7 @@ wrmsr_handler(vcpu_t *vcpu)
     return true;
 }
 
-static bool
-io_instruction_handler(vcpu_t *vcpu)
+static bool io_instruction_handler(vcpu_t *vcpu)
 {
     vcpu->halt("io_instruction_handler executed. unsupported!!!");
 
@@ -78,8 +85,7 @@ io_instruction_handler(vcpu_t *vcpu)
     return true;
 }
 
-static bool
-ept_violation_handler(vcpu_t *vcpu)
+static bool ept_violation_handler(vcpu_t *vcpu)
 {
     vcpu->halt("ept_violation_handler executed. unsupported!!!");
 
@@ -599,6 +605,7 @@ vcpu::setup_default_controls()
 void
 vcpu::setup_default_handlers()
 {
+    this->add_default_cpuid_emulator(::cpuid_zeros_emulator);
     this->add_default_wrmsr_handler(::wrmsr_handler);
     this->add_default_rdmsr_handler(::rdmsr_handler);
     this->add_default_io_instruction_handler(::io_instruction_handler);
