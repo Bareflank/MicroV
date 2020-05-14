@@ -136,7 +136,7 @@ section .text
 
 ; The VMM uses the IST mechanism for interrupt handling. One implication
 ; of this is that the processor unconditionally pushes 5, 8-byte values
-; onto the page-aligned stack provided in the IST entry as in the following
+; onto the 16-byte aligned stack provided in the IST entry as in the following
 ; pseudo-code:
 ;
 ;    (load rsp with value from IST entry)
@@ -149,9 +149,9 @@ section .text
 ; If the exception has an error-code, the CPU pushes that too. So if an
 ; error code is present, the stack is 16-byte aligned, otherwise it is
 ; 8-byte aligned. In order to use the more-performant movdqa (aligned moves)
-; on the XMM registers, we push an extra 8 bytes onto the stack.
-; This allows movdqa to be used for both error-code and non-error-code
-; exceptions (and, most importantly, for NMIs).
+; on the XMM registers, we push an extra 8 bytes onto the stack in the
+; non-error-code case. This allows movdqa to be used for both error-code
+; and non-error-code exceptions (and, most importantly, for NMIs).
 
 %macro ESR_NOERRCODE 1
     global _esr%1

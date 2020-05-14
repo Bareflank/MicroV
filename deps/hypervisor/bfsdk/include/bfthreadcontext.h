@@ -29,6 +29,7 @@
 
 #include <bftypes.h>
 #include <bfconstants.h>
+#include <bfdebug.h>
 
 #pragma pack(push, 1)
 
