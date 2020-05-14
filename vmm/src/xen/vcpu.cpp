@@ -109,33 +109,6 @@ static bool handle_tsc_deadline(base_vcpu *vcpu, wrmsr_handler::info_t &info)
     return true;
 }
 
-constexpr auto PSN_LEAF = 3;
-constexpr auto MWAIT_LEAF = 5;
-constexpr auto DCA_LEAF = 9;
-
-static bool cpuid_zeros(base_vcpu *vcpu)
-{
-    vcpu->set_rax(0);
-    vcpu->set_rbx(0);
-    vcpu->set_rcx(0);
-    vcpu->set_rdx(0);
-
-    vcpu->advance();
-    return true;
-}
-
-constexpr auto CLSIZE_LEAF = 0x80000006;
-constexpr auto INVARIANT_TSC_LEAF = 0x80000007;
-constexpr auto ADDR_SIZE_LEAF = 0x80000008;
-
-static bool cpuid_passthrough(base_vcpu *vcpu)
-{
-    vcpu->execute_cpuid();
-    vcpu->advance();
-
-    return true;
-}
-
 bool xen_vcpu::xen_leaf4(base_vcpu *vcpu)
 {
     uint32_t rax = 0;
@@ -1211,6 +1184,7 @@ xen_vcpu::xen_vcpu(microv_vcpu *vcpu) :
     if (m_origin != domain_info::origin_root || g_enable_winpv) {
         vcpu->add_cpuid_emulator(xen_leaf(0), {xen_leaf0});
     }
+
     vcpu->add_cpuid_emulator(xen_leaf(1), {xen_leaf1});
     vcpu->add_cpuid_emulator(xen_leaf(2), {xen_leaf2});
     vcpu->add_cpuid_emulator(xen_leaf(4), {&xen_vcpu::xen_leaf4, this});
@@ -1237,18 +1211,7 @@ xen_vcpu::xen_vcpu(microv_vcpu *vcpu) :
     }
 
     if (m_uv_dom->is_xsvm()) {
-        vcpu->add_cpuid_emulator(PSN_LEAF, {cpuid_zeros});
-        vcpu->add_cpuid_emulator(MWAIT_LEAF, {cpuid_zeros});
-        vcpu->add_cpuid_emulator(0x8, {cpuid_zeros});
-        vcpu->add_cpuid_emulator(DCA_LEAF, {cpuid_zeros});
-        vcpu->add_cpuid_emulator(0xC, {cpuid_zeros});
-        vcpu->add_cpuid_emulator(0x80000005, {cpuid_zeros});
-        vcpu->add_cpuid_emulator(CLSIZE_LEAF, {cpuid_passthrough});
-        vcpu->add_cpuid_emulator(INVARIANT_TSC_LEAF, {cpuid_passthrough});
-        vcpu->add_cpuid_emulator(ADDR_SIZE_LEAF, {cpuid_passthrough});
-
         vcpu->emulate_io_instruction(0x61, {xlboot_io_in}, {xlboot_io_out});
-
         m_event_op_hdlr =
             std::make_unique<intel_x64::vmcall_event_op_handler>(vcpu);
     }

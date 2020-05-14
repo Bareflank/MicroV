@@ -63,13 +63,9 @@ public:
     bool handle_0x00000001(vcpu_t *vcpu);
     bool handle_0x00000002(vcpu_t *vcpu);
     bool handle_0x00000004(vcpu_t *vcpu);
-    bool handle_0x00000006(vcpu_t *vcpu);
     bool handle_0x00000007(vcpu_t *vcpu);
     bool handle_0x0000000A(vcpu_t *vcpu);
-    bool handle_0x0000000B(vcpu_t *vcpu);
     bool handle_0x0000000D(vcpu_t *vcpu);
-    bool handle_0x0000000F(vcpu_t *vcpu);
-    bool handle_0x00000010(vcpu_t *vcpu);
     bool handle_0x00000015(vcpu_t *vcpu);
     bool handle_0x00000016(vcpu_t *vcpu);
     bool handle_0x80000000(vcpu_t *vcpu);
@@ -77,6 +73,7 @@ public:
     bool handle_0x80000002(vcpu_t *vcpu);
     bool handle_0x80000003(vcpu_t *vcpu);
     bool handle_0x80000004(vcpu_t *vcpu);
+    bool handle_0x80000006(vcpu_t *vcpu);
     bool handle_0x80000007(vcpu_t *vcpu);
     bool handle_0x80000008(vcpu_t *vcpu);
 
