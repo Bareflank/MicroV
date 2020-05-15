@@ -968,7 +968,8 @@ vcpu::disable_ept()
     m_mmap = nullptr;
 }
 
-void vcpu::invept()
+void
+vcpu::invept()
 {
     m_ept_handler.invept();
 }
