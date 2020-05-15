@@ -588,7 +588,7 @@ void
 vclock_handler::setup_dom0()
 {
     m_vcpu->add_vmcall_handler(
-        {&vclock_handler::dispatch_dom0, this}
+    {&vclock_handler::dispatch_dom0, this}
     );
 }
 
@@ -603,19 +603,19 @@ vclock_handler::setup_domU()
     }
 
     m_vcpu->add_vmcall_handler(
-        {&vclock_handler::dispatch_domU, this}
+    {&vclock_handler::dispatch_domU, this}
     );
 
     m_vcpu->add_resume_delegate(
-        {&vclock_handler::resume_delegate, this}
+    {&vclock_handler::resume_delegate, this}
     );
 
     m_vcpu->add_yield_handler(
-        {&vclock_handler::handle_yield, this}
+    {&vclock_handler::handle_yield, this}
     );
 
     m_vcpu->add_preemption_timer_handler(
-        {&vclock_handler::handle_preemption_timer, this}
+    {&vclock_handler::handle_preemption_timer, this}
     );
 }
 

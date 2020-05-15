@@ -28,10 +28,12 @@
 
 #include "domain.h"
 
+#include "vmexit/exception.h"
 #include "vmexit/external_interrupt.h"
 #include "vmexit/hlt.h"
 #include "vmexit/io_instruction.h"
 #include "vmexit/msr.h"
+#include "vmexit/nmi_window.h"
 #include "vmexit/preemption_timer.h"
 #include "vmexit/vmcall.h"
 
@@ -394,10 +396,12 @@ private:
 
 private:
 
+    exception_handler m_exception_handler;
     external_interrupt_handler m_external_interrupt_handler;
     hlt_handler m_hlt_handler;
     io_instruction_handler m_io_instruction_handler;
     msr_handler m_msr_handler;
+    nmi_window_handler m_nmi_window_handler;
     preemption_timer_handler m_preemption_timer_handler;
     vmcall_handler m_vmcall_handler;
 

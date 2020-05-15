@@ -85,10 +85,12 @@ vcpu::vcpu(
     bfvmm::intel_x64::vcpu{id, domain->global_state()},
     m_domain{domain},
 
+    m_exception_handler{this},
     m_external_interrupt_handler{this},
     m_hlt_handler{this},
     m_io_instruction_handler{this},
     m_msr_handler{this},
+    m_nmi_window_handler{this},
     m_preemption_timer_handler{this},
     m_vmcall_handler{this},
 
