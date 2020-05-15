@@ -16,13 +16,13 @@ Unlike existing hypervisors, MicroV's design has some unique advantages includin
 <img src="https://github.com/Bareflank/MicroV/raw/master/docs/cross_platform.png" alt="cross-platform" align="right" height="300" />
 - **Cross-Platform Support:** In open source, examples of hypervisors that are 
   capable of supporting guest virtual machines include Xen, KVM, and 
-  VirtualBox. The first two only support Linux and BSD and while VirtualBox 
-  expands this support to Windows and macOS, it sacrifices security. MicroV 
+  VirtualBox. The first two only support Linux and BSD and VirtualBox 
+  expands this support to Windows and macOS, while sacrificing security. MicroV 
   aims to support as many operating systems as possible including Windows, 
-  Linux, UEFI and others without sacrificing performance and security. This is 
-  accomplished by ensuring the hypervisor is a self-contained binary, 
-  independent of the operating system running in the root VM. All of the 
-  supporting applications are written in raw C++ to maximize cross-platform 
+  Linux, UEFI and others while maintaining performance and security. This is 
+  accomplished by compiling the hypervisor as a self-contained binary, 
+  independent of the root operating system. All of the applications provided
+  by MicroV are written in raw C++ to maximize cross-platform 
   support, and any code that is platform specific, including drivers, is 
   broken into the platform specific logic (which is minimal) and common logic 
   that can be used across all platforms. 
@@ -60,12 +60,12 @@ Unlike existing hypervisors, MicroV's design has some unique advantages includin
   be used instead, Furthermore, Xen and KVM only support Linux and BSD and 
   therefore are not capable of leveraging some of the performance benefits of 
   macOS, Android and even Windows such as scheduling and power management, 
-  which becomes evident when attempting to use these hypervisors on IoT and 
+  which becomes evident when attempting to use these hypervisors on laptops and 
   mobile devices. Other approaches to microkernel hypervisors attempt to 
   provide their own device drivers, schedulers and power management algorithms. 
   This limits their ability to widely support hardware, and guarantees a 
   compromised user experience. The operating system that was built for a 
-  device should be the  operating system that manages that device. 
+  device should be the operating system that manages the device. 
 
 - **Virtual Device Support:** Hypervisors like KVM manage all physical devices 
   in Ring 0 of the host (the most privileged code on the system) using the 
@@ -84,11 +84,11 @@ Unlike existing hypervisors, MicroV's design has some unique advantages includin
   and deprivilege while leveraging the scheduling benefits of hypervisor designs 
   like KVM and VirtualBox. Specifically MicroV doesn't include its own scheduler
   , relying on the root VM's operating system to schedule each VM along with the 
-  rest of the critical tasks it must perform. Not only does this reduce the over 
-  complexity and size of MicroV, but it allows MicroV to leverage the advanced 
-  schedulers already present in modern operating systems. Since MicroV is 
-  designed with cross-platform in mind, this also means that support for custom 
-  schedulers is possible, including RTOS schedulers. 
+  rest of the critical tasks it must perform. Not only does this reduce the  
+  overall complexity and size of MicroV, but it allows MicroV to leverage the 
+  advanced schedulers already present in modern operating systems. Since MicroV 
+  is designed with cross-platform in mind, this also means that support for 
+  custom schedulers is possible, including RTOS schedulers. 
 
 - **AUTOSAR Compliance:** Although Xen, KVM and VirtualBox provide various 
   levels of testing, continuous integration and continuous deployment, MicroV 
@@ -98,11 +98,11 @@ Unlike existing hypervisors, MicroV's design has some unique advantages includin
   is our third iteration of this hypervisor project). This will not only 
   improve reliability and security, but also enable the use of MicroV in 
   critical system environments were high levels of testing are required such 
-  as medical, automotive and government.
+  as automotive, medical, space and government.
 
 - **Early Boot and Late Launch Support:** Xen, KVM and VirtualBox support 
-  early boot(i.e. the hypervisor starts first during boot) or late launch 
-  (meaning the operating system starts first, and then the hypervisor starts). 
+  early boot (i.e., the hypervisor starts first during boot) or late launch 
+  (i.e., the operating system starts first, and then the hypervisor starts). 
   None of these hypervisors support both. 
   
   <p align="center">
@@ -128,19 +128,19 @@ Unlike existing hypervisors, MicroV's design has some unique advantages includin
 No design is without its disadvantages:
 - **Limited Guest VM Support**: As stated above, on Intel, the CPU is divided 
   into the host and the guest. The hypervisor runs in the host, and the 
-  operating system runs in the guest. The main operating system, which Xen 
-  would call Dom 0 can be any operating system. Today, we currently support 
-  Windows and Linux, and we even have limited support for UEFI. From there, 
-  MicroV lets you create additional, very small guest virtual machines. 
-  Currently, MicroV only has support for enlightened operating systems running 
+  operating system runs in the guest. The root operating system, which Xen 
+  would call Dom 0 can be any operating system. The initial version of MicroV
+  will support Windows and Linux, with limited support for UEFI. From there, 
+  MicroV will let you create additional, very small guest virtual machines. 
+  MicroV will only have support for enlightened operating systems running 
   in these guest VMs. Because they are enlightened, we can keep their size 
   really small, and in some cases, remove the need for emulation entirely, 
   which is where the term MicroVM comes from (i.e., a really small VM that 
-  requires little to no emulation). This ultimately means MicroV supports Linux, 
-  unikernels and enlightened applications, with no support for more complicated
-  operating systems like Windows and macOS. Support for these types of 
-  operating systems is possible, but thats a bridge we will cross in the 
-  future. 
+  requires little to no emulation). This ultimately means MicroV will support 
+  Linux, unikernels and enlightened applications, with no support for more 
+  complicated operating systems like Windows and macOS. Support for these 
+  types of operating systems is possible, but that is a bridge we will cross 
+  in the future. 
   
 - **VM DoS Attacks**:
   Since the main operating system is responsible for scheduling micro VMs for 
@@ -172,8 +172,49 @@ No design is without its disadvantages:
   </a>
 </p>
 
-## Compilation Instructions
-TBD
+## Roadmap
+The code that is currently in this repo is a snapshot of our previous Boxy 
+repo that already provides limited support for Linux virtual machines. If you
+need something right now, please see Boxy instead as it is more up-to-date 
+and already provides some basic functionality. MicroV is the third iteration 
+of this hypervisor (the original was called the hyperkernel), and will be the 
+main hypervisor project moving forward. So with that said, this is a rough 
+overview of our roadmap for this project (as well as the other Bareflank 
+projects):
+- Before we can work on MicroV, the Bareflank hypervisor itself needs a fair 
+  amount of TLC. Specifically this includes finishing the microkernel 
+  implementation upstream, porting Bareflank to use the Bareflank Support 
+  Library (BSL) instead of using libc++, and stripping away a lot of the 
+  APIs that are no longer supported. As we perform this work, we are also 
+  adding native support for Windows (no need for Cygwin), AUTOSAR compliance, 
+  a new build system, and support for both AMD and Intel (ARM will come in 
+  the future). We expect this work will take us at least into Q3, maybe early
+  Q4 of 2020. 
+- Once the Bareflank hypervisor is ready, we will then begin the port of 
+  MicroV to the new architecture including AMD/Intel support, and support 
+  for AUTOSAR compliance. This will take us into early Q1 of 2021
+- The final step of our roadmap is to remove the remaining forms of 
+  emulation and implement the rest of MicroV's PV interface. The initial 
+  version of MicroV will have support for Console, Disk and Net, using a 
+  design that is similar to Xen, allowing backend and frontend support to 
+  be executed in any Micro VM (something that KVM's virtio is not capable 
+  of supporting). We believe this will take the better part of 2021 as 
+  this will require the implementation of multiple virtual device drivers 
+  for both Linux and Windows. 
 
-## Usage Instructions
-TBD
+Once the above work is complete, we will cut our "first" version of MicroV. 
+Until then, you are likely better off using Boxy, at least until the 2020
+work is complete (Boxy currently doesn't have PV driver support, so MicroV 
+will be feature complete with Boxy near the beginning of 2021). Future 
+versions of MicroV will likely include the following before we would consider
+the project to be "feature complete":
+- Nested virtualization support
+- PCI pass-through support
+- Libvirt support
+- Optimizations
+- First class support for LibVMI
+- First class support for some unikernels
+
+If there are additional features that you would like to see in this feature 
+list, please add a feature request to our issue tracker, or feel free to 
+reach out to us on Slack or email. 
