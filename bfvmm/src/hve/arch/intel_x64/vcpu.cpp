@@ -182,7 +182,7 @@ vcpu::parent_vcpu() const noexcept
 
 void
 vcpu::prepare_for_world_switch()
-{ m_msr_handler.isolate_msr__on_world_switch(this); }
+{}
 
 void
 vcpu::return_fault(uint64_t error)
@@ -338,8 +338,18 @@ vcpu::setup_default_register_state()
     this->set_idt_base(m_domain->idt_base());
     this->set_idt_limit(m_domain->idt_limit());
     this->set_cr0(m_domain->cr0());
+    this->set_cr2(m_domain->cr2());
     this->set_cr3(m_domain->cr3());
     this->set_cr4(m_domain->cr4());
+    this->set_cr8(m_domain->cr8());
+    this->set_dr0(m_domain->dr0());
+    this->set_dr1(m_domain->dr1());
+    this->set_dr2(m_domain->dr2());
+    this->set_dr3(m_domain->dr3());
+    this->set_dr6(m_domain->dr6());
+    this->set_dr7(m_domain->dr7());
+    this->set_xcr0(m_domain->xcr0());
+    this->set_ia32_xss(m_domain->ia32_xss());
     this->set_ia32_efer(m_domain->ia32_efer());
     this->set_ia32_pat(m_domain->ia32_pat());
 

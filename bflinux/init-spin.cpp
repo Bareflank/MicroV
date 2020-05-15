@@ -22,10 +22,9 @@
 #pragma GCC diagnostic ignored "-Wunused-result"
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <unistd.h>
 #include <sys/mount.h>
-
-#include <time.h>
 
 int main(void)
 {
@@ -34,11 +33,13 @@ int main(void)
     freopen("/dev/ttyprintk", "w", stdout);
     freopen("/dev/ttyprintk", "w", stderr);
 
-    while (1) {
-        auto rawtime = time(0);
-        auto loctime = localtime(&rawtime);
+    printf("init-nosleep: starting spin test\n");
+    while (WEXITSTATUS(system("/sbin/init-dummy")) == 0) {
+    }
 
-        printf("hello from init: %s", asctime(loctime));
+    while (1) {
+        printf("failure\n");
         sleep(1);
     }
 }
+

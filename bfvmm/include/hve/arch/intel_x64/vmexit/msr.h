@@ -64,7 +64,7 @@ public:
 
     void isolate_msr(uint32_t msr);
 
-    void isolate_msr__on_world_switch(vcpu_t *vcpu);
+    void isolate_msr__on_resume(vcpu_t *vcpu);
     bool isolate_msr__on_exit(vcpu_t *vcpu);
     bool isolate_msr__on_write(
         vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info);

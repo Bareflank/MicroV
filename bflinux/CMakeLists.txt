@@ -29,19 +29,34 @@ target_link_libraries(bflinux INTERFACE userspace::bfintrinsics)
 add_executable(init init.cpp)
 target_link_options(init PRIVATE -static)
 target_link_libraries(init PRIVATE bflinux)
-add_custom_command(
-    TARGET init POST_BUILD
+
+add_executable(init-spin init-spin.cpp)
+target_link_options(init-spin PRIVATE -static)
+target_link_libraries(init-spin PRIVATE bflinux)
+
+add_executable(init-dummy init-dummy.cpp)
+target_link_options(init-dummy PRIVATE -static)
+target_link_libraries(init-dummy PRIVATE bflinux)
+
+add_custom_target(package ALL
+    COMMAND ${CMAKE_COMMAND} -E remove_directory ${PREFIXES_DIR}/initrd
     COMMAND ${CMAKE_COMMAND} -E make_directory ${PREFIXES_DIR}/initrd/
     COMMAND ${CMAKE_COMMAND} -E make_directory ${PREFIXES_DIR}/initrd/dev
-    COMMAND ${CMAKE_COMMAND} -E make_directory ${PREFIXES_DIR}/initrd/sbin
-    COMMAND ${CMAKE_COMMAND} -E make_directory ${PREFIXES_DIR}/initrd/proc
     COMMAND ${CMAKE_COMMAND} -E make_directory ${PREFIXES_DIR}/initrd/etc
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${PREFIXES_DIR}/initrd/proc
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${PREFIXES_DIR}/initrd/sbin
     COMMAND ${CMAKE_COMMAND} -E copy /etc/localtime ${PREFIXES_DIR}/initrd/etc/localtime
     COMMAND ${CMAKE_COMMAND} -E copy init ${PREFIXES_DIR}/initrd/sbin/
+    COMMAND ${CMAKE_COMMAND} -E copy init-spin ${PREFIXES_DIR}/initrd/sbin/
+    COMMAND ${CMAKE_COMMAND} -E copy init-dummy ${PREFIXES_DIR}/initrd/sbin/
     COMMAND ${CMAKE_COMMAND} -E chdir ${PREFIXES_DIR}/initrd/ bash ${BOXY_SOURCE_ROOT_DIR}/bflinux/build.sh
     VERBATIM
 )
 
+add_dependencies(package init init-spin init-dummy)
+
 install(TARGETS init DESTINATION bin EXPORT bflinux-userspace-targets)
+install(TARGETS init-spin DESTINATION bin EXPORT bflinux-userspace-targets)
+install(TARGETS init-dummy DESTINATION bin EXPORT bflinux-userspace-targets)
 
 fini_project()

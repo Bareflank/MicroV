@@ -44,7 +44,7 @@ msr_handler::msr_handler(
     using namespace vmcs_n;
 
     vcpu->add_exit_handler({&msr_handler::isolate_msr__on_exit, this});
-    vcpu->add_resume_delegate({&msr_handler::isolate_msr__on_world_switch, this});
+    vcpu->add_resume_delegate({&msr_handler::isolate_msr__on_resume, this});
 
     if (vcpu->is_domU()) {
         vcpu->trap_on_all_rdmsr_accesses();
@@ -88,16 +88,19 @@ msr_handler::isolate_msr(uint32_t msr)
     if (m_vcpu->is_dom0()) {
         m_msrs[msr] = ::x64::msrs::get(msr);
     }
+    else {
+        m_msrs[msr] = 0;
+    }
 }
 
 void
-msr_handler::isolate_msr__on_world_switch(vcpu_t *vcpu)
+msr_handler::isolate_msr__on_resume(vcpu_t *vcpu)
 {
     bfignored(vcpu);
 
     // Note:
     //
-    // Note that this function is executed on every world switch, so we want to
+    // Note that this function is executed on every resume, so we want to
     // limit what we are doing here. This is an expensive function to
     // execute.
 
@@ -109,11 +112,13 @@ msr_handler::isolate_msr__on_world_switch(vcpu_t *vcpu)
     //
     // - Type 1 (Pass-Through):
     //
-    //   This type of MSR is being saved and restored my the VMCS for us.
+    //   This type of MSR is being saved and restored by the VMCS for us.
     //   As a result, these are MSRs that the VMM can actually use if it wants,
     //   and these MSRs are the reason why we have to emulate read/write access
     //   to the MSRs as we need to ensure that all pass-through MSRs are saved
-    //   and restored to the VMCS and not the actual hardware.
+    //   and restored to the VMCS and not the actual hardware. Since the VMCS
+    //   save/restores these for us, the VMCS is isolating them already, and
+    //   there is nothing extra that we must do.
     //
     // - Type 2 (Isolated):
     //
@@ -122,9 +127,11 @@ msr_handler::isolate_msr__on_world_switch(vcpu_t *vcpu)
     //   we have to mimic the VMCS functionality. Intel provides a load/store
     //   bitmap to handle this, but we use the lazy load algorithm that is
     //   stated in the SDM to improve performance. What this means is that we
-    //   only load/store these MSRs on world switches. These MSRs have to be
-    //   saved/loaded for both dom0 and all domUs to work (just like what
-    //   the VMCS is doing for us)
+    //   only store these MSRs on write, and we load them on every exit. This
+    //   prevents us from having to save the contents of the MSR on every
+    //   exit. In the future, we can also remove the need to load the MSR on
+    //   every exit and instead, only load the MSRs on world switches, but
+    //   for now, the current algorithm is safer.
     //
     // - Type 3 (Emulated):
     //
@@ -140,7 +147,14 @@ msr_handler::isolate_msr__on_world_switch(vcpu_t *vcpu)
     //   is no way to watch a store to this MSR as swapgs does not trap
     //   (thanks again Intel), and as a result, we treat this MSR just like an
     //   isolated MSR, but we have to take an added step and save its value on
-    //   every single VM exit.
+    //   every single VM exit (meaning this is saved on every exit and then
+    //   loaded on every resume to ensure the VM always has the correct value).
+    //   Note that this process mimics exactly what the VMCS is doing for the
+    //   Pass-Through MSRs. We just have to do it manually. In the future,
+    //   once the world switch portion of the lazy loader is done, we shoul be
+    //   able to minimize this impact as the lazy loader would only change the
+    //   current state of the MSRs when a world switch occurs, and that would
+    //   include the kernel_gs_base MSR.
     //
 
     for (const auto &msr : m_msrs) {

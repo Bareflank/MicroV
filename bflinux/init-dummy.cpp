@@ -19,26 +19,5 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#pragma GCC diagnostic ignored "-Wunused-result"
-
-#include <stdio.h>
-#include <unistd.h>
-#include <sys/mount.h>
-
-#include <time.h>
-
 int main(void)
-{
-    mount("proc", "/proc", "proc", 0, "");
-
-    freopen("/dev/ttyprintk", "w", stdout);
-    freopen("/dev/ttyprintk", "w", stderr);
-
-    while (1) {
-        auto rawtime = time(0);
-        auto loctime = localtime(&rawtime);
-
-        printf("hello from init: %s", asctime(loctime));
-        sleep(1);
-    }
-}
+{}
