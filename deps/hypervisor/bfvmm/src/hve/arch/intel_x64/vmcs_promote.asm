@@ -297,7 +297,9 @@ vmcs_promote:
     movdqa xmm1,  [rdi + 0x0D0]
     movdqa xmm0,  [rdi + 0x0C0]
 
-    ldmxcsr [rdi + 0x0BC]
+    ldmxcsr  [rdi + 0x0BC]
+    mov rax, [rdi + 0x0A8]
+    mov cr2, rax
 
     mov rsp,       [rdi + 0x080]
     mov rax,       [rdi + 0x078]

@@ -57,6 +57,9 @@ exit_handler_entry:
     mov [gs:0x068], r14
     mov [gs:0x070], r15
 
+    mov rax, cr2
+    mov [gs:0x0A8], rax
+
     stmxcsr [gs:0x0BC]
 
     movdqa [gs:0x0C0], xmm0

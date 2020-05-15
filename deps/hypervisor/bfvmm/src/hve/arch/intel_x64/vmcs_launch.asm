@@ -65,7 +65,10 @@ vmcs_launch:
     movdqa xmm1,  [rdi + 0x0D0]
     movdqa xmm0,  [rdi + 0x0C0]
 
-    ldmxcsr [rdi + 0x0BC]
+    ldmxcsr  [rdi + 0x0BC]
+
+    mov rsi, [rdi + 0x0A8]
+    mov cr2, rsi
 
     mov r15, [rdi + 0x070]
     mov r14, [rdi + 0x068]
