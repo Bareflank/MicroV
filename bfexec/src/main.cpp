@@ -39,6 +39,12 @@
 #include <ioctl.h>
 #include <verbose.h>
 
+#if defined(WIN32) || defined(__CYGWIN__)
+#include <windows.h>
+#else
+#include <sys/mman.h>
+#endif
+
 using namespace std::chrono;
 
 vcpuid_t g_vcpuid;
@@ -230,11 +236,126 @@ vcpu_thread(vcpuid_t vcpuid)
 
 bool g_process_uart = true;
 
-bool
-update_output()
+#if defined(WIN32) || defined(__CYGWIN__)
+
+static void *
+windows_alloc_locked_buffer(size_t bytes)
 {
-    std::array<char, UART_MAX_BUFFER> buffer{};
-    auto size = hypercall_domain_op__dump_uart(g_domainid, buffer.data());
+    void *buf = VirtualAllocEx(GetCurrentProcess(),
+                               NULL,
+                               bytes,
+                               MEM_COMMIT | MEM_RESERVE,
+                               PAGE_READWRITE);
+    if (NULL == buf) {
+        std::cerr << __func__ << ": Unable to alloc buffer (error: "
+                  << std::hex << GetLastError() << ")\n";
+
+        return NULL;
+    }
+
+    if (VirtualLock(buf, bytes) == 0) {
+        std::cerr << __func__ << ": Unable to lock buffer (error: "
+                  << std::hex << GetLastError() << ")\n";
+
+        if (VirtualFreeEx(GetCurrentProcess(), buf, 0U, MEM_RELEASE) == 0) {
+            std::cerr << __func__ << ": Unable to free buffer (error: "
+                      << std::hex << GetLastError() << ")\n";
+        }
+
+        return NULL;
+    }
+
+    return buf;
+}
+
+static void
+windows_free_locked_buffer(void *buf, size_t bytes)
+{
+    if (VirtualUnlock(buf, bytes) == 0) {
+        std::cerr << __func__ << ": Unable to unlock buffer (error: "
+                  << std::hex << GetLastError() << ")\n";
+    }
+
+    if (VirtualFreeEx(GetCurrentProcess(), buf, 0U, MEM_RELEASE) == 0) {
+        std::cerr << __func__ << ": Unable to free buffer (error: "
+                  << std::hex << GetLastError() << ")\n";
+    }
+}
+
+#else
+
+static void *
+linux_alloc_locked_buffer(size_t bytes)
+{
+    void *buf = mmap(NULL,
+                     bytes,
+                     PROT_READ | PROT_WRITE,
+                     MAP_PRIVATE | MAP_ANONYMOUS | MAP_LOCKED | MAP_POPULATE,
+                     -1,
+                     0);
+
+    if (MAP_FAILED == buf) {
+        std::cerr << __func__ << ": Unable to alloc buffer (errno: "
+                  << errno << ")\n";
+
+        return NULL;
+    }
+
+    if (mlock(buf, bytes) != 0) {
+        std::cerr << __func__ << ": Unable to lock buffer (errno: "
+                  << errno << ")\n";
+
+        if (munmap(buf, bytes) != 0) {
+            std::cerr << __func__ << ": Unable to free buffer (errno: "
+                      << errno << ")\n";
+        }
+
+        return NULL;
+    }
+
+    return buf;
+}
+
+static void
+linux_free_locked_buffer(void *buf, size_t bytes)
+{
+    if (munlock(buf, bytes) != 0) {
+        std::cerr << __func__ << ": Unable to unlock buffer (errno: "
+                  << errno << ")\n";
+    }
+
+    if (munmap(buf, bytes) != 0) {
+        std::cerr << __func__ << ": Unable to free buffer (errno: "
+                  << errno << ")\n";
+    }
+}
+
+#endif
+
+static inline void *
+alloc_locked_buffer(size_t bytes)
+{
+#if defined(WIN32) || defined(__CYGWIN__)
+    return windows_alloc_locked_buffer(bytes);
+#else
+    return linux_alloc_locked_buffer(bytes);
+#endif
+}
+
+static inline void
+free_locked_buffer(void *buf, size_t bytes)
+{
+#if defined(WIN32) || defined(__CYGWIN__)
+    return windows_free_locked_buffer(buf, bytes);
+#else
+    return linux_free_locked_buffer(buf, bytes);
+#endif
+}
+
+bool
+update_output(char *buffer)
+{
+    auto size = hypercall_domain_op__dump_uart(g_domainid, buffer);
 
     if (size == FAILURE) {
         std::cerr << "[ERROR]: dump uart failure!!!\n";
@@ -245,18 +366,24 @@ update_output()
         return true;
     }
 
-    std::cout.write(buffer.data(), gsl::narrow_cast<int>(size));
+    std::cout.write(buffer, gsl::narrow_cast<int>(size));
     return true;
 }
 
 void
 uart_thread()
 {
-    while (g_process_uart && update_output()) {
+    auto buf = reinterpret_cast<char *>(alloc_locked_buffer(UART_MAX_BUFFER));
+
+    auto ___ = gsl::finally([&](){
+        free_locked_buffer(buf, UART_MAX_BUFFER);
+    });
+
+    while (g_process_uart && update_output(buf)) {
         std::this_thread::sleep_for(milliseconds(100));
     }
 
-    update_output();
+    update_output(buf);
 }
 
 // -----------------------------------------------------------------------------
