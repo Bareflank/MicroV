@@ -550,7 +550,7 @@ setup_32bit_register_state(struct vm_t *vm)
     ret |= hypercall_domain_op__set_dr6(vm->domainid, 0x0);
     ret |= hypercall_domain_op__set_dr7(vm->domainid, 0x0);
 
-    ret |= hypercall_domain_op__set_xcr0(vm->domainid, 0x1);
+    ret |= hypercall_domain_op__set_xcr0(vm->domainid, 0x3);
     ret |= hypercall_domain_op__set_ia32_xss(vm->domainid, 0x0);
 
     ret |= hypercall_domain_op__set_es_selector(vm->domainid, 0x18);

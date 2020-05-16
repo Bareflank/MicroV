@@ -19,5 +19,37 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+#pragma GCC diagnostic ignored "-Wunused-result"
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <unistd.h>
+#include <sys/mount.h>
+#include <sys/wait.h>
+#include <time.h>
+
+extern "C" uint64_t sse_test(uint64_t);
+
 int main(void)
-{}
+{
+    srand(time(0));
+    mount("proc", "/proc", "proc", 0, "");
+
+    freopen("/dev/ttyprintk", "w", stdout);
+    freopen("/dev/ttyprintk", "w", stderr);
+
+    if (fork() == 0) {
+        int64_t val{rand() % 10};
+        printf("running sse test with val: %d\n", val);
+        while (1) {
+            if (sse_test(val) != val) {
+                asm("hlt");
+            }
+        }
+    }
+    else {
+        wait(NULL);
+    }
+}
+
