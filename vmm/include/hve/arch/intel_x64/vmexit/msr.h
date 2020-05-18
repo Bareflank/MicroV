@@ -101,10 +101,6 @@ public:
         vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info);
     bool handle_wrmsr_0x0000064E(
         vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info);
-    bool handle_rdmsr_0xC0000103(
-        vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info);
-    bool handle_wrmsr_0xC0000103(
-        vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info);
 
     /// @endcond
 
@@ -112,7 +108,6 @@ private:
 
     vcpu *m_vcpu;
 
-    uint64_t m_0xC0000103{0};
     std::unordered_map<uint32_t, uint64_t> m_msrs;
 
 public:

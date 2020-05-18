@@ -57,6 +57,10 @@ msr_handler::msr_handler(
     this->isolate_msr(::x64::msrs::ia32_fmask::addr);
     this->isolate_msr(::x64::msrs::ia32_kernel_gs_base::addr);
 
+    if (::intel_x64::cpuid::ext_feature_info::edx::rdtscp::is_enabled()) {
+        this->isolate_msr(::x64::msrs::ia32_tsc_aux::addr);
+    }
+
     if (vcpu->is_dom0()) {
         return;
     }
@@ -75,7 +79,6 @@ msr_handler::msr_handler(
     EMULATE_MSR(0x000001A0, handle_rdmsr_0x000001A0, handle_wrmsr_0x000001A0);
     EMULATE_MSR(0x00000606, handle_rdmsr_0x00000606, handle_wrmsr_0x00000606);
     EMULATE_MSR(0x0000064E, handle_rdmsr_0x0000064E, handle_wrmsr_0x0000064E);
-    EMULATE_MSR(0xC0000103, handle_rdmsr_0xC0000103, handle_wrmsr_0xC0000103);
 }
 
 // -----------------------------------------------------------------------------
@@ -320,26 +323,6 @@ msr_handler::handle_wrmsr_0x0000064E(
     bfignored(info);
 
     vcpu->halt("wrmsr to 0x64E is not supported");
-    return true;
-}
-
-bool
-msr_handler::handle_rdmsr_0xC0000103(
-    vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info)
-{
-    bfignored(vcpu);
-
-    info.val = m_0xC0000103 & 0xFFFFFFFF;
-    return true;
-}
-
-bool
-msr_handler::handle_wrmsr_0xC0000103(
-    vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info)
-{
-    bfignored(vcpu);
-
-    m_0xC0000103 = info.val & 0xFFFFFFFF;
     return true;
 }
 
