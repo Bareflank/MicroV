@@ -190,10 +190,30 @@ hypercall_uart_ndec_op(uint16_t port, uint64_t val)
 #define hypercall_enum_domain_op__set_idt_limit 0xBF02000000010141
 #define hypercall_enum_domain_op__cr0 0xBF02000000010150
 #define hypercall_enum_domain_op__set_cr0 0xBF02000000010151
-#define hypercall_enum_domain_op__cr3 0xBF02000000010160
-#define hypercall_enum_domain_op__set_cr3 0xBF02000000010161
-#define hypercall_enum_domain_op__cr4 0xBF02000000010170
-#define hypercall_enum_domain_op__set_cr4 0xBF02000000010171
+#define hypercall_enum_domain_op__cr2 0xBF02000000010152
+#define hypercall_enum_domain_op__set_cr2 0xBF02000000010153
+#define hypercall_enum_domain_op__cr3 0xBF02000000010154
+#define hypercall_enum_domain_op__set_cr3 0xBF02000000010155
+#define hypercall_enum_domain_op__cr4 0xBF02000000010156
+#define hypercall_enum_domain_op__set_cr4 0xBF02000000010157
+#define hypercall_enum_domain_op__cr8 0xBF02000000010158
+#define hypercall_enum_domain_op__set_cr8 0xBF02000000010159
+#define hypercall_enum_domain_op__dr0 0xBF02000000010160
+#define hypercall_enum_domain_op__set_dr0 0xBF02000000010161
+#define hypercall_enum_domain_op__dr1 0xBF02000000010162
+#define hypercall_enum_domain_op__set_dr1 0xBF02000000010163
+#define hypercall_enum_domain_op__dr2 0xBF02000000010164
+#define hypercall_enum_domain_op__set_dr2 0xBF02000000010165
+#define hypercall_enum_domain_op__dr3 0xBF02000000010166
+#define hypercall_enum_domain_op__set_dr3 0xBF02000000010167
+#define hypercall_enum_domain_op__dr6 0xBF02000000010168
+#define hypercall_enum_domain_op__set_dr6 0xBF02000000010169
+#define hypercall_enum_domain_op__dr7 0xBF0200000001016A
+#define hypercall_enum_domain_op__set_dr7 0xBF0200000001016B
+#define hypercall_enum_domain_op__xcr0 0xBF02000000010170
+#define hypercall_enum_domain_op__set_xcr0 0xBF02000000010171
+#define hypercall_enum_domain_op__ia32_xss 0xBF02000000010172
+#define hypercall_enum_domain_op__set_ia32_xss 0xBF02000000010173
 #define hypercall_enum_domain_op__ia32_efer 0xBF02000000010180
 #define hypercall_enum_domain_op__set_ia32_efer 0xBF02000000010181
 #define hypercall_enum_domain_op__ia32_pat 0xBF02000000010190
@@ -481,10 +501,30 @@ hypercall_domain_op__reg(idt_limit)
 hypercall_domain_op__set_reg(idt_limit)
 hypercall_domain_op__reg(cr0)
 hypercall_domain_op__set_reg(cr0)
+hypercall_domain_op__reg(cr2)
+hypercall_domain_op__set_reg(cr2)
 hypercall_domain_op__reg(cr3)
 hypercall_domain_op__set_reg(cr3)
 hypercall_domain_op__reg(cr4)
 hypercall_domain_op__set_reg(cr4)
+hypercall_domain_op__reg(cr8)
+hypercall_domain_op__set_reg(cr8)
+hypercall_domain_op__reg(dr0)
+hypercall_domain_op__set_reg(dr0)
+hypercall_domain_op__reg(dr1)
+hypercall_domain_op__set_reg(dr1)
+hypercall_domain_op__reg(dr2)
+hypercall_domain_op__set_reg(dr2)
+hypercall_domain_op__reg(dr3)
+hypercall_domain_op__set_reg(dr3)
+hypercall_domain_op__reg(dr6)
+hypercall_domain_op__set_reg(dr6)
+hypercall_domain_op__reg(dr7)
+hypercall_domain_op__set_reg(dr7)
+hypercall_domain_op__reg(xcr0)
+hypercall_domain_op__set_reg(xcr0)
+hypercall_domain_op__reg(ia32_xss)
+hypercall_domain_op__set_reg(ia32_xss)
 hypercall_domain_op__reg(ia32_efer)
 hypercall_domain_op__set_reg(ia32_efer)
 hypercall_domain_op__reg(ia32_pat)

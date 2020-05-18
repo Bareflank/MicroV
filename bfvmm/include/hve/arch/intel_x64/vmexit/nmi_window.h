@@ -19,26 +19,67 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#pragma GCC diagnostic ignored "-Wunused-result"
+#ifndef VMEXIT_NMI_WINDOW_HANDLER_INTEL_X64_BOXY_H
+#define VMEXIT_NMI_WINDOW_HANDLER_INTEL_X64_BOXY_H
 
-#include <stdio.h>
-#include <unistd.h>
-#include <sys/mount.h>
+#include <bfvmm/hve/arch/intel_x64/vcpu.h>
 
-#include <time.h>
+// -----------------------------------------------------------------------------
+// Definitions
+// -----------------------------------------------------------------------------
 
-int main(void)
+namespace boxy::intel_x64
 {
-    mount("proc", "/proc", "proc", 0, "");
 
-    freopen("/dev/ttyprintk", "w", stdout);
-    freopen("/dev/ttyprintk", "w", stderr);
+class vcpu;
 
-    while (1) {
-        auto rawtime = time(0);
-        auto loctime = localtime(&rawtime);
+/// NMI window
+///
+class nmi_window_handler
+{
+public:
 
-        printf("hello from init: %s", asctime(loctime));
-        sleep(1);
-    }
+    /// Constructor
+    ///
+    /// @expects
+    /// @ensures
+    ///
+    /// @param vcpu the vcpu object for this interrupt window handler
+    ///
+    nmi_window_handler(gsl::not_null<vcpu *> vcpu);
+
+    /// Destructor
+    ///
+    /// @expects
+    /// @ensures
+    ///
+    ~nmi_window_handler() = default;
+
+public:
+
+    /// @cond
+
+    bool handle(vcpu_t *vcpu);
+
+    /// @endcond
+
+private:
+
+    vcpu *m_vcpu;
+
+public:
+
+    /// @cond
+
+    nmi_window_handler(nmi_window_handler &&) = default;
+    nmi_window_handler &operator=(nmi_window_handler &&) = default;
+
+    nmi_window_handler(const nmi_window_handler &) = delete;
+    nmi_window_handler &operator=(const nmi_window_handler &) = delete;
+
+    /// @endcond
+};
+
 }
+
+#endif

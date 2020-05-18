@@ -588,7 +588,7 @@ void
 vclock_handler::setup_dom0()
 {
     m_vcpu->add_vmcall_handler(
-        {&vclock_handler::dispatch_dom0, this}
+    {&vclock_handler::dispatch_dom0, this}
     );
 }
 
@@ -603,19 +603,19 @@ vclock_handler::setup_domU()
     }
 
     m_vcpu->add_vmcall_handler(
-        {&vclock_handler::dispatch_domU, this}
+    {&vclock_handler::dispatch_domU, this}
     );
 
     m_vcpu->add_resume_delegate(
-        {&vclock_handler::resume_delegate, this}
+    {&vclock_handler::resume_delegate, this}
     );
 
     m_vcpu->add_yield_handler(
-        {&vclock_handler::handle_yield, this}
+    {&vclock_handler::handle_yield, this}
     );
 
     m_vcpu->add_preemption_timer_handler(
-        {&vclock_handler::handle_preemption_timer, this}
+    {&vclock_handler::handle_preemption_timer, this}
     );
 }
 
@@ -638,52 +638,3 @@ vclock_handler::inject_vclock_event()
 }
 
 }
-
-
-
-
-
-
-
-
-
-// void
-// vclock_handler::launch_delegate(vcpu *vcpu)
-// {
-//     if (m_guest_wc_tsc == 0) {
-//         return;
-//     }
-
-//     if (m_host_wc_tsc == 0) {
-//         m_vcpu->parent_vcpu()->load();
-//         m_vcpu->parent_vcpu()->return_set_wallclock();
-//     }
-
-//     auto elapsed_rtc = sub_timespec(m_host_wc_rtc, m_guest_wc_rtc);
-//     auto sec = static_cast<uint64_t>(elapsed_rtc.tv_sec);
-//     auto nsec = static_cast<uint64_t>(elapsed_rtc.tv_nsec);
-
-//     // Note
-//     //
-//     // When we resume we need to calculate a TSC offset because it is possible
-//     // that the host reset it's TSC on resume, which means that the host TSC
-//     // and the guest TSC are no longer the same as we maintain an constant,
-//     // reliable TSC in the guest. To accomplish this, we calculate how many
-//     // TSC ticks should have occurred and then remove the current TSC to get
-//     // the TSC offset
-//     //
-
-//     auto tsc = this->nsec_to_tsc((sec * NSEC_PER_SEC) + nsec);
-//     auto tsc_offset = (m_guest_wc_tsc - m_host_wc_tsc) + tsc;
-
-//     vmcs_n::tsc_offset::set(tsc_offset);
-
-//     if (m_next_event_tsc != 0) {
-//         if (m_next_event_tsc > tsc_offset) {
-//             m_next_event_tsc -= tsc_offset;
-//         }
-//         else {
-//             this->queue_vclock_event();
-//         }
-//     }
-// }

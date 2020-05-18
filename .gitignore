@@ -36,6 +36,7 @@ tags
 *.ko.cmd
 *.mod.o.cmd
 *.mod
+*.mod.cmd
 *.symvers
 *.o
 *.ko

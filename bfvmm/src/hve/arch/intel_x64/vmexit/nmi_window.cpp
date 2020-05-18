@@ -19,26 +19,49 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#pragma GCC diagnostic ignored "-Wunused-result"
+#include <hve/arch/intel_x64/vcpu.h>
+#include <hve/arch/intel_x64/vmexit/nmi_window.h>
 
-#include <stdio.h>
-#include <unistd.h>
-#include <sys/mount.h>
-
-#include <time.h>
-
-int main(void)
+namespace boxy::intel_x64
 {
-    mount("proc", "/proc", "proc", 0, "");
 
-    freopen("/dev/ttyprintk", "w", stdout);
-    freopen("/dev/ttyprintk", "w", stderr);
+nmi_window_handler::nmi_window_handler(
+    gsl::not_null<vcpu *> vcpu
+) :
+    m_vcpu{vcpu}
+{
+    using namespace vmcs_n;
 
-    while (1) {
-        auto rawtime = time(0);
-        auto loctime = localtime(&rawtime);
-
-        printf("hello from init: %s", asctime(loctime));
-        sleep(1);
+    if (vcpu->is_dom0()) {
+        return;
     }
+
+    vcpu->add_exit_handler_for_reason(
+        exit_reason::basic_exit_reason::nmi_window,
+    {&nmi_window_handler::handle, this}
+    );
+}
+
+// -----------------------------------------------------------------------------
+// Handlers
+// -----------------------------------------------------------------------------
+
+bool
+nmi_window_handler::handle(vcpu_t *vcpu)
+{
+    bfignored(vcpu);
+
+    using namespace vmcs_n;
+    primary_processor_based_vm_execution_controls::nmi_window_exiting::disable();
+
+    auto parent_vcpu = m_vcpu->parent_vcpu();
+
+    parent_vcpu->load();
+    parent_vcpu->inject_nmi();
+    parent_vcpu->return_continue();
+
+    // Unreachable
+    return true;
+}
+
 }

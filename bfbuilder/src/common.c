@@ -538,8 +538,20 @@ setup_32bit_register_state(struct vm_t *vm)
     ret |= hypercall_domain_op__set_gdt_limit(vm->domainid, 32);
 
     ret |= hypercall_domain_op__set_cr0(vm->domainid, 0x10037);
+    ret |= hypercall_domain_op__set_cr2(vm->domainid, 0x0);
     ret |= hypercall_domain_op__set_cr3(vm->domainid, 0x0);
     ret |= hypercall_domain_op__set_cr4(vm->domainid, 0x02000);
+    ret |= hypercall_domain_op__set_cr8(vm->domainid, 0x0);
+
+    ret |= hypercall_domain_op__set_dr0(vm->domainid, 0x0);
+    ret |= hypercall_domain_op__set_dr1(vm->domainid, 0x0);
+    ret |= hypercall_domain_op__set_dr2(vm->domainid, 0x0);
+    ret |= hypercall_domain_op__set_dr3(vm->domainid, 0x0);
+    ret |= hypercall_domain_op__set_dr6(vm->domainid, 0x0);
+    ret |= hypercall_domain_op__set_dr7(vm->domainid, 0x0);
+
+    ret |= hypercall_domain_op__set_xcr0(vm->domainid, 0x3);
+    ret |= hypercall_domain_op__set_ia32_xss(vm->domainid, 0x0);
 
     ret |= hypercall_domain_op__set_es_selector(vm->domainid, 0x18);
     ret |= hypercall_domain_op__set_es_base(vm->domainid, 0x0);

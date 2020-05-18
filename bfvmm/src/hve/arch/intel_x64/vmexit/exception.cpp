@@ -19,26 +19,47 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#pragma GCC diagnostic ignored "-Wunused-result"
+#include <hve/arch/intel_x64/vcpu.h>
+#include <hve/arch/intel_x64/vmexit/exception.h>
 
-#include <stdio.h>
-#include <unistd.h>
-#include <sys/mount.h>
-
-#include <time.h>
-
-int main(void)
+namespace boxy::intel_x64
 {
-    mount("proc", "/proc", "proc", 0, "");
 
-    freopen("/dev/ttyprintk", "w", stdout);
-    freopen("/dev/ttyprintk", "w", stderr);
-
-    while (1) {
-        auto rawtime = time(0);
-        auto loctime = localtime(&rawtime);
-
-        printf("hello from init: %s", asctime(loctime));
-        sleep(1);
+exception_handler::exception_handler(
+    gsl::not_null<vcpu *> vcpu
+) :
+    m_vcpu{vcpu}
+{
+    if (vcpu->is_dom0()) {
+        return;
     }
+
+    constexpr uint64_t ac_exception{17U};
+    constexpr uint64_t mc_exception{18U};
+
+    m_vcpu->add_exception_handler(
+        ac_exception, {&exception_handler::handle, this});
+    m_vcpu->add_exception_handler(
+        mc_exception, {&exception_handler::handle, this});
+}
+
+// -----------------------------------------------------------------------------
+// Handlers
+// -----------------------------------------------------------------------------
+
+bool
+exception_handler::handle(
+    vcpu_t *vcpu, bfvmm::intel_x64::exception_handler::info_t &info)
+{
+    bfignored(vcpu);
+    auto parent_vcpu = m_vcpu->parent_vcpu();
+
+    parent_vcpu->load();
+    parent_vcpu->inject_exception(info.vector);
+    parent_vcpu->return_continue();
+
+    // Unreachable
+    return true;
+}
+
 }

@@ -23,6 +23,7 @@
 #include <bfdebug.h>
 #include <bfplatform.h>
 
+#include <asm/io.h>
 #include <linux/mm.h>
 #include <linux/vmalloc.h>
 
