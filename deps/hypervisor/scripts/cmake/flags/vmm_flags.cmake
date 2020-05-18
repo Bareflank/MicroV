@@ -37,6 +37,7 @@ list(APPEND BFFLAGS_VMM
     -mno-red-zone
     -mstackrealign
     -fstack-protector-strong
+    -Wno-c99-designator
     -DVMM
     -D${OSTYPE}
     -DSYSV

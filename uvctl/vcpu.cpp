@@ -21,7 +21,7 @@
 
 #include <chrono>
 #include <functional>
-#include <stdio.h>
+#include <iostream>
 
 #include "domain.h"
 #include "vcpu.h"
@@ -61,7 +61,8 @@ void uvc_vcpu::unpause() noexcept
 
 void uvc_vcpu::fault(uint64_t err) const noexcept
 {
-    printf("[0x%llx]: vcpu fault: 0x%llx\n", id, err);
+    std::cerr << "[" << std::hex << id << "]: vcpu fault, err="
+              << std::hex << err << '\n';
 }
 
 void uvc_vcpu::usleep(const microseconds &us) const
@@ -121,7 +122,7 @@ void uvc_vcpu::run() const
         case __enum_run_op__hlt:
             return;
         case __enum_run_op__fault:
-            printf("[0x%llx]: vcpu fault: 0x%llx\n", id, arg);
+            this->fault(arg);
             return;
         case __enum_run_op__yield:
             this->usleep(microseconds(arg));

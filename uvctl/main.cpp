@@ -251,7 +251,7 @@ static int protected_main(const args_type &args)
     try {
         root_domain.destroy();
     } catch (const std::exception &e) {
-        printf("root_domain.destroy threw: what = %s\n", e.what());
+        std::cerr << "root_domain.destroy threw: what = " << e.what() << '\n';
     }
 
     ctl->call_ioctl_destroy(root_domain.id);

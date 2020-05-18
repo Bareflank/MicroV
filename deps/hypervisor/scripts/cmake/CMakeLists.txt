@@ -111,6 +111,7 @@ target_compile_options(bfroot INTERFACE
     $<${VMM_C_CXX}:-mno-red-zone>
     $<${VMM_C_CXX}:-mstackrealign>
     $<${VMM_C_CXX}:-fstack-protector-strong>
+    $<${VMM_C_CXX}:-Wno-c99-designator>
     $<${VMM_C_CXX}:-U__STRICT_ANSI__>
     $<${VMM_C_CXX}:-U__USER_LABEL_PREFIX__>
     $<${VMM_C_CXX}:-D__USER_LABEL_PREFIX__=>
