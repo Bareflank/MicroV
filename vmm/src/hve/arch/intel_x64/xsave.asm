@@ -45,7 +45,7 @@ xstate_save:
     mov rax, rsi
     mov rdx, rsi
     shr rdx, 32
-    xsave [r11]
+    xsave64 [r11]
     ret
 
 ; void xstate_load(uint64_t xcr0, uint64_t rfbm, void *area);
@@ -66,5 +66,5 @@ xstate_load:
     mov rax, rsi
     mov rdx, rsi
     shr rdx, 32
-    xrstor [r11]
+    xrstor64 [r11]
     ret
