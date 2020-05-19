@@ -242,8 +242,11 @@ vcpu::vcpu(
         this->write_domU_guest_state(domain);
 
         this->init_xstate();
+
         this->add_rdcr8_handler({&vcpu::handle_rdcr8, this});
         this->add_wrcr8_handler({&vcpu::handle_wrcr8, this});
+
+        this->add_exception_handler(6, {&vcpu::handle_invalid_opcode, this});
     }
 
     this->add_cpuid_emulator(0x4BF00010, {&vcpu::handle_0x4BF00010, this});
@@ -254,10 +257,37 @@ vcpu::vcpu(
 // Setup
 //------------------------------------------------------------------------------
 
-static inline void trap_exceptions()
+bool
+vcpu::handle_invalid_opcode(
+    ::bfvmm::intel_x64::vcpu *vcpu,
+    ::bfvmm::intel_x64::exception_handler::info_t &info)
 {
-    /* Only used for guest debugging of invalid opcodes */
-    ::intel_x64::vmcs::exception_bitmap::set(1UL << 6);
+    constexpr auto buf_size = 64;
+
+    auto map = vcpu->map_gva_4k<uint8_t>(vcpu->rip(), buf_size);
+    auto buf = map.get();
+
+    printv("invalid opcode: ");
+
+    // Dump 64 bytes starting at rip. You can put this output into a
+    // disassembler to see what instruction caused the invalid opcode.
+
+    for (auto i = 0; i < buf_size; i++) {
+        printf("%02x", buf[i]);
+    }
+
+    printf("\n");
+
+    // Now disable exits at this exception vector and return without advancing
+    // rip. This will cause the exception to be raised in the guest which will
+    // then handle it as it sees fit. This approach means that only one
+    // invalid opcode will trap per lifetime of a vcpu.
+
+    uint32_t bitmap = vmcs_n::exception_bitmap::get();
+    bitmap &= ~(1U << info.vector);
+    vmcs_n::exception_bitmap::set(bitmap);
+
+    return true;
 }
 
 void
@@ -285,7 +315,6 @@ vcpu::write_domU_guest_state(domain *domain)
         using namespace vmcs_n::secondary_processor_based_vm_execution_controls;
 
         enable_rdtscp::enable();
-        trap_exceptions();
 
         bfdebug_bool(0, "domain is_xsvm:", domain->is_xsvm());
         bfdebug_bool(0, "domain is_ndvm:", domain->is_ndvm());

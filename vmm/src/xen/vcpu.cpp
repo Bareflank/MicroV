@@ -73,36 +73,6 @@ static bool xlboot_io_out(base_vcpu *v, io_insn_handler::info_t &info)
     return true;
 }
 
-static bool handle_exception(base_vcpu *vcpu)
-{
-    namespace int_info = vmcs_n::vm_exit_interruption_information;
-
-    auto info = int_info::get();
-    auto type = int_info::interruption_type::get(info);
-
-    if (type == int_info::interruption_type::non_maskable_interrupt) {
-        return false;
-    }
-
-    auto vec = int_info::vector::get(info);
-    bfdebug_info(0, "Guest exception");
-    bfdebug_subnhex(0, "vector", vec);
-    bfdebug_subnhex(0, "rip", vcpu->rip());
-
-    auto rip = vcpu->map_gva_4k<uint8_t>(vcpu->rip(), 32);
-    auto buf = rip.get();
-
-    printf("        - bytes: ");
-    for (auto i = 0; i < 32; i++) {
-        printf("%02x", buf[i]);
-    }
-    printf("\n");
-
-    vmcs_n::exception_bitmap::set(0);
-
-    return true;
-}
-
 static bool handle_tsc_deadline(base_vcpu *vcpu, wrmsr_handler::info_t &info)
 {
     bfalert_info(0, "TSC deadline write after SSHOTTMR set");
@@ -948,6 +918,23 @@ bool xen_vcpu::handle_interrupt(base_vcpu *vcpu, interrupt_handler::info_t &info
     return true;
 }
 
+bool xen_vcpu::handle_machine_check(
+    base_vcpu *vcpu,
+    bfvmm::intel_x64::exception_handler::info_t &info)
+{
+    m_uv_vcpu->save_xstate();
+    this->update_runstate(RUNSTATE_runnable);
+
+    auto root = m_uv_vcpu->root_vcpu();
+
+    root->load();
+    root->inject_exception(info.vector, 0);
+    root->return_interrupted();
+
+    // unreachable
+    return true;
+}
+
 bool xen_vcpu::handle_hlt(
     base_vcpu *vcpu,
     bfvmm::intel_x64::hlt_handler::info_t &info)
@@ -1198,7 +1185,7 @@ xen_vcpu::xen_vcpu(microv_vcpu *vcpu) :
     }
 
     vcpu->add_vmcall_handler({&xen_vcpu::guest_hypercall, this});
-    vcpu->add_handler(0, handle_exception);
+    vcpu->add_exception_handler(18, {&xen_vcpu::handle_machine_check, this});
     vcpu->emulate_wrmsr(self_ipi_msr, {wrmsr_self_ipi});
     vcpu->add_external_interrupt_handler({&xen_vcpu::handle_interrupt, this});
 

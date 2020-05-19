@@ -97,6 +97,7 @@ private:
     bool handle_pet(base_vcpu *vcpu);
     bool handle_hlt(base_vcpu *vcpu, hlt_handler::info_t &);
     bool handle_interrupt(base_vcpu *vcpu, interrupt_handler::info_t &);
+    bool handle_machine_check(base_vcpu *vcpu, exception_handler::info_t &);
     bool init_hypercall_page(base_vcpu *vcpu, wrmsr_handler::info_t &);
 
     bool hvm_set_param(xen_hvm_param_t *param);

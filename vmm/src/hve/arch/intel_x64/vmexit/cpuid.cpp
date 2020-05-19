@@ -165,7 +165,7 @@ static inline void handle_0x00000001_rdx(vcpu_t *vcpu)
     rdx |= edx::tsc::mask;
     rdx |= edx::msr::mask;
     rdx |= edx::pae::mask;
-    rdx |= edx::mce::mask; // FIXME: think about machine-check handling (and NMIs) from guest
+//    rdx |= edx::mce::mask;
 
     rdx |= edx::cx8::mask;
     rdx |= edx::apic::mask;
@@ -174,7 +174,7 @@ static inline void handle_0x00000001_rdx(vcpu_t *vcpu)
 
     rdx |= edx::mtrr::mask;
     rdx |= edx::pge::mask;
-    rdx |= edx::mca::mask; // FIXME: related to bit mce above
+//    rdx |= edx::mca::mask;
     rdx |= edx::cmov::mask;
 
     rdx |= edx::pat::mask;

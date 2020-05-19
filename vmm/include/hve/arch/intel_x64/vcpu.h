@@ -348,7 +348,13 @@ public:
                              const pci_cfg_handler::delegate_t &d,
                              int direction);
 
+    /// Write IPI to physical APIC
     void write_ipi(uint64_t vector);
+
+    /// Exception vmexit handlers
+    bool handle_invalid_opcode(
+        ::bfvmm::intel_x64::vcpu *vcpu,
+        ::bfvmm::intel_x64::exception_handler::info_t &info);
 
 private:
     friend class microv::xen_vcpu;
