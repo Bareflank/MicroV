@@ -239,8 +239,13 @@ cpuid_handler::handle(vcpu *vcpu)
     }
 
     if (m_whitelist) {
+        if (m_default_emulator) {
+            return m_default_emulator(vcpu);
+        }
+
         vcpu->set_gr1(vcpu->rax());
         vcpu->set_gr2(vcpu->rcx());
+
         return false;
     }
 

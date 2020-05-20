@@ -57,14 +57,27 @@ exit_handler_entry:
     mov [gs:0x068], r14
     mov [gs:0x070], r15
 
+    mov rax, cr2
+    mov [gs:0x0A8], rax
+
+    stmxcsr [gs:0x0BC]
+
     movdqa [gs:0x0C0], xmm0
-    movdqa [gs:0x0E0], xmm1
-    movdqa [gs:0x100], xmm2
-    movdqa [gs:0x120], xmm3
-    movdqa [gs:0x140], xmm4
-    movdqa [gs:0x160], xmm5
-    movdqa [gs:0x180], xmm6
-    movdqa [gs:0x1A0], xmm7
+    movdqa [gs:0x0D0], xmm1
+    movdqa [gs:0x0E0], xmm2
+    movdqa [gs:0x0F0], xmm3
+    movdqa [gs:0x100], xmm4
+    movdqa [gs:0x110], xmm5
+    movdqa [gs:0x120], xmm6
+    movdqa [gs:0x130], xmm7
+    movdqa [gs:0x140], xmm8
+    movdqa [gs:0x150], xmm9
+    movdqa [gs:0x160], xmm10
+    movdqa [gs:0x170], xmm11
+    movdqa [gs:0x180], xmm12
+    movdqa [gs:0x190], xmm13
+    movdqa [gs:0x1A0], xmm14
+    movdqa [gs:0x1B0], xmm15
 
     mov rdi, VMCS_GUEST_RIP
     vmread [gs:0x078], rdi

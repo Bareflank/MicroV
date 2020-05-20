@@ -82,7 +82,7 @@ private:
 
     vcpu *m_vcpu;
     uint64_t m_eptp;
-    void (*invept_single)(uintptr_t);
+    void (*m_invept)(uintptr_t);
 
 public:
 

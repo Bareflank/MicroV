@@ -21,12 +21,20 @@
 
 #include <hve/arch/intel_x64/vcpu.h>
 
+static void invept_all_contexts(uintptr_t eptp)
+{
+    bfignored(eptp);
+
+    ::intel_x64::vmx::invept_global();
+}
+
 namespace bfvmm::intel_x64
 {
 
 ept_handler::ept_handler(gsl::not_null<vcpu *> vcpu) :
     m_vcpu{vcpu},
-    m_eptp{0}
+    m_eptp{0},
+    m_invept{nullptr}
 {
     using namespace ::intel_x64::msrs::ia32_vmx_ept_vpid_cap;
 
@@ -34,14 +42,17 @@ ept_handler::ept_handler(gsl::not_null<vcpu *> vcpu) :
 
     expects(invept_support::is_enabled(ept_caps));
     expects(invept_all_context_support::is_enabled(ept_caps));
-    expects(invept_single_context_support::is_enabled(ept_caps));
 
-    invept_single = ::intel_x64::vmx::invept_single_context;
+    m_invept = ::invept_all_contexts;
+
+    if (invept_single_context_support::is_enabled(ept_caps)) {
+        m_invept = ::intel_x64::vmx::invept_single_context;
+    }
 }
 
 void ept_handler::invept()
 {
-    this->invept_single(m_eptp);
+    m_invept(m_eptp);
 }
 
 void ept_handler::set_eptp(ept::mmap *map)
@@ -50,7 +61,7 @@ void ept_handler::set_eptp(ept::mmap *map)
     using namespace vmcs_n::secondary_processor_based_vm_execution_controls;
 
     if (map != nullptr) {
-        if (ept_pointer::phys_addr::get() == 0) {
+        if (ept_pointer::phys_addr::get(m_eptp) == 0) {
             m_vcpu->global_state()->ia32_vmx_cr0_fixed0 &= ~::intel_x64::cr0::paging::mask;
             m_vcpu->global_state()->ia32_vmx_cr0_fixed0 &= ~::intel_x64::cr0::protection_enable::mask;
 
@@ -66,7 +77,7 @@ void ept_handler::set_eptp(ept::mmap *map)
         ept_pointer::set(m_eptp);
     }
     else {
-        if (ept_pointer::phys_addr::get() != 0) {
+        if (ept_pointer::phys_addr::get(m_eptp) != 0) {
             m_vcpu->global_state()->ia32_vmx_cr0_fixed0 |= ::intel_x64::cr0::paging::mask;
             m_vcpu->global_state()->ia32_vmx_cr0_fixed0 |= ::intel_x64::cr0::protection_enable::mask;
 

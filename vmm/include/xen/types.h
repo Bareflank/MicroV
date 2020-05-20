@@ -34,11 +34,12 @@
 
 #include <public/xen.h>
 
-/* Base hypervisor vcpu */
+/* Base hypervisor types */
 namespace bfvmm::intel_x64 {
     class vcpu;
     class hlt_handler;
     class ept_violation_handler;
+    class exception_handler;
     class external_interrupt_handler;
     class io_instruction_handler;
     class wrmsr_handler;
@@ -75,6 +76,7 @@ using microv_domain = microv::intel_x64::domain;
 using base_vcpu = bfvmm::intel_x64::vcpu;
 using hlt_handler = bfvmm::intel_x64::hlt_handler;
 using ept_violation_handler = bfvmm::intel_x64::ept_violation_handler;
+using exception_handler = bfvmm::intel_x64::exception_handler;
 using interrupt_handler = bfvmm::intel_x64::external_interrupt_handler;
 using wrmsr_handler = bfvmm::intel_x64::wrmsr_handler;
 using io_insn_handler = bfvmm::intel_x64::io_instruction_handler;

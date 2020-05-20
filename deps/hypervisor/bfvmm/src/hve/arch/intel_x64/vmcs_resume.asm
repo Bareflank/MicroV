@@ -48,14 +48,27 @@ vmcs_resume:
     mov rsi, VMCS_GUEST_RIP
     vmwrite rsi, [rdi + 0x078]
 
-    movdqa xmm7,  [rdi + 0x1A0]
-    movdqa xmm6,  [rdi + 0x180]
-    movdqa xmm5,  [rdi + 0x160]
-    movdqa xmm4,  [rdi + 0x140]
-    movdqa xmm3,  [rdi + 0x120]
-    movdqa xmm2,  [rdi + 0x100]
-    movdqa xmm1,  [rdi + 0x0E0]
+    movdqa xmm15, [rdi + 0x1B0]
+    movdqa xmm14, [rdi + 0x1A0]
+    movdqa xmm13, [rdi + 0x190]
+    movdqa xmm12, [rdi + 0x180]
+    movdqa xmm11, [rdi + 0x170]
+    movdqa xmm10, [rdi + 0x160]
+    movdqa xmm9,  [rdi + 0x150]
+    movdqa xmm8,  [rdi + 0x140]
+    movdqa xmm7,  [rdi + 0x130]
+    movdqa xmm6,  [rdi + 0x120]
+    movdqa xmm5,  [rdi + 0x110]
+    movdqa xmm4,  [rdi + 0x100]
+    movdqa xmm3,  [rdi + 0x0F0]
+    movdqa xmm2,  [rdi + 0x0E0]
+    movdqa xmm1,  [rdi + 0x0D0]
     movdqa xmm0,  [rdi + 0x0C0]
+
+    ldmxcsr  [rdi + 0x0BC]
+
+    mov rsi, [rdi + 0x0A8]
+    mov cr2, rsi
 
     mov r15, [rdi + 0x070]
     mov r14, [rdi + 0x068]

@@ -143,6 +143,7 @@ vcpu::vcpu(
     m_cpuid_handler{this},
     m_ept_misconfiguration_handler{this},
     m_ept_violation_handler{this},
+    m_exception_handler{this},
     m_external_interrupt_handler{this},
     m_hlt_handler{this},
     m_init_signal_handler{this},
@@ -234,7 +235,14 @@ vcpu::write_host_state()
     host_gdtr_base::set(m_host_gdt.base());
     host_idtr_base::set(m_host_idt.base());
 
+    // Make sure that the IST is 16-byte aligned. The context switch glue in
+    // exception.asm uses this alignment assumption so that aligned moves can
+    // be used for xmm registers.
+    constexpr uint64_t ist_alignment = 0x10U;
+
     m_host_tss.ist1 = setup_stack(m_ist1.get(), this->id());
+    m_host_tss.ist1 &= ~(ist_alignment - 1);
+
     set_default_esrs(&m_host_idt, 8);
 
     host_rip::set(exit_handler_entry);
@@ -639,6 +647,10 @@ void
 vcpu::enable_cpuid_whitelisting() noexcept
 { m_cpuid_handler.enable_whitelisting(); }
 
+void
+vcpu::add_default_cpuid_emulator(const ::handler_delegate_t &d) noexcept
+{ m_cpuid_handler.set_default_emulator(d); }
+
 //--------------------------------------------------------------------------
 // EPT Misconfiguration
 //--------------------------------------------------------------------------
@@ -681,6 +693,17 @@ void
 vcpu::add_default_ept_execute_violation_handler(
     const ::handler_delegate_t &d)
 { m_ept_violation_handler.set_default_execute_handler(d); }
+
+//--------------------------------------------------------------------------
+// Exception
+//--------------------------------------------------------------------------
+
+void
+vcpu::add_exception_handler(
+    vmcs_n::value_type vector, const exception_handler::handler_delegate_t &d)
+{
+    m_exception_handler.add_handler(vector, d);
+}
 
 //--------------------------------------------------------------------------
 // External Interrupt
@@ -957,7 +980,8 @@ vcpu::disable_ept()
     m_mmap = nullptr;
 }
 
-void vcpu::invept()
+void
+vcpu::invept()
 {
     m_ept_handler.invept();
 }
@@ -1350,6 +1374,14 @@ vcpu::rsp() const noexcept
 void
 vcpu::set_rsp(uint64_t val) noexcept
 { m_state.rsp = val; }
+
+uint32_t
+vcpu::mxcsr() const noexcept
+{ return m_state.mxcsr; }
+
+void
+vcpu::set_mxcsr(uint32_t val) noexcept
+{ m_state.mxcsr = val; }
 
 uint64_t
 vcpu::gdt_base() const noexcept

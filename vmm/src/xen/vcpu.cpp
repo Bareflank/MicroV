@@ -73,66 +73,9 @@ static bool xlboot_io_out(base_vcpu *v, io_insn_handler::info_t &info)
     return true;
 }
 
-static bool handle_exception(base_vcpu *vcpu)
-{
-    namespace int_info = vmcs_n::vm_exit_interruption_information;
-
-    auto info = int_info::get();
-    auto type = int_info::interruption_type::get(info);
-
-    if (type == int_info::interruption_type::non_maskable_interrupt) {
-        return false;
-    }
-
-    auto vec = int_info::vector::get(info);
-    bfdebug_info(0, "Guest exception");
-    bfdebug_subnhex(0, "vector", vec);
-    bfdebug_subnhex(0, "rip", vcpu->rip());
-
-    auto rip = vcpu->map_gva_4k<uint8_t>(vcpu->rip(), 32);
-    auto buf = rip.get();
-
-    printf("        - bytes: ");
-    for (auto i = 0; i < 32; i++) {
-        printf("%02x", buf[i]);
-    }
-    printf("\n");
-
-    vmcs_n::exception_bitmap::set(0);
-
-    return true;
-}
-
 static bool handle_tsc_deadline(base_vcpu *vcpu, wrmsr_handler::info_t &info)
 {
     bfalert_info(0, "TSC deadline write after SSHOTTMR set");
-    return true;
-}
-
-constexpr auto PSN_LEAF = 3;
-constexpr auto MWAIT_LEAF = 5;
-constexpr auto DCA_LEAF = 9;
-
-static bool cpuid_zeros(base_vcpu *vcpu)
-{
-    vcpu->set_rax(0);
-    vcpu->set_rbx(0);
-    vcpu->set_rcx(0);
-    vcpu->set_rdx(0);
-
-    vcpu->advance();
-    return true;
-}
-
-constexpr auto CLSIZE_LEAF = 0x80000006;
-constexpr auto INVARIANT_TSC_LEAF = 0x80000007;
-constexpr auto ADDR_SIZE_LEAF = 0x80000008;
-
-static bool cpuid_passthrough(base_vcpu *vcpu)
-{
-    vcpu->execute_cpuid();
-    vcpu->advance();
-
     return true;
 }
 
@@ -655,6 +598,33 @@ bool xen_vcpu::handle_vm_assist()
     }
 }
 
+static void puke_shutdown(unsigned int reason)
+{
+    switch (reason) {
+    case SHUTDOWN_poweroff:
+        printv("SCHEDOP_shutdown, reason=%s\n", "poweroff");
+        break;
+    case SHUTDOWN_reboot:
+        printv("SCHEDOP_shutdown, reason=%s\n", "reboot");
+        break;
+    case SHUTDOWN_suspend:
+        printv("SCHEDOP_shutdown, reason=%s\n", "suspend");
+        break;
+    case SHUTDOWN_crash:
+        printv("SCHEDOP_shutdown, reason=%s\n", "crash");
+        break;
+    case SHUTDOWN_watchdog:
+        printv("SCHEDOP_shutdown, reason=%s\n", "watchdog");
+        break;
+    case SHUTDOWN_soft_reset:
+        printv("SCHEDOP_shutdown, reason=%s\n", "soft_reset");
+        break;
+    default:
+        printv("SCHEDOP_shutdown, reason=INVALID(0x%x)\n", reason);
+        break;
+    }
+}
+
 bool xen_vcpu::handle_sched_op()
 {
     const auto cmd = m_uv_vcpu->rdi();
@@ -678,11 +648,24 @@ bool xen_vcpu::handle_sched_op()
         /* unreachable */
         return false;
     }
+    case SCHEDOP_shutdown: {
+        auto arg = m_uv_vcpu->map_arg<sched_shutdown_t>(m_uv_vcpu->rsi());
+        puke_shutdown(arg->reason);
 
+        /*
+         * Set an error code and return true. This allows use to get back into
+         * the guest which will then BUG(), giving us a nice stack trace to
+         * see how we got here.
+         */
+        m_uv_vcpu->set_rax(-EINVAL);
+        return true;
+    }
     default:
         printv("%s: cmd=%lu unhandled\n", __func__, cmd);
-        return false;
+        break;
     }
+
+    return false;
 }
 
 bool xen_vcpu::is_xenstore()
@@ -935,6 +918,38 @@ bool xen_vcpu::handle_interrupt(base_vcpu *vcpu, interrupt_handler::info_t &info
     return true;
 }
 
+bool xen_vcpu::handle_machine_check(
+    base_vcpu *vcpu,
+    bfvmm::intel_x64::exception_handler::info_t &info)
+{
+    m_uv_vcpu->save_xstate();
+    this->update_runstate(RUNSTATE_runnable);
+
+    auto root = m_uv_vcpu->root_vcpu();
+
+    root->load();
+    root->inject_exception(info.vector, 0);
+    root->return_interrupted();
+
+    // unreachable
+    return true;
+}
+
+bool xen_vcpu::handle_nmi(base_vcpu *vcpu)
+{
+    m_uv_vcpu->save_xstate();
+    this->update_runstate(RUNSTATE_runnable);
+
+    auto root = m_uv_vcpu->root_vcpu();
+
+    root->load();
+    root->queue_nmi();
+    root->return_interrupted();
+
+    // unreachable
+    return true;
+}
+
 bool xen_vcpu::handle_hlt(
     base_vcpu *vcpu,
     bfvmm::intel_x64::hlt_handler::info_t &info)
@@ -1145,6 +1160,9 @@ xen_vcpu::xen_vcpu(microv_vcpu *vcpu) :
     m_uv_dom{vcpu->dom()},
     m_xen_dom{m_uv_dom->xen_dom()}
 {
+    /* Set the reset value of MXCSR */
+    vcpu->set_mxcsr(0x1F80);
+
     m_id = m_xen_dom->add_vcpu(this);
 
     m_origin = m_xen_dom->m_uv_info->origin;
@@ -1168,6 +1186,7 @@ xen_vcpu::xen_vcpu(microv_vcpu *vcpu) :
     if (m_origin != domain_info::origin_root || g_enable_winpv) {
         vcpu->add_cpuid_emulator(xen_leaf(0), {xen_leaf0});
     }
+
     vcpu->add_cpuid_emulator(xen_leaf(1), {xen_leaf1});
     vcpu->add_cpuid_emulator(xen_leaf(2), {xen_leaf2});
     vcpu->add_cpuid_emulator(xen_leaf(4), {&xen_vcpu::xen_leaf4, this});
@@ -1181,9 +1200,10 @@ xen_vcpu::xen_vcpu(microv_vcpu *vcpu) :
     }
 
     vcpu->add_vmcall_handler({&xen_vcpu::guest_hypercall, this});
-    vcpu->add_handler(0, handle_exception);
+    vcpu->add_exception_handler(18, {&xen_vcpu::handle_machine_check, this});
     vcpu->emulate_wrmsr(self_ipi_msr, {wrmsr_self_ipi});
     vcpu->add_external_interrupt_handler({&xen_vcpu::handle_interrupt, this});
+    vcpu->add_nmi_handler({&xen_vcpu::handle_nmi, this});
 
     if (m_origin == domain_info::origin_domctl) {
         vcpu->emulate_io_instruction(0xA1, {xlboot_io_in}, {xlboot_io_out});
@@ -1194,18 +1214,7 @@ xen_vcpu::xen_vcpu(microv_vcpu *vcpu) :
     }
 
     if (m_uv_dom->is_xsvm()) {
-        vcpu->add_cpuid_emulator(PSN_LEAF, {cpuid_zeros});
-        vcpu->add_cpuid_emulator(MWAIT_LEAF, {cpuid_zeros});
-        vcpu->add_cpuid_emulator(0x8, {cpuid_zeros});
-        vcpu->add_cpuid_emulator(DCA_LEAF, {cpuid_zeros});
-        vcpu->add_cpuid_emulator(0xC, {cpuid_zeros});
-        vcpu->add_cpuid_emulator(0x80000005, {cpuid_zeros});
-        vcpu->add_cpuid_emulator(CLSIZE_LEAF, {cpuid_passthrough});
-        vcpu->add_cpuid_emulator(INVARIANT_TSC_LEAF, {cpuid_passthrough});
-        vcpu->add_cpuid_emulator(ADDR_SIZE_LEAF, {cpuid_passthrough});
-
         vcpu->emulate_io_instruction(0x61, {xlboot_io_in}, {xlboot_io_out});
-
         m_event_op_hdlr =
             std::make_unique<intel_x64::vmcall_event_op_handler>(vcpu);
     }

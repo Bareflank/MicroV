@@ -26,6 +26,7 @@
 #include "vmexit/cpuid.h"
 #include "vmexit/ept_misconfiguration.h"
 #include "vmexit/ept_violation.h"
+#include "vmexit/exception.h"
 #include "vmexit/external_interrupt.h"
 #include "vmexit/hlt.h"
 #include "vmexit/init_signal.h"
@@ -407,6 +408,17 @@ public:
     ///
     VIRTUAL void enable_cpuid_whitelisting() noexcept;
 
+    /// Add CPUID Default Emulator
+    ///
+    /// @expects
+    /// @ensures
+    ///
+    /// @param d the delegate to call when cpuid whitelisting has been enabled
+    ///        and no other emulator at the given leaf returns true.
+    ///
+    VIRTUAL void add_default_cpuid_emulator(
+        const ::handler_delegate_t &d) noexcept;
+
     //--------------------------------------------------------------------------
     // EPT Misconfiguration
     //--------------------------------------------------------------------------
@@ -486,6 +498,24 @@ public:
         const ::handler_delegate_t &d);
 
     //--------------------------------------------------------------------------
+    // Exception
+    //--------------------------------------------------------------------------
+
+    /// Add Exception Handler
+    ///
+    /// Turns on exception handling for the given vector and adds an exception
+    /// handler to handle exceptions
+    ///
+    /// @expects
+    /// @ensures
+    ///
+    /// @param vector the exception vector to enable
+    /// @param d the delegate to call when an exit occurs
+    ///
+    VIRTUAL void add_exception_handler(
+        vmcs_n::value_type vector, const exception_handler::handler_delegate_t &d);
+
+    //--------------------------------------------------------------------------
     // External Interrupt
     //--------------------------------------------------------------------------
 
@@ -512,6 +542,7 @@ public:
     //--------------------------------------------------------------------------
     // HLT
     //--------------------------------------------------------------------------
+
     VIRTUAL void enable_hlt_exiting();
     VIRTUAL void disable_hlt_exiting();
     VIRTUAL void add_hlt_handler(const hlt_handler::handler_delegate_t &d);
@@ -1814,6 +1845,8 @@ public:
     VIRTUAL void set_rip(uint64_t val) noexcept;
     VIRTUAL uint64_t rsp() const noexcept;
     VIRTUAL void set_rsp(uint64_t val) noexcept;
+    VIRTUAL uint32_t mxcsr() const noexcept;
+    VIRTUAL void set_mxcsr(uint32_t val) noexcept;
     VIRTUAL uint64_t gdt_base() const noexcept;
     VIRTUAL void set_gdt_base(uint64_t val) noexcept;
     VIRTUAL uint64_t gdt_limit() const noexcept;
@@ -1957,6 +1990,7 @@ private:
     cpuid_handler m_cpuid_handler;
     ept_misconfiguration_handler m_ept_misconfiguration_handler;
     ept_violation_handler m_ept_violation_handler;
+    exception_handler m_exception_handler;
     external_interrupt_handler m_external_interrupt_handler;
     hlt_handler m_hlt_handler;
     init_signal_handler m_init_signal_handler;
