@@ -42,6 +42,7 @@ msr_handler::msr_handler(
     m_vcpu{vcpu}
 {
     using namespace vmcs_n;
+    using namespace ::intel_x64::cpuid;
 
     vcpu->add_run_delegate({&msr_handler::isolate_msr__on_run, this});
     vcpu->add_exit_handler({&msr_handler::isolate_msr__on_exit, this});
@@ -57,8 +58,12 @@ msr_handler::msr_handler(
     this->isolate_msr(::x64::msrs::ia32_fmask::addr);
     this->isolate_msr(::x64::msrs::ia32_kernel_gs_base::addr);
 
-    if (::intel_x64::cpuid::ext_feature_info::edx::rdtscp::is_enabled()) {
+    if (ext_feature_info::edx::rdtscp::is_enabled()) {
         this->isolate_msr(::x64::msrs::ia32_tsc_aux::addr);
+    }
+
+    if (extended_state_enum::subleaf1::eax::xsaves_xrstors::is_enabled()) {
+        this->isolate_msr(::intel_x64::msrs::ia32_xss::addr);
     }
 
     if (vcpu->is_dom0()) {
