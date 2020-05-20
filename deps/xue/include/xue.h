@@ -1478,10 +1478,10 @@ static inline void xue_enable_dbc(struct xue *xue)
      */
     if (xue->sysid == xue_sysid_efi) {
         xue_debug("Please insert the debug cable to continue...\n");
-    }
 
-    while ((reg->ctrl & (1UL << XUE_CTRL_DCR)) == 0) {
-        ops->pause(sys);
+        while ((reg->ctrl & (1UL << XUE_CTRL_DCR)) == 0) {
+            ops->pause(sys);
+        }
     }
 }
 

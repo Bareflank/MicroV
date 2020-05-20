@@ -180,7 +180,9 @@ ioctl_load_vmm(void)
     int64_t ret;
 
     g_uefi_boot = 0;
+
 #ifdef USE_XUE
+    g_xue.open = 0;
     g_enable_xue = 1;
 #endif
 
