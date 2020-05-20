@@ -94,11 +94,13 @@ private:
     void update_wallclock(const struct xenpf_settime64 *time);
 
     bool xen_leaf4(base_vcpu *vcpu);
+    bool init_hypercall_page(base_vcpu *vcpu, wrmsr_handler::info_t &);
+
     bool handle_pet(base_vcpu *vcpu);
     bool handle_hlt(base_vcpu *vcpu, hlt_handler::info_t &);
     bool handle_interrupt(base_vcpu *vcpu, interrupt_handler::info_t &);
     bool handle_machine_check(base_vcpu *vcpu, exception_handler::info_t &);
-    bool init_hypercall_page(base_vcpu *vcpu, wrmsr_handler::info_t &);
+    bool handle_nmi(base_vcpu *vcpu);
 
     bool hvm_set_param(xen_hvm_param_t *param);
     bool hvm_get_param(xen_hvm_param_t *param);

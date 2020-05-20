@@ -935,6 +935,21 @@ bool xen_vcpu::handle_machine_check(
     return true;
 }
 
+bool xen_vcpu::handle_nmi(base_vcpu *vcpu)
+{
+    m_uv_vcpu->save_xstate();
+    this->update_runstate(RUNSTATE_runnable);
+
+    auto root = m_uv_vcpu->root_vcpu();
+
+    root->load();
+    root->queue_nmi();
+    root->return_interrupted();
+
+    // unreachable
+    return true;
+}
+
 bool xen_vcpu::handle_hlt(
     base_vcpu *vcpu,
     bfvmm::intel_x64::hlt_handler::info_t &info)
@@ -1188,6 +1203,7 @@ xen_vcpu::xen_vcpu(microv_vcpu *vcpu) :
     vcpu->add_exception_handler(18, {&xen_vcpu::handle_machine_check, this});
     vcpu->emulate_wrmsr(self_ipi_msr, {wrmsr_self_ipi});
     vcpu->add_external_interrupt_handler({&xen_vcpu::handle_interrupt, this});
+    vcpu->add_nmi_handler({&xen_vcpu::handle_nmi, this});
 
     if (m_origin == domain_info::origin_domctl) {
         vcpu->emulate_io_instruction(0xA1, {xlboot_io_in}, {xlboot_io_out});
