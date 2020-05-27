@@ -34,6 +34,7 @@
 EFI_MP_SERVICES_PROTOCOL *g_mp_services = nullptr;
 
 void _set_ne(void);
+void _cpuid(uint32_t *eax, uint32_t *ebx, uint32_t *ecx, uint32_t *edx);
 
 int64_t
 platform_init(void)
@@ -235,4 +236,55 @@ platform_get_rsdp(void)
     LibGetSystemConfigurationTable(&guid, &rsdp);
 
     return rsdp;
+}
+
+static void
+cpuid_unmap_vmm(void)
+{
+    uint32_t eax = 0x4BF00012U;
+    uint32_t ebx = 0;
+    uint32_t ecx = 0;
+    uint32_t edx = 0;
+
+    _cpuid(&eax, &ebx, &ecx, &edx);
+}
+
+EFI_FUNCTION static void
+unmap_vmm_on_ap(void *args)
+{
+    (void)args;
+    cpuid_unmap_vmm();
+}
+
+struct ignored_args {
+    char c;
+};
+
+void
+unmap_vmm_from_root_domain(void)
+{
+    int64_t i = 1;
+    int64_t nr_cpus = platform_num_cpus();
+
+    // Unmap on cpu 0
+    cpuid_unmap_vmm();
+
+    // Unmap on the APs
+    for (; i < nr_cpus; i++) {
+        struct ignored_args ignored;
+
+        EFI_STATUS status = g_mp_services->StartupThisAP(
+            g_mp_services,
+            (EFI_AP_PROCEDURE)unmap_vmm_on_ap,
+            i,
+            NULL,
+            0,
+            &ignored,
+            NULL
+        );
+
+        if (EFI_ERROR(status)) {
+            BFALERT("failed to unmap vmm on AP %u\n", i);
+        }
+    }
 }

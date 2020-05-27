@@ -86,6 +86,19 @@ public:
     using attr_type = decltype(memory_descriptor::type);            ///< Attribute type
     using memory_descriptor_list = std::vector<memory_descriptor>;  ///< Memory descriptor list type
 
+    struct virt_t {
+        integer_pointer phys;
+        integer_pointer attr;
+    };
+
+    struct phys_t {
+        integer_pointer virt;
+        integer_pointer attr;
+    };
+
+    using virt_map = std::unordered_map<integer_pointer, virt_t>;   ///< Map of virt-to-phys maps
+    using phys_map = std::unordered_map<integer_pointer, phys_t>;   ///< Map of phys-to-virt maps
+
     /// Default Destructor
     ///
     /// @expects none
@@ -381,6 +394,17 @@ public:
     ///
     virtual memory_descriptor_list descriptors() const;
 
+    /// Get phys to virt mappings
+    ///
+    /// Returns a pointer to the unordered_map of phys -> virt mappings.
+    ///
+    /// @expects none
+    /// @ensures none
+    ///
+    /// @return pointer to phys map
+    ///
+    virtual phys_map const *get_phys_map() const noexcept;
+
     /// Page pool pages
     ///
     /// @return the number of free 4KB pages in the page pool
@@ -399,18 +423,8 @@ private:
 
 private:
 
-    struct virt_t {
-        integer_pointer phys;
-        integer_pointer attr;
-    };
-
-    struct phys_t {
-        integer_pointer virt;
-        integer_pointer attr;
-    };
-
-    std::unordered_map<integer_pointer, virt_t> m_virt_map;
-    std::unordered_map<integer_pointer, phys_t> m_phys_map;
+    virt_map m_virt_map;
+    phys_map m_phys_map;
 
     buddy_allocator g_page_pool;
     buddy_allocator g_huge_pool;

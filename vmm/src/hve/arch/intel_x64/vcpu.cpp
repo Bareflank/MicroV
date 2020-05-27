@@ -46,6 +46,13 @@ void WEAK_SYM vcpu_init_root(bfvmm::intel_x64::vcpu *vcpu);
 static bfn::once_flag acpi_ready;
 static bfn::once_flag vtd_ready;
 static bfn::once_flag pci_ready;
+static bfn::once_flag ept_ready;
+
+static std::mutex &root_ept_mutex() noexcept
+{
+    static std::mutex root_ept_mtx{};
+    return root_ept_mtx;
+}
 
 //------------------------------------------------------------------------------
 // Default Handlers/Emulators
@@ -93,26 +100,23 @@ static bool ept_violation_handler(vcpu_t *vcpu)
     return true;
 }
 
-static std::mutex root_ept_mtx;
-
 static bool handle_root_ept_violation(
     vcpu_t *vcpu,
     bfvmm::intel_x64::ept_violation_handler::info_t &info)
 {
-
     auto qual = info.exit_qualification;
 
     switch (qual & 0x7) {
     case 1:
-        printv("ALERT: EPT read  qual:0x%lx gva:0x%lx gpa:0x%lx ",
+        printv("ALERT: EPT read qual:0x%lx gva:0x%lx gpa:0x%lx\n",
                qual, info.gva, info.gpa);
         break;
     case 2:
-        printv("ALERT: EPT write qual:0x%lx gva:0x%lx gpa:0x%lx ",
+        printv("ALERT: EPT write qual:0x%lx gva:0x%lx gpa:0x%lx\n",
                qual, info.gva, info.gpa);
         break;
     case 4:
-        printv("ALERT: EPT exec  qual:0x%lx gva:0x%lx gpa:0x%lx ",
+        printv("ALERT: EPT exec qual:0x%lx gva:0x%lx gpa:0x%lx\n",
                qual, info.gva, info.gpa);
         break;
     default:
@@ -121,10 +125,32 @@ static bool handle_root_ept_violation(
         return false;
     }
 
+    std::lock_guard lock(root_ept_mutex());
+
+    const auto gpa_4k = bfn::upper(info.gpa, ::x64::pt::from);
+
+    /*
+     * If the access is to a VMM page, just print a warning and skip the
+     * instruction.
+     */
+
+    if (g_mm->get_phys_map()->count(gpa_4k)) {
+        printv("ALERT: EPT violation to vmm page 0x%lx, skipping rip=0x%lx\n",
+                gpa_4k, vcpu->rip());
+        info.ignore_advance = false;
+        return true;
+    }
+
+    /*
+     * It's not to a VMM page, so here we just try to fight through as best we
+     * can by mapping the page in. Note that invept must *not* be called,
+     * because the Intel SDM explicitly states that EPT violations will do the
+     * invalidation for us, and doing it manually can cause unpredictable
+     * processor behavior.
+     */
+
     auto dom = vcpu_cast(vcpu)->dom();
     auto ept = &dom->ept();
-
-    std::lock_guard lock(root_ept_mtx);
 
     try {
         auto entry_pair = ept->entry(info.gpa);
@@ -134,8 +160,6 @@ static bool handle_root_ept_violation(
         printv("(mapped from:%lu) entry:0x%lx\n", from, *entry);
 
         *entry |= 0x7;
-        ::intel_x64::wmb();
-        vcpu->invept();
         info.ignore_advance = true;
 
     } catch (std::runtime_error &e) {
@@ -143,11 +167,15 @@ static bool handle_root_ept_violation(
 
         printv("(not mapped, e.what=%s)\n", e.what());
 
-        auto gpa_2m = bfn::upper(info.gpa, 21);
+        auto gpa_4k = bfn::upper(info.gpa, ::x64::pt::from);
 
-        identity_map(*ept, gpa_2m, gpa_2m + (1 << 21));
-        ::intel_x64::wmb();
-        vcpu->invept();
+        try {
+            identity_map(*ept, gpa_4k, gpa_4k + ::x64::pt::page_size);
+        } catch (std::runtime_error &e) {
+            printv("failed to identity_map gpa 0x%lx, e.what=%s\n",
+                   gpa_4k, e.what());
+        }
+
         info.ignore_advance = true;
 
     } catch (std::exception &e) {
@@ -156,6 +184,65 @@ static bool handle_root_ept_violation(
     }
 
     return true;
+}
+
+static void unmap_vmm()
+{
+    using namespace ::bfvmm::intel_x64::ept;
+
+    auto dom = vcpu0->dom();
+    auto ept = &dom->ept();
+
+    for (const auto &p : *g_mm->get_phys_map()) {
+        const auto type = p.second.attr;
+        const auto phys = p.first;
+
+        if (type & MEMORY_TYPE_SHARED) {
+            printv("ept: %s: ignoring shared page: 0x%lx\n", __func__, phys);
+            continue;
+        }
+
+        const auto itr = dom->m_vmm_map_whitelist.find(phys);
+
+        if (itr != dom->m_vmm_map_whitelist.end()) {
+            const auto hpa = itr->first;
+            const auto gpa = itr->second;
+
+            if (hpa == gpa) {
+                printv("ept: %s: ignoring whitelisted identity-mapped page:"
+                       " 0x%lx\n", __func__, hpa);
+                continue;
+            }
+
+            /* When hpa != gpa, gpa was remapped to hpa by previous code, that,
+             * due to the initial identity map, presents us with the following
+             * situation:
+             *
+             *     gpa_x  gpa_y
+             *     |     /
+             *     |   /
+             *     hpa_x  hpa_y
+             *
+             * In this case, hpa == hpa_x and gpa == gpa_y. So below we need to
+             * unmap gpa_x == hpa_x == hpa == phys.
+             */
+        }
+
+        const auto gpa_4k = bfn::upper(phys, ::x64::pt::from);
+        const auto gpa_2m = bfn::upper(phys, ::x64::pd::from);
+
+        if (ept->is_2m(gpa_2m)) {
+            identity_map_convert_2m_to_4k(*ept, gpa_2m);
+        }
+
+        try {
+            ept->unmap(gpa_4k);
+            ept->release(gpa_4k);
+        } catch (std::runtime_error &e) {
+            printv("ept: %s: failed to unmap 0x%lx, what=%s\n",
+                   __func__, gpa_4k, e.what());
+        }
+    }
 }
 
 //------------------------------------------------------------------------------
@@ -237,6 +324,10 @@ vcpu::vcpu(
         this->add_ept_read_violation_handler({handle_root_ept_violation});
         this->add_ept_write_violation_handler({handle_root_ept_violation});
         this->add_ept_execute_violation_handler({handle_root_ept_violation});
+
+        this->add_cpuid_emulator(0x4BF00010, {&vcpu::handle_0x4BF00010, this});
+        this->add_cpuid_emulator(0x4BF00012, {&vcpu::handle_0x4BF00012, this});
+        this->add_cpuid_emulator(0x4BF00021, {&vcpu::handle_0x4BF00021, this});
     }
     else {
         this->write_domU_guest_state(domain);
@@ -248,9 +339,6 @@ vcpu::vcpu(
 
         this->add_exception_handler(6, {&vcpu::handle_invalid_opcode, this});
     }
-
-    this->add_cpuid_emulator(0x4BF00010, {&vcpu::handle_0x4BF00010, this});
-    this->add_cpuid_emulator(0x4BF00021, {&vcpu::handle_0x4BF00021, this});
 }
 
 //------------------------------------------------------------------------------
@@ -436,6 +524,14 @@ bool vcpu::handle_0x4BF00010(bfvmm::intel_x64::vcpu *vcpu)
     }
 
     vcpu_init_root(vcpu);
+    return vcpu->advance();
+}
+
+bool vcpu::handle_0x4BF00012(bfvmm::intel_x64::vcpu *vcpu)
+{
+    bfn::call_once(ept_ready, []{ unmap_vmm(); });
+    ::intel_x64::vmx::invept_global();
+
     return vcpu->advance();
 }
 

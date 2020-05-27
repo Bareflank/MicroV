@@ -154,6 +154,11 @@ void xen_hvm::init_root_store_params()
                                            pg_mtype_wb,
                                            store_page.get(),
                                            false);
+
+    const auto gpa = xen_addr(gpfn);
+
+    /* Add the identity mapping to the map whitelist */
+    xen_dom->m_uv_dom->m_vmm_map_whitelist.try_emplace(gpa, gpa);
 }
 
 void xen_hvm::init_root_console_params()
@@ -184,6 +189,11 @@ void xen_hvm::init_root_console_params()
                                            pg_mtype_wb,
                                            console_page.get(),
                                            false);
+
+    const auto gpa = xen_addr(gpfn);
+
+    /* Add the identity mapping to the map whitelist */
+    xen_dom->m_uv_dom->m_vmm_map_whitelist.try_emplace(gpa, gpa);
 }
 
 xen_hvm::xen_hvm(xen_domain *dom, xen_memory *mem) :
