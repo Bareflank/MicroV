@@ -80,6 +80,8 @@ Name: efi/shell; Description: "Tianocore EDK2 Shell"; Types: custom
 Name: programs; Description: "Programs"; Types: standard custom;
 Name: programs/uvctl; Description: "Microv Control"; Types: standard custom;
 Name: programs/netctlwifi; Description: "Wifi Menu"; Types: standard custom;
+Name: programs/compatibility; Description: "System Compatibility Checks"; Types: standard;
+Name: programs/compatibility/module; Description: "System Compatibility Check Modules"; Types: standard;
 
 Name: shortcuts; Description: "Desktop Shortcuts"; Types: standard custom;
 Name: shortcuts/daemon; Description: "{#NAME_TITLE} - Run In Background"; Types: standard custom;
@@ -124,6 +126,9 @@ Source: "redist\x64\dpinst.exe"; DestDir: "{app}\util"
 Source: "redist\x64\vs2019\vcredist_x64.exe"; DestDir: "{app}\util"
 Source: "redist\wdf\WdfCoInstaller01011.dll"; DestDir: "{app}\drivers\builder"; Components: drivers/builder
 Source: "redist\wdf\WdfCoInstaller01011.dll"; DestDir: "{app}\drivers\visr"; Components: drivers/visr
+
+Source: "compatibility/*"; DestDir: "{app}/compatibility"; Flags: ignoreversion; Components: programs/compatibility
+Source: "compatibility/module/*"; DestDir: "{app}/compatibility/module"; Flags: ignoreversion; Components: programs/compatibility/module
 
 Source: "drivers\builder\builder.cer"; DestDir: "{app}\drivers\builder"; Components: drivers/builder
 Source: "drivers\builder\builder.inf"; DestDir: "{app}\drivers\builder"; Components: drivers/builder
@@ -247,6 +252,9 @@ Filename: "{#PS}"; Parameters: "-File ""{app}\scripts\vifctl.ps1"" -ProductName 
 ; Create SMB share for persistent storage
 Filename: "{#PS}"; Parameters: "-File ""{app}\scripts\smbshare.ps1"" -RootDir ""{app}"" -Add"; Flags: runhidden
 
+; Run a dummy command that kicks off system compatibility checks during the "AfterInstall" stage
+Filename: "change.exe"; WorkingDir: "{tmp}"; StatusMsg: "Running system compatibility checks";  Flags: runhidden; AfterInstall: RunCompatibilityChecks
+
 [UninstallRun]
 ; Remove xenfilt from the UpperFilters registry value in the system and hdc classes
 Filename: "{#PS}"; Parameters: "-File ""{app}\scripts\rmfilters.ps1"""; Flags: runhidden
@@ -320,3 +328,35 @@ function UninstallNeedRestart(): Boolean;
 begin
   Result := True;
 end;
+
+// Execute the compatibility checks for this installer. Upon failure of one or
+// more compatibility checks, this procedure will display a failure messsage,
+// and then fail + rollback the entire installation
+procedure RunCompatibilityChecks();
+var
+    CmdArgs: string;        // Arguments to pass to cmd.exe
+    ResultCode: integer;    // Result (exit code) from running the compatibility checks
+    ErrorFile: string;      // Path to a file that will collect stderr output from all compatibility checks
+    ErrorText: AnsiString;  // Text from stderr output after running all compatibility checks
+    ErrMsgText: string;     // Text to be displayed to the user upon compatibility check failure
+begin
+    ErrorFile := ExpandConstant('{app}') + '\compatibility_results.txt';
+    CmdArgs := ExpandConstant('/U /C {#PS} -File "{app}\compatibility\run_all.ps1"') + ' 2> "' + ErrorFile + '"'
+
+    if Exec(ExpandConstant('{cmd}'), CmdArgs, '', SW_HIDE, ewWaitUntilTerminated, ResultCode)
+    then begin
+        if not (ResultCode = 0)
+        then begin
+            ErrMsgText := ExpandConstant('This envirnoment is not compatible with {#NAME_TITLE} version {#MAJOR}.{#MINOR}.{#BUILD}. ');
+            ErrMsgText := ErrMsgText + ExpandConstant('{#NAME_TITLE} will be uninstalled now.');
+            if LoadStringFromFile(ErrorFile, ErrorText) then
+                ErrMsgText := ErrMsgText + ' Errors:' + #13#10 + ErrorText;
+            MsgBox(ErrMsgText, mbCriticalError, MB_OK);
+            DeleteFile(ErrorFile)
+            Exec(ExpandConstant('{uninstallexe}'), '/SILENT', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+        end
+    end
+    else
+        MsgBox('Failed to execute compatibility checks, error: ' + SysErrorMessage(ResultCode), mbCriticalError, MB_OK);
+    end;
+end.
