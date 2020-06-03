@@ -32,14 +32,12 @@
 #endif
 
 #define PS "{sys}\WindowsPowerShell\v1.0\powershell.exe"
-#define MAJOR "1"
-#define MINOR "4"
-#define BUILD "1"
 #define YEAR GetDateTimeString('yyyy', '', '')
+#define VERSION GetDateTimeString('yy/m/d', '.', '')
 
 [Setup]
 AppName={#NAME_TITLE}
-AppVersion={#MAJOR}.{#MINOR}.{#BUILD}
+AppVersion={#VERSION}
 AppPublisher={#PUBLISHER}
 AppCopyright=Copyright (C) {#YEAR} {#PUBLISHER}
 DefaultDirName={commonpf}\{#NAME_TITLE}
@@ -64,34 +62,12 @@ Name: standard; Description: "Standard Installation"
 Name: custom; Description: "Custom Installation"; Flags: iscustom
 
 [Components]
-Name: images; Description: "VM Images"; Types: standard custom;
-
-Name: drivers; Description: "Drivers"; Types: standard custom;
-Name: drivers/xenbus; Description: "Xen PV Bus"; Types: standard custom;
-Name: drivers/xenvif; Description: "Xen PV Vif"; Types: standard custom;
-Name: drivers/xennet; Description: "Xen PV Net"; Types: standard custom;
-Name: drivers/builder; Description: "Microv VM Builder"; Types: standard custom;
-Name: drivers/visr; Description: "Microv Visr"; Types: standard custom;
-
-Name: efi; Description: "EFI Binaries"; Types: standard custom;
-Name: efi/vmm; Description: "Microv Hypervisor"; Types: standard custom;
-Name: efi/shell; Description: "Tianocore EDK2 Shell"; Types: custom
-
-Name: programs; Description: "Programs"; Types: standard custom;
-Name: programs/uvctl; Description: "Microv Control"; Types: standard custom;
-Name: programs/netctlwifi; Description: "Wifi Menu"; Types: standard custom;
-Name: programs/compatibility; Description: "System Compatibility Checks"; Types: standard;
-Name: programs/compatibility/module; Description: "System Compatibility Check Modules"; Types: standard;
-
+Name: main; Description: "{#NAME_TITLE}"; Types: standard custom; Flags: fixed
 Name: shortcuts; Description: "Desktop Shortcuts"; Types: standard custom;
 Name: shortcuts/daemon; Description: "{#NAME_TITLE} - Run In Background"; Types: standard custom;
 Name: shortcuts/console; Description: "{#NAME_TITLE} - Run With Console"; Types: custom;
 Name: shortcuts/issue; Description: "{#NAME_TITLE} - Submit Issue"; Types: standard custom;
-
-[Tasks]
-Name: boot; Description: "EFI Boot Selection"; Components: efi/vmm and efi/shell
-Name: boot/vmm; Description: "Boot Microv Hypervisor"; Flags: exclusive
-Name: boot/shell; Description: "Boot EFI Shell"; Flags: exclusive unchecked
+Name: shortcuts/vpnconfig; Description: "{#NAME_TITLE} - Manage VPNs"; Types: standard custom;
 
 [Icons]
 Name: "{commondesktop}\{#NAME_TITLE}"; \
@@ -113,106 +89,103 @@ Name: "{commondesktop}\{#NAME_TITLE} - Submit Issue"; \
     Filename: "https://gitlab.ainfosec.com/{#NAME_LOWER}/programmatics/issues"; \
     Components: shortcuts/issue
 
+Name: "{commondesktop}\{#NAME_TITLE} - Manage VPNs"; \
+    IconFileName: "{app}\assets\{#NAME_LOWER}-logo.ico"; \
+    Comment: "Configure VPNs"; \
+    Filename: "{app}\extras\vpnctl-configuration\Beam VPN Configuration.exe"; \
+    Components: shortcuts/vpnconfig
+
 [Files]
-Source: "assets\{#NAME_LOWER}-logo.ico"; DestDir: "{app}\assets"
-Source: "shell.efi"; DestDir: "P:\EFI\Boot\"; Flags: ignoreversion; Components: efi/shell
-Source: "bareflank.efi"; DestDir: "P:\EFI\Boot\"; Flags: ignoreversion; Components: efi/vmm
-Source: "extras\uvctl.exe"; DestDir: "{app}\extras"; Flags: ignoreversion; Components: programs/uvctl
-Source: "extras\netctl-wifi-setup.exe"; DestDir: "{app}\extras"; Flags: ignoreversion; Components: programs/netctlwifi
-Source: "images\*"; DestDir: "{app}\storage\images"; Flags: ignoreversion; Components: images
-Source: "util\certmgr.exe"; DestDir: "{app}\util"
-Source: "util\devcon.exe"; DestDir: "{app}\util"
-Source: "redist\x64\dpinst.exe"; DestDir: "{app}\util"
-Source: "redist\x64\vs2019\vcredist_x64.exe"; DestDir: "{app}\util"
-Source: "redist\wdf\WdfCoInstaller01011.dll"; DestDir: "{app}\drivers\builder"; Components: drivers/builder
-Source: "redist\wdf\WdfCoInstaller01011.dll"; DestDir: "{app}\drivers\visr"; Components: drivers/visr
+Source: "redist\x64\vs2019\vcredist_x64.exe"; DestDir: "{app}\compatibility"; Flags: ignoreversion dontcopy;
+Source: "compatibility\*"; DestDir: "{app}\compatibility"; Flags: ignoreversion dontcopy;
+Source: "compatibility\module\*"; DestDir: "{app}\compatibility\module"; Flags: ignoreversion dontcopy;
 
-Source: "compatibility/*"; DestDir: "{app}/compatibility"; Flags: ignoreversion; Components: programs/compatibility
-Source: "compatibility/module/*"; DestDir: "{app}/compatibility/module"; Flags: ignoreversion; Components: programs/compatibility/module
+Source: "assets\{#NAME_LOWER}-logo.ico"; DestDir: "{app}\assets"; Components: main
+Source: "bareflank.efi"; DestDir: "P:\EFI\Boot\"; Flags: ignoreversion; Components: main
+Source: "extras\uvctl.exe"; DestDir: "{app}\extras"; Flags: ignoreversion; Components: main
+Source: "extras\netctl-wifi-setup.exe"; DestDir: "{app}\extras"; Flags: ignoreversion; Components: main
+Source: "extras\vpnctl-configuration-setup.exe"; DestDir: "{app}\extras"; Flags: ignoreversion; Components: main
+Source: "images\*"; DestDir: "{app}\storage\images"; Flags: ignoreversion; Components: main
+Source: "util\certmgr.exe"; DestDir: "{app}\util"; Components: main
+Source: "util\devcon.exe"; DestDir: "{app}\util"; Components: main
+Source: "redist\x64\dpinst.exe"; DestDir: "{app}\util"; Components: main
+Source: "redist\wdf\WdfCoInstaller01011.dll"; DestDir: "{app}\drivers\builder"; Components: main
+Source: "redist\wdf\WdfCoInstaller01011.dll"; DestDir: "{app}\drivers\visr"; Components: main
 
-Source: "drivers\builder\builder.cer"; DestDir: "{app}\drivers\builder"; Components: drivers/builder
-Source: "drivers\builder\builder.inf"; DestDir: "{app}\drivers\builder"; Components: drivers/builder
-Source: "drivers\builder\builder.sys"; DestDir: "{app}\drivers\builder"; Components: drivers/builder
-Source: "drivers\builder\builder.cat"; DestDir: "{app}\drivers\builder"; Components: drivers/builder
+Source: "drivers\builder\builder.cer"; DestDir: "{app}\drivers\builder"; Components: main
+Source: "drivers\builder\builder.inf"; DestDir: "{app}\drivers\builder"; Components: main
+Source: "drivers\builder\builder.sys"; DestDir: "{app}\drivers\builder"; Components: main
+Source: "drivers\builder\builder.cat"; DestDir: "{app}\drivers\builder"; Components: main
 
-Source: "drivers\visr\visr.inf"; DestDir: "{app}\drivers\visr"; Components: drivers/visr
-Source: "drivers\visr\visr.sys"; DestDir: "{app}\drivers\visr"; Components: drivers/visr
-Source: "drivers\visr\visr.cat"; DestDir: "{app}\drivers\visr"; Components: drivers/visr
+Source: "drivers\visr\visr.inf"; DestDir: "{app}\drivers\visr"; Components: main
+Source: "drivers\visr\visr.sys"; DestDir: "{app}\drivers\visr"; Components: main
+Source: "drivers\visr\visr.cat"; DestDir: "{app}\drivers\visr"; Components: main
 
-Source: "drivers\xenbus\xen.pdb"; DestDir: "{app}\drivers\xenbus"; Components: drivers/xenbus
-Source: "drivers\xenbus\xen.sys"; DestDir: "{app}\drivers\xenbus"; Components: drivers/xenbus
-Source: "drivers\xenbus\xenbus.cat"; DestDir: "{app}\drivers\xenbus"; Components: drivers/xenbus
-Source: "drivers\xenbus\xenbus.cer"; DestDir: "{app}\drivers\xenbus"; Components: drivers/xenbus
-Source: "drivers\xenbus\xenbus.inf"; DestDir: "{app}\drivers\xenbus"; Components: drivers/xenbus
-Source: "drivers\xenbus\xenbus.pdb"; DestDir: "{app}\drivers\xenbus"; Components: drivers/xenbus
-Source: "drivers\xenbus\xenbus.sys"; DestDir: "{app}\drivers\xenbus"; Components: drivers/xenbus
-Source: "drivers\xenbus\xenbus_coinst.dll"; DestDir: "{app}\drivers\xenbus"; Components: drivers/xenbus
-Source: "drivers\xenbus\xenbus_coinst.pdb"; DestDir: "{app}\drivers\xenbus"; Components: drivers/xenbus
-Source: "drivers\xenbus\xenbus_monitor.dll"; DestDir: "{app}\drivers\xenbus"; Components: drivers/xenbus
-Source: "drivers\xenbus\xenbus_monitor.exe"; DestDir: "{app}\drivers\xenbus"; Components: drivers/xenbus
-Source: "drivers\xenbus\xenbus_monitor.pdb"; DestDir: "{app}\drivers\xenbus"; Components: drivers/xenbus
-Source: "drivers\xenbus\xenfilt.pdb"; DestDir: "{app}\drivers\xenbus"; Components: drivers/xenbus
-Source: "drivers\xenbus\xenfilt.sys"; DestDir: "{app}\drivers\xenbus"; Components: drivers/xenbus
+Source: "drivers\xenbus\xen.pdb"; DestDir: "{app}\drivers\xenbus"; Components: main
+Source: "drivers\xenbus\xen.sys"; DestDir: "{app}\drivers\xenbus"; Components: main
+Source: "drivers\xenbus\xenbus.cat"; DestDir: "{app}\drivers\xenbus"; Components: main
+Source: "drivers\xenbus\xenbus.cer"; DestDir: "{app}\drivers\xenbus"; Components: main
+Source: "drivers\xenbus\xenbus.inf"; DestDir: "{app}\drivers\xenbus"; Components: main
+Source: "drivers\xenbus\xenbus.pdb"; DestDir: "{app}\drivers\xenbus"; Components: main
+Source: "drivers\xenbus\xenbus.sys"; DestDir: "{app}\drivers\xenbus"; Components: main
+Source: "drivers\xenbus\xenbus_coinst.dll"; DestDir: "{app}\drivers\xenbus"; Components: main
+Source: "drivers\xenbus\xenbus_coinst.pdb"; DestDir: "{app}\drivers\xenbus"; Components: main
+Source: "drivers\xenbus\xenbus_monitor.dll"; DestDir: "{app}\drivers\xenbus"; Components: main
+Source: "drivers\xenbus\xenbus_monitor.exe"; DestDir: "{app}\drivers\xenbus"; Components: main
+Source: "drivers\xenbus\xenbus_monitor.pdb"; DestDir: "{app}\drivers\xenbus"; Components: main
+Source: "drivers\xenbus\xenfilt.pdb"; DestDir: "{app}\drivers\xenbus"; Components: main
+Source: "drivers\xenbus\xenfilt.sys"; DestDir: "{app}\drivers\xenbus"; Components: main
 
-Source: "drivers\xenvif\xenvif.cat"; DestDir: "{app}\drivers\xenvif"; Components: drivers/xenvif
-Source: "drivers\xenvif\xenvif.cer"; DestDir: "{app}\drivers\xenvif"; Components: drivers/xenvif
-Source: "drivers\xenvif\xenvif.inf"; DestDir: "{app}\drivers\xenvif"; Components: drivers/xenvif
-Source: "drivers\xenvif\xenvif.pdb"; DestDir: "{app}\drivers\xenvif"; Components: drivers/xenvif
-Source: "drivers\xenvif\xenvif.sys"; DestDir: "{app}\drivers\xenvif"; Components: drivers/xenvif
-Source: "drivers\xenvif\xenvif_coinst.dll"; DestDir: "{app}\drivers\xenvif"; Components: drivers/xenvif
-Source: "drivers\xenvif\xenvif_coinst.pdb"; DestDir: "{app}\drivers\xenvif"; Components: drivers/xenvif
+Source: "drivers\xenvif\xenvif.cat"; DestDir: "{app}\drivers\xenvif"; Components: main
+Source: "drivers\xenvif\xenvif.cer"; DestDir: "{app}\drivers\xenvif"; Components: main
+Source: "drivers\xenvif\xenvif.inf"; DestDir: "{app}\drivers\xenvif"; Components: main
+Source: "drivers\xenvif\xenvif.pdb"; DestDir: "{app}\drivers\xenvif"; Components: main
+Source: "drivers\xenvif\xenvif.sys"; DestDir: "{app}\drivers\xenvif"; Components: main
+Source: "drivers\xenvif\xenvif_coinst.dll"; DestDir: "{app}\drivers\xenvif"; Components: main
+Source: "drivers\xenvif\xenvif_coinst.pdb"; DestDir: "{app}\drivers\xenvif"; Components: main
 
-Source: "drivers\xennet\xennet.cat"; DestDir: "{app}\drivers\xennet"; Components: drivers/xennet
-Source: "drivers\xennet\xennet.cer"; DestDir: "{app}\drivers\xennet"; Components: drivers/xennet
-Source: "drivers\xennet\xennet.inf"; DestDir: "{app}\drivers\xennet"; Components: drivers/xennet
-Source: "drivers\xennet\xennet.pdb"; DestDir: "{app}\drivers\xennet"; Components: drivers/xennet
-Source: "drivers\xennet\xennet.sys"; DestDir: "{app}\drivers\xennet"; Components: drivers/xennet
-Source: "drivers\xennet\xennet_coinst.dll"; DestDir: "{app}\drivers\xennet"; Components: drivers/xennet
-Source: "drivers\xennet\xennet_coinst.pdb"; DestDir: "{app}\drivers\xennet"; Components: drivers/xennet
+Source: "drivers\xennet\xennet.cat"; DestDir: "{app}\drivers\xennet"; Components: main
+Source: "drivers\xennet\xennet.cer"; DestDir: "{app}\drivers\xennet"; Components: main
+Source: "drivers\xennet\xennet.inf"; DestDir: "{app}\drivers\xennet"; Components: main
+Source: "drivers\xennet\xennet.pdb"; DestDir: "{app}\drivers\xennet"; Components: main
+Source: "drivers\xennet\xennet.sys"; DestDir: "{app}\drivers\xennet"; Components: main
+Source: "drivers\xennet\xennet_coinst.dll"; DestDir: "{app}\drivers\xennet"; Components: main
+Source: "drivers\xennet\xennet_coinst.pdb"; DestDir: "{app}\drivers\xennet"; Components: main
 
-Source: "scripts\setenv.ps1"; DestDir: "{app}\scripts"; Flags: ignoreversion
-Source: "scripts\startvms.ps1"; DestDir: "{app}\scripts"; Flags: ignoreversion
-Source: "scripts\pcictl.ps1"; DestDir: "{app}\scripts"; Flags: ignoreversion
-Source: "scripts\vifctl.ps1"; DestDir: "{app}\scripts"; Flags: ignoreversion
-Source: "scripts\vifconnect.ps1"; DestDir: "{app}\scripts"; Flags: ignoreversion
-Source: "scripts\powerctl.ps1"; DestDir: "{app}\scripts"; Flags: ignoreversion
-Source: "scripts\rmfilters.ps1"; DestDir: "{app}\scripts"; Flags: ignoreversion
-Source: "scripts\smbshare.ps1"; DestDir: "{app}\scripts"; Flags: ignoreversion
+Source: "scripts\setenv.ps1"; DestDir: "{app}\scripts"; Flags: ignoreversion; Components: main
+Source: "scripts\startvms.ps1"; DestDir: "{app}\scripts"; Flags: ignoreversion; Components: main
+Source: "scripts\pcictl.ps1"; DestDir: "{app}\scripts"; Flags: ignoreversion; Components: main
+Source: "scripts\vifctl.ps1"; DestDir: "{app}\scripts"; Flags: ignoreversion; Components: main
+Source: "scripts\vifconnect.ps1"; DestDir: "{app}\scripts"; Flags: ignoreversion; Components: main
+Source: "scripts\powerctl.ps1"; DestDir: "{app}\scripts"; Flags: ignoreversion; Components: main
+Source: "scripts\rmfilters.ps1"; DestDir: "{app}\scripts"; Flags: ignoreversion; Components: main
+Source: "scripts\smbshare.ps1"; DestDir: "{app}\scripts"; Flags: ignoreversion; Components: main
 #ifdef AUTO_START
-Source: "scripts\taskctl.ps1"; DestDir: "{app}\scripts"; Flags: ignoreversion
+Source: "scripts\taskctl.ps1"; DestDir: "{app}\scripts"; Flags: ignoreversion; Components: main
 #endif
 
 [Run]
-; Allow our powershell scripts to run
-Filename: "{#PS}"; Parameters: "-Command Set-ExecutionPolicy RemoteSigned"; Flags: runhidden
-
 ; Set environment variables.
 ; This needs to be run early (before any other ps1 scripts at the latest)
 Filename: "{#PS}"; Parameters: "-File ""{app}\scripts\setenv.ps1"" -ProductName {#NAME_TITLE} -Init"; Flags: runhidden
 
 ; Install hypervisor and point bootmgr to the VMM's binary
-Filename: "{cmd}"; Parameters: "/C mountvol P: /D"; Flags: runhidden
-Filename: "{sys}\bcdedit.exe"; Parameters: "/set {{bootmgr} path \EFI\Boot\bareflank.efi"; Flags: runhidden; Components: efi/vmm
-Filename: "{sys}\bcdedit.exe"; Parameters: "/set {{bootmgr} path \EFI\Boot\bareflank.efi"; Flags: runhidden; Tasks: boot/vmm
-Filename: "{sys}\bcdedit.exe"; Parameters: "/set {{bootmgr} path \EFI\Boot\shell.efi"; Flags: runhidden; Tasks: boot/shell
+Filename: "{sys}\bcdedit.exe"; Parameters: "/set {{bootmgr} path \EFI\Boot\bareflank.efi"; Flags: runhidden;
 
 ; Enable testsigning
 Filename: "{sys}\bcdedit.exe"; Parameters: "/set testsigning on"; Flags: runhidden
 
-; Install vs2019 redistributables (needed for uvctl.exe)
-Filename: "{app}\util\vcredist_x64.exe"; Parameters: "/install /quiet"; StatusMsg: "Installing VC++ libraries..."; Flags: runhidden; Components: programs
-
 ; Install builder (and visr - they use the same) driver cert
-Filename: "{app}\util\certmgr.exe"; Parameters: "/add ""{app}\drivers\builder\builder.cer"" /s /r localMachine root"; StatusMsg: "Installing driver certs..."; Flags: runhidden; Components: drivers/builder
-Filename: "{app}\util\certmgr.exe"; Parameters: "/add ""{app}\drivers\builder\builder.cer"" /s /r localMachine trustedpublisher"; StatusMsg: "Installing driver certs..."; Flags: runhidden; Components: drivers/builder
+Filename: "{app}\util\certmgr.exe"; Parameters: "/add ""{app}\drivers\builder\builder.cer"" /s /r localMachine root"; StatusMsg: "Installing driver certs..."; Flags: runhidden;
+Filename: "{app}\util\certmgr.exe"; Parameters: "/add ""{app}\drivers\builder\builder.cer"" /s /r localMachine trustedpublisher"; StatusMsg: "Installing driver certs..."; Flags: runhidden;
 
 ; Install Xen PV driver certs
-Filename: "{app}\util\certmgr.exe"; Parameters: "/add ""{app}\drivers\xenbus\xenbus.cer"" /s /r localMachine root"; StatusMsg: "Installing driver certs..."; Flags: runhidden; Components: drivers/xenbus
-Filename: "{app}\util\certmgr.exe"; Parameters: "/add ""{app}\drivers\xenvif\xenvif.cer"" /s /r localMachine root"; StatusMsg: "Installing driver certs..."; Flags: runhidden; Components: drivers/xenvif
-Filename: "{app}\util\certmgr.exe"; Parameters: "/add ""{app}\drivers\xennet\xennet.cer"" /s /r localMachine root"; StatusMsg: "Installing driver certs..."; Flags: runhidden; Components: drivers/xennet
-Filename: "{app}\util\certmgr.exe"; Parameters: "/add ""{app}\drivers\xenbus\xenbus.cer"" /s /r localMachine trustedpublisher"; StatusMsg: "Installing driver certs..."; Flags: runhidden; Components: drivers/xenbus
-Filename: "{app}\util\certmgr.exe"; Parameters: "/add ""{app}\drivers\xenvif\xenvif.cer"" /s /r localMachine trustedpublisher"; StatusMsg: "Installing driver certs..."; Flags: runhidden; Components: drivers/xenvif
-Filename: "{app}\util\certmgr.exe"; Parameters: "/add ""{app}\drivers\xennet\xennet.cer"" /s /r localMachine trustedpublisher"; StatusMsg: "Installing driver certs..."; Flags: runhidden; Components: drivers/xennet
+Filename: "{app}\util\certmgr.exe"; Parameters: "/add ""{app}\drivers\xenbus\xenbus.cer"" /s /r localMachine root"; StatusMsg: "Installing driver certs..."; Flags: runhidden;
+Filename: "{app}\util\certmgr.exe"; Parameters: "/add ""{app}\drivers\xenvif\xenvif.cer"" /s /r localMachine root"; StatusMsg: "Installing driver certs..."; Flags: runhidden;
+Filename: "{app}\util\certmgr.exe"; Parameters: "/add ""{app}\drivers\xennet\xennet.cer"" /s /r localMachine root"; StatusMsg: "Installing driver certs..."; Flags: runhidden;
+Filename: "{app}\util\certmgr.exe"; Parameters: "/add ""{app}\drivers\xenbus\xenbus.cer"" /s /r localMachine trustedpublisher"; StatusMsg: "Installing driver certs..."; Flags: runhidden;
+Filename: "{app}\util\certmgr.exe"; Parameters: "/add ""{app}\drivers\xenvif\xenvif.cer"" /s /r localMachine trustedpublisher"; StatusMsg: "Installing driver certs..."; Flags: runhidden;
+Filename: "{app}\util\certmgr.exe"; Parameters: "/add ""{app}\drivers\xennet\xennet.cer"" /s /r localMachine trustedpublisher"; StatusMsg: "Installing driver certs..."; Flags: runhidden;
 
 ; Install driver binaries. Note that builder is a non-pnp driver, so
 ; dpinst cannot be used to install it (although it can uninstall it
@@ -223,16 +196,17 @@ Filename: "{app}\util\certmgr.exe"; Parameters: "/add ""{app}\drivers\xennet\xen
 ; we uninstall builder before installing it (note if it doesn't exist
 ; the two uninstall commands below will return with an error but the
 ; install step will otherwise be unaffected).
-Filename: "{app}\util\dpinst.exe"; Parameters: "/s /d /u ""{app}\drivers\builder\builder.inf"""; Flags: runhidden; Components: drivers/builder
-Filename: "{app}\util\devcon.exe"; Parameters: "/remove ROOT\builder"; Flags: runhidden; Components: drivers/builder
-Filename: "{app}\util\devcon.exe"; Parameters: "/install ""{app}\drivers\builder\builder.inf"" ROOT\builder"; StatusMsg: "Installing driver binaries..."; Flags: runhidden; Components: drivers/builder
-Filename: "{app}\util\dpinst.exe"; Parameters: "/s /path ""{app}\drivers\visr"""; StatusMsg: "Installing driver binaries..."; Flags: runhidden; Components: drivers/visr
-Filename: "{app}\util\dpinst.exe"; Parameters: "/s /path ""{app}\drivers\xenbus"""; StatusMsg: "Installing driver binaries..."; Flags: runhidden; Components: drivers/xenbus
-Filename: "{app}\util\dpinst.exe"; Parameters: "/s /path ""{app}\drivers\xenvif"""; StatusMsg: "Installing driver binaries..."; Flags: runhidden; Components: drivers/xenvif
-Filename: "{app}\util\dpinst.exe"; Parameters: "/s /path ""{app}\drivers\xennet"""; StatusMsg: "Installing driver binaries..."; Flags: runhidden; Components: drivers/xennet
+Filename: "{app}\util\dpinst.exe"; Parameters: "/s /d /u ""{app}\drivers\builder\builder.inf"""; Flags: runhidden;
+Filename: "{app}\util\devcon.exe"; Parameters: "/remove ROOT\builder"; Flags: runhidden;
+Filename: "{app}\util\devcon.exe"; Parameters: "/install ""{app}\drivers\builder\builder.inf"" ROOT\builder"; StatusMsg: "Installing driver binaries..."; Flags: runhidden;
+Filename: "{app}\util\dpinst.exe"; Parameters: "/s /path ""{app}\drivers\visr"""; StatusMsg: "Installing driver binaries..."; Flags: runhidden;
+Filename: "{app}\util\dpinst.exe"; Parameters: "/s /path ""{app}\drivers\xenbus"""; StatusMsg: "Installing driver binaries..."; Flags: runhidden;
+Filename: "{app}\util\dpinst.exe"; Parameters: "/s /path ""{app}\drivers\xenvif"""; StatusMsg: "Installing driver binaries..."; Flags: runhidden;
+Filename: "{app}\util\dpinst.exe"; Parameters: "/s /path ""{app}\drivers\xennet"""; StatusMsg: "Installing driver binaries..."; Flags: runhidden;
 
-; Install netctl-wifi gui. Use the /S parameter to run the installer silently
-Filename: "{app}\extras\netctl-wifi-setup.exe"; Parameters: "/S /D=""{app}\extras\netctl-wifi"""; StatusMsg: "Installing netctl wifi..."; Flags: runhidden; Components: programs/netctlwifi
+; Install netctl and vpnctl guis. Use the /S parameter to run the installer silently
+Filename: "{app}\extras\netctl-wifi-setup.exe"; Parameters: "/S /D=""{app}\extras\netctl-wifi"""; StatusMsg: "Installing netctl wifi..."; Flags: runhidden;
+Filename: "{app}\extras\vpnctl-configuration-setup.exe"; Parameters: "/S /D=""{app}\extras\vpnctl-configuration"""; StatusMsg: "Installing vpnctl configuration..."; Flags: runhidden;
 
 ; Disable suspend/resume
 Filename: "{#PS}"; Parameters: "-File ""{app}\scripts\powerctl.ps1"" -Init"; Flags: runhidden
@@ -252,9 +226,6 @@ Filename: "{#PS}"; Parameters: "-File ""{app}\scripts\vifctl.ps1"" -ProductName 
 ; Create SMB share for persistent storage
 Filename: "{#PS}"; Parameters: "-File ""{app}\scripts\smbshare.ps1"" -RootDir ""{app}"" -Add"; Flags: runhidden
 
-; Run a dummy command that kicks off system compatibility checks during the "AfterInstall" stage
-Filename: "change.exe"; WorkingDir: "{tmp}"; StatusMsg: "Running system compatibility checks";  Flags: runhidden; AfterInstall: RunCompatibilityChecks
-
 [UninstallRun]
 ; Remove xenfilt from the UpperFilters registry value in the system and hdc classes
 Filename: "{#PS}"; Parameters: "-File ""{app}\scripts\rmfilters.ps1"""; Flags: runhidden
@@ -268,17 +239,15 @@ Filename: "{#PS}"; Parameters: "-File ""{app}\scripts\rmfilters.ps1"""; Flags: r
 ; In the meantime, it should be harmless to not uninstall them since xenbus
 ; is only loaded if the VMM is running and presents the Xen Platform PCI device
 ; to Windows.
-Filename: "{app}\util\dpinst.exe"; Parameters: "/s /d /u ""{app}\drivers\visr\visr.inf"""; Flags: runhidden; Components: drivers/visr
-Filename: "{app}\util\dpinst.exe"; Parameters: "/s /d /u ""{app}\drivers\builder\builder.inf"""; Flags: runhidden; Components: drivers/builder
-Filename: "{app}\util\devcon.exe"; Parameters: "/remove ROOT\builder"; Flags: runhidden; Components: drivers/builder
-Filename: "{app}\util\certmgr.exe"; Parameters: "/del /c /n ""{#WDK_CERT_CN}"" /s /r localMachine trustedpublisher"; Flags: runhidden; Components: drivers/builder or drivers/visr
-Filename: "{app}\util\certmgr.exe"; Parameters: "/del /c /n ""{#WDK_CERT_CN}"" /s /r localMachine root"; Flags: runhidden; Components: drivers/builder or drivers/visr
-
-; Uninstall vs2019 redistributables
-Filename: "{app}\util\vcredist_x64.exe"; Parameters: "/uninstall /quiet"; Flags: runhidden; Components: programs
+Filename: "{app}\util\dpinst.exe"; Parameters: "/s /d /u ""{app}\drivers\visr\visr.inf"""; Flags: runhidden;
+Filename: "{app}\util\dpinst.exe"; Parameters: "/s /d /u ""{app}\drivers\builder\builder.inf"""; Flags: runhidden;
+Filename: "{app}\util\devcon.exe"; Parameters: "/remove ROOT\builder"; Flags: runhidden;
+Filename: "{app}\util\certmgr.exe"; Parameters: "/del /c /n ""{#WDK_CERT_CN}"" /s /r localMachine trustedpublisher"; Flags: runhidden;
+Filename: "{app}\util\certmgr.exe"; Parameters: "/del /c /n ""{#WDK_CERT_CN}"" /s /r localMachine root"; Flags: runhidden;
 
 ; Uninstall netctl-wifi gui
-Filename: "{app}\extras\netctl-wifi\Uninstall netctl-wifi.exe"; Parameters: "/S _?=""{app}\extras\netctl-wifi"""; Flags: runhidden; Components: programs/netctlwifi
+Filename: "{app}\extras\netctl-wifi\Uninstall netctl-wifi.exe"; Parameters: "/S _?=""{app}\extras\netctl-wifi"""; Flags: runhidden;
+Filename: "{app}\extras\vpnctl-configuration\Uninstall Beam VPN Configuration.exe"; Parameters: "/S _?=""{app}\extras\vpnctl-configuration"""; Flags: runhidden;
 
 ; Point bootmgr to the standard Windows loader
 Filename: "{sys}\bcdedit.exe"; Parameters: "/set {{bootmgr} path \EFI\Boot\bootx64.efi"; Flags: runhidden
@@ -288,9 +257,7 @@ Filename: "{sys}\bcdedit.exe"; Parameters: "/set testsigning off"; Flags: runhid
 
 ; Delete the VMM binary
 Filename: "{cmd}"; Parameters: "/C mountvol P: /S"; Flags: runhidden
-Filename: "{cmd}"; Parameters: "/C del P:\EFI\Boot\shell.efi"; Flags: runhidden; Components: efi/shell
-Filename: "{cmd}"; Parameters: "/C del P:\EFI\Boot\bareflank.efi"; Flags: runhidden; Components: efi/vmm
-Filename: "{cmd}"; Parameters: "/C mountvol P: /D"; Flags: runhidden
+Filename: "{cmd}"; Parameters: "/C del P:\EFI\Boot\bareflank.efi"; Flags: runhidden;
 
 ; Remove SMB share
 Filename: "{#PS}"; Parameters: "-File ""{app}\scripts\smbshare.ps1"" -Remove"; Flags: runhidden
@@ -318,45 +285,63 @@ Filename: "{#PS}"; Parameters: "-Command Set-ExecutionPolicy Restricted"; Flags:
 [Code]
 function InitializeSetup(): Boolean;
 var
-    ResultCode: integer;
+    CmdArgs: string;        // Arguments to pass to cmd.exe
+    ResultCode: integer;    // Result (exit code) from running the commands
+    ErrorFile: string;      // Path to a file that will collect stderr output from all compatibility checks
+    ErrorText: AnsiString;  // Text from stderr output after running all compatibility checks
+    ErrMsgText: string;     // Text to be displayed to the user upon compatibility check failure
+    RedistArgs: string;     // Arguments to pass to vcredist
+    RedistPath: string;     // Path to vcredist_x64.exe
+    CmdPath: string;        // Path to cmd.exe
+    PsPath: string;         // Path to powershell.exe
+    PsArgs: string;         // Args to pass to powershell.exe
+    RunAllPath: string;     // Path to run_all.ps1
 begin
-    Exec('cmd.exe', '/C mountvol P: /S', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
     Result := True;
+    ErrorFile := ExpandConstant('{tmp}\compatibility_results.txt');
+
+    RunAllPath := ExpandConstant('{tmp}\') + '{app}\compatibility\run_all.ps1';
+    CmdPath := ExpandConstant('{cmd}');
+    CmdArgs := ExpandConstant('/U /C {#PS} -File ') + RunAllPath + ' 2> "' + ErrorFile + '"';
+
+    PsPath := ExpandConstant('{#PS}');
+    PsArgs := '-Command Set-ExecutionPolicy RemoteSigned';
+
+    RedistPath := ExpandConstant('{tmp}\') + '{app}\compatibility\vcredist_x64.exe';
+    RedistArgs := '/install /quiet';
+
+    ExtractTemporaryFiles('{app}\compatibility\*');
+
+    // Enable our powershell scripts to run
+    Exec(PsPath, PsArgs, '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+
+    // Install VC redistributable libs need by our userspace processes
+    Exec(RedistPath, RedistArgs, '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+
+    // Execute the compatibility checks for this installer. Upon failure of one or
+    // more compatibility checks, this procedure will display a failure messsage,
+    // and then will abort the install by setting Result to False.
+    if Exec(CmdPath, CmdArgs, '', SW_HIDE, ewWaitUntilTerminated, ResultCode)
+    then begin
+        if not (ResultCode = 0)
+        then begin
+            ErrMsgText := ExpandConstant('This envirnoment is not compatible with {#NAME_TITLE} version {#VERSION}. ');
+            ErrMsgText := ErrMsgText + ExpandConstant('Aborting install.');
+            if LoadStringFromFile(ErrorFile, ErrorText) then
+                ErrMsgText := ErrMsgText + #13#10 + #13#10 + 'Errors:' + #13#10 + ErrorText;
+            MsgBox(ErrMsgText, mbCriticalError, MB_OK);
+            Result := False;
+        end
+        else
+            Exec(CmdPath, '/C mountvol P: /S', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+    end
+    else begin
+        MsgBox('Failed to execute compatibility checks, error: ' + SysErrorMessage(ResultCode), mbCriticalError, MB_OK);
+        Result := False;
+    end;
 end;
 
 function UninstallNeedRestart(): Boolean;
 begin
   Result := True;
 end;
-
-// Execute the compatibility checks for this installer. Upon failure of one or
-// more compatibility checks, this procedure will display a failure messsage,
-// and then fail + rollback the entire installation
-procedure RunCompatibilityChecks();
-var
-    CmdArgs: string;        // Arguments to pass to cmd.exe
-    ResultCode: integer;    // Result (exit code) from running the compatibility checks
-    ErrorFile: string;      // Path to a file that will collect stderr output from all compatibility checks
-    ErrorText: AnsiString;  // Text from stderr output after running all compatibility checks
-    ErrMsgText: string;     // Text to be displayed to the user upon compatibility check failure
-begin
-    ErrorFile := ExpandConstant('{app}') + '\compatibility_results.txt';
-    CmdArgs := ExpandConstant('/U /C {#PS} -File "{app}\compatibility\run_all.ps1"') + ' 2> "' + ErrorFile + '"'
-
-    if Exec(ExpandConstant('{cmd}'), CmdArgs, '', SW_HIDE, ewWaitUntilTerminated, ResultCode)
-    then begin
-        if not (ResultCode = 0)
-        then begin
-            ErrMsgText := ExpandConstant('This envirnoment is not compatible with {#NAME_TITLE} version {#MAJOR}.{#MINOR}.{#BUILD}. ');
-            ErrMsgText := ErrMsgText + ExpandConstant('{#NAME_TITLE} will be uninstalled now.');
-            if LoadStringFromFile(ErrorFile, ErrorText) then
-                ErrMsgText := ErrMsgText + ' Errors:' + #13#10 + ErrorText;
-            MsgBox(ErrMsgText, mbCriticalError, MB_OK);
-            DeleteFile(ErrorFile)
-            Exec(ExpandConstant('{uninstallexe}'), '/SILENT', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
-        end
-    end
-    else
-        MsgBox('Failed to execute compatibility checks, error: ' + SysErrorMessage(ResultCode), mbCriticalError, MB_OK);
-    end;
-end.
