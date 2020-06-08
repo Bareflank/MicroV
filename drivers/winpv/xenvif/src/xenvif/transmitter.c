@@ -4063,6 +4063,7 @@ __TransmitterRingDisable(
     PCHAR                           Buffer;
     XenbusState                     State;
     NTSTATUS                        status;
+    ULONG                           Attempt;
 
     ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
 
@@ -4116,10 +4117,14 @@ __TransmitterRingDisable(
                      Buffer);
     }
 
+    Attempt = 0;
     ASSERT3U(Ring->RequestsPushed, ==, Ring->RequestsPosted);
-
     while (Ring->ResponsesProcessed != Ring->RequestsPushed) {
         LARGE_INTEGER Timeout;
+
+        // Arbitrary limit before giving up.
+        if (Attempt++ >= 100)
+            break;
 
         // Try to move things along
         __TransmitterRingSend(Ring);
