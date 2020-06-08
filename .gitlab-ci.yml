@@ -20,10 +20,15 @@ build-drivers:
     artifacts:
         paths:
             - drivers\builder\windows\x64\Release\builder\*
+            - drivers\builder\windows\x64\Release\builder.cer
             - drivers\visr\windows\x64\Release\visr\*
+            - drivers\visr\windows\x64\Release\visr.cer
             - drivers\winpv\xenbus\xenbus\x64\*
+            - drivers\winpv\xenbus\vs2019\Windows10Release\x64\xenbus.cer
             - drivers\winpv\xennet\xennet\x64\*
+            - drivers\winpv\xennet\vs2019\Windows10Release\x64\xennet.cer
             - drivers\winpv\xenvif\xenvif\x64\*
+            - drivers\winpv\xenvif\vs2019\Windows10Release\x64\xenvif.cer
         expire_in: 30 day
 
     tags:
