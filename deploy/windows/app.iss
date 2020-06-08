@@ -283,61 +283,90 @@ Filename: "{#PS}"; Parameters: "-File ""{app}\scripts\setenv.ps1"" -Fini"; Flags
 Filename: "{#PS}"; Parameters: "-Command Set-ExecutionPolicy Restricted"; Flags: runhidden
 
 [Code]
-function InitializeSetup(): Boolean;
 var
-    CmdArgs: string;        // Arguments to pass to cmd.exe
-    ResultCode: integer;    // Result (exit code) from running the commands
-    ErrorFile: string;      // Path to a file that will collect stderr output from all compatibility checks
-    ErrorText: AnsiString;  // Text from stderr output after running all compatibility checks
-    ErrMsgText: string;     // Text to be displayed to the user upon compatibility check failure
-    RedistArgs: string;     // Arguments to pass to vcredist
-    RedistPath: string;     // Path to vcredist_x64.exe
-    CmdPath: string;        // Path to cmd.exe
-    PsPath: string;         // Path to powershell.exe
-    PsArgs: string;         // Args to pass to powershell.exe
-    RunAllPath: string;     // Path to run_all.ps1
+    CompatPage: TOutputProgressWizardPage; // Progress page for compat checks
+    CompatPageTitle: string;               // Title of compat progress page
+
+procedure InitializeWizard;
 begin
-    Result := True;
-    ErrorFile := ExpandConstant('{tmp}\compatibility_results.txt');
+    CompatPageTitle := ExpandConstant('{#NAME_TITLE} {#VERSION} Compatibility Check');
+    CompatPage := CreateOutputProgressPage(CompatPageTitle, 'Please wait while compatibility checks are run.');
+end;
 
-    RunAllPath := ExpandConstant('{tmp}\') + '{app}\compatibility\run_all.ps1';
-    CmdPath := ExpandConstant('{cmd}');
-    CmdArgs := ExpandConstant('/U /C {#PS} -File ') + RunAllPath + ' 2> "' + ErrorFile + '"';
+function PrepareToInstall(var NeedsRestart: Boolean): String;
+var
+    CmdArgs: string;                       // Arguments to pass to cmd.exe
+    ResultCode: integer;                   // Result (exit code) from running the commands
+    ErrorFile: string;                     // Path to a file that will collect stderr output from all compatibility checks
+    ErrorText: AnsiString;                 // Text from stderr output after running all compatibility checks
+    ErrMsgText: string;                    // Text to be displayed to the user upon compatibility check failure
+    RedistArgs: string;                    // Arguments to pass to vcredist
+    RedistPath: string;                    // Path to vcredist_x64.exe
+    CmdPath: string;                       // Path to cmd.exe
+    PsPath: string;                        // Path to powershell.exe
+    PsArgs: string;                        // Args to pass to powershell.exe
+    RunAllPath: string;                    // Path to run_all.ps1
+begin
 
-    PsPath := ExpandConstant('{#PS}');
-    PsArgs := '-Command Set-ExecutionPolicy RemoteSigned';
+    CompatPage.Show;
 
-    RedistPath := ExpandConstant('{tmp}\') + '{app}\compatibility\vcredist_x64.exe';
-    RedistArgs := '/install /quiet';
+    try
+        CompatPage.SetProgress(1, 5);
+        CompatPage.SetText('Extracting compatibility checks...', '');
 
-    ExtractTemporaryFiles('{app}\compatibility\*');
+        ErrorFile := ExpandConstant('{tmp}\compatibility_results.txt');
 
-    // Enable our powershell scripts to run
-    Exec(PsPath, PsArgs, '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+        RunAllPath := ExpandConstant('{tmp}\') + '{app}\compatibility\run_all.ps1';
+        CmdPath := ExpandConstant('{cmd}');
+        CmdArgs := ExpandConstant('/U /C {#PS} -File ') + RunAllPath + ' 2> "' + ErrorFile + '"';
 
-    // Install VC redistributable libs need by our userspace processes
-    Exec(RedistPath, RedistArgs, '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+        PsPath := ExpandConstant('{#PS}');
+        PsArgs := '-Command Set-ExecutionPolicy RemoteSigned';
 
-    // Execute the compatibility checks for this installer. Upon failure of one or
-    // more compatibility checks, this procedure will display a failure messsage,
-    // and then will abort the install by setting Result to False.
-    if Exec(CmdPath, CmdArgs, '', SW_HIDE, ewWaitUntilTerminated, ResultCode)
-    then begin
-        if not (ResultCode = 0)
+        RedistPath := ExpandConstant('{tmp}\') + '{app}\compatibility\vcredist_x64.exe';
+        RedistArgs := '/install /quiet';
+
+        ExtractTemporaryFiles('{app}\compatibility\*');
+
+        CompatPage.SetProgress(2, 5);
+        CompatPage.SetText('Configuring powershell scripts...', '');
+        Exec(PsPath, PsArgs, '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+
+        CompatPage.SetProgress(3, 5);
+        CompatPage.SetText('Installing runtime libraries...', '');
+        Exec(RedistPath, RedistArgs, '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+
+        CompatPage.SetProgress(4, 5);
+        CompatPage.SetText('Running checks...', '');
+
+        // Execute the compatibility checks for this installer. Upon failure of one or
+        // more compatibility checks, this procedure will display a failure messsage,
+        // and then will abort the install by setting Result to False.
+        if Exec(CmdPath, CmdArgs, '', SW_HIDE, ewWaitUntilTerminated, ResultCode)
         then begin
-            ErrMsgText := ExpandConstant('This envirnoment is not compatible with {#NAME_TITLE} version {#VERSION}. ');
-            ErrMsgText := ErrMsgText + ExpandConstant('Aborting install.');
-            if LoadStringFromFile(ErrorFile, ErrorText) then
-                ErrMsgText := ErrMsgText + #13#10 + #13#10 + 'Errors:' + #13#10 + ErrorText;
-            MsgBox(ErrMsgText, mbCriticalError, MB_OK);
-            Result := False;
+            if not (ResultCode = 0)
+            then begin
+                ErrMsgText := ExpandConstant('This environment is not compatible with {#NAME_TITLE} version {#VERSION}. ');
+                ErrMsgText := ErrMsgText + ExpandConstant('Aborting install.');
+                if LoadStringFromFile(ErrorFile, ErrorText) then
+                    ErrMsgText := ErrMsgText + #13#10 + #13#10 + 'Errors:' + #13#10 + ErrorText;
+                MsgBox(ErrMsgText, mbCriticalError, MB_OK);
+                Result := 'Compatibility checks failed';
+                NeedsRestart := False
+            end
+            else
+                Exec(CmdPath, '/C mountvol P: /S', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
         end
-        else
-            Exec(CmdPath, '/C mountvol P: /S', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
-    end
-    else begin
-        MsgBox('Failed to execute compatibility checks, error: ' + SysErrorMessage(ResultCode), mbCriticalError, MB_OK);
-        Result := False;
+        else begin
+            MsgBox('Failed to execute compatibility checks, error: ' + SysErrorMessage(ResultCode), mbCriticalError, MB_OK);
+            Result := 'Compatibility checks failed';
+            NeedsRestart := False
+        end;
+
+        CompatPage.SetProgress(5, 5);
+        CompatPage.SetText('Done', '');
+    finally
+        CompatPage.Hide;
     end;
 end;
 
