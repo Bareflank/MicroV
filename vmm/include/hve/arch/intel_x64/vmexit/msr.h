@@ -77,6 +77,11 @@ public:
 
     /// @cond
 
+    bool root_rdmsr_intel_pt(
+        vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info);
+    bool root_wrmsr_intel_pt(
+        vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info);
+
     bool handle_rdmsr_0x00000034(
         vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info);
     bool handle_wrmsr_0x00000034(

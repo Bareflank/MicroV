@@ -190,11 +190,14 @@ void hide_acpi_table(struct acpi_table *tab)
         memset(sig, 0, ACPI_SIG_SIZE);
 
         auto dom0 = vcpu0->dom();
+        auto spoof_hpa = g_mm->virtptr_to_physint(spoof);
 
         /* Replacing the signature only requires the first page, but we could
          * wipe the table. */
         dom0->unmap(gpa);
-        dom0->map_4k_rw(gpa, g_mm->virtptr_to_physint(spoof));
+        dom0->map_4k_rw(gpa, spoof_hpa);
+        dom0->m_vmm_map_whitelist.try_emplace(spoof_hpa, gpa);
+
         ::intel_x64::vmx::invept_global();
     }
 

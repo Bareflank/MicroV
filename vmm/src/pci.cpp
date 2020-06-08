@@ -291,12 +291,15 @@ void pci_dev::remap_ecam()
     }
 
     auto vcfg_hpa = g_mm->virtptr_to_physint(m_vcfg.get());
+
     dom0->unmap(m_ecam_gpa);
     dom0->ept().map_4k(m_ecam_gpa,
                        vcfg_hpa,
                        mmap::attr_type::read_write,
                        mmap::memory_type::uncacheable);
     ::intel_x64::vmx::invept_global();
+
+    dom0->m_vmm_map_whitelist.try_emplace(vcfg_hpa, m_ecam_gpa);
 }
 
 void pci_dev::parse_capabilities()

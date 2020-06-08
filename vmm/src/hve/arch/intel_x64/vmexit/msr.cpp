@@ -36,6 +36,30 @@
 namespace microv::intel_x64
 {
 
+static inline bool
+rdmsr_inject_gp(vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info)
+{
+    // Inject #GP
+    vcpu->inject_exception(13, 0);
+
+    info.ignore_advance = true;
+    info.ignore_write = true;
+
+    return true;
+}
+
+static inline bool
+wrmsr_inject_gp(vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info)
+{
+    // Inject #GP
+    vcpu->inject_exception(13, 0);
+
+    info.ignore_advance = true;
+    info.ignore_write = true;
+
+    return true;
+}
+
 msr_handler::msr_handler(
     gsl::not_null<vcpu *> vcpu
 ) :
@@ -66,6 +90,12 @@ msr_handler::msr_handler(
         this->isolate_msr(::intel_x64::msrs::ia32_xss::addr);
     }
 
+    if (extended_feature_flags::subleaf0::ebx::trace::is_enabled()) {
+        EMULATE_MSR(0x570U, root_rdmsr_intel_pt, root_wrmsr_intel_pt);
+        EMULATE_MSR(0x571U, root_rdmsr_intel_pt, root_wrmsr_intel_pt);
+        EMULATE_MSR(0x572U, root_rdmsr_intel_pt, root_wrmsr_intel_pt);
+    }
+
     if (vcpu->is_dom0()) {
         return;
     }
@@ -85,6 +115,11 @@ msr_handler::msr_handler(
     EMULATE_MSR(0x00000606, handle_rdmsr_0x00000606, handle_wrmsr_0x00000606);
     EMULATE_MSR(0x0000064E, handle_rdmsr_0x0000064E, handle_wrmsr_0x0000064E);
 }
+
+// -----------------------------------------------------------------------------
+// Root MSR Functions
+// -----------------------------------------------------------------------------
+
 
 // -----------------------------------------------------------------------------
 // Isolate MSR Functions
@@ -193,7 +228,25 @@ msr_handler::isolate_msr__on_write(
 }
 
 // -----------------------------------------------------------------------------
-// Handlers
+// Root Emulators
+// -----------------------------------------------------------------------------
+
+bool
+msr_handler::root_rdmsr_intel_pt(
+    vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info)
+{
+    return rdmsr_inject_gp(vcpu, info);
+}
+
+bool
+msr_handler::root_wrmsr_intel_pt(
+    vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info)
+{
+    return wrmsr_inject_gp(vcpu, info);
+}
+
+// -----------------------------------------------------------------------------
+// Guest Emulators
 // -----------------------------------------------------------------------------
 
 bool
@@ -215,6 +268,7 @@ msr_handler::handle_wrmsr_0x00000034(
     vcpu->halt("wrmsr to 0x34 is not supported");
     return true;
 }
+
 bool
 msr_handler::handle_rdmsr_0x000000CE(
     vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info)

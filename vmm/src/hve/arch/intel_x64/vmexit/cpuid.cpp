@@ -54,6 +54,9 @@ cpuid_handler::cpuid_handler(
     using namespace vmcs_n;
 
     if (vcpu->is_dom0()) {
+        EMULATE_CPUID(0x00000007, root_0x00000007);
+        EMULATE_CPUID(0x0000000D, root_0x0000000D);
+        EMULATE_CPUID(0x00000014, root_0x00000014);
         return;
     }
 
@@ -88,7 +91,60 @@ cpuid_handler::cpuid_handler(
 }
 
 // -----------------------------------------------------------------------------
-// Handlers
+// Root Handlers
+// -----------------------------------------------------------------------------
+
+bool
+cpuid_handler::root_0x00000007(vcpu_t *vcpu)
+{
+    auto subleaf = vcpu->rcx();
+
+    vcpu->execute_cpuid();
+
+    if (subleaf == 0U) {
+        // Hide Intel PT feature
+        vcpu->set_rbx(vcpu->rbx() & ~(1UL << 25U));
+    }
+
+    return vcpu->advance();
+}
+
+bool
+cpuid_handler::root_0x0000000D(vcpu_t *vcpu)
+{
+    auto subleaf = vcpu->rcx();
+
+    vcpu->execute_cpuid();
+
+    // Remove Intel PT from XSAVE reporting
+
+    if (subleaf == 1U) {
+        vcpu->set_rcx(vcpu->rcx() & ~(1UL << 8U));
+    } else if (subleaf == 8U) {
+        vcpu->set_rax(0);
+        vcpu->set_rbx(0);
+        vcpu->set_rcx(0);
+        vcpu->set_rdx(0);
+    }
+
+    return vcpu->advance();
+}
+
+bool
+cpuid_handler::root_0x00000014(vcpu_t *vcpu)
+{
+    // Clear all Intel PT specific leaves
+
+    vcpu->set_rax(0);
+    vcpu->set_rbx(0);
+    vcpu->set_rcx(0);
+    vcpu->set_rdx(0);
+
+    return vcpu->advance();
+}
+
+// -----------------------------------------------------------------------------
+// Guest Handlers
 // -----------------------------------------------------------------------------
 
 bool

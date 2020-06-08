@@ -66,6 +66,8 @@ extern uint64_t no_pci_pt_count;
 #define EFI_BOOT_NEXT L"\\EFI\\boot\\bootx64.efi"
 #endif
 
+void unmap_vmm_from_root_domain(void);
+
 static int64_t
 ioctl_add_module(const char *file, uint64_t len)
 {
@@ -363,6 +365,7 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *systab)
     ioctl_load_vmm();
     ioctl_start_vmm();
 
+    unmap_vmm_from_root_domain();
     load_start_vm(image);
 
     return EFI_SUCCESS;

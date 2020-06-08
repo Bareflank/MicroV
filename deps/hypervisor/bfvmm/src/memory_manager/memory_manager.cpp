@@ -524,6 +524,12 @@ memory_manager::descriptors() const
     return list;
 }
 
+memory_manager::phys_map const *
+memory_manager::get_phys_map() const noexcept
+{
+    return &m_phys_map;
+}
+
 memory_manager::memory_manager() noexcept :
     g_page_pool(static_cast<void *>(g_page_pool_buffer), g_page_pool_k, static_cast<void *>(g_page_pool_node_tree)),
     g_huge_pool(static_cast<void *>(g_huge_pool_buffer), g_huge_pool_k, static_cast<void *>(g_huge_pool_node_tree)),

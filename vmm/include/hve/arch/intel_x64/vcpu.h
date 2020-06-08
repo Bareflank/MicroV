@@ -325,6 +325,7 @@ public:
 
     /// Start-of-day base cpuid handler overrides
     bool handle_0x4BF00010(bfvmm::intel_x64::vcpu *vcpu);
+    bool handle_0x4BF00012(bfvmm::intel_x64::vcpu *vcpu);
     bool handle_0x4BF00021(bfvmm::intel_x64::vcpu *vcpu);
 
     /// CR8 handlers

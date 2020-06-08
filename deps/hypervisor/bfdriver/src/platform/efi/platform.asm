@@ -24,6 +24,23 @@ default rel
 
 section .text
 
+global _cpuid
+_cpuid:
+    push rbx
+    mov r10, rdx
+    mov r11, rcx
+    mov eax, [rdi]
+    mov ecx, [rdx]
+
+    cpuid
+
+    mov [rdi], eax
+    mov [rsi], ebx
+    mov [r10], ecx
+    mov [r11], edx
+    pop rbx
+    ret
+
 global _set_ne
 _set_ne:
     mov rax, cr0

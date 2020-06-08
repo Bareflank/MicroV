@@ -24,6 +24,7 @@
 
 #include <vector>
 #include <memory>
+#include <unordered_map>
 
 #include "uart.h"
 #include "../../../ring.h"
@@ -559,6 +560,12 @@ public:
     xen_domid_t m_xen_domid{};
     microv::xen_domain *m_xen_dom{};
     std::vector<vcpuid::type> m_vcpuid{};
+
+    /*
+     * Each element here is a {hpa, gpa} that represents an EPT mapping
+     * where hpa is the address of a vmm page.
+     */
+    std::unordered_map<uint64_t, uint64_t> m_vmm_map_whitelist{};
 
     /// @cond
 

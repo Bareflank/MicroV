@@ -613,8 +613,14 @@ public:
     /// @return returns true if the virtual address was mapped as 1g page,
     ///     false otherwise
     ///
-    inline auto is_1g(void *virt_addr)
-    { return from(virt_addr) == ::intel_x64::ept::pdpt::from; }
+    inline auto is_1g(void *virt_addr) noexcept
+    {
+        try {
+            return from(virt_addr) == ::intel_x64::ept::pdpt::from;
+        } catch (...) {
+            return false;
+        }
+    }
 
     /// Is 1g
     ///
@@ -625,8 +631,14 @@ public:
     /// @return returns true if the virtual address was mapped as 1g page,
     ///     false otherwise
     ///
-    inline auto is_1g(virt_addr_t virt_addr)
-    { return is_1g(reinterpret_cast<void *>(virt_addr)); }
+    inline auto is_1g(virt_addr_t virt_addr) noexcept
+    {
+        try {
+            return is_1g(reinterpret_cast<void *>(virt_addr));
+        } catch (...) {
+            return false;
+        }
+    }
 
     /// Is 2m
     ///
@@ -637,8 +649,14 @@ public:
     /// @return returns true if the virtual address was mapped as 2m page,
     ///     false otherwise
     ///
-    inline auto is_2m(void *virt_addr)
-    { return from(virt_addr) == ::intel_x64::ept::pd::from; }
+    inline auto is_2m(void *virt_addr) noexcept
+    {
+        try {
+            return from(virt_addr) == ::intel_x64::ept::pd::from;
+        } catch (...) {
+            return false;
+        }
+    }
 
     /// Is 2m
     ///
@@ -649,8 +667,14 @@ public:
     /// @return returns true if the virtual address was mapped as 2m page,
     ///     false otherwise
     ///
-    inline auto is_2m(virt_addr_t virt_addr)
-    { return is_2m(reinterpret_cast<void *>(virt_addr)); }
+    inline auto is_2m(virt_addr_t virt_addr) noexcept
+    {
+        try {
+            return is_2m(reinterpret_cast<void *>(virt_addr));
+        } catch (...) {
+            return false;
+        }
+    }
 
     /// Is 4k
     ///
@@ -661,8 +685,14 @@ public:
     /// @return returns true if the virtual address was mapped as 4k page,
     ///     false otherwise
     ///
-    inline auto is_4k(void *virt_addr)
-    { return from(virt_addr) == ::intel_x64::ept::pt::from; }
+    inline auto is_4k(void *virt_addr) noexcept
+    {
+        try {
+            return from(virt_addr) == ::intel_x64::ept::pt::from;
+        } catch (...) {
+            return false;
+        }
+    }
 
     /// Is 4k
     ///
@@ -673,8 +703,14 @@ public:
     /// @return returns true if the virtual address was mapped as 4k page,
     ///     false otherwise
     ///
-    inline auto is_4k(virt_addr_t virt_addr)
-    { return is_4k(reinterpret_cast<void *>(virt_addr)); }
+    inline auto is_4k(virt_addr_t virt_addr) noexcept
+    {
+        try {
+            return is_4k(reinterpret_cast<void *>(virt_addr));
+        } catch (...) {
+            return false;
+        }
+    }
 
 private:
 

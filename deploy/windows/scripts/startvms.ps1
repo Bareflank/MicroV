@@ -69,29 +69,15 @@ if (!(Test-Path $license)) {
     Set-Content $license "9999999999"
 }
 
-if ([string]::IsNullOrEmpty($CredFile)) {
-    $CredFile = ".\cred.txt"
-}
+$caption = "$product_name User Authentication"
+$message = "Please enter your username and password:"
 
-if (!(Test-Path $CredFile)) {
-    $caption = "$product_name User Authentication"
-    $message = "Please enter your username and password:"
-
-    $cred = $host.ui.PromptForCredential($caption, $message, "", "")
-    $user = $cred.UserName
-    $pass = $cred.Password | ConvertFrom-SecureString
-
-    New-Item -Path $CredFile
-    Set-Content $CredFile "user:$user"
-    Add-Content $CredFile "pass:$pass"
-}
-
-$user = (Get-Content $CredFile)[0].split(":")[1]
-$pass = (Get-Content $CredFile)[1].split(":")[1] | ConvertTo-SecureString
-$cred = New-Object System.Management.Automation.PSCredential -ArgumentList $user, $pass
+$cred = $host.ui.PromptForCredential($caption, $message, "", "")
+$user = $cred.UserName
+$pass = $cred.GetNetworkCredential().Password
 
 $uvctl_user = "UVCTL_USER=$user"
-$uvctl_pass = "UVCTL_PASS=$($cred.GetNetworkCredential().Password)"
+$uvctl_pass = "UVCTL_PASS=$pass"
 
 $kernel_cmdline = ""
 

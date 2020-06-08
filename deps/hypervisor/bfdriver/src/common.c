@@ -154,6 +154,8 @@ private_add_md_to_memory_manager(struct bfelf_binary_t *module)
         exec_s &= ~(BAREFLANK_PAGE_SIZE - 1);
         exec_e &= ~(BAREFLANK_PAGE_SIZE - 1);
 
+        BFDEBUG("add md: 0x%llx-0x%llx (module)\n", exec_s, exec_e - 1);
+
         for (; exec_s <= exec_e; exec_s += BAREFLANK_PAGE_SIZE) {
             if ((instr->perm & bfpf_x) != 0) {
                 ret = private_add_raw_md_to_memory_manager(
@@ -188,6 +190,8 @@ private_add_tss_mdl(void)
         }
     }
 
+    BFDEBUG("add md: 0x%llx-0x%llx (tls)\n", g_tls, g_tls + g_tls_size - 1);
+
     return BF_SUCCESS;
 }
 
@@ -199,10 +203,13 @@ static int64_t add_xue_dma_to_mm(uint64_t virt, uint64_t order)
     struct memory_descriptor md = {0, 0, 0};
     uint64_t pages = 1UL << order;
     uint64_t i = 0;
+    uint64_t first_phys = g_xue.ops->virt_to_dma(g_xue.sys, (const void *)virt);
+    uint64_t phys = first_phys;
+    uint64_t dma_contiguous = 1;
 
     for (i = 0; i < pages; i++) {
-        md.virt = virt + (i * XUE_PAGE_SIZE);
-        md.phys = g_xue.ops->virt_to_dma(g_xue.sys, (const void *)md.virt);
+        md.virt = virt;
+        md.phys = phys;
         md.type = MEMORY_TYPE_R | MEMORY_TYPE_W;
 
         if (!md.phys) {
@@ -216,6 +223,24 @@ static int64_t add_xue_dma_to_mm(uint64_t virt, uint64_t order)
         if (ret != MEMORY_MANAGER_SUCCESS) {
             return ret;
         }
+
+        if (i + 1 == pages) {
+            break;
+        }
+
+        virt += XUE_PAGE_SIZE;
+        phys = g_xue.ops->virt_to_dma(g_xue.sys, (const void *)virt);
+
+        if (md.phys + XUE_PAGE_SIZE != phys) {
+            BFALERT("xue dma is not contiguous\n");
+            dma_contiguous = 0U;
+        }
+    }
+
+    if (dma_contiguous) {
+        BFDEBUG("add md: 0x%llx-0x%llx (xue-dma)\n",
+                first_phys,
+                first_phys + (pages * XUE_PAGE_SIZE) - 1);
     }
 
     return BF_SUCCESS;
@@ -235,13 +260,19 @@ static int64_t add_xue_mmio_to_mm(struct xue *xue)
     for (; i < pages; i++) {
         md.virt = (uint64_t)(xue->xhc_mmio) + (i * XUE_PAGE_SIZE);
         md.phys = xue->xhc_mmio_phys + (i * XUE_PAGE_SIZE);
-        md.type = MEMORY_TYPE_R | MEMORY_TYPE_W | MEMORY_TYPE_UC;
+
+        md.type = MEMORY_TYPE_R | MEMORY_TYPE_W | MEMORY_TYPE_UC |
+                  MEMORY_TYPE_SHARED;
 
         ret = platform_call_vmm_on_core(0, BF_REQUEST_ADD_MDL, (uintptr_t)&md, 0);
         if (ret != MEMORY_MANAGER_SUCCESS) {
             return ret;
         }
     }
+
+    BFDEBUG("add md: 0x%llx-0x%llx (xue-mmio)\n",
+            xue->xhc_mmio_phys,
+            xue->xhc_mmio_phys + (pages * XUE_PAGE_SIZE) - 1);
 
     return BF_SUCCESS;
 }

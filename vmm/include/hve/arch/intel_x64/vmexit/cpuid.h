@@ -59,6 +59,10 @@ public:
 
     /// @cond
 
+    bool root_0x00000007(vcpu_t *vcpu);
+    bool root_0x0000000D(vcpu_t *vcpu);
+    bool root_0x00000014(vcpu_t *vcpu);
+
     bool handle_0x00000000(vcpu_t *vcpu);
     bool handle_0x00000001(vcpu_t *vcpu);
     bool handle_0x00000002(vcpu_t *vcpu);
