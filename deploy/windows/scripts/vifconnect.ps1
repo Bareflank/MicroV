@@ -139,6 +139,20 @@ Function Connect-VifDirty {
     }
 
     Rename-VifProfile $Name "dirty.$vif_prof_suffix"
+
+    # Disable DHCPv6
+    $ifaces = Get-NetIPInterface -InterfaceAlias $Name -AddressFamily ipv6
+    foreach ($iface in $ifaces) {
+        if ($iface.Dhcp -eq "Enabled") {
+            Set-NetIPInterface -InputObject $iface -Dhcp "Disabled"
+        }
+    }
+
+    # Disable IPv6
+    $binding = Get-NetAdapterBinding -Name $Name -ComponentID ms_tcpip6
+    if ($binding.Enabled) {
+        Disable-NetAdapterBinding -InputObject $binding -Confirm:$false
+    }
 }
 
 Function Connect-VifTunnel {
@@ -154,12 +168,24 @@ Function Connect-VifTunnel {
 
     Rename-VifProfile $Name "tunnel.$vif_prof_suffix"
 
-    # Disable file sharing on the tunnel interface
+    # Disable DHCPv6
+    $ifaces = Get-NetIPInterface -InterfaceAlias $Name -AddressFamily ipv6
+    foreach ($iface in $ifaces) {
+        if ($iface.Dhcp -eq "Enabled") {
+            Set-NetIPInterface -InputObject $iface -Dhcp "Disabled"
+        }
+    }
+
+    # Disable IPv6
+    $binding = Get-NetAdapterBinding -Name $Name -ComponentID ms_tcpip6
+    if ($binding.Enabled) {
+        Disable-NetAdapterBinding -InputObject $binding -Confirm:$false
+    }
+
+    # Disable file sharing
     $binding = Get-NetAdapterBinding -Name $Name -ComponentID ms_server
     if ($binding.Enabled) {
-        Disable-NetAdapterBinding -Name $Name `
-                                  -ComponentID ms_server `
-                                  -Confirm:$false
+        Disable-NetAdapterBinding -InputObject $binding -Confirm:$false
     }
 }
 
