@@ -63,6 +63,7 @@ private:
 class IDeviceCreator
 {
 public:
+    virtual ~IDeviceCreator() {}
     virtual CDevice* Create(const wchar_t* path) = 0;
     virtual void OnDeviceAdded(CDevice* dev) = 0;
     virtual void OnDeviceRemoved(CDevice* dev) = 0;

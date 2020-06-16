@@ -462,6 +462,7 @@ int AccessWmiBuffer(PUCHAR Buffer, int readbuffer, ULONG * RequiredSize,
                         position += sizeof(WCHAR)*25;
                     }
                     break;
+                case WMI_DONE:
                 default:
                     return FALSE;
             }

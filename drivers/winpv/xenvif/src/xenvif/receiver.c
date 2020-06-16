@@ -1473,6 +1473,8 @@ __ReceiverRingSwizzle(
                                        Packet->Length);
             break;
 
+        case ETHERNET_ADDRESS_TYPE_INVALID:
+        case ETHERNET_ADDRESS_TYPE_COUNT:
         default:
             ASSERT(FALSE);
             break;

@@ -1498,6 +1498,7 @@ FrontendClose(
         default:
             ASSERT(FALSE);
             break;
+#pragma warning (suppress:4061) // missing case label
         }
     }
 
@@ -1572,6 +1573,7 @@ FrontendPrepare(
         default:
             ASSERT(FALSE);
             break;
+#pragma warning (suppress:4061) // missing case label
         }
     }
 
@@ -1730,6 +1732,7 @@ __FrontendStatisticName(
     _FRONTEND_STATISTIC_NAME(RECEIVER_UDP_CHECKSUM_SUCCEEDED);
     _FRONTEND_STATISTIC_NAME(RECEIVER_UDP_CHECKSUM_FAILED);
     _FRONTEND_STATISTIC_NAME(RECEIVER_UDP_CHECKSUM_NOT_VALIDATED);
+    _FRONTEND_STATISTIC_NAME(VIF_STATISTIC_COUNT);
 
     default:
         break;
@@ -2212,6 +2215,9 @@ FrontendGetQueue(
     return Queue;
 }
 
+#pragma warning (push)
+#pragma warning (disable:4061)
+
 _IRQL_requires_same_
 _IRQL_requires_max_(APC_LEVEL)
 static NTSTATUS
@@ -2415,6 +2421,8 @@ fail1:
     return status;
 }
 
+#pragma warning (pop)
+
 _IRQL_requires_same_
 _IRQL_requires_max_(APC_LEVEL)
 static VOID
@@ -2514,6 +2522,9 @@ FrontendDisable(
 
     Trace("<====\n");
 }
+
+#pragma warning (push)
+#pragma warning (disable:4061)
 
 _IRQL_requires_same_
 _IRQL_requires_max_(APC_LEVEL)
@@ -2670,6 +2681,8 @@ FrontendSetState(
 
     return (!Failed) ? STATUS_SUCCESS : STATUS_UNSUCCESSFUL;
 }
+
+#pragma warning (pop)
 
 _IRQL_requires_same_
 _IRQL_requires_max_(APC_LEVEL)

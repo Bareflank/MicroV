@@ -307,6 +307,7 @@ EvtchnOpen(
         status = EvtchnOpenVirq(Channel, Arguments);
         break;
 
+    case XENBUS_EVTCHN_TYPE_INVALID:
     default:
         status = STATUS_INVALID_PARAMETER;
         break;
@@ -1419,6 +1420,7 @@ EvtchnDebugCallback(
                              Channel->Parameters.Virq.Index);
                 break;
 
+            case XENBUS_EVTCHN_TYPE_INVALID:
             default:
                 break;
             }

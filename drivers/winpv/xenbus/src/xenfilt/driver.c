@@ -492,6 +492,8 @@ DriverQueryId(
         status = STATUS_SUCCESS;
         break;
 
+    case BusQueryDeviceSerialNumber:
+    case BusQueryContainerID:
     default:
         status = STATUS_NOT_SUPPORTED;
         break;
@@ -605,6 +607,11 @@ DriverQueryId(
 
         break;
     }
+    case BusQueryDeviceSerialNumber:
+    case BusQueryContainerID:
+        *Id = NULL;
+        status = STATUS_NOT_SUPPORTED;
+        goto fail4;
     default:
         ASSERT(FALSE);
         *Id = NULL;

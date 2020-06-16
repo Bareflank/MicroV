@@ -101,6 +101,7 @@ UnplugRequest(
 
         break;
 
+    case XENBUS_UNPLUG_DEVICE_TYPE_INVALID:
     default:
         ASSERT(FALSE);
         break;

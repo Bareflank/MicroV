@@ -224,6 +224,7 @@ EmulatedAddObject(
                                            InstanceID);
         break;
 
+    case XENFILT_EMULATED_OBJECT_TYPE_UNKNOWN:
     default:
         status = STATUS_INVALID_PARAMETER;
         break;

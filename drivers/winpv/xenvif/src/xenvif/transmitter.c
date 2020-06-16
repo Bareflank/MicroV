@@ -1633,6 +1633,7 @@ __TransmitterRingUnprepareFragments(
             case XENVIF_TRANSMITTER_MULTICAST_CONTROL_TYPE_ADD:
             case XENVIF_TRANSMITTER_MULTICAST_CONTROL_TYPE_REMOVE:
                 break;
+            case XENVIF_TRANSMITTER_MULTICAST_CONTROL_TYPE_INVALID:
             default:
                 ASSERT(FALSE);
                 break;
@@ -1645,6 +1646,7 @@ __TransmitterRingUnprepareFragments(
             Packet = NULL;
             break;
             }
+        case XENVIF_TRANSMITTER_FRAGMENT_TYPE_INVALID:
         default:
             ASSERT(FALSE);
             Packet = NULL;
@@ -2334,6 +2336,7 @@ __TransmitterRingPostFragments(
                     extra->type = XEN_NETIF_EXTRA_TYPE_MCAST_DEL;
                     break;
 
+                case XENVIF_TRANSMITTER_MULTICAST_CONTROL_TYPE_INVALID:
                 default:
                     ASSERT(FALSE);
                     break;
@@ -2381,6 +2384,7 @@ __TransmitterRingPostFragments(
                     extra->u.hash.type = _XEN_NETIF_CTRL_HASH_TYPE_IPV6_TCP;
                     break;
 
+                case XENVIF_PACKET_HASH_TYPE_NONE:
                 default:
                     ASSERT(FALSE);
                     break;
@@ -2612,6 +2616,7 @@ TransmitterRingPoll(
                 case XENVIF_TRANSMITTER_MULTICAST_CONTROL_TYPE_ADD:
                 case XENVIF_TRANSMITTER_MULTICAST_CONTROL_TYPE_REMOVE:
                     break;
+                case XENVIF_TRANSMITTER_MULTICAST_CONTROL_TYPE_INVALID:
                 default:
                     ASSERT(FALSE);
                     break;
@@ -2624,6 +2629,7 @@ TransmitterRingPoll(
                 Packet = NULL;
                 break;
             }
+            case XENVIF_TRANSMITTER_FRAGMENT_TYPE_INVALID:
             default:
                 ASSERT(FALSE);
                 Packet = NULL;
@@ -2897,6 +2903,7 @@ TransmitterRingSchedule(
                                                                 Request->MulticastControl.Add);
                 break;
 
+            case XENVIF_TRANSMITTER_REQUEST_TYPE_INVALID:
             default:
                 break;
             }
@@ -3026,6 +3033,8 @@ __TransmitterSetCompletionInfo(
                                    Packet->Length);
         break;
 
+    case ETHERNET_ADDRESS_TYPE_INVALID:
+    case ETHERNET_ADDRESS_TYPE_COUNT:
     default:
         ASSERT(FALSE);
         break;

@@ -25,8 +25,13 @@
 
 #define INITGUID
 
+#pragma warning(push)
+#pragma warning(disable:4062) /* missing enumerator in switch */
+
 #include <ntddk.h>
 #include <wdf.h>
+
+#pragma warning(pop)
 
 EXTERN_C_START
 

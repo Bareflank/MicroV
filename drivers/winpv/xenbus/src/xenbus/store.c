@@ -1951,7 +1951,7 @@ StorePermissionToString(
         *Buffer = 'w';
         break;
 
-    case XENBUS_STORE_PERM_READ | XENBUS_STORE_PERM_WRITE:
+    case XENBUS_STORE_PERM_READ_WRITE:
         *Buffer = 'b';
         break;
 

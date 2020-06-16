@@ -2098,6 +2098,16 @@ AdapterSetInformation(
                 Info("%ws: SET_POWER: D3\n",
                      Adapter->Location);
                 break;
+
+            case NdisDeviceStateUnspecified:
+                Info("%ws: SET_POWER: Unspecified\n",
+                     Adapter->Location);
+                break;
+
+            case NdisDeviceStateMaximum:
+                Info("%ws: SET_POWER: Maximum\n",
+                     Adapter->Location);
+                break;
             }
         }
         // do nothing
@@ -2312,6 +2322,16 @@ AdapterQueryInformation(
 
             case NdisDeviceStateD3:
                 Info("%ws: QUERY_POWER: D3\n",
+                     Adapter->Location);
+                break;
+
+            case NdisDeviceStateUnspecified:
+                Info("%ws: QUERY_POWER: Unspecified\n",
+                     Adapter->Location);
+                break;
+
+            case NdisDeviceStateMaximum:
+                Info("%ws: QUERY_POWER: Maximum\n",
                      Adapter->Location);
                 break;
             }
