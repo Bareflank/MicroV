@@ -1682,8 +1682,6 @@ bool xen_domain::cputopoinfo(xen_vcpu *v, struct xen_sysctl_cputopoinfo *topo)
 
 bool xen_domain::physinfo(xen_vcpu *v, struct xen_sysctl *ctl)
 {
-    expects(v->is_xenstore());
-
     auto info = &ctl->u.physinfo;
 
     static bool print_xl = true;
@@ -1698,7 +1696,7 @@ bool xen_domain::physinfo(xen_vcpu *v, struct xen_sysctl *ctl)
     info->nr_cpus = 1;
     info->max_cpu_id = 0;
     info->nr_nodes = m_numa_nodes;
-    info->max_node_id = m_numa_nodes -1;
+    info->max_node_id = m_numa_nodes - 1;
     info->cpu_khz = m_tsc_khz;
     info->capabilities = XEN_SYSCTL_PHYSCAP_hvm;
     info->capabilities |= XEN_SYSCTL_PHYSCAP_directio; /* IOMMU support */
@@ -1715,7 +1713,6 @@ bool xen_domain::physinfo(xen_vcpu *v, struct xen_sysctl *ctl)
 /* Called from xl create path */
 bool xen_domain::get_sharing_freed_pages(xen_vcpu *v)
 {
-    expects(v->is_xenstore());
     v->m_uv_vcpu->set_rax(0);
 
     return true;
@@ -1724,7 +1721,6 @@ bool xen_domain::get_sharing_freed_pages(xen_vcpu *v)
 /* Called from xl create path */
 bool xen_domain::get_sharing_shared_pages(xen_vcpu *v)
 {
-    expects(v->is_xenstore());
     v->m_uv_vcpu->set_rax(m_shr_pages);
 
     return true;
