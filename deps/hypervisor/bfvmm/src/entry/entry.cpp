@@ -144,7 +144,7 @@ private_init_vmm(uint64_t arg) noexcept
         ::x64::cpuid::get(0x4BF00010, 0, 0, 0);
         ::x64::cpuid::get(0x4BF00011, 0, 0, 0);
 
-        return ENTRY_SUCCESS;
+        return;
     });
 }
 
@@ -164,7 +164,7 @@ private_fini_vmm(uint64_t arg) noexcept
 
         g_vcm->destroy(arg, nullptr);
 
-        return ENTRY_SUCCESS;
+        return;
     });
 }
 
