@@ -4128,12 +4128,38 @@ __TransmitterRingDisable(
 
     Attempt = 0;
     ASSERT3U(Ring->RequestsPushed, ==, Ring->RequestsPosted);
+
     while (Ring->ResponsesProcessed != Ring->RequestsPushed) {
         LARGE_INTEGER Timeout;
+        BOOLEAN       BackendsDying = FALSE;
 
-        // Arbitrary limit before giving up.
-        if (Attempt++ >= 100)
+        XENBUS_STORE(GetBackendsDying,
+                     &Transmitter->StoreInterface,
+                     &BackendsDying);
+
+        // Break the loop if the backends are dying or we reach the
+        // (arbitrary) timeout of 5s. In either case, the netback's
+        // repsonses are faked and ResponsesProcessed is incremented
+        // in TransmitterRingPoll.
+        //
+        // Note that ResponsesProcessed needs to leave this function
+        // equal to RequestsPushed otherwise the ASSERT in
+        // __TransmitterDisconnect will trip.
+
+        if (BackendsDying || Attempt++ >= 5000) {
+            Info("Faking netback responses. Xenbus connected:%d\n",
+                 State == XenbusStateConnected);
+
+            while (Ring->ResponsesProcessed != Ring->RequestsPushed) {
+                __TransmitterRingFakeResponses(Ring);
+                (VOID) TransmitterRingPoll(Ring);
+            }
+
+            Info("%s\n", (BackendsDying)
+                         ? "Backends dead"
+                         : "Timeout (5s) reached");
             break;
+        }
 
         // Try to move things along
         __TransmitterRingSend(Ring);
