@@ -21,7 +21,8 @@
 
 Param(
     [string]$CredFile,
-    [switch]$Console
+    [switch]$Console,
+    [switch]$NdvmOnly
 )
 
 $product_name = [System.Environment]::GetEnvironmentVariable(
@@ -89,8 +90,14 @@ $kernel_cmdline += " xen-pciback.passthrough=1"
 $kernel_cmdline += " systemd.setenv=$uvctl_user"
 $kernel_cmdline += " systemd.setenv=$uvctl_pass"
 
-$uvctl_args = " --verbose --hvc --xsvm --ram 550000000"
-$uvctl_args += " --kernel .\..\storage\images\xsvm-vmlinux"
+if ($NdvmOnly) {
+    $kernel_cmdline += " systemd.mask=rootvm-vif-tunnel systemd.mask=start-vpnvms"
+} else {
+    $kernel_cmdline += " systemd.mask=rootvm-vif-dirty"
+}
+
+$uvctl_args = " --verbose --hvc --xsvm --ram 450000000"
+$uvctl_args += " --kernel .\..\storage\images\vmlinux"
 $uvctl_args += " --initrd .\..\storage\images\xsvm-rootfs.cpio.gz"
 $uvctl_args += " --cmdline `"$kernel_cmdline`""
 
