@@ -327,6 +327,7 @@ vcpu::vcpu(
 
         this->add_cpuid_emulator(0x4BF00010, {&vcpu::handle_0x4BF00010, this});
         this->add_cpuid_emulator(0x4BF00012, {&vcpu::handle_0x4BF00012, this});
+        this->add_cpuid_emulator(0x4BF00013, {&vcpu::handle_0x4BF00013, this});
         this->add_cpuid_emulator(0x4BF00021, {&vcpu::handle_0x4BF00021, this});
     }
     else {
@@ -531,6 +532,16 @@ bool vcpu::handle_0x4BF00012(bfvmm::intel_x64::vcpu *vcpu)
 {
     bfn::call_once(ept_ready, []{ unmap_vmm(); });
     ::intel_x64::vmx::invept_global();
+
+    return vcpu->advance();
+}
+
+bool vcpu::handle_0x4BF00013(bfvmm::intel_x64::vcpu *vcpu)
+{
+    /* "BareflankVMM" */
+    vcpu->set_rbx(0x65726142U);
+    vcpu->set_rcx(0x4D4D566BU);
+    vcpu->set_rdx(0x6E616C66U);
 
     return vcpu->advance();
 }

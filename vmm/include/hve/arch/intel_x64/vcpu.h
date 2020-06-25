@@ -328,6 +328,10 @@ public:
     bool handle_0x4BF00012(bfvmm::intel_x64::vcpu *vcpu);
     bool handle_0x4BF00021(bfvmm::intel_x64::vcpu *vcpu);
 
+    /// Returns "BareflankVMM" in the same "vendor ID" format as CPUID
+    /// leaf 0 and can be used to detect that microv is running on a vcpu.
+    bool handle_0x4BF00013(bfvmm::intel_x64::vcpu *vcpu);
+
     /// CR8 handlers
     bool handle_rdcr8(bfvmm::intel_x64::vcpu *vcpu);
     bool handle_wrcr8(bfvmm::intel_x64::vcpu *vcpu);
