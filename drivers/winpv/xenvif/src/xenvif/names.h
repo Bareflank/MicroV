@@ -1,31 +1,31 @@
 /* Copyright (c) Citrix Systems Inc.
  * All rights reserved.
- * 
- * Redistribution and use in source and binary forms, 
- * with or without modification, are permitted provided 
+ *
+ * Redistribution and use in source and binary forms,
+ * with or without modification, are permitted provided
  * that the following conditions are met:
- * 
- * *   Redistributions of source code must retain the above 
- *     copyright notice, this list of conditions and the 
+ *
+ * *   Redistributions of source code must retain the above
+ *     copyright notice, this list of conditions and the
  *     following disclaimer.
- * *   Redistributions in binary form must reproduce the above 
- *     copyright notice, this list of conditions and the 
- *     following disclaimer in the documentation and/or other 
+ * *   Redistributions in binary form must reproduce the above
+ *     copyright notice, this list of conditions and the
+ *     following disclaimer in the documentation and/or other
  *     materials provided with the distribution.
- * 
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND 
- * CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, 
- * INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF 
- * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE 
- * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR 
- * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, 
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, 
- * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR 
- * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS 
- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, 
- * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING 
- * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE 
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF 
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND
+ * CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES,
+ * INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR
+ * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+ * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+ * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
 
@@ -123,6 +123,7 @@ PowerActionName(
     _POWER_ACTION_NAME(ShutdownReset);
     _POWER_ACTION_NAME(ShutdownOff);
     _POWER_ACTION_NAME(WarmEject);
+    _POWER_ACTION_NAME(DisplayOff);
     default:
         break;
     }
@@ -239,6 +240,10 @@ DeviceUsageTypeName(
     _DEVICE_USAGE_TYPE_NAME(Paging);
     _DEVICE_USAGE_TYPE_NAME(Hibernation);
     _DEVICE_USAGE_TYPE_NAME(DumpFile);
+    _DEVICE_USAGE_TYPE_NAME(Undefined);
+    _DEVICE_USAGE_TYPE_NAME(Boot);
+    _DEVICE_USAGE_TYPE_NAME(PostDisplay);
+    _DEVICE_USAGE_TYPE_NAME(GuestAssigned);
     default:
         break;
     }
@@ -277,6 +282,7 @@ InterfaceTypeName(
     _INTERFACE_TYPE_NAME(PNPBus);
     _INTERFACE_TYPE_NAME(Vmcs);
     _INTERFACE_TYPE_NAME(ACPIBus);
+    _INTERFACE_TYPE_NAME(MaximumInterfaceType);
     default:
         break;
     }
@@ -301,6 +307,10 @@ DmaWidthName(
     _DMA_WIDTH_NAME(32Bits);
     _DMA_WIDTH_NAME(64Bits);
     _DMA_WIDTH_NAME(NoWrap);
+
+    case MaximumDmaWidth:
+        return "Maximum";
+
     default:
         break;
     }

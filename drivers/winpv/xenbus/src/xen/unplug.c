@@ -124,6 +124,7 @@ UnplugDeviceType(
 
         LogPrintf(LOG_LEVEL_WARNING, "UNPLUG: NICS\n");
         break;
+    case UNPLUG_TYPE_COUNT:
     default:
         ASSERT(FALSE);
     }
@@ -208,6 +209,7 @@ UnplugSetRequest(
     case UNPLUG_NICS:
         ValueName = "NICS";
         break;
+    case UNPLUG_TYPE_COUNT:
     default:
         ValueName = NULL;
         ASSERT(FALSE);
@@ -253,6 +255,7 @@ UnplugIncrementValue(
     case UNPLUG_NICS:
         ValueName = "NICS";
         break;
+    case UNPLUG_TYPE_COUNT:
     default:
         ValueName = NULL;
         ASSERT(FALSE);
@@ -304,6 +307,7 @@ UnplugDecrementValue(
     case UNPLUG_NICS:
         ValueName = "NICS";
         break;
+    case UNPLUG_TYPE_COUNT:
     default:
         ValueName = NULL;
         ASSERT(FALSE);

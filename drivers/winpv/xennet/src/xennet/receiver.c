@@ -286,6 +286,8 @@ __ReceiverReceivePacket(
                                           NdisHashFunctionToeplitz);
         break;
 
+    case XENVIF_PACKET_HASH_ALGORITHM_NONE:
+    case XENVIF_PACKET_HASH_ALGORITHM_UNSPECIFIED:
     default:
         goto done;
     }
@@ -311,6 +313,7 @@ __ReceiverReceivePacket(
                                       NDIS_HASH_TCP_IPV6);
         break;
 
+    case XENVIF_PACKET_HASH_TYPE_NONE:
     default:
         ASSERT(FALSE);
         break;

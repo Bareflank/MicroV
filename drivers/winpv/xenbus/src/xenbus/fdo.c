@@ -2572,6 +2572,12 @@ __StoreD3ToD0(
     /* Sleep one more time for good measure */
     KeDelayExecutionThread(KernelMode, FALSE, &Timeout);
 
+    /*
+     * This is the first Acquire call and is assumed to be so
+     * by xenbus/store.c:StoreAcquire (i.e. it assumes that
+     * the first Acquire is done after __event_op__is_xenstore_ready
+     * returns true).
+     */
     status = XENBUS_STORE(Acquire, &Fdo->StoreInterface);
     if (!NT_SUCCESS(status))
         goto fail1;
@@ -4918,7 +4924,10 @@ FdoDispatch(
         break;
 
     case IRP_MJ_CLEANUP:
-        Info("MJ_CLEANUP\n");
+        Info("MJ_CLEANUP. Setting BackendsDying=TRUE \n");
+
+        XENBUS_STORE(SetBackendsDying, &Fdo->StoreInterface, TRUE);
+
         Irp->IoStatus.Status = STATUS_SUCCESS;
         IoCompleteRequest(Irp, IO_NO_INCREMENT);
         status = STATUS_SUCCESS;

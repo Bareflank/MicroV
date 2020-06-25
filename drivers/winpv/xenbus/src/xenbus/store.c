@@ -148,6 +148,7 @@ struct _XENBUS_STORE_CONTEXT {
     PXENBUS_THREAD                      WatchdogThread;
     PXENBUS_THREAD                      WorkThread;
     BOOLEAN                             Enabled;
+    BOOLEAN                             BackendsAlive;
 };
 
 C_ASSERT(sizeof (struct xenstore_domain_interface) <= PAGE_SIZE);
@@ -835,6 +836,11 @@ StorePollLocked(
     ULONG                       Written;
     NTSTATUS                    status;
 
+    KeMemoryBarrier();
+    if (!Context->BackendsAlive) {
+        return;
+    }
+
     Context->Polls++;
 
     do {
@@ -888,7 +894,7 @@ StoreDpc(
 #define TIME_S(_s)          (TIME_MS((_s) * 1000))
 #define TIME_RELATIVE(_t)   (-(_t))
 
-#define XENBUS_STORE_POLL_PERIOD 5
+#define XENBUS_STORE_POLL_PERIOD 10
 
 _IRQL_requires_max_(APC_LEVEL)
 static PXENBUS_STORE_RESPONSE
@@ -909,12 +915,28 @@ StoreSubmitRequest(
     Request->State = XENBUS_STORE_REQUEST_SUBMITTED;
     StorePollLocked(Context);
     KeMemoryBarrier();
-    Timeout.QuadPart = TIME_RELATIVE(TIME_MS(XENBUS_STORE_POLL_PERIOD * 20));
+    Timeout.QuadPart = TIME_RELATIVE(TIME_US(XENBUS_STORE_POLL_PERIOD));
 
     while (Request->State != XENBUS_STORE_REQUEST_COMPLETED) {
         KeDelayExecutionThread(KernelMode, FALSE, &Timeout);
         StorePollLocked(Context);
         KeMemoryBarrier();
+
+        if (!Context->BackendsAlive) {
+            // If the backend is dead, then we need to ensure the Response is
+            // reset and take the Request off of the PendingList so that
+            // subsequent StoreSubmitRequest()s dont bugcheck.
+
+            Info("Backends are dead. Returning NULL Response.");
+
+            Response = NULL;
+            StoreResetResponse(Context);
+            RemoveEntryList(&Request->ListEntry);
+            RtlZeroMemory(Request, sizeof (XENBUS_STORE_REQUEST));
+            ExReleaseFastMutex(&Context->FastMutex);
+
+            return Response;
+        }
     }
 
     ExReleaseFastMutex(&Context->FastMutex);
@@ -1808,6 +1830,33 @@ StorePoll(
     ExReleaseFastMutex(&Context->FastMutex);
 }
 
+static VOID
+StoreSetBackendsDying(
+    IN  PINTERFACE          Interface,
+    IN  BOOLEAN             Dying
+    )
+{
+    PXENBUS_STORE_CONTEXT   Context = Interface->Context;
+
+    Context->BackendsAlive = !Dying;
+    KeMemoryBarrier();
+}
+
+static VOID
+StoreGetBackendsDying(
+    IN  PINTERFACE          Interface,
+    IN  PBOOLEAN            Dying
+    )
+{
+    PXENBUS_STORE_CONTEXT   Context = Interface->Context;
+
+    KeMemoryBarrier();
+
+    if (Dying != NULL) {
+        *Dying = !Context->BackendsAlive;
+    }
+}
+
 static NTSTATUS
 StoreWork(
     IN  PXENBUS_THREAD                  Self,
@@ -1951,7 +2000,7 @@ StorePermissionToString(
         *Buffer = 'w';
         break;
 
-    case XENBUS_STORE_PERM_READ | XENBUS_STORE_PERM_WRITE:
+    case XENBUS_STORE_PERM_READ_WRITE:
         *Buffer = 'b';
         break;
 
@@ -2463,6 +2512,14 @@ StoreAcquire(
     StoreResetResponse(Context);
     StoreEnable(Context);
 
+    // This code assumes the first XENBUS_STORE(Acquire) call happens in
+    // xenbus/fdo.c:__StoreD3ToD0. That call does not occur until xenstore
+    // is signalled as ready from __event_op__is_xenstore_ready. Thus at this
+    // point we are certain that it is safe to start talking over xenstore and
+    // set BackendsAlive = TRUE.
+    Context->BackendsAlive = TRUE;
+    KeMemoryBarrier();
+
     status = XENBUS_DEBUG(Acquire, &Context->DebugInterface);
     if (!NT_SUCCESS(status))
         goto fail5;
@@ -2539,6 +2596,8 @@ StoreRelease(
 
     Trace("====>\n");
 
+    Context->BackendsAlive = FALSE;
+
     if (!IsListEmpty(&Context->WatchList))
         BUG("OUTSTANDING WATCHES");
 
@@ -2607,6 +2666,25 @@ static struct _XENBUS_STORE_INTERFACE_V2 StoreInterfaceVersion2 = {
     StorePoll
 };
 
+static struct _XENBUS_STORE_INTERFACE_V3 StoreInterfaceVersion3 = {
+    { sizeof (struct _XENBUS_STORE_INTERFACE_V3), 3, NULL, NULL, NULL },
+    StoreAcquire,
+    StoreRelease,
+    StoreFree,
+    StoreRead,
+    StorePrintf,
+    StorePermissionsSet,
+    StoreRemove,
+    StoreDirectory,
+    StoreTransactionStart,
+    StoreTransactionEnd,
+    StoreWatchAdd,
+    StoreWatchRemove,
+    StorePoll,
+    StoreSetBackendsDying,
+    StoreGetBackendsDying
+};
+
 NTSTATUS
 StoreInitialize(
     IN  PXENBUS_FDO             Fdo,
@@ -2624,6 +2702,8 @@ StoreInitialize(
     status = STATUS_NO_MEMORY;
     if (*Context == NULL)
         goto fail1;
+
+    (*Context)->BackendsAlive = FALSE;
 
     status = GnttabGetInterface(FdoGetGnttabContext(Fdo),
                                 XENBUS_GNTTAB_INTERFACE_VERSION_MAX,
@@ -2773,6 +2853,23 @@ StoreGetInterface(
         status = STATUS_SUCCESS;
         break;
     }
+    case 3: {
+        struct _XENBUS_STORE_INTERFACE_V3  *StoreInterface;
+
+        StoreInterface = (struct _XENBUS_STORE_INTERFACE_V3 *)Interface;
+
+        status = STATUS_BUFFER_OVERFLOW;
+        if (Size < sizeof (struct _XENBUS_STORE_INTERFACE_V3))
+            break;
+
+        *StoreInterface = StoreInterfaceVersion3;
+
+        ASSERT3U(Interface->Version, == , Version);
+        Interface->Context = Context;
+
+        status = STATUS_SUCCESS;
+        break;
+    }
     default:
         status = STATUS_NOT_SUPPORTED;
         break;
@@ -2812,6 +2909,7 @@ StoreTeardown(
     Context->Events = 0;
 
     Context->Fdo = NULL;
+    Context->BackendsAlive = FALSE;
 
     RtlZeroMemory(&Context->Dpc, sizeof (KDPC));
 

@@ -122,6 +122,7 @@ PowerActionName(
     _POWER_ACTION_NAME(ShutdownReset);
     _POWER_ACTION_NAME(ShutdownOff);
     _POWER_ACTION_NAME(WarmEject);
+    _POWER_ACTION_NAME(DisplayOff);
     default:
         break;
     }
@@ -329,6 +330,10 @@ DeviceUsageNotificationTypeName(
     _DEVICE_USAGE_TYPE_NAME(Paging);
     _DEVICE_USAGE_TYPE_NAME(Hibernation);
     _DEVICE_USAGE_TYPE_NAME(DumpFile);
+    _DEVICE_USAGE_TYPE_NAME(Undefined);
+    _DEVICE_USAGE_TYPE_NAME(Boot);
+    _DEVICE_USAGE_TYPE_NAME(PostDisplay);
+    _DEVICE_USAGE_TYPE_NAME(GuestAssigned);
     default:
         break;
     }
@@ -367,6 +372,7 @@ InterfaceTypeName(
     _INTERFACE_TYPE_NAME(PNPBus);
     _INTERFACE_TYPE_NAME(Vmcs);
     _INTERFACE_TYPE_NAME(ACPIBus);
+    _INTERFACE_TYPE_NAME(MaximumInterfaceType);
     default:
         break;
     }
@@ -391,6 +397,10 @@ DmaWidthName(
     _DMA_WIDTH_NAME(32Bits);
     _DMA_WIDTH_NAME(64Bits);
     _DMA_WIDTH_NAME(NoWrap);
+
+    case MaximumDmaWidth:
+        return "Maximum";
+
     default:
         break;
     }

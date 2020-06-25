@@ -109,6 +109,7 @@ SuspendRegister(
         InsertTailList(&Context->LateList, &(*Callback)->ListEntry);
         break;
 
+    case SUSPEND_CALLBACK_TYPE_INVALID:
     default:
         ASSERT(FALSE);
         break;

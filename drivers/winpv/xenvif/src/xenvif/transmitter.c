@@ -1633,6 +1633,7 @@ __TransmitterRingUnprepareFragments(
             case XENVIF_TRANSMITTER_MULTICAST_CONTROL_TYPE_ADD:
             case XENVIF_TRANSMITTER_MULTICAST_CONTROL_TYPE_REMOVE:
                 break;
+            case XENVIF_TRANSMITTER_MULTICAST_CONTROL_TYPE_INVALID:
             default:
                 ASSERT(FALSE);
                 break;
@@ -1645,6 +1646,7 @@ __TransmitterRingUnprepareFragments(
             Packet = NULL;
             break;
             }
+        case XENVIF_TRANSMITTER_FRAGMENT_TYPE_INVALID:
         default:
             ASSERT(FALSE);
             Packet = NULL;
@@ -2334,6 +2336,7 @@ __TransmitterRingPostFragments(
                     extra->type = XEN_NETIF_EXTRA_TYPE_MCAST_DEL;
                     break;
 
+                case XENVIF_TRANSMITTER_MULTICAST_CONTROL_TYPE_INVALID:
                 default:
                     ASSERT(FALSE);
                     break;
@@ -2381,6 +2384,7 @@ __TransmitterRingPostFragments(
                     extra->u.hash.type = _XEN_NETIF_CTRL_HASH_TYPE_IPV6_TCP;
                     break;
 
+                case XENVIF_PACKET_HASH_TYPE_NONE:
                 default:
                     ASSERT(FALSE);
                     break;
@@ -2612,6 +2616,7 @@ TransmitterRingPoll(
                 case XENVIF_TRANSMITTER_MULTICAST_CONTROL_TYPE_ADD:
                 case XENVIF_TRANSMITTER_MULTICAST_CONTROL_TYPE_REMOVE:
                     break;
+                case XENVIF_TRANSMITTER_MULTICAST_CONTROL_TYPE_INVALID:
                 default:
                     ASSERT(FALSE);
                     break;
@@ -2624,6 +2629,7 @@ TransmitterRingPoll(
                 Packet = NULL;
                 break;
             }
+            case XENVIF_TRANSMITTER_FRAGMENT_TYPE_INVALID:
             default:
                 ASSERT(FALSE);
                 Packet = NULL;
@@ -2897,6 +2903,7 @@ TransmitterRingSchedule(
                                                                 Request->MulticastControl.Add);
                 break;
 
+            case XENVIF_TRANSMITTER_REQUEST_TYPE_INVALID:
             default:
                 break;
             }
@@ -3026,6 +3033,8 @@ __TransmitterSetCompletionInfo(
                                    Packet->Length);
         break;
 
+    case ETHERNET_ADDRESS_TYPE_INVALID:
+    case ETHERNET_ADDRESS_TYPE_COUNT:
     default:
         ASSERT(FALSE);
         break;
@@ -4119,12 +4128,38 @@ __TransmitterRingDisable(
 
     Attempt = 0;
     ASSERT3U(Ring->RequestsPushed, ==, Ring->RequestsPosted);
+
     while (Ring->ResponsesProcessed != Ring->RequestsPushed) {
         LARGE_INTEGER Timeout;
+        BOOLEAN       BackendsDying = FALSE;
 
-        // Arbitrary limit before giving up.
-        if (Attempt++ >= 100)
+        XENBUS_STORE(GetBackendsDying,
+                     &Transmitter->StoreInterface,
+                     &BackendsDying);
+
+        // Break the loop if the backends are dying or we reach the
+        // (arbitrary) timeout of 5s. In either case, the netback's
+        // repsonses are faked and ResponsesProcessed is incremented
+        // in TransmitterRingPoll.
+        //
+        // Note that ResponsesProcessed needs to leave this function
+        // equal to RequestsPushed otherwise the ASSERT in
+        // __TransmitterDisconnect will trip.
+
+        if (BackendsDying || Attempt++ >= 5000) {
+            Info("Faking netback responses. Xenbus connected:%d\n",
+                 State == XenbusStateConnected);
+
+            while (Ring->ResponsesProcessed != Ring->RequestsPushed) {
+                __TransmitterRingFakeResponses(Ring);
+                (VOID) TransmitterRingPoll(Ring);
+            }
+
+            Info("%s\n", (BackendsDying)
+                         ? "Backends dead"
+                         : "Timeout (5s) reached");
             break;
+        }
 
         // Try to move things along
         __TransmitterRingSend(Ring);

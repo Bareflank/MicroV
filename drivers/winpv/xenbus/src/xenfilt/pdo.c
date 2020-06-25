@@ -1085,6 +1085,7 @@ PdoQueryDeviceText(
         Trace("DeviceTextLocationInformation\n");
         break;
 
+    case DeviceTextDescription:
     default:
         goto done;
     }
@@ -1112,6 +1113,7 @@ PdoQueryDeviceText(
 
         break;
 
+    case DeviceTextDescription:
     default:
         ASSERT(FALSE);
         break;
@@ -1183,6 +1185,10 @@ PdoQueryId(
         Trace("BusQueryDeviceID\n");
         break;
 
+    case BusQueryHardwareIDs:
+    case BusQueryCompatibleIDs:
+    case BusQueryDeviceSerialNumber:
+    case BusQueryContainerID:
     default:
         goto done;
     }
@@ -1217,6 +1223,10 @@ PdoQueryId(
 
         break;
 
+    case BusQueryHardwareIDs:
+    case BusQueryCompatibleIDs:
+    case BusQueryDeviceSerialNumber:
+    case BusQueryContainerID:
     default:
         ASSERT(FALSE);
         break;

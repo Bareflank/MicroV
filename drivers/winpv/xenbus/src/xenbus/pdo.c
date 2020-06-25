@@ -1144,6 +1144,10 @@ PdoQueryCapabilities(
             Capabilities->DeviceState[SystemPowerState] = PowerDeviceD0;
             break;
 
+        case PowerSystemSleeping3:
+        case PowerSystemHibernate:
+        case PowerSystemShutdown:
+        case PowerSystemMaximum:
         default:
             Capabilities->DeviceState[SystemPowerState] = PowerDeviceD3;
             break;
@@ -1388,6 +1392,8 @@ PdoQueryId(
         Id.MaximumLength = (USHORT)(MAX_DEVICE_ID_LEN * ARRAYSIZE(PdoRevision)) * sizeof (WCHAR);
         break;
 
+    case BusQueryDeviceSerialNumber:
+    case BusQueryContainerID:
     default:
         Irp->IoStatus.Information = 0;
         status = STATUS_NOT_SUPPORTED;
@@ -1476,6 +1482,8 @@ PdoQueryId(
                  REGSTR_VAL_MAX_HCID_LEN);
         break;
     }
+    case BusQueryDeviceSerialNumber:
+    case BusQueryContainerID:
     default:
         Type = REG_NONE;
 
