@@ -386,11 +386,7 @@ function(add_dependency NAME PREFIX)
         )
     endif()
 
-    add_custom_command(
-        TARGET clean-all
-        COMMAND ${CMAKE_COMMAND} -E remove_directory ${DEPENDS_DIR}/${NAME}
-    )
-
+    
     add_custom_command(
         TARGET clean-depends
         COMMAND ${CMAKE_COMMAND} -E remove_directory ${DEPENDS_DIR}/${NAME}
@@ -574,11 +570,6 @@ function(add_targets NAME PREFIX SOURCE_DIR)
     if(NOT PREFIX STREQUAL "none")
         add_custom_target(
             clean-${NAME}_${FULLPREFIX}
-            COMMAND ${CMAKE_COMMAND} -E remove_directory ${CMAKE_BINARY_DIR}/${NAME}/${FULLPREFIX}
-        )
-
-        add_custom_command(
-            TARGET clean-all
             COMMAND ${CMAKE_COMMAND} -E remove_directory ${CMAKE_BINARY_DIR}/${NAME}/${FULLPREFIX}
         )
 
@@ -1043,7 +1034,6 @@ function(print_usage)
     else()
         message(STATUS "${Green} Additional build options:${ColorReset}")
         message(STATUS "${Yellow}    cmake --build . --target unittest${ColorReset}")
-        message(STATUS "${Yellow}    cmake --build . --target clean-all${ColorReset}")
         message(STATUS "")
     endif()
 endfunction(print_usage)

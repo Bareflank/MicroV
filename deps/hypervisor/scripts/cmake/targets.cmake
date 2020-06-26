@@ -260,40 +260,6 @@ if(UNIX AND ENABLE_BUILD_VMM AND ENABLE_BUILD_USERSPACE)
 endif()
 
 # ------------------------------------------------------------------------------
-# Build / Clean
-# ------------------------------------------------------------------------------
-
-add_custom_target_category("Clean / Rebuild")
-
-add_custom_target(
-    clean-prefixes
-    COMMAND ${CMAKE_COMMAND} -E remove_directory ${PREFIXES_DIR}
-)
-
-add_custom_target(
-    clean-all
-    COMMAND ${CMAKE_COMMAND} --build . --target clean
-    COMMAND ${CMAKE_COMMAND} -E remove_directory ${DEPENDS_DIR}
-    COMMAND ${CMAKE_COMMAND} -E remove_directory ${PREFIXES_DIR}
-    USES_TERMINAL
-)
-add_custom_target_info(
-    TARGET clean-all
-    COMMENT "Clean everything"
-)
-
-add_custom_target(
-    rebuild
-    COMMAND ${CMAKE_COMMAND} --build . --target clean-subprojects
-    COMMAND ${CMAKE_COMMAND} --build .
-    USES_TERMINAL
-)
-add_custom_target_info(
-    TARGET rebuild
-    COMMENT "Clean the subprojects and rebuild"
-)
-
-# ------------------------------------------------------------------------------
 # Test
 # ------------------------------------------------------------------------------
 
