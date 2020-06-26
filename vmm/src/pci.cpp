@@ -341,18 +341,13 @@ void pci_dev::parse_capabilities()
 
     ensures(m_msi_cap);
 
-    /*
-     * If this doesn't hold, the layout of the capability changes
-     * and the m_vcfg offsets would need to modified to support 32-bit
-     */
-    ensures(msi_64bit(pci_cfg_read_reg(m_cf8, m_msi_cap)));
-
     auto msi = pci_cfg_read_reg(m_cf8, m_msi_cap);
     auto nr_vectors = msi_nr_msg_capable(msi);
     auto per_vector_mask = msi_per_vector_masking(msi);
+    auto is_64bit = msi_64bit(msi);
 
-    printv("pci: %s: MSI 64-bit, vectors:%u, masking%s\n",
-            bdf_str(), nr_vectors,
+    printv("pci: %s: MSI %s-bit, vectors:%u, masking%s\n",
+            bdf_str(), is_64bit ? "64" : "32", nr_vectors,
             per_vector_mask ? "+" : "-");
 
     if (msi_enabled(msi)) {
@@ -490,17 +485,29 @@ bool pci_dev::guest_normal_cfg_out(base_vcpu *vcpu, cfg_info &info)
 
     std::lock_guard msi_lock(m_msi_mtx);
 
+    expects(m_root_msi.is_64bit() == m_guest_msi.is_64bit());
+    bool msi_is_64bit = m_root_msi.is_64bit();
+
     if (info.reg == m_msi_cap + 1) {
         expects(msi_rh(val) == 0);
         m_guest_msi.reg[1] = val;
+
         return true;
     } else if (info.reg == m_msi_cap + 2) {
+        if (!msi_is_64bit) {
+            expects(msi_trig_mode(val) == 0);
+            expects(msi_deliv_mode(val) == 0);
+        }
+
         m_guest_msi.reg[2] = val;
+
         return true;
     } else if (info.reg == m_msi_cap + 3) {
         expects(msi_trig_mode(val) == 0);
         expects(msi_deliv_mode(val) == 0);
+
         m_guest_msi.reg[3] = val;
+
         return true;
     }
 
@@ -511,8 +518,8 @@ bool pci_dev::guest_normal_cfg_out(base_vcpu *vcpu, cfg_info &info)
     const bool now_enabled = m_guest_msi.is_enabled();
 
     if (now_enabled && !m_root_msi.is_enabled()) {
-        printv("pci: %s: MSI root disabled on guest enable\n", bdf_str());
-        printv("pci: %s: MSI messages will not be delivered\n", bdf_str());
+        printv("pci: %s: MSI root disabled on guest enable. "
+               "MSI messages will not be delivered!\n", bdf_str());
         return true;
     }
 
@@ -526,18 +533,13 @@ bool pci_dev::guest_normal_cfg_out(base_vcpu *vcpu, cfg_info &info)
         /* Write the root-specified address and data to the device */
         pci_cfg_write_reg(m_cf8, info.reg + 1, m_root_msi.reg[1]);
         pci_cfg_write_reg(m_cf8, info.reg + 2, m_root_msi.reg[2]);
-        pci_cfg_write_reg(m_cf8, info.reg + 3, m_root_msi.reg[3]);
 
-        /* Debug info */
-        const uint64_t lower = m_root_msi.reg[1];
-        const uint64_t upper = m_root_msi.reg[2];
-        const uint64_t addr = (upper << 32) | lower;
-        const uint32_t data = m_root_msi.reg[3];
+        if (m_root_msi.is_64bit()) {
+            pci_cfg_write_reg(m_cf8, info.reg + 3, m_root_msi.reg[3]);
+        }
 
-        printv("pci: %s: enabling MSI:\n", bdf_str());
-        printv("pci: %s:    ctrl: 0x%04x\n", bdf_str(), val >> 16);
-        printv("pci: %s:    addr: 0x%lx\n", bdf_str(), addr);
-        printv("pci: %s:    data: 0x%08x\n", bdf_str(), data);
+        printv("pci: %s: enabling MSI: ctrl:0x%04x addr:0x%016lx data:0x%08x\n",
+               bdf_str(), val >> 16, m_root_msi.addr(), m_root_msi.data());
     }
 
     pci_cfg_write_reg(m_cf8, info.reg, val);
@@ -575,6 +577,12 @@ bool pci_dev::root_cfg_in(base_vcpu *vcpu, cfg_info &info)
     return true;
 }
 
+inline bool write_to_msi_data(uint32_t offset, struct msi_desc *msi) noexcept
+{
+    return ((offset == 3) && msi->is_64bit()) ||
+           ((offset == 2) && !msi->is_64bit());
+}
+
 bool pci_dev::root_cfg_out(base_vcpu *vcpu, cfg_info &info)
 {
     expects(m_guest_owned);
@@ -600,13 +608,18 @@ bool pci_dev::root_cfg_out(base_vcpu *vcpu, cfg_info &info)
 
     if (reg >= m_msi_cap && reg <= m_msi_cap + 3) {
         std::lock_guard msi_lock(m_msi_mtx);
-        m_root_msi.reg[reg - m_msi_cap] = m_vcfg[reg];
 
-        if (reg == m_msi_cap + 3) {
-            /* Clear reserved bits in data register (Windows sets some) */
+        uint32_t offset = reg - m_msi_cap;
+        m_root_msi.reg[offset] = m_vcfg[reg];
+
+        if (write_to_msi_data(offset, &m_root_msi)) {
             constexpr uint32_t rsvd_bits = 0xFFFF3800;
-            m_root_msi.reg[3] &= ~rsvd_bits;
-            m_vcfg[reg] = m_root_msi.reg[3];
+            uint32_t data = m_root_msi.data();
+
+            /* Clear reserved bits in data register (Windows sets some) */
+            data &= ~rsvd_bits;
+            m_root_msi.set_data(data);
+            m_vcfg[reg] = data;
         }
     }
 
