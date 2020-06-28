@@ -71,6 +71,12 @@
 #define TIME_S(_s)          (TIME_MS((_s) * 1000))
 #define TIME_RELATIVE(_t)   (-(_t))
 
+static NTSTATUS
+TransmitterRingWatchdog(
+    IN  PXENVIF_THREAD          Self,
+    IN  PVOID                   Context
+    );
+
 typedef struct _XENVIF_TRANSMITTER_PACKET {
     LIST_ENTRY                                  ListEntry;
     PVOID                                       Cookie;
@@ -733,11 +739,18 @@ TransmitterRingDebugCallback(
     PXENVIF_TRANSMITTER_RING    Ring = Argument;
     PXENVIF_TRANSMITTER         Transmitter;
     PXENVIF_FRONTEND            Frontend;
+    BOOLEAN                     BackendsDying = FALSE;
 
     UNREFERENCED_PARAMETER(Crashing);
 
     Transmitter = Ring->Transmitter;
     Frontend = Transmitter->Frontend;
+
+    XENBUS_STORE(GetBackendsDying,
+                 &Transmitter->StoreInterface,
+                 &BackendsDying);
+
+    ASSERT3U(BackendsDying, ==, 0);
 
     XENBUS_DEBUG(Printf,
                  &Transmitter->DebugInterface,
@@ -3436,85 +3449,6 @@ TransmitterRingEvtchnCallback(
     return TRUE;
 }
 
-#define XENVIF_TRANSMITTER_WATCHDOG_PERIOD  30
-
-static NTSTATUS
-TransmitterRingWatchdog(
-    IN  PXENVIF_THREAD          Self,
-    IN  PVOID                   Context
-    )
-{
-    PXENVIF_TRANSMITTER_RING    Ring = Context;
-    PROCESSOR_NUMBER            ProcNumber;
-    GROUP_AFFINITY              Affinity;
-    LARGE_INTEGER               Timeout;
-    ULONG                       PacketsQueued;
-    NTSTATUS                    status;
-
-    Trace("====>\n");
-
-    if (RtlIsNtDdiVersionAvailable(NTDDI_WIN7) ) {
-        //
-        // Affinitize this thread to the same CPU as the event channel
-        // and DPC.
-        //
-        // The following functions don't work before Windows 7
-        //
-        status = KeGetProcessorNumberFromIndex(Ring->Index, &ProcNumber);
-        ASSERT(NT_SUCCESS(status));
-
-        Affinity.Group = ProcNumber.Group;
-        Affinity.Mask = (KAFFINITY)1 << ProcNumber.Number;
-        KeSetSystemGroupAffinityThread(&Affinity, NULL);
-    }
-
-    Timeout.QuadPart = TIME_RELATIVE(TIME_S(XENVIF_TRANSMITTER_WATCHDOG_PERIOD));
-    PacketsQueued = 0;
-
-    for (;;) {
-        PKEVENT Event;
-
-        Event = ThreadGetEvent(Self);
-
-        (VOID) KeWaitForSingleObject(Event,
-                                     Executive,
-                                     KernelMode,
-                                     FALSE,
-                                     &Timeout);
-        KeClearEvent(Event);
-
-        if (ThreadIsAlerted(Self))
-            break;
-
-        __TransmitterRingAcquireLock(Ring);
-
-        if (Ring->Enabled) {
-            if (Ring->PacketsQueued == PacketsQueued &&
-                Ring->PacketsCompleted != PacketsQueued) {
-                PXENVIF_TRANSMITTER Transmitter;
-
-                Transmitter = Ring->Transmitter;
-
-                XENBUS_DEBUG(Trigger,
-                             &Transmitter->DebugInterface,
-                             Ring->DebugCallback);
-
-                // Try to move things along
-                __TransmitterRingTrigger(Ring);
-                __TransmitterRingSend(Ring);
-            }
-
-            PacketsQueued = Ring->PacketsQueued;
-        }
-
-        __TransmitterRingReleaseLock(Ring);
-    }
-
-    Trace("<====\n");
-
-    return STATUS_SUCCESS;
-}
-
 _IRQL_requires_(PASSIVE_LEVEL)
 static FORCEINLINE NTSTATUS
 __TransmitterRingInitialize(
@@ -4085,7 +4019,15 @@ __TransmitterRingDisable(
 
     __TransmitterRingAcquireLock(Ring);
 
-    ASSERT(Ring->Enabled);
+    if (!Ring->Enabled) {
+        __TransmitterRingReleaseLock(Ring);
+
+        Info("%s[%u]: <====\n",
+             FrontendGetPath(Frontend),
+             Ring->Index);
+
+        return;
+    }
 
     // Release any fragments associated with a pending packet
     Packet = __TransmitterRingUnprepareFragments(Ring);
@@ -4330,6 +4272,98 @@ __TransmitterRingTeardown(
 
     ASSERT(IsZeroMemory(Ring, sizeof (XENVIF_TRANSMITTER_RING)));
     __TransmitterFree(Ring);
+}
+
+#define XENVIF_TRANSMITTER_WATCHDOG_PERIOD  5
+
+static NTSTATUS
+TransmitterRingWatchdog(
+    IN  PXENVIF_THREAD          Self,
+    IN  PVOID                   Context
+    )
+{
+    PXENVIF_TRANSMITTER_RING    Ring = Context;
+    PROCESSOR_NUMBER            ProcNumber;
+    GROUP_AFFINITY              Affinity;
+    LARGE_INTEGER               Timeout;
+    ULONG                       PacketsQueued;
+    NTSTATUS                    status;
+
+    Info("====>\n");
+
+    if (RtlIsNtDdiVersionAvailable(NTDDI_WIN7) ) {
+        //
+        // Affinitize this thread to the same CPU as the event channel
+        // and DPC.
+        //
+        // The following functions don't work before Windows 7
+        //
+        status = KeGetProcessorNumberFromIndex(Ring->Index, &ProcNumber);
+        ASSERT(NT_SUCCESS(status));
+
+        Affinity.Group = ProcNumber.Group;
+        Affinity.Mask = (KAFFINITY)1 << ProcNumber.Number;
+        KeSetSystemGroupAffinityThread(&Affinity, NULL);
+    }
+
+    Timeout.QuadPart = TIME_RELATIVE(TIME_S(XENVIF_TRANSMITTER_WATCHDOG_PERIOD));
+    PacketsQueued = 0;
+
+    for (;;) {
+        PKEVENT Event;
+
+        Event = ThreadGetEvent(Self);
+
+        (VOID) KeWaitForSingleObject(Event,
+                                     Executive,
+                                     KernelMode,
+                                     FALSE,
+                                     &Timeout);
+        KeClearEvent(Event);
+
+        if (ThreadIsAlerted(Self))
+            break;
+
+        __TransmitterRingAcquireLock(Ring);
+
+        if (Ring->Enabled) {
+            if (Ring->PacketsQueued == PacketsQueued &&
+                Ring->PacketsCompleted != PacketsQueued) {
+                PXENVIF_TRANSMITTER Transmitter;
+                BOOLEAN             BackendsDying;
+
+                Transmitter = Ring->Transmitter;
+                BackendsDying = FALSE;
+
+                XENBUS_STORE(GetBackendsDying,
+                             &Transmitter->StoreInterface,
+                             &BackendsDying);
+
+                if (!BackendsDying) {
+                    Info("TRIGGERING (Backends ALIVE)\n");
+                    XENBUS_DEBUG(Trigger,
+                                 &Transmitter->DebugInterface,
+                                Ring->DebugCallback);
+
+                    // Try to move things along
+                    __TransmitterRingTrigger(Ring);
+                    __TransmitterRingSend(Ring);
+                } else {
+                    __TransmitterRingReleaseLock(Ring);
+                    __TransmitterRingDisable(Ring);
+                    break;
+                }
+            }
+
+            PacketsQueued = Ring->PacketsQueued;
+        }
+
+        __TransmitterRingReleaseLock(Ring);
+    }
+
+    Info("<====\n");
+
+    return STATUS_SUCCESS;
 }
 
 _IRQL_requires_max_(APC_LEVEL)

@@ -2324,7 +2324,10 @@ __PdoSetDevicePower(
 
         ASSERT3U(DeviceState, ==, PowerDeviceD0);
         status = PdoD3ToD0(Pdo);
-        ASSERT(NT_SUCCESS(status));
+
+        if (!FrontendGetBackendsDying(__PdoGetFrontend(Pdo))) {
+            ASSERT(NT_SUCCESS(status));
+        }
     } else if (__PdoGetDevicePowerState(Pdo) < DeviceState) {
         Trace("%s: POWERING DOWN: %s -> %s\n",
               __PdoGetName(Pdo),

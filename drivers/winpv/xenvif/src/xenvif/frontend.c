@@ -1349,10 +1349,26 @@ FrontendWaitForBackendXenbusStateChange(
     LARGE_INTEGER               Timeout;
     XenbusState                 Old = *State;
     NTSTATUS                    status;
+    BOOLEAN                     BackendsDying;
 
-    Trace("%s: ====> %s\n",
+    Info("%s: ====> %s\n",
           __FrontendGetBackendPath(Frontend),
           XenbusStateName(*State));
+
+    BackendsDying = FALSE;
+    XENBUS_STORE(GetBackendsDying,
+                 &Frontend->StoreInterface,
+                 &BackendsDying);
+
+    if (BackendsDying) {
+        *State = XenbusStateUnknown;
+
+        Info("%s: <==== (%s)\n",
+             __FrontendGetBackendPath(Frontend),
+             XenbusStateName(*State));
+
+        return;
+    }
 
     ASSERT(FrontendIsOnline(Frontend));
 
@@ -2535,6 +2551,7 @@ FrontendSetState(
     )
 {
     BOOLEAN                     Failed;
+    BOOLEAN                     BackendsDying;
 
     ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
     ExAcquireFastMutex(&Frontend->FastMutex);
@@ -2543,6 +2560,19 @@ FrontendSetState(
          __FrontendGetPath(Frontend),
          FrontendStateName(Frontend->State),
          FrontendStateName(State));
+
+    BackendsDying = FALSE;
+    XENBUS_STORE(GetBackendsDying,
+                 &Frontend->StoreInterface,
+                 &BackendsDying);
+
+    if (BackendsDying) {
+        Frontend->State = FRONTEND_UNKNOWN;
+        Info("%s: <=====\n", __FrontendGetPath(Frontend));
+        ExReleaseFastMutex(&Frontend->FastMutex);
+
+        return STATUS_UNSUCCESSFUL;
+    }
 
     Failed = FALSE;
     while (Frontend->State != State && !Failed) {
@@ -2726,6 +2756,22 @@ FrontendSuspendCallbackLate(
 
     __FrontendSuspend(Frontend);
     __FrontendResume(Frontend);
+}
+
+_IRQL_requires_same_
+_IRQL_requires_(PASSIVE_LEVEL)
+BOOLEAN
+FrontendGetBackendsDying(
+    IN  PXENVIF_FRONTEND    Frontend
+    )
+{
+    BOOLEAN BackendsDying = FALSE;
+
+    XENBUS_STORE(GetBackendsDying,
+                 &Frontend->StoreInterface,
+                 &BackendsDying);
+
+    return BackendsDying;
 }
 
 _IRQL_requires_same_
