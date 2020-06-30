@@ -376,7 +376,15 @@ void pci_dev::init_root_vcfg()
     m_vcfg[0x1] |= INTX_DISABLE;
     m_vcfg[0xD] = m_msi_cap * 4;
     m_vcfg[0xF] = 0xFF;
-    m_vcfg[m_msi_cap] &= 0xFFFF00FF;
+
+    /*
+     * Disable multi-message and hide terminate the
+     * capability list at the MSI capability.
+     */
+    m_vcfg[m_msi_cap] &= 0xFF8100FF;
+
+    m_root_msi.reg[0] = m_vcfg[m_msi_cap];
+    m_guest_msi.reg[0] = m_vcfg[m_msi_cap];
 }
 
 void pci_dev::add_root_handlers(vcpu *vcpu)
@@ -461,9 +469,12 @@ bool pci_dev::guest_normal_cfg_in(base_vcpu *vcpu, cfg_info &info)
         break;
     }
 
-    /* Only expose MSI capability */
+    /*
+     * Only expose MSI capability (zero the ptr to next capability, bits 15:8)
+     * and only expose one message (zero bits 17:22).
+     */
     if (info.reg == m_msi_cap) {
-        val &= 0xFFFF00FF;
+        val &= 0xFF8100FF;
     }
 
     cfg_hdlr::write_cfg_info(val, info);
