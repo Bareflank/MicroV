@@ -1244,23 +1244,23 @@ common_destroy_vm(uint64_t domainid)
         return ret;
     }
 
-    platform_free_rw(vm->bios_ram, BIOS_RAM_SIZE);
-    platform_free_rw(vm->zero_page, BAREFLANK_PAGE_SIZE);
-    platform_free_rw(vm->params, BAREFLANK_PAGE_SIZE);
-    platform_free_rw(vm->cmdline, BAREFLANK_PAGE_SIZE);
-    platform_free_rw(vm->gdt, BAREFLANK_PAGE_SIZE);
-    platform_free_rw(vm->rsdp, BAREFLANK_PAGE_SIZE);
-    platform_free_rw(vm->xsdt, BAREFLANK_PAGE_SIZE);
-    platform_free_rw(vm->madt, BAREFLANK_PAGE_SIZE);
-    platform_free_rw(vm->fadt, BAREFLANK_PAGE_SIZE);
-    platform_free_rw(vm->dsdt, BAREFLANK_PAGE_SIZE);
-    platform_free_rw(vm->addr, vm->size);
+    platform_free_rwe(vm->bios_ram, BIOS_RAM_SIZE);
+    platform_free_rwe(vm->zero_page, BAREFLANK_PAGE_SIZE);
+    platform_free_rwe(vm->params, BAREFLANK_PAGE_SIZE);
+    platform_free_rwe(vm->cmdline, BAREFLANK_PAGE_SIZE);
+    platform_free_rwe(vm->gdt, BAREFLANK_PAGE_SIZE);
+    platform_free_rwe(vm->rsdp, BAREFLANK_PAGE_SIZE);
+    platform_free_rwe(vm->xsdt, BAREFLANK_PAGE_SIZE);
+    platform_free_rwe(vm->madt, BAREFLANK_PAGE_SIZE);
+    platform_free_rwe(vm->fadt, BAREFLANK_PAGE_SIZE);
+    platform_free_rwe(vm->dsdt, BAREFLANK_PAGE_SIZE);
+    platform_free_rwe(vm->addr, vm->size);
 
     if (vm->exec_mode == VM_EXEC_XENPVH) {
-        platform_free_rw(vm->pvh_console, BAREFLANK_PAGE_SIZE);
-        platform_free_rw(vm->pvh_store, BAREFLANK_PAGE_SIZE);
-        platform_free_rw(vm->pvh_start_info, BAREFLANK_PAGE_SIZE);
-        platform_free_rw(vm->pvh_modlist, BAREFLANK_PAGE_SIZE);
+        platform_free_rwe(vm->pvh_console, BAREFLANK_PAGE_SIZE);
+        platform_free_rwe(vm->pvh_store, BAREFLANK_PAGE_SIZE);
+        platform_free_rwe(vm->pvh_start_info, BAREFLANK_PAGE_SIZE);
+        platform_free_rwe(vm->pvh_modlist, BAREFLANK_PAGE_SIZE);
     }
 
     release_vm(vm);
