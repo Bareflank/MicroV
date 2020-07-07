@@ -199,10 +199,10 @@ Filename: "{app}\util\certmgr.exe"; Parameters: "/add ""{app}\drivers\xennet\xen
 Filename: "{app}\util\dpinst.exe"; Parameters: "/s /d /u ""{app}\drivers\builder\builder.inf"""; Flags: runhidden;
 Filename: "{app}\util\devcon.exe"; Parameters: "/remove ROOT\builder"; Flags: runhidden;
 Filename: "{app}\util\devcon.exe"; Parameters: "/install ""{app}\drivers\builder\builder.inf"" ROOT\builder"; StatusMsg: "Installing driver binaries..."; Flags: runhidden;
-Filename: "{app}\util\dpinst.exe"; Parameters: "/s /path ""{app}\drivers\visr"""; StatusMsg: "Installing driver binaries..."; Flags: runhidden;
-Filename: "{app}\util\dpinst.exe"; Parameters: "/s /path ""{app}\drivers\xenbus"""; StatusMsg: "Installing driver binaries..."; Flags: runhidden;
-Filename: "{app}\util\dpinst.exe"; Parameters: "/s /path ""{app}\drivers\xenvif"""; StatusMsg: "Installing driver binaries..."; Flags: runhidden;
-Filename: "{app}\util\dpinst.exe"; Parameters: "/s /path ""{app}\drivers\xennet"""; StatusMsg: "Installing driver binaries..."; Flags: runhidden;
+Filename: "{app}\util\dpinst.exe"; Parameters: "/s /f /path ""{app}\drivers\visr"""; StatusMsg: "Installing driver binaries..."; Flags: runhidden;
+Filename: "{app}\util\dpinst.exe"; Parameters: "/s /f /path ""{app}\drivers\xennet"""; StatusMsg: "Installing driver binaries..."; Flags: runhidden;
+Filename: "{app}\util\dpinst.exe"; Parameters: "/s /f /path ""{app}\drivers\xenvif"""; StatusMsg: "Installing driver binaries..."; Flags: runhidden;
+Filename: "{app}\util\dpinst.exe"; Parameters: "/s /f /path ""{app}\drivers\xenbus"""; StatusMsg: "Installing driver binaries..."; Flags: runhidden;
 
 ; Install netctl and vpnctl guis. Use the /S parameter to run the installer silently
 Filename: "{app}\extras\netctl-wifi-setup.exe"; Parameters: "/S /D=""{app}\extras\netctl-wifi"""; StatusMsg: "Installing netctl wifi..."; Flags: runhidden;
@@ -306,67 +306,76 @@ var
     PsPath: string;                        // Path to powershell.exe
     PsArgs: string;                        // Args to pass to powershell.exe
     RunAllPath: string;                    // Path to run_all.ps1
+    RegKeyPath: string;                    // Path to installation in the registry
 begin
 
-    CompatPage.Show;
+    RegKeyPath := ExpandConstant('Software\Microsoft\Windows\CurrentVersion\Uninstall\{#NAME_TITLE}_is1')
+    if not RegKeyExists(HKEY_LOCAL_MACHINE, RegKeyPath) then
+    begin
+        CompatPage.Show;
 
-    try
-        CompatPage.SetProgress(1, 5);
-        CompatPage.SetText('Extracting compatibility checks...', '');
+        try
+            CompatPage.SetProgress(1, 5);
+            CompatPage.SetText('Extracting compatibility checks...', '');
 
-        ErrorFile := ExpandConstant('{tmp}\compatibility_results.txt');
+            ErrorFile := ExpandConstant('{tmp}\compatibility_results.txt');
 
-        RunAllPath := ExpandConstant('{tmp}\') + '{app}\compatibility\run_all.ps1';
-        CmdPath := ExpandConstant('{cmd}');
-        CmdArgs := ExpandConstant('/U /C {#PS} -File ') + RunAllPath + ' 2> "' + ErrorFile + '"';
+            RunAllPath := ExpandConstant('{tmp}\') + '{app}\compatibility\run_all.ps1';
+            CmdPath := ExpandConstant('{cmd}');
+            CmdArgs := ExpandConstant('/U /C {#PS} -File ') + RunAllPath + ' 2> "' + ErrorFile + '"';
 
-        PsPath := ExpandConstant('{#PS}');
-        PsArgs := '-Command Set-ExecutionPolicy RemoteSigned';
+            PsPath := ExpandConstant('{#PS}');
+            PsArgs := '-Command Set-ExecutionPolicy RemoteSigned';
 
-        RedistPath := ExpandConstant('{tmp}\') + '{app}\compatibility\vcredist_x64.exe';
-        RedistArgs := '/install /quiet';
+            RedistPath := ExpandConstant('{tmp}\') + '{app}\compatibility\vcredist_x64.exe';
+            RedistArgs := '/install /quiet';
 
-        ExtractTemporaryFiles('{app}\compatibility\*');
+            ExtractTemporaryFiles('{app}\compatibility\*');
 
-        CompatPage.SetProgress(2, 5);
-        CompatPage.SetText('Configuring powershell scripts...', '');
-        Exec(PsPath, PsArgs, '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+            CompatPage.SetProgress(2, 5);
+            CompatPage.SetText('Configuring powershell scripts...', '');
+            Exec(PsPath, PsArgs, '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
 
-        CompatPage.SetProgress(3, 5);
-        CompatPage.SetText('Installing runtime libraries...', '');
-        Exec(RedistPath, RedistArgs, '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+            CompatPage.SetProgress(3, 5);
+            CompatPage.SetText('Installing runtime libraries...', '');
+            Exec(RedistPath, RedistArgs, '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
 
-        CompatPage.SetProgress(4, 5);
-        CompatPage.SetText('Running checks...', '');
+            CompatPage.SetProgress(4, 5);
+            CompatPage.SetText('Running checks...', '');
 
-        // Execute the compatibility checks for this installer. Upon failure of one or
-        // more compatibility checks, this procedure will display a failure messsage,
-        // and then will abort the install by setting Result to False.
-        if Exec(CmdPath, CmdArgs, '', SW_HIDE, ewWaitUntilTerminated, ResultCode)
-        then begin
-            if not (ResultCode = 0)
+            // Execute the compatibility checks for this installer. Upon failure of one or
+            // more compatibility checks, this procedure will display a failure messsage,
+            // and then will abort the install by setting Result to False.
+            if Exec(CmdPath, CmdArgs, '', SW_HIDE, ewWaitUntilTerminated, ResultCode)
             then begin
-                ErrMsgText := ExpandConstant('This environment is not compatible with {#NAME_TITLE} version {#VERSION}. ');
-                ErrMsgText := ErrMsgText + ExpandConstant('Aborting install.');
-                if LoadStringFromFile(ErrorFile, ErrorText) then
-                    ErrMsgText := ErrMsgText + #13#10 + #13#10 + 'Errors:' + #13#10 + ErrorText;
-                MsgBox(ErrMsgText, mbCriticalError, MB_OK);
-                Result := 'Compatibility checks failed';
-                NeedsRestart := False
+                if not (ResultCode = 0)
+                then begin
+                    ErrMsgText := ExpandConstant('This environment is not compatible with {#NAME_TITLE} version {#VERSION}. ');
+                    ErrMsgText := ErrMsgText + ExpandConstant('Aborting install.');
+                    if LoadStringFromFile(ErrorFile, ErrorText) then
+                        ErrMsgText := ErrMsgText + #13#10 + #13#10 + 'Errors:' + #13#10 + ErrorText;
+                    MsgBox(ErrMsgText, mbCriticalError, MB_OK);
+                    Result := 'Compatibility checks failed';
+                    NeedsRestart := False;
+                end
+                else
+                    Exec(CmdPath, '/C mountvol P: /S', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
             end
-            else
-                Exec(CmdPath, '/C mountvol P: /S', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
-        end
-        else begin
-            MsgBox('Failed to execute compatibility checks, error: ' + SysErrorMessage(ResultCode), mbCriticalError, MB_OK);
-            Result := 'Compatibility checks failed';
-            NeedsRestart := False
-        end;
+            else begin
+                MsgBox('Failed to execute compatibility checks, error: ' + SysErrorMessage(ResultCode), mbCriticalError, MB_OK);
+                Result := 'Compatibility checks failed';
+                NeedsRestart := False;
+            end;
 
-        CompatPage.SetProgress(5, 5);
-        CompatPage.SetText('Done', '');
-    finally
-        CompatPage.Hide;
+            CompatPage.SetProgress(5, 5);
+            CompatPage.SetText('Done', '');
+        finally
+            CompatPage.Hide;
+        end;
+    end
+    else begin
+        CmdPath := ExpandConstant('{cmd}');
+        Exec(CmdPath, '/C mountvol P: /S', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
     end;
 end;
 

@@ -94,6 +94,13 @@ FrontendResume(
 
 _IRQL_requires_same_
 _IRQL_requires_(PASSIVE_LEVEL)
+extern BOOLEAN
+FrontendGetBackendsDying(
+    IN  PXENVIF_FRONTEND    Frontend
+    );
+
+_IRQL_requires_same_
+_IRQL_requires_(PASSIVE_LEVEL)
 extern VOID
 FrontendSuspend(
     IN  PXENVIF_FRONTEND    Frontend

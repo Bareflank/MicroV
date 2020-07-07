@@ -93,12 +93,14 @@ MiniportHaltEx(
 {
     PXENNET_ADAPTER         Adapter = (PXENNET_ADAPTER)MiniportAdapterContext;
 
+    Info("===>\n");
     UNREFERENCED_PARAMETER(HaltAction);
 
     if (Adapter == NULL)
         return;
 
     AdapterTeardown(Adapter);
+    Info("<===\n");
 }
 
 static
@@ -122,9 +124,12 @@ MiniportPause(
 {
     PXENNET_ADAPTER                     Adapter = (PXENNET_ADAPTER)MiniportAdapterContext;
 
-    UNREFERENCED_PARAMETER(MiniportPauseParameters);
+    Info("===>\n");
 
+    UNREFERENCED_PARAMETER(MiniportPauseParameters);
     AdapterDisable(Adapter);
+
+    Info("<===\n");
 
     return NDIS_STATUS_SUCCESS;
 }
@@ -141,9 +146,12 @@ MiniportRestart(
     PXENNET_ADAPTER                         Adapter = (PXENNET_ADAPTER)MiniportAdapterContext;
     NDIS_STATUS                             NdisStatus;
 
-    UNREFERENCED_PARAMETER(MiniportRestartParameters);
+    Info("===>\n");
 
+    UNREFERENCED_PARAMETER(MiniportRestartParameters);
     NdisStatus = AdapterEnable(Adapter);
+
+    Info("<===\n");
 
     return NdisStatus;
 }
@@ -260,7 +268,7 @@ MiniportResetEx(
 {
     UNREFERENCED_PARAMETER(MiniportAdapterContext);
 
-    Trace("<===>\n");
+    Info("<===>\n");
 
     *AddressingReset = FALSE;
 
@@ -278,7 +286,7 @@ MiniportDevicePnPEventNotify(
     UNREFERENCED_PARAMETER(MiniportAdapterContext);
     UNREFERENCED_PARAMETER(NetDevicePnPEvent);
 
-    Trace("<===>\n");
+    Info("<===>\n");
 }
 
 // Called at <= HIGH_LEVEL
@@ -295,7 +303,7 @@ MiniportShutdownEx(
     if (ShutdownAction == NdisShutdownBugCheck)
         return;
 
-    Trace("====>\n");
+    Info("====>\n");
 
     // We dont call AdapterDisable on shutdown because doing so
     // causes xenstore IO, but xenstore lives in a process that the
@@ -306,7 +314,7 @@ MiniportShutdownEx(
 
     //AdapterDisable(Adapter);
 
-    Trace("<====\n");
+    Info("<====\n");
 }
 
 static
@@ -320,7 +328,7 @@ MiniportCancelOidRequest(
     UNREFERENCED_PARAMETER(MiniportAdapterContext);
     UNREFERENCED_PARAMETER(RequestId);
 
-    Trace("<===>\n");
+    Info("<===>\n");
 }
 
 static
@@ -359,7 +367,7 @@ MiniportRegister(
     NDIS_STATUS                             NdisStatus;
     NDIS_MINIPORT_DRIVER_CHARACTERISTICS    MiniportDriverCharacteristics;
 
-    Trace("====>\n");
+    Info("====>\n");
 
     NdisZeroMemory(&MiniportDriverCharacteristics, sizeof (MiniportDriverCharacteristics));
 
@@ -398,7 +406,7 @@ MiniportRegister(
     if (NdisStatus != NDIS_STATUS_SUCCESS)
         goto fail1;
 
-    Trace("<====\n");
+    Info("<====\n");
 
     return NDIS_STATUS_SUCCESS;
 
