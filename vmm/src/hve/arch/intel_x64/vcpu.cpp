@@ -732,7 +732,7 @@ vcpu::setup_default_controls()
     monitor_exiting::enable();
 
     using namespace secondary_processor_based_vm_execution_controls;
-    enable_invpcid::disable();
+    enable_invpcid::enable_if_allowed();
     enable_xsaves_xrstors::enable();
     rdrand_exiting::disable();
     rdseed_exiting::disable();
