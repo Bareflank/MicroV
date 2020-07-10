@@ -561,6 +561,12 @@ public:
     microv::xen_domain *m_xen_dom{};
     std::vector<vcpuid::type> m_vcpuid{};
 
+    static_assert(std::atomic<uint32_t>::is_always_lock_free);
+    static_assert(std::atomic<uint64_t>::is_always_lock_free);
+
+    volatile std::atomic<uint32_t> m_ipi_code{};
+    volatile std::atomic<uint64_t> m_tlb_shootdown_mask{};
+
     /*
      * Each element here is a {hpa, gpa} that represents an EPT mapping
      * where hpa is the address of a vmm page.

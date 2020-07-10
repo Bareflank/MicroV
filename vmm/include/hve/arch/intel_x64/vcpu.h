@@ -353,8 +353,24 @@ public:
                              const pci_cfg_handler::delegate_t &d,
                              int direction);
 
-    /// Write IPI to physical APIC
+    /// Write IPI with fixed delivery mode to physical APIC
+    /// referenced by m_lapic->local_id()
     void write_ipi(uint64_t vector);
+
+    /// Handle IPI signal sent from a different core
+    void handle_ipi(uint32_t ipi_code);
+
+    /// Override of the base INIT-signal vmexit handler to add
+    /// support for IPIs
+    bool handle_guest_init_signal(::bfvmm::intel_x64::vcpu *vcpu);
+    bool handle_root_init_signal(::bfvmm::intel_x64::vcpu *vcpu);
+
+    /// Signal begin/end of TLB shootdown to the other cpus on the system
+    int64_t begin_tlb_shootdown();
+    void end_tlb_shootdown();
+
+    /// Handle a TLB shootdown IPI sent from another core
+    void handle_tlb_shootdown();
 
     /// Exception vmexit handlers
     bool handle_invalid_opcode(

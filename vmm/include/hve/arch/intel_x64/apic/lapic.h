@@ -61,8 +61,39 @@ private:
 
 public:
 
-    /* Destination model. Only relevant when dest_mode is logical */
-    enum {
+    enum icr_delivery_mode : uint64_t {
+        fixed = 0,
+        lowest_priority = 1,
+        smi = 2,
+        nmi = 4,
+        init = 5,
+        sipi = 6
+    };
+
+    enum icr_destination_mode : uint64_t {
+        physical = 0,
+        logical = 1
+    };
+
+    enum icr_level : uint64_t {
+        deassert = 0,
+        assert = 1
+    };
+
+    enum icr_trigger_mode : uint64_t {
+        edge = 0,
+        level = 1
+    };
+
+    enum icr_destination_shorthand : uint64_t {
+        none = 0,
+        self = 1,
+        all_and_self = 2,
+        all_not_self = 3
+    };
+
+    /* Destination model. Only relevant when icr_destination_mode is logical */
+    enum icr_destination_model : uint64_t {
         xapic_flat,
         xapic_cluster,
         x2apic_cluster
@@ -85,7 +116,8 @@ public:
     bool is_x2apic() const;
 
     void write_eoi();
-    void write_ipi(uint64_t vector, uint64_t vcpuid);
+    void write_ipi_fixed(uint64_t vector, uint64_t dest_vcpuid);
+    void write_ipi_init_all_not_self();
 
     /// @cond
 
