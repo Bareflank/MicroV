@@ -94,6 +94,87 @@ public:
     uint64_t refcnt{1};
 };
 
+struct page_range {
+    page_range() = delete;
+    ~page_range() = default;
+    page_range(const page_range &rhs) = default;
+    page_range(page_range &&rhs) = default;
+    page_range &operator=(const page_range &rhs) = default;
+    page_range &operator=(page_range &&rhs) = default;
+
+    page_range(uint64_t start, uint64_t count) noexcept :
+        m_page_start{start},
+        m_page_count{count}
+    {}
+
+    uint64_t start() const noexcept
+    {
+        return m_page_start;
+    }
+
+    uint64_t count() const noexcept
+    {
+        return m_page_count;
+    }
+
+    uint64_t limit() const noexcept
+    {
+        return start() + (count() * UV_PAGE_SIZE);
+    }
+
+    bool contiguous_below(uint64_t addr) const noexcept
+    {
+        return (addr > start()) && (addr == limit());
+    }
+
+    bool contiguous_above(uint64_t addr) const noexcept
+    {
+        return (addr < start()) && (addr == (start() - UV_PAGE_SIZE));
+    }
+
+    bool contains(uint64_t addr) const noexcept
+    {
+        return (addr >= start()) && (addr < limit());
+    }
+
+    bool bottom_page(uint64_t addr) const noexcept
+    {
+        return addr == start();
+    }
+
+    bool top_page(uint64_t addr) const noexcept
+    {
+        return addr == (limit() - UV_PAGE_SIZE);
+    }
+
+    bool middle_page(uint64_t addr) const noexcept
+    {
+        return !bottom_page(addr) && !top_page(addr) && contains(addr);
+    }
+
+    uint64_t m_page_start;
+    uint64_t m_page_count;
+};
+
+/*
+ * operator< overloads to support transparent comparison of
+ * struct page_range with uint64_t values:
+ */
+
+inline bool operator<(const page_range &lhs, const uint64_t &rhs)
+{
+    return lhs.m_page_start < rhs;
 }
 
+inline bool operator<(const uint64_t &lhs, const page_range &rhs)
+{
+    return lhs < rhs.m_page_start;
+}
+
+inline bool operator<(const page_range &lhs, const page_range &rhs)
+{
+    return lhs.m_page_start < rhs.m_page_start;
+}
+
+}
 #endif
