@@ -548,7 +548,7 @@ __domain_op__donate_page_r(
         foreign_gpa
     );
 
-    return ret == 0 ? SUCCESS : FAILURE;
+    return ret;
 }
 
 static inline status_t
@@ -562,7 +562,7 @@ __domain_op__donate_page_rw(
         foreign_gpa
     );
 
-    return ret == 0 ? SUCCESS : FAILURE;
+    return ret;
 }
 
 static inline status_t
@@ -576,7 +576,7 @@ __domain_op__donate_page_rwe(
         foreign_gpa
     );
 
-    return ret == 0 ? SUCCESS : FAILURE;
+    return ret;
 }
 
 #define __domain_op__reg(reg)                                                   \

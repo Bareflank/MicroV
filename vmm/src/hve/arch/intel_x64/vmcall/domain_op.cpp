@@ -26,6 +26,7 @@
 #include <hve/arch/intel_x64/domain.h>
 #include <hve/arch/intel_x64/vmcall/domain_op.h>
 
+#include <printv.h>
 #include <xen/types.h>
 #include <xen/vcpu.h>
 #include <public/xen.h>
@@ -90,9 +91,15 @@ vmcall_domain_op_handler::domain_op__destroy_domain(vcpu *vcpu)
 {
     try {
         expects(foreign_domain(vcpu));
-        vcpu->remove_child_domain(vcpu->rbx());
-        g_dm->destroy(vcpu->rbx(), nullptr);
-        vcpu->set_rax(SUCCESS);
+
+        auto child_domid = vcpu->rbx();
+
+        vcpu->remove_child_domain(child_domid);
+        g_dm->destroy(child_domid, nullptr);
+
+        auto ret = vcpu->dom()->reclaim_root_pages(child_domid);
+
+        vcpu->set_rax(ret);
     }
     catchall({
         vcpu->set_rax(FAILURE);
@@ -354,26 +361,29 @@ vmcall_domain_op_handler::domain_op__share_page_rwe(vcpu *vcpu)
 void
 vmcall_domain_op_handler::domain_op__donate_page_r(vcpu *vcpu)
 {
-    // TODO:
-    //
-    // We need to remove the gpa from the current domain before the gpa is
-    // donated to the other guest. This requires a TLB shootdown as long
-    // as each vcpu in the root domain shares one EPT. For now, this function
-    // is identical to sharing as both domains have access to the backing page.
-    //
-
     try {
         expects(foreign_domain(vcpu));
 
-        auto dom = vcpu->find_child_domain(vcpu->rbx());
-        if (!dom) {
+        if (!vcpu->is_root_vcpu()) {
+            vcpu->set_rax(FAILURE);
+            return;
+        }
+
+        auto root_dom = vcpu->dom();
+        auto root_gpa = vcpu->rcx();
+        auto guest_gpa = vcpu->rdx();
+        auto guest_dom = vcpu->find_child_domain(vcpu->rbx());
+
+        if (!guest_dom) {
             bferror_nhex(0, "child domain not found", vcpu->rbx());
             vcpu->set_rax(FAILURE);
             return;
         }
 
-        dom->share_root_page(vcpu, PERM_RO, TYPE_WB);
-        vcpu->set_rax(SUCCESS);
+        auto ret = root_dom->donate_root_page(vcpu, root_gpa, guest_dom,
+                                              guest_gpa, PERM_RO, TYPE_WB);
+
+        vcpu->set_rax(ret);
     }
     catchall({
         vcpu->set_rax(FAILURE);
@@ -383,26 +393,29 @@ vmcall_domain_op_handler::domain_op__donate_page_r(vcpu *vcpu)
 void
 vmcall_domain_op_handler::domain_op__donate_page_rw(vcpu *vcpu)
 {
-    // TODO:
-    //
-    // We need to remove the gpa from the current domain before the gpa is
-    // donated to the other guest. This requires a TLB shootdown as long
-    // as each vcpu in the root domain shares one EPT. For now, this function
-    // is identical to sharing as both domains have access to the backing page.
-    //
-
     try {
         expects(foreign_domain(vcpu));
 
-        auto dom = vcpu->find_child_domain(vcpu->rbx());
-        if (!dom) {
+        if (!vcpu->is_root_vcpu()) {
+            vcpu->set_rax(FAILURE);
+            return;
+        }
+
+        auto root_dom = vcpu->dom();
+        auto root_gpa = vcpu->rcx();
+        auto guest_gpa = vcpu->rdx();
+        auto guest_dom = vcpu->find_child_domain(vcpu->rbx());
+
+        if (!guest_dom) {
             bferror_nhex(0, "child domain not found", vcpu->rbx());
             vcpu->set_rax(FAILURE);
             return;
         }
 
-        dom->share_root_page(vcpu, PERM_RW, TYPE_WB);
-        vcpu->set_rax(SUCCESS);
+        auto ret = root_dom->donate_root_page(vcpu, root_gpa, guest_dom,
+                                              guest_gpa, PERM_RW, TYPE_WB);
+
+        vcpu->set_rax(ret);
     }
     catchall({
         vcpu->set_rax(FAILURE);
@@ -412,26 +425,29 @@ vmcall_domain_op_handler::domain_op__donate_page_rw(vcpu *vcpu)
 void
 vmcall_domain_op_handler::domain_op__donate_page_rwe(vcpu *vcpu)
 {
-    // TODO:
-    //
-    // We need to remove the gpa from the current domain before the gpa is
-    // donated to the other guest. This requires a TLB shootdown as long
-    // as each vcpu in the root domain shares one EPT. For now, this function
-    // is identical to sharing as both domains have access to the backing page.
-    //
-
     try {
         expects(foreign_domain(vcpu));
 
-        auto dom = vcpu->find_child_domain(vcpu->rbx());
-        if (!dom) {
+        if (!vcpu->is_root_vcpu()) {
+            vcpu->set_rax(FAILURE);
+            return;
+        }
+
+        auto root_dom = vcpu->dom();
+        auto root_gpa = vcpu->rcx();
+        auto guest_gpa = vcpu->rdx();
+        auto guest_dom = vcpu->find_child_domain(vcpu->rbx());
+
+        if (!guest_dom) {
             bferror_nhex(0, "child domain not found", vcpu->rbx());
             vcpu->set_rax(FAILURE);
             return;
         }
 
-        dom->share_root_page(vcpu, PERM_RWE, TYPE_WB);
-        vcpu->set_rax(SUCCESS);
+        auto ret = root_dom->donate_root_page(vcpu, root_gpa, guest_dom,
+                                              guest_gpa, PERM_RWE, TYPE_WB);
+
+        vcpu->set_rax(ret);
     }
     catchall({
         vcpu->set_rax(FAILURE);

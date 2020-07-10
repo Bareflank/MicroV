@@ -171,10 +171,281 @@ domain::share_root_page(vcpu *root, uint64_t perm, uint64_t mtype)
     auto [hpa, from] = root->gpa_to_hpa(root_gpa);
 
     if (m_sod_info.is_xen_dom()) {
-        m_xen_dom->share_root_page(this_gpa, hpa, perm, mtype);
+        m_xen_dom->add_root_page(this_gpa, hpa, perm, mtype);
     } else {
         m_ept_map.map_4k(this_gpa, hpa, perm, mtype);
     }
+}
+
+static domain::page_range_iterator
+find_page_range(domain::page_range_set *range_set, uint64_t page_gpa)
+{
+    if (range_set->empty()) {
+        return range_set->end();
+    }
+
+    auto range = range_set->lower_bound(page_gpa);
+    if (range == range_set->cbegin()) {
+        return range->contains(page_gpa) ? range : range_set->end();
+    }
+
+    if (range == range_set->cend()) {
+        range = std::prev(range);
+        return range->contains(page_gpa) ? range : range_set->end();
+    }
+
+    if (range->contains(page_gpa)) {
+        return range;
+    }
+
+    range = std::prev(range);
+    return range->contains(page_gpa) ? range : range_set->end();
+}
+
+static void
+extend_page_range_above(domain::page_range_iterator &range)
+{
+    auto range_ptr = (page_range *)&(*range);
+
+    range_ptr->m_page_count++;
+}
+
+static void
+extend_page_range_below(domain::page_range_iterator &range)
+{
+    auto range_ptr = (page_range *)&(*range);
+
+    range_ptr->m_page_start -= UV_PAGE_SIZE;
+    range_ptr->m_page_count++;
+}
+
+bool
+domain::page_already_donated(domainid_t guest_domid, uint64_t page_gpa)
+{
+    auto itr = m_donated_page_map.find(guest_domid);
+    if (itr == m_donated_page_map.end()) {
+        return false;
+    }
+
+    auto range_set = itr->second.get();
+
+    return find_page_range(range_set, page_gpa) != range_set->end();
+}
+
+void
+domain::add_page_to_donated_range(domainid_t guest_domid, uint64_t page_gpa)
+{
+    auto itr = m_donated_page_map.find(guest_domid);
+    if (itr == m_donated_page_map.end()) {
+        m_donated_page_map[guest_domid] = std::make_unique<page_range_set>();
+        itr = m_donated_page_map.find(guest_domid);
+    }
+
+    auto range_set = itr->second.get();
+    if (range_set->empty()) {
+        range_set->emplace(page_gpa, 1);
+        return;
+    }
+
+    auto range = range_set->lower_bound(page_gpa);
+    if (range == range_set->end()) {
+        range = std::prev(range);
+
+        if (range->contiguous_below(page_gpa)) {
+            extend_page_range_above(range);
+            return;
+        }
+
+        range_set->emplace_hint(range, page_gpa, 1);
+        return;
+    }
+
+    if (range->contiguous_above(page_gpa)) {
+        extend_page_range_below(range);
+        return;
+    }
+
+    if (range != range_set->begin()) {
+        range = std::prev(range);
+
+        if (range->contiguous_below(page_gpa)) {
+            extend_page_range_above(range);
+            return;
+        }
+    }
+
+    range_set->emplace_hint(range, page_gpa, 1);
+    return;
+}
+
+void
+domain::remove_page_from_donated_range(domainid_t guest_domid, uint64_t page_gpa)
+{
+    auto itr = m_donated_page_map.find(guest_domid);
+    if (itr == m_donated_page_map.end()) {
+        return;
+    }
+
+    auto range_set = itr->second.get();
+    auto range = find_page_range(range_set, page_gpa);
+
+    if (range == range_set->end()) {
+        return;
+    }
+
+    if (range->top_page(page_gpa)) {
+        if (range->count() == 1) {
+            range_set->erase(range);
+            return;
+        }
+
+        auto range_ptr = (page_range *)&(*range);
+        range_ptr->m_page_count--;
+
+        return;
+    }
+
+    if (range->middle_page(page_gpa)) {
+        uint64_t upper_start = page_gpa + UV_PAGE_SIZE;
+        uint64_t upper_count = (range->limit() - upper_start) >> UV_PAGE_FROM;
+
+        uint64_t lower_start = range->start();
+        uint64_t lower_count = (page_gpa - lower_start) >> UV_PAGE_FROM;
+
+        range = range_set->erase(range);
+        range = range_set->emplace_hint(range, upper_start, upper_count);
+        range_set->emplace_hint(range, lower_start, lower_count);
+
+        return;
+    }
+
+    if (range->bottom_page(page_gpa)) {
+        if (range->count() == 1) {
+            range_set->erase(range);
+            return;
+        }
+
+        auto range_ptr = (page_range *)&(*range);
+
+        range_ptr->m_page_start += UV_PAGE_SIZE;
+        range_ptr->m_page_count--;
+
+        return;
+    }
+}
+
+int64_t
+domain::donate_root_page(vcpu *root,
+                         uint64_t root_gpa,
+                         domain *guest_dom,
+                         uint64_t guest_gpa,
+                         uint64_t perm,
+                         uint64_t mtype)
+{
+    expects(this->id() == 0);
+
+    int64_t rc = SUCCESS;
+
+    auto root_gpa_2m = bfn::upper(root_gpa, ::x64::pd::from);
+    auto root_gpa_4k = bfn::upper(root_gpa, ::x64::pt::from);
+
+    if (!this->page_already_donated(guest_dom->id(), root_gpa_4k)) {
+        try {
+            auto [hpa, from] = root->gpa_to_hpa(root_gpa_4k);
+            expects(hpa == root_gpa_4k);
+
+            rc = root->begin_tlb_shootdown();
+            if (rc == AGAIN) {
+                return AGAIN;
+            }
+
+            if (from == ::x64::pd::from) {
+                identity_map_convert_2m_to_4k(this->ept(), root_gpa_2m);
+            }
+
+            this->unmap(root_gpa_4k);
+            root->end_tlb_shootdown();
+            root->invept();
+
+            this->add_page_to_donated_range(guest_dom->id(), root_gpa_4k);
+
+        } catch (std::exception &e) {
+            printv("%s: failed to get hpa @ gpa=0x%lx, what=%s\n",
+                   __func__, root_gpa_4k, e.what());
+            return FAILURE;
+        }
+    }
+
+    if (guest_dom->is_xen_dom()) {
+        guest_dom->xen_dom()->add_root_page(guest_gpa, root_gpa_4k, perm, mtype);
+    } else {
+        guest_dom->ept().map_4k(guest_gpa, root_gpa_4k, perm, mtype);
+    }
+
+    return SUCCESS;
+}
+
+int64_t
+domain::reclaim_root_page(domainid_t guest_domid, uint64_t root_gpa)
+{
+    /* Pages cant be reclaimed while the guest is still alive */
+    if (get_domain(guest_domid) != nullptr) {
+        return FAILURE;
+    }
+
+    auto root_gpa_4k = bfn::upper(root_gpa, ::x64::pt::from);
+
+    if (!this->page_already_donated(guest_domid, root_gpa_4k)) {
+        return FAILURE;
+    }
+
+    /*
+     * It is assumed that every donated page was previously mapped as
+     * write-back and RWE. It is also expects()'d in donate_root_page that the
+     * donation is identity mapped in the root. All of that information is
+     * used here.
+     *
+     * Also note that no TLB invalidation is needed because donate_root_page
+     * marks the page as not present, and the CPU does not populate TLB
+     * entries of non-present pages.
+     */
+
+    this->remove_page_from_donated_range(guest_domid, root_gpa_4k);
+    this->map_4k_rwe(root_gpa_4k, root_gpa_4k);
+
+    return SUCCESS;
+}
+
+int64_t
+domain::reclaim_root_pages(domainid_t guest_domid)
+{
+    /* Reclaim must happen by the root itself */
+    if (this->id() != 0) {
+        return FAILURE;
+    }
+
+    /* Pages cant be reclaimed while the guest is still alive */
+    if (get_domain(guest_domid) != nullptr) {
+        return FAILURE;
+    }
+
+    auto itr = m_donated_page_map.find(guest_domid);
+    if (itr == m_donated_page_map.end()) {
+        return FAILURE;
+    }
+
+    for (const auto &range : *itr->second.get()) {
+        const auto start = range.start();
+        const auto limit = range.limit();
+
+        for (auto gpa = start; gpa < limit; gpa += UV_PAGE_SIZE) {
+            this->map_4k_rwe(gpa, gpa);
+        }
+    }
+
+    m_donated_page_map.erase(itr);
+
+    return SUCCESS;
 }
 
 void

@@ -741,8 +741,8 @@ int xen_domain::acquire_gnttab_pages(xen_mem_acquire_resource_t *res,
     }
 }
 
-void xen_domain::share_root_page(uintptr_t gpa, uintptr_t hpa,
-                                 uint32_t perm, uint32_t mtype)
+void xen_domain::add_root_page(uintptr_t gpa, uintptr_t hpa,
+                               uint32_t perm, uint32_t mtype)
 {
     xen_pfn_t gfn = xen_frame(gpa);
     xen_pfn_t hfn = xen_frame(hpa);
