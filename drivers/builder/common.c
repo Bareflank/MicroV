@@ -189,20 +189,40 @@ add_e820_entry(void *vm, uint64_t saddr, uint64_t eaddr, uint32_t type)
 /* Donate Functions                                                           */
 /* -------------------------------------------------------------------------- */
 
+#define DONATE_RETRIES 3
+#define DONATE_SLEEP_USEC 100
+
 static status_t
 donate_page_r(
     struct vm_t *vm, void *gva, uint64_t domain_gpa)
 {
     status_t ret = SUCCESS;
     uint64_t gpa = (uint64_t)platform_virt_to_phys(gva);
+    int attempt = 0;
 
-    ret = __domain_op__donate_page_r(vm->domainid, gpa, domain_gpa);
-    if (ret != SUCCESS) {
-        BFDEBUG("donate_page: __domain_op__donate_page_r failed\n");
-        return ret;
+    while (attempt++ < DONATE_RETRIES) {
+        ret = __domain_op__donate_page_r(vm->domainid, gpa, domain_gpa);
+
+        if (ret == AGAIN) {
+            platform_usleep(DONATE_SLEEP_USEC);
+            continue;
+        }
+
+        break;
     }
 
-    return SUCCESS;
+    switch (ret) {
+    case SUCCESS:
+        return SUCCESS;
+    case AGAIN:
+        BFDEBUG("%s: retry limit exceeded: gva:%p this_gpa:%p guest_gpa:%p\n",
+                __func__, gva, (void *)gpa, (void *)domain_gpa);
+        return FAILURE;
+    default:
+        BFDEBUG("%s: donation failed: gva:%p this_gpa:%p guest_gpa:%p\n",
+                __func__, gva, (void *)gpa, (void *)domain_gpa);
+        return FAILURE;
+    }
 }
 
 static status_t
@@ -211,14 +231,31 @@ donate_page_rw(
 {
     status_t ret = SUCCESS;
     uint64_t gpa = (uint64_t)platform_virt_to_phys(gva);
+    int attempt = 0;
 
-    ret = __domain_op__donate_page_rw(vm->domainid, gpa, domain_gpa);
-    if (ret != SUCCESS) {
-        BFDEBUG("donate_page: __domain_op__donate_page_rw failed\n");
-        return ret;
+    while (attempt++ < DONATE_RETRIES) {
+        ret = __domain_op__donate_page_rw(vm->domainid, gpa, domain_gpa);
+
+        if (ret == AGAIN) {
+            platform_usleep(DONATE_SLEEP_USEC);
+            continue;
+        }
+
+        break;
     }
 
-    return SUCCESS;
+    switch (ret) {
+    case SUCCESS:
+        return SUCCESS;
+    case AGAIN:
+        BFDEBUG("%s: retry limit exceeded: gva:%p this_gpa:%p guest_gpa:%p\n",
+                __func__, gva, (void *)gpa, (void *)domain_gpa);
+        return FAILURE;
+    default:
+        BFDEBUG("%s: donation failed: gva:%p this_gpa:%p guest_gpa:%p\n",
+                __func__, gva, (void *)gpa, (void *)domain_gpa);
+        return FAILURE;
+    }
 }
 
 static status_t
@@ -227,14 +264,31 @@ donate_page_rwe(
 {
     status_t ret = SUCCESS;
     uint64_t gpa = (uint64_t)platform_virt_to_phys(gva);
+    int attempt = 0;
 
-    ret = __domain_op__donate_page_rwe(vm->domainid, gpa, domain_gpa);
-    if (ret != SUCCESS) {
-        BFDEBUG("donate_page: __domain_op__donate_page_rwe failed\n");
-        return ret;
+    while (attempt++ < DONATE_RETRIES) {
+        ret = __domain_op__donate_page_rwe(vm->domainid, gpa, domain_gpa);
+
+        if (ret == AGAIN) {
+            platform_usleep(DONATE_SLEEP_USEC);
+            continue;
+        }
+
+        break;
     }
 
-    return SUCCESS;
+    switch (ret) {
+    case SUCCESS:
+        return SUCCESS;
+    case AGAIN:
+        BFDEBUG("%s: retry limit exceeded: gva:%p this_gpa:%p guest_gpa:%p\n",
+                __func__, gva, (void *)gpa, (void *)domain_gpa);
+        return FAILURE;
+    default:
+        BFDEBUG("%s: donation failed: gva:%p this_gpa:%p guest_gpa:%p\n",
+                __func__, gva, (void *)gpa, (void *)domain_gpa);
+        return FAILURE;
+    }
 }
 
 static status_t
@@ -379,6 +433,12 @@ setup_acpi(struct vm_t *vm)
         return FAILURE;
     }
 
+    setup_rsdp(vm->rsdp);
+    setup_xsdt(vm->xsdt);
+    setup_madt(vm->madt);
+    setup_fadt(vm->fadt);
+    setup_dsdt(vm->dsdt);
+
     ret = donate_page_r(vm, vm->rsdp, ACPI_RSDP_GPA);
     if (ret != SUCCESS) {
         return ret;
@@ -403,12 +463,6 @@ setup_acpi(struct vm_t *vm)
     if (ret != SUCCESS) {
         return ret;
     }
-
-    setup_rsdp(vm->rsdp);
-    setup_xsdt(vm->xsdt);
-    setup_madt(vm->madt);
-    setup_fadt(vm->fadt);
-    setup_dsdt(vm->dsdt);
 
     return SUCCESS;
 }
