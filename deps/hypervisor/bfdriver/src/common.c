@@ -190,7 +190,7 @@ private_add_tss_mdl(void)
         }
     }
 
-    BFDEBUG("add md: 0x%llx-0x%llx (tls)\n", g_tls, g_tls + g_tls_size - 1);
+    BFDEBUG("add md: 0x%p-0x%p (tls)\n", g_tls, g_tls + g_tls_size - 1);
 
     return BF_SUCCESS;
 }

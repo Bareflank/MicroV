@@ -215,12 +215,12 @@ donate_page_r(
     case SUCCESS:
         return SUCCESS;
     case AGAIN:
-        BFDEBUG("%s: retry limit exceeded: gva:%p this_gpa:%p guest_gpa:%p\n",
-                __func__, gva, (void *)gpa, (void *)domain_gpa);
+        BFDEBUG("%s: retry limit exceeded: gva:0x%p this_gpa:0x%llx guest_gpa:0x%llx\n",
+                __func__, gva, gpa, domain_gpa);
         return FAILURE;
     default:
-        BFDEBUG("%s: donation failed: gva:%p this_gpa:%p guest_gpa:%p\n",
-                __func__, gva, (void *)gpa, (void *)domain_gpa);
+        BFDEBUG("%s: donation failed: gva:0x%p this_gpa:0x%llx guest_gpa:0x%llx\n",
+                __func__, gva, gpa, domain_gpa);
         return FAILURE;
     }
 }
@@ -248,12 +248,12 @@ donate_page_rw(
     case SUCCESS:
         return SUCCESS;
     case AGAIN:
-        BFDEBUG("%s: retry limit exceeded: gva:%p this_gpa:%p guest_gpa:%p\n",
-                __func__, gva, (void *)gpa, (void *)domain_gpa);
+        BFDEBUG("%s: retry limit exceeded: gva:0x%p this_gpa:0x%llx guest_gpa:0x%llx\n",
+                __func__, gva, gpa, domain_gpa);
         return FAILURE;
     default:
-        BFDEBUG("%s: donation failed: gva:%p this_gpa:%p guest_gpa:%p\n",
-                __func__, gva, (void *)gpa, (void *)domain_gpa);
+        BFDEBUG("%s: donation failed: gva:0x%p this_gpa:0x%llx guest_gpa:0x%llx\n",
+                __func__, gva, gpa, domain_gpa);
         return FAILURE;
     }
 }
@@ -281,12 +281,12 @@ donate_page_rwe(
     case SUCCESS:
         return SUCCESS;
     case AGAIN:
-        BFDEBUG("%s: retry limit exceeded: gva:%p this_gpa:%p guest_gpa:%p\n",
-                __func__, gva, (void *)gpa, (void *)domain_gpa);
+        BFDEBUG("%s: retry limit exceeded: gva:0x%p this_gpa:0x%llx guest_gpa:0x%llx\n",
+                __func__, gva, gpa, domain_gpa);
         return FAILURE;
     default:
-        BFDEBUG("%s: donation failed: gva:%p this_gpa:%p guest_gpa:%p\n",
-                __func__, gva, (void *)gpa, (void *)domain_gpa);
+        BFDEBUG("%s: donation failed: gva:0x%p this_gpa:0x%llx guest_gpa:0x%llx\n",
+                __func__, gva, gpa, domain_gpa);
         return FAILURE;
     }
 }
