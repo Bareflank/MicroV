@@ -222,6 +222,9 @@ extend_page_range_below(domain::page_range_iterator &range)
 bool
 domain::page_already_donated(domainid_t guest_domid, uint64_t page_gpa)
 {
+    spin_acquire(&m_donated_page_lock);
+    auto release = gsl::finally([&]{ spin_release(&m_donated_page_lock); });
+
     auto itr = m_donated_page_map.find(guest_domid);
     if (itr == m_donated_page_map.end()) {
         return false;
@@ -235,6 +238,9 @@ domain::page_already_donated(domainid_t guest_domid, uint64_t page_gpa)
 void
 domain::add_page_to_donated_range(domainid_t guest_domid, uint64_t page_gpa)
 {
+    spin_acquire(&m_donated_page_lock);
+    auto release = gsl::finally([&]{ spin_release(&m_donated_page_lock); });
+
     auto itr = m_donated_page_map.find(guest_domid);
     if (itr == m_donated_page_map.end()) {
         m_donated_page_map[guest_domid] = std::make_unique<page_range_set>();
@@ -281,6 +287,9 @@ domain::add_page_to_donated_range(domainid_t guest_domid, uint64_t page_gpa)
 void
 domain::remove_page_from_donated_range(domainid_t guest_domid, uint64_t page_gpa)
 {
+    spin_acquire(&m_donated_page_lock);
+    auto release = gsl::finally([&]{ spin_release(&m_donated_page_lock); });
+
     auto itr = m_donated_page_map.find(guest_domid);
     if (itr == m_donated_page_map.end()) {
         return;
@@ -345,14 +354,18 @@ domain::donate_root_page(vcpu *root,
     expects(this->id() == 0);
 
     int64_t rc = SUCCESS;
-
-    auto root_gpa_2m = bfn::upper(root_gpa, ::x64::pd::from);
-    auto root_gpa_4k = bfn::upper(root_gpa, ::x64::pt::from);
+    uint64_t root_gpa_4k = bfn::upper(root_gpa, ::x64::pt::from);
 
     if (!this->page_already_donated(guest_dom->id(), root_gpa_4k)) {
         try {
             auto [hpa, from] = root->gpa_to_hpa(root_gpa_4k);
             expects(hpa == root_gpa_4k);
+
+            /*
+             * Be aware that for any lock(s) held at this point, any other
+             * CPU that attempts to acquire the same lock(s) must do so _without_
+             * spinning forever. Otherwise the entire system will deadlock.
+             */
 
             rc = root->begin_tlb_shootdown();
             if (rc == AGAIN) {
@@ -360,10 +373,12 @@ domain::donate_root_page(vcpu *root,
             }
 
             if (from == ::x64::pd::from) {
+                uint64_t root_gpa_2m = bfn::upper(root_gpa, ::x64::pd::from);
                 identity_map_convert_2m_to_4k(this->ept(), root_gpa_2m);
             }
 
             this->unmap(root_gpa_4k);
+
             root->end_tlb_shootdown();
             root->invept();
 
@@ -388,13 +403,17 @@ domain::donate_root_page(vcpu *root,
 int64_t
 domain::reclaim_root_page(domainid_t guest_domid, uint64_t root_gpa)
 {
+    /* Reclaim must happen by the root itself */
+    if (this->id() != 0) {
+        return FAILURE;
+    }
+
     /* Pages cant be reclaimed while the guest is still alive */
     if (get_domain(guest_domid) != nullptr) {
         return FAILURE;
     }
 
     auto root_gpa_4k = bfn::upper(root_gpa, ::x64::pt::from);
-
     if (!this->page_already_donated(guest_domid, root_gpa_4k)) {
         return FAILURE;
     }
@@ -402,12 +421,12 @@ domain::reclaim_root_page(domainid_t guest_domid, uint64_t root_gpa)
     /*
      * It is assumed that every donated page was previously mapped as
      * write-back and RWE. It is also expects()'d in donate_root_page that the
-     * donation is identity mapped in the root. All of that information is
-     * used here.
+     * donation is identity mapped in the root. All of that information is used
+     * here.
      *
      * Also note that no TLB invalidation is needed because donate_root_page
-     * marks the page as not present, and the CPU does not populate TLB
-     * entries of non-present pages.
+     * marks the page as not present, and the CPU does not populate TLB entries
+     * of non-present pages.
      */
 
     this->remove_page_from_donated_range(guest_domid, root_gpa_4k);
@@ -429,6 +448,9 @@ domain::reclaim_root_pages(domainid_t guest_domid)
         return FAILURE;
     }
 
+    spin_acquire(&m_donated_page_lock);
+    auto release = gsl::finally([&]{ spin_release(&m_donated_page_lock); });
+
     auto itr = m_donated_page_map.find(guest_domid);
     if (itr == m_donated_page_map.end()) {
         return FAILURE;
@@ -437,6 +459,17 @@ domain::reclaim_root_pages(domainid_t guest_domid)
     for (const auto &range : *itr->second.get()) {
         const auto start = range.start();
         const auto limit = range.limit();
+
+        /*
+         * It is assumed that every donated page was previously mapped as
+         * write-back and RWE. It is also expects()'d in donate_root_page that
+         * the donation is identity mapped in the root. All of that information
+         * is used here.
+         *
+         * Also note that no TLB invalidation is needed because
+         * donate_root_page marks the page as not present, and the CPU does not
+         * populate TLB entries of non-present pages.
+         */
 
         for (auto gpa = start; gpa < limit; gpa += UV_PAGE_SIZE) {
             this->map_4k_rwe(gpa, gpa);

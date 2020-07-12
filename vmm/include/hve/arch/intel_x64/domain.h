@@ -30,6 +30,7 @@
 #include "uart.h"
 #include "../../../page.h"
 #include "../../../ring.h"
+#include "../../../spin_lock.h"
 #include "../../../xen/domain.h"
 #include "../../../domain/domain.h"
 #include "../../../domain/manager.h"
@@ -640,6 +641,7 @@ public:
     volatile std::atomic<uint32_t> m_ipi_code{};
     volatile std::atomic<uint64_t> m_tlb_shootdown_mask{};
 
+    microv::spin_lock m_donated_page_lock{};
     donated_page_map m_donated_page_map{};
 
     /*
