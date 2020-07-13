@@ -88,23 +88,23 @@ if ($Register) {
     Unregister-ScheduledTask -TaskName $task_name -Confirm:$false
     Register-ScheduledTask -Xml $(Get-Content $xml_path -Raw) -TaskName $task_name
 
-    # Now we register a task for netctl-wifi. This is started by vifconnect.ps1
-    # whenever the mgmt vif comes online (if netctl-wifi isn't already running).
+    # Now we register a task for netctl-ui. This is started by vifconnect.ps1
+    # whenever the mgmt vif comes online (if netctl-ui isn't already running).
 
-    $task = Get-ScheduledTask -TaskName NetctlWifi -ErrorAction SilentlyContinue
+    $task = Get-ScheduledTask -TaskName NetctlUi -ErrorAction SilentlyContinue
     if ($task -ne $null) {
-        Unregister-ScheduledTask -TaskName NetctlWifi -Confirm:$false
+        Unregister-ScheduledTask -TaskName NetctlUi -Confirm:$false
     }
 
-    $A = New-ScheduledTaskAction -Execute "$PSScriptRoot\..\extras\netctl-wifi\netctl-wifi.exe"
+    $A = New-ScheduledTaskAction -Execute "$PSScriptRoot\..\extras\netctl-ui\netctl-ui.exe"
     $T = New-ScheduledTaskTrigger -AtLogOn
     $I = New-ScheduledTask -Action $A -Settings $S -Trigger $T
 
-    Register-ScheduledTask -TaskName NetctlWifi -InputObject $I
+    Register-ScheduledTask -TaskName NetctlUi -InputObject $I
 }
 
 if ($Unregister) {
-    Unregister-ScheduledTask -TaskName NetctlWifi `
+    Unregister-ScheduledTask -TaskName NetctlUi `
                              -Confirm:$false `
                              -ErrorAction SilentlyContinue
 

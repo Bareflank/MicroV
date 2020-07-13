@@ -103,7 +103,7 @@ Source: "compatibility\module\*"; DestDir: "{app}\compatibility\module"; Flags: 
 Source: "assets\{#NAME_LOWER}-logo.ico"; DestDir: "{app}\assets"; Components: main
 Source: "bareflank.efi"; DestDir: "P:\EFI\Boot\"; Flags: ignoreversion; Components: main
 Source: "extras\uvctl.exe"; DestDir: "{app}\extras"; Flags: ignoreversion; Components: main
-Source: "extras\netctl-wifi-setup.exe"; DestDir: "{app}\extras"; Flags: ignoreversion; Components: main
+Source: "extras\netctl-ui-setup.exe"; DestDir: "{app}\extras"; Flags: ignoreversion; Components: main
 Source: "extras\vpnctl-configuration-setup.exe"; DestDir: "{app}\extras"; Flags: ignoreversion; Components: main
 Source: "images\*"; DestDir: "{app}\storage\images"; Flags: ignoreversion; Components: main
 Source: "util\certmgr.exe"; DestDir: "{app}\util"; Components: main
@@ -175,6 +175,28 @@ Filename: "{sys}\bcdedit.exe"; Parameters: "/set {{bootmgr} path \EFI\Boot\baref
 ; Enable testsigning
 Filename: "{sys}\bcdedit.exe"; Parameters: "/set testsigning on"; Flags: runhidden
 
+; Install netctl and vpnctl guis. Use the /S parameter to run the installer silently
+Filename: "{app}\extras\netctl-ui-setup.exe"; Parameters: "/S /D=""{app}\extras\netctl-ui"""; StatusMsg: "Installing netctl ui..."; Flags: runhidden;
+Filename: "{app}\extras\vpnctl-configuration-setup.exe"; Parameters: "/S /D=""{app}\extras\vpnctl-configuration"""; StatusMsg: "Installing vpnctl configuration..."; Flags: runhidden;
+
+; Disable suspend/resume
+Filename: "{#PS}"; Parameters: "-File ""{app}\scripts\powerctl.ps1"" -Init"; Flags: runhidden
+
+#ifdef AUTO_START
+; Register uvctl task
+Filename: "{#PS}"; Parameters: "-File ""{app}\scripts\taskctl.ps1"" -TaskPath ""{app}\scripts\startvms.ps1"" -TaskName StartVms -Register"; Flags: runhidden
+#endif
+
+; Disable PCI network devices
+Filename: "{#PS}"; Parameters: "-File ""{app}\scripts\pcictl.ps1"" -Init"; Flags: runhidden
+
+; Register vifconnect.ps1 as a handler for network connection events.
+; This needs to run after netctl-ui-setup.exe.
+Filename: "{#PS}"; Parameters: "-File ""{app}\scripts\vifctl.ps1"" -ProductName {#NAME_LOWER} -Register"; Flags: runhidden
+
+; Create SMB share for persistent storage
+Filename: "{#PS}"; Parameters: "-File ""{app}\scripts\smbshare.ps1"" -RootDir ""{app}"" -Add"; Flags: runhidden
+
 ; Install builder (and visr - they use the same) driver cert
 Filename: "{app}\util\certmgr.exe"; Parameters: "/add ""{app}\drivers\builder\builder.cer"" /s /r localMachine root"; StatusMsg: "Installing driver certs..."; Flags: runhidden;
 Filename: "{app}\util\certmgr.exe"; Parameters: "/add ""{app}\drivers\builder\builder.cer"" /s /r localMachine trustedpublisher"; StatusMsg: "Installing driver certs..."; Flags: runhidden;
@@ -204,28 +226,6 @@ Filename: "{app}\util\dpinst.exe"; Parameters: "/s /f /path ""{app}\drivers\xenn
 Filename: "{app}\util\dpinst.exe"; Parameters: "/s /f /path ""{app}\drivers\xenvif"""; StatusMsg: "Installing driver binaries..."; Flags: runhidden;
 Filename: "{app}\util\dpinst.exe"; Parameters: "/s /f /path ""{app}\drivers\xenbus"""; StatusMsg: "Installing driver binaries..."; Flags: runhidden;
 
-; Install netctl and vpnctl guis. Use the /S parameter to run the installer silently
-Filename: "{app}\extras\netctl-wifi-setup.exe"; Parameters: "/S /D=""{app}\extras\netctl-wifi"""; StatusMsg: "Installing netctl wifi..."; Flags: runhidden;
-Filename: "{app}\extras\vpnctl-configuration-setup.exe"; Parameters: "/S /D=""{app}\extras\vpnctl-configuration"""; StatusMsg: "Installing vpnctl configuration..."; Flags: runhidden;
-
-; Disable suspend/resume
-Filename: "{#PS}"; Parameters: "-File ""{app}\scripts\powerctl.ps1"" -Init"; Flags: runhidden
-
-#ifdef AUTO_START
-; Register uvctl task
-Filename: "{#PS}"; Parameters: "-File ""{app}\scripts\taskctl.ps1"" -TaskPath ""{app}\scripts\startvms.ps1"" -TaskName StartVms -Register"; Flags: runhidden
-#endif
-
-; Disable PCI network devices
-Filename: "{#PS}"; Parameters: "-File ""{app}\scripts\pcictl.ps1"" -Init"; Flags: runhidden
-
-; Register vifconnect.ps1 as a handler for network connection events.
-; This needs to run after netctl-wifi-setup.exe.
-Filename: "{#PS}"; Parameters: "-File ""{app}\scripts\vifctl.ps1"" -ProductName {#NAME_LOWER} -Register"; Flags: runhidden
-
-; Create SMB share for persistent storage
-Filename: "{#PS}"; Parameters: "-File ""{app}\scripts\smbshare.ps1"" -RootDir ""{app}"" -Add"; Flags: runhidden
-
 [UninstallRun]
 ; Remove xenfilt from the UpperFilters registry value in the system and hdc classes
 Filename: "{#PS}"; Parameters: "-File ""{app}\scripts\rmfilters.ps1"""; Flags: runhidden
@@ -245,8 +245,8 @@ Filename: "{app}\util\devcon.exe"; Parameters: "/remove ROOT\builder"; Flags: ru
 Filename: "{app}\util\certmgr.exe"; Parameters: "/del /c /n ""{#WDK_CERT_CN}"" /s /r localMachine trustedpublisher"; Flags: runhidden;
 Filename: "{app}\util\certmgr.exe"; Parameters: "/del /c /n ""{#WDK_CERT_CN}"" /s /r localMachine root"; Flags: runhidden;
 
-; Uninstall netctl-wifi gui
-Filename: "{app}\extras\netctl-wifi\Uninstall netctl-wifi.exe"; Parameters: "/S _?=""{app}\extras\netctl-wifi"""; Flags: runhidden;
+; Uninstall netctl-ui
+Filename: "{app}\extras\netctl-ui\Uninstall netctl-ui.exe"; Parameters: "/S _?=""{app}\extras\netctl-ui"""; Flags: runhidden;
 Filename: "{app}\extras\vpnctl-configuration\Uninstall Beam VPN Configuration.exe"; Parameters: "/S _?=""{app}\extras\vpnctl-configuration"""; Flags: runhidden;
 
 ; Point bootmgr to the standard Windows loader
