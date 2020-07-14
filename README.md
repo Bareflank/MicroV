@@ -172,6 +172,11 @@ No design is without its disadvantages:
   </a>
 </p>
 
+## Specifications
+
+The following defines the VM Specification (i.e., the CPUID/hypercall interface):
+https://github.com/Bareflank/MicroV/blob/master/docs/MicroV%20VM%20Specification.md
+
 ## Roadmap
 The code that is currently in this repo is a snapshot of our previous Boxy 
 repo that already provides limited support for Linux virtual machines. If you
