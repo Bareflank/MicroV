@@ -1213,14 +1213,6 @@ The early boot configuration of MicroV provides better security as well as early
 
 All additional VMs that are created from the root VM are called guest VMs. Guest VMs are not capable of creating additional guest VMs (VMs can only be created by the root VM). That is, MicroV uses a breath of many, depth of one approach.
 
-```mermaid
-graph TB
-    RootVM[Root VM] --> GuestVM1[Guest VM 1]
-    RootVM[Root VM] --> GuestVM2[Guest VM 2]
-    RootVM[Root VM] --> GuestVM3[Guest VM 3]
-    RootVM[Root VM] --> GuestVM4[Guest VM 4]
-```
-
 ## 4.1. Virtual Machine Types
 
 ## 4.2. VMID
@@ -2255,31 +2247,6 @@ There are different types of VPs. The root VPs are created when MicroV is first 
 Any additional VPs that are created are called guest VPs which are owned and executed by the root VPs. Guest VPs cannot create additional guest VPs (meaning guest VPs must be created by a root VP). When a root VP executes a guest VP using the mv_vp_management_op_run_vp hypercall, it is said to be "donating" its execution time to the guest VP. This allows, for example, applications running in the root VM to execute guest VMs, whose time is billed to the application making the call to mv_vp_management_op_run_vp.
 
 Unlike guest VMs who only have a single owning root VM, guest VPs can be owned by a single but different root VP at any given time. When a root VP executes a guest VP, the root VP becomes the parent VP and the guest VP becomes the child VP. During execution of a guest VP the parent/child relationship does not change. Once the guest VP's execution is complete the parent/child relationship is released and the scheduler is free to transfer ownership of a guest VP from one root VP to another. This transfer of ownership usually occurs during VP migration and is due to the fact that a guest VM is not required to have the same number of guest VPs compared to the number of root VPs which reflects the physical number of cores/threads on the system. As a result, the scheduler is free to move guest VPs to different root VPs as needed to optimize performance, resulting in a VP migration.
-
-An example of how this works is as follows:
-
-```mermaid
-flowchart TB
-    RootVP1-->GuestVM1VP1
-    RootVP2-->GuestVM1VP2
-    RootVP1-->GuestVM2VP1
-    RootVP2-->GuestVM2VP2
-
-    subgraph RootVM[Root VM]
-    RootVP1[Root VP]
-    RootVP2[Root VP]
-    end
-
-    subgraph GuestVM2[Parent VM]
-    GuestVM2VP1[Guest VP]
-    GuestVM2VP2[Guest VP]
-    end
-
-    subgraph GuestVM1[Guest VM]
-    GuestVM1VP1[Guest VP]
-    GuestVM1VP2[Guest VP]
-    end
-```
 
 ## 5.1. Virtual Processor Types
 
