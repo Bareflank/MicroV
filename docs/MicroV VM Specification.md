@@ -177,9 +177,9 @@ This specification is specific to 64bit Intel and AMD processors conforming to t
 | UEFI | Unified Extensible Firmware Interface |
 | Host | Refers to the hypervisor (i.e., the code responsible for executing different virtual machines on the same physical hardware). For MicroV, this is the Bareflank Microkernel and its associated extensions. Sometimes referred to as VMX root |
 | Guest | Any software executing in a Virtual Machine |
-| SPA | System Physical Address |
-| GPA | Guest Physical Address |
-| GVA | Guest Virtual Address |
+| SPA | System Physical Address. An SPA refers to a physical address as seen by the system without the addition of virtualization |
+| GPA | Guest Physical Address. A GPA refers to a physical address as seen by a VM and requires a translation to convert to an SPA |
+| GVA | Guest Virtual Address. A GVA refers to a virtual address as seen by a VM and requires a guest controlled translation to convert to a GPA |
 | Page Aligned | A region of memory whose address is divisible by 0x1000 |
 | Page | A page aligned region of memory that is 0x1000 bytes in size |
 | Root VM | The first VM created when MicroV is launched. The OS/BIOS/UEFI that is running when MicroV is launch is placed in the Root VM |
