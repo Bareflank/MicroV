@@ -594,7 +594,7 @@ int64_t vcpu::begin_tlb_shootdown()
 
     /*
      * Once IPI support is added for guest domains, this masking code will need
-     * to be modified to enure that guest vcpuids (which dont start at zero)
+     * to be modified to ensure that guest vcpuids (which dont start at zero)
      * map cleanly into a bitmask structure as the root vcpuids do now.
      */
 
@@ -669,7 +669,7 @@ void vcpu::handle_tlb_shootdown()
 
     /*
      * Once IPI support is added for guest domains, this masking code will need
-     * to be modified to enure that guest vcpuids (which dont start at zero)
+     * to be modified to ensure that guest vcpuids (which dont start at zero)
      * map cleanly into a bitmask structure as the root vcpuids do now.
      *
      * Since the current tlb_shootdown_mask is a uint64_t, it limits the
