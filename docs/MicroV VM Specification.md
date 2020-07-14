@@ -404,12 +404,12 @@ The CPUID leaves in this section describe how to determine if the hypervisor is 
 static inline mv_uint32_t
 mv_present(mv_uint32_t spec_id)
 {
-	mv_uint32_t eax;
-	mv_uint32_t ebx;
-	mv_uint32_t ecx;
-	mv_uint32_t edx;
-	mv_uint32_t max_leaf;
-	mv_uint32_t leaf;
+    mv_uint32_t eax;
+    mv_uint32_t ebx;
+    mv_uint32_t ecx;
+    mv_uint32_t edx;
+    mv_uint32_t max_leaf;
+    mv_uint32_t leaf;
 
     /**
      * First check to see if software is running on a hypervisor. Although not
@@ -425,21 +425,21 @@ mv_present(mv_uint32_t spec_id)
         return 0;
     }
 
-	/**
-	 * Now that we know that we are running on a hypervisor, the next step is
+    /**
+     * Now that we know that we are running on a hypervisor, the next step is
      * determine how many hypervisor specific CPUID leaves are supported. This
      * is done as follows. Note that the MicroV spec defines the min/max values
      * for the return of this query, which we can also use to determine if this
      * is MicroV.
-	 */
+     */
 
     eax = 0x40000000;
     _mv_cpuid(&eax, &ebx, &ecx, &edx);
 
     max_leaf = eax;
-	if (max_leaf < MV_CPUID_MIN_LEAF_VAL || max_leaf > MV_CPUID_MAX_LEAF_VAL) {
-		return 0;
-	}
+    if (max_leaf < MV_CPUID_MIN_LEAF_VAL || max_leaf > MV_CPUID_MAX_LEAF_VAL) {
+        return 0;
+    }
 
     /**
      * Now that we know how many CPUID leaves to parse, we can scan the CPUID
@@ -449,23 +449,23 @@ mv_present(mv_uint32_t spec_id)
      * we need to scan just incase future MicroV specs add additional ABIs.
      */
 
-	for (leaf = MV_CPUID_INIT_VAL; leaf < max_leaf; leaf += MV_CPUID_INC_VAL) {
+    for (leaf = MV_CPUID_INIT_VAL; leaf < max_leaf; leaf += MV_CPUID_INC_VAL) {
         eax = leaf;
         _mv_cpuid(&eax, &ebx, &ecx, &edx);
 
-		if (ebx == MV_CPUID_VENDOR_ID1_VAL && ecx == MV_CPUID_VENDOR_ID2_VAL) {
-			break;
-		}
-	}
+        if (ebx == MV_CPUID_VENDOR_ID1_VAL && ecx == MV_CPUID_VENDOR_ID2_VAL) {
+            break;
+        }
+    }
 
-	if (leaf >= max_leaf) {
-		return 0;
-	}
+    if (leaf >= max_leaf) {
+        return 0;
+    }
 
-	/**
-	 * Finally, we need to verify which version of the spec software speaks and
+    /**
+     * Finally, we need to verify which version of the spec software speaks and
      * verifying that MicroV also speaks this same spec.
-	 */
+     */
 
     eax = leaf + 0x00000001U;
     _mv_cpuid(&eax, &ebx, &ecx, &edx);
