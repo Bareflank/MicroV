@@ -174,7 +174,7 @@ No design is without its disadvantages:
 
 ## Specifications
 
-The following defines the VM Specification (i.e., the CPUID/hypercall interface):
+The following defines the VM Specification (i.e., the CPUID/hypercall interface):</br>
 [MicroV VM Specification](https://github.com/Bareflank/MicroV/blob/master/docs/MicroV%20VM%20Specification.md)
 
 ## Roadmap
