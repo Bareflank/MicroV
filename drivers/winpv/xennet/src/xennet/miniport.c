@@ -298,7 +298,9 @@ MiniportShutdownEx(
     IN  NDIS_SHUTDOWN_ACTION    ShutdownAction
     )
 {
-    PXENNET_ADAPTER             Adapter = (PXENNET_ADAPTER)MiniportAdapterContext;
+    //PXENNET_ADAPTER             Adapter = (PXENNET_ADAPTER)MiniportAdapterContext;
+
+    UNREFERENCED_PARAMETER(MiniportAdapterContext);
 
     if (ShutdownAction == NdisShutdownBugCheck)
         return;

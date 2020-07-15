@@ -29,7 +29,7 @@ visr_wdf_driver_unload(
 )
 {
     UNREFERENCED_PARAMETER(Driver);
-    DEBUG("Visr driver unloaded");
+    DEBUG("Visr driver unloaded\n");
 }
 
 NTSTATUS
@@ -51,6 +51,6 @@ DriverEntry(
         return status;
     }
 
-    DEBUG("Visr driver initialized");
+    DEBUG("Visr driver initialized\n");
     return STATUS_SUCCESS;
 }

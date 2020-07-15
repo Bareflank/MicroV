@@ -33,7 +33,7 @@ visr_evt_device_d0_entry(
     UNREFERENCED_PARAMETER(Device);
     UNREFERENCED_PARAMETER(PreviousState);
 
-    DEBUG("visr_evt_device_d0_entry called");
+    DEBUG("visr_evt_device_d0_entry called\n");
 
     return STATUS_SUCCESS;
 }
@@ -61,7 +61,7 @@ visr_post_interrupts_enabled(
     UNREFERENCED_PARAMETER(Device);
     UNREFERENCED_PARAMETER(PreviousState);
 
-    DEBUG("visr_post_interrupts_enabled called");
+    DEBUG("visr_post_interrupts_enabled called\n");
 
     return STATUS_SUCCESS;
 }
@@ -75,7 +75,7 @@ visr_pre_interrupts_disabled(
     UNREFERENCED_PARAMETER(Device);
     UNREFERENCED_PARAMETER(PreviousState);
 
-    DEBUG("visr_pre_interrupts_disabled called");
+    DEBUG("visr_pre_interrupts_disabled called\n");
 
     return STATUS_SUCCESS;
 }
@@ -115,7 +115,7 @@ visr_wdf_interrupt_enable(
     UNREFERENCED_PARAMETER(Interrupt);
     UNREFERENCED_PARAMETER(AssociatedDevice);
 
-    DEBUG("visr_wdf_interrupt_enable called");
+    DEBUG("visr_wdf_interrupt_enable called\n");
 
     return STATUS_SUCCESS;
 }
@@ -129,7 +129,7 @@ visr_wdf_interrupt_disable(
     UNREFERENCED_PARAMETER(Interrupt);
     UNREFERENCED_PARAMETER(AssociatedDevice);
 
-    DEBUG("visr_wdf_interrupt_disable called");
+    DEBUG("visr_wdf_interrupt_disable called\n");
 
     return STATUS_SUCCESS;
 }
@@ -172,10 +172,10 @@ visr_evt_device_add(
 
     status = WdfInterruptCreate(device, &interrupt_cfg, WDF_NO_OBJECT_ATTRIBUTES, &interrupt);
     if (!NT_SUCCESS(status)) {
-        ERROR("Failed to initialize interrupts");
+        ERROR("Failed to initialize interrupts\n");
         return status;
     }
 
-    DEBUG("Visr device initialized");
+    DEBUG("Visr device initialized\n");
     return status;
 }
