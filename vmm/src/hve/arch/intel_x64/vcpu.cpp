@@ -36,6 +36,8 @@
 #include <xen/vcpu.h>
 #include <xue.h>
 
+constexpr uint32_t IPI_CODE_TLB_SHOOTDOWN = 1U;
+
 microv::intel_x64::vcpu *vcpu0{nullptr};
 
 extern struct xue g_xue;
@@ -329,6 +331,9 @@ vcpu::vcpu(
         this->add_cpuid_emulator(0x4BF00012, {&vcpu::handle_0x4BF00012, this});
         this->add_cpuid_emulator(0x4BF00013, {&vcpu::handle_0x4BF00013, this});
         this->add_cpuid_emulator(0x4BF00021, {&vcpu::handle_0x4BF00021, this});
+
+        this->add_handler(vmcs_n::exit_reason::basic_exit_reason::init_signal,
+                          {&vcpu::handle_root_init_signal, this});
     }
     else {
         this->write_domU_guest_state(domain);
@@ -339,6 +344,9 @@ vcpu::vcpu(
         this->add_wrcr8_handler({&vcpu::handle_wrcr8, this});
 
         this->add_exception_handler(6, {&vcpu::handle_invalid_opcode, this});
+
+        this->add_handler(vmcs_n::exit_reason::basic_exit_reason::init_signal,
+                          {&vcpu::handle_guest_init_signal, this});
     }
 }
 
@@ -564,7 +572,130 @@ bool vcpu::handle_0x4BF00021(bfvmm::intel_x64::vcpu *vcpu)
 
 void vcpu::write_ipi(uint64_t vector)
 {
-    m_lapic->write_ipi(vector, this->id());
+    m_lapic->write_ipi_fixed(vector, this->id());
+}
+
+int64_t vcpu::begin_tlb_shootdown()
+{
+    expects(this->is_root_vcpu());
+    expects(this->id() < 64U);
+    expects(nr_root_vcpus > 0);
+    expects(nr_root_vcpus <= 64);
+
+    auto code = &this->dom()->m_ipi_code;
+    auto expect = 0U;
+    auto desire = IPI_CODE_TLB_SHOOTDOWN;
+
+    if (!code->compare_exchange_strong(expect, desire)) {
+        return AGAIN;
+    }
+
+    m_lapic->write_ipi_init_all_not_self();
+
+    /*
+     * Once IPI support is added for guest domains, this masking code will need
+     * to be modified to ensure that guest vcpuids (which dont start at zero)
+     * map cleanly into a bitmask structure as the root vcpuids do now.
+     */
+
+    uint64_t self_mask = 1ULL << this->id();
+    uint64_t online_mask = (nr_root_vcpus < 64U)
+                           ? (1ULL << nr_root_vcpus) - 1U
+                           : ~0ULL;
+
+    uint64_t all_not_self_mask = ~self_mask & online_mask;
+    auto shootdown_mask = &this->dom()->m_tlb_shootdown_mask;
+
+    while ((shootdown_mask->load() & all_not_self_mask) != all_not_self_mask) {
+        ::intel_x64::pause();
+    }
+
+    return SUCCESS;
+}
+
+void vcpu::end_tlb_shootdown()
+{
+    this->dom()->m_tlb_shootdown_mask.store(0);
+    this->dom()->m_ipi_code.store(0);
+}
+
+bool vcpu::handle_guest_init_signal(::bfvmm::intel_x64::vcpu *guest)
+{
+    /*
+     * Since all guest domains only have one vcpu ATM, there is no need for
+     * guest-driven IPIs. Therefore if an INIT signal is received while a guest
+     * vcpu is running, it just needs to be directed to the guest's root vcpu
+     * so that the root can handle it.
+     */
+
+    auto root = vcpu_cast(guest)->root_vcpu();
+
+    root->load();
+    root->handle_root_init_signal(guest);
+
+    guest->load();
+
+    return true;
+}
+
+bool vcpu::handle_root_init_signal(::bfvmm::intel_x64::vcpu *current)
+{
+    bfignored(current);
+
+    auto ipi_code = this->dom()->m_ipi_code.load();
+
+    if (ipi_code == 0) {
+        vmcs_n::guest_activity_state::set(vmcs_n::guest_activity_state::wait_for_sipi);
+        return true;
+    }
+
+    this->handle_ipi(ipi_code);
+    return true;
+}
+
+void vcpu::handle_ipi(uint32_t ipi_code)
+{
+    if (ipi_code == IPI_CODE_TLB_SHOOTDOWN) {
+        this->handle_tlb_shootdown();
+    } else {
+        printv("%s: received unknown IPI code: 0x%x\n", __func__, ipi_code);
+    }
+}
+
+void vcpu::handle_tlb_shootdown()
+{
+    expects(this->is_root_vcpu());
+    expects(this->id() < 64U);
+
+    /*
+     * Once IPI support is added for guest domains, this masking code will need
+     * to be modified to ensure that guest vcpuids (which dont start at zero)
+     * map cleanly into a bitmask structure as the root vcpuids do now.
+     *
+     * Since the current tlb_shootdown_mask is a uint64_t, it limits the
+     * effective size of the root domain to 64 cpus.
+     */
+
+    auto shootdown_mask = &this->dom()->m_tlb_shootdown_mask;
+    uint64_t self_mask = 1ULL << this->id();
+
+    /*
+     * Set our bit in the domain's shootdown mask. This tells the initiator
+     * of the shootdown that this cpu is in the vmm and ready to invept.
+     */
+
+    shootdown_mask->fetch_or(self_mask);
+
+    /*
+     * Now wait until our bit is clear again. It is cleared by the initiator
+     * after it made the necessary EPT changes. Once clear, do the invept.
+     */
+
+    while ((shootdown_mask->load() & self_mask) != 0U) {
+        ::intel_x64::pause();
+    }
+
+    this->invept();
 }
 
 //------------------------------------------------------------------------------

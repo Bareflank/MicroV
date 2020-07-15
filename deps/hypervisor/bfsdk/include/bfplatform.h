@@ -194,6 +194,16 @@ void platform_acquire_mutex(void);
  */
 void platform_release_mutex(void);
 
+/**
+ * Usleep
+ *
+ * Puts the calling thread to sleep for at least the given number of
+ * microseconds.
+ *
+ * @param usec the minimum number of microseconds to sleep
+ *
+ */
+void platform_usleep(int64_t usec);
 
 #ifdef __cplusplus
 }

@@ -173,9 +173,10 @@ void lapic::write_eoi()
     m_ops.write_eoi(m_base_addr);
 }
 
-void lapic::write_ipi(uint64_t vector, uint64_t vcpu)
+void lapic::write_ipi_fixed(uint64_t vector, uint64_t dest_vcpuid)
 {
-    expects(vcpuid::is_root_vcpu(vcpu));
+    expects(m_vcpu->is_root_vcpu());
+    expects(m_vcpu->id() == dest_vcpuid);
     expects(this->is_xapic());
 
     /*
@@ -188,11 +189,27 @@ void lapic::write_ipi(uint64_t vector, uint64_t vcpu)
      * Send the IPI in physical destination mode using the
      * cached local APIC ID of this lapic.
      */
-    uint64_t icr = 0;
+    uint64_t icr = 0U;
 
     icr |= ((uint64_t)(this->local_id()) << 56);
     icr |= (1UL << 14);
     icr |= vector & 0xFF;
+
+    this->write_icr(icr);
+}
+
+void lapic::write_ipi_init_all_not_self()
+{
+    expects(m_vcpu->is_root_vcpu());
+
+    std::lock_guard lock(m_mutex);
+
+    uint64_t icr = 0U;
+
+    icr |= (icr_delivery_mode::init << 8);
+    icr |= (icr_level::assert << 14);
+    icr |= (icr_trigger_mode::edge << 15);
+    icr |= (icr_destination_shorthand::all_not_self << 18);
 
     this->write_icr(icr);
 }

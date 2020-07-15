@@ -189,20 +189,40 @@ add_e820_entry(void *vm, uint64_t saddr, uint64_t eaddr, uint32_t type)
 /* Donate Functions                                                           */
 /* -------------------------------------------------------------------------- */
 
+#define DONATE_RETRIES 3
+#define DONATE_SLEEP_USEC 100
+
 static status_t
 donate_page_r(
     struct vm_t *vm, void *gva, uint64_t domain_gpa)
 {
     status_t ret = SUCCESS;
     uint64_t gpa = (uint64_t)platform_virt_to_phys(gva);
+    int attempt = 0;
 
-    ret = __domain_op__donate_page_r(vm->domainid, gpa, domain_gpa);
-    if (ret != SUCCESS) {
-        BFDEBUG("donate_page: __domain_op__donate_page_r failed\n");
-        return ret;
+    while (attempt++ < DONATE_RETRIES) {
+        ret = __domain_op__donate_page_r(vm->domainid, gpa, domain_gpa);
+
+        if (ret == AGAIN) {
+            platform_usleep(DONATE_SLEEP_USEC);
+            continue;
+        }
+
+        break;
     }
 
-    return SUCCESS;
+    switch (ret) {
+    case SUCCESS:
+        return SUCCESS;
+    case AGAIN:
+        BFDEBUG("%s: retry limit exceeded: gva:0x%p this_gpa:0x%llx guest_gpa:0x%llx\n",
+                __func__, gva, gpa, domain_gpa);
+        return FAILURE;
+    default:
+        BFDEBUG("%s: donation failed: gva:0x%p this_gpa:0x%llx guest_gpa:0x%llx\n",
+                __func__, gva, gpa, domain_gpa);
+        return FAILURE;
+    }
 }
 
 static status_t
@@ -211,14 +231,31 @@ donate_page_rw(
 {
     status_t ret = SUCCESS;
     uint64_t gpa = (uint64_t)platform_virt_to_phys(gva);
+    int attempt = 0;
 
-    ret = __domain_op__donate_page_rw(vm->domainid, gpa, domain_gpa);
-    if (ret != SUCCESS) {
-        BFDEBUG("donate_page: __domain_op__donate_page_rw failed\n");
-        return ret;
+    while (attempt++ < DONATE_RETRIES) {
+        ret = __domain_op__donate_page_rw(vm->domainid, gpa, domain_gpa);
+
+        if (ret == AGAIN) {
+            platform_usleep(DONATE_SLEEP_USEC);
+            continue;
+        }
+
+        break;
     }
 
-    return SUCCESS;
+    switch (ret) {
+    case SUCCESS:
+        return SUCCESS;
+    case AGAIN:
+        BFDEBUG("%s: retry limit exceeded: gva:0x%p this_gpa:0x%llx guest_gpa:0x%llx\n",
+                __func__, gva, gpa, domain_gpa);
+        return FAILURE;
+    default:
+        BFDEBUG("%s: donation failed: gva:0x%p this_gpa:0x%llx guest_gpa:0x%llx\n",
+                __func__, gva, gpa, domain_gpa);
+        return FAILURE;
+    }
 }
 
 static status_t
@@ -227,14 +264,31 @@ donate_page_rwe(
 {
     status_t ret = SUCCESS;
     uint64_t gpa = (uint64_t)platform_virt_to_phys(gva);
+    int attempt = 0;
 
-    ret = __domain_op__donate_page_rwe(vm->domainid, gpa, domain_gpa);
-    if (ret != SUCCESS) {
-        BFDEBUG("donate_page: __domain_op__donate_page_rwe failed\n");
-        return ret;
+    while (attempt++ < DONATE_RETRIES) {
+        ret = __domain_op__donate_page_rwe(vm->domainid, gpa, domain_gpa);
+
+        if (ret == AGAIN) {
+            platform_usleep(DONATE_SLEEP_USEC);
+            continue;
+        }
+
+        break;
     }
 
-    return SUCCESS;
+    switch (ret) {
+    case SUCCESS:
+        return SUCCESS;
+    case AGAIN:
+        BFDEBUG("%s: retry limit exceeded: gva:0x%p this_gpa:0x%llx guest_gpa:0x%llx\n",
+                __func__, gva, gpa, domain_gpa);
+        return FAILURE;
+    default:
+        BFDEBUG("%s: donation failed: gva:0x%p this_gpa:0x%llx guest_gpa:0x%llx\n",
+                __func__, gva, gpa, domain_gpa);
+        return FAILURE;
+    }
 }
 
 static status_t
@@ -379,6 +433,12 @@ setup_acpi(struct vm_t *vm)
         return FAILURE;
     }
 
+    setup_rsdp(vm->rsdp);
+    setup_xsdt(vm->xsdt);
+    setup_madt(vm->madt);
+    setup_fadt(vm->fadt);
+    setup_dsdt(vm->dsdt);
+
     ret = donate_page_r(vm, vm->rsdp, ACPI_RSDP_GPA);
     if (ret != SUCCESS) {
         return ret;
@@ -403,12 +463,6 @@ setup_acpi(struct vm_t *vm)
     if (ret != SUCCESS) {
         return ret;
     }
-
-    setup_rsdp(vm->rsdp);
-    setup_xsdt(vm->xsdt);
-    setup_madt(vm->madt);
-    setup_fadt(vm->fadt);
-    setup_dsdt(vm->dsdt);
 
     return SUCCESS;
 }
@@ -1244,23 +1298,23 @@ common_destroy_vm(uint64_t domainid)
         return ret;
     }
 
-    platform_free_rw(vm->bios_ram, BIOS_RAM_SIZE);
-    platform_free_rw(vm->zero_page, BAREFLANK_PAGE_SIZE);
-    platform_free_rw(vm->params, BAREFLANK_PAGE_SIZE);
-    platform_free_rw(vm->cmdline, BAREFLANK_PAGE_SIZE);
-    platform_free_rw(vm->gdt, BAREFLANK_PAGE_SIZE);
-    platform_free_rw(vm->rsdp, BAREFLANK_PAGE_SIZE);
-    platform_free_rw(vm->xsdt, BAREFLANK_PAGE_SIZE);
-    platform_free_rw(vm->madt, BAREFLANK_PAGE_SIZE);
-    platform_free_rw(vm->fadt, BAREFLANK_PAGE_SIZE);
-    platform_free_rw(vm->dsdt, BAREFLANK_PAGE_SIZE);
-    platform_free_rw(vm->addr, vm->size);
+    platform_free_rwe(vm->bios_ram, BIOS_RAM_SIZE);
+    platform_free_rwe(vm->zero_page, BAREFLANK_PAGE_SIZE);
+    platform_free_rwe(vm->params, BAREFLANK_PAGE_SIZE);
+    platform_free_rwe(vm->cmdline, BAREFLANK_PAGE_SIZE);
+    platform_free_rwe(vm->gdt, BAREFLANK_PAGE_SIZE);
+    platform_free_rwe(vm->rsdp, BAREFLANK_PAGE_SIZE);
+    platform_free_rwe(vm->xsdt, BAREFLANK_PAGE_SIZE);
+    platform_free_rwe(vm->madt, BAREFLANK_PAGE_SIZE);
+    platform_free_rwe(vm->fadt, BAREFLANK_PAGE_SIZE);
+    platform_free_rwe(vm->dsdt, BAREFLANK_PAGE_SIZE);
+    platform_free_rwe(vm->addr, vm->size);
 
     if (vm->exec_mode == VM_EXEC_XENPVH) {
-        platform_free_rw(vm->pvh_console, BAREFLANK_PAGE_SIZE);
-        platform_free_rw(vm->pvh_store, BAREFLANK_PAGE_SIZE);
-        platform_free_rw(vm->pvh_start_info, BAREFLANK_PAGE_SIZE);
-        platform_free_rw(vm->pvh_modlist, BAREFLANK_PAGE_SIZE);
+        platform_free_rwe(vm->pvh_console, BAREFLANK_PAGE_SIZE);
+        platform_free_rwe(vm->pvh_store, BAREFLANK_PAGE_SIZE);
+        platform_free_rwe(vm->pvh_start_info, BAREFLANK_PAGE_SIZE);
+        platform_free_rwe(vm->pvh_modlist, BAREFLANK_PAGE_SIZE);
     }
 
     release_vm(vm);

@@ -24,10 +24,13 @@
 
 #include <vector>
 #include <memory>
+#include <set>
 #include <unordered_map>
 
 #include "uart.h"
+#include "../../../page.h"
 #include "../../../ring.h"
+#include "../../../spin_lock.h"
 #include "../../../xen/domain.h"
 #include "../../../domain/domain.h"
 #include "../../../domain/manager.h"
@@ -87,6 +90,59 @@ public:
     /// @param mtype the memory type for the mapping
     ///
     void share_root_page(vcpu *root, uint64_t perm, uint64_t mtype);
+
+    /// Donate root page
+    ///
+    /// Map a 4k page from the root domain into the given guest domain. The page
+    /// is unmapped from the root domain and mapped into the guest at the provided
+    /// guest_gpa.
+    ///
+    /// @expects this->id() == 0
+    /// @ensures
+    ///
+    /// @param root_vcpu the calling vcpu
+    /// @param root_gpa the gpa of the page in the root domain
+    /// @param guest_dom the guest domain to map into
+    /// @param guest_gpa the gpa at which the page will be in the guest domain
+    /// @param perm the access permissions for the mapping in the guest domain
+    /// @param mtype the memory type for the mapping in the guest domain
+    ///
+    /// @return SUCCESS if successfully donated. AGAIN if the operation could
+    /// not be completed at this time and should be tried again. FAILURE if the
+    /// operation failed. If SUCCESS, the page is not accessible in the root domain
+    /// until reclaim_root_page(root_gpa) is called successfully (see below).
+    ///
+    int64_t donate_root_page(vcpu *root_vcpu,
+                             uint64_t root_gpa,
+                             domain *guest_dom,
+                             uint64_t guest_gpa,
+                             uint64_t perm,
+                             uint64_t mtype);
+
+    /// Reclaim root page
+    ///
+    /// Map a 4k page back into the root domain.
+    ///
+    /// @expects this->id() == 0
+    /// @ensures
+    ///
+    /// @param guest_domid the guest domain the page was originally donated to
+    /// @param root_gpa the gpa of the page to map
+    /// @return SUCCESS if successfully mapped, FAILURE otherwise.
+    ///
+    int64_t reclaim_root_page(uint64_t guest_domid, uint64_t root_gpa);
+
+    /// Reclaim root pages
+    ///
+    /// Map all previously donated pages back into the root domain
+    ///
+    /// @expects this->id() == 0
+    /// @ensures
+    ///
+    /// @param guest_domid the guest domain the page was originally donated to
+    /// @return SUCCESS if successfully mapped, FAILURE otherwise.
+    ///
+    int64_t reclaim_root_pages(uint64_t guest_domid);
 
     /// Map 1g GPA to HPA (Read-Only)
     ///
@@ -251,6 +307,15 @@ public:
     xen_domain *xen_dom() const noexcept
     {
         return m_xen_dom;
+    }
+
+    /// Xen dom
+    ///
+    /// @return true if this is a xen domain
+    ///
+    bool is_xen_dom() const noexcept
+    {
+        return m_sod_info.is_xen_dom();
     }
 
     /// Xenstore VM
@@ -451,6 +516,10 @@ public:
 
     /// @endcond
 
+    bool page_already_donated(domainid_t guest_domid, uint64_t page_gpa);
+    void add_page_to_donated_range(domainid_t guest_domid, uint64_t page_gpa);
+    void remove_page_from_donated_range(domainid_t guest_domid, uint64_t page_gpa);
+
     std::vector<e820_entry_t> &e820()
     { return m_e820; }
 
@@ -557,9 +626,23 @@ private:
 
 public:
 
+    using page_range_set = std::set<struct page_range, std::less<>>;
+    using page_range_set_ptr = std::unique_ptr<page_range_set>;
+    using page_range_iterator = page_range_set::iterator;
+    using donated_page_map = std::unordered_map<domainid_t, page_range_set_ptr>;
+
     xen_domid_t m_xen_domid{};
     microv::xen_domain *m_xen_dom{};
     std::vector<vcpuid::type> m_vcpuid{};
+
+    static_assert(std::atomic<uint32_t>::is_always_lock_free);
+    static_assert(std::atomic<uint64_t>::is_always_lock_free);
+
+    volatile std::atomic<uint32_t> m_ipi_code{};
+    volatile std::atomic<uint64_t> m_tlb_shootdown_mask{};
+
+    microv::spin_lock m_donated_page_lock{};
+    donated_page_map m_donated_page_map{};
 
     /*
      * Each element here is a {hpa, gpa} that represents an EPT mapping

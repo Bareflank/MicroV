@@ -34,6 +34,7 @@
 #define SUCCESS 0
 #define FAILURE 0xFFFFFFFFFFFFFFFF
 #define SUSPEND 0xFFFFFFFFFFFFFFFE
+#define AGAIN   0xFFFFFFFFFFFFFFFD
 
 /* -------------------------------------------------------------------------- */
 /* Entry Error Codes                                                          */

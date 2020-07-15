@@ -87,8 +87,8 @@ public:
     xen_domain(microv_domain *domain, class iommu *iommu = nullptr);
     ~xen_domain();
 
-    void share_root_page(uintptr_t this_gpa, uintptr_t hpa, uint32_t perm,
-                         uint32_t mtype);
+    void add_root_page(uintptr_t this_gpa, uintptr_t hpa, uint32_t perm,
+                       uint32_t mtype);
 
     int set_timer_mode(uint64_t mode);
     void queue_virq(int virq);

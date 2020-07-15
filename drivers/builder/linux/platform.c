@@ -23,6 +23,7 @@
 #include <bfdebug.h>
 #include <bfplatform.h>
 
+#include <linux/delay.h>
 #include <linux/mm.h>
 #include <linux/vmalloc.h>
 
@@ -121,3 +122,6 @@ void
 platform_release_mutex(void)
 { mutex_unlock(&g_mutex); }
 
+void
+platform_usleep(int64_t usec)
+{ usleep_range(usec, usec + 100); }

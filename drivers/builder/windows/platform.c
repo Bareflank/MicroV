@@ -121,3 +121,15 @@ platform_acquire_mutex(void)
 void
 platform_release_mutex(void)
 { ExReleaseFastMutex(&g_mutex); }
+
+#define TIME_US(us) ((us) * 10)
+#define TIME_RELATIVE(t) (-(t))
+
+void
+platform_usleep(int64_t usec)
+{
+    LARGE_INTEGER Timeout;
+
+    Timeout.QuadPart = TIME_RELATIVE(TIME_US(usec));
+    KeDelayExecutionThread(KernelMode, FALSE, &Timeout);
+}
