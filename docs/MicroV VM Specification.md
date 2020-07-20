@@ -1504,7 +1504,7 @@ When a VP is started, it gets its initial register value from a cache in the VM.
 **Output:**
 | Register Name | Bits | Description |
 | :------------ | :--- | :---------- |
-| REG3 | 63:0 | The value read from the cache |
+| REG0 | 63:0 | The value read from the cache |
 
 **const, mv_uint64_t: MV_VM_STATE_OP_INITIAL_REG_VAL_IDX_VAL**
 | Value | Description |
@@ -1595,7 +1595,7 @@ When a VP is started, it gets its initial register value from a cache in the VM.
 **Output:**
 | Register Name | Bits | Description |
 | :------------ | :--- | :---------- |
-| REG3 | 63:0 | The value read from the cache |
+| REG0 | 63:0 | The value read from the cache |
 
 **const, mv_uint64_t: MV_VM_STATE_OP_INITIAL_MSR_VAL_IDX_VAL**
 | Value | Description |
@@ -2344,7 +2344,7 @@ This hypercall provides a means to read a VP's VPS (not including MSRs). Note th
 **Output:**
 | Register Name | Bits | Description |
 | :------------ | :--- | :---------- |
-| REG3 | 63:0 | The value read from the VPS |
+| REG0 | 63:0 | The value read from the VPS |
 
 **const, mv_uint64_t: MV_VP_STATE_OP_REG_VAL_IDX_VAL**
 | Value | Description |
@@ -2427,7 +2427,7 @@ This hypercall provides a means to read a VP's VPS for MSRs. Note that if the VP
 **Output:**
 | Register Name | Bits | Description |
 | :------------ | :--- | :---------- |
-| REG3 | 63:0 | The value read from the VPS |
+| REG0 | 63:0 | The value read from the VPS |
 
 **const, mv_uint64_t: MV_VP_STATE_OP_MSR_VAL_IDX_VAL**
 | Value | Description |
