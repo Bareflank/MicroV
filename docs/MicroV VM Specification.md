@@ -2622,7 +2622,8 @@ When mv_vp_management_op_run_vp returns, a return reason is provided which are d
 | mv_vp_exit_t_hlt | 3 | The VP stopped execution due to a hlt, meaning it is done executing and can be destroyed |
 | mv_vp_exit_t_fault | 4 | The VP stopped execution due to a fault, meaning an error condition occurred and the VP can no longer execute |
 | mv_vp_exit_t_sync_tsc | 5 | The VP stopped execution to ask for the wallclock/tsc to be synchronized |
-| mv_vp_exit_t_max | 6 | The max value for mv_vp_exit_t |
+| mv_vp_exit_t_suspend | 6 | The VP stopped execution to tell software that the system is trying to suspend |
+| mv_vp_exit_t_max | 7 | The max value for mv_vp_exit_t |
 
 If mv_vp_exit_t_external_interrupt is returned, software should execute mv_vp_management_op_run_vp again as soon as possible. If mv_vp_exit_t_yield is returned, software should run mv_vp_management_op_run_vp again after sleeping for REG1 number of nanoseconds. If mv_vp_exit_t_retry is returned, software should execute mv_vp_management_op_run_vp again after yielding to the OS. Software could also use a backoff model, adding a sleep whose time increases as mv_vp_management_op_run_vp continues to return mv_vp_exit_t_retry. REG1 can be used to determine the uniqueness of mv_vp_exit_t_retry. mv_vp_exit_t_hlt tells software to destroy the VP and that software finished without any errors while mv_vp_exit_t_fault tells software to destroy the VP and that an error actually occured with the error code being returned in REG1. mv_vp_exit_t_sync_tsc tells software that it needs to synchronize the the wallclock and TSC.
 
