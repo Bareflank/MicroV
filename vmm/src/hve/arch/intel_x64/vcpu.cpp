@@ -50,6 +50,7 @@ static bfn::once_flag acpi_ready;
 static bfn::once_flag vtd_ready;
 static bfn::once_flag pci_ready;
 static bfn::once_flag ept_ready;
+static bfn::once_flag disasm_ready;
 
 static std::mutex &root_ept_mutex() noexcept
 {
@@ -533,6 +534,7 @@ bool vcpu::handle_0x4BF00010(bfvmm::intel_x64::vcpu *vcpu)
     }
 #endif
 
+    bfn::call_once(disasm_ready, []{ init_disasm(); });
     m_lapic = std::make_unique<lapic>(this);
 
     if (g_uefi_boot) {
