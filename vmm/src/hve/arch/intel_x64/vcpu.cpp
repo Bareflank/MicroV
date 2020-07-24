@@ -27,6 +27,7 @@
 #include <microv/gpalayout.h>
 #include <microv/builderinterface.h>
 #include <clflush.h>
+#include <hve/arch/intel_x64/disassembler.h>
 #include <hve/arch/intel_x64/vcpu.h>
 #include <iommu/iommu.h>
 #include <pci/dev.h>
@@ -422,6 +423,20 @@ vcpu::write_domU_guest_state(domain *domain)
 
         m_xen_vcpu = std::make_unique<class xen_vcpu>(this);
     }
+}
+
+int32_t vcpu::insn_mode() const noexcept
+{
+    auto lma = vmcs_n::guest_ia32_efer::lma::is_enabled();
+    auto csar = vmcs_n::guest_cs_access_rights::get();
+    auto csl = vmcs_n::guest_cs_access_rights::l::is_enabled(csar);
+    auto csd = vmcs_n::guest_cs_access_rights::db::is_enabled(csar);
+
+    if (lma && csl) {
+        return disassembler::insn_mode_64bit;
+    }
+
+    return csd ? disassembler::insn_mode_32bit : disassembler::insn_mode_16bit;
 }
 
 microv::xen_vcpu *vcpu::xen_vcpu() noexcept
