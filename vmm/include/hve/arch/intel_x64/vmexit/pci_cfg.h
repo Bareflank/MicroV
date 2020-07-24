@@ -22,8 +22,11 @@
 #ifndef PCI_CFG_HANDLER_MICROV_H
 #define PCI_CFG_HANDLER_MICROV_H
 
+#include "../disassembler.h"
 #include "../vcpu.h"
 #include "io_instruction.h"
+
+#include <unordered_map>
 
 // -----------------------------------------------------------------------------
 // Definitions
@@ -37,11 +40,13 @@ class vcpu;
 class pci_cfg_handler {
 public:
     using base_vcpu = bfvmm::intel_x64::vcpu;
-    using base_hdlr = bfvmm::intel_x64::io_instruction_handler;
-    using base_info = base_hdlr::info_t;
+    using pmio_hdlr = bfvmm::intel_x64::io_instruction_handler;
+    using mmio_hdlr = bfvmm::intel_x64::ept_violation_handler;
+    using pmio_info = pmio_hdlr::info_t;
+    using mmio_info = mmio_hdlr::info_t;
 
     struct info {
-        base_info &exit_info;
+        pmio_info &exit_info;
         uint32_t reg;
     };
 
@@ -51,27 +56,36 @@ public:
     static void write_cfg_info(uint32_t val, struct info &info);
 
     void enable();
+
     void add_in_handler(uint64_t addr, const delegate_t &hdlr);
     void add_out_handler(uint64_t addr, const delegate_t &hdlr);
 
     pci_cfg_handler(vcpu *vcpu);
-    ~pci_cfg_handler() = default;
+    ~pci_cfg_handler();
     pci_cfg_handler(pci_cfg_handler &&) = default;
     pci_cfg_handler &operator=(pci_cfg_handler &&) = default;
     pci_cfg_handler(const pci_cfg_handler &) = delete;
     pci_cfg_handler &operator=(const pci_cfg_handler &) = delete;
 
 private:
-    bool addr_in(base_vcpu *vcpu, base_info &info);
-    bool data_in(base_vcpu *vcpu, base_info &info);
+    bool pmio_addr_in(base_vcpu *vcpu, pmio_info &info);
+    bool pmio_addr_out(base_vcpu *vcpu, pmio_info &info);
 
-    bool addr_out(base_vcpu *vcpu, base_info &info);
-    bool data_out(base_vcpu *vcpu, base_info &info);
+    bool pmio_data_in(base_vcpu *vcpu, pmio_info &info);
+    bool pmio_data_out(base_vcpu *vcpu, pmio_info &info);
+
+    bool mmio_data_in(base_vcpu *vcpu, mmio_info &info);
+    bool mmio_data_out(base_vcpu *vcpu, mmio_info &info);
 
     bool root_def_in(base_vcpu *vcpu, struct info &info);
     bool root_def_out(base_vcpu *vcpu, struct info &info);
     bool guest_def_in(base_vcpu *vcpu, struct info &info);
     bool guest_def_out(base_vcpu *vcpu, struct info &info);
+
+    disassembler::operand_t *disasm_ecam_read();
+    disassembler::operand_t *disasm_ecam_write();
+
+    void map_bdf_to_ecam(uint32_t bdf);
 
     delegate_t m_default_in;
     delegate_t m_default_out;
@@ -81,6 +95,12 @@ private:
 
     std::unordered_map<uint64_t, delegate_t> m_in_hdlrs;
     std::unordered_map<uint64_t, delegate_t> m_out_hdlrs;
+
+    /* Map ECAM address to bus/device/function */
+    std::unordered_map<uint64_t, uint32_t> m_ecam_map;
+
+    /* Cache for already-disassembled instructions */
+    std::unordered_map<uint64_t, disassembler::insn_t *> m_insn_cache;
 };
 
 }

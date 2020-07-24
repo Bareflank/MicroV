@@ -394,10 +394,6 @@ vcpu::write_dom0_guest_state(domain *domain)
 {
     if (domain->exec_mode() == VM_EXEC_XENPVH) {
         m_xen_vcpu = std::make_unique<class xen_vcpu>(this);
-
-        if (g_enable_winpv) {
-            init_xen_platform_pci(m_xen_vcpu.get());
-        }
     }
 }
 
@@ -546,6 +542,10 @@ bool vcpu::handle_0x4BF00010(bfvmm::intel_x64::vcpu *vcpu)
             bfn::call_once(vtd_ready, []{ init_vtd(); });
             m_pci_handler.enable();
             init_pci_on_vcpu(this);
+        }
+
+        if (g_enable_winpv) {
+            init_xen_platform_pci(m_xen_vcpu.get());
         }
     }
 

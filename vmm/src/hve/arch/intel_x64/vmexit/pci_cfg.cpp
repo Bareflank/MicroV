@@ -19,18 +19,13 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+#include <hve/arch/intel_x64/disassembler.h>
 #include <hve/arch/intel_x64/vcpu.h>
 #include <hve/arch/intel_x64/vmexit/pci_cfg.h>
 #include <mutex>
 #include <pci/dev.h>
-
-#define STATIC_HDL_IO(p, i, o) m_vcpu->add_io_instruction_handler(p, {i}, {o})
-#define STATIC_EMU_IO(p, i, o) m_vcpu->emulate_io_instruction(p, {i}, {o});
-
-#define MEMBER_HDL_IO(p, i, o) \
-m_vcpu->add_io_instruction_handler(p, \
-                                   {&pci_cfg_handler::i, this}, \
-                                   {&pci_cfg_handler::o, this});
+#include <pci/pci.h>
+#include <printv.h>
 
 #define MEMBER_EMU_IO(p, i, o) \
 m_vcpu->emulate_io_instruction(p, \
@@ -39,12 +34,290 @@ m_vcpu->emulate_io_instruction(p, \
 
 using namespace ::x64::portio;
 using base_vcpu = microv::intel_x64::pci_cfg_handler::base_vcpu;
-using base_info = microv::intel_x64::pci_cfg_handler::base_info;
 using cfg_info = microv::intel_x64::pci_cfg_handler::info;
 using cfg_key = uint64_t;
-namespace ioqual = vmcs_n::exit_qualification::io_instruction;
 
 namespace microv::intel_x64 {
+
+static uint8_t *reg_to_state_8(base_vcpu *vcpu, int reg) noexcept
+{
+    auto state = vcpu->state();
+
+    switch (reg) {
+    case X86_REG_AH:
+        return (uint8_t *)&state->rax + 1;
+    case X86_REG_AL:
+        return (uint8_t *)&state->rax;
+    case X86_REG_BH:
+        return (uint8_t *)&state->rbx + 1;
+    case X86_REG_BL:
+        return (uint8_t *)&state->rbx;
+    case X86_REG_BPL:
+        return (uint8_t *)&state->rbp;
+    case X86_REG_CH:
+        return (uint8_t *)&state->rcx + 1;
+    case X86_REG_CL:
+        return (uint8_t *)&state->rcx;
+    case X86_REG_DH:
+        return (uint8_t *)&state->rdx + 1;
+    case X86_REG_DIL:
+        return (uint8_t *)&state->rdi;
+    case X86_REG_DL:
+        return (uint8_t *)&state->rdx;
+    case X86_REG_SIL:
+        return (uint8_t *)&state->rsi;
+    case X86_REG_R8B:
+        return (uint8_t *)&state->r08;
+    case X86_REG_R9B:
+        return (uint8_t *)&state->r09;
+    case X86_REG_R10B:
+        return (uint8_t *)&state->r10;
+    case X86_REG_R11B:
+        return (uint8_t *)&state->r11;
+    case X86_REG_R12B:
+        return (uint8_t *)&state->r12;
+    case X86_REG_R13B:
+        return (uint8_t *)&state->r13;
+    case X86_REG_R14B:
+        return (uint8_t *)&state->r14;
+    case X86_REG_R15B:
+        return (uint8_t *)&state->r15;
+    default:
+        return nullptr;
+    }
+}
+
+static uint16_t *reg_to_state_16(base_vcpu *vcpu, int reg) noexcept
+{
+    auto state = vcpu->state();
+
+    switch (reg) {
+    case X86_REG_AX:
+        return (uint16_t *)&state->rax;
+    case X86_REG_BP:
+        return (uint16_t *)&state->rbp;
+    case X86_REG_BX:
+        return (uint16_t *)&state->rbx;
+    case X86_REG_CX:
+        return (uint16_t *)&state->rcx;
+    case X86_REG_DI:
+        return (uint16_t *)&state->rdi;
+    case X86_REG_DX:
+        return (uint16_t *)&state->rdx;
+    case X86_REG_SI:
+        return (uint16_t *)&state->rsi;
+    case X86_REG_R8W:
+        return (uint16_t *)&state->r08;
+    case X86_REG_R9W:
+        return (uint16_t *)&state->r09;
+    case X86_REG_R10W:
+        return (uint16_t *)&state->r10;
+    case X86_REG_R11W:
+        return (uint16_t *)&state->r11;
+    case X86_REG_R12W:
+        return (uint16_t *)&state->r12;
+    case X86_REG_R13W:
+        return (uint16_t *)&state->r13;
+    case X86_REG_R14W:
+        return (uint16_t *)&state->r14;
+    case X86_REG_R15W:
+        return (uint16_t *)&state->r15;
+    default:
+        return nullptr;
+    }
+}
+
+static uint32_t *reg_to_state_32(base_vcpu *vcpu, int reg) noexcept
+{
+    auto state = vcpu->state();
+
+    switch (reg) {
+    case X86_REG_EAX:
+        return (uint32_t *)&state->rax;
+    case X86_REG_EBP:
+        return (uint32_t *)&state->rbp;
+    case X86_REG_EBX:
+        return (uint32_t *)&state->rbx;
+    case X86_REG_ECX:
+        return (uint32_t *)&state->rcx;
+    case X86_REG_EDI:
+        return (uint32_t *)&state->rdi;
+    case X86_REG_EDX:
+        return (uint32_t *)&state->rdx;
+    case X86_REG_ESI:
+        return (uint32_t *)&state->rsi;
+    case X86_REG_R8D:
+        return (uint32_t *)&state->r08;
+    case X86_REG_R9D:
+        return (uint32_t *)&state->r09;
+    case X86_REG_R10D:
+        return (uint32_t *)&state->r10;
+    case X86_REG_R11D:
+        return (uint32_t *)&state->r11;
+    case X86_REG_R12D:
+        return (uint32_t *)&state->r12;
+    case X86_REG_R13D:
+        return (uint32_t *)&state->r13;
+    case X86_REG_R14D:
+        return (uint32_t *)&state->r14;
+    case X86_REG_R15D:
+        return (uint32_t *)&state->r15;
+    default:
+        return nullptr;
+    }
+}
+
+/*
+ * Update the destination of the ECAM read access. The destination is
+ * previously verified in valid_ecam_read to be a register operand, so
+ * this function figures out the portion of the vcpu_state_t that is
+ * implied by the register and updates it.
+ */
+static void update_ecam_read(base_vcpu *vcpu,
+                             const disassembler::operand_t *dst,
+                             uint32_t val) noexcept
+{
+    switch (dst->size) {
+    case 1: {
+        uint8_t *ptr = reg_to_state_8(vcpu, dst->reg);
+        if (!ptr) {
+            printv("%s: unable to map reg %u to state\n", __func__, dst->reg);
+            return;
+        }
+
+        *ptr = (uint8_t)val;
+        return;
+    }
+    case 2: {
+        uint16_t *ptr = reg_to_state_16(vcpu, dst->reg);
+        if (!ptr) {
+            printv("%s: unable to map reg %u to state\n", __func__, dst->reg);
+            return;
+        }
+
+        *ptr = (uint16_t)val;
+        return;
+    }
+    case 4: {
+        uint32_t *ptr = reg_to_state_32(vcpu, dst->reg);
+        if (!ptr) {
+            printv("%s: unable to map reg %u to state\n", __func__, dst->reg);
+            return;
+        }
+
+        *ptr = (uint32_t)val;
+        return;
+    }
+    default:
+        printv("%s: destination operand size=%u invalid\n", __func__, dst->size);
+        return;
+    }
+}
+
+static int64_t extract_ecam_write(base_vcpu *vcpu,
+                                  const disassembler::operand_t *src,
+                                  uint32_t *val)
+{
+    switch (src->size) {
+    case 1: {
+        uint8_t *ptr = reg_to_state_8(vcpu, src->reg);
+        if (!ptr) {
+            printv("%s: unable to map reg %u to state\n", __func__, src->reg);
+            return -EINVAL;
+        }
+
+        *(uint8_t *)val = *ptr;
+        return 0;
+    }
+    case 2: {
+        uint16_t *ptr = reg_to_state_16(vcpu, src->reg);
+        if (!ptr) {
+            printv("%s: unable to map reg %u to state\n", __func__, src->reg);
+            return -EINVAL;
+        }
+
+        *(uint16_t *)val = *ptr;
+        return 0;
+    }
+    case 4: {
+        uint32_t *ptr = reg_to_state_32(vcpu, src->reg);
+        if (!ptr) {
+            printv("%s: unable to map reg %u to state\n", __func__, src->reg);
+            return -EINVAL;
+        }
+
+        *val = *ptr;
+        return 0;
+    }
+    default:
+        printv("%s: source operand size=%u invalid\n", __func__, src->size);
+        return -EINVAL;
+    }
+}
+
+static bool valid_ecam_read(const disassembler::insn_t *insn) noexcept
+{
+    if (insn->id != X86_INS_MOV) {
+        printv("%s: insn is not a mov\n", __func__);
+        return false;
+    }
+
+    if (!insn->detail) {
+        printv("%s: insn detail not available\n", __func__);
+        return false;
+    }
+
+    cs_x86 *x86 = &insn->detail->x86;
+    if (x86->op_count != 2) {
+        printv("%s: insn does not have two operands\n", __func__);
+        return false;
+    }
+
+    cs_x86_op *op = &x86->operands[0];
+    if (op->type != X86_OP_REG) {
+        printv("%s: destination operand is not a register\n", __func__);
+        return false;
+    }
+
+    if (op->access != CS_AC_WRITE) {
+        printv("%s: destination operand is not written\n", __func__);
+        return false;
+    }
+
+    return true;
+}
+
+static bool valid_ecam_write(const disassembler::insn_t *insn) noexcept
+{
+    if (insn->id != X86_INS_MOV) {
+        printv("%s: insn is not a mov\n", __func__);
+        return false;
+    }
+
+    if (!insn->detail) {
+        printv("%s: insn detail not available\n", __func__);
+        return false;
+    }
+
+    cs_x86 *x86 = &insn->detail->x86;
+    if (x86->op_count != 2) {
+        printv("%s: insn does not have two operands\n", __func__);
+        return false;
+    }
+
+    cs_x86_op *op = &x86->operands[1];
+    if (op->type != X86_OP_REG) {
+        printv("%s: source operand is not a register\n", __func__);
+        return false;
+    }
+
+    if (op->access != CS_AC_READ) {
+        printv("%s: source operand is not read\n", __func__);
+        return false;
+    }
+
+    return true;
+}
 
 static constexpr cfg_key make_cfg_key(uint64_t port, uint32_t size)
 {
@@ -135,51 +408,296 @@ pci_cfg_handler::pci_cfg_handler(vcpu *vcpu) : m_vcpu{vcpu}
     this->enable();
 }
 
+pci_cfg_handler::~pci_cfg_handler()
+{
+    for (const auto &p : m_insn_cache) {
+        disasm()->free_insn(p.second);
+    }
+}
+
 void pci_cfg_handler::enable()
 {
-    MEMBER_EMU_IO(0xCF8, addr_in, addr_out);
+    MEMBER_EMU_IO(0xCF8, pmio_addr_in, pmio_addr_out);
 
     if (vcpuid::is_root_vcpu(m_vcpu->id())) {
-        MEMBER_EMU_IO(0xCFC, data_in, data_out);
-        MEMBER_EMU_IO(0xCFD, data_in, data_out);
-        MEMBER_EMU_IO(0xCFE, data_in, data_out);
-        MEMBER_EMU_IO(0xCFF, data_in, data_out);
+        MEMBER_EMU_IO(0xCFC, pmio_data_in, pmio_data_out);
+        MEMBER_EMU_IO(0xCFD, pmio_data_in, pmio_data_out);
+        MEMBER_EMU_IO(0xCFE, pmio_data_in, pmio_data_out);
+        MEMBER_EMU_IO(0xCFF, pmio_data_in, pmio_data_out);
         return;
     }
 
-    MEMBER_EMU_IO(0xCFA, data_in, data_out);
-    MEMBER_EMU_IO(0xCFB, data_in, data_out);
-    MEMBER_EMU_IO(0xCFC, data_in, data_out);
-    MEMBER_EMU_IO(0xCFD, data_in, data_out);
-    MEMBER_EMU_IO(0xCFE, data_in, data_out);
-    MEMBER_EMU_IO(0xCFF, data_in, data_out);
+    MEMBER_EMU_IO(0xCFA, pmio_data_in, pmio_data_out);
+    MEMBER_EMU_IO(0xCFB, pmio_data_in, pmio_data_out);
+    MEMBER_EMU_IO(0xCFC, pmio_data_in, pmio_data_out);
+    MEMBER_EMU_IO(0xCFD, pmio_data_in, pmio_data_out);
+    MEMBER_EMU_IO(0xCFE, pmio_data_in, pmio_data_out);
+    MEMBER_EMU_IO(0xCFF, pmio_data_in, pmio_data_out);
+}
+
+void pci_cfg_handler::map_bdf_to_ecam(uint32_t bdf)
+{
+    const auto ecam_addr = find_ecam_page(bdf);
+
+    /* Make sure the ECAM page is nonzero, 4K aligned */
+    expects(ecam_addr != 0);
+    expects(ecam_addr == bfn::upper(ecam_addr, ::x64::pt::from));
+
+    /*
+     * Associate the ECAM page with its corresponding bus/device/function
+     * and unmap it from dom0's EPT.
+     */
+    const auto itr = m_ecam_map.find(ecam_addr);
+    if (itr == m_ecam_map.end()) {
+        m_ecam_map[ecam_addr] = bdf;
+
+        auto ept = &m_vcpu->dom()->ept();
+        auto ecam_2m = bfn::upper(ecam_addr, ::x64::pd::from);
+
+        if (ept->is_2m(ecam_2m)) {
+            bfvmm::intel_x64::ept::identity_map_convert_2m_to_4k(*ept, ecam_2m);
+        }
+
+        ept->unmap(ecam_addr);
+        ept->release(ecam_addr);
+    }
 }
 
 void pci_cfg_handler::add_in_handler(uint64_t addr, const delegate_t &hdlr)
 {
     const auto bdf = (addr & ~(pci_reg_mask | pci_off_mask)) | pci_en_mask;
     m_in_hdlrs[bdf] = std::move(hdlr);
+
+    if (m_vcpu->is_guest_vcpu()) {
+        return;
+    }
+
+    this->map_bdf_to_ecam(bdf);
+    m_vcpu->add_ept_read_violation_handler({&pci_cfg_handler::mmio_data_in, this});
 }
 
 void pci_cfg_handler::add_out_handler(uint64_t addr, const delegate_t &hdlr)
 {
     const auto bdf = (addr & ~(pci_reg_mask | pci_off_mask)) | pci_en_mask;
     m_out_hdlrs[bdf] = std::move(hdlr);
+
+    if (m_vcpu->is_guest_vcpu()) {
+        return;
+    }
+
+    this->map_bdf_to_ecam(bdf);
+    m_vcpu->add_ept_write_violation_handler({&pci_cfg_handler::mmio_data_out, this});
 }
 
-bool pci_cfg_handler::addr_in(base_vcpu *vcpu, base_info &info)
+disassembler::operand_t *pci_cfg_handler::disasm_ecam_read()
+{
+    auto rip = m_vcpu->rip();
+    auto itr = m_insn_cache.find(rip);
+
+    if (itr != m_insn_cache.end()) {
+        auto insn = itr->second;
+        return &insn->detail->x86.operands[0];
+    }
+
+    auto len = vmcs_n::vm_exit_instruction_length::get();
+    constexpr auto MAX_X86_INSN_LEN = 15U;
+
+    if (len > MAX_X86_INSN_LEN) {
+        printv("%s: instruction length %lu is invalid, rip=0x%lx\n",
+               __func__, len, rip);
+        return nullptr;
+    }
+
+    auto map = m_vcpu->map_gva_4k<uint8_t>(rip, len);
+    auto mode = m_vcpu->insn_mode();
+    auto insn = disasm()->disasm_single(map.get(), rip, len, mode);
+
+    if (!insn) {
+        printv("%s: disasm_single failed, rip=0x%lx\n", __func__, rip);
+        return nullptr;
+    }
+
+    if (!valid_ecam_read(insn)) {
+        printv("%s: invalid ECAM read, rip=0x%lx\n", __func__, rip);
+        return nullptr;
+    }
+
+    m_insn_cache[rip] = insn;
+    return &insn->detail->x86.operands[0];
+}
+
+disassembler::operand_t *pci_cfg_handler::disasm_ecam_write()
+{
+    auto rip = m_vcpu->rip();
+    auto itr = m_insn_cache.find(rip);
+
+    if (itr != m_insn_cache.end()) {
+        auto insn = itr->second;
+        return &insn->detail->x86.operands[1];
+    }
+
+    auto len = vmcs_n::vm_exit_instruction_length::get();
+    constexpr auto MAX_X86_INSN_LEN = 15U;
+
+    if (len > MAX_X86_INSN_LEN) {
+        printv("%s: instruction length %lu is invalid, rip=0x%lx\n",
+               __func__, len, rip);
+        return nullptr;
+    }
+
+    auto map = m_vcpu->map_gva_4k<uint8_t>(rip, len);
+    auto mode = m_vcpu->insn_mode();
+    auto insn = disasm()->disasm_single(map.get(), rip, len, mode);
+
+    if (!insn) {
+        printv("%s: disasm_single failed, rip=0x%lx\n", __func__, rip);
+        return nullptr;
+    }
+
+    if (!valid_ecam_write(insn)) {
+        printv("%s: invalid ECAM write, rip=0x%lx\n", __func__, rip);
+        return nullptr;
+    }
+
+    m_insn_cache[rip] = insn;
+    return &insn->detail->x86.operands[1];
+}
+
+bool pci_cfg_handler::mmio_data_in(base_vcpu *vcpu, mmio_info &info)
+{
+    auto ecam_addr = bfn::upper(info.gpa, ::x64::pt::from);
+    auto ecam_itr = m_ecam_map.find(ecam_addr);
+
+    if (ecam_itr == m_ecam_map.end()) {
+        printv("%s: ECAM page 0x%lx does not have an assigned BDF\n",
+               __func__, ecam_addr);
+        return false;
+    }
+
+    auto ecam_bdf = ecam_itr->second;
+    auto hdlr_itr = m_in_hdlrs.find(ecam_bdf);
+
+    if (hdlr_itr == m_in_hdlrs.end()) {
+        printv("%s: ECAM page 0x%lx does not have handler\n",
+               __func__, ecam_addr);
+        return false;
+    }
+
+    auto dst_op = this->disasm_ecam_read();
+    if (!dst_op) {
+        printv("%s: disasm_ecam_read failed @ gpa=0x%lx\n", __func__, info.gpa);
+        return true;
+    }
+
+    /*
+     * Translate this memory-mapped access into a port-mapped access. The
+     * pmio_info is passed to the registered handler which uses the port-mapped
+     * centric {read,write}_cfg_info interface provided by this class.
+     */
+
+    uint64_t gpa_4b = bfn::upper(info.gpa, 2);
+
+    pmio_info pi = {
+        .port_number = 0xCFC + (info.gpa - gpa_4b),
+        .size_of_access = static_cast<uint64_t>(dst_op->size - 1),
+        .address = 0,            /* unused */
+        .val = 0,
+        .ignore_write = false,   /* unused */
+        .ignore_advance = false, /* unused */
+        .reps = 1                /* unused */
+    };
+
+    cfg_info ci = {
+        .exit_info = pi,
+        .reg = static_cast<uint32_t>(gpa_4b - ecam_addr) >> 2
+    };
+
+    /* Call the handler registered via vcpu::add_pci_cfg_handler */
+    if (!hdlr_itr->second(vcpu, ci)) {
+        return false;
+    }
+
+    /* Update vcpu state */
+    update_ecam_read(vcpu, dst_op, pi.val);
+    info.ignore_advance = false;
+
+    return true;
+}
+
+bool pci_cfg_handler::mmio_data_out(base_vcpu *vcpu, mmio_info &info)
+{
+    auto ecam_addr = bfn::upper(info.gpa, ::x64::pt::from);
+    auto ecam_itr = m_ecam_map.find(ecam_addr);
+
+    if (ecam_itr == m_ecam_map.end()) {
+        printv("%s: ECAM page 0x%lx does not have an assigned BDF\n",
+               __func__, ecam_addr);
+        return false;
+    }
+
+    auto ecam_bdf = ecam_itr->second;
+    auto hdlr_itr = m_out_hdlrs.find(ecam_bdf);
+
+    if (hdlr_itr == m_out_hdlrs.end()) {
+        printv("%s: ECAM page 0x%lx does not have handler\n",
+               __func__, ecam_addr);
+        return false;
+    }
+
+    auto src_op = this->disasm_ecam_write();
+    if (!src_op) {
+        printv("%s: disasm_ecam_write failed @ gpa=0x%lx\n", __func__, info.gpa);
+        return true;
+    }
+
+    uint32_t val = 0;
+    if (extract_ecam_write(vcpu, src_op, &val)) {
+        printv("%s: failed to extract value written to ECAM\n", __func__);
+        return true;
+    }
+
+    /*
+     * Translate this memory-mapped access into a port-mapped access. The
+     * pmio_info is passed to the registered handler which uses the port-mapped
+     * centric {read,write}_cfg_info interface provided by this class.
+     */
+
+    uint64_t gpa_4b = bfn::upper(info.gpa, 2);
+
+    pmio_info pi = {
+        .port_number = 0xCFC + (info.gpa - gpa_4b),
+        .size_of_access = static_cast<uint64_t>(src_op->size - 1),
+        .address = 0,            /* unused */
+        .val = val,
+        .ignore_write = false,   /* unused */
+        .ignore_advance = false, /* unused */
+        .reps = 1                /* unused */
+    };
+
+    cfg_info ci = {
+        .exit_info = pi,
+        .reg = static_cast<uint32_t>(gpa_4b - ecam_addr) >> 2
+    };
+
+    info.ignore_advance = false;
+
+    /* Call the handler registered via vcpu::add_pci_cfg_handler */
+    return hdlr_itr->second(vcpu, ci);
+}
+
+bool pci_cfg_handler::pmio_addr_in(base_vcpu *vcpu, pmio_info &info)
 {
     info.val = m_cf8;
     return true;
 }
 
-bool pci_cfg_handler::addr_out(base_vcpu *vcpu, base_info &info)
+bool pci_cfg_handler::pmio_addr_out(base_vcpu *vcpu, pmio_info &info)
 {
     m_cf8 = info.val;
     return true;
 }
 
-bool pci_cfg_handler::data_in(base_vcpu *vcpu, base_info &info)
+bool pci_cfg_handler::pmio_data_in(base_vcpu *vcpu, pmio_info &info)
 {
     const auto bdf = m_cf8 & ~(pci_reg_mask | pci_off_mask);
     const auto iter = m_in_hdlrs.find(bdf);
@@ -196,7 +714,7 @@ bool pci_cfg_handler::data_in(base_vcpu *vcpu, base_info &info)
     return iter->second(vcpu, ci);
 }
 
-bool pci_cfg_handler::data_out(base_vcpu *vcpu, base_info &info)
+bool pci_cfg_handler::pmio_data_out(base_vcpu *vcpu, pmio_info &info)
 {
     const auto bdf = m_cf8 & ~(pci_reg_mask | pci_off_mask);
     const auto iter = m_out_hdlrs.find(bdf);
