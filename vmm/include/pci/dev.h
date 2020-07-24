@@ -50,8 +50,6 @@ struct pci_dev {
     uint32_t m_msi_cap{};
     uint32_t m_msix_cap{};
     uint32_t m_pcie_cap{};
-    uintptr_t m_ecam_gpa{};
-    uintptr_t m_ecam_hpa{};
     char m_bdf_str[8]{};
     bool m_guest_owned{};
     vcpuid_t m_guest_vcpuid{};
@@ -108,7 +106,6 @@ struct pci_dev {
         return (m_cf8 & (pci_dev_mask | pci_fun_mask)) >> 8;
     }
 
-    void remap_ecam();
     void parse_capabilities();
     void init_root_vcfg();
     void add_root_handlers(vcpu *vcpu);

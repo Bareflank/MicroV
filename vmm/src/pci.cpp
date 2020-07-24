@@ -99,7 +99,7 @@ static inline uintptr_t ecam_gpa(struct mcfg_alloc *mca, uint32_t addr)
  * Search the MCFG allocation structure list for the ECAM
  * page of the PCIe device given by addr
  */
-static uintptr_t find_ecam_page(uint32_t addr, uint16_t sgmt = 0)
+uintptr_t find_ecam_page(uint32_t addr, uint16_t sgmt)
 {
     expects(mca_list);
     expects(mca_list_size);
@@ -134,8 +134,6 @@ static void init_mcfg()
     auto mcfg_hva = mcfg_map.get() + mca_offset;
     mca_list_size = (mcfg->len - mca_offset) / sizeof(struct mcfg_alloc);
     mca_list = reinterpret_cast<struct mcfg_alloc *>(mcfg_hva);
-
-    hide_acpi_table(mcfg);
 }
 
 static void probe_bus(uint32_t b, struct pci_dev *bridge)
@@ -165,10 +163,6 @@ static void probe_bus(uint32_t b, struct pci_dev *bridge)
                 pdev->m_guest_owned = true;
                 pdev->parse_capabilities();
                 pdev->init_root_vcfg();
-
-                if (!mcfg->hidden) {
-                    pdev->remap_ecam();
-                }
 
                 pci_passthru_list.push_back(pdev);
             }
@@ -266,42 +260,6 @@ pci_dev::pci_dev(uint32_t addr, struct pci_dev *parent_bridge)
     m_guest_msi.pdev = this;
 }
 
-void pci_dev::remap_ecam()
-{
-    using namespace ::intel_x64::ept;
-    using namespace bfvmm::intel_x64::ept;
-
-    expects(m_vcfg);
-    auto dom0 = vcpu0->dom();
-
-    m_ecam_gpa = find_ecam_page(m_cf8);
-    if (!m_ecam_gpa) {
-        bfalert_info(0, "ECAM page not found");
-        bfalert_subnhex(0, "bus", pci_cfg_bus(m_cf8));
-        bfalert_subnhex(0, "dev", pci_cfg_dev(m_cf8));
-        bfalert_subnhex(0, "fun", pci_cfg_fun(m_cf8));
-        return;
-    }
-
-    m_ecam_hpa = dom0->ept().virt_to_phys(m_ecam_gpa).first;
-
-    auto ecam_2m = bfn::upper(m_ecam_gpa, pd::from);
-    if (dom0->ept().is_2m(ecam_2m)) {
-        identity_map_convert_2m_to_4k(dom0->ept(), ecam_2m);
-    }
-
-    auto vcfg_hpa = g_mm->virtptr_to_physint(m_vcfg.get());
-
-    dom0->unmap(m_ecam_gpa);
-    dom0->ept().map_4k(m_ecam_gpa,
-                       vcfg_hpa,
-                       mmap::attr_type::read_write,
-                       mmap::memory_type::uncacheable);
-    ::intel_x64::vmx::invept_global();
-
-    dom0->m_vmm_map_whitelist.try_emplace(vcfg_hpa, m_ecam_gpa);
-}
-
 void pci_dev::parse_capabilities()
 {
     if (m_msi_cap) {
@@ -378,8 +336,9 @@ void pci_dev::init_root_vcfg()
     m_vcfg[0xF] = 0xFF;
 
     /*
-     * Disable multi-message and hide terminate the
-     * capability list at the MSI capability.
+     * Disable multi-message and terminate the capability list at the MSI capability.
+     * This means no other capability (including PCIe) other than MSI will be
+     * seen by vcpus.
      */
     m_vcfg[m_msi_cap] &= 0xFF8100FF;
 
@@ -574,7 +533,7 @@ bool pci_dev::root_cfg_in(base_vcpu *vcpu, cfg_info &info)
 
     if (reg >= 0x40) {
         bfalert_nhex(0, "OOB PCI config in access, reg offset = ", reg);
-        info.exit_info.val = 0;
+        cfg_hdlr::write_cfg_info(0, info);
         return true;
     }
 
