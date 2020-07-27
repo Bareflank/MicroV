@@ -108,6 +108,7 @@ public:
 
 public:
 
+    int32_t insn_mode() const noexcept;
     microv::xen_vcpu *xen_vcpu() noexcept;
     void set_xenstore_ready() noexcept;
     uint64_t is_xenstore_ready() noexcept;

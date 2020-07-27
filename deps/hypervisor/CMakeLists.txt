@@ -111,6 +111,7 @@ include_dependency(SOURCE_DEPENDS_DIR newlib)
 include_dependency(SOURCE_DEPENDS_DIR llvm)
 include_dependency(SOURCE_DEPENDS_DIR libcxxabi)
 include_dependency(SOURCE_DEPENDS_DIR libcxx)
+include_dependency(SOURCE_DEPENDS_DIR capstone)
 
 add_subproject(bfsdk vmm DEPENDS bfroot)
 
@@ -121,7 +122,7 @@ endif()
 
 if(ENABLE_BUILD_VMM)
     add_subproject(bfintrinsics vmm DEPENDS bfruntime)
-    add_subproject(bfvmm vmm DEPENDS bfunwind bfintrinsics bfsdk)
+    add_subproject(bfvmm vmm DEPENDS bfunwind bfintrinsics bfsdk capstone)
 endif()
 
 # ------------------------------------------------------------------------------

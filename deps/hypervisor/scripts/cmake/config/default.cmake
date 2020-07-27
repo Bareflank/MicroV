@@ -888,6 +888,14 @@ set(GNUEFI_URL_MD5 "3cd10dc9c14f4a3891f8537fd78ed04f"
     CACHE INTERNAL FORCE
     "gnu-efi URL MD5 hash")
 
+set(CAPSTONE_URL "https://github.com/aquynh/capstone/archive/4.0.2.zip"
+    CACHE INTERNAL FORCE
+    "capstone URL")
+
+set(CAPSTONE_URL_MD5 "fcd2d666848c9620d462edd2703163b5"
+    CACHE INTERNAL FORCE
+    "capstone URL MD5 hash")
+
 # ------------------------------------------------------------------------------
 # BFM Configs
 # ------------------------------------------------------------------------------

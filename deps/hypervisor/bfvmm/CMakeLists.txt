@@ -86,6 +86,7 @@ if(PREFIX STREQUAL vmm)
         bfvmm_memory_manager
         bfvmm_debug
         vmm::bfintrinsics
+        ${CMAKE_INSTALL_PREFIX}/lib/libcapstone.a
         ${CMAKE_INSTALL_PREFIX}/lib/libc++.a
         ${CMAKE_INSTALL_PREFIX}/lib/libc++abi.a
         vmm::bfpthread

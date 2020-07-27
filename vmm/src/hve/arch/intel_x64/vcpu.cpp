@@ -27,6 +27,7 @@
 #include <microv/gpalayout.h>
 #include <microv/builderinterface.h>
 #include <clflush.h>
+#include <hve/arch/intel_x64/disassembler.h>
 #include <hve/arch/intel_x64/vcpu.h>
 #include <iommu/iommu.h>
 #include <pci/dev.h>
@@ -49,6 +50,7 @@ static bfn::once_flag acpi_ready;
 static bfn::once_flag vtd_ready;
 static bfn::once_flag pci_ready;
 static bfn::once_flag ept_ready;
+static bfn::once_flag disasm_ready;
 
 static std::mutex &root_ept_mutex() noexcept
 {
@@ -392,10 +394,6 @@ vcpu::write_dom0_guest_state(domain *domain)
 {
     if (domain->exec_mode() == VM_EXEC_XENPVH) {
         m_xen_vcpu = std::make_unique<class xen_vcpu>(this);
-
-        if (g_enable_winpv) {
-            init_xen_platform_pci(m_xen_vcpu.get());
-        }
     }
 }
 
@@ -422,6 +420,20 @@ vcpu::write_domU_guest_state(domain *domain)
 
         m_xen_vcpu = std::make_unique<class xen_vcpu>(this);
     }
+}
+
+int32_t vcpu::insn_mode() const noexcept
+{
+    auto lma = vmcs_n::guest_ia32_efer::lma::is_enabled();
+    auto csar = vmcs_n::guest_cs_access_rights::get();
+    auto csl = vmcs_n::guest_cs_access_rights::l::is_enabled(csar);
+    auto csd = vmcs_n::guest_cs_access_rights::db::is_enabled(csar);
+
+    if (lma && csl) {
+        return disassembler::insn_mode_64bit;
+    }
+
+    return csd ? disassembler::insn_mode_32bit : disassembler::insn_mode_16bit;
 }
 
 microv::xen_vcpu *vcpu::xen_vcpu() noexcept
@@ -518,6 +530,7 @@ bool vcpu::handle_0x4BF00010(bfvmm::intel_x64::vcpu *vcpu)
     }
 #endif
 
+    bfn::call_once(disasm_ready, []{ init_disasm(); });
     m_lapic = std::make_unique<lapic>(this);
 
     if (g_uefi_boot) {
@@ -529,6 +542,10 @@ bool vcpu::handle_0x4BF00010(bfvmm::intel_x64::vcpu *vcpu)
             bfn::call_once(vtd_ready, []{ init_vtd(); });
             m_pci_handler.enable();
             init_pci_on_vcpu(this);
+        }
+
+        if (g_enable_winpv) {
+            init_xen_platform_pci(m_xen_vcpu.get());
         }
     }
 

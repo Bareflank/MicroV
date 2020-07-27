@@ -270,7 +270,7 @@ void init_xen_platform_pci(xen_vcpu *vcpu)
         const auto d = pci_cfg_dev(pci_cfg_addr);
         const auto f = pci_cfg_fun(pci_cfg_addr);
 
-        snprintf(bdf_str, sizeof(bdf_str), "%02x:%02x.%02x", b, d, f);
+        snprintf(bdf_str, sizeof(bdf_str), "%02x:%02x.%1x", b, d, f);
         printv("xen-pfd: using BDF %s\n", bdf_str);
     }
 
