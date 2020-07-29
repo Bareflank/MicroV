@@ -517,6 +517,7 @@ public:
 
     /// @endcond
 
+    bool page_already_donated(uint64_t page_gpa);
     bool page_already_donated(domainid_t guest_domid, uint64_t page_gpa);
     void add_page_to_donated_range(domainid_t guest_domid, uint64_t page_gpa);
     void remove_page_from_donated_range(domainid_t guest_domid, uint64_t page_gpa);

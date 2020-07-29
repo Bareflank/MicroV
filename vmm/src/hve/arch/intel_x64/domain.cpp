@@ -220,6 +220,23 @@ extend_page_range_below(domain::page_range_iterator &range)
 }
 
 bool
+domain::page_already_donated(uint64_t page_gpa)
+{
+    spin_acquire(&m_donated_page_lock);
+    auto release = gsl::finally([&]{ spin_release(&m_donated_page_lock); });
+
+    for (auto &pair : m_donated_page_map) {
+        auto range_set = pair.second.get();
+
+        if (find_page_range(range_set, page_gpa) != range_set->end()) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+bool
 domain::page_already_donated(domainid_t guest_domid, uint64_t page_gpa)
 {
     spin_acquire(&m_donated_page_lock);
