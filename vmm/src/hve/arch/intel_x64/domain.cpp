@@ -384,7 +384,7 @@ domain::donate_root_page(vcpu *root,
              * spinning forever. Otherwise the entire system will deadlock.
              */
 
-            rc = root->begin_tlb_shootdown();
+            rc = root->begin_shootdown(IPI_CODE_SHOOTDOWN_TLB);
             if (rc == AGAIN) {
                 return AGAIN;
             }
@@ -396,7 +396,7 @@ domain::donate_root_page(vcpu *root,
 
             this->unmap(root_gpa_4k);
 
-            root->end_tlb_shootdown();
+            root->end_shootdown();
             root->invept();
 
             this->add_page_to_donated_range(guest_dom->id(), root_gpa_4k);

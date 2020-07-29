@@ -37,8 +37,6 @@
 #include <xen/vcpu.h>
 #include <xue.h>
 
-constexpr uint32_t IPI_CODE_TLB_SHOOTDOWN = 1U;
-
 microv::intel_x64::vcpu *vcpu0{nullptr};
 
 extern struct xue g_xue;
@@ -592,7 +590,7 @@ void vcpu::write_ipi(uint64_t vector)
     m_lapic->write_ipi_fixed(vector, this->id());
 }
 
-int64_t vcpu::begin_tlb_shootdown()
+int64_t vcpu::begin_shootdown(uint32_t desired_code)
 {
     expects(this->is_root_vcpu());
     expects(this->id() < 64U);
@@ -601,9 +599,8 @@ int64_t vcpu::begin_tlb_shootdown()
 
     auto code = &this->dom()->m_ipi_code;
     auto expect = 0U;
-    auto desire = IPI_CODE_TLB_SHOOTDOWN;
 
-    if (!code->compare_exchange_strong(expect, desire)) {
+    if (!code->compare_exchange_strong(expect, desired_code)) {
         return AGAIN;
     }
 
@@ -621,7 +618,7 @@ int64_t vcpu::begin_tlb_shootdown()
                            : ~0ULL;
 
     uint64_t all_not_self_mask = ~self_mask & online_mask;
-    auto shootdown_mask = &this->dom()->m_tlb_shootdown_mask;
+    auto shootdown_mask = &this->dom()->m_shootdown_mask;
 
     while ((shootdown_mask->load() & all_not_self_mask) != all_not_self_mask) {
         ::intel_x64::pause();
@@ -630,9 +627,9 @@ int64_t vcpu::begin_tlb_shootdown()
     return SUCCESS;
 }
 
-void vcpu::end_tlb_shootdown()
+void vcpu::end_shootdown()
 {
-    this->dom()->m_tlb_shootdown_mask.store(0);
+    this->dom()->m_shootdown_mask.store(0);
     this->dom()->m_ipi_code.store(0);
 }
 
@@ -672,14 +669,20 @@ bool vcpu::handle_root_init_signal(::bfvmm::intel_x64::vcpu *current)
 
 void vcpu::handle_ipi(uint32_t ipi_code)
 {
-    if (ipi_code == IPI_CODE_TLB_SHOOTDOWN) {
-        this->handle_tlb_shootdown();
-    } else {
+    switch (ipi_code) {
+    case IPI_CODE_SHOOTDOWN_TLB:
+        this->handle_shootdown_tlb();
+        break;
+    case IPI_CODE_SHOOTDOWN_IO_BITMAP:
+        this->handle_shootdown_io_bitmap();
+        break;
+    default:
         printv("%s: received unknown IPI code: 0x%x\n", __func__, ipi_code);
+        break;
     }
 }
 
-void vcpu::handle_tlb_shootdown()
+void vcpu::handle_shootdown_common()
 {
     expects(this->is_root_vcpu());
     expects(this->id() < 64U);
@@ -689,30 +692,40 @@ void vcpu::handle_tlb_shootdown()
      * to be modified to ensure that guest vcpuids (which dont start at zero)
      * map cleanly into a bitmask structure as the root vcpuids do now.
      *
-     * Since the current tlb_shootdown_mask is a uint64_t, it limits the
+     * Since the current shootdown_mask is a uint64_t, it limits the
      * effective size of the root domain to 64 cpus.
      */
 
-    auto shootdown_mask = &this->dom()->m_tlb_shootdown_mask;
+    auto shootdown_mask = &this->dom()->m_shootdown_mask;
     uint64_t self_mask = 1ULL << this->id();
 
     /*
      * Set our bit in the domain's shootdown mask. This tells the initiator
-     * of the shootdown that this cpu is in the vmm and ready to invept.
+     * of the shootdown that this cpu is waiting in the vmm.
      */
 
     shootdown_mask->fetch_or(self_mask);
 
     /*
      * Now wait until our bit is clear again. It is cleared by the initiator
-     * after it made the necessary EPT changes. Once clear, do the invept.
+     * after it is "done" (each shootdown reason has its own definition of
+     * "done").
      */
 
     while ((shootdown_mask->load() & self_mask) != 0U) {
         ::intel_x64::pause();
     }
+}
 
+void vcpu::handle_shootdown_tlb()
+{
+    this->handle_shootdown_common();
     this->invept();
+}
+
+void vcpu::handle_shootdown_io_bitmap()
+{
+    this->handle_shootdown_common();
 }
 
 //------------------------------------------------------------------------------
