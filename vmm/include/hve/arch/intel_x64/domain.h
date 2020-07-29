@@ -222,6 +222,7 @@ public:
     ///
     void map_4k_rw(uintptr_t gpa, uintptr_t hpa);
     void map_4k_rw_uc(uintptr_t gpa, uintptr_t hpa);
+    void map_4k_rw_wc(uintptr_t gpa, uintptr_t hpa);
 
     /// Map 1g GPA to HPA (Read/Write/Execute)
     ///

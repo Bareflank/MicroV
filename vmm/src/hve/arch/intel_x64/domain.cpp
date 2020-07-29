@@ -506,6 +506,14 @@ domain::map_4k_rw(uintptr_t gpa, uintptr_t hpa)
 { m_ept_map.map_4k(gpa, hpa, ept::mmap::attr_type::read_write); }
 
 void
+domain::map_4k_rw_wc(uintptr_t gpa, uintptr_t hpa)
+{
+    m_ept_map.map_4k(gpa, hpa,
+                     ept::mmap::attr_type::read_write,
+                     ept::mmap::memory_type::write_combining);
+}
+
+void
 domain::map_4k_rw_uc(uintptr_t gpa, uintptr_t hpa)
 {
     m_ept_map.map_4k(gpa, hpa,
