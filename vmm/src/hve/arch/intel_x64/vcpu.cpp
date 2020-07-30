@@ -130,60 +130,52 @@ static bool handle_root_ept_violation(
     std::lock_guard lock(root_ept_mutex());
 
     const auto gpa_4k = bfn::upper(info.gpa, ::x64::pt::from);
+    info.ignore_advance = false;
 
-    /*
-     * If the access is to a VMM page, just print a warning and skip the
-     * instruction.
-     */
-
+    /* Check VMM pages */
     if (g_mm->get_phys_map()->count(gpa_4k)) {
         printv("ALERT: EPT violation to vmm page 0x%lx, skipping rip=0x%lx\n",
                 gpa_4k, vcpu->rip());
-        info.ignore_advance = false;
         return true;
     }
 
-    /*
-     * It's not to a VMM page, so here we just try to fight through as best we
-     * can by mapping the page in. Note that invept must *not* be called,
-     * because the Intel SDM explicitly states that EPT violations will do the
-     * invalidation for us, and doing it manually can cause unpredictable
-     * processor behavior.
-     */
+    /* Check MMIO pages of passthrough devices */
+    for (const auto pdev : microv::pci_passthru_list) {
+        for (const auto &pair : pdev->m_bars) {
+            const auto reg = pair.first;
+            const auto &bar = pair.second;
 
-    auto dom = vcpu_cast(vcpu)->dom();
-    auto ept = &dom->ept();
+            if (bar.type == microv::pci_bar_io) {
+                continue;
+            }
 
-    try {
-        auto entry_pair = ept->entry(info.gpa);
-        auto entry = &entry_pair.first.get();
-        auto from = entry_pair.second;
+            if (bar.contains(info.gpa)) {
+                printv("ALERT: EPT violation to BAR[%u] 0x%lx-0x%lx of passthrough"
+                       " device %s at gpa 0x%lx, skipping rip=0x%lx\n",
+                       reg - 4, bar.addr, bar.last(), pdev->m_bdf_str, info.gpa,
+                       vcpu->rip());
+                return true;
+            }
 
-        printv("(mapped from:%lu) entry:0x%lx\n", from, *entry);
-
-        *entry |= 0x7;
-        info.ignore_advance = true;
-
-    } catch (std::runtime_error &e) {
-        using namespace ::bfvmm::intel_x64::ept;
-
-        printv("(not mapped, e.what=%s)\n", e.what());
-
-        auto gpa_4k = bfn::upper(info.gpa, ::x64::pt::from);
-
-        try {
-            identity_map(*ept, gpa_4k, gpa_4k + ::x64::pt::page_size);
-        } catch (std::runtime_error &e) {
-            printv("failed to identity_map gpa 0x%lx, e.what=%s\n",
-                   gpa_4k, e.what());
+            if (gpa_4k == bfn::upper(bar.last(), ::x64::pt::from)) {
+                printv("ALERT: EPT violation to last page of BAR[%u] 0x%lx-0x%lx of"
+                       " passthrough device %s at gpa 0x%lx, skipping rip=0x%lx\n",
+                       reg - 4, bar.addr, bar.last(), pdev->m_bdf_str, info.gpa,
+                       vcpu->rip());
+                return true;
+            }
         }
-
-        info.ignore_advance = true;
-
-    } catch (std::exception &e) {
-        printv("(non-runtime_error caught: e.what=%s)\n", e.what());
-        info.ignore_advance = false;
     }
+
+    /* Check donated pages */
+    if (vcpu_cast(vcpu)->dom()->page_already_donated(gpa_4k)) {
+        printv("ALERT: EPT violation to donated page at gpa 0x%lx, skipping"
+               " rip=0x%lx\n", gpa_4k, vcpu->rip());
+        return true;
+    }
+
+    printv("ALERT: EPT violation to root-owned page, skipping rip=0x%lx\n",
+           vcpu->rip());
 
     return true;
 }

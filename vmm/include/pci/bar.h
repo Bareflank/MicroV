@@ -22,7 +22,7 @@
 #ifndef MICROV_PCI_BAR_H
 #define MICROV_PCI_BAR_H
 
-#include <list>
+#include <map>
 #include <vector>
 #include <bfdebug.h>
 
@@ -30,30 +30,84 @@
 
 namespace microv {
 
+constexpr uint32_t pci_pmio_addr_mask = 0xFFFFFFFCU;
+constexpr uint32_t pci_mmio_addr_mask = 0xFFFFFFF0U;
+
 enum pci_bar_type {
+    pci_bar_invalid,
     pci_bar_mm_32bit,
     pci_bar_mm_64bit,
     pci_bar_io
 };
 
 struct pci_bar {
-    uintptr_t addr{};
-    uint64_t size{};
-    uint8_t type{};
-    bool prefetchable{};
+    uint64_t addr{0};
+    uint64_t size{0};
+    uint8_t type{pci_bar_invalid};
+    bool prefetchable{false};
+
+    bool contains(uint64_t addr) const noexcept
+    {
+        return (addr >= this->addr) && (addr <= last());
+    }
+
+    uint64_t last() const noexcept
+    {
+        return addr + size - 1;
+    }
 };
 
-using pci_bar_list = std::list<struct pci_bar>;
+/* Map config register offset to corresponding BAR */
+using pci_bar_list = std::map<uint32_t, struct pci_bar>;
 
 inline void __parse_bar_size(uint32_t cf8,
                              uint32_t reg,
                              uint32_t orig,
-                             uint32_t mask,
+                             uint32_t addr_mask,
                              uint64_t *size)
 {
-    pci_cfg_write_reg(cf8, reg, 0xFFFFFFFF);
-    *size = ~(pci_cfg_read_reg(cf8, reg) & mask) + 1U;
+    constexpr uint32_t pci_bar_size_mask = 0xFFFFFFFFU;
+
+    pci_cfg_write_reg(cf8, reg, pci_bar_size_mask);
+    *size = ~(pci_cfg_read_reg(cf8, reg) & addr_mask) + 1U;
     pci_cfg_write_reg(cf8, reg, orig);
+}
+
+inline void __parse_bar(uint32_t cf8, uint32_t reg, struct pci_bar *bar)
+{
+    const auto val = pci_cfg_read_reg(cf8, reg);
+
+    if (val == 0U) {
+        bar->type = pci_bar_invalid;
+        return;
+    }
+
+    /* BAR with bit 0 set is in IO space */
+    if ((val & 0x1U) != 0U) {
+        __parse_bar_size(cf8, reg, val, pci_pmio_addr_mask, &bar->size);
+
+        bar->addr = val & pci_pmio_addr_mask;
+        bar->type = pci_bar_io;
+        bar->prefetchable = false;
+
+        return;
+    }
+
+    /* Otherwise it is in Memory space */
+    __parse_bar_size(cf8, reg, val, pci_mmio_addr_mask, &bar->size);
+
+    bar->addr = val & pci_mmio_addr_mask;
+    bar->prefetchable = (val & 0x8U) != 0U;
+
+    /* Type 2 means 64-bit */
+    if (val & 0x4U) {
+        bar->addr |= (uint64_t)pci_cfg_read_reg(cf8, reg + 1U) << 32;
+        bar->type = pci_bar_mm_64bit;
+    } else {
+        bar->type = pci_bar_mm_32bit;
+    }
+
+    return;
 }
 
 inline void __parse_bars(uint32_t cf8,
@@ -61,32 +115,18 @@ inline void __parse_bars(uint32_t cf8,
                          pci_bar_list &bars)
 {
     for (auto i = 0; i < bar_regs.size(); i++) {
-        const auto reg = bar_regs[i];
-        const auto val = pci_cfg_read_reg(cf8, reg);
-
-        if (val == 0) {
-            continue;
-        }
-
         struct pci_bar bar{};
+        const auto reg = bar_regs[i];
 
-        if ((val & 0x1) != 0) { // IO bar
-            __parse_bar_size(cf8, reg, val, 0xFFFFFFFC, &bar.size);
-            bar.addr = val & 0xFFFFFFFC;
-            bar.type = pci_bar_io;
-        } else {                // MM bar
-            __parse_bar_size(cf8, reg, val, 0xFFFFFFF0, &bar.size);
-            bar.addr = (val & 0xFFFFFFF0);
-            bar.prefetchable = (val & 0x8) != 0;
-            if (((val & 0x6) >> 1) == 2) {
-                bar.addr |= (gsl::narrow_cast<uintptr_t>(pci_cfg_read_reg(cf8, bar_regs.at(++i))) << 32);
-                bar.type = pci_bar_mm_64bit;
-            } else {
-                bar.type = pci_bar_mm_32bit;
-            }
+        __parse_bar(cf8, reg, &bar);
+
+        if (bar.type == pci_bar_invalid) {
+            continue;
+        } else if (bar.type == pci_bar_mm_64bit) {
+            i++;
         }
 
-        bars.push_back(bar);
+        bars[reg] = bar;
     }
 }
 

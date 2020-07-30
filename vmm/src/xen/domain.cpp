@@ -1554,7 +1554,9 @@ bool xen_domain::assign_device(xen_vcpu *v,
     }
 
     /* Check BARs against assigned IO regions */
-    for (const auto &bar : dev->m_bars) {
+    for (const auto &pair : dev->m_bars) {
+        const auto reg = pair.first;
+        const auto &bar = pair.second;
         bool found = false;
 
         if (bar.type == pci_bar_io) {
@@ -1571,7 +1573,7 @@ bool xen_domain::assign_device(xen_vcpu *v,
             if (!found) {
                 printv("%s: no matching region found ", __func__);
                 printf("for PMIO BAR [0x%lx-0x%lx]\n",
-                        bar.addr, bar.addr + bar.size - 1);
+                        bar.addr, bar.last());
                 return false;
             }
         } else {
@@ -1588,7 +1590,7 @@ bool xen_domain::assign_device(xen_vcpu *v,
             if (!found) {
                 printv("%s: no matching region found ", __func__);
                 printf("for MMIO BAR [0x%lx-0x%lx]\n",
-                        bar.addr, bar.addr + bar.size - 1);
+                        bar.addr, bar.last());
                 return false;
             }
         }

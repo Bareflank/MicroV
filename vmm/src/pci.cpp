@@ -156,7 +156,32 @@ static void probe_bus(uint32_t b, struct pci_dev *bridge)
                 probe_bus(next, pdev);
             } else if (pdev->is_netdev()) {
                 if (g_no_pci_pt.count(addr)) {
-                    printv("%s: passthrough disabled\n", pdev->bdf_str());
+                    printv("pci: %s: passthrough disabled via boot option\n",
+                           pdev->bdf_str());
+                    continue;
+                }
+
+                bool misaligned_bar = false;
+                pdev->parse_bars();
+
+                for (const auto &pair : pdev->m_bars) {
+                    const auto reg = pair.first;
+                    const auto &bar = pair.second;
+
+                    if (bar.type == microv::pci_bar_io) {
+                        continue;
+                    }
+
+                    if (bar.addr != bfn::upper(bar.addr, ::x64::pt::from)) {
+                        misaligned_bar = true;
+                        printv("pci: %s: MMIO BAR[%u] at 0x%lx-0x%lx is not"
+                               " 4K-aligned, disabling passthrough\n",
+                               pdev->bdf_str(), reg - 4, bar.addr, bar.last());
+                        break;
+                    }
+                }
+
+                if (misaligned_bar) {
                     continue;
                 }
 
@@ -229,6 +254,59 @@ struct pci_dev *find_passthru_dev(uint64_t bdf)
     }
 
     return nullptr;
+}
+
+static void map_pmio_bar(::microv::intel_x64::vcpu *vcpu,
+                         const struct pci_bar *bar)
+{
+    for (auto port = bar->addr; port <= bar->last(); port++) {
+        vcpu->pass_through_io_accesses(port);
+    }
+}
+
+static void unmap_pmio_bar(::microv::intel_x64::vcpu *vcpu,
+                           const struct pci_bar *bar)
+{
+    for (auto port = bar->addr; port <= bar->last(); port++) {
+        vcpu->trap_io_accesses(port);
+    }
+}
+
+static void map_mmio_bar(::bfvmm::intel_x64::ept::mmap *ept,
+                         const struct pci_bar *bar,
+                         bool flush,
+                         bool snoop)
+{
+    using namespace ::bfvmm::intel_x64::ept;
+
+    for (auto gpa = bar->addr; gpa <= bar->last(); gpa += 4096) {
+        const auto memtype = bar->prefetchable
+                             ? mmap::memory_type::write_combining
+                             : mmap::memory_type::uncacheable;
+
+        const auto perms = mmap::attr_type::read_write;
+
+        ept->map_4k(gpa, gpa, perms, memtype, flush, snoop);
+    }
+}
+
+static void unmap_mmio_bar(::bfvmm::intel_x64::ept::mmap *ept,
+                           struct pci_bar *bar,
+                           bool flush)
+{
+    using namespace ::intel_x64::ept;
+    using namespace ::bfvmm::intel_x64::ept;
+
+    for (auto gpa = bar->addr; gpa <= bar->last(); gpa += 4096) {
+        const auto gpa_2m = bfn::upper(gpa, pd::from);
+
+        if (ept->is_2m(gpa_2m)) {
+            identity_map_convert_2m_to_4k(*ept, gpa_2m);
+        }
+
+        ept->unmap(gpa, flush);
+        ept->release(gpa);
+    }
 }
 
 pci_dev::pci_dev(uint32_t addr, struct pci_dev *parent_bridge)
@@ -353,19 +431,91 @@ void pci_dev::add_root_handlers(vcpu *vcpu)
 
     HANDLE_CFG_ACCESS(this, root_cfg_in, pci_dir_in);
     HANDLE_CFG_ACCESS(this, root_cfg_out, pci_dir_out);
+
+    ::intel_x64::rmb();
+
+    expects(!m_bars.empty());
+
+    for (const auto &pair : m_bars) {
+        const auto reg = pair.first;
+        const auto &bar = pair.second;
+
+        if (bar.type != pci_bar_io) {
+            continue;
+        }
+
+        unmap_pmio_bar(vcpu, &bar);
+
+        if (vcpu->id() == 0) {
+            printv("pci: %s: PMIO BAR[%u] at 0x%lx-0x%lx\n",
+                   this->bdf_str(), reg - 4, bar.addr, bar.last());
+        }
+    }
+
+    if (vcpu->id() != 0) {
+        return;
+    }
+
+    for (auto &pair : m_bars) {
+        const auto reg = pair.first;
+        auto &bar = pair.second;
+
+        if (bar.type == pci_bar_io) {
+            continue;
+        }
+
+        /* No need to flush the EPT update since this is for the root vm */
+        bool flush = false;
+
+        unmap_mmio_bar(&vcpu->dom()->ept(), &bar, flush);
+
+        printv("pci: %s: MMIO BAR[%u] at 0x%lx-0x%lx (%s, %s)\n",
+               this->bdf_str(), reg - 4, bar.addr, bar.last(),
+               bar.type == microv::pci_bar_mm_64bit ? "64-bit" : "32-bit",
+               bar.prefetchable ? "prefetchable" : "non-prefetchable");
+    }
 }
+
+/*
+ * In general there is a race between BAR relocations done by the root VM
+ * and the BARs' values being mapped into the guest below. I think this can
+ * be addressed by moving this code out of the g_vcm->create() path and
+ * into its own hypercall so that it can be easily restarted. Some
+ * synchronization primitive could be used to signal to either party to
+ * retry while the other is using it.
+ *
+ * Another related issue is what happens if the root relocates the BARs
+ * while the device is in use by the guest? In theory this could happen
+ * any time, but in practice I would think it would be rare, maybe e.g.
+ * in response to a hotplug event that causes the root to rebalance IO
+ * windows. In this case, the BAR relocation code would need to:
+ *
+ *   1. detect that the guest is running
+ *   2. pause the guest
+ *   3. somehow ensure that the device doesn't go off the rails if
+ *      its BARs are remapped.
+ *   4. do the relocation
+ *     4.1. unmap the BARs from the root vm
+ *     4.2. remap the MMIO BAR in the guest to point to the new hpa
+ *          (if changed) and trap the PMIO ports and forward them to
+ *          the new ones (if changed).
+ *   5. unpause the guest
+ *
+ * The only one that concerns me is 3. That seems very device-specific to me
+ * and difficult to come up with a generic solution.  Maybe you could get away
+ * with disabling DMA/IO/Memory spaces and interrupts (which could be done
+ * generically), then somehow drain in-flight transactions, then do the
+ * relocation, but I'm not sure.
+ */
 
 void pci_dev::add_guest_handlers(vcpu *vcpu)
 {
     expects(this->is_normal());
     expects(!this->is_host_bridge());
     expects(vcpuid::is_guest_vcpu(vcpu->id()));
+    expects(m_iommu);
 
     m_guest_vcpuid = vcpu->id();
-
-    if (m_bars.empty()) {
-        this->parse_bars();
-    }
 
     HANDLE_CFG_ACCESS(this, guest_normal_cfg_in, pci_dir_in);
     HANDLE_CFG_ACCESS(this, guest_normal_cfg_out, pci_dir_out);
@@ -375,16 +525,18 @@ void pci_dev::add_guest_handlers(vcpu *vcpu)
         return;
     }
 
-    for (const auto &bar : m_bars) {
-        if (bar.type == pci_bar_io) {
-            for (auto p = 0; p < bar.size; p++) {
-                vcpu->pass_through_io_accesses(bar.addr + p);
-            }
-            continue;
-        }
+    ::intel_x64::rmb();
 
-        for (auto i = 0; i < bar.size; i += 4096) {
-            dom->map_4k_rw_uc(bar.addr + i, bar.addr + i);
+    for (const auto &pair : m_bars) {
+        const auto &bar = pair.second;
+
+        if (bar.type == pci_bar_io) {
+            map_pmio_bar(vcpu, &bar);
+        } else {
+            bool flush = !m_iommu->coherent_page_walk();
+            bool snoop = m_iommu->snoop_ctl() && bar.prefetchable;
+
+            map_mmio_bar(&dom->ept(), &bar, flush, snoop);
         }
     }
 
@@ -394,11 +546,6 @@ void pci_dev::add_guest_handlers(vcpu *vcpu)
 
 void pci_dev::map_dma(domain *dom)
 {
-    if (!m_iommu) {
-        printv("pci %s: m_iommu is NULL\n", this->bdf_str());
-        return;
-    }
-
     auto bus = pci_cfg_bus(m_cf8);
     auto devfn = pci_cfg_devfn(m_cf8);
 
@@ -547,10 +694,172 @@ bool pci_dev::root_cfg_in(base_vcpu *vcpu, cfg_info &info)
     return true;
 }
 
-inline bool write_to_msi_data(uint32_t offset, struct msi_desc *msi) noexcept
+inline bool access_to_msi_data(uint32_t offset, struct msi_desc *msi) noexcept
 {
     return ((offset == 3) && msi->is_64bit()) ||
            ((offset == 2) && !msi->is_64bit());
+}
+
+inline bool access_to_command_reg_low(const cfg_info &info) noexcept
+{
+    return info.reg == 1 && cfg_hdlr::access_port(info) == 0xCFC;
+}
+
+void pci_dev::get_relocated_bars(bool type_pmio, pci_bar_list &relocated_bars)
+{
+    for (const auto &pair : m_bars) {
+        const auto reg = pair.first;
+        const auto &old_bar = pair.second;
+
+        if ((type_pmio && (old_bar.type != microv::pci_bar_io)) ||
+            (!type_pmio && (old_bar.type == microv::pci_bar_io))) {
+            continue;
+        }
+
+        struct pci_bar new_bar{};
+
+        __parse_bar(m_cf8, reg, &new_bar);
+
+        expects(old_bar.type == new_bar.type);
+        expects(old_bar.prefetchable == new_bar.prefetchable);
+
+        if (old_bar.addr == new_bar.addr) {
+            continue;
+        }
+
+        if (!type_pmio) {
+            expects(new_bar.addr == bfn::upper(new_bar.addr, ::x64::pt::from));
+        }
+
+        relocated_bars[reg] = new_bar;
+    }
+}
+
+void pci_dev::show_relocated_bars(bool type_pmio, const pci_bar_list &relocated_bars)
+{
+    for (const auto &pair : relocated_bars) {
+        const auto reg = pair.first;
+        const auto &bar = m_bars[reg];
+
+        if (type_pmio) {
+            printv("pci: %s: PMIO BAR[%u] relocated to 0x%lx-0x%lx\n",
+                   this->bdf_str(), reg - 4, bar.addr, bar.last());
+        } else {
+            printv("pci: %s: MMIO BAR[%u] relocated to 0x%lx-0x%lx (%s, %s)\n",
+                   this->bdf_str(), reg - 4, bar.addr, bar.last(),
+                   bar.type == microv::pci_bar_mm_64bit ? "64-bit" : "32-bit",
+                   bar.prefetchable ? "prefetchable" : "nonprefetchable");
+        }
+    }
+}
+
+void pci_dev::relocate_pmio_bars(base_vcpu *vcpu, cfg_info &info)
+{
+    pci_bar_list relocated_bars{};
+
+    ::intel_x64::rmb();
+
+    this->get_relocated_bars(true, relocated_bars);
+    if (relocated_bars.size() == 0) {
+        return;
+    }
+
+    auto root = vcpu_cast(vcpu);
+    expects(root->is_root_vcpu());
+
+    auto rc = root->begin_shootdown(IPI_CODE_SHOOTDOWN_IO_BITMAP);
+    if (rc == AGAIN) {
+        info.again = true;
+        return;
+    }
+
+    for (const auto &pair : relocated_bars) {
+        const auto reg = pair.first;
+        const auto &new_bar = pair.second;
+        auto &old_bar = m_bars[reg];
+
+        for (auto id = 0U; id < nr_root_vcpus; id++) {
+            /*
+             * get_vcpu/put_vcpu aren't actually needed since we're dealing with
+             * root vcpus, but they are used throughout microv for guest vcpus
+             * (and root vcpus), so in an effort to stay consistent, just use them.
+             */
+
+            auto v = get_vcpu(id);
+            if (!v) {
+                printv("%s: failed to get_vcpu %u\n", __func__, id);
+                continue;
+            }
+
+            auto put = gsl::finally([&]{ put_vcpu(id); });
+
+            map_pmio_bar(v, &old_bar);
+            unmap_pmio_bar(v, &new_bar);
+        }
+
+        old_bar = new_bar;
+    }
+
+    ::intel_x64::wmb();
+
+    root->end_shootdown();
+
+    this->show_relocated_bars(true, relocated_bars);
+    info.again = false;
+
+    return;
+}
+
+void pci_dev::relocate_mmio_bars(base_vcpu *vcpu, cfg_info &info)
+{
+    pci_bar_list relocated_bars{};
+
+    ::intel_x64::rmb();
+
+    this->get_relocated_bars(false, relocated_bars);
+    if (relocated_bars.size() == 0) {
+        return;
+    }
+
+    auto root = vcpu_cast(vcpu);
+    expects(root->is_root_vcpu());
+
+    auto ept = &root->dom()->ept();
+    auto rc = root->begin_shootdown(IPI_CODE_SHOOTDOWN_TLB);
+
+    if (rc == AGAIN) {
+        info.again = true;
+        return;
+    }
+
+    for (auto &pair : relocated_bars) {
+        const auto reg = pair.first;
+        auto &new_bar = pair.second;
+        auto &old_bar = m_bars[reg];
+
+        /*
+         * Since this is for the root domain, and root domain devices
+         * are programmed as passthrough with VT-d, we dont need to flush
+         * the EPT modification or set the snoop bit.
+         */
+        bool flush = false;
+        bool snoop = false;
+
+        map_mmio_bar(ept, &old_bar, flush, snoop);
+        unmap_mmio_bar(ept, &new_bar, flush);
+
+        old_bar = new_bar;
+    }
+
+    ::intel_x64::wmb();
+
+    root->end_shootdown();
+    root->invept();
+
+    this->show_relocated_bars(false, relocated_bars);
+    info.again = false;
+
+    return;
 }
 
 bool pci_dev::root_cfg_out(base_vcpu *vcpu, cfg_info &info)
@@ -567,10 +876,57 @@ bool pci_dev::root_cfg_out(base_vcpu *vcpu, cfg_info &info)
         return true;
     }
 
+    if (access_to_command_reg_low(info)) {
+        auto old_val = m_vcfg[reg];
+        auto new_val = cfg_hdlr::read_cfg_info(old_val, info);
+
+        auto pmio_enabled = !(old_val & 0x1) && (new_val & 0x1);
+        auto mmio_enabled = !(old_val & 0x2) && (new_val & 0x2);
+
+        if (pmio_enabled) {
+            this->relocate_pmio_bars(vcpu, info);
+
+            if (info.again) {
+                return true;
+            }
+        }
+
+        if (mmio_enabled) {
+            this->relocate_mmio_bars(vcpu, info);
+
+            if (info.again) {
+                return true;
+            }
+        }
+    }
+
     if (reg >= bar_base && reg <= bar_last) {
+        expects(cfg_hdlr::access_size(info) == 4);
+        ::intel_x64::rmb();
+
         auto old = pci_cfg_read_reg(m_cf8, reg);
         auto val = cfg_hdlr::read_cfg_info(old, info);
+        auto itr = m_bars.find(reg);
+
+        if (itr != m_bars.end()) {
+            const auto &bar = itr->second;
+
+            if (bar.type == microv::pci_bar_io) {
+                val |= 0x1U;
+            } else {
+                if (bar.type == microv::pci_bar_mm_64bit) {
+                    val |= 0x4U;
+                }
+
+                if (bar.prefetchable) {
+                    val |= 0x8U;
+                }
+            }
+        }
+
         pci_cfg_write_reg(m_cf8, reg, val);
+
+        printv("pci: %s: bar %x written: value=0x%x\n", bdf_str(), reg, val);
         return true;
     }
 
@@ -582,7 +938,7 @@ bool pci_dev::root_cfg_out(base_vcpu *vcpu, cfg_info &info)
         uint32_t offset = reg - m_msi_cap;
         m_root_msi.reg[offset] = m_vcfg[reg];
 
-        if (write_to_msi_data(offset, &m_root_msi)) {
+        if (access_to_msi_data(offset, &m_root_msi)) {
             constexpr uint32_t rsvd_bits = 0xFFFF3800;
             uint32_t data = m_root_msi.data();
 
