@@ -64,6 +64,9 @@ static uint32_t passthru_device{};
 
 /* Emulation constants */
 static constexpr uint32_t INTX_DISABLE = (1UL << 10);
+static constexpr uint32_t PMIO_SPACE_ENABLE = (1UL << 0);
+static constexpr uint32_t MMIO_SPACE_ENABLE = (1UL << 1);
+static constexpr uint32_t BUS_MASTER_ENABLE = (1UL << 2);
 
 /* PCIe enhanced configuration access mechanism (ECAM) */
 struct mcfg_alloc {
@@ -403,13 +406,19 @@ void pci_dev::init_root_vcfg()
 
     auto ven = passthru_vendor;
     auto dev = passthru_device++;
+    auto sts_cmd = pci_cfg_read_reg(m_cf8, 1);
+
+    sts_cmd &= ~(BUS_MASTER_ENABLE | MMIO_SPACE_ENABLE | PMIO_SPACE_ENABLE);
+    sts_cmd |= INTX_DISABLE;
+
+    pci_cfg_write_reg(m_cf8, 1, sts_cmd);
 
     for (auto i = 0; i < 0x40; i++) {
         m_vcfg[i] = pci_cfg_read_reg(m_cf8, i);
     }
 
     m_vcfg[0x0] = (dev << 16) | ven;
-    m_vcfg[0x1] |= INTX_DISABLE;
+    m_vcfg[0x1] |= (BUS_MASTER_ENABLE | MMIO_SPACE_ENABLE | PMIO_SPACE_ENABLE);
     m_vcfg[0xD] = m_msi_cap * 4;
     m_vcfg[0xF] = 0xFF;
 
