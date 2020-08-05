@@ -360,6 +360,16 @@ static inline void phys_out(uint32_t addr, cfg_info &info)
     outd(0xCFC, pci_cfg_handler::read_cfg_info(ind(0xCFC), info));
 }
 
+uint32_t pci_cfg_handler::access_size(const cfg_info &info)
+{
+    return info.exit_info.size_of_access + 1;
+}
+
+uint32_t pci_cfg_handler::access_port(const cfg_info &info)
+{
+    return info.exit_info.port_number;
+}
+
 uint32_t pci_cfg_handler::read_cfg_info(uint32_t oldval, const cfg_info &info)
 {
     const auto key = make_cfg_key(info);
@@ -609,7 +619,8 @@ bool pci_cfg_handler::mmio_data_in(base_vcpu *vcpu, mmio_info &info)
 
     cfg_info ci = {
         .exit_info = pi,
-        .reg = static_cast<uint32_t>(gpa_4b - ecam_addr) >> 2
+        .reg = static_cast<uint32_t>(gpa_4b - ecam_addr) >> 2,
+        .again = false           /* unused */
     };
 
     /* Call the handler registered via vcpu::add_pci_cfg_handler */
@@ -676,13 +687,21 @@ bool pci_cfg_handler::mmio_data_out(base_vcpu *vcpu, mmio_info &info)
 
     cfg_info ci = {
         .exit_info = pi,
-        .reg = static_cast<uint32_t>(gpa_4b - ecam_addr) >> 2
+        .reg = static_cast<uint32_t>(gpa_4b - ecam_addr) >> 2,
+        .again = false
     };
 
-    info.ignore_advance = false;
+    if (!hdlr_itr->second(vcpu, ci)) {
+        return false;
+    }
 
-    /* Call the handler registered via vcpu::add_pci_cfg_handler */
-    return hdlr_itr->second(vcpu, ci);
+    if (ci.again) {
+        info.ignore_advance = true;
+        return true;
+    }
+
+    info.ignore_advance = false;
+    return true;
 }
 
 bool pci_cfg_handler::pmio_addr_in(base_vcpu *vcpu, pmio_info &info)
@@ -704,7 +723,8 @@ bool pci_cfg_handler::pmio_data_in(base_vcpu *vcpu, pmio_info &info)
 
     cfg_info ci = {
         .exit_info = info,
-        .reg = pci_cfg_reg(m_cf8)
+        .reg = pci_cfg_reg(m_cf8),
+        .again = false             /* unused */
     };
 
     if (iter == m_in_hdlrs.end()) {
@@ -721,14 +741,25 @@ bool pci_cfg_handler::pmio_data_out(base_vcpu *vcpu, pmio_info &info)
 
     cfg_info ci = {
         .exit_info = info,
-        .reg = pci_cfg_reg(m_cf8)
+        .reg = pci_cfg_reg(m_cf8),
+        .again = false
     };
 
+    bool handled = false;
+
     if (iter == m_out_hdlrs.end()) {
-        return m_default_out(vcpu, ci);
+        handled = m_default_out(vcpu, ci);
+    } else {
+        handled = iter->second(vcpu, ci);
     }
 
-    return iter->second(vcpu, ci);
+    if (!handled) {
+        return false;
+    }
+
+    info.ignore_advance = ci.again;
+
+    return true;
 }
 
 bool pci_cfg_handler::root_def_in(base_vcpu *vcpu, cfg_info &info)

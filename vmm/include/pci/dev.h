@@ -69,6 +69,7 @@ struct pci_dev {
     void parse_bars()
     {
         pci_parse_bars(m_cf8, m_bars);
+        ::intel_x64::wmb();
     }
 
     bool is_netdev() const
@@ -111,6 +112,10 @@ struct pci_dev {
     void add_root_handlers(vcpu *vcpu);
     void add_guest_handlers(vcpu *vcpu);
     void map_dma(domain *dom);
+    void get_relocated_bars(bool type_pmio, pci_bar_list &relocated_bars);
+    void show_relocated_bars(bool type_pmio, const pci_bar_list &relocated_bars);
+    void relocate_pmio_bars(base_vcpu *vcpu, cfg_info &info);
+    void relocate_mmio_bars(base_vcpu *vcpu, cfg_info &info);
 
     bool root_cfg_in(base_vcpu *vcpu, cfg_info &info);
     bool root_cfg_out(base_vcpu *vcpu, cfg_info &info);

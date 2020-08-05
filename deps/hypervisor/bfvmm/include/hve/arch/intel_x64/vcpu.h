@@ -613,6 +613,15 @@ public:
     ///
     VIRTUAL void trap_on_all_io_instruction_accesses();
 
+    /// Trap on Accesses
+    ///
+    /// @expects
+    /// @ensures
+    ///
+    /// @param port the port to pass through
+    ///
+    VIRTUAL void trap_io_accesses(vmcs_n::value_type port);
+
     /// Pass Through All IO Instruction Accesses
     ///
     /// @expects

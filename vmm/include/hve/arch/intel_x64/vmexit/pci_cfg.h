@@ -48,10 +48,13 @@ public:
     struct info {
         pmio_info &exit_info;
         uint32_t reg;
+        bool again;
     };
 
     using delegate_t = delegate<bool(base_vcpu *, struct info &info)>;
 
+    static uint32_t access_size(const struct info &info);
+    static uint32_t access_port(const struct info &info);
     static uint32_t read_cfg_info(uint32_t val, const struct info &info);
     static void write_cfg_info(uint32_t val, struct info &info);
 

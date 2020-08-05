@@ -765,6 +765,10 @@ vcpu::trap_on_all_io_instruction_accesses()
 { m_io_instruction_handler.trap_on_all_accesses(); }
 
 void
+vcpu::trap_io_accesses(vmcs_n::value_type port)
+{ m_io_instruction_handler.trap_on_access(port); }
+
+void
 vcpu::pass_through_all_io_instruction_accesses()
 { m_io_instruction_handler.pass_through_all_accesses(); }
 

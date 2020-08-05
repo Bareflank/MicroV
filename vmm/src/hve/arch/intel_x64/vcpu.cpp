@@ -37,8 +37,6 @@
 #include <xen/vcpu.h>
 #include <xue.h>
 
-constexpr uint32_t IPI_CODE_TLB_SHOOTDOWN = 1U;
-
 microv::intel_x64::vcpu *vcpu0{nullptr};
 
 extern struct xue g_xue;
@@ -132,60 +130,52 @@ static bool handle_root_ept_violation(
     std::lock_guard lock(root_ept_mutex());
 
     const auto gpa_4k = bfn::upper(info.gpa, ::x64::pt::from);
+    info.ignore_advance = false;
 
-    /*
-     * If the access is to a VMM page, just print a warning and skip the
-     * instruction.
-     */
-
+    /* Check VMM pages */
     if (g_mm->get_phys_map()->count(gpa_4k)) {
         printv("ALERT: EPT violation to vmm page 0x%lx, skipping rip=0x%lx\n",
                 gpa_4k, vcpu->rip());
-        info.ignore_advance = false;
         return true;
     }
 
-    /*
-     * It's not to a VMM page, so here we just try to fight through as best we
-     * can by mapping the page in. Note that invept must *not* be called,
-     * because the Intel SDM explicitly states that EPT violations will do the
-     * invalidation for us, and doing it manually can cause unpredictable
-     * processor behavior.
-     */
+    /* Check MMIO pages of passthrough devices */
+    for (const auto pdev : microv::pci_passthru_list) {
+        for (const auto &pair : pdev->m_bars) {
+            const auto reg = pair.first;
+            const auto &bar = pair.second;
 
-    auto dom = vcpu_cast(vcpu)->dom();
-    auto ept = &dom->ept();
+            if (bar.type == microv::pci_bar_io) {
+                continue;
+            }
 
-    try {
-        auto entry_pair = ept->entry(info.gpa);
-        auto entry = &entry_pair.first.get();
-        auto from = entry_pair.second;
+            if (bar.contains(info.gpa)) {
+                printv("ALERT: EPT violation to BAR[%u] 0x%lx-0x%lx of passthrough"
+                       " device %s at gpa 0x%lx, skipping rip=0x%lx\n",
+                       reg - 4, bar.addr, bar.last(), pdev->m_bdf_str, info.gpa,
+                       vcpu->rip());
+                return true;
+            }
 
-        printv("(mapped from:%lu) entry:0x%lx\n", from, *entry);
-
-        *entry |= 0x7;
-        info.ignore_advance = true;
-
-    } catch (std::runtime_error &e) {
-        using namespace ::bfvmm::intel_x64::ept;
-
-        printv("(not mapped, e.what=%s)\n", e.what());
-
-        auto gpa_4k = bfn::upper(info.gpa, ::x64::pt::from);
-
-        try {
-            identity_map(*ept, gpa_4k, gpa_4k + ::x64::pt::page_size);
-        } catch (std::runtime_error &e) {
-            printv("failed to identity_map gpa 0x%lx, e.what=%s\n",
-                   gpa_4k, e.what());
+            if (gpa_4k == bfn::upper(bar.last(), ::x64::pt::from)) {
+                printv("ALERT: EPT violation to last page of BAR[%u] 0x%lx-0x%lx of"
+                       " passthrough device %s at gpa 0x%lx, skipping rip=0x%lx\n",
+                       reg - 4, bar.addr, bar.last(), pdev->m_bdf_str, info.gpa,
+                       vcpu->rip());
+                return true;
+            }
         }
-
-        info.ignore_advance = true;
-
-    } catch (std::exception &e) {
-        printv("(non-runtime_error caught: e.what=%s)\n", e.what());
-        info.ignore_advance = false;
     }
+
+    /* Check donated pages */
+    if (vcpu_cast(vcpu)->dom()->page_already_donated(gpa_4k)) {
+        printv("ALERT: EPT violation to donated page at gpa 0x%lx, skipping"
+               " rip=0x%lx\n", gpa_4k, vcpu->rip());
+        return true;
+    }
+
+    printv("ALERT: EPT violation to root-owned page, skipping rip=0x%lx\n",
+           vcpu->rip());
 
     return true;
 }
@@ -592,7 +582,7 @@ void vcpu::write_ipi(uint64_t vector)
     m_lapic->write_ipi_fixed(vector, this->id());
 }
 
-int64_t vcpu::begin_tlb_shootdown()
+int64_t vcpu::begin_shootdown(uint32_t desired_code)
 {
     expects(this->is_root_vcpu());
     expects(this->id() < 64U);
@@ -601,9 +591,8 @@ int64_t vcpu::begin_tlb_shootdown()
 
     auto code = &this->dom()->m_ipi_code;
     auto expect = 0U;
-    auto desire = IPI_CODE_TLB_SHOOTDOWN;
 
-    if (!code->compare_exchange_strong(expect, desire)) {
+    if (!code->compare_exchange_strong(expect, desired_code)) {
         return AGAIN;
     }
 
@@ -621,7 +610,7 @@ int64_t vcpu::begin_tlb_shootdown()
                            : ~0ULL;
 
     uint64_t all_not_self_mask = ~self_mask & online_mask;
-    auto shootdown_mask = &this->dom()->m_tlb_shootdown_mask;
+    auto shootdown_mask = &this->dom()->m_shootdown_mask;
 
     while ((shootdown_mask->load() & all_not_self_mask) != all_not_self_mask) {
         ::intel_x64::pause();
@@ -630,9 +619,9 @@ int64_t vcpu::begin_tlb_shootdown()
     return SUCCESS;
 }
 
-void vcpu::end_tlb_shootdown()
+void vcpu::end_shootdown()
 {
-    this->dom()->m_tlb_shootdown_mask.store(0);
+    this->dom()->m_shootdown_mask.store(0);
     this->dom()->m_ipi_code.store(0);
 }
 
@@ -672,14 +661,20 @@ bool vcpu::handle_root_init_signal(::bfvmm::intel_x64::vcpu *current)
 
 void vcpu::handle_ipi(uint32_t ipi_code)
 {
-    if (ipi_code == IPI_CODE_TLB_SHOOTDOWN) {
-        this->handle_tlb_shootdown();
-    } else {
+    switch (ipi_code) {
+    case IPI_CODE_SHOOTDOWN_TLB:
+        this->handle_shootdown_tlb();
+        break;
+    case IPI_CODE_SHOOTDOWN_IO_BITMAP:
+        this->handle_shootdown_io_bitmap();
+        break;
+    default:
         printv("%s: received unknown IPI code: 0x%x\n", __func__, ipi_code);
+        break;
     }
 }
 
-void vcpu::handle_tlb_shootdown()
+void vcpu::handle_shootdown_common()
 {
     expects(this->is_root_vcpu());
     expects(this->id() < 64U);
@@ -689,30 +684,40 @@ void vcpu::handle_tlb_shootdown()
      * to be modified to ensure that guest vcpuids (which dont start at zero)
      * map cleanly into a bitmask structure as the root vcpuids do now.
      *
-     * Since the current tlb_shootdown_mask is a uint64_t, it limits the
+     * Since the current shootdown_mask is a uint64_t, it limits the
      * effective size of the root domain to 64 cpus.
      */
 
-    auto shootdown_mask = &this->dom()->m_tlb_shootdown_mask;
+    auto shootdown_mask = &this->dom()->m_shootdown_mask;
     uint64_t self_mask = 1ULL << this->id();
 
     /*
      * Set our bit in the domain's shootdown mask. This tells the initiator
-     * of the shootdown that this cpu is in the vmm and ready to invept.
+     * of the shootdown that this cpu is waiting in the vmm.
      */
 
     shootdown_mask->fetch_or(self_mask);
 
     /*
      * Now wait until our bit is clear again. It is cleared by the initiator
-     * after it made the necessary EPT changes. Once clear, do the invept.
+     * after it is "done" (each shootdown reason has its own definition of
+     * "done").
      */
 
     while ((shootdown_mask->load() & self_mask) != 0U) {
         ::intel_x64::pause();
     }
+}
 
+void vcpu::handle_shootdown_tlb()
+{
+    this->handle_shootdown_common();
     this->invept();
+}
+
+void vcpu::handle_shootdown_io_bitmap()
+{
+    this->handle_shootdown_common();
 }
 
 //------------------------------------------------------------------------------

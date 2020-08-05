@@ -222,6 +222,7 @@ public:
     ///
     void map_4k_rw(uintptr_t gpa, uintptr_t hpa);
     void map_4k_rw_uc(uintptr_t gpa, uintptr_t hpa);
+    void map_4k_rw_wc(uintptr_t gpa, uintptr_t hpa);
 
     /// Map 1g GPA to HPA (Read/Write/Execute)
     ///
@@ -516,6 +517,7 @@ public:
 
     /// @endcond
 
+    bool page_already_donated(uint64_t page_gpa);
     bool page_already_donated(domainid_t guest_domid, uint64_t page_gpa);
     void add_page_to_donated_range(domainid_t guest_domid, uint64_t page_gpa);
     void remove_page_from_donated_range(domainid_t guest_domid, uint64_t page_gpa);
@@ -639,7 +641,7 @@ public:
     static_assert(std::atomic<uint64_t>::is_always_lock_free);
 
     volatile std::atomic<uint32_t> m_ipi_code{};
-    volatile std::atomic<uint64_t> m_tlb_shootdown_mask{};
+    volatile std::atomic<uint64_t> m_shootdown_mask{};
 
     microv::spin_lock m_donated_page_lock{};
     donated_page_map m_donated_page_map{};

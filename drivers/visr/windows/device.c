@@ -80,6 +80,21 @@ visr_pre_interrupts_disabled(
     return STATUS_SUCCESS;
 }
 
+NTSTATUS
+visr_query_stop(
+    _In_ WDFDEVICE Device
+)
+{
+    UNREFERENCED_PARAMETER(Device);
+
+    DEBUG("visr_query_stop called\n");
+
+    // Returning failure here prevents BARs from being
+    // relocated in the event of resource rebalancing.
+
+    return STATUS_UNSUCCESSFUL;
+}
+
 BOOLEAN
 visr_wdf_isr(
     _In_ WDFINTERRUPT Interrupt,
@@ -155,6 +170,7 @@ visr_evt_device_add(
     pnpPowerCallbacks.EvtDeviceD0Exit = visr_evt_device_d0_exit;
     pnpPowerCallbacks.EvtDeviceD0EntryPostInterruptsEnabled = visr_post_interrupts_enabled;
     pnpPowerCallbacks.EvtDeviceD0ExitPreInterruptsDisabled = visr_pre_interrupts_disabled;
+    pnpPowerCallbacks.EvtDeviceQueryStop = visr_query_stop;
 
     WdfDeviceInitSetPnpPowerEventCallbacks(DeviceInit, &pnpPowerCallbacks);
 

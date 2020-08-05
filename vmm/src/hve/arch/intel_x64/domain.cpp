@@ -220,6 +220,23 @@ extend_page_range_below(domain::page_range_iterator &range)
 }
 
 bool
+domain::page_already_donated(uint64_t page_gpa)
+{
+    spin_acquire(&m_donated_page_lock);
+    auto release = gsl::finally([&]{ spin_release(&m_donated_page_lock); });
+
+    for (auto &pair : m_donated_page_map) {
+        auto range_set = pair.second.get();
+
+        if (find_page_range(range_set, page_gpa) != range_set->end()) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+bool
 domain::page_already_donated(domainid_t guest_domid, uint64_t page_gpa)
 {
     spin_acquire(&m_donated_page_lock);
@@ -367,7 +384,7 @@ domain::donate_root_page(vcpu *root,
              * spinning forever. Otherwise the entire system will deadlock.
              */
 
-            rc = root->begin_tlb_shootdown();
+            rc = root->begin_shootdown(IPI_CODE_SHOOTDOWN_TLB);
             if (rc == AGAIN) {
                 return AGAIN;
             }
@@ -379,7 +396,7 @@ domain::donate_root_page(vcpu *root,
 
             this->unmap(root_gpa_4k);
 
-            root->end_tlb_shootdown();
+            root->end_shootdown();
             root->invept();
 
             this->add_page_to_donated_range(guest_dom->id(), root_gpa_4k);
@@ -504,6 +521,14 @@ domain::map_2m_rw(uintptr_t gpa, uintptr_t hpa)
 void
 domain::map_4k_rw(uintptr_t gpa, uintptr_t hpa)
 { m_ept_map.map_4k(gpa, hpa, ept::mmap::attr_type::read_write); }
+
+void
+domain::map_4k_rw_wc(uintptr_t gpa, uintptr_t hpa)
+{
+    m_ept_map.map_4k(gpa, hpa,
+                     ept::mmap::attr_type::read_write,
+                     ept::mmap::memory_type::write_combining);
+}
 
 void
 domain::map_4k_rw_uc(uintptr_t gpa, uintptr_t hpa)

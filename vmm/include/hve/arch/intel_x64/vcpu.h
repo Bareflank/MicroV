@@ -54,6 +54,8 @@
 //------------------------------------------------------------------------------
 
 inline vcpuid_t nr_root_vcpus = 0;
+inline constexpr uint32_t IPI_CODE_SHOOTDOWN_TLB = 1U;
+inline constexpr uint32_t IPI_CODE_SHOOTDOWN_IO_BITMAP = 2U;
 
 namespace microv {
     class xen_vcpu;
@@ -366,12 +368,14 @@ public:
     bool handle_guest_init_signal(::bfvmm::intel_x64::vcpu *vcpu);
     bool handle_root_init_signal(::bfvmm::intel_x64::vcpu *vcpu);
 
-    /// Signal begin/end of TLB shootdown to the other cpus on the system
-    int64_t begin_tlb_shootdown();
-    void end_tlb_shootdown();
+    /// Signal begin/end of shootdown to the other cpus on the system
+    int64_t begin_shootdown(uint32_t ipi_code);
+    void end_shootdown();
 
-    /// Handle a TLB shootdown IPI sent from another core
-    void handle_tlb_shootdown();
+    /// Handle shootdown IPI sent from another core
+    void handle_shootdown_common();
+    void handle_shootdown_io_bitmap();
+    void handle_shootdown_tlb();
 
     /// Exception vmexit handlers
     bool handle_invalid_opcode(
