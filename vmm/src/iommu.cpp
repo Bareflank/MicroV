@@ -204,8 +204,12 @@ void iommu::init_regs()
     /* Required write-buffer flushing is not supported */
     ensures(((m_cap & cap_rwbf_mask) >> cap_rwbf_from) == 0);
 
-    /* Do not support IOMMUs without page-selective invalidation */
-    ensures(((m_cap & cap_psi_mask) >> cap_psi_from) == 1);
+    m_psi_supported = ((m_cap & cap_psi_mask) >> cap_psi_from) == 1U;
+    m_max_slpg_size = (m_cap & cap_sllps_mask) >> cap_sllps_from;
+
+    printv("iommu: supported second-level page sizes: 4KB %s %s\n",
+           (m_max_slpg_size > 0) ? "2MB" : "",
+           (m_max_slpg_size > 2) ? "1GB" : "");
 
     if (this->snoop_ctl()) {
         printv("iommu: enabling snoop control\n");
@@ -600,9 +604,13 @@ void iommu::flush_iotlb(const dom_t *dom)
 /* Page-selective invalidation of IOTLB */
 void iommu::flush_iotlb_4k(const dom_t *dom, uint64_t addr, bool flush_nonleaf)
 {
-    const uint64_t domid = this->did(dom);
+    if (!m_psi_supported) {
+        this->flush_iotlb(dom);
+        return;
+    }
 
     /* Fallback to global invalidation if domain is out of range */
+    const uint64_t domid = this->did(dom);
     if (domid >= nr_domains()) {
         printv("%s: WARNING: did:0x%lx out of range\n", __func__, domid);
         this->flush_iotlb();

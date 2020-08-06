@@ -88,6 +88,7 @@ private:
     uint8_t m_sagaw{};
     uint8_t m_aw{};
     uint8_t m_did_bits{};
+    uint8_t m_max_slpg_size{};
 
     size_t m_iotlb_reg_off{};
     static constexpr size_t iotlb_reg_num = 2;
@@ -103,6 +104,7 @@ private:
     std::vector<struct pci_dev *> m_guest_devs{};
     bool m_scope_all{};
     bool m_remapping_dma{};
+    bool m_psi_supported{};
 
     uint64_t read64(size_t offset) const
     {
