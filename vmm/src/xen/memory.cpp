@@ -642,10 +642,8 @@ void xen_memory::map_page(class xen_page *pg)
 {
     const auto gpa = xen_addr(pg->gfn);
     const auto hpa = xen_addr(pg->page->hfn);
-    const bool flush = iommu_incoherent();
-    const bool snoop = iommu_snoop_ctl() && pg->mtype != pg_mtype_uc;
 
-    pg->epte = &m_ept->map_4k(gpa, hpa, pg->perms, pg->mtype, flush, snoop);
+    pg->epte = &m_ept->map_4k(gpa, hpa, pg->perms, pg->mtype);
     pg->present = true;
 }
 
@@ -859,8 +857,8 @@ bool xen_memory::add_to_physmap_batch(xen_vcpu *v,
 
 void xen_memory::unmap_page(class xen_page *pg)
 {
-    m_ept->unmap(xen_addr(pg->gfn), iommu_incoherent());
-    m_ept->release(xen_addr(pg->gfn), iommu_incoherent());
+    m_ept->unmap(xen_addr(pg->gfn));
+    m_ept->release(xen_addr(pg->gfn));
     pg->present = false;
 }
 
@@ -953,8 +951,8 @@ bool xen_memory::decrease_reservation(xen_vcpu *v,
          * the memory hasn't been accessed yet.
          */
 
-//        m_ept->unmap(xen_addr(gfn[0]), iommu_incoherent());
-//        m_ept->release(xen_addr(gfn[0]), iommu_incoherent());
+//        m_ept->unmap(xen_addr(gfn[0]));
+//        m_ept->release(xen_addr(gfn[0]));
 
         nr_done = 1;
         uvv->set_rax(nr_done);

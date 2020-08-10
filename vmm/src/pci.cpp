@@ -276,9 +276,7 @@ static void unmap_pmio_bar(::microv::intel_x64::vcpu *vcpu,
 }
 
 static void map_mmio_bar(::bfvmm::intel_x64::ept::mmap *ept,
-                         const struct pci_bar *bar,
-                         bool flush,
-                         bool snoop)
+                         const struct pci_bar *bar)
 {
     using namespace ::bfvmm::intel_x64::ept;
 
@@ -289,13 +287,12 @@ static void map_mmio_bar(::bfvmm::intel_x64::ept::mmap *ept,
 
         const auto perms = mmap::attr_type::read_write;
 
-        ept->map_4k(gpa, gpa, perms, memtype, flush, snoop);
+        ept->map_4k(gpa, gpa, perms, memtype);
     }
 }
 
 static void unmap_mmio_bar(::bfvmm::intel_x64::ept::mmap *ept,
-                           struct pci_bar *bar,
-                           bool flush)
+                           struct pci_bar *bar)
 {
     using namespace ::intel_x64::ept;
     using namespace ::bfvmm::intel_x64::ept;
@@ -307,7 +304,7 @@ static void unmap_mmio_bar(::bfvmm::intel_x64::ept::mmap *ept,
             identity_map_convert_2m_to_4k(*ept, gpa_2m);
         }
 
-        ept->unmap(gpa, flush);
+        ept->unmap(gpa);
         ept->release(gpa);
     }
 }
@@ -473,10 +470,7 @@ void pci_dev::add_root_handlers(vcpu *vcpu)
             continue;
         }
 
-        /* No need to flush the EPT update since this is for the root vm */
-        bool flush = false;
-
-        unmap_mmio_bar(&vcpu->dom()->ept(), &bar, flush);
+        unmap_mmio_bar(&vcpu->dom()->ept(), &bar);
 
         printv("pci: %s: MMIO BAR[%u] at 0x%lx-0x%lx (%s, %s)\n",
                this->bdf_str(), reg - 4, bar.addr, bar.last(),
@@ -542,10 +536,7 @@ void pci_dev::add_guest_handlers(vcpu *vcpu)
         if (bar.type == pci_bar_io) {
             map_pmio_bar(vcpu, &bar);
         } else {
-            bool flush = !m_iommu->coherent_page_walk();
-            bool snoop = m_iommu->snoop_ctl() && bar.prefetchable;
-
-            map_mmio_bar(&dom->ept(), &bar, flush, snoop);
+            map_mmio_bar(&dom->ept(), &bar);
         }
     }
 
@@ -846,16 +837,8 @@ void pci_dev::relocate_mmio_bars(base_vcpu *vcpu, cfg_info &info)
         auto &new_bar = pair.second;
         auto &old_bar = m_bars[reg];
 
-        /*
-         * Since this is for the root domain, and root domain devices
-         * are programmed as passthrough with VT-d, we dont need to flush
-         * the EPT modification or set the snoop bit.
-         */
-        bool flush = false;
-        bool snoop = false;
-
-        map_mmio_bar(ept, &old_bar, flush, snoop);
-        unmap_mmio_bar(ept, &new_bar, flush);
+        map_mmio_bar(ept, &old_bar);
+        unmap_mmio_bar(ept, &new_bar);
 
         old_bar = new_bar;
     }
