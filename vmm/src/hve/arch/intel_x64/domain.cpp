@@ -114,7 +114,7 @@ void domain::setup_dom0()
         m_sod_info.xen_domid = DOMID_WINPV;
         m_sod_info.flags = DOMF_EXEC_XENPVH;
 
-        m_xen_domid = create_xen_domain(this, nullptr);
+        m_xen_domid = create_xen_domain(this);
         m_xen_dom = get_xen_domain(m_xen_domid);
 
         if (g_disable_xen_pfd) {
@@ -128,28 +128,7 @@ void domain::setup_dom0()
 void domain::setup_domU()
 {
     if (m_sod_info.is_xen_dom()) {
-        class iommu *iommu{};
-
-        if (m_sod_info.is_ndvm()) {
-            for (auto pdev : pci_passthru_list) {
-                if (!pdev->is_netdev()) {
-                    continue;
-                }
-
-                if (!iommu) {
-                    iommu = pdev->m_iommu;
-                } else {
-                    /* Every net device should have the same IOMMU */
-                    expects(pdev->m_iommu == iommu);
-                }
-            }
-
-            if (!iommu) {
-                bfalert_info(0, "No passthrough network devices found");
-            }
-        }
-
-        m_xen_domid = create_xen_domain(this, iommu);
+        m_xen_domid = create_xen_domain(this);
         m_xen_dom = get_xen_domain(m_xen_domid);
     }
 }

@@ -38,8 +38,7 @@ namespace microv {
 
 constexpr xen_domid_t DOMID_WINPV = DOMID_FIRST_RESERVED - 1;
 
-xen_domid_t create_xen_domain(microv_domain *uv_dom,
-                              class iommu *iommu = nullptr);
+xen_domid_t create_xen_domain(microv_domain *uv_dom);
 xen_domain *get_xen_domain(xen_domid_t id) noexcept;
 void put_xen_domain(xen_domid_t id) noexcept;
 void destroy_xen_domain(xen_domid_t id);
@@ -84,7 +83,7 @@ bool xen_domain_assign_device(xen_vcpu *vcpu, struct xen_domctl *ctl);
  */
 class xen_domain {
 public:
-    xen_domain(microv_domain *domain, class iommu *iommu = nullptr);
+    xen_domain(microv_domain *domain);
     ~xen_domain();
 
     void add_root_page(uintptr_t this_gpa, uintptr_t hpa, uint32_t perm,

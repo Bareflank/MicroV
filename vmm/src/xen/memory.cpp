@@ -24,7 +24,6 @@
 #include <unordered_set>
 
 #include <hve/arch/intel_x64/vcpu.h>
-#include <iommu/iommu.h>
 #include <printv.h>
 #include <xen/domain.h>
 #include <xen/memory.h>
@@ -428,11 +427,10 @@ bool xenmem_acquire_resource(xen_vcpu *vcpu)
 }
 
 /* class xen_memory */
-xen_memory::xen_memory(xen_domain *dom, class iommu *iommu) :
+xen_memory::xen_memory(xen_domain *dom) :
     m_xen_dom{dom},
     m_ept{&dom->m_uv_dom->ept()}
 {
-    this->bind_iommu(iommu);
 }
 
 void xen_memory::add_ept_handlers(xen_vcpu *v)
@@ -579,63 +577,6 @@ bool xen_memory::handle_ept_exec(base_vcpu *vcpu,
     }
 
     return true;
-}
-
-void xen_memory::bind_iommu(class iommu *new_iommu)
-{
-    if (!new_iommu) {
-        return;
-    }
-
-    if (m_iommu && m_iommu != new_iommu) {
-        throw std::runtime_error("xen_memory: only one IOMMU supported");
-    }
-
-    m_iommu = new_iommu;
-
-    if (!iommu_snoop_ctl()) {
-        return;
-    }
-
-    for (const auto &itr : m_page_map) {
-        const class xen_page *page = &itr.second;
-        if (page->mtype == pg_mtype_uc) {
-            continue;
-        }
-
-        uint64_t *epte = page->epte;
-        expects(epte);
-
-        /* Enable snoop control */
-        *epte |= 1UL << 11;
-
-        /* Flush the entry */
-        if (iommu_incoherent()) {
-            ::x64::cache::clflush(epte);
-        }
-    }
-}
-
-bool xen_memory::iommu_incoherent() const noexcept
-{
-    if (m_xen_dom->m_uv_dom->id() == 0) {
-        return false;
-    }
-
-    if (m_iommu) {
-        return !m_iommu->coherent_page_walk();
-    } else {
-        return true;
-    }
-}
-
-bool xen_memory::iommu_snoop_ctl() const noexcept
-{
-    if (m_iommu) {
-        return m_iommu->snoop_ctl();
-    } else {
-        return false;
-    }
 }
 
 void xen_memory::map_page(class xen_page *pg)
