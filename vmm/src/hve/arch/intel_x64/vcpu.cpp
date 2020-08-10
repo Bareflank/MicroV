@@ -26,7 +26,6 @@
 #include <bfexports.h>
 #include <microv/gpalayout.h>
 #include <microv/builderinterface.h>
-#include <clflush.h>
 #include <hve/arch/intel_x64/disassembler.h>
 #include <hve/arch/intel_x64/vcpu.h>
 #include <iommu/iommu.h>
@@ -310,7 +309,6 @@ vcpu::vcpu(
 
         if (vcpu0 == nullptr) {
             vcpu0 = this;
-            init_cache_ops();
         }
 
         this->write_dom0_guest_state(domain);

@@ -23,9 +23,9 @@
 #include <memory>
 #include <errno.h>
 
+#include <arch/x64/cache.h>
 #include <acpi.h>
 #include <microv/acpi.h>
-#include <clflush.h>
 #include <iommu/dmar.h>
 #include <iommu/iommu.h>
 #include <hve/arch/intel_x64/vcpu.h>
@@ -670,14 +670,14 @@ void iommu::enable_dma_remapping()
 void iommu::clflush(void *p)
 {
     if (!(m_ecap & ecap_c_mask)) {
-        ::clflush(p);
+        ::x64::cache::clflush(p);
     }
 }
 
 void iommu::clflush_range(void *p, unsigned int bytes)
 {
     if (!(m_ecap & ecap_c_mask)) {
-        ::clflush_range(p, bytes);
+        ::x64::cache::clflush_range(p, bytes);
     }
 }
 

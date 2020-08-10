@@ -23,7 +23,6 @@
 #include <mutex>
 #include <unordered_set>
 
-#include <clflush.h>
 #include <hve/arch/intel_x64/vcpu.h>
 #include <iommu/iommu.h>
 #include <printv.h>
@@ -612,7 +611,7 @@ void xen_memory::bind_iommu(class iommu *new_iommu)
 
         /* Flush the entry */
         if (iommu_incoherent()) {
-            clflush(epte);
+            ::x64::cache::clflush(epte);
         }
     }
 }

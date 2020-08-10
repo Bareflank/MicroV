@@ -23,6 +23,7 @@
 #define CACHE_X64_H
 
 #include <cstdint>
+#include "cpuid.h"
 
 // -----------------------------------------------------------------------------
 // Definitions
@@ -31,6 +32,7 @@
 extern "C" void _invd(void) noexcept;
 extern "C" void _wbinvd(void) noexcept;
 extern "C" void _clflush(void *addr) noexcept;
+extern "C" void _clflushopt(void *addr) noexcept;
 
 // *INDENT-OFF*
 
@@ -42,17 +44,43 @@ namespace cache
 using pointer = void *;
 using integer_pointer = uintptr_t;
 
+inline uint32_t line_size;
+inline void (*__clflush)(pointer);
+
+inline void init_cache_ops()
+{
+    const auto leaf1 = ::x64::cpuid::get(1, 0, 0, 0);
+    const auto leaf7 = ::x64::cpuid::get(7, 0, 0, 0);
+
+    if (leaf7.rbx & (1UL << 23)) {
+        __clflush = _clflushopt;
+    } else {
+        expects(leaf1.rdx & (1UL << 19));
+        __clflush = _clflush;
+    }
+
+    line_size = ((leaf1.rbx & 0xFF00) >> 8) * 8;
+}
+
+inline void clflush_range(pointer p, uint32_t bytes) noexcept
+{
+    for (auto i = 0UL; i < bytes; i += line_size) {
+        auto addr = reinterpret_cast<uint8_t *>(p) + i;
+        __clflush(reinterpret_cast<pointer>(addr));
+    }
+}
+
+inline void clflush(pointer p) noexcept
+{ __clflush(p); }
+
+inline void clflush(integer_pointer p) noexcept
+{ __clflush(reinterpret_cast<pointer>(p)); }
+
 inline void invd() noexcept
 { _invd(); }
 
 inline void wbinvd() noexcept
 { _wbinvd(); }
-
-inline void clflush(integer_pointer addr) noexcept
-{ _clflush(reinterpret_cast<pointer>(addr)); }
-
-inline void clflush(pointer addr) noexcept
-{ _clflush(addr); }
 
 }
 }
