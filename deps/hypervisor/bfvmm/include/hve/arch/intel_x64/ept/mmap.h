@@ -731,6 +731,81 @@ public:
         }
     }
 
+    /// Flush Tables
+    ///
+    /// @expects
+    /// @ensures
+    ///
+    void flush_tables()
+    {
+        std::lock_guard lock(m_mutex);
+        using namespace ::intel_x64::ept;
+
+        static_assert(pml4::num_entries == pdpt::num_entries);
+        static_assert(pdpt::num_entries == pd::num_entries);
+        static_assert(pd::num_entries == pt::num_entries);
+
+        constexpr auto num_entries = pml4::num_entries;
+        constexpr auto table_bytes = num_entries * sizeof(entry_type);
+
+        auto snoop = m_iommu_snoop_ctl ? iommu_snoop_mask : 0UL;
+        auto pml4e = m_pml4.virt_addr.data();
+
+        for (auto pml4i = 0U; pml4i < num_entries; pml4i++) {
+            if (pml4e[pml4i] == 0U) {
+                continue;
+            }
+
+            auto pdpt_phys = pml4::entry::phys_addr::get(pml4e[pml4i]);
+            m_pdpt = phys_to_pair(pdpt_phys, num_entries);
+            auto pdpte = m_pdpt.virt_addr.data();
+
+            for (auto pdpti = 0U; pdpti < num_entries; pdpti++) {
+                if (pdpte[pdpti] == 0U) {
+                    continue;
+                }
+
+                if (pdpt::entry::ps::is_enabled(pdpte[pdpti])) {
+                    pdpte[pdpti] |= snoop;
+                    continue;
+                }
+
+                auto pd_phys = pdpt::entry::phys_addr::get(pdpte[pdpti]);
+                m_pd = phys_to_pair(pd_phys, num_entries);
+                auto pde = m_pd.virt_addr.data();
+
+                for (auto pdi = 0U; pdi < num_entries; pdi++) {
+                    if (pde[pdi] == 0U) {
+                        continue;
+                    }
+
+                    if (pd::entry::ps::is_enabled(pde[pdi])) {
+                        pde[pdi] |= snoop;
+                        continue;
+                    }
+
+                    auto pt_phys = pd::entry::phys_addr::get(pde[pdi]);
+                    m_pt = phys_to_pair(pt_phys, num_entries);
+                    auto pte = m_pt.virt_addr.data();
+
+                    for (auto pti = 0U; pti < num_entries; pti++) {
+                        if (pt::entry::ps::is_enabled(pte[pti])) {
+                            pte[pti] |= snoop;
+                        }
+                    }
+
+                    ::x64::cache::clflush_range(pte, table_bytes);
+                }
+
+                ::x64::cache::clflush_range(pde, table_bytes);
+            }
+
+            ::x64::cache::clflush_range(pdpte, table_bytes);
+        }
+
+        ::x64::cache::clflush_range(pml4e, table_bytes);
+    }
+
 private:
 
     gsl::span<virt_addr_t>
