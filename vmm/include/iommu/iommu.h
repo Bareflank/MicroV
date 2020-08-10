@@ -55,8 +55,14 @@ public:
     using bus_t = uint32_t;
 
     void dump_faults();
+    void enable_dma_remapping();
     void map_dma(bus_t bus, uint32_t devfn, dom_t *dom);
     void unmap_dma(bus_t bus, uint32_t devfn, dom_t *dom);
+
+    bool dma_remapping_enabled() const noexcept
+    {
+        return m_remapping_dma;
+    }
 
     bool coherent_page_walk() const noexcept
     {
@@ -69,13 +75,14 @@ public:
     }
 
     ~iommu() = default;
-    iommu(struct drhd *drhd);
+    iommu(struct drhd *drhd, uint32_t id);
     iommu(iommu &&) = default;
     iommu(const iommu &) = delete;
     iommu &operator=(iommu &&) = default;
     iommu &operator=(const iommu &) = delete;
 
 private:
+    uint32_t m_id{};
     page_ptr<entry_t> m_root;
     std::unordered_map<bus_t, page_ptr<entry_t>> m_ctxt_map;
     struct drhd *m_drhd{};
@@ -100,8 +107,7 @@ private:
     size_t m_frcd_reg_bytes{};
     static constexpr size_t frcd_reg_len = 16;
 
-    std::vector<struct pci_dev *> m_root_devs{};
-    std::vector<struct pci_dev *> m_guest_devs{};
+    std::vector<struct pci_dev *> m_pci_devs{};
     bool m_scope_all{};
     bool m_remapping_dma{};
     bool m_psi_supported{};
@@ -164,10 +170,7 @@ private:
         return dom->id() + ((m_cap & cap_cm_mask) >> cap_cm_from);
     }
 
-    void enable_dma_remapping();
-    void clflush(void *p);
     void clflush_range(void *p, unsigned int bytes);
-    void clflush_slpt();
 
     void flush_ctx_cache();
     void flush_ctx_cache(const dom_t *dom);
