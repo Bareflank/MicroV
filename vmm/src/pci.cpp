@@ -188,7 +188,7 @@ static void probe_bus(uint32_t b, struct pci_dev *bridge)
                     continue;
                 }
 
-                pdev->m_guest_owned = true;
+                pdev->m_passthru_dev = true;
                 pdev->parse_capabilities();
                 pdev->init_root_vcfg();
 
@@ -395,7 +395,7 @@ void pci_dev::parse_capabilities()
 void pci_dev::init_root_vcfg()
 {
     expects(pci_cfg_is_normal(m_cfg_reg[3]));
-    expects(m_guest_owned);
+    expects(m_passthru_dev);
     expects(m_msi_cap);
 
     m_vcfg = std::make_unique<uint32_t[]>(vcfg_size);
@@ -433,7 +433,7 @@ void pci_dev::init_root_vcfg()
 void pci_dev::add_root_handlers(vcpu *vcpu)
 {
     expects(vcpuid::is_root_vcpu(vcpu->id()));
-    expects(m_guest_owned);
+    expects(m_passthru_dev);
 
     HANDLE_CFG_ACCESS(this, root_cfg_in, pci_dir_in);
     HANDLE_CFG_ACCESS(this, root_cfg_out, pci_dir_out);
@@ -516,7 +516,6 @@ void pci_dev::add_guest_handlers(vcpu *vcpu)
     expects(this->is_normal());
     expects(!this->is_host_bridge());
     expects(vcpuid::is_guest_vcpu(vcpu->id()));
-    expects(m_iommu);
 
     m_guest_vcpuid = vcpu->id();
 
@@ -539,9 +538,6 @@ void pci_dev::add_guest_handlers(vcpu *vcpu)
             map_mmio_bar(&dom->ept(), &bar);
         }
     }
-
-    printv("pci: %s: mapping DMA\n", this->bdf_str());
-    this->map_dma(dom);
 }
 
 void pci_dev::map_dma(domain *dom)
@@ -671,7 +667,7 @@ bool pci_dev::guest_normal_cfg_out(base_vcpu *vcpu, cfg_info &info)
  */
 bool pci_dev::root_cfg_in(base_vcpu *vcpu, cfg_info &info)
 {
-    expects(m_guest_owned);
+    expects(m_passthru_dev);
     expects(pci_cfg_is_normal(m_cfg_reg[3]));
 
     constexpr auto bar_base = 4;
@@ -856,7 +852,7 @@ void pci_dev::relocate_mmio_bars(base_vcpu *vcpu, cfg_info &info)
 
 bool pci_dev::root_cfg_out(base_vcpu *vcpu, cfg_info &info)
 {
-    expects(m_guest_owned);
+    expects(m_passthru_dev);
     expects(pci_cfg_is_normal(m_cfg_reg[3]));
 
     constexpr auto bar_base = 4;

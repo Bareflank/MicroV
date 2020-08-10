@@ -402,8 +402,13 @@ vcpu::write_domU_guest_state(domain *domain)
         bfdebug_bool(0, "domain is_xsvm:", domain->is_xsvm());
         bfdebug_bool(0, "domain is_ndvm:", domain->is_ndvm());
 
-        if (domain->is_xsvm() || domain->is_ndvm()) {
+        if ((domain->is_xsvm() || domain->is_ndvm()) && pci_passthru) {
             init_pci_on_vcpu(this);
+
+            if (domain->is_ndvm()) {
+                domain->prepare_iommus();
+                domain->map_dma();
+            }
         }
 
         m_xen_vcpu = std::make_unique<class xen_vcpu>(this);
@@ -543,7 +548,30 @@ bool vcpu::handle_0x4BF00010(bfvmm::intel_x64::vcpu *vcpu)
 
 bool vcpu::handle_0x4BF00012(bfvmm::intel_x64::vcpu *vcpu)
 {
-    bfn::call_once(ept_ready, []{ unmap_vmm(); });
+    if (vcpu->is_guest_vcpu()) {
+        printv("%s: ALERT: cpuid 0x4BF00012 on guest vcpu\n", __func__);
+        return vcpu->advance();
+    }
+
+    if (vcpu->id() == 0) {
+        unmap_vmm();
+
+        if (pci_passthru) {
+            auto root_dom = vcpu_cast(vcpu)->dom();
+
+            for (auto pdev : pci_list) {
+                if (pdev->m_passthru_dev) {
+                    continue;
+                }
+
+                root_dom->assign_pci_device(pdev);
+            }
+
+            root_dom->prepare_iommus();
+            root_dom->map_dma();
+        }
+    }
+
     ::intel_x64::vmx::invept_global();
 
     return vcpu->advance();

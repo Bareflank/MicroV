@@ -1538,14 +1538,14 @@ bool xen_domain::assign_device(xen_vcpu *v,
 
     /* Caller ensures segment is 0 */
     const auto bdf = assign->u.pci.machine_sbdf << 8;
-    m_assigned_devs.push_back(bdf);
 
     auto dev = find_passthru_dev(bdf);
     if (!dev) {
-        printv("%s: assigned non-passthru device %02x:%02x.%02x\n",
-               __func__, pci_cfg_bus(bdf), pci_cfg_dev(bdf), pci_cfg_fun(bdf));
+        printv("%s: assigned non-passthru device %s\n", __func__, dev->bdf_str());
         return true;
     }
+
+    m_uv_dom->assign_pci_device(dev);
 
     if (dev->m_bars.empty()) {
         dev->parse_bars();

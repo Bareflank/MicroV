@@ -51,7 +51,7 @@ struct pci_dev {
     uint32_t m_msix_cap{};
     uint32_t m_pcie_cap{};
     char m_bdf_str[8]{};
-    bool m_guest_owned{};
+    bool m_passthru_dev{};
     vcpuid_t m_guest_vcpuid{};
 
     std::mutex m_msi_mtx{};

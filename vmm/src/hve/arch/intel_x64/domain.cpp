@@ -25,7 +25,9 @@
 #include <microv/builderinterface.h>
 #include <hve/arch/intel_x64/domain.h>
 #include <hve/arch/intel_x64/vcpu.h>
+#include <iommu/iommu.h>
 #include <pci/dev.h>
+#include <pci/pci.h>
 #include <xen/domain.h>
 #include <xen/platform_pci.h>
 #include <printv.h>
@@ -92,6 +94,76 @@ domain::~domain()
     }
 }
 
+void domain::assign_pci_device(struct pci_dev *pdev)
+{
+    m_pci_devs.push_front(pdev);
+}
+
+void domain::add_iommu(microv::iommu *iommu)
+{
+    spin_acquire(&this->m_iommu_lock);
+    auto release = gsl::finally([&]{ spin_release(&this->m_iommu_lock); });
+
+    if (m_iommu_set.count(iommu)) {
+        return;
+    }
+
+    m_iommu_set.insert(iommu);
+}
+
+void domain::remove_iommu(microv::iommu *iommu)
+{
+    spin_acquire(&this->m_iommu_lock);
+    auto release = gsl::finally([&]{ spin_release(&this->m_iommu_lock); });
+
+    m_iommu_set.erase(iommu);
+}
+
+void domain::prepare_iommus()
+{
+    bool coherent = true;
+    bool snoop_ctl = true;
+
+    for (const auto pdev : m_pci_devs) {
+        auto iommu = pdev->m_iommu;
+
+        coherent = iommu->coherent_page_walk() && coherent;
+        snoop_ctl = iommu->snoop_ctl() && snoop_ctl;
+
+        this->add_iommu(iommu);
+    }
+
+    m_ept_map.set_iommu_coherence(coherent);
+    m_ept_map.set_iommu_snoop_ctl(snoop_ctl);
+
+    if (!coherent) {
+        m_ept_map.flush_tables();
+    }
+
+    m_dma_map_ready = true;
+}
+
+void domain::map_dma()
+{
+    expects(m_dma_map_ready);
+
+    for (const auto pdev : m_pci_devs) {
+        auto bus = pci_cfg_bus(pdev->m_cf8);
+        auto devfn = pci_cfg_devfn(pdev->m_cf8);
+        auto iommu = pdev->m_iommu;
+
+        iommu->map_dma(bus, devfn, this);
+    }
+
+    for (const auto iommu : m_iommu_set) {
+        if (iommu->dma_remapping_enabled()) {
+            continue;
+        }
+
+        iommu->enable_dma_remapping();
+    }
+}
+
 void domain::setup_dom0()
 {
     // TODO:
@@ -130,6 +202,10 @@ void domain::setup_domU()
     if (m_sod_info.is_xen_dom()) {
         m_xen_domid = create_xen_domain(this);
         m_xen_dom = get_xen_domain(m_xen_domid);
+    } else if (m_sod_info.is_ndvm() && microv::pci_passthru) {
+        for (auto pdev : pci_passthru_list) {
+            this->assign_pci_device(pdev);
+        }
     }
 }
 

@@ -41,6 +41,11 @@
 // Definitions
 // -----------------------------------------------------------------------------
 
+namespace microv {
+    class iommu;
+    struct pci_dev;
+}
+
 namespace microv::intel_x64
 {
 
@@ -545,6 +550,12 @@ public:
     std::mutex e820_mtx;
     uint64_t m_xenstore_ready{};
 
+    void add_iommu(microv::iommu *iommu);
+    void remove_iommu(microv::iommu *iommu);
+    void assign_pci_device(microv::pci_dev *pdev);
+    void prepare_iommus();
+    void map_dma();
+
 private:
     friend class microv::xen_domain;
 
@@ -651,6 +662,19 @@ public:
      * where hpa is the address of a vmm page.
      */
     std::unordered_map<uint64_t, uint64_t> m_vmm_map_whitelist{};
+
+    /*
+     * Set of IOMMUs that have a context-table entry that references
+     * this domain's EPT.
+     */
+    microv::spin_lock m_iommu_lock{};
+    std::set<microv::iommu *> m_iommu_set{};
+
+    /* List of assigned PCI devices */
+    std::list<struct pci_dev *> m_pci_devs{};
+
+    /* Is it OK to map our PCI devices' DMA now? */
+    bool m_dma_map_ready{};
 
     /// @cond
 
