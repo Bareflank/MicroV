@@ -164,6 +164,13 @@ void domain::map_dma()
     }
 }
 
+void domain::flush_iotlb()
+{
+    for (auto iommu : m_iommu_set) {
+        iommu->flush_iotlb_domain(this);
+    }
+}
+
 void domain::setup_dom0()
 {
     // TODO:
@@ -289,6 +296,15 @@ domain::page_already_donated(uint64_t page_gpa)
     }
 
     return false;
+}
+
+bool
+domain::donated_pages_to_guest(domainid_t guest_domid)
+{
+    spin_acquire(&m_donated_page_lock);
+    auto release = gsl::finally([&]{ spin_release(&m_donated_page_lock); });
+
+    return m_donated_page_map.count(guest_domid) != 0;
 }
 
 bool

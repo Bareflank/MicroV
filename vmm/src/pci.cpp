@@ -843,6 +843,7 @@ void pci_dev::relocate_mmio_bars(base_vcpu *vcpu, cfg_info &info)
 
     root->end_shootdown();
     root->invept();
+    root->dom()->flush_iotlb();
 
     this->show_relocated_bars(false, relocated_bars);
     info.again = false;

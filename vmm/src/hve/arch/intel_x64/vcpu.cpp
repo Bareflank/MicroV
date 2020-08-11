@@ -413,6 +413,12 @@ vcpu::write_domU_guest_state(domain *domain)
 
         m_xen_vcpu = std::make_unique<class xen_vcpu>(this);
     }
+
+    auto root_dom = vcpu0->dom();
+
+    if (root_dom->donated_pages_to_guest(domain->id())) {
+        root_dom->flush_iotlb();
+    }
 }
 
 int32_t vcpu::insn_mode() const noexcept

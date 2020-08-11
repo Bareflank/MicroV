@@ -226,6 +226,15 @@ void iommu::init_regs()
            (m_max_slpg_size > 0) ? "2MB" : "",
            (m_max_slpg_size > 2) ? "1GB" : "");
 
+    if (m_psi_supported) {
+        m_mamv = ((m_cap & cap_mamv_mask) >> cap_mamv_from);
+        printv("iommu[%u]: page-selective invalidation supported (mamv=%u)\n",
+               m_id, m_mamv);
+    } else {
+        m_mamv = 0;
+        printv("iommu[%u]: page-selective invalidation not supported\n", m_id);
+    }
+
     if (this->snoop_ctl()) {
         printv("iommu[%u]: snoop control supported\n", m_id);
     } else {

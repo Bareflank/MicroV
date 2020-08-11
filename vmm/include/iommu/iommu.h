@@ -74,6 +74,11 @@ public:
         return (m_ecap & ecap_sc_mask) >> ecap_sc_from;
     }
 
+    void flush_iotlb_domain(const dom_t *dom)
+    {
+        this->flush_iotlb(dom);
+    }
+
     ~iommu() = default;
     iommu(struct drhd *drhd, uint32_t id);
     iommu(iommu &&) = default;
@@ -96,6 +101,7 @@ private:
     uint8_t m_aw{};
     uint8_t m_did_bits{};
     uint8_t m_max_slpg_size{};
+    uint8_t m_mamv{};
 
     size_t m_iotlb_reg_off{};
     static constexpr size_t iotlb_reg_num = 2;

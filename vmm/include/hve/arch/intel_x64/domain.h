@@ -522,6 +522,7 @@ public:
 
     /// @endcond
 
+    bool donated_pages_to_guest(domainid_t guest_domid);
     bool page_already_donated(uint64_t page_gpa);
     bool page_already_donated(domainid_t guest_domid, uint64_t page_gpa);
     void add_page_to_donated_range(domainid_t guest_domid, uint64_t page_gpa);
@@ -555,6 +556,7 @@ public:
     void assign_pci_device(microv::pci_dev *pdev);
     void prepare_iommus();
     void map_dma();
+    void flush_iotlb();
 
 private:
     friend class microv::xen_domain;
