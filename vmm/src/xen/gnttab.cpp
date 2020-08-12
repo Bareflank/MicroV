@@ -19,8 +19,9 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#include <printv.h>
 #include <hve/arch/intel_x64/vcpu.h>
+#include <iommu/iommu.h>
+#include <printv.h>
 #include <xen/hvm.h>
 #include <xen/gnttab.h>
 #include <xen/domain.h>
@@ -802,6 +803,21 @@ bool xen_gnttab_map_grant_ref(xen_vcpu *vcpu)
 
     if (i > 0) {
         vcpu->invept();
+
+        auto dom = vcpu->m_uv_dom;
+
+        for (auto iommu : dom->m_iommu_set) {
+            expects(dom->is_ndvm());
+
+            if (!iommu->psi_supported()) {
+                iommu->flush_iotlb_domain(dom);
+                continue;
+            }
+
+            for (auto p = 0; p < i; p++) {
+                iommu->flush_iotlb_page_range(dom, ops[p].host_addr, UV_PAGE_SIZE);
+            }
+        }
     }
 
     uvv->set_rax(rc);
@@ -830,6 +846,21 @@ bool xen_gnttab_unmap_grant_ref(xen_vcpu *vcpu)
 
     if (i > 0) {
         vcpu->invept();
+
+        auto dom = vcpu->m_uv_dom;
+
+        for (auto iommu : dom->m_iommu_set) {
+            expects(dom->is_ndvm());
+
+            if (!iommu->psi_supported()) {
+                iommu->flush_iotlb_domain(dom);
+                continue;
+            }
+
+            for (auto p = 0; p < i; p++) {
+                iommu->flush_iotlb_page_range(dom, ops[p].host_addr, UV_PAGE_SIZE);
+            }
+        }
     }
 
     uvv->set_rax(rc);
@@ -1210,6 +1241,7 @@ bool xen_gnttab::mapspace_grant_table(xen_vcpu *vcpu, xen_add_to_physmap_t *atp)
 
         xen_mem->add_local_page(gfn, pg_perm_rw, pg_mtype_wb, page);
         xen_mem->invept();
+        xen_dom->m_uv_dom->flush_iotlb_page_4k(xen_addr(gfn));
         uvv->set_rax(0);
 
         return true;

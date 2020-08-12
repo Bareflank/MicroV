@@ -171,6 +171,18 @@ void domain::flush_iotlb()
     }
 }
 
+void domain::flush_iotlb_page_4k(uint64_t page_gpa)
+{
+    for (auto iommu : m_iommu_set) {
+        if (!iommu->psi_supported()) {
+            iommu->flush_iotlb_domain(this);
+            continue;
+        }
+
+        iommu->flush_iotlb_page_range(this, page_gpa, UV_PAGE_SIZE);
+    }
+}
+
 void domain::setup_dom0()
 {
     // TODO:

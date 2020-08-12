@@ -856,6 +856,7 @@ uint64_t xen_domain::init_shared_info(xen_vcpu *xen, uintptr_t shinfo_gpfn)
 
         m_memory->add_vmm_backed_page(shinfo_gpfn, perms, mtype, m_shinfo);
         m_memory->invept();
+        m_uv_dom->flush_iotlb_page_4k(xen_addr(shinfo_gpfn));
 
         /* Set wallclock from start-of-day info */
         auto now = ::x64::read_tsc::get();

@@ -417,6 +417,7 @@ bool xenmem_acquire_resource(xen_vcpu *vcpu)
     /* Now we add the pages into the caller's map */
     for (auto i = 0; i < res->nr_frames; i++) {
         mem->add_foreign_page(gfn[i], pg_perm_rw, pg_mtype_wb, pages[i]);
+        mem->m_xen_dom->m_uv_dom->flush_iotlb_page_4k(xen_addr(gfn[i]));
     }
 
     mem->invept();
@@ -783,6 +784,7 @@ bool xen_memory::add_to_physmap_batch(xen_vcpu *v,
 
         this->add_foreign_page(*gpfn.get(), pg_perm_rw, pg_mtype_wb, pg->page);
         this->invept();
+        m_xen_dom->m_uv_dom->flush_iotlb_page_4k(xen_addr(*gpfn.get()));
 
         uvv->set_rax(0);
         put_xen_domain(fdomid);
@@ -821,6 +823,7 @@ int xen_memory::remove_page(xen_pfn_t gfn, bool need_invept)
 
     if (need_invept) {
         this->invept();
+        m_xen_dom->m_uv_dom->flush_iotlb_page_4k(xen_addr(gfn));
     }
 
     /* Free the backing page if no other refs exist */
@@ -867,6 +870,8 @@ bool xen_memory::decrease_reservation(xen_vcpu *v,
             if (this->remove_page(gfn[i], false)) {
                 break;
             }
+
+            m_xen_dom->m_uv_dom->flush_iotlb_page_4k(xen_addr(gfn[i]));
             nr_done++;
         }
 
@@ -962,6 +967,7 @@ bool xen_memory::populate_physmap(xen_vcpu *v, xen_memory_reservation_t *rsv)
         }
 
         this->invept();
+        m_xen_dom->m_uv_dom->flush_iotlb();
         uvv->set_rax(rsv->nr_extents);
 
         return true;

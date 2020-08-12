@@ -74,9 +74,21 @@ public:
         return (m_ecap & ecap_sc_mask) >> ecap_sc_from;
     }
 
+    bool psi_supported() const noexcept
+    {
+        return m_psi_supported;
+    }
+
     void flush_iotlb_domain(const dom_t *dom)
     {
         this->flush_iotlb(dom);
+    }
+
+    void flush_iotlb_page_range(const dom_t *dom, uint64_t gpa, uint64_t size)
+    {
+        for (auto i = 0; i < size; i += UV_PAGE_SIZE) {
+            this->flush_iotlb_4k(dom, gpa + i, true);
+        }
     }
 
     ~iommu() = default;
