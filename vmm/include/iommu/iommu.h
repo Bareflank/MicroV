@@ -123,6 +123,7 @@ private:
     size_t m_frcd_reg_off{};
     size_t m_frcd_reg_num{};
     size_t m_frcd_reg_bytes{};
+    size_t m_reg_page_count{};
     static constexpr size_t frcd_reg_len = 16;
 
     std::vector<struct pci_dev *> m_pci_devs{};
@@ -166,7 +167,8 @@ private:
     void write_iotlb(uint64_t val) { write64(m_iotlb_reg_off + 8, val); }
     void write_iva(uint64_t val) { write64(m_iotlb_reg_off, val); }
 
-    void map_regs();
+    void map_regs_into_vmm();
+    void unmap_regs_from_root_dom();
     void init_regs();
     void dump_devices();
     void bind_devices();

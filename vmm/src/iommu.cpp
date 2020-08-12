@@ -170,10 +170,13 @@ void iommu_dump()
     }
 }
 
-void iommu::map_regs()
+void iommu::map_regs_into_vmm()
 {
     auto base_hpa = vcpu0->gpa_to_hpa(m_drhd->base_gpa).first;
     auto base_hva = g_mm->alloc_map(UV_PAGE_SIZE);
+
+    // We dont use the map_gpa_4k interface because the registers need
+    // to be mapped uncacheable
 
     g_cr3->map_4k(base_hva,
                   base_hpa,
@@ -181,28 +184,81 @@ void iommu::map_regs()
                   cr3::mmap::memory_type::uncacheable);
 
     m_reg_hva = reinterpret_cast<uintptr_t>(base_hva);
-}
-
-void iommu::init_regs()
-{
-    m_ver = this->read32(ver_offset);
     m_cap = this->read64(cap_offset);
     m_ecap = this->read64(ecap_offset);
 
     m_frcd_reg_off = ((m_cap & cap_fro_mask) >> cap_fro_from) << 4;
     m_frcd_reg_num = ((m_cap & cap_nfr_mask) >> cap_nfr_from) + 1;
     m_frcd_reg_bytes = m_frcd_reg_num * frcd_reg_len;
-
     m_iotlb_reg_off = ((m_ecap & ecap_iro_mask) >> ecap_iro_from) << 4;
 
-    auto ioreg_end = m_reg_hva + m_iotlb_reg_off + iotlb_reg_bytes - 1;
-    auto frreg_end = m_reg_hva + m_frcd_reg_off + m_frcd_reg_bytes - 1;
+    uint64_t ioreg_end = m_reg_hva + m_iotlb_reg_off + iotlb_reg_bytes - 1;
+    uint64_t frreg_end = m_reg_hva + m_frcd_reg_off + m_frcd_reg_bytes - 1;
+    uint64_t max_end = 0;
 
-    auto ioreg_end_4k = ioreg_end & ~(UV_PAGE_SIZE - 1);
-    auto frreg_end_4k = frreg_end & ~(UV_PAGE_SIZE - 1);
+    if (ioreg_end >= frreg_end) {
+        max_end = ioreg_end;
+    } else {
+        max_end = frreg_end;
+    }
 
-    expects(m_reg_hva == ioreg_end_4k);
-    expects(m_reg_hva == frreg_end_4k);
+    uint64_t max_end_4k = bfn::upper(max_end, ::x64::pt::from);
+    m_reg_page_count = 1 + ((max_end_4k - m_reg_hva) >> UV_PAGE_FROM);
+
+    if (m_reg_page_count > 1) {
+        // The registers span multiple pages. Note that footnote 1 under section
+        // 10.4 in the VT-d spec states that the register pages will be
+        // contiguous, so we just need to make the map bigger.
+
+        g_cr3->unmap(m_reg_hva);
+        ::x64::tlb::invlpg(m_reg_hva);
+        g_mm->free_map(reinterpret_cast<void *>(m_reg_hva));
+
+        uint64_t size = UV_PAGE_SIZE * m_reg_page_count;
+
+        base_hva = g_mm->alloc_map(size);
+        m_reg_hva = reinterpret_cast<uintptr_t>(base_hva);
+
+        for (auto i = 0UL; i < size; i += UV_PAGE_SIZE) {
+            g_cr3->map_4k(m_reg_hva + i,
+                          vcpu0->gpa_to_hpa(m_drhd->base_gpa + i).first,
+                          cr3::mmap::attr_type::read_write,
+                          cr3::mmap::memory_type::uncacheable);
+        }
+    }
+
+    printv("iommu[%u]: mapped registers at 0x%lx-0x%lx\n",
+           m_id,
+           m_drhd->base_gpa,
+           m_drhd->base_gpa + (m_reg_page_count * UV_PAGE_SIZE) - 1);
+}
+
+void iommu::unmap_regs_from_root_dom()
+{
+    using namespace bfvmm::intel_x64::ept;
+
+    auto root_dom = vcpu0->dom();
+    auto root_ept = &root_dom->ept();
+    auto regs_2m = bfn::upper(m_drhd->base_gpa, ::x64::pd::from);
+
+    if (root_ept->is_2m(regs_2m)) {
+        identity_map_convert_2m_to_4k(*root_ept, regs_2m);
+    }
+
+    auto size = m_reg_page_count * UV_PAGE_SIZE;
+
+    for (auto i = 0U; i < size; i += UV_PAGE_SIZE) {
+        root_dom->unmap(m_drhd->base_gpa + i);
+    }
+
+    for (auto i = 0U; i < size; i += UV_PAGE_SIZE) {
+        root_dom->release(m_drhd->base_gpa + i);
+    }
+}
+
+void iommu::init_regs()
+{
+    m_ver = this->read32(ver_offset);
 
     m_did_bits = (uint8_t)(4 + ((m_cap & cap_nd_mask) << 1));
     m_mgaw = ((m_cap & cap_mgaw_mask) >> cap_mgaw_from) + 1;
@@ -712,7 +768,8 @@ iommu::iommu(struct drhd *drhd, uint32_t id) :
     this->m_scope = reinterpret_cast<struct dmar_devscope *>(scope);
 
     this->bind_devices();
-    this->map_regs();
+    this->map_regs_into_vmm();
+    this->unmap_regs_from_root_dom();
     this->init_regs();
     this->dump_devices();
 
