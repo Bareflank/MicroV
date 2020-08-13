@@ -93,7 +93,7 @@ void parse_rmrrs(const struct acpi_table *dmar)
         }
 
         auto rmrr = reinterpret_cast<const struct rmrr *>(drs);
-        printv("rmrr[%u]: 0x%lx-0x%lx (segment 0x%04x) scopes ", rmrr_count,
+        printv("rmrr[%u]: 0x%lx-0x%lx, segment 0x%04x, scopes ", rmrr_count,
                rmrr->base, rmrr->limit, rmrr->seg_nr);
 
         rmrr_count++;
@@ -129,10 +129,12 @@ void parse_rmrrs(const struct acpi_table *dmar)
                 fun = path[i].fun;
             }
 
+            auto str = dmar_devscope_type_str(scope->type);
+
             if (dev_count == 0) {
-                printf("%02x:%02x.%1x", bus, dev, fun);
+                printf("%02x:%02x.%1x (%s)", bus, dev, fun, str);
             } else {
-                printf(", %02x:%02x.%1x", bus, dev, fun);
+                printf(", %02x:%02x.%1x (%s)", bus, dev, fun, str);
             }
 
             dev_count++;

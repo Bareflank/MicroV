@@ -109,5 +109,23 @@ struct rmrr {
 
 #pragma pack(pop)
 
+static inline const char *dmar_devscope_type_str(uint8_t type)
+{
+    switch (type) {
+    case dmar_devscope_type::ds_pci_device:
+        return "pcidev";
+    case dmar_devscope_type::ds_pci_subhierarchy:
+        return "pcisubhierarchy";
+    case dmar_devscope_type::ds_ioapic:
+        return "ioapic";
+    case dmar_devscope_type::ds_msi_hpet:
+        return "hpet";
+    case dmar_devscope_type::ds_acpi_dev:
+        return "acpidev";
+    default:
+        return "UNKNOWN";
+    }
+}
+
 }
 #endif
