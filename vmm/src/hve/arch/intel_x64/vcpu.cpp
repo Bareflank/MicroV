@@ -191,7 +191,6 @@ static void unmap_vmm()
         const auto phys = p.first;
 
         if (type & MEMORY_TYPE_SHARED) {
-            printv("ept: %s: ignoring shared page: 0x%lx\n", __func__, phys);
             continue;
         }
 
@@ -202,8 +201,6 @@ static void unmap_vmm()
             const auto gpa = itr->second;
 
             if (hpa == gpa) {
-                printv("ept: %s: ignoring whitelisted identity-mapped page:"
-                       " 0x%lx\n", __func__, hpa);
                 continue;
             }
 

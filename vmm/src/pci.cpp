@@ -921,7 +921,7 @@ bool pci_dev::root_cfg_out(base_vcpu *vcpu, cfg_info &info)
 
         pci_cfg_write_reg(m_cf8, reg, val);
 
-        printv("pci: %s: bar %x written: value=0x%x\n", bdf_str(), reg, val);
+        //printv("pci: %s: bar %x written: value=0x%x\n", bdf_str(), reg, val);
         return true;
     }
 
