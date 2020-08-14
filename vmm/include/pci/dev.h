@@ -135,6 +135,7 @@ extern std::list<struct pci_dev *> pci_list;
 extern std::list<struct pci_dev *> pci_passthru_list;
 
 struct pci_dev *find_passthru_dev(uint64_t bdf);
+void remove_passthru_dev(struct pci_dev *pdev);
 
 }
 #endif

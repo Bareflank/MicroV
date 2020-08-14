@@ -137,6 +137,15 @@ void parse_rmrrs(const struct acpi_table *dmar)
                 printf(", %02x:%02x.%1x (%s)", bus, dev, fun, str);
             }
 
+            auto addr = pci_cfg_bdf_to_addr(bus, dev, fun);
+            auto pdev = find_passthru_dev(addr);
+
+            if (pdev) {
+                printf(" disabling passthrough");
+                pdev->m_passthru_dev = false;
+                remove_passthru_dev(pdev);
+            }
+
             dev_count++;
             ds += scope->length;
         }

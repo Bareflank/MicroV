@@ -536,9 +536,9 @@ bool vcpu::handle_0x4BF00010(bfvmm::intel_x64::vcpu *vcpu)
         /* Order matters with these init functions */
         bfn::call_once(acpi_ready, []{ init_acpi(); });
         bfn::call_once(pci_ready, []{ init_pci(); });
+        bfn::call_once(vtd_ready, []{ init_vtd(); });
 
         if (pci_passthru) {
-            bfn::call_once(vtd_ready, []{ init_vtd(); });
             m_pci_handler.enable();
             init_pci_on_vcpu(this);
         }

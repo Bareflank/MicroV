@@ -259,6 +259,12 @@ struct pci_dev *find_passthru_dev(uint64_t bdf)
     return nullptr;
 }
 
+void remove_passthru_dev(struct pci_dev *pdev)
+{
+    pci_passthru_list.remove(pdev);
+    pci_passthru = !pci_passthru_list.empty();
+}
+
 static void map_pmio_bar(::microv::intel_x64::vcpu *vcpu,
                          const struct pci_bar *bar)
 {
