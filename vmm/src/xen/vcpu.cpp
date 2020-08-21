@@ -1203,8 +1203,14 @@ xen_vcpu::xen_vcpu(microv_vcpu *vcpu) :
      * Xen leaf 0 is the main thing that kicks off the Xen path
      * whenever Linux or Windows PV boots up. Right now this leaf is
      * only active for Windows PV root domain and guest Linux PVH domains.
+     *
+     * NOTE: Currently this handler is not registered for the root domain
+     * because NVIDIA drivers refuse to start if they detect virtualization,
+     * and virtualization is what the leaf indicates. The PV drivers have a
+     * patch to not read this leaf, but eventually (i.e. when we add linux
+     * root support) this should be handled a bit more gracefully.
      */
-    if (m_origin != domain_info::origin_root || g_enable_winpv) {
+    if (m_origin != domain_info::origin_root) {
         vcpu->add_cpuid_emulator(xen_leaf(0), {xen_leaf0});
     }
 

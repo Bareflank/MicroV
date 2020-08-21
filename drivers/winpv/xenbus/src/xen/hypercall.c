@@ -46,7 +46,7 @@
 __declspec(allocate("hypercall"))
 static UCHAR        __Section[(MAXIMUM_HYPERCALL_PAGE_COUNT + 1) * PAGE_SIZE];
 
-static ULONG        XenBaseLeaf = 0x40000000;
+static ULONG        XenBaseLeaf = 0x40000100;
 
 static PHYSICAL_ADDRESS HypercallPage[MAXIMUM_HYPERCALL_PAGE_COUNT];
 static ULONG            HypercallPageCount;
@@ -86,10 +86,17 @@ HypercallInitialize(
 {
     ULONG       EAX = 'DEAD';
     ULONG       EBX = 'DEAD';
-    ULONG       ECX = 'DEAD';
-    ULONG       EDX = 'DEAD';
+    //ULONG       ECX = 'DEAD';
+    //ULONG       EDX = 'DEAD';
     ULONG_PTR   Index;
 
+    /*
+     * NVIDIA drivers check cpuid leaves 0x40000000 and 0x40000100
+     * to see if they are running on a hypervisor and refuse to load
+     * if they are. To evade this, microv just returns 0 for these leaves.
+     */
+
+    /*
     for (;;) {
         CHAR    Signature[13] = {0};
 
@@ -109,7 +116,7 @@ HypercallInitialize(
                       "XEN: BASE CPUID LEAF NOT FOUND\n");
             return;
         }
-    }
+    } */
 
     LogPrintf(LOG_LEVEL_INFO,
               "XEN: BASE CPUID LEAF @ %08x\n",
