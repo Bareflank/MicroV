@@ -138,6 +138,8 @@ void domain::prepare_iommus()
 
     if (!coherent) {
         m_ept_map.flush_tables();
+        printv("%s: flushed domain 0x%lx EPT tables: coherent=%u, snoop_ctl=%u\n",
+               __func__, this->id(), coherent, snoop_ctl);
     }
 
     m_dma_map_ready = true;
@@ -153,6 +155,10 @@ void domain::map_dma()
         auto iommu = pdev->m_iommu;
 
         iommu->map_dma(bus, devfn, this);
+
+        if (pdev->m_passthru_dev) {
+            printv("pci: %s: mapped DMA\n", pdev->bdf_str());
+        }
     }
 
     for (const auto iommu : m_iommu_set) {
