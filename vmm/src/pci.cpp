@@ -25,7 +25,6 @@
 #include <acpi.h>
 #include <bfvcpuid.h>
 #include <hve/arch/intel_x64/vcpu.h>
-#include <iommu/iommu.h>
 #include <pci/dev.h>
 #include <pci/msi.h>
 #include <pci/pci.h>
@@ -544,14 +543,6 @@ void pci_dev::add_guest_handlers(vcpu *vcpu)
             map_mmio_bar(&dom->ept(), &bar);
         }
     }
-}
-
-void pci_dev::map_dma(domain *dom)
-{
-    auto bus = pci_cfg_bus(m_cf8);
-    auto devfn = pci_cfg_devfn(m_cf8);
-
-    m_iommu->map_dma(bus, devfn, dom);
 }
 
 bool pci_dev::guest_normal_cfg_in(base_vcpu *vcpu, cfg_info &info)

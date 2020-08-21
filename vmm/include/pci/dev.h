@@ -111,7 +111,6 @@ struct pci_dev {
     void init_root_vcfg();
     void add_root_handlers(vcpu *vcpu);
     void add_guest_handlers(vcpu *vcpu);
-    void map_dma(domain *dom);
     void get_relocated_bars(bool type_pmio, pci_bar_list &relocated_bars);
     void show_relocated_bars(bool type_pmio, const pci_bar_list &relocated_bars);
     void relocate_pmio_bars(base_vcpu *vcpu, cfg_info &info);
