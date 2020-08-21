@@ -233,7 +233,7 @@ void init_pci_on_vcpu(microv::intel_x64::vcpu *vcpu)
 uint32_t alloc_pci_cfg_addr() noexcept
 {
     /* Scan bus 0 for empty slots starting at device 1 */
-    for (uint32_t devfn = 0x8; devfn < pci_nr_devfn; devfn++) {
+    for (uint32_t devfn = 0x8; devfn < pci_nr_devfn; devfn += 0x8) {
         const auto addr = pci_cfg_bdf_to_addr(0, devfn);
         const auto reg0 = pci_cfg_read_reg(addr, 0);
 
@@ -522,8 +522,6 @@ void pci_dev::add_guest_handlers(vcpu *vcpu)
     expects(!this->is_host_bridge());
     expects(vcpuid::is_guest_vcpu(vcpu->id()));
 
-    m_guest_vcpuid = vcpu->id();
-
     HANDLE_CFG_ACCESS(this, guest_normal_cfg_in, pci_dir_in);
     HANDLE_CFG_ACCESS(this, guest_normal_cfg_out, pci_dir_out);
 
@@ -532,6 +530,7 @@ void pci_dev::add_guest_handlers(vcpu *vcpu)
         return;
     }
 
+    m_guest_vcpuid = vcpu->id();
     ::intel_x64::rmb();
 
     for (const auto &pair : m_bars) {
