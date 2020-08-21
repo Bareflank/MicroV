@@ -177,7 +177,7 @@ void init_vtd()
 void iommu_dump()
 {
     for (const auto iommu : iommu_view) {
-        iommu->dump_faults();
+        iommu->ack_faults();
     }
 }
 
@@ -482,7 +482,7 @@ static inline const char *fault_name(int t1t2)
     }
 }
 
-void iommu::dump_faults()
+void iommu::ack_faults()
 {
     if (!m_reg_hva) {
         return;
@@ -783,6 +783,7 @@ iommu::iommu(struct drhd *drhd, uint32_t id) :
     this->unmap_regs_from_root_dom();
     this->init_regs();
     this->dump_devices();
+    this->ack_faults();
 
     dump_caps(m_id, m_cap);
     dump_ecaps(m_id, m_ecap);

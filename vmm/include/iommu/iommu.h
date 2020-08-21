@@ -54,7 +54,7 @@ public:
     using dom_t = class microv::intel_x64::domain;
     using bus_t = uint32_t;
 
-    void dump_faults();
+    void ack_faults();
     void enable_dma_remapping();
     void map_dma(bus_t bus, uint32_t devfn, dom_t *dom);
     void unmap_dma(bus_t bus, uint32_t devfn, dom_t *dom);
