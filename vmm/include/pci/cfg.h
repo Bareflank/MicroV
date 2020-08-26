@@ -218,5 +218,10 @@ inline uint32_t pci_bridge_sec_bus(uint32_t reg6)
     return (reg6 & 0xFF00) >> 8;
 }
 
+inline uint32_t pci_bridge_sub_bus(uint32_t reg6)
+{
+    return (reg6 & 0xFF0000) >> 16;
+}
+
 }
 #endif

@@ -144,18 +144,29 @@ static void probe_bus(uint32_t b, struct pci_dev *bridge)
         for (auto f = 0; f < pci_nr_fun; f++) {
             const auto addr = pci_cfg_bdf_to_addr(b, d, f);
             const auto reg0 = pci_cfg_read_reg(addr, 0);
+
             if (!pci_cfg_is_present(reg0)) {
                 continue;
             }
 
-            pci_map[addr] = std::make_unique<struct pci_dev>(addr, bridge);
-            auto pdev = pci_map[addr].get();
+            auto [itr, new_dev] =
+                pci_map.try_emplace(addr, std::make_unique<pci_dev>(addr, bridge));
+
+            if (!new_dev) {
+                continue;
+            }
+
+            pci_dev *pdev = itr->second.get();
             pci_list.push_back(pdev);
 
             if (pdev->is_pci_bridge()) {
                 auto reg6 = pci_cfg_read_reg(addr, 6);
-                auto next = pci_bridge_sec_bus(reg6);
-                probe_bus(next, pdev);
+                auto secondary = pci_bridge_sec_bus(reg6);
+                auto subordinate = pci_bridge_sub_bus(reg6);
+
+                for (auto next = secondary; next <= subordinate; next++) {
+                    probe_bus(next, pdev);
+                }
             } else if (pdev->is_netdev()) {
                 if (g_no_pci_pt.count(addr)) {
                     printv("pci: %s: passthrough disabled via boot option\n",

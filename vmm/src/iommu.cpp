@@ -337,8 +337,12 @@ void iommu::bind_bus(uint32_t b)
 
             if (pdev->is_pci_bridge()) {
                 auto reg6 = pci_cfg_read_reg(cf8, 6);
-                auto next = pci_bridge_sec_bus(reg6);
-                this->bind_bus(next);
+                auto secondary = pci_bridge_sec_bus(reg6);
+                auto subordinate = pci_bridge_sub_bus(reg6);
+
+                for (auto next = secondary; next <= subordinate; next++) {
+                    this->bind_bus(next);
+                }
             }
         }
     }
