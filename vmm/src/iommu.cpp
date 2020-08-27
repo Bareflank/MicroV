@@ -540,7 +540,7 @@ void iommu::ack_faults()
     this->write32(fsts_offset, fsts);
 }
 
-void iommu::map_dma(uint32_t bus, uint32_t devfn, dom_t *dom)
+void iommu::map_bdf(uint32_t bus, uint32_t devfn, dom_t *dom)
 {
     expects(bus < table_size);
     expects(devfn < table_size);
@@ -549,10 +549,10 @@ void iommu::map_dma(uint32_t bus, uint32_t devfn, dom_t *dom)
     entry_t *ctx_hva = nullptr;
     uintptr_t ctx_hpa = 0;
 
-    auto itr = m_ctxt_map.find(bus);
-    if (itr == m_ctxt_map.end()) {
-        m_ctxt_map.insert({bus, make_page<entry_t>()});
-        itr = m_ctxt_map.find(bus);
+    auto itr = m_bdf_ctxt_map.find(bus);
+    if (itr == m_bdf_ctxt_map.end()) {
+        m_bdf_ctxt_map.insert({bus, make_page<entry_t>()});
+        itr = m_bdf_ctxt_map.find(bus);
         ctx_hva = itr->second.get();
         ctx_hpa = g_mm->virtptr_to_physint(ctx_hva);
 

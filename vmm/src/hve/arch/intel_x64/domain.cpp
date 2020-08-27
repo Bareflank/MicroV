@@ -154,7 +154,7 @@ void domain::map_dma()
         auto devfn = pci_cfg_devfn(pdev->m_cf8);
         auto iommu = pdev->m_iommu;
 
-        iommu->map_dma(bus, devfn, this);
+        iommu->map_bdf(bus, devfn, this);
 
         if (pdev->m_passthru_dev) {
             printv("pci: %s: mapped DMA\n", pdev->bdf_str());
