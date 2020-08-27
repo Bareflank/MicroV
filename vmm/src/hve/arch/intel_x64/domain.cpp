@@ -145,28 +145,86 @@ void domain::prepare_iommus()
     m_dma_map_ready = true;
 }
 
-void domain::map_dma()
+microv::iommu *domain::find_catchall_iommu() noexcept
 {
-    expects(m_dma_map_ready);
+    for (auto iommu : m_iommu_set) {
+        if (iommu->has_catchall_scope()) {
+            return iommu;
+        }
+    }
 
+    return nullptr;
+}
+
+void domain::map_root_dma()
+{
+    auto catchall_iommu = this->find_catchall_iommu();
+    expects(catchall_iommu != nullptr);
+
+    for (auto bus = 0U; bus < pci_nr_bus; bus++) {
+        if (!pci_bus_has_passthru_dev(bus)) {
+            catchall_iommu->map_bus(bus, this);
+            continue;
+        }
+
+        for (auto devfn = 0U; devfn < pci_nr_devfn; devfn++) {
+            auto addr = pci_cfg_bdf_to_addr(bus, devfn);
+
+            if (find_passthru_dev(addr)) {
+                continue;
+            }
+
+            catchall_iommu->map_bdf(bus, devfn, this);
+        }
+    }
+
+    for (const auto pdev : m_pci_devs) {
+        auto iommu = pdev->m_iommu;
+
+        if (!iommu->has_catchall_scope()) {
+            auto bus = pci_cfg_bus(pdev->m_cf8);
+            auto devfn = pci_cfg_devfn(pdev->m_cf8);
+
+            iommu->map_bdf(bus, devfn, this);
+        }
+    }
+
+    for (auto iommu : m_iommu_set) {
+        if (iommu->dma_remapping_enabled()) {
+            continue;
+        }
+
+        iommu->enable_dma_remapping();
+    }
+}
+
+void domain::map_guest_dma()
+{
     for (const auto pdev : m_pci_devs) {
         auto bus = pci_cfg_bus(pdev->m_cf8);
         auto devfn = pci_cfg_devfn(pdev->m_cf8);
         auto iommu = pdev->m_iommu;
 
         iommu->map_bdf(bus, devfn, this);
-
-        if (pdev->m_passthru_dev) {
-            printv("pci: %s: mapped DMA\n", pdev->bdf_str());
-        }
     }
 
-    for (const auto iommu : m_iommu_set) {
+    for (auto iommu : m_iommu_set) {
         if (iommu->dma_remapping_enabled()) {
             continue;
         }
 
         iommu->enable_dma_remapping();
+    }
+}
+
+void domain::map_dma()
+{
+    expects(m_dma_map_ready);
+
+    if (this->id() == 0) {
+        this->map_root_dma();
+    } else {
+        this->map_guest_dma();
     }
 }
 

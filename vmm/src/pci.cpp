@@ -21,6 +21,7 @@
 
 #include <memory>
 #include <unordered_map>
+#include <unordered_set>
 
 #include <acpi.h>
 #include <bfvcpuid.h>
@@ -56,6 +57,7 @@ std::list<struct pci_dev *> pci_list;
 
 /* List of PCI devices to pass through */
 std::list<struct pci_dev *> pci_passthru_list;
+std::unordered_set<uint32_t> pci_passthru_busses;
 
 /* Passthrough vendor/device IDs */
 static constexpr uint32_t passthru_vendor{0xBFBF};
@@ -121,6 +123,11 @@ uintptr_t find_ecam_page(uint32_t addr, uint16_t sgmt)
     }
 
     return 0;
+}
+
+bool pci_bus_has_passthru_dev(uint32_t bus)
+{
+    return pci_passthru_busses.count(bus) != 0;
 }
 
 static void init_mcfg()
@@ -203,6 +210,7 @@ static void probe_bus(uint32_t b, struct pci_dev *bridge)
                 pdev->init_root_vcfg();
 
                 pci_passthru_list.push_back(pdev);
+                pci_passthru_busses.emplace(b);
             }
         }
     }

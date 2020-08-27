@@ -564,6 +564,9 @@ private:
 
     void setup_dom0();
     void setup_domU();
+    void map_root_dma();
+    void map_guest_dma();
+    microv::iommu *find_catchall_iommu() noexcept;
 
     uint64_t m_eptp;
     std::vector<e820_entry_t> m_e820;

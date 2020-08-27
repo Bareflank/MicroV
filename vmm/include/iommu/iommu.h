@@ -91,6 +91,11 @@ public:
         }
     }
 
+    bool has_catchall_scope() const noexcept
+    {
+        return m_scope_all;
+    }
+
     ~iommu() = default;
     iommu(struct drhd *drhd, uint32_t id);
     iommu(iommu &&) = default;
