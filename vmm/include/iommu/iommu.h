@@ -56,6 +56,7 @@ public:
 
     void ack_faults();
     void enable_dma_remapping();
+    void map_bus(bus_t bus, dom_t *dom);
     void map_dma(bus_t bus, uint32_t devfn, dom_t *dom);
     void unmap_dma(bus_t bus, uint32_t devfn, dom_t *dom);
 
@@ -101,6 +102,7 @@ public:
 private:
     uint32_t m_id{};
     page_ptr<entry_t> m_root;
+    std::unordered_map<domainid_t, page_ptr<entry_t>> m_dom_ctxt_map;
     std::unordered_map<bus_t, page_ptr<entry_t>> m_ctxt_map;
     struct drhd *m_drhd{};
     struct dmar_devscope *m_scope{};

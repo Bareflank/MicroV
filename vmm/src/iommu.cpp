@@ -584,6 +584,40 @@ void iommu::map_dma(uint32_t bus, uint32_t devfn, dom_t *dom)
     }
 }
 
+void iommu::map_bus(uint32_t bus, dom_t *dom)
+{
+    expects(bus < table_size);
+    expects(this->did(dom) < nr_domains());
+
+    auto itr = m_dom_ctxt_map.find(dom->id());
+    if (itr == m_dom_ctxt_map.end()) {
+        m_dom_ctxt_map.insert({dom->id(), make_page<entry_t>()});
+        itr = m_dom_ctxt_map.find(dom->id());
+    }
+
+    entry_t *ctx_table = itr->second.get();
+
+    for (auto i = 0; i < table_size; i++) {
+        entry_t *cte = &ctx_table[i];
+
+        cte_set_tt(cte, CTE_TT_U);
+        cte_set_slptptr(cte, dom->ept().pml4_phys());
+        cte_set_aw(cte, m_aw);
+        cte_set_did(cte, this->did(dom));
+        cte_set_present(cte);
+    }
+
+    this->clflush_range(ctx_table, UV_PAGE_SIZE);
+
+    auto rte = &m_root.get()[bus];
+    if (!rte_ctp(rte)) {
+        rte_set_ctp(rte, g_mm->virtptr_to_physint(ctx_table));
+        rte_set_present(rte);
+
+        this->clflush_range(rte, sizeof(*rte));
+    }
+}
+
 /* Global invalidation of the context-cache */
 void iommu::flush_ctx_cache()
 {
