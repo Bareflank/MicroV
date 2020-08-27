@@ -25,7 +25,9 @@
 #include <microv/builderinterface.h>
 #include <hve/arch/intel_x64/domain.h>
 #include <hve/arch/intel_x64/vcpu.h>
+#include <iommu/iommu.h>
 #include <pci/dev.h>
+#include <pci/pci.h>
 #include <xen/domain.h>
 #include <xen/platform_pci.h>
 #include <printv.h>
@@ -92,6 +94,159 @@ domain::~domain()
     }
 }
 
+void domain::assign_pci_device(struct pci_dev *pdev)
+{
+    m_pci_devs.push_front(pdev);
+}
+
+void domain::add_iommu(microv::iommu *iommu)
+{
+    spin_acquire(&this->m_iommu_lock);
+    auto release = gsl::finally([&]{ spin_release(&this->m_iommu_lock); });
+
+    if (m_iommu_set.count(iommu)) {
+        return;
+    }
+
+    m_iommu_set.insert(iommu);
+}
+
+void domain::remove_iommu(microv::iommu *iommu)
+{
+    spin_acquire(&this->m_iommu_lock);
+    auto release = gsl::finally([&]{ spin_release(&this->m_iommu_lock); });
+
+    m_iommu_set.erase(iommu);
+}
+
+void domain::prepare_iommus()
+{
+    bool coherent = true;
+    bool snoop_ctl = true;
+
+    for (const auto pdev : m_pci_devs) {
+        auto iommu = pdev->m_iommu;
+
+        coherent = iommu->coherent_page_walk() && coherent;
+        snoop_ctl = iommu->snoop_ctl() && snoop_ctl;
+
+        this->add_iommu(iommu);
+    }
+
+    m_ept_map.set_iommu_coherence(coherent);
+    m_ept_map.set_iommu_snoop_ctl(snoop_ctl);
+
+    if (!coherent) {
+        m_ept_map.flush_tables();
+        printv("%s: flushed domain 0x%lx EPT tables: coherent=%u, snoop_ctl=%u\n",
+               __func__, this->id(), coherent, snoop_ctl);
+    }
+
+    m_dma_map_ready = true;
+}
+
+microv::iommu *domain::find_catchall_iommu() noexcept
+{
+    for (auto iommu : m_iommu_set) {
+        if (iommu->has_catchall_scope()) {
+            return iommu;
+        }
+    }
+
+    return nullptr;
+}
+
+void domain::map_root_dma()
+{
+    auto catchall_iommu = this->find_catchall_iommu();
+    expects(catchall_iommu != nullptr);
+
+    for (auto bus = 0U; bus < pci_nr_bus; bus++) {
+        if (!pci_bus_has_passthru_dev(bus)) {
+            catchall_iommu->map_bus(bus, this);
+            continue;
+        }
+
+        for (auto devfn = 0U; devfn < pci_nr_devfn; devfn++) {
+            auto addr = pci_cfg_bdf_to_addr(bus, devfn);
+
+            if (find_passthru_dev(addr)) {
+                continue;
+            }
+
+            catchall_iommu->map_bdf(bus, devfn, this);
+        }
+    }
+
+    for (const auto pdev : m_pci_devs) {
+        auto iommu = pdev->m_iommu;
+
+        if (!iommu->has_catchall_scope()) {
+            auto bus = pci_cfg_bus(pdev->m_cf8);
+            auto devfn = pci_cfg_devfn(pdev->m_cf8);
+
+            iommu->map_bdf(bus, devfn, this);
+        }
+    }
+
+    for (auto iommu : m_iommu_set) {
+        if (iommu->dma_remapping_enabled()) {
+            continue;
+        }
+
+        iommu->enable_dma_remapping();
+    }
+}
+
+void domain::map_guest_dma()
+{
+    for (const auto pdev : m_pci_devs) {
+        auto bus = pci_cfg_bus(pdev->m_cf8);
+        auto devfn = pci_cfg_devfn(pdev->m_cf8);
+        auto iommu = pdev->m_iommu;
+
+        iommu->map_bdf(bus, devfn, this);
+    }
+
+    for (auto iommu : m_iommu_set) {
+        if (iommu->dma_remapping_enabled()) {
+            continue;
+        }
+
+        iommu->enable_dma_remapping();
+    }
+}
+
+void domain::map_dma()
+{
+    expects(m_dma_map_ready);
+
+    if (this->id() == 0) {
+        this->map_root_dma();
+    } else {
+        this->map_guest_dma();
+    }
+}
+
+void domain::flush_iotlb()
+{
+    for (auto iommu : m_iommu_set) {
+        iommu->flush_iotlb_domain(this);
+    }
+}
+
+void domain::flush_iotlb_page_4k(uint64_t page_gpa)
+{
+    for (auto iommu : m_iommu_set) {
+        if (!iommu->psi_supported()) {
+            iommu->flush_iotlb_domain(this);
+            continue;
+        }
+
+        iommu->flush_iotlb_page_range(this, page_gpa, UV_PAGE_SIZE);
+    }
+}
+
 void domain::setup_dom0()
 {
     // TODO:
@@ -114,7 +269,7 @@ void domain::setup_dom0()
         m_sod_info.xen_domid = DOMID_WINPV;
         m_sod_info.flags = DOMF_EXEC_XENPVH;
 
-        m_xen_domid = create_xen_domain(this, nullptr);
+        m_xen_domid = create_xen_domain(this);
         m_xen_dom = get_xen_domain(m_xen_domid);
 
         if (g_disable_xen_pfd) {
@@ -128,29 +283,12 @@ void domain::setup_dom0()
 void domain::setup_domU()
 {
     if (m_sod_info.is_xen_dom()) {
-        class iommu *iommu{};
-
-        if (m_sod_info.is_ndvm()) {
-            for (auto pdev : pci_passthru_list) {
-                if (!pdev->is_netdev()) {
-                    continue;
-                }
-
-                if (!iommu) {
-                    iommu = pdev->m_iommu;
-                } else {
-                    /* Every net device should have the same IOMMU */
-                    expects(pdev->m_iommu == iommu);
-                }
-            }
-
-            if (!iommu) {
-                bfalert_info(0, "No passthrough network devices found");
-            }
-        }
-
-        m_xen_domid = create_xen_domain(this, iommu);
+        m_xen_domid = create_xen_domain(this);
         m_xen_dom = get_xen_domain(m_xen_domid);
+    } else if (m_sod_info.is_ndvm() && microv::pci_passthru) {
+        for (auto pdev : pci_passthru_list) {
+            this->assign_pci_device(pdev);
+        }
     }
 }
 
@@ -234,6 +372,15 @@ domain::page_already_donated(uint64_t page_gpa)
     }
 
     return false;
+}
+
+bool
+domain::donated_pages_to_guest(domainid_t guest_domid)
+{
+    spin_acquire(&m_donated_page_lock);
+    auto release = gsl::finally([&]{ spin_release(&m_donated_page_lock); });
+
+    return m_donated_page_map.count(guest_domid) != 0;
 }
 
 bool

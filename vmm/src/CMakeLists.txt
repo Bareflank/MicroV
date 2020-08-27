@@ -24,7 +24,6 @@ add_library(uvvmm_domain
     iommu.cpp
     pci.cpp
     acpi.cpp
-    clflush.asm
     rand.asm
 )
 

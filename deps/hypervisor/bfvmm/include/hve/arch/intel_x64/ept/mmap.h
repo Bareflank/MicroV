@@ -76,6 +76,8 @@ public:
         write_back = 6
     };
 
+    static constexpr entry_type iommu_snoop_mask = (1UL << 11);
+
     struct pair {
         gsl::span<virt_addr_t> virt_addr{};
         phys_addr_t phys_addr{};
@@ -89,7 +91,9 @@ public:
     /// @ensures
     ///
     mmap() :
-        m_pml4{allocate_span(::intel_x64::ept::pml4::num_entries), 0}
+        m_pml4{allocate_span(::intel_x64::ept::pml4::num_entries), 0},
+        m_iommu_incoherent{false},
+        m_iommu_snoop_ctl{false}
     { }
 
     /// Destructor
@@ -108,13 +112,40 @@ public:
                 continue;
             }
 
-            this->clear_pdpt(pml4i, true);
+            this->clear_pdpt(pml4i);
             entry = 0;
-            ::intel_x64::wmb();
             ::x64::cache::clflush(&entry);
         }
 
         free_page(m_pml4.virt_addr.data());
+    }
+
+    /// Set IOMMU Coherence
+    ///
+    /// @expects
+    /// @ensures
+    ///
+    /// @param coherent true iff *all* IOMMUs that reference this EPT
+    ///        perform a coherent second-level page table walk.
+    ///
+    inline void set_iommu_coherence(bool coherent) noexcept
+    {
+        std::lock_guard lock(m_mutex);
+        m_iommu_incoherent = !coherent;
+    }
+
+    /// Set IOMMU Snoop Control
+    ///
+    /// @expects
+    /// @ensures
+    ///
+    /// @param snoop_ctl true iff *all* IOMMUs that reference this EPT
+    ///        support setting the SNP bit in leaf EPT entries.
+    ///
+    inline void set_iommu_snoop_ctl(bool snoop_ctl) noexcept
+    {
+        std::lock_guard lock(m_mutex);
+        m_iommu_snoop_ctl = snoop_ctl;
     }
 
     /// PML4 physical address
@@ -153,8 +184,7 @@ public:
         void *virt_addr,
         phys_addr_t phys_addr,
         uint64_t attr = attr_type::read_write_execute,
-        uint64_t cache = memory_type::write_back,
-        bool flush = false, bool snoop = false)
+        uint64_t cache = memory_type::write_back)
     {
         std::lock_guard lock(m_mutex);
         using namespace ::intel_x64::ept;
@@ -162,8 +192,8 @@ public:
         expects(bfn::lower(virt_addr, pdpt::from) == 0);
         expects(bfn::lower(phys_addr, pdpt::from) == 0);
 
-        this->map_pdpt(pml4::index(virt_addr), flush);
-        return this->map_pdpte(virt_addr, phys_addr, attr, cache, flush, snoop);
+        this->map_pdpt(pml4::index(virt_addr));
+        return this->map_pdpte(virt_addr, phys_addr, attr, cache);
     }
 
     /// Map 1g Virt Address to Phys Address
@@ -183,11 +213,10 @@ public:
         virt_addr_t virt_addr,
         phys_addr_t phys_addr,
         uint64_t attr = attr_type::read_write_execute,
-        uint64_t cache = memory_type::write_back,
-        bool flush = false, bool snoop = false)
+        uint64_t cache = memory_type::write_back)
     {
         return map_1g(reinterpret_cast<void *>(virt_addr), phys_addr, attr,
-                      cache, flush, snoop);
+                      cache);
     }
 
     /// Map 2m Virt Address to Phys Address
@@ -207,8 +236,7 @@ public:
         void *virt_addr,
         phys_addr_t phys_addr,
         uint64_t attr = attr_type::read_write_execute,
-        uint64_t cache = memory_type::write_back,
-        bool flush = false, bool snoop = false)
+        uint64_t cache = memory_type::write_back)
     {
         std::lock_guard lock(m_mutex);
         using namespace ::intel_x64::ept;
@@ -216,10 +244,10 @@ public:
         expects(bfn::lower(virt_addr, pd::from) == 0);
         expects(bfn::lower(phys_addr, pd::from) == 0);
 
-        this->map_pdpt(pml4::index(virt_addr), flush);
-        this->map_pd(pdpt::index(virt_addr), flush);
+        this->map_pdpt(pml4::index(virt_addr));
+        this->map_pd(pdpt::index(virt_addr));
 
-        return this->map_pde(virt_addr, phys_addr, attr, cache, flush, snoop);
+        return this->map_pde(virt_addr, phys_addr, attr, cache);
     }
 
     /// Map 2m Virt Address to Phys Address
@@ -239,11 +267,10 @@ public:
         virt_addr_t virt_addr,
         phys_addr_t phys_addr,
         uint64_t attr = attr_type::read_write_execute,
-        uint64_t cache = memory_type::write_back,
-        bool flush = false, bool snoop = false)
+        uint64_t cache = memory_type::write_back)
     {
         return map_2m(reinterpret_cast<void *>(virt_addr), phys_addr, attr,
-                      cache, flush, snoop);
+                      cache);
     }
 
     /// Map 4k Virt Address to Phys Address
@@ -257,16 +284,13 @@ public:
     /// @param phys_addr the physical address to map to
     /// @param attr the map permissions
     /// @param cache the memory type for the mapping
-    /// @param flush write any entry changes to memory when done
     ///
     entry_type &
     map_4k(
         void *virt_addr,
         phys_addr_t phys_addr,
         uint64_t attr = attr_type::read_write_execute,
-        uint64_t cache = memory_type::write_back,
-        bool flush = false,
-        bool snoop = false)
+        uint64_t cache = memory_type::write_back)
     {
         std::lock_guard lock(m_mutex);
         using namespace ::intel_x64::ept;
@@ -274,11 +298,11 @@ public:
         expects(bfn::lower(virt_addr, pt::from) == 0);
         expects(bfn::lower(phys_addr, pt::from) == 0);
 
-        this->map_pdpt(pml4::index(virt_addr), flush);
-        this->map_pd(pdpt::index(virt_addr), flush);
-        this->map_pt(pd::index(virt_addr), flush);
+        this->map_pdpt(pml4::index(virt_addr));
+        this->map_pd(pdpt::index(virt_addr));
+        this->map_pt(pd::index(virt_addr));
 
-        return this->map_pte(virt_addr, phys_addr, attr, cache, flush, snoop);
+        return this->map_pte(virt_addr, phys_addr, attr, cache);
     }
 
     /// Map 4k Virt Address to Phys Address
@@ -298,11 +322,10 @@ public:
         virt_addr_t virt_addr,
         phys_addr_t phys_addr,
         uint64_t attr = attr_type::read_write_execute,
-        uint64_t cache = memory_type::write_back,
-        bool flush = false, bool snoop = false)
+        uint64_t cache = memory_type::write_back)
     {
         return map_4k(reinterpret_cast<void *>(virt_addr), phys_addr, attr,
-                      cache, flush, snoop);
+                      cache);
     }
 
     /// Unmap Virtual Address
@@ -314,7 +337,7 @@ public:
     /// @return the from for the address that was unmapped
     ///
     uintptr_t
-    unmap(void *virt_addr, bool flush = false)
+    unmap(void *virt_addr)
     {
         std::lock_guard lock(m_mutex);
         using namespace ::intel_x64::ept;
@@ -328,8 +351,7 @@ public:
 
         if (pdpt::entry::ps::is_enabled(pdpte)) {
             pdpte = 0;
-            if (flush) {
-                ::intel_x64::wmb();
+            if (m_iommu_incoherent) {
                 ::x64::cache::clflush(&pdpte);
             }
             return ::intel_x64::ept::pdpt::from;
@@ -344,8 +366,7 @@ public:
 
         if (pd::entry::ps::is_enabled(pde)) {
             pde = 0;
-            if (flush) {
-                ::intel_x64::wmb();
+            if (m_iommu_incoherent) {
                 ::x64::cache::clflush(&pde);
             }
             return ::intel_x64::ept::pd::from;
@@ -355,8 +376,7 @@ public:
         auto &pte = m_pt.virt_addr.at(pt::index(virt_addr));
         pte = 0;
 
-        if (flush) {
-            ::intel_x64::wmb();
+        if (m_iommu_incoherent) {
             ::x64::cache::clflush(&pte);
         }
 
@@ -375,8 +395,8 @@ public:
     ///
     /// @param virt_addr the virtual address to unmap
     ///
-    inline void unmap(virt_addr_t virt_addr, bool flush = false)
-    { unmap(reinterpret_cast<void *>(virt_addr), flush); }
+    inline void unmap(virt_addr_t virt_addr)
+    { unmap(reinterpret_cast<void *>(virt_addr)); }
 
     /// Release Virtual Address
     ///
@@ -392,7 +412,7 @@ public:
     /// @param virt_addr the virtual address to unmap
     ///
     void
-    release(void *virt_addr, bool flush = false)
+    release(void *virt_addr)
     {
         std::lock_guard lock(m_mutex);
         using namespace ::intel_x64::ept;
@@ -400,8 +420,7 @@ public:
         if (this->release_pdpte(virt_addr)) {
             auto &entry = m_pml4.virt_addr.at(pml4::index(virt_addr));
             entry = 0;
-            if (flush) {
-                ::intel_x64::wmb();
+            if (m_iommu_incoherent) {
                 ::x64::cache::clflush(&entry);
             }
         }
@@ -420,8 +439,8 @@ public:
     ///
     /// @param virt_addr the virtual address to unmap
     ///
-    inline void release(virt_addr_t virt_addr, bool flush = false)
-    { release(reinterpret_cast<void *>(virt_addr), flush); }
+    inline void release(virt_addr_t virt_addr)
+    { release(reinterpret_cast<void *>(virt_addr)); }
 
     /// Virtual Address to Entry
     ///
@@ -712,6 +731,81 @@ public:
         }
     }
 
+    /// Flush Tables
+    ///
+    /// @expects
+    /// @ensures
+    ///
+    void flush_tables()
+    {
+        std::lock_guard lock(m_mutex);
+        using namespace ::intel_x64::ept;
+
+        static_assert(pml4::num_entries == pdpt::num_entries);
+        static_assert(pdpt::num_entries == pd::num_entries);
+        static_assert(pd::num_entries == pt::num_entries);
+
+        constexpr auto num_entries = pml4::num_entries;
+        constexpr auto table_bytes = num_entries * sizeof(entry_type);
+
+        auto snoop = m_iommu_snoop_ctl ? iommu_snoop_mask : 0UL;
+        auto pml4e = m_pml4.virt_addr.data();
+
+        for (auto pml4i = 0U; pml4i < num_entries; pml4i++) {
+            if (pml4e[pml4i] == 0U) {
+                continue;
+            }
+
+            auto pdpt_phys = pml4::entry::phys_addr::get(pml4e[pml4i]);
+            m_pdpt = phys_to_pair(pdpt_phys, num_entries);
+            auto pdpte = m_pdpt.virt_addr.data();
+
+            for (auto pdpti = 0U; pdpti < num_entries; pdpti++) {
+                if (pdpte[pdpti] == 0U) {
+                    continue;
+                }
+
+                if (pdpt::entry::ps::is_enabled(pdpte[pdpti])) {
+                    pdpte[pdpti] |= snoop;
+                    continue;
+                }
+
+                auto pd_phys = pdpt::entry::phys_addr::get(pdpte[pdpti]);
+                m_pd = phys_to_pair(pd_phys, num_entries);
+                auto pde = m_pd.virt_addr.data();
+
+                for (auto pdi = 0U; pdi < num_entries; pdi++) {
+                    if (pde[pdi] == 0U) {
+                        continue;
+                    }
+
+                    if (pd::entry::ps::is_enabled(pde[pdi])) {
+                        pde[pdi] |= snoop;
+                        continue;
+                    }
+
+                    auto pt_phys = pd::entry::phys_addr::get(pde[pdi]);
+                    m_pt = phys_to_pair(pt_phys, num_entries);
+                    auto pte = m_pt.virt_addr.data();
+
+                    for (auto pti = 0U; pti < num_entries; pti++) {
+                        if (pt::entry::ps::is_enabled(pte[pti])) {
+                            pte[pti] |= snoop;
+                        }
+                    }
+
+                    ::x64::cache::clflush_range(pte, table_bytes);
+                }
+
+                ::x64::cache::clflush_range(pde, table_bytes);
+            }
+
+            ::x64::cache::clflush_range(pdpte, table_bytes);
+        }
+
+        ::x64::cache::clflush_range(pml4e, table_bytes);
+    }
+
 private:
 
     gsl::span<virt_addr_t>
@@ -764,7 +858,7 @@ private:
     }
 
     void
-    map_pdpt(index_type pml4i, bool flush = false)
+    map_pdpt(index_type pml4i)
     {
         using namespace ::intel_x64::ept;
         auto &entry = m_pml4.virt_addr.at(pml4i);
@@ -787,14 +881,13 @@ private:
         pml4::entry::write_access::enable(entry);
         pml4::entry::execute_access::enable(entry);
 
-        if (flush) {
-            ::intel_x64::wmb();
+        if (m_iommu_incoherent) {
             ::x64::cache::clflush(&entry);
         }
     }
 
     void
-    map_pd(index_type pdpti, bool flush = false)
+    map_pd(index_type pdpti)
     {
         using namespace ::intel_x64::ept;
         auto &entry = m_pdpt.virt_addr.at(pdpti);
@@ -817,14 +910,13 @@ private:
         pdpt::entry::write_access::enable(entry);
         pdpt::entry::execute_access::enable(entry);
 
-        if (flush) {
-            ::intel_x64::wmb();
+        if (m_iommu_incoherent) {
             ::x64::cache::clflush(&entry);
         }
     }
 
     void
-    map_pt(index_type pdi, bool flush = false)
+    map_pt(index_type pdi)
     {
         using namespace ::intel_x64::ept;
         auto &entry = m_pd.virt_addr.at(pdi);
@@ -847,14 +939,13 @@ private:
         pd::entry::write_access::enable(entry);
         pd::entry::execute_access::enable(entry);
 
-        if (flush) {
-            ::intel_x64::wmb();
+        if (m_iommu_incoherent) {
             ::x64::cache::clflush(&entry);
         }
     }
 
     void
-    clear_pdpt(index_type pml4i, bool flush = false)
+    clear_pdpt(index_type pml4i)
     {
         using namespace ::intel_x64::ept;
         this->map_pdpt(pml4i);
@@ -867,12 +958,11 @@ private:
             }
 
             if (pdpt::entry::ps::is_disabled(entry)) {
-                this->clear_pd(pdpti, flush);
+                this->clear_pd(pdpti);
             }
 
             entry = 0;
-            if (flush) {
-                ::intel_x64::wmb();
+            if (m_iommu_incoherent) {
                 ::x64::cache::clflush(&entry);
             }
         }
@@ -882,7 +972,7 @@ private:
     }
 
     void
-    clear_pd(index_type pdpti, bool flush = false)
+    clear_pd(index_type pdpti)
     {
         using namespace ::intel_x64::ept;
         this->map_pd(pdpti);
@@ -899,8 +989,7 @@ private:
             }
 
             entry = 0;
-            if (flush) {
-                ::intel_x64::wmb();
+            if (m_iommu_incoherent) {
                 ::x64::cache::clflush(&entry);
             }
         }
@@ -921,7 +1010,7 @@ private:
     entry_type &
     map_pdpte(
         void *virt_addr, phys_addr_t phys_addr,
-        uint64_t attr, uint64_t cache, bool flush = false, bool snoop = false)
+        uint64_t attr, uint64_t cache)
     {
         using namespace ::intel_x64::ept;
         auto &entry = m_pdpt.virt_addr.at(pdpt::index(virt_addr));
@@ -935,8 +1024,8 @@ private:
 
         pdpt::entry::phys_addr::set(entry, phys_addr);
 
-        if (snoop) {
-            entry |= (1UL << 11);
+        if (m_iommu_snoop_ctl) {
+            entry |= iommu_snoop_mask;
         }
 
         switch (attr) {
@@ -1011,8 +1100,7 @@ private:
 
         pdpt::entry::ps::enable(entry);
 
-        if (flush) {
-            ::intel_x64::wmb();
+        if (m_iommu_incoherent) {
             ::x64::cache::clflush(&entry);
         }
 
@@ -1022,7 +1110,7 @@ private:
     entry_type &
     map_pde(
         void *virt_addr, phys_addr_t phys_addr,
-        uint64_t attr, uint64_t cache, bool flush = false, bool snoop = false)
+        uint64_t attr, uint64_t cache)
     {
         using namespace ::intel_x64::ept;
         auto &entry = m_pd.virt_addr.at(pd::index(virt_addr));
@@ -1036,8 +1124,8 @@ private:
 
         pd::entry::phys_addr::set(entry, phys_addr);
 
-        if (snoop) {
-            entry |= (1UL << 11);
+        if (m_iommu_snoop_ctl) {
+            entry |= iommu_snoop_mask;
         }
 
         switch (attr) {
@@ -1112,8 +1200,7 @@ private:
 
         pd::entry::ps::enable(entry);
 
-        if (flush) {
-            ::intel_x64::wmb();
+        if (m_iommu_incoherent) {
             ::x64::cache::clflush(&entry);
         }
 
@@ -1123,7 +1210,7 @@ private:
     entry_type &
     map_pte(
         void *virt_addr, phys_addr_t phys_addr,
-        uint64_t attr, uint64_t cache, bool flush = false, bool snoop = false)
+        uint64_t attr, uint64_t cache)
     {
         using namespace ::intel_x64::ept;
         auto &entry = m_pt.virt_addr.at(pt::index(virt_addr));
@@ -1137,9 +1224,8 @@ private:
 
         pt::entry::phys_addr::set(entry, phys_addr);
 
-        /* Set bit 11 used by IOMMU for snoop control */
-        if (snoop) {
-            entry |= (1U << 11);
+        if (m_iommu_snoop_ctl) {
+            entry |= iommu_snoop_mask;
         }
 
         switch (attr) {
@@ -1212,8 +1298,7 @@ private:
                 break;
         };
 
-        if (flush) {
-            ::intel_x64::wmb();
+        if (m_iommu_incoherent) {
             ::x64::cache::clflush(&entry);
         }
 
@@ -1221,7 +1306,7 @@ private:
     }
 
     bool
-    release_pdpte(void *virt_addr, bool flush = false)
+    release_pdpte(void *virt_addr)
     {
         using namespace ::intel_x64::ept;
 
@@ -1229,14 +1314,13 @@ private:
         auto &entry = m_pdpt.virt_addr.at(pdpt::index(virt_addr));
 
         if (pdpt::entry::ps::is_disabled(entry)) {
-            if (!this->release_pde(virt_addr, flush)) {
+            if (!this->release_pde(virt_addr)) {
                 return false;
             }
         }
 
         entry = 0;
-        if (flush) {
-            ::intel_x64::wmb();
+        if (m_iommu_incoherent) {
             ::x64::cache::clflush(&entry);
         }
 
@@ -1256,7 +1340,7 @@ private:
     }
 
     bool
-    release_pde(void *virt_addr, bool flush = false)
+    release_pde(void *virt_addr)
     {
         using namespace ::intel_x64::ept;
 
@@ -1264,14 +1348,13 @@ private:
         auto &entry = m_pd.virt_addr.at(pd::index(virt_addr));
 
         if (pd::entry::ps::is_disabled(entry)) {
-            if (!this->release_pte(virt_addr, flush)) {
+            if (!this->release_pte(virt_addr)) {
                 return false;
             }
         }
 
         entry = 0;
-        if (flush) {
-            ::intel_x64::wmb();
+        if (m_iommu_incoherent) {
             ::x64::cache::clflush(&entry);
         }
 
@@ -1291,7 +1374,7 @@ private:
     }
 
     bool
-    release_pte(void *virt_addr, bool flush = false)
+    release_pte(void *virt_addr)
     {
         using namespace ::intel_x64::ept;
 
@@ -1299,8 +1382,7 @@ private:
         auto &entry = m_pt.virt_addr.at(pt::index(virt_addr));
 
         entry = 0;
-        if (flush) {
-            ::intel_x64::wmb();
+        if (m_iommu_incoherent) {
             ::x64::cache::clflush(&entry);
         }
 
@@ -1327,6 +1409,8 @@ private:
     pair m_pt;
 
     mutable std::mutex m_mutex;
+    bool m_iommu_incoherent;
+    bool m_iommu_snoop_ctl;
 
 public:
 

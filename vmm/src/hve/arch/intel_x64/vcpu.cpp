@@ -26,7 +26,6 @@
 #include <bfexports.h>
 #include <microv/gpalayout.h>
 #include <microv/builderinterface.h>
-#include <clflush.h>
 #include <hve/arch/intel_x64/disassembler.h>
 #include <hve/arch/intel_x64/vcpu.h>
 #include <iommu/iommu.h>
@@ -192,7 +191,6 @@ static void unmap_vmm()
         const auto phys = p.first;
 
         if (type & MEMORY_TYPE_SHARED) {
-            printv("ept: %s: ignoring shared page: 0x%lx\n", __func__, phys);
             continue;
         }
 
@@ -203,8 +201,6 @@ static void unmap_vmm()
             const auto gpa = itr->second;
 
             if (hpa == gpa) {
-                printv("ept: %s: ignoring whitelisted identity-mapped page:"
-                       " 0x%lx\n", __func__, hpa);
                 continue;
             }
 
@@ -310,7 +306,6 @@ vcpu::vcpu(
 
         if (vcpu0 == nullptr) {
             vcpu0 = this;
-            init_cache_ops();
         }
 
         this->write_dom0_guest_state(domain);
@@ -404,11 +399,22 @@ vcpu::write_domU_guest_state(domain *domain)
         bfdebug_bool(0, "domain is_xsvm:", domain->is_xsvm());
         bfdebug_bool(0, "domain is_ndvm:", domain->is_ndvm());
 
-        if (domain->is_xsvm() || domain->is_ndvm()) {
+        if ((domain->is_xsvm() || domain->is_ndvm()) && pci_passthru) {
             init_pci_on_vcpu(this);
+
+            if (domain->is_ndvm()) {
+                domain->prepare_iommus();
+                domain->map_dma();
+            }
         }
 
         m_xen_vcpu = std::make_unique<class xen_vcpu>(this);
+    }
+
+    auto root_dom = vcpu0->dom();
+
+    if (root_dom->donated_pages_to_guest(domain->id())) {
+        root_dom->flush_iotlb();
     }
 }
 
@@ -527,9 +533,9 @@ bool vcpu::handle_0x4BF00010(bfvmm::intel_x64::vcpu *vcpu)
         /* Order matters with these init functions */
         bfn::call_once(acpi_ready, []{ init_acpi(); });
         bfn::call_once(pci_ready, []{ init_pci(); });
+        bfn::call_once(vtd_ready, []{ init_vtd(); });
 
         if (pci_passthru) {
-            bfn::call_once(vtd_ready, []{ init_vtd(); });
             m_pci_handler.enable();
             init_pci_on_vcpu(this);
         }
@@ -545,7 +551,30 @@ bool vcpu::handle_0x4BF00010(bfvmm::intel_x64::vcpu *vcpu)
 
 bool vcpu::handle_0x4BF00012(bfvmm::intel_x64::vcpu *vcpu)
 {
-    bfn::call_once(ept_ready, []{ unmap_vmm(); });
+    if (vcpu->is_guest_vcpu()) {
+        printv("%s: ALERT: cpuid 0x4BF00012 on guest vcpu\n", __func__);
+        return vcpu->advance();
+    }
+
+    if (vcpu->id() == 0) {
+        unmap_vmm();
+
+        if (pci_passthru) {
+            auto root_dom = vcpu_cast(vcpu)->dom();
+
+            for (auto pdev : pci_list) {
+                if (pdev->m_passthru_dev) {
+                    continue;
+                }
+
+                root_dom->assign_pci_device(pdev);
+            }
+
+            root_dom->prepare_iommus();
+            root_dom->map_dma();
+        }
+    }
+
     ::intel_x64::vmx::invept_global();
 
     return vcpu->advance();

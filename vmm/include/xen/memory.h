@@ -64,12 +64,7 @@ static inline uintptr_t xen_addr(xen_pfn_t frame) noexcept
 
 class xen_memory {
 public:
-    xen_memory(xen_domain *xen, class iommu *iommu = nullptr);
-
-    /* IOMMU handling */
-    void bind_iommu(class iommu *iommu);
-    bool iommu_incoherent() const noexcept;
-    bool iommu_snoop_ctl() const noexcept;
+    xen_memory(xen_domain *xen);
 
     /* EPT handling */
     void invept() const;
@@ -113,7 +108,6 @@ public:
     xen_domain *m_xen_dom{};
     bfvmm::intel_x64::ept::mmap *m_ept{};
     std::unordered_map<xen_pfn_t, class xen_page> m_page_map;
-    class iommu *m_iommu{};
     void *m_pages{};
     uintptr_t m_pages_hpa{};
     uintptr_t m_next_hpa{};

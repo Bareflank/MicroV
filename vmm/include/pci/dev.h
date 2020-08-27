@@ -51,7 +51,7 @@ struct pci_dev {
     uint32_t m_msix_cap{};
     uint32_t m_pcie_cap{};
     char m_bdf_str[8]{};
-    bool m_guest_owned{};
+    bool m_passthru_dev{};
     vcpuid_t m_guest_vcpuid{};
 
     std::mutex m_msi_mtx{};
@@ -111,7 +111,6 @@ struct pci_dev {
     void init_root_vcfg();
     void add_root_handlers(vcpu *vcpu);
     void add_guest_handlers(vcpu *vcpu);
-    void map_dma(domain *dom);
     void get_relocated_bars(bool type_pmio, pci_bar_list &relocated_bars);
     void show_relocated_bars(bool type_pmio, const pci_bar_list &relocated_bars);
     void relocate_pmio_bars(base_vcpu *vcpu, cfg_info &info);
@@ -135,6 +134,7 @@ extern std::list<struct pci_dev *> pci_list;
 extern std::list<struct pci_dev *> pci_passthru_list;
 
 struct pci_dev *find_passthru_dev(uint64_t bdf);
+void remove_passthru_dev(struct pci_dev *pdev);
 
 }
 #endif

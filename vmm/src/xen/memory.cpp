@@ -23,9 +23,7 @@
 #include <mutex>
 #include <unordered_set>
 
-#include <clflush.h>
 #include <hve/arch/intel_x64/vcpu.h>
-#include <iommu/iommu.h>
 #include <printv.h>
 #include <xen/domain.h>
 #include <xen/memory.h>
@@ -419,6 +417,7 @@ bool xenmem_acquire_resource(xen_vcpu *vcpu)
     /* Now we add the pages into the caller's map */
     for (auto i = 0; i < res->nr_frames; i++) {
         mem->add_foreign_page(gfn[i], pg_perm_rw, pg_mtype_wb, pages[i]);
+        mem->m_xen_dom->m_uv_dom->flush_iotlb_page_4k(xen_addr(gfn[i]));
     }
 
     mem->invept();
@@ -429,11 +428,10 @@ bool xenmem_acquire_resource(xen_vcpu *vcpu)
 }
 
 /* class xen_memory */
-xen_memory::xen_memory(xen_domain *dom, class iommu *iommu) :
+xen_memory::xen_memory(xen_domain *dom) :
     m_xen_dom{dom},
     m_ept{&dom->m_uv_dom->ept()}
 {
-    this->bind_iommu(iommu);
 }
 
 void xen_memory::add_ept_handlers(xen_vcpu *v)
@@ -582,71 +580,12 @@ bool xen_memory::handle_ept_exec(base_vcpu *vcpu,
     return true;
 }
 
-void xen_memory::bind_iommu(class iommu *new_iommu)
-{
-    if (!new_iommu) {
-        return;
-    }
-
-    if (m_iommu && m_iommu != new_iommu) {
-        throw std::runtime_error("xen_memory: only one IOMMU supported");
-    }
-
-    m_iommu = new_iommu;
-
-    if (!iommu_snoop_ctl()) {
-        return;
-    }
-
-    for (const auto &itr : m_page_map) {
-        const class xen_page *page = &itr.second;
-        if (page->mtype == pg_mtype_uc) {
-            continue;
-        }
-
-        uint64_t *epte = page->epte;
-        expects(epte);
-
-        /* Enable snoop control */
-        *epte |= 1UL << 11;
-
-        /* Flush the entry */
-        if (iommu_incoherent()) {
-            clflush(epte);
-        }
-    }
-}
-
-bool xen_memory::iommu_incoherent() const noexcept
-{
-    if (m_xen_dom->m_uv_dom->id() == 0) {
-        return false;
-    }
-
-    if (m_iommu) {
-        return !m_iommu->coherent_page_walk();
-    } else {
-        return true;
-    }
-}
-
-bool xen_memory::iommu_snoop_ctl() const noexcept
-{
-    if (m_iommu) {
-        return m_iommu->snoop_ctl();
-    } else {
-        return false;
-    }
-}
-
 void xen_memory::map_page(class xen_page *pg)
 {
     const auto gpa = xen_addr(pg->gfn);
     const auto hpa = xen_addr(pg->page->hfn);
-    const bool flush = iommu_incoherent();
-    const bool snoop = iommu_snoop_ctl() && pg->mtype != pg_mtype_uc;
 
-    pg->epte = &m_ept->map_4k(gpa, hpa, pg->perms, pg->mtype, flush, snoop);
+    pg->epte = &m_ept->map_4k(gpa, hpa, pg->perms, pg->mtype);
     pg->present = true;
 }
 
@@ -845,6 +784,7 @@ bool xen_memory::add_to_physmap_batch(xen_vcpu *v,
 
         this->add_foreign_page(*gpfn.get(), pg_perm_rw, pg_mtype_wb, pg->page);
         this->invept();
+        m_xen_dom->m_uv_dom->flush_iotlb_page_4k(xen_addr(*gpfn.get()));
 
         uvv->set_rax(0);
         put_xen_domain(fdomid);
@@ -860,8 +800,8 @@ bool xen_memory::add_to_physmap_batch(xen_vcpu *v,
 
 void xen_memory::unmap_page(class xen_page *pg)
 {
-    m_ept->unmap(xen_addr(pg->gfn), iommu_incoherent());
-    m_ept->release(xen_addr(pg->gfn), iommu_incoherent());
+    m_ept->unmap(xen_addr(pg->gfn));
+    m_ept->release(xen_addr(pg->gfn));
     pg->present = false;
 }
 
@@ -883,6 +823,7 @@ int xen_memory::remove_page(xen_pfn_t gfn, bool need_invept)
 
     if (need_invept) {
         this->invept();
+        m_xen_dom->m_uv_dom->flush_iotlb_page_4k(xen_addr(gfn));
     }
 
     /* Free the backing page if no other refs exist */
@@ -929,6 +870,8 @@ bool xen_memory::decrease_reservation(xen_vcpu *v,
             if (this->remove_page(gfn[i], false)) {
                 break;
             }
+
+            m_xen_dom->m_uv_dom->flush_iotlb_page_4k(xen_addr(gfn[i]));
             nr_done++;
         }
 
@@ -954,8 +897,8 @@ bool xen_memory::decrease_reservation(xen_vcpu *v,
          * the memory hasn't been accessed yet.
          */
 
-//        m_ept->unmap(xen_addr(gfn[0]), iommu_incoherent());
-//        m_ept->release(xen_addr(gfn[0]), iommu_incoherent());
+//        m_ept->unmap(xen_addr(gfn[0]));
+//        m_ept->release(xen_addr(gfn[0]));
 
         nr_done = 1;
         uvv->set_rax(nr_done);
@@ -1024,6 +967,7 @@ bool xen_memory::populate_physmap(xen_vcpu *v, xen_memory_reservation_t *rsv)
         }
 
         this->invept();
+        m_xen_dom->m_uv_dom->flush_iotlb();
         uvv->set_rax(rsv->nr_extents);
 
         return true;

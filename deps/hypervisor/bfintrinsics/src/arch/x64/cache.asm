@@ -38,3 +38,8 @@ global _clflush
 _clflush:
     clflush [rdi]
     ret
+
+global _clflushopt
+_clflushopt:
+    clflushopt [rdi]
+    ret

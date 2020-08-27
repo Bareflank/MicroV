@@ -21,11 +21,11 @@
 
 #include <memory>
 #include <unordered_map>
+#include <unordered_set>
 
 #include <acpi.h>
 #include <bfvcpuid.h>
 #include <hve/arch/intel_x64/vcpu.h>
-#include <iommu/iommu.h>
 #include <pci/dev.h>
 #include <pci/msi.h>
 #include <pci/pci.h>
@@ -57,6 +57,7 @@ std::list<struct pci_dev *> pci_list;
 
 /* List of PCI devices to pass through */
 std::list<struct pci_dev *> pci_passthru_list;
+std::unordered_set<uint32_t> pci_passthru_busses;
 
 /* Passthrough vendor/device IDs */
 static constexpr uint32_t passthru_vendor{0xBFBF};
@@ -124,6 +125,11 @@ uintptr_t find_ecam_page(uint32_t addr, uint16_t sgmt)
     return 0;
 }
 
+bool pci_bus_has_passthru_dev(uint32_t bus)
+{
+    return pci_passthru_busses.count(bus) != 0;
+}
+
 static void init_mcfg()
 {
     mcfg = find_acpi_table("MCFG");
@@ -145,18 +151,29 @@ static void probe_bus(uint32_t b, struct pci_dev *bridge)
         for (auto f = 0; f < pci_nr_fun; f++) {
             const auto addr = pci_cfg_bdf_to_addr(b, d, f);
             const auto reg0 = pci_cfg_read_reg(addr, 0);
+
             if (!pci_cfg_is_present(reg0)) {
                 continue;
             }
 
-            pci_map[addr] = std::make_unique<struct pci_dev>(addr, bridge);
-            auto pdev = pci_map[addr].get();
+            auto [itr, new_dev] =
+                pci_map.try_emplace(addr, std::make_unique<pci_dev>(addr, bridge));
+
+            if (!new_dev) {
+                continue;
+            }
+
+            pci_dev *pdev = itr->second.get();
             pci_list.push_back(pdev);
 
             if (pdev->is_pci_bridge()) {
                 auto reg6 = pci_cfg_read_reg(addr, 6);
-                auto next = pci_bridge_sec_bus(reg6);
-                probe_bus(next, pdev);
+                auto secondary = pci_bridge_sec_bus(reg6);
+                auto subordinate = pci_bridge_sub_bus(reg6);
+
+                for (auto next = secondary; next <= subordinate; next++) {
+                    probe_bus(next, pdev);
+                }
             } else if (pdev->is_netdev()) {
                 if (g_no_pci_pt.count(addr)) {
                     printv("pci: %s: passthrough disabled via boot option\n",
@@ -188,11 +205,12 @@ static void probe_bus(uint32_t b, struct pci_dev *bridge)
                     continue;
                 }
 
-                pdev->m_guest_owned = true;
+                pdev->m_passthru_dev = true;
                 pdev->parse_capabilities();
                 pdev->init_root_vcfg();
 
                 pci_passthru_list.push_back(pdev);
+                pci_passthru_busses.emplace(b);
             }
         }
     }
@@ -234,7 +252,7 @@ void init_pci_on_vcpu(microv::intel_x64::vcpu *vcpu)
 uint32_t alloc_pci_cfg_addr() noexcept
 {
     /* Scan bus 0 for empty slots starting at device 1 */
-    for (uint32_t devfn = 0x8; devfn < pci_nr_devfn; devfn++) {
+    for (uint32_t devfn = 0x8; devfn < pci_nr_devfn; devfn += 0x8) {
         const auto addr = pci_cfg_bdf_to_addr(0, devfn);
         const auto reg0 = pci_cfg_read_reg(addr, 0);
 
@@ -259,6 +277,12 @@ struct pci_dev *find_passthru_dev(uint64_t bdf)
     return nullptr;
 }
 
+void remove_passthru_dev(struct pci_dev *pdev)
+{
+    pci_passthru_list.remove(pdev);
+    pci_passthru = !pci_passthru_list.empty();
+}
+
 static void map_pmio_bar(::microv::intel_x64::vcpu *vcpu,
                          const struct pci_bar *bar)
 {
@@ -276,9 +300,7 @@ static void unmap_pmio_bar(::microv::intel_x64::vcpu *vcpu,
 }
 
 static void map_mmio_bar(::bfvmm::intel_x64::ept::mmap *ept,
-                         const struct pci_bar *bar,
-                         bool flush,
-                         bool snoop)
+                         const struct pci_bar *bar)
 {
     using namespace ::bfvmm::intel_x64::ept;
 
@@ -289,13 +311,12 @@ static void map_mmio_bar(::bfvmm::intel_x64::ept::mmap *ept,
 
         const auto perms = mmap::attr_type::read_write;
 
-        ept->map_4k(gpa, gpa, perms, memtype, flush, snoop);
+        ept->map_4k(gpa, gpa, perms, memtype);
     }
 }
 
 static void unmap_mmio_bar(::bfvmm::intel_x64::ept::mmap *ept,
-                           struct pci_bar *bar,
-                           bool flush)
+                           struct pci_bar *bar)
 {
     using namespace ::intel_x64::ept;
     using namespace ::bfvmm::intel_x64::ept;
@@ -307,7 +328,7 @@ static void unmap_mmio_bar(::bfvmm::intel_x64::ept::mmap *ept,
             identity_map_convert_2m_to_4k(*ept, gpa_2m);
         }
 
-        ept->unmap(gpa, flush);
+        ept->unmap(gpa);
         ept->release(gpa);
     }
 }
@@ -398,7 +419,7 @@ void pci_dev::parse_capabilities()
 void pci_dev::init_root_vcfg()
 {
     expects(pci_cfg_is_normal(m_cfg_reg[3]));
-    expects(m_guest_owned);
+    expects(m_passthru_dev);
     expects(m_msi_cap);
 
     m_vcfg = std::make_unique<uint32_t[]>(vcfg_size);
@@ -436,7 +457,7 @@ void pci_dev::init_root_vcfg()
 void pci_dev::add_root_handlers(vcpu *vcpu)
 {
     expects(vcpuid::is_root_vcpu(vcpu->id()));
-    expects(m_guest_owned);
+    expects(m_passthru_dev);
 
     HANDLE_CFG_ACCESS(this, root_cfg_in, pci_dir_in);
     HANDLE_CFG_ACCESS(this, root_cfg_out, pci_dir_out);
@@ -473,10 +494,7 @@ void pci_dev::add_root_handlers(vcpu *vcpu)
             continue;
         }
 
-        /* No need to flush the EPT update since this is for the root vm */
-        bool flush = false;
-
-        unmap_mmio_bar(&vcpu->dom()->ept(), &bar, flush);
+        unmap_mmio_bar(&vcpu->dom()->ept(), &bar);
 
         printv("pci: %s: MMIO BAR[%u] at 0x%lx-0x%lx (%s, %s)\n",
                this->bdf_str(), reg - 4, bar.addr, bar.last(),
@@ -522,9 +540,6 @@ void pci_dev::add_guest_handlers(vcpu *vcpu)
     expects(this->is_normal());
     expects(!this->is_host_bridge());
     expects(vcpuid::is_guest_vcpu(vcpu->id()));
-    expects(m_iommu);
-
-    m_guest_vcpuid = vcpu->id();
 
     HANDLE_CFG_ACCESS(this, guest_normal_cfg_in, pci_dir_in);
     HANDLE_CFG_ACCESS(this, guest_normal_cfg_out, pci_dir_out);
@@ -534,6 +549,7 @@ void pci_dev::add_guest_handlers(vcpu *vcpu)
         return;
     }
 
+    m_guest_vcpuid = vcpu->id();
     ::intel_x64::rmb();
 
     for (const auto &pair : m_bars) {
@@ -542,23 +558,9 @@ void pci_dev::add_guest_handlers(vcpu *vcpu)
         if (bar.type == pci_bar_io) {
             map_pmio_bar(vcpu, &bar);
         } else {
-            bool flush = !m_iommu->coherent_page_walk();
-            bool snoop = m_iommu->snoop_ctl() && bar.prefetchable;
-
-            map_mmio_bar(&dom->ept(), &bar, flush, snoop);
+            map_mmio_bar(&dom->ept(), &bar);
         }
     }
-
-    printv("pci: %s: mapping DMA\n", this->bdf_str());
-    this->map_dma(dom);
-}
-
-void pci_dev::map_dma(domain *dom)
-{
-    auto bus = pci_cfg_bus(m_cf8);
-    auto devfn = pci_cfg_devfn(m_cf8);
-
-    m_iommu->map_dma(bus, devfn, dom);
 }
 
 bool pci_dev::guest_normal_cfg_in(base_vcpu *vcpu, cfg_info &info)
@@ -680,7 +682,7 @@ bool pci_dev::guest_normal_cfg_out(base_vcpu *vcpu, cfg_info &info)
  */
 bool pci_dev::root_cfg_in(base_vcpu *vcpu, cfg_info &info)
 {
-    expects(m_guest_owned);
+    expects(m_passthru_dev);
     expects(pci_cfg_is_normal(m_cfg_reg[3]));
 
     constexpr auto bar_base = 4;
@@ -846,16 +848,8 @@ void pci_dev::relocate_mmio_bars(base_vcpu *vcpu, cfg_info &info)
         auto &new_bar = pair.second;
         auto &old_bar = m_bars[reg];
 
-        /*
-         * Since this is for the root domain, and root domain devices
-         * are programmed as passthrough with VT-d, we dont need to flush
-         * the EPT modification or set the snoop bit.
-         */
-        bool flush = false;
-        bool snoop = false;
-
-        map_mmio_bar(ept, &old_bar, flush, snoop);
-        unmap_mmio_bar(ept, &new_bar, flush);
+        map_mmio_bar(ept, &old_bar);
+        unmap_mmio_bar(ept, &new_bar);
 
         old_bar = new_bar;
     }
@@ -864,6 +858,7 @@ void pci_dev::relocate_mmio_bars(base_vcpu *vcpu, cfg_info &info)
 
     root->end_shootdown();
     root->invept();
+    root->dom()->flush_iotlb();
 
     this->show_relocated_bars(false, relocated_bars);
     info.again = false;
@@ -873,7 +868,7 @@ void pci_dev::relocate_mmio_bars(base_vcpu *vcpu, cfg_info &info)
 
 bool pci_dev::root_cfg_out(base_vcpu *vcpu, cfg_info &info)
 {
-    expects(m_guest_owned);
+    expects(m_passthru_dev);
     expects(pci_cfg_is_normal(m_cfg_reg[3]));
 
     constexpr auto bar_base = 4;
@@ -935,7 +930,7 @@ bool pci_dev::root_cfg_out(base_vcpu *vcpu, cfg_info &info)
 
         pci_cfg_write_reg(m_cf8, reg, val);
 
-        printv("pci: %s: bar %x written: value=0x%x\n", bdf_str(), reg, val);
+        //printv("pci: %s: bar %x written: value=0x%x\n", bdf_str(), reg, val);
         return true;
     }
 

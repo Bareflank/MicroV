@@ -35,6 +35,7 @@ m_vcpu->emulate_io_instruction(p, \
 using namespace ::x64::portio;
 using base_vcpu = microv::intel_x64::pci_cfg_handler::base_vcpu;
 using cfg_info = microv::intel_x64::pci_cfg_handler::info;
+using hdlr_itr_type = microv::intel_x64::pci_cfg_handler::hdlr_itr_type;
 using cfg_key = uint64_t;
 
 namespace microv::intel_x64 {
@@ -173,9 +174,9 @@ static uint32_t *reg_to_state_32(base_vcpu *vcpu, int reg) noexcept
  * this function figures out the portion of the vcpu_state_t that is
  * implied by the register and updates it.
  */
-static void update_ecam_read(base_vcpu *vcpu,
-                             const disassembler::operand_t *dst,
-                             uint32_t val) noexcept
+static void update_ecam_read_mov(base_vcpu *vcpu,
+                                 const disassembler::operand_t *dst,
+                                 uint32_t val) noexcept
 {
     switch (dst->size) {
     case 1: {
@@ -214,7 +215,122 @@ static void update_ecam_read(base_vcpu *vcpu,
     }
 }
 
-static int64_t extract_ecam_write(base_vcpu *vcpu,
+static void update_ecam_read_cmp_rflags(const disassembler::insn_t *insn,
+                                        uint32_t src1,
+                                        uint32_t src2)
+{
+    /* Flags updated by the cmp instruction */
+    constexpr uint64_t status_flags = ::x64::rflags::carry_flag::mask |
+                                      ::x64::rflags::parity_flag::mask |
+                                      ::x64::rflags::auxiliary_carry_flag::mask |
+                                      ::x64::rflags::zero_flag::mask |
+                                      ::x64::rflags::sign_flag::mask |
+                                      ::x64::rflags::overflow_flag::mask;
+
+    uint64_t size = insn->detail->x86.operands[0].size;
+    uint64_t cmp_rflags = 0;
+
+    if (size == 1) {
+        asm volatile(
+            "movb %1, %%al \t\n"
+            "movb %2, %%dl \t\n"
+            "cmp %%al, %%dl \t\n"
+            "pushfq \t\n"
+            "popq %0\t\n"
+            : "=r"(cmp_rflags)
+            : "g"((uint8_t)src1), "g"((uint8_t)src2)
+            : "cc"
+        );
+    } else if (size == 2) {
+        asm volatile(
+            "movw %1, %%ax \t\n"
+            "movw %2, %%dx \t\n"
+            "cmp %%ax, %%dx \t\n"
+            "pushfq \t\n"
+            "popq %0\t\n"
+            : "=r"(cmp_rflags)
+            : "g"((uint16_t)src1), "g"((uint16_t)src2)
+            : "cc"
+        );
+    } else {
+        asm volatile(
+            "movl %1, %%eax \t\n"
+            "movl %2, %%edx \t\n"
+            "cmp %%eax, %%edx \t\n"
+            "pushfq \t\n"
+            "popq %0\t\n"
+            : "=r"(cmp_rflags)
+            : "g"(src1), "g"(src2)
+            : "cc"
+        );
+    }
+
+    uint64_t rflags = vmcs_n::guest_rflags::get();
+
+    rflags &= ~status_flags;
+    rflags |= (cmp_rflags & status_flags);
+
+    vmcs_n::guest_rflags::set(rflags);
+}
+
+static void update_ecam_read_test_rflags(const disassembler::insn_t *insn,
+                                         uint32_t src1,
+                                         uint32_t src2)
+{
+   /* Flags updated by the test instruction */
+   constexpr uint64_t status_flags = ::x64::rflags::carry_flag::mask |
+                                     ::x64::rflags::parity_flag::mask |
+                                     ::x64::rflags::zero_flag::mask |
+                                     ::x64::rflags::sign_flag::mask |
+                                     ::x64::rflags::overflow_flag::mask;
+
+   uint64_t size = insn->detail->x86.operands[0].size;
+   uint64_t test_rflags = 0;
+
+   if (size == 1) {
+       asm volatile(
+           "movb %1, %%al \t\n"
+           "movb %2, %%dl \t\n"
+           "test %%al, %%dl \t\n"
+           "pushfq \t\n"
+           "popq %0\t\n"
+           : "=r"(test_rflags)
+           : "g"((uint8_t)src1), "g"((uint8_t)src2)
+           : "cc"
+       );
+   } else if (size == 2) {
+       asm volatile(
+           "movw %1, %%ax \t\n"
+           "movw %2, %%dx \t\n"
+           "test %%ax, %%dx \t\n"
+           "pushfq \t\n"
+           "popq %0\t\n"
+           : "=r"(test_rflags)
+           : "g"((uint16_t)src1), "g"((uint16_t)src2)
+           : "cc"
+       );
+   } else {
+       asm volatile(
+           "movl %1, %%eax \t\n"
+           "movl %2, %%edx \t\n"
+           "test %%eax, %%edx \t\n"
+           "pushfq \t\n"
+           "popq %0\t\n"
+           : "=r"(test_rflags)
+           : "g"(src1), "g"(src2)
+           : "cc"
+       );
+   }
+
+   uint64_t rflags = vmcs_n::guest_rflags::get();
+
+   rflags &= ~status_flags;
+   rflags |= (test_rflags & status_flags);
+
+   vmcs_n::guest_rflags::set(rflags);
+}
+
+static int64_t extract_reg_value(base_vcpu *vcpu,
                                   const disassembler::operand_t *src,
                                   uint32_t *val)
 {
@@ -255,18 +371,8 @@ static int64_t extract_ecam_write(base_vcpu *vcpu,
     }
 }
 
-static bool valid_ecam_read(const disassembler::insn_t *insn) noexcept
+static bool valid_ecam_read_mov(const disassembler::insn_t *insn) noexcept
 {
-    if (insn->id != X86_INS_MOV) {
-        printv("%s: insn is not a mov\n", __func__);
-        return false;
-    }
-
-    if (!insn->detail) {
-        printv("%s: insn detail not available\n", __func__);
-        return false;
-    }
-
     cs_x86 *x86 = &insn->detail->x86;
     if (x86->op_count != 2) {
         printv("%s: insn does not have two operands\n", __func__);
@@ -285,6 +391,148 @@ static bool valid_ecam_read(const disassembler::insn_t *insn) noexcept
     }
 
     return true;
+}
+
+static bool valid_ecam_read_cmp(const disassembler::insn_t *insn) noexcept
+{
+    cs_x86 *x86 = &insn->detail->x86;
+    if (x86->op_count != 2) {
+        printv("%s: insn does not have two operands\n", __func__);
+        return false;
+    }
+
+    cs_x86_op *src1 = &x86->operands[0];
+    cs_x86_op *src2 = &x86->operands[1];
+
+    if (src1->type != X86_OP_MEM && src2->type != X86_OP_MEM) {
+        printv("%s: insn has no memory operands\n", __func__);
+        return false;
+    }
+
+    if (src1->size != src2->size) {
+        printv("%s: insn operands have different sizes: src1=%u, src2=%u\n",
+               __func__, src1->size, src2->size);
+        return false;
+    }
+
+    if (src1->size != 1 && src1->size != 2 && src1->size != 4) {
+        printv("%s: insn has invalid operand size=%u\n", __func__, src1->size);
+        return false;
+    }
+
+    return true;
+}
+
+static bool valid_ecam_read_test(const disassembler::insn_t *insn) noexcept
+{
+    cs_x86 *x86 = &insn->detail->x86;
+    if (x86->op_count != 2) {
+        printv("%s: insn does not have two operands\n", __func__);
+        return false;
+    }
+
+    cs_x86_op *src1 = &x86->operands[0];
+    cs_x86_op *src2 = &x86->operands[1];
+
+    if (src1->type != X86_OP_REG && src1->type != X86_OP_MEM) {
+        printv("%s: invaid src1 operand type\n", __func__);
+        return false;
+    }
+
+    if (src2->type != X86_OP_IMM && src2->type != X86_OP_REG) {
+        printv("%s: invaid src2 operand type\n", __func__);
+        return false;
+    }
+
+    if (src1->size != src2->size) {
+        printv("%s: insn operands have different sizes: src1=%u, src2=%u\n",
+               __func__, src1->size, src2->size);
+        return false;
+    }
+
+    if (src1->size != 1 && src1->size != 2 && src1->size != 4) {
+        printv("%s: insn has invalid operand size=%u\n", __func__, src1->size);
+        return false;
+    }
+
+    return true;
+}
+
+static bool ecam_read_get_op(uint64_t index,
+                             const disassembler::insn_t *insn,
+                             base_vcpu *vcpu,
+                             uint64_t gpa,
+                             const hdlr_itr_type &hdlr_itr,
+                             uint32_t *val)
+{
+    cs_x86 *x86 = &insn->detail->x86;
+    cs_x86_op *op = &x86->operands[index];
+
+    if (op->type == X86_OP_MEM) {
+        uint64_t gpa_4k = bfn::upper(gpa, ::x64::pt::from);
+        uint64_t gpa_4b = bfn::upper(gpa, 2);
+
+        pci_cfg_handler::pmio_info pi = {
+            .port_number = 0xCFC + (gpa - gpa_4b),
+            .size_of_access = static_cast<uint64_t>(op->size - 1),
+            .address = 0,            /* unused */
+            .val = 0,
+            .ignore_write = false,   /* unused */
+            .ignore_advance = false, /* unused */
+            .reps = 1                /* unused */
+        };
+
+        cfg_info ci = {
+            .exit_info = pi,
+            .reg = static_cast<uint32_t>(gpa_4b - gpa_4k) >> 2,
+            .again = false           /* unused */
+        };
+
+        /* Call the handler registered via vcpu::add_pci_cfg_handler */
+        if (!hdlr_itr->second(vcpu, ci)) {
+            return false;
+        }
+
+        *val = pi.val;
+        return true;
+    }
+
+    if (op->type == X86_OP_REG) {
+        if (extract_reg_value(vcpu, op, val)) {
+            printv("%s: failed to extract register value\n", __func__);
+            return false;
+        }
+
+        return true;
+    }
+
+    if (op->type == X86_OP_IMM) {
+        *val = (uint32_t)op->imm;
+        return true;
+    }
+
+    return false;
+}
+
+static bool valid_ecam_read(const disassembler::insn_t *insn) noexcept
+{
+    if (!insn->detail) {
+        printv("%s: insn detail not available\n", __func__);
+        return false;
+    }
+
+    switch (insn->id) {
+    case X86_INS_MOV:
+        return valid_ecam_read_mov(insn);
+    case X86_INS_CMP:
+        return valid_ecam_read_cmp(insn);
+    case X86_INS_TEST:
+        return valid_ecam_read_test(insn);
+    default:
+        printv("%s: unexpected ECAM read insn: %s %s\n",
+               __func__, insn->mnemonic, insn->op_str);
+        return false;
+    }
 }
 
 static bool valid_ecam_write(const disassembler::insn_t *insn) noexcept
@@ -499,14 +747,13 @@ void pci_cfg_handler::add_out_handler(uint64_t addr, const delegate_t &hdlr)
     m_vcpu->add_ept_write_violation_handler({&pci_cfg_handler::mmio_data_out, this});
 }
 
-disassembler::operand_t *pci_cfg_handler::disasm_ecam_read()
+disassembler::insn_t *pci_cfg_handler::disasm_ecam_read(uint32_t bdf)
 {
     auto rip = m_vcpu->rip();
     auto itr = m_insn_cache.find(rip);
 
     if (itr != m_insn_cache.end()) {
-        auto insn = itr->second;
-        return &insn->detail->x86.operands[0];
+        return itr->second;
     }
 
     auto len = vmcs_n::vm_exit_instruction_length::get();
@@ -527,13 +774,18 @@ disassembler::operand_t *pci_cfg_handler::disasm_ecam_read()
         return nullptr;
     }
 
+    printv("%s: %02x:%02x.%x: %s %s\n", __func__,
+           pci_cfg_bus(bdf), pci_cfg_dev(bdf), pci_cfg_fun(bdf),
+           insn->mnemonic, insn->op_str);
+
     if (!valid_ecam_read(insn)) {
-        printv("%s: invalid ECAM read, rip=0x%lx\n", __func__, rip);
+        printv("%s: invalid ECAM read, rip=0x%lx: %s %s\n",
+               __func__, rip, insn->mnemonic, insn->op_str);
         return nullptr;
     }
 
     m_insn_cache[rip] = insn;
-    return &insn->detail->x86.operands[0];
+    return insn;
 }
 
 disassembler::operand_t *pci_cfg_handler::disasm_ecam_write()
@@ -593,46 +845,91 @@ bool pci_cfg_handler::mmio_data_in(base_vcpu *vcpu, mmio_info &info)
         return false;
     }
 
-    auto dst_op = this->disasm_ecam_read();
-    if (!dst_op) {
+    auto insn = this->disasm_ecam_read(ecam_bdf);
+    if (!insn) {
         printv("%s: disasm_ecam_read failed @ gpa=0x%lx\n", __func__, info.gpa);
         return true;
     }
 
-    /*
-     * Translate this memory-mapped access into a port-mapped access. The
-     * pmio_info is passed to the registered handler which uses the port-mapped
-     * centric {read,write}_cfg_info interface provided by this class.
-     */
+    if (insn->id == X86_INS_MOV) {
+        /*
+         * Translate this memory-mapped access into a port-mapped access. The
+         * pmio_info is passed to the registered handler which uses the port-mapped
+         * centric {read,write}_cfg_info interface provided by this class.
+         */
 
-    uint64_t gpa_4b = bfn::upper(info.gpa, 2);
+        uint64_t gpa_4b = bfn::upper(info.gpa, 2);
+        uint64_t size = insn->detail->x86.operands[0].size;
 
-    pmio_info pi = {
-        .port_number = 0xCFC + (info.gpa - gpa_4b),
-        .size_of_access = static_cast<uint64_t>(dst_op->size - 1),
-        .address = 0,            /* unused */
-        .val = 0,
-        .ignore_write = false,   /* unused */
-        .ignore_advance = false, /* unused */
-        .reps = 1                /* unused */
-    };
+        pmio_info pi = {
+            .port_number = 0xCFC + (info.gpa - gpa_4b),
+            .size_of_access = size - 1,
+            .address = 0,            /* unused */
+            .val = 0,
+            .ignore_write = false,   /* unused */
+            .ignore_advance = false, /* unused */
+            .reps = 1                /* unused */
+        };
 
-    cfg_info ci = {
-        .exit_info = pi,
-        .reg = static_cast<uint32_t>(gpa_4b - ecam_addr) >> 2,
-        .again = false           /* unused */
-    };
+        cfg_info ci = {
+            .exit_info = pi,
+            .reg = static_cast<uint32_t>(gpa_4b - ecam_addr) >> 2,
+            .again = false           /* unused */
+        };
 
-    /* Call the handler registered via vcpu::add_pci_cfg_handler */
-    if (!hdlr_itr->second(vcpu, ci)) {
-        return false;
+        /* Call the handler registered via vcpu::add_pci_cfg_handler */
+        if (!hdlr_itr->second(vcpu, ci)) {
+            return false;
+        }
+
+        /* Update vcpu state */
+        update_ecam_read_mov(vcpu, &insn->detail->x86.operands[0], pi.val);
+        info.ignore_advance = false;
+
+        return true;
     }
 
-    /* Update vcpu state */
-    update_ecam_read(vcpu, dst_op, pi.val);
-    info.ignore_advance = false;
+    if (insn->id == X86_INS_CMP) {
+        uint32_t src1 = 0;
+        uint32_t src2 = 0;
 
-    return true;
+        if (!ecam_read_get_op(0, insn, vcpu, info.gpa, hdlr_itr, &src1)) {
+            printv("%s: failed to get src1 op of cmp\n", __func__);
+            return false;
+        }
+
+        if (!ecam_read_get_op(1, insn, vcpu, info.gpa, hdlr_itr, &src2)) {
+            printv("%s: failed to get src2 op of cmp\n", __func__);
+            return false;
+        }
+
+        update_ecam_read_cmp_rflags(insn, src1, src2);
+        info.ignore_advance = false;
+
+        return true;
+    }
+
+    if (insn->id == X86_INS_TEST) {
+        uint32_t src1 = 0;
+        uint32_t src2 = 0;
+
+        if (!ecam_read_get_op(0, insn, vcpu, info.gpa, hdlr_itr, &src1)) {
+            printv("%s: failed to get src1 op of cmp\n", __func__);
+            return false;
+        }
+
+        if (!ecam_read_get_op(1, insn, vcpu, info.gpa, hdlr_itr, &src2)) {
+            printv("%s: failed to get src2 op of cmp\n", __func__);
+            return false;
+        }
+
+        update_ecam_read_test_rflags(insn, src1, src2);
+        info.ignore_advance = false;
+
+        return true;
+    }
+
+    return false;
 }
 
 bool pci_cfg_handler::mmio_data_out(base_vcpu *vcpu, mmio_info &info)
@@ -662,7 +959,7 @@ bool pci_cfg_handler::mmio_data_out(base_vcpu *vcpu, mmio_info &info)
     }
 
     uint32_t val = 0;
-    if (extract_ecam_write(vcpu, src_op, &val)) {
+    if (extract_reg_value(vcpu, src_op, &val)) {
         printv("%s: failed to extract value written to ECAM\n", __func__);
         return true;
     }

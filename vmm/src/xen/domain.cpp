@@ -29,7 +29,6 @@
 #include <arch/intel_x64/barrier.h>
 #include <hve/arch/intel_x64/domain.h>
 #include <hve/arch/intel_x64/vcpu.h>
-#include <iommu/iommu.h>
 #include <pci/bar.h>
 #include <pci/dev.h>
 #include <printv.h>
@@ -88,11 +87,11 @@ bool is_root_uuid(uint8_t *hdl) noexcept
     return !memcmp(hdl, &root_uuid, sizeof(root_uuid));
 }
 
-xen_domid_t create_xen_domain(microv_domain *uv_dom, class iommu *iommu)
+xen_domid_t create_xen_domain(microv_domain *uv_dom)
 {
     std::lock_guard lock(dom_mutex);
 
-    auto dom = std::make_unique<class xen_domain>(uv_dom, iommu);
+    auto dom = std::make_unique<class xen_domain>(uv_dom);
     auto ref = std::make_unique<ref_t>(0);
 
     expects(!dom_map.count(dom->m_id));
@@ -662,7 +661,7 @@ void xen_domain::init_from_root() noexcept
     m_uuid.a[0] = 1;
 }
 
-xen_domain::xen_domain(microv_domain *domain, class iommu *iommu)
+xen_domain::xen_domain(microv_domain *domain)
 {
     m_uv_dom = domain;
     m_uv_info = &domain->m_sod_info;
@@ -714,7 +713,7 @@ xen_domain::xen_domain(microv_domain *domain, class iommu *iommu)
     m_numa_nodes = 1;
     m_ndvm = m_uv_info->is_ndvm();
 
-    m_memory = std::make_unique<xen_memory>(this, iommu);
+    m_memory = std::make_unique<xen_memory>(this);
     m_evtchn = std::make_unique<xen_evtchn>(this);
     m_gnttab = std::make_unique<xen_gnttab>(this, m_memory.get());
     m_hvm = std::make_unique<xen_hvm>(this, m_memory.get());
@@ -722,7 +721,6 @@ xen_domain::xen_domain(microv_domain *domain, class iommu *iommu)
 
 xen_domain::~xen_domain()
 {
-    iommu_dump();
     xen_cpupool_rm_domain(m_cpupool_id, m_id);
 }
 
@@ -858,6 +856,7 @@ uint64_t xen_domain::init_shared_info(xen_vcpu *xen, uintptr_t shinfo_gpfn)
 
         m_memory->add_vmm_backed_page(shinfo_gpfn, perms, mtype, m_shinfo);
         m_memory->invept();
+        m_uv_dom->flush_iotlb_page_4k(xen_addr(shinfo_gpfn));
 
         /* Set wallclock from start-of-day info */
         auto now = ::x64::read_tsc::get();
@@ -1540,14 +1539,14 @@ bool xen_domain::assign_device(xen_vcpu *v,
 
     /* Caller ensures segment is 0 */
     const auto bdf = assign->u.pci.machine_sbdf << 8;
-    m_assigned_devs.push_back(bdf);
 
     auto dev = find_passthru_dev(bdf);
     if (!dev) {
-        printv("%s: assigned non-passthru device %02x:%02x.%02x\n",
-               __func__, pci_cfg_bus(bdf), pci_cfg_dev(bdf), pci_cfg_fun(bdf));
+        printv("%s: assigned non-passthru device %s\n", __func__, dev->bdf_str());
         return true;
     }
+
+    m_uv_dom->assign_pci_device(dev);
 
     if (dev->m_bars.empty()) {
         dev->parse_bars();
@@ -1597,9 +1596,8 @@ bool xen_domain::assign_device(xen_vcpu *v,
     }
 
     m_uv_dom->sod_info()->flags |= DOMF_NDVM;
-    m_memory->bind_iommu(dev->m_iommu);
-
     v->m_uv_vcpu->set_rax(0);
+
     return true;
 }
 

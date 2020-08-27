@@ -52,6 +52,7 @@ public:
     };
 
     using delegate_t = delegate<bool(base_vcpu *, struct info &info)>;
+    using hdlr_itr_type = std::unordered_map<uint64_t, delegate_t>::iterator;
 
     static uint32_t access_size(const struct info &info);
     static uint32_t access_port(const struct info &info);
@@ -85,7 +86,7 @@ private:
     bool guest_def_in(base_vcpu *vcpu, struct info &info);
     bool guest_def_out(base_vcpu *vcpu, struct info &info);
 
-    disassembler::operand_t *disasm_ecam_read();
+    disassembler::insn_t *disasm_ecam_read(uint32_t bdf);
     disassembler::operand_t *disasm_ecam_write();
 
     void map_bdf_to_ecam(uint32_t bdf);

@@ -41,6 +41,11 @@
 // Definitions
 // -----------------------------------------------------------------------------
 
+namespace microv {
+    class iommu;
+    struct pci_dev;
+}
+
 namespace microv::intel_x64
 {
 
@@ -517,6 +522,7 @@ public:
 
     /// @endcond
 
+    bool donated_pages_to_guest(domainid_t guest_domid);
     bool page_already_donated(uint64_t page_gpa);
     bool page_already_donated(domainid_t guest_domid, uint64_t page_gpa);
     void add_page_to_donated_range(domainid_t guest_domid, uint64_t page_gpa);
@@ -545,11 +551,22 @@ public:
     std::mutex e820_mtx;
     uint64_t m_xenstore_ready{};
 
+    void add_iommu(microv::iommu *iommu);
+    void remove_iommu(microv::iommu *iommu);
+    void assign_pci_device(microv::pci_dev *pdev);
+    void prepare_iommus();
+    void map_dma();
+    void flush_iotlb();
+    void flush_iotlb_page_4k(uint64_t page_gpa);
+
 private:
     friend class microv::xen_domain;
 
     void setup_dom0();
     void setup_domU();
+    void map_root_dma();
+    void map_guest_dma();
+    microv::iommu *find_catchall_iommu() noexcept;
 
     uint64_t m_eptp;
     std::vector<e820_entry_t> m_e820;
@@ -651,6 +668,19 @@ public:
      * where hpa is the address of a vmm page.
      */
     std::unordered_map<uint64_t, uint64_t> m_vmm_map_whitelist{};
+
+    /*
+     * Set of IOMMUs that have a context-table entry that references
+     * this domain's EPT.
+     */
+    microv::spin_lock m_iommu_lock{};
+    std::set<microv::iommu *> m_iommu_set{};
+
+    /* List of assigned PCI devices */
+    std::list<struct pci_dev *> m_pci_devs{};
+
+    /* Is it OK to map our PCI devices' DMA now? */
+    bool m_dma_map_ready{};
 
     /// @cond
 

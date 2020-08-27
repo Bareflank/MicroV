@@ -54,9 +54,15 @@ public:
     using dom_t = class microv::intel_x64::domain;
     using bus_t = uint32_t;
 
-    void dump_faults();
-    void map_dma(bus_t bus, uint32_t devfn, dom_t *dom);
-    void unmap_dma(bus_t bus, uint32_t devfn, dom_t *dom);
+    void ack_faults();
+    void enable_dma_remapping();
+    void map_bus(bus_t bus, dom_t *dom);
+    void map_bdf(bus_t bus, uint32_t devfn, dom_t *dom);
+
+    bool dma_remapping_enabled() const noexcept
+    {
+        return m_remapping_dma;
+    }
 
     bool coherent_page_walk() const noexcept
     {
@@ -68,16 +74,40 @@ public:
         return (m_ecap & ecap_sc_mask) >> ecap_sc_from;
     }
 
+    bool psi_supported() const noexcept
+    {
+        return m_psi_supported;
+    }
+
+    void flush_iotlb_domain(const dom_t *dom)
+    {
+        this->flush_iotlb(dom);
+    }
+
+    void flush_iotlb_page_range(const dom_t *dom, uint64_t gpa, uint64_t size)
+    {
+        for (auto i = 0; i < size; i += UV_PAGE_SIZE) {
+            this->flush_iotlb_4k(dom, gpa + i, true);
+        }
+    }
+
+    bool has_catchall_scope() const noexcept
+    {
+        return m_scope_all;
+    }
+
     ~iommu() = default;
-    iommu(struct drhd *drhd);
+    iommu(struct drhd *drhd, uint32_t id);
     iommu(iommu &&) = default;
     iommu(const iommu &) = delete;
     iommu &operator=(iommu &&) = default;
     iommu &operator=(const iommu &) = delete;
 
 private:
+    uint32_t m_id{};
     page_ptr<entry_t> m_root;
-    std::unordered_map<bus_t, page_ptr<entry_t>> m_ctxt_map;
+    std::unordered_map<domainid_t, page_ptr<entry_t>> m_dom_ctxt_map;
+    std::unordered_map<bus_t, page_ptr<entry_t>> m_bdf_ctxt_map;
     struct drhd *m_drhd{};
     struct dmar_devscope *m_scope{};
     uintptr_t m_reg_hva{};
@@ -88,6 +118,8 @@ private:
     uint8_t m_sagaw{};
     uint8_t m_aw{};
     uint8_t m_did_bits{};
+    uint8_t m_max_slpg_size{};
+    uint8_t m_mamv{};
 
     size_t m_iotlb_reg_off{};
     static constexpr size_t iotlb_reg_num = 2;
@@ -97,12 +129,13 @@ private:
     size_t m_frcd_reg_off{};
     size_t m_frcd_reg_num{};
     size_t m_frcd_reg_bytes{};
+    size_t m_reg_page_count{};
     static constexpr size_t frcd_reg_len = 16;
 
-    std::vector<struct pci_dev *> m_root_devs{};
-    std::vector<struct pci_dev *> m_guest_devs{};
+    std::vector<struct pci_dev *> m_pci_devs{};
     bool m_scope_all{};
     bool m_remapping_dma{};
+    bool m_psi_supported{};
 
     uint64_t read64(size_t offset) const
     {
@@ -140,7 +173,8 @@ private:
     void write_iotlb(uint64_t val) { write64(m_iotlb_reg_off + 8, val); }
     void write_iva(uint64_t val) { write64(m_iotlb_reg_off, val); }
 
-    void map_regs();
+    void map_regs_into_vmm();
+    void unmap_regs_from_root_dom();
     void init_regs();
     void dump_devices();
     void bind_devices();
@@ -162,10 +196,7 @@ private:
         return dom->id() + ((m_cap & cap_cm_mask) >> cap_cm_from);
     }
 
-    void enable_dma_remapping();
-    void clflush(void *p);
     void clflush_range(void *p, unsigned int bytes);
-    void clflush_slpt();
 
     void flush_ctx_cache();
     void flush_ctx_cache(const dom_t *dom);

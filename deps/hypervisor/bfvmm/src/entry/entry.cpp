@@ -36,6 +36,7 @@
 #include <bfcallonce.h>
 #include <bfexception.h>
 
+#include <arch/x64/cache.h>
 #include <vcpu/vcpu_manager.h>
 #include <debug/debug_ring/debug_ring.h>
 #include <memory_manager/memory_manager.h>
@@ -46,6 +47,7 @@
 #include <xue.h>
 
 static bfn::once_flag g_init_flag;
+static bfn::once_flag g_cache_ops_init;
 
 void
 WEAK_SYM global_init()
@@ -79,6 +81,14 @@ private_init_xue(struct xue *xue) noexcept
 
     memcpy(&g_xue, xue, sizeof(*xue));
     xue_init_ops(&g_xue, &g_xue_ops);
+
+    return ENTRY_SUCCESS;
+}
+
+extern "C" int64_t
+private_init() noexcept
+{
+    bfn::call_once(g_cache_ops_init, ::x64::cache::init_cache_ops);
 
     return ENTRY_SUCCESS;
 }
@@ -176,7 +186,7 @@ bfmain(uintptr_t request, uintptr_t arg1, uintptr_t arg2, uintptr_t arg3)
 
     switch (request) {
         case BF_REQUEST_INIT:
-            return ENTRY_SUCCESS;
+            return private_init();
 
         case BF_REQUEST_FINI:
             return ENTRY_SUCCESS;

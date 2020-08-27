@@ -122,6 +122,7 @@ struct _XENBUS_FDO {
     UNICODE_STRING                  StorePsCbAltitude;
     OB_CALLBACK_REGISTRATION        StorePsCbRegistration;
     OB_OPERATION_REGISTRATION       StorePsOpRegistration;
+    ULONG                           StoreCreateCount;
 
     PCM_PARTIAL_RESOURCE_LIST       RawResourceList;
     PCM_PARTIAL_RESOURCE_LIST       TranslatedResourceList;
@@ -4902,15 +4903,18 @@ FdoDispatch(
     }
 
     case IRP_MJ_CREATE:
-        Info("MJ_CREATE: Flags=0x%x,UserMode=%u\n", Irp->Flags, Irp->RequestorMode == UserMode);
+        __FdoAcquireMutex(Fdo);
 
-        if (Irp->RequestorMode == KernelMode) {
-            Irp->IoStatus.Information = FILE_DOES_NOT_EXIST;
-        } else {
-            Irp->IoStatus.Information = FILE_CREATED;
+        Info("MJ_CREATE: Flags=0x%x,UserMode=%u\n", Irp->Flags, Irp->RequestorMode == UserMode);
+        Fdo->StoreCreateCount++;
+
+        if (Irp->RequestorMode == UserMode) {
             __StorePsProtect(Fdo);
         }
 
+        __FdoReleaseMutex(Fdo);
+
+        Irp->IoStatus.Information = FILE_CREATED;
         Irp->IoStatus.Status = STATUS_SUCCESS;
         IoCompleteRequest(Irp, IO_NO_INCREMENT);
         status = STATUS_SUCCESS;
@@ -4924,9 +4928,15 @@ FdoDispatch(
         break;
 
     case IRP_MJ_CLEANUP:
-        Info("MJ_CLEANUP. Setting BackendsDying=TRUE \n");
+        __FdoAcquireMutex(Fdo);
+        Fdo->StoreCreateCount--;
 
-        XENBUS_STORE(SetBackendsDying, &Fdo->StoreInterface, TRUE);
+        if (Fdo->StoreCreateCount == 0 && Fdo->StorePsCbActive) {
+            Info("MJ_CLEANUP. All store file refs droppped, setting BackendsDying=TRUE\n");
+            XENBUS_STORE(SetBackendsDying, &Fdo->StoreInterface, TRUE);
+        }
+
+        __FdoReleaseMutex(Fdo);
 
         Irp->IoStatus.Status = STATUS_SUCCESS;
         IoCompleteRequest(Irp, IO_NO_INCREMENT);
@@ -5141,6 +5151,7 @@ FdoCreate(
     if (Fdo == NULL)
         goto fail2;
 
+    Fdo->StoreCreateCount = 0;
     Fdo->Dx = Dx;
     Fdo->PhysicalDeviceObject = PhysicalDeviceObject;
     Fdo->LowerDeviceObject = IoAttachDeviceToDeviceStack(FunctionDeviceObject,
@@ -5527,6 +5538,7 @@ FdoDestroy(
     Fdo->LowerDeviceObject = NULL;
     Fdo->PhysicalDeviceObject = NULL;
     Fdo->Dx = NULL;
+    Fdo->StoreCreateCount = 0;
 
     ASSERT(IsZeroMemory(Fdo, sizeof (XENBUS_FDO)));
     __FdoFree(Fdo);
