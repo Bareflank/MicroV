@@ -381,37 +381,38 @@ void CXenIfaceCreator::AcquireShutdownPrivilege()
 
 void CXenIfaceCreator::SetXenTime()
 {
-    bool local;
-
-    FILETIME now = { 0 };
-    if (!m_device->SharedInfoGetTime(&now, &local))
-        return;
-
-    SYSTEMTIME cur = { 0 };
-    if (local)
-        GetLocalTime(&cur);
-    else
-        GetSystemTime(&cur);
-
-    SYSTEMTIME sys = { 0 };
-    if (!FileTimeToSystemTime(&now, &sys))
-        return;
-
-    if (memcmp(&cur, &sys, sizeof(SYSTEMTIME)) == 0)
-        return;
-
-    CXenAgent::Log("RTC is in %s\n", local ? "local time" : "UTC");
-    CXenAgent::Log("Time Now = %d/%d/%d %d:%02d:%02d.%d\n",
-                   cur.wYear, cur.wMonth, cur.wDay,
-                   cur.wHour, cur.wMinute, cur.wSecond, cur.wMilliseconds);
-    CXenAgent::Log("New Time = %d/%d/%d %d:%02d:%02d.%d\n",
-                   sys.wYear, sys.wMonth, sys.wDay,
-                   sys.wHour, sys.wMinute, sys.wSecond, sys.wMilliseconds);
-
-    if (local)
-        SetLocalTime(&sys);
-    else
-        SetSystemTime(&sys);
+//    bool local;
+//
+//    FILETIME now = { 0 };
+//    if (!m_device->SharedInfoGetTime(&now, &local))
+//        return;
+//
+//    SYSTEMTIME cur = { 0 };
+//    if (local)
+//        GetLocalTime(&cur);
+//    else
+//        GetSystemTime(&cur);
+//
+//    SYSTEMTIME sys = { 0 };
+//    if (!FileTimeToSystemTime(&now, &sys))
+//        return;
+//
+//    if (memcmp(&cur, &sys, sizeof(SYSTEMTIME)) == 0)
+//        return;
+//
+//    CXenAgent::Log("RTC is in %s\n", local ? "local time" : "UTC");
+//    CXenAgent::Log("Time Now = %d/%d/%d %d:%02d:%02d.%d\n",
+//                   cur.wYear, cur.wMonth, cur.wDay,
+//                   cur.wHour, cur.wMinute, cur.wSecond, cur.wMilliseconds);
+//    CXenAgent::Log("New Time = %d/%d/%d %d:%02d:%02d.%d\n",
+//                   sys.wYear, sys.wMonth, sys.wDay,
+//                   sys.wHour, sys.wMinute, sys.wSecond, sys.wMilliseconds);
+//
+//    if (local) {
+//        SetLocalTime(&sys);
+//        CXenAgent::Log("Set local time\n");
+//    } else
+//        SetSystemTime(&sys);
 }
 
 /* 317fc439-3f77-41c8-b09e-08ad63272aa3 */

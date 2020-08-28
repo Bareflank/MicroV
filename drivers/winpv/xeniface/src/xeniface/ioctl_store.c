@@ -461,6 +461,7 @@ StoreWatch(
     Event = ThreadGetEvent(Self);
 
     for (;;) {
+        NTSTATUS status;
         (VOID) KeWaitForSingleObject(Event,
                                      Executive,
                                      KernelMode,
@@ -473,7 +474,10 @@ StoreWatch(
 
         Info("%s\n", Context->Path);
 
-        KeSetEvent(Context->Event, IO_NO_INCREMENT, FALSE);
+        status = KeSetEvent(Context->Event, IO_NO_INCREMENT, FALSE);
+        if (status != 0) {
+            Info("Event at path %s was already signalled!\n", Context->Path);
+        }
     }
 
     return STATUS_SUCCESS;
@@ -590,7 +594,7 @@ fail1:
     return status;
 }
 
-_IRQL_requires_max_(DISPATCH_LEVEL)
+_IRQL_requires_max_(APC_LEVEL)
 VOID
 StoreFreeWatch(
     __in     PXENIFACE_FDO Fdo,
@@ -598,17 +602,24 @@ StoreFreeWatch(
     )
 {
     NTSTATUS status;
+    BOOLEAN BackendsDying = FALSE;
 
     ASSERT(KeGetCurrentIrql() == PASSIVE_LEVEL);
 
     Trace("Context %p, Watch %p, FO %p\n",
                        Context, Context->Watch, Context->FileObject);
 
-    status = XENBUS_STORE(WatchRemove,
-                          &Fdo->StoreInterface,
-                          Context->Watch);
+    XENBUS_STORE(GetBackendsDying, &Fdo->StoreInterface, &BackendsDying);
 
-    ASSERT(NT_SUCCESS(status)); // this is fatal since we'd leave an active watch without cleaning it up
+    if (!BackendsDying) {
+        status = XENBUS_STORE(WatchRemove,
+                              &Fdo->StoreInterface,
+                              Context->Watch);
+
+        // Just warn here, dont assert
+        Info("Failed to remove watch @ %s\n", Context->Path);
+        //ASSERT(NT_SUCCESS(status)); // this is fatal since we'd leave an active watch without cleaning it up
+    }
 
     ThreadAlert(Context->Thread);
     ThreadJoin(Context->Thread);

@@ -91,8 +91,9 @@ CompleteGnttabIrp(
     IoCompleteRequest(Irp, IO_NO_INCREMENT);
 }
 
-_Acquires_exclusive_lock_(((PXENIFACE_FDO)Argument)->GnttabCacheLock)
-_IRQL_requires_(DISPATCH_LEVEL)
+_Acquires_exclusive_lock_(((PXENIFACE_FDO)Argument)->GnttabCacheFastMutex)
+_IRQL_raises_(APC_LEVEL)
+_IRQL_saves_global_(OldIrql, Argument)
 VOID
 GnttabAcquireLock(
     __in  PVOID Argument
@@ -100,13 +101,14 @@ GnttabAcquireLock(
 {
     PXENIFACE_FDO Fdo = Argument;
 
-    ASSERT(KeGetCurrentIrql() == DISPATCH_LEVEL);
+    ASSERT(KeGetCurrentIrql() <= APC_LEVEL);
 
-    KeAcquireSpinLockAtDpcLevel(&Fdo->GnttabCacheLock);
+    ExAcquireFastMutex(&Fdo->GnttabCacheFastMutex);
 }
 
-_Releases_exclusive_lock_(((PXENIFACE_FDO)Argument)->GnttabCacheLock)
-_IRQL_requires_(DISPATCH_LEVEL)
+_Releases_exclusive_lock_(((PXENIFACE_FDO)Argument)->GnttabCacheFastMutex)
+_IRQL_requires_(APC_LEVEL)
+_IRQL_restores_global_(OldIrql, Argument)
 VOID
 GnttabReleaseLock(
     __in  PVOID Argument
@@ -114,9 +116,9 @@ GnttabReleaseLock(
 {
     PXENIFACE_FDO Fdo = Argument;
 
-    ASSERT(KeGetCurrentIrql() == DISPATCH_LEVEL);
+    ASSERT(KeGetCurrentIrql() == APC_LEVEL);
 
-    KeReleaseSpinLockFromDpcLevel(&Fdo->GnttabCacheLock);
+    ExReleaseFastMutex(&Fdo->GnttabCacheFastMutex);
 }
 
 _Requires_lock_not_held_(Fdo->IrpQueueLock)
@@ -524,7 +526,7 @@ IoctlGnttabMapForeignPages(
                        Context->Id.Process, Context->Id.RequestId);
 
     for (PageIndex = 0; PageIndex < In->NumberPages; PageIndex++)
-        Info("> Ref %d\n", In->References[PageIndex]);
+        Trace("> Ref %d\n", In->References[PageIndex]);
 
     status = STATUS_INVALID_PARAMETER;
     if (FindGnttabIrp(Fdo, &Context->Id) != NULL)
