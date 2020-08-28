@@ -1147,6 +1147,7 @@ bool xen_vcpu::root_hypercall(microv_vcpu *vcpu)
         case EVTCHNOP_send:
         case EVTCHNOP_bind_virq:
         case EVTCHNOP_alloc_unbound:
+        case EVTCHNOP_bind_interdomain:
         case EVTCHNOP_close:
         case EVTCHNOP_reset:
         case EVTCHNOP_unmask:
