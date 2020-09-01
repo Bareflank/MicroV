@@ -58,6 +58,7 @@ public:
     void enable_dma_remapping();
     void map_bus(bus_t bus, dom_t *dom);
     void map_bdf(bus_t bus, uint32_t devfn, dom_t *dom);
+    void flush_iotlb_page_range(const dom_t *dom, uint64_t gpa, uint64_t bytes);
 
     bool dma_remapping_enabled() const noexcept
     {
@@ -84,13 +85,6 @@ public:
         this->flush_iotlb(dom);
     }
 
-    void flush_iotlb_page_range(const dom_t *dom, uint64_t gpa, uint64_t size)
-    {
-        for (auto i = 0; i < size; i += UV_PAGE_SIZE) {
-            this->flush_iotlb_4k(dom, gpa + i, true);
-        }
-    }
-
     bool has_catchall_scope() const noexcept
     {
         return m_scope_all;
@@ -104,6 +98,15 @@ public:
     iommu &operator=(const iommu &) = delete;
 
 private:
+
+    /* Invalidation granularity values */
+    enum {
+        IOTLB_INVG_RESERVED,
+        IOTLB_INVG_GLOBAL,
+        IOTLB_INVG_DOMAIN,
+        IOTLB_INVG_PAGE
+    };
+
     uint32_t m_id{};
     page_ptr<entry_t> m_root;
     std::unordered_map<domainid_t, page_ptr<entry_t>> m_dom_ctxt_map;
@@ -205,9 +208,18 @@ private:
                          uint32_t dev,
                          uint32_t fun);
 
-    void flush_iotlb();
-    void flush_iotlb(const dom_t *dom);
-    void flush_iotlb_4k(const dom_t *dom, uint64_t addr, bool flush_nonleaf);
+    uint64_t flush_iotlb();
+    uint64_t flush_iotlb(const dom_t *dom);
+    uint64_t flush_iotlb_4k(const dom_t *dom,
+                            uint64_t addr,
+                            bool flush_nonleaf);
+    uint64_t flush_iotlb_2m(const dom_t *dom,
+                            uint64_t addr,
+                            bool flush_nonleaf);
+    uint64_t flush_iotlb_page_order(const dom_t *dom,
+                                    uint64_t addr,
+                                    bool flush_nonleaf,
+                                    uint64_t order);
 };
 
 extern char *mcfg_hva;
