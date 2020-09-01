@@ -558,6 +558,7 @@ public:
     void map_dma();
     void flush_iotlb();
     void flush_iotlb_page_4k(uint64_t page_gpa);
+    void flush_iotlb_page_2m(uint64_t page_gpa);
 
 private:
     friend class microv::xen_domain;

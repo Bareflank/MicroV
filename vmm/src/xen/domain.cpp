@@ -878,9 +878,13 @@ uint64_t xen_domain::init_shared_info(xen_vcpu *xen, uintptr_t shinfo_gpfn)
 
         /*
          * The shared info page is the first 4K region of the hole created by
-         * the FDO Windows PV driver, so it is already mapped into the domain's
-         * EPT. Here we simply map it into the hypervisor for later reference.
+         * the FDO Windows PV driver. Here we map it into the hypervisor and
+         * (back) into the root domain.
          */
+
+        auto shinfo_gpa = xen_addr(shinfo_gpfn);
+
+        m_uv_dom->map_4k_rw(shinfo_gpa, shinfo_gpa);
         m_shinfo_gpfn = shinfo_gpfn;
         m_shinfo_map = uvv->map_gpa_4k<uint8_t>(xen_addr(m_shinfo_gpfn));
         m_shinfo = reinterpret_cast<struct shared_info *>(m_shinfo_map.get());

@@ -32,6 +32,7 @@
 namespace microv {
 
 uintptr_t winpv_hole_gfn;
+uintptr_t winpv_hole_gpa;
 size_t winpv_hole_size;
 
 static std::mutex dom_pool_mtx;
@@ -40,6 +41,13 @@ static uint64_t dom_page_id{};
 
 static std::mutex root_pool_mtx;
 static std::list<xen_pfn_t> root_pool;
+
+bool gfn_in_winpv_hole(uintptr_t gfn) noexcept
+{
+    const auto gpa = xen_addr(gfn);
+
+    return gpa >= winpv_hole_gpa && gpa < (winpv_hole_gpa + winpv_hole_size);
+}
 
 /* How many free frames from the root domain are there? */
 static inline size_t root_frames()
@@ -319,8 +327,15 @@ bool xenmem_populate_physmap(xen_vcpu *vcpu)
     expects(rsv->extent_start.p);
 
     xen_domid_t domid = rsv->domid;
-    if (rsv->domid == DOMID_SELF) {
+    if (domid == DOMID_SELF) {
         domid = vcpu->m_xen_dom->m_id;
+
+        if (domid == DOMID_WINPV) {
+            auto dom = vcpu->m_xen_dom;
+            return dom->m_memory->populate_physmap(vcpu, rsv.get());
+        }
+    } else {
+        expects(domid != DOMID_WINPV);
     }
 
     auto dom = get_xen_domain(domid);
@@ -737,6 +752,7 @@ bool xen_memory::add_to_physmap(xen_vcpu *vcpu, xen_add_to_physmap_t *atp)
     if (vcpu->m_uv_vcpu->is_root_vcpu()) {
         switch (atp->space) {
         case XENMAPSPACE_shared_info:
+            expects(gfn_in_winpv_hole(atp->gpfn));
             vcpu->m_xen_dom->init_shared_info(vcpu, atp->gpfn);
             vcpu->m_uv_vcpu->set_rax(0);
             return true;
@@ -883,22 +899,33 @@ bool xen_memory::decrease_reservation(xen_vcpu *v,
         expects(rsv->extent_order == 9);
         expects(m_ept->is_2m(xen_addr(gfn[0])));
 
-        printv("Scrubbing Windows PV hole at 0x%lx\n", xen_addr(gfn[0]));
+        printv("Creating Windows PV hole at 0x%lx\n", xen_addr(gfn[0]));
+
         winpv_hole_gfn = gfn[0];
+        winpv_hole_gpa = xen_addr(winpv_hole_gfn);
         winpv_hole_size = (2 << 20);
 
-        auto buf = uvv->map_gpa_2m<uint8_t>(xen_addr(gfn[0]));
+        auto buf = uvv->map_gpa_2m<uint8_t>(winpv_hole_gpa);
         memset(buf.get(), 0, winpv_hole_size);
 
-        /*
-         * We assume this is from the fdo code in the Windows PV drivers
-         * that is creating the hole for various interfaces. If that is
-         * the case we should? be able to avoid a TLB shootdown because
-         * the memory hasn't been accessed yet.
-         */
+        auto rc = uvv->begin_shootdown(IPI_CODE_SHOOTDOWN_TLB);
+        if (rc == AGAIN) {
+            /*
+             * If we have to try again, we need to reset the rip to point to the
+             * vmcall instruction, since vmcall_handler::handle unconditionally
+             * advances the rip prior to calling us. Subtract the 3 bytes here.
+             */
+            uvv->set_rip(uvv->rip() - 0x3);
+            uvv->set_rax(0);
 
-//        m_ept->unmap(xen_addr(gfn[0]));
-//        m_ept->release(xen_addr(gfn[0]));
+            return true;
+        }
+
+        m_ept->unmap(winpv_hole_gpa);
+        m_ept->release(winpv_hole_gpa);
+        uvv->end_shootdown();
+        uvv->invept();
+        uvv->dom()->flush_iotlb_page_2m(winpv_hole_gpa);
 
         nr_done = 1;
         uvv->set_rax(nr_done);
@@ -980,6 +1007,36 @@ bool xen_memory::populate_physmap(xen_vcpu *v, xen_memory_reservation_t *rsv)
         expects(ext.get()[0] == winpv_hole_gfn);
 
         printv("Filling Windows PV hole\n");
+
+        auto rc = uvv->begin_shootdown(IPI_CODE_SHOOTDOWN_TLB);
+
+        if (rc == AGAIN) {
+            /*
+             * If we have to try again, we need to reset the rip to point to the
+             * vmcall instruction, since vmcall_handler::handle unconditionally
+             * advances the rip prior to calling us. Subtract the 3 bytes here.
+             */
+            uvv->set_rip(uvv->rip() - 0x3);
+            uvv->set_rax(0);
+
+            return true;
+        }
+
+        auto ept = &uvd->ept();
+
+        for (auto i = 0; i < winpv_hole_size; i += UV_PAGE_SIZE) {
+            auto gpa = winpv_hole_gpa + i;
+
+            if (ept->is_4k(gpa)) {
+                ept->unmap(gpa);
+                ept->release(gpa);
+            }
+        }
+
+        ept->map_2m(winpv_hole_gpa, winpv_hole_gpa);
+        uvv->end_shootdown();
+        uvv->invept();
+        uvd->flush_iotlb_page_2m(winpv_hole_gpa);
 
         int nr_done = 1;
         uvv->set_rax(nr_done);

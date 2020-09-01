@@ -1202,14 +1202,7 @@ bool xen_gnttab::set_version(xen_vcpu *vcpu, gnttab_set_version_t *gsv)
 
 extern uintptr_t winpv_hole_gfn;
 extern size_t winpv_hole_size;
-
-static inline bool in_winpv_hole(uintptr_t gfn) noexcept
-{
-    const auto gpa = xen_addr(gfn);
-    const auto hole_gpa = xen_addr(winpv_hole_gfn);
-
-    return gpa >= hole_gpa && gpa < (hole_gpa + winpv_hole_size);
-}
+extern bool gfn_in_winpv_hole(uintptr_t gfn) noexcept;
 
 bool xen_gnttab::mapspace_grant_table(xen_vcpu *vcpu, xen_add_to_physmap_t *atp)
 {
@@ -1249,7 +1242,7 @@ bool xen_gnttab::mapspace_grant_table(xen_vcpu *vcpu, xen_add_to_physmap_t *atp)
 
     if (uvv->is_root_vcpu()) {
         expects(xen_dom->m_id == DOMID_WINPV);
-        expects(in_winpv_hole(gfn));
+        expects(gfn_in_winpv_hole(gfn));
         expects((idx & XENMAPIDX_grant_table_status) == 0);
         expects(idx < shared_map.capacity());
         expects(idx < shared_tab.capacity());
@@ -1257,8 +1250,9 @@ bool xen_gnttab::mapspace_grant_table(xen_vcpu *vcpu, xen_add_to_physmap_t *atp)
         expects(idx == shared_tab.size());
 
         auto gpa = xen_addr(gfn);
-        auto map = uvv->map_gpa_4k<uint8_t>(gpa);
+        xen_dom->m_uv_dom->map_4k_rw(gpa, gpa);
 
+        auto map = uvv->map_gpa_4k<uint8_t>(gpa);
         shared_tab.emplace_back(map.get());
         shared_map.emplace_back(std::move(map));
 
