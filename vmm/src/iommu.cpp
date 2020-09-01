@@ -279,7 +279,11 @@ void iommu::init_regs()
     expects(m_sagaw & 0x4);
     m_aw = 2;
 
-    /* CM = 1 is not supported right now */
+    /*
+     * CM = 1 is not supported right now. Once it is supported, then locations
+     * of EPT modifications going from not present to present, e.g.,
+     * xen_gnttab_map_grant_ref need to be updated to invalidate the IOTLB.
+     */
     ensures(((m_cap & cap_cm_mask) >> cap_cm_from) == 0);
 
     /* Required write-buffer flushing is not supported */

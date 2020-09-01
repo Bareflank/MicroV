@@ -823,8 +823,6 @@ void xen_memory::unmap_page(class xen_page *pg)
 
 int xen_memory::remove_page(xen_pfn_t gfn, bool need_invept)
 {
-    expects(m_xen_dom->m_id != DOMID_WINPV);
-
     auto itr = m_page_map.find(gfn);
     if (GSL_UNLIKELY(itr == m_page_map.end())) {
         printv("%s: gfn 0x%lx doesn't map to page\n", __func__, gfn);

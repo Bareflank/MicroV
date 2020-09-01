@@ -47,6 +47,10 @@ struct gnttab_copy_operand {
     bool unmap_buf{false};
 };
 
+extern uintptr_t winpv_hole_gfn;
+extern size_t winpv_hole_size;
+extern bool gfn_in_winpv_hole(uintptr_t gfn) noexcept;
+
 /*
  * mappable_gtf
  *
@@ -287,6 +291,10 @@ static void xen_gnttab_map_grant_ref(xen_vcpu *vcpu,
     if (!valid_map_arg(map)) {
         map->status = GNTST_general_error;
         return;
+    }
+
+    if (vcpu->m_xen_dom->m_id == DOMID_WINPV) {
+        expects(gfn_in_winpv_hole(xen_frame(map->host_addr)));
     }
 
     grant_handle_t new_hdl{};
@@ -801,24 +809,13 @@ bool xen_gnttab_map_grant_ref(xen_vcpu *vcpu)
         }
     }
 
-    if (i > 0) {
-        vcpu->invept();
-
-        auto dom = vcpu->m_uv_dom;
-
-        for (auto iommu : dom->m_iommu_set) {
-            expects(dom->is_ndvm());
-
-            if (!iommu->psi_supported()) {
-                iommu->flush_iotlb_domain(dom);
-                continue;
-            }
-
-            for (auto p = 0; p < i; p++) {
-                iommu->flush_iotlb_page_range(dom, ops[p].host_addr, UV_PAGE_SIZE);
-            }
-        }
-    }
+    /*
+     * We dont need to invept here since the only modifications that
+     * occur are from not present -> present+access rights.
+     *
+     * The current IOMMU implementation also does not support CM,
+     * so we don't need to flush the IOTLB either.
+     */
 
     uvv->set_rax(rc);
     return true;
@@ -850,8 +847,6 @@ bool xen_gnttab_unmap_grant_ref(xen_vcpu *vcpu)
         auto dom = vcpu->m_uv_dom;
 
         for (auto iommu : dom->m_iommu_set) {
-            expects(dom->is_ndvm());
-
             if (!iommu->psi_supported()) {
                 iommu->flush_iotlb_domain(dom);
                 continue;
@@ -1199,10 +1194,6 @@ bool xen_gnttab::set_version(xen_vcpu *vcpu, gnttab_set_version_t *gsv)
     uvv->set_rax(0);
     return true;
 }
-
-extern uintptr_t winpv_hole_gfn;
-extern size_t winpv_hole_size;
-extern bool gfn_in_winpv_hole(uintptr_t gfn) noexcept;
 
 bool xen_gnttab::mapspace_grant_table(xen_vcpu *vcpu, xen_add_to_physmap_t *atp)
 {
