@@ -39,6 +39,12 @@ if ($Init) {
     )
 
     [System.Environment]::SetEnvironmentVariable(
+        'NETCTL_BACKEND_ADDRESS',
+        '[fd12:edf1:e1d0:1337::1]:50051',
+        [System.EnvironmentVariableTarget]::Machine
+    )
+
+    [System.Environment]::SetEnvironmentVariable(
         'VPNCTL_BACKEND_ADDRESS',
         '[fd12:edf1:e1d0:1337::1]:40051',
         [System.EnvironmentVariableTarget]::Machine
@@ -48,6 +54,12 @@ if ($Init) {
 if ($Fini) {
     [System.Environment]::SetEnvironmentVariable(
         'NETCTL_FRONTEND_ADDRESS',
+        $null,
+        [System.EnvironmentVariableTarget]::Machine
+    )
+
+    [System.Environment]::SetEnvironmentVariable(
+        'NETCTL_BACKEND_ADDRESS',
         $null,
         [System.EnvironmentVariableTarget]::Machine
     )
