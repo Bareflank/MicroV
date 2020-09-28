@@ -74,6 +74,10 @@
 
 #define MAXNAMELEN  128
 
+#define FDO_HOLE_2MB_PAGE_COUNT 32UL
+#define FDO_HOLE_4KB_PAGE_COUNT (FDO_HOLE_2MB_PAGE_COUNT * 512UL)
+#define FDO_HOLE_SIZE ((1UL << 21UL) * FDO_HOLE_2MB_PAGE_COUNT)
+
 struct _XENBUS_INTERRUPT {
     PXENBUS_FDO         Fdo;
     LIST_ENTRY          ListEntry;
@@ -2785,7 +2789,9 @@ FdoCreateHole(
     PFN_NUMBER      Pfn;
     LONGLONG        Start;
     ULONG           Count;
+    ULONG           i;
     NTSTATUS        status;
+    PFN_NUMBER      *Pfn2M;
 
     status = XENBUS_RANGE_SET(Create,
                               &Fdo->RangeSetInterface,
@@ -2810,12 +2816,35 @@ FdoCreateHole(
         goto fail2;
 
     status = STATUS_UNSUCCESSFUL;
-    if (MemoryDecreaseReservation(PAGE_ORDER_2M, 1, &Pfn) != 1)
+    if ((Count / 512U) != FDO_HOLE_2MB_PAGE_COUNT) {
+        Error("Unexpected number of 4K pages in hole (Count=%lu\n", Count);
         goto fail3;
+    }
 
+    Pfn2M = __FdoAllocate(sizeof(PFN_NUMBER) * FDO_HOLE_2MB_PAGE_COUNT);
+    if (!Pfn2M) {
+        Error("Failed to allocate Pfn2M buffer\n");
+        goto fail3;
+    }
+
+    for (i = 0U; i < FDO_HOLE_2MB_PAGE_COUNT; i++) {
+        Pfn2M[i] = MmGetMdlPfnArray(Mdl)[i * 512U];
+    }
+
+    if (MemoryDecreaseReservation(PAGE_ORDER_2M,
+                                  FDO_HOLE_2MB_PAGE_COUNT,
+                                  Pfn2M) != FDO_HOLE_2MB_PAGE_COUNT) {
+        goto fail4;
+    }
+
+    __FdoFree(Pfn2M);
     Trace("%08x - %08x\n", Start, Start + Count - 1);
 
     return STATUS_SUCCESS;
+
+fail4:
+    Error("fail4\n");
+    __FdoFree(Pfn2M);
 
 fail3:
     Error("fail3\n");
@@ -2918,6 +2947,7 @@ FdoDestroyHole(
     ULONG           Count;
     ULONG           Index;
     NTSTATUS        status;
+    PFN_NUMBER      *Pfn2M;
 
     Mdl = Fdo->Mdl;
 
@@ -2929,8 +2959,22 @@ FdoDestroyHole(
     Trace("%08x - %08x\n", Start, Start + Count - 1);
 
     ASSERT3U(Count & ((1u << PAGE_ORDER_2M) - 1), ==, 0);
-    if (MemoryPopulatePhysmap(PAGE_ORDER_2M, 1, &Pfn) == 1)
+    ASSERT3U(Count / 512u, ==, FDO_HOLE_2MB_PAGE_COUNT);
+
+    Pfn2M = __FdoAllocate(sizeof(PFN_NUMBER) * FDO_HOLE_2MB_PAGE_COUNT);
+    if (!Pfn2M) {
+        return;
+    }
+
+    for (Index = 0; Index < FDO_HOLE_2MB_PAGE_COUNT; Index++) {
+        Pfn2M[Index] = MmGetMdlPfnArray(Mdl)[Index * 512u];
+    }
+
+    if (MemoryPopulatePhysmap(PAGE_ORDER_2M,
+                              FDO_HOLE_2MB_PAGE_COUNT,
+                              Pfn2M) == FDO_HOLE_2MB_PAGE_COUNT) {
         goto done;
+    }
 
     for (Index = 0; Index < Count; Index++) {
         if (MemoryPopulatePhysmap(PAGE_ORDER_4K, 1, &Pfn) != 1)
@@ -2940,6 +2984,8 @@ FdoDestroyHole(
     }
 
 done:
+    __FdoFree(Pfn2M);
+
     status = XENBUS_RANGE_SET(Get,
                               &Fdo->RangeSetInterface,
                               Fdo->RangeSet,
@@ -5039,22 +5085,22 @@ fail1:
                       (_Optional))
 
 
-#define FDO_HOLE_SIZE   (2ull << 20)
-
 static FORCEINLINE NTSTATUS
 __FdoAllocateBuffer(
     IN  PXENBUS_FDO     Fdo
     )
 {
     ULONG               Size;
+    ULONG               PfnCount;
     PHYSICAL_ADDRESS    Low;
     PHYSICAL_ADDRESS    High;
     PHYSICAL_ADDRESS    Align;
     PVOID               Buffer;
+    PVOID               StartVa;
     PMDL                Mdl;
     NTSTATUS            status;
 
-    Size = 2 << 20;
+    Size = FDO_HOLE_SIZE;
 
     Low.QuadPart = 0;
     High = SystemMaximumPhysicalAddress();
@@ -5088,6 +5134,12 @@ __FdoAllocateBuffer(
 
     Fdo->Buffer = MmGetSystemAddressForMdlSafe(Mdl, NormalPagePriority);
     Fdo->Mdl = Mdl;
+
+    StartVa = MmGetMdlVirtualAddress(Mdl);
+    Size = MmGetMdlByteCount(Mdl);
+    PfnCount = ADDRESS_AND_SIZE_TO_SPAN_PAGES(StartVa, Size);
+
+    ASSERT3U(PfnCount, ==, FDO_HOLE_4KB_PAGE_COUNT);
 
     return STATUS_SUCCESS;
 
