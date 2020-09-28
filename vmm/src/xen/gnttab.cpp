@@ -47,8 +47,6 @@ struct gnttab_copy_operand {
     bool unmap_buf{false};
 };
 
-extern uintptr_t winpv_hole_gfn;
-extern size_t winpv_hole_size;
 extern bool gfn_in_winpv_hole(uintptr_t gfn) noexcept;
 
 /*

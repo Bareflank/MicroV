@@ -893,18 +893,25 @@ bool xen_memory::decrease_reservation(xen_vcpu *v,
         uvv->set_rax(nr_done);
     } else {
         expects(v->m_xen_dom->m_id == DOMID_WINPV);
-        expects(rsv->nr_extents == 1);
-        expects(rsv->extent_order == 9);
+        expects(rsv->nr_extents >= 1U);
+        expects(rsv->extent_order == 9U);
         expects(m_ept->is_2m(xen_addr(gfn[0])));
 
-        printv("Creating Windows PV hole at 0x%lx\n", xen_addr(gfn[0]));
+        const uint64_t extent_size = (1UL << rsv->extent_order) * UV_PAGE_SIZE;
 
         winpv_hole_gfn = gfn[0];
         winpv_hole_gpa = xen_addr(winpv_hole_gfn);
-        winpv_hole_size = (2 << 20);
+        winpv_hole_size = extent_size * rsv->nr_extents;
 
-        auto buf = uvv->map_gpa_2m<uint8_t>(winpv_hole_gpa);
-        memset(buf.get(), 0, winpv_hole_size);
+        for (auto i = 0U; i < rsv->nr_extents; i++) {
+            // Check that the gpa's are contiguous
+            if (i < (rsv->nr_extents - 1)) {
+                expects(gfn[i] == (gfn[i + 1] - (1UL << rsv->extent_order)));
+            }
+
+            auto buf = uvv->map_gpa_2m<uint8_t>(winpv_hole_gpa + (i * extent_size));
+            memset(buf.get(), 0, extent_size);
+        }
 
         auto rc = uvv->begin_shootdown(IPI_CODE_SHOOTDOWN_TLB);
         if (rc == AGAIN) {
@@ -919,14 +926,23 @@ bool xen_memory::decrease_reservation(xen_vcpu *v,
             return true;
         }
 
-        m_ept->unmap(winpv_hole_gpa);
-        m_ept->release(winpv_hole_gpa);
+        for (auto i = 0U; i < rsv->nr_extents; i++) {
+            m_ept->unmap(winpv_hole_gpa + (i * extent_size));
+            m_ept->release(winpv_hole_gpa + (i * extent_size));
+        }
+
         uvv->end_shootdown();
         uvv->invept();
-        uvv->dom()->flush_iotlb_page_2m(winpv_hole_gpa);
 
-        nr_done = 1;
+        for (auto i = 0U; i < rsv->nr_extents; i++) {
+            uvv->dom()->flush_iotlb_page_2m(winpv_hole_gpa + (i * extent_size));
+        }
+
+        nr_done = rsv->nr_extents;
         uvv->set_rax(nr_done);
+
+        printv("Created Windows PV hole at 0x%lx-0x%lx\n",
+               winpv_hole_gpa, winpv_hole_gpa + winpv_hole_size - 1U);
     }
 
     return true;
@@ -1001,10 +1017,13 @@ bool xen_memory::populate_physmap(xen_vcpu *v, xen_memory_reservation_t *rsv)
     if (uvv->is_root_vcpu()) {
         expects(m_xen_dom->m_id == DOMID_WINPV);
         expects(rsv->extent_order == 9);
-        expects(rsv->nr_extents == 1);
+        expects(rsv->nr_extents >= 1);
         expects(ext.get()[0] == winpv_hole_gfn);
 
         printv("Filling Windows PV hole\n");
+
+        const uint64_t extent_size = (1U << rsv->extent_order) * UV_PAGE_SIZE;
+        expects((rsv->nr_extents * extent_size) == winpv_hole_size);
 
         auto rc = uvv->begin_shootdown(IPI_CODE_SHOOTDOWN_TLB);
 
@@ -1025,19 +1044,29 @@ bool xen_memory::populate_physmap(xen_vcpu *v, xen_memory_reservation_t *rsv)
         for (auto i = 0; i < winpv_hole_size; i += UV_PAGE_SIZE) {
             auto gpa = winpv_hole_gpa + i;
 
-            if (ept->is_4k(gpa)) {
+            try {
                 ept->unmap(gpa);
                 ept->release(gpa);
+            } catch (...) {
+                ;
             }
         }
 
-        ept->map_2m(winpv_hole_gpa, winpv_hole_gpa);
+        for (auto i = 0U; i < rsv->nr_extents; i++) {
+            // Assumes the original mapping was 2MB identity mapped
+            const uint64_t gpa = winpv_hole_gpa + (i * extent_size);
+
+            ept->map_2m(gpa, gpa);
+        }
+
         uvv->end_shootdown();
         uvv->invept();
-        uvd->flush_iotlb_page_2m(winpv_hole_gpa);
 
-        int nr_done = 1;
-        uvv->set_rax(nr_done);
+        for (auto i = 0U; i < rsv->nr_extents; i++) {
+            uvd->flush_iotlb_page_2m(winpv_hole_gpa + (i * extent_size));
+        }
+
+        uvv->set_rax(rsv->nr_extents);
 
         return true;
     }
