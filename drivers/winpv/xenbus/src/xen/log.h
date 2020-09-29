@@ -36,7 +36,7 @@
 
 extern NTSTATUS
 LogInitialize(
-    VOID
+    BOOLEAN Enable
     );
 
 extern VOID

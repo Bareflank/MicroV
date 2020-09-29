@@ -786,7 +786,7 @@ fail1:
 
 NTSTATUS
 LogInitialize(
-    VOID
+    BOOLEAN Enable
     )
 {
     PLOG_CONTEXT    Context = &LogContext;
@@ -803,7 +803,7 @@ LogInitialize(
 
     KeInitializeDpc(&Context->Dpc, LogDpc, NULL);
 
-    if (__LogDbgPrintCallbackEnable()) {
+    if (Enable) {
         status = DbgSetDebugPrintCallback(LogDebugPrint, TRUE);
 
         ASSERT(!Context->Enabled);
