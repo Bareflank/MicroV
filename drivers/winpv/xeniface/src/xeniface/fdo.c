@@ -644,7 +644,7 @@ __FdoFreeAnsi(
 
     for (Index = 0; Ansi[Index].Buffer != NULL; Index++)
         __FdoFree(Ansi[Index].Buffer);
-        
+
     __FdoFree(Ansi);
 }
 
@@ -872,7 +872,7 @@ __FdoD3ToD0(
 {
     Trace("====>\n");
 
-    ASSERT3U(KeGetCurrentIrql(), ==, DISPATCH_LEVEL);
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
 
     (VOID) FdoSetDistribution(Fdo);
 
@@ -888,7 +888,7 @@ __FdoD0ToD3(
 {
     Trace("====>\n");
 
-    ASSERT3U(KeGetCurrentIrql(), ==, DISPATCH_LEVEL);
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
 
     FdoClearDistribution(Fdo);
 
@@ -917,7 +917,6 @@ FdoD3ToD0(
     IN  PXENIFACE_FDO   Fdo
     )
 {
-    KIRQL               Irql;
     NTSTATUS            status;
     POWER_STATE         PowerState;
 
@@ -925,8 +924,6 @@ FdoD3ToD0(
     ASSERT3U(__FdoGetDevicePowerState(Fdo), ==, PowerDeviceD3);
 
     Trace("====>\n");
-
-    KeRaiseIrql(DISPATCH_LEVEL, &Irql);
 
     ASSERT3U(__FdoGetDevicePowerState(Fdo), ==, PowerDeviceD3);
 
@@ -976,8 +973,6 @@ FdoD3ToD0(
                            &Fdo->GnttabCache);
     if (!NT_SUCCESS(status))
         goto fail8;
-
-    KeLowerIrql(Irql);
 
     __FdoSetDevicePowerState(Fdo, PowerDeviceD0);
 
@@ -1033,8 +1028,6 @@ fail2:
 fail1:
     Error("fail1 (%08x)\n", status);
 
-    KeLowerIrql(Irql);
-
     return status;
 }
 
@@ -1044,7 +1037,6 @@ FdoD0ToD3(
     IN  PXENIFACE_FDO   Fdo
     )
 {
-    KIRQL               Irql;
     POWER_STATE         PowerState;
 
     ASSERT3U(KeGetCurrentIrql(), ==, PASSIVE_LEVEL);
@@ -1061,8 +1053,6 @@ FdoD0ToD3(
                     PowerState);
 
     __FdoSetDevicePowerState(Fdo, PowerDeviceD3);
-
-    KeRaiseIrql(DISPATCH_LEVEL, &Irql);
 
     Fdo->InterfacesAcquired = FALSE;
 
@@ -1087,8 +1077,6 @@ FdoD0ToD3(
     XENBUS_EVTCHN(Release, &Fdo->EvtchnInterface);
 
     XENBUS_STORE(Release, &Fdo->StoreInterface);
-
-    KeLowerIrql(Irql);
 
     Trace("<====\n");
 }
@@ -2607,7 +2595,7 @@ FdoCreate(
     KeInitializeSpinLock(&Fdo->IrpQueueLock);
     InitializeListHead(&Fdo->IrpList);
 
-    KeInitializeSpinLock(&Fdo->GnttabCacheLock);
+    ExInitializeFastMutex(&Fdo->GnttabCacheFastMutex);
 
     status = IoCsqInitializeEx(&Fdo->IrpQueue,
                                CsqInsertIrpEx,
@@ -2631,7 +2619,7 @@ FdoCreate(
 fail15:
     Error("fail15\n");
 
-    RtlZeroMemory(&Fdo->GnttabCacheLock, sizeof (KSPIN_LOCK));
+    RtlZeroMemory(&Fdo->GnttabCacheFastMutex, sizeof (FAST_MUTEX));
     ASSERT(IsListEmpty(&Fdo->IrpList));
     RtlZeroMemory(&Fdo->IrpList, sizeof (LIST_ENTRY));
     RtlZeroMemory(&Fdo->IrpQueueLock, sizeof (KSPIN_LOCK));
@@ -2756,7 +2744,7 @@ FdoDestroy(
 
     Dx->Fdo = NULL;
 
-    RtlZeroMemory(&Fdo->GnttabCacheLock, sizeof (KSPIN_LOCK));
+    RtlZeroMemory(&Fdo->GnttabCacheFastMutex, sizeof (FAST_MUTEX));
     ASSERT(IsListEmpty(&Fdo->IrpList));
     RtlZeroMemory(&Fdo->IrpList, sizeof (LIST_ENTRY));
     RtlZeroMemory(&Fdo->IrpQueueLock, sizeof (KSPIN_LOCK));

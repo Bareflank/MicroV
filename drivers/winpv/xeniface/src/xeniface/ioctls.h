@@ -2,31 +2,31 @@
  * Copyright (c) Rafal Wojdyla <omeg@invisiblethingslab.com>
  * All rights reserved.
  *
- * Redistribution and use in source and binary forms, 
- * with or without modification, are permitted provided 
+ * Redistribution and use in source and binary forms,
+ * with or without modification, are permitted provided
  * that the following conditions are met:
  *
- * *   Redistributions of source code must retain the above 
- *     copyright notice, this list of conditions and the 
+ * *   Redistributions of source code must retain the above
+ *     copyright notice, this list of conditions and the
  *     following disclaimer.
- * *   Redistributions in binary form must reproduce the above 
- *     copyright notice, this list of conditions and the 
- *     following disclaimer in the documentation and/or other 
+ * *   Redistributions in binary form must reproduce the above
+ *     copyright notice, this list of conditions and the
+ *     following disclaimer in the documentation and/or other
  *     materials provided with the distribution.
  *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND 
- * CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, 
- * INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF 
- * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE 
- * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR 
- * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, 
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, 
- * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR 
- * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS 
- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, 
- * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING 
- * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE 
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF 
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND
+ * CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES,
+ * INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR
+ * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+ * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+ * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
 
@@ -44,6 +44,7 @@ typedef struct _XENIFACE_CONTEXT_ID {
     XENIFACE_CONTEXT_TYPE  Type;
     ULONG                  RequestId;
     PEPROCESS              Process;
+    PROCESSOR_NUMBER       ProcNumber;
 } XENIFACE_CONTEXT_ID, *PXENIFACE_CONTEXT_ID;
 
 typedef struct _XENIFACE_STORE_CONTEXT {
@@ -192,7 +193,7 @@ IoctlStoreRemoveWatch(
     __in  PFILE_OBJECT      FileObject
     );
 
-_IRQL_requires_max_(DISPATCH_LEVEL)
+_IRQL_requires_max_(APC_LEVEL)
 VOID
 StoreFreeWatch(
     __in     PXENIFACE_FDO Fdo,
@@ -336,15 +337,17 @@ IoctlGnttabUnmapForeignPages(
     __in  ULONG             OutLen
     );
 
-_Acquires_exclusive_lock_(((PXENIFACE_FDO)Argument)->GnttabCacheLock)
-_IRQL_requires_(DISPATCH_LEVEL)
+_Acquires_exclusive_lock_(((PXENIFACE_FDO)Argument)->GnttabCacheFastMutex)
+_IRQL_raises_(APC_LEVEL)
+_IRQL_saves_global_(OldIrql, Argument)
 VOID
 GnttabAcquireLock(
     __in  PVOID Argument
     );
 
-_Releases_exclusive_lock_(((PXENIFACE_FDO)Argument)->GnttabCacheLock)
-_IRQL_requires_(DISPATCH_LEVEL)
+_Releases_exclusive_lock_(((PXENIFACE_FDO)Argument)->GnttabCacheFastMutex)
+_IRQL_requires_(APC_LEVEL)
+_IRQL_restores_global_(OldIrql, Argument)
 VOID
 GnttabReleaseLock(
     __in  PVOID Argument

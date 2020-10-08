@@ -50,11 +50,13 @@
 #include "assert.h"
 #include "version.h"
 
-#define DEFAULT_XEN_LOG_LEVEL   LOG_LEVEL_CRITICAL
-#define DEFAULT_QEMU_LOG_LEVEL  (LOG_LEVEL_INFO |       \
-                                 LOG_LEVEL_WARNING |    \
-                                 LOG_LEVEL_ERROR |      \
-                                 LOG_LEVEL_CRITICAL)
+#ifndef DEFAULT_XEN_LOG_LEVEL
+#define DEFAULT_XEN_LOG_LEVEL   LOG_LEVEL_NONE
+#endif
+
+#ifndef DEFAULT_QEMU_LOG_LEVEL
+#define DEFAULT_QEMU_LOG_LEVEL  LOG_LEVEL_NONE
+#endif
 
 typedef struct _XEN_DRIVER {
     PLOG_DISPOSITION    XenDisposition;
@@ -176,7 +178,8 @@ DllInitialize(
     HANDLE              ServiceKey;
     HANDLE              UnplugKey;
     HANDLE              ParametersKey;
-    LOG_LEVEL           LogLevel;
+    LOG_LEVEL           XenLogLevel;
+    LOG_LEVEL           QemuLogLevel;
     NTSTATUS            status;
 
     ExInitializeDriverRuntime(DrvRtPoolNxOptIn);
@@ -186,44 +189,47 @@ DllInitialize(
 
     Trace("====>\n");
 
-    status = LogInitialize();
+    status = RegistryInitialize(RegistryPath);
     if (!NT_SUCCESS(status))
         goto fail1;
 
-    status = RegistryInitialize(RegistryPath);
+    status = RegistryCreateKey(NULL,
+                               RegistryPath,
+                               REG_OPTION_NON_VOLATILE,
+                               &ServiceKey);
     if (!NT_SUCCESS(status))
         goto fail2;
 
-    status = RegistryCreateServiceKey(&ServiceKey);
+    status = RegistryCreateSubKey(ServiceKey,
+                                  "Parameters",
+                                  REG_OPTION_NON_VOLATILE,
+                                  &ParametersKey);
     if (!NT_SUCCESS(status))
         goto fail3;
 
-    status = RegistryCreateSubKey(ServiceKey,
-                                "Parameters",
-                                REG_OPTION_VOLATILE,
-                                &ParametersKey);
+    status = LogReadLogLevel(ParametersKey,
+                             "XenLogLevel",
+                             &XenLogLevel);
+    if (!NT_SUCCESS(status))
+        XenLogLevel = DEFAULT_XEN_LOG_LEVEL;
+
+    status = LogReadLogLevel(ParametersKey,
+                             "QemuLogLevel",
+                             &QemuLogLevel);
+    if (!NT_SUCCESS(status))
+        QemuLogLevel = DEFAULT_QEMU_LOG_LEVEL;
+
+    status = LogInitialize((XenLogLevel | QemuLogLevel) != LOG_LEVEL_NONE);
     if (!NT_SUCCESS(status))
         goto fail4;
 
-    status = LogReadLogLevel(ParametersKey,
-                             "XenLogLevel",
-                             &LogLevel);
-    if (!NT_SUCCESS(status))
-        LogLevel = DEFAULT_XEN_LOG_LEVEL;
-
-    status = LogAddDisposition(LogLevel,
+    status = LogAddDisposition(XenLogLevel,
                                DriverOutputBuffer,
                                (PVOID)XEN_PORT,
                                &Driver.XenDisposition);
     ASSERT(NT_SUCCESS(status));
 
-    status = LogReadLogLevel(ParametersKey,
-                             "QemuLogLevel",
-                             &LogLevel);
-    if (!NT_SUCCESS(status))
-        LogLevel = DEFAULT_QEMU_LOG_LEVEL;
-
-    status = LogAddDisposition(LogLevel,
+    status = LogAddDisposition(QemuLogLevel,
                                DriverOutputBuffer,
                                (PVOID)QEMU_PORT,
                                &Driver.QemuDisposition);
@@ -323,22 +329,22 @@ fail5:
     LogRemoveDisposition(Driver.XenDisposition);
     Driver.XenDisposition = NULL;
 
-    RegistryCloseKey(ParametersKey);
+    LogTeardown();
 
 fail4:
     Error("fail4\n");
 
-    RegistryCloseKey(ServiceKey);
+    RegistryCloseKey(ParametersKey);
 
 fail3:
     Error("fail3\n");
 
-    RegistryTeardown();
+    RegistryCloseKey(ServiceKey);
 
 fail2:
     Error("fail2\n");
 
-    LogTeardown();
+    RegistryTeardown();
 
 fail1:
     Error("fail1 (%08x)\n", status);

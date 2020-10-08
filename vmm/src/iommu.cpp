@@ -279,7 +279,11 @@ void iommu::init_regs()
     expects(m_sagaw & 0x4);
     m_aw = 2;
 
-    /* CM = 1 is not supported right now */
+    /*
+     * CM = 1 is not supported right now. Once it is supported, then locations
+     * of EPT modifications going from not present to present, e.g.,
+     * xen_gnttab_map_grant_ref need to be updated to invalidate the IOTLB.
+     */
     ensures(((m_cap & cap_cm_mask) >> cap_cm_from) == 0);
 
     /* Required write-buffer flushing is not supported */
@@ -679,7 +683,7 @@ void iommu::flush_ctx_cache(const dom_t *dom,
 }
 
 /* Global invalidation of IOTLB */
-void iommu::flush_iotlb()
+[[maybe_unused]] uint64_t iommu::flush_iotlb()
 {
     uint64_t iotlb = this->read_iotlb() & 0xFFFFFFFF;
 
@@ -689,14 +693,24 @@ void iommu::flush_iotlb()
     iotlb |= iotlb_dw;
 
     this->write_iotlb(iotlb);
+    iotlb = this->read_iotlb();
 
-    while ((this->read_iotlb() & iotlb_ivt) != 0) {
+    while ((iotlb & iotlb_ivt) != 0) {
         ::intel_x64::pause();
+        iotlb = this->read_iotlb();
     }
+
+    uint64_t iaig = (iotlb & iotlb_iaig_mask) >> iotlb_iaig_from;
+
+    if (iaig == IOTLB_INVG_RESERVED) {
+        printv("iommu[%u]: BUG: global IOTLB invalidation failed\n", m_id);
+    }
+
+    return iaig;
 }
 
 /* Domain-selective invalidation of IOTLB */
-void iommu::flush_iotlb(const dom_t *dom)
+[[maybe_unused]] uint64_t iommu::flush_iotlb(const dom_t *dom)
 {
     const uint64_t domid = this->did(dom);
 
@@ -704,8 +718,7 @@ void iommu::flush_iotlb(const dom_t *dom)
     if (domid >= nr_domains()) {
         printv("iommu[%u]: %s: WARNING: did:0x%lx out of range\n",
                m_id, __func__, domid);
-        this->flush_iotlb();
-        return;
+        return this->flush_iotlb();
     }
 
     uint64_t iotlb = this->read_iotlb() & 0xFFFFFFFF;
@@ -717,27 +730,45 @@ void iommu::flush_iotlb(const dom_t *dom)
     iotlb |= (domid << iotlb_did_from);
 
     this->write_iotlb(iotlb);
+    iotlb = this->read_iotlb();
 
-    while ((this->read_iotlb() & iotlb_ivt) != 0) {
+    while ((iotlb & iotlb_ivt) != 0) {
         ::intel_x64::pause();
+        iotlb = this->read_iotlb();
     }
+
+    return (iotlb & iotlb_iaig_mask) >> iotlb_iaig_from;
 }
 
-/* Page-selective invalidation of IOTLB */
-void iommu::flush_iotlb_4k(const dom_t *dom, uint64_t addr, bool flush_nonleaf)
+uint64_t iommu::flush_iotlb_4k(const dom_t *dom,
+                               uint64_t addr,
+                               bool flush_nonleaf)
 {
-    if (!m_psi_supported) {
-        this->flush_iotlb(dom);
-        return;
-    }
+    constexpr uint64_t order = 0;
+    return this->flush_iotlb_page_order(dom, addr, flush_nonleaf, order);
+}
+
+uint64_t iommu::flush_iotlb_2m(const dom_t *dom,
+                               uint64_t addr,
+                               bool flush_nonleaf)
+{
+    constexpr uint64_t order = 9;
+    return this->flush_iotlb_page_order(dom, addr, flush_nonleaf, order);
+}
+
+uint64_t iommu::flush_iotlb_page_order(const dom_t *dom,
+                                       uint64_t addr,
+                                       bool flush_nonleaf,
+                                       uint64_t order)
+{
+    expects(order <= m_mamv);
 
     /* Fallback to global invalidation if domain is out of range */
     const uint64_t domid = this->did(dom);
     if (domid >= nr_domains()) {
         printv("iommu[%u]: %s: WARNING: did:0x%lx out of range\n",
                m_id, __func__, domid);
-        this->flush_iotlb();
-        return;
+        return this->flush_iotlb();
     }
 
     uint64_t iotlb = this->read_iotlb() & 0xFFFFFFFF;
@@ -749,14 +780,86 @@ void iommu::flush_iotlb_4k(const dom_t *dom, uint64_t addr, bool flush_nonleaf)
     iotlb |= (domid << iotlb_did_from);
 
     const uint64_t ih = flush_nonleaf ? 0 : (1UL << 6);
-    const uint64_t iva = uv_align_page(addr) | ih;
+    const uint64_t iva = uv_align_page(addr) | ih | order;
 
     this->write_iva(iva);
     ::intel_x64::wmb();
-    this->write_iotlb(iotlb);
 
-    while ((this->read_iotlb() & iotlb_ivt) != 0) {
+    this->write_iotlb(iotlb);
+    iotlb = this->read_iotlb();
+
+    while ((iotlb & iotlb_ivt) != 0) {
         ::intel_x64::pause();
+        iotlb = this->read_iotlb();
+    }
+
+    return (iotlb & iotlb_iaig_mask) >> iotlb_iaig_from;
+}
+
+void iommu::flush_iotlb_page_range(const dom_t *dom,
+                                   uint64_t gpa,
+                                   uint64_t bytes)
+{
+    if (!m_psi_supported) {
+        this->flush_iotlb(dom);
+        return;
+    }
+
+    uint64_t i = 0;
+
+    if (bytes >= ::x64::pd::page_size && m_mamv >= 9) {
+        uint64_t gpa_2m = bfn::upper(gpa, ::x64::pd::from);
+
+        if (gpa_2m != gpa) {
+            bytes += gpa - gpa_2m;
+            gpa = gpa_2m;
+        }
+
+        for (; i < bytes; i += ::x64::pd::page_size) {
+            const uint64_t iaig = this->flush_iotlb_2m(dom, gpa + i, true);
+
+            switch (iaig) {
+            case IOTLB_INVG_RESERVED:
+                printv("iommu[%u]: %s: invalidation failed for range 0x%lx-0x%lx\n",
+                       m_id, __func__, gpa, gpa + bytes - 1);
+                printv("iommu[%u]: %s: falling back to domain invalidation\n",
+                       m_id, __func__);
+                this->flush_iotlb(dom);
+                return;
+            case IOTLB_INVG_GLOBAL:
+            case IOTLB_INVG_DOMAIN:
+                return;
+            default:
+                expects(iaig == IOTLB_INVG_PAGE);
+                break;
+            }
+        }
+
+        if (i == bytes) {
+            return;
+        }
+
+        i -= ::x64::pd::page_size;
+    }
+
+    for (; i < bytes; i += UV_PAGE_SIZE) {
+        const uint64_t iaig = this->flush_iotlb_4k(dom, gpa + i, true);
+
+        switch (iaig) {
+        case IOTLB_INVG_RESERVED:
+            printv("iommu[%u]: %s: invalidation failed for range 0x%lx-0x%lx\n",
+                   m_id, __func__, gpa, gpa + bytes - 1);
+            printv("iommu[%u]: %s: falling back to domain invalidation\n",
+                   m_id, __func__);
+            this->flush_iotlb(dom);
+            return;
+        case IOTLB_INVG_GLOBAL:
+        case IOTLB_INVG_DOMAIN:
+            return;
+        default:
+            expects(iaig == IOTLB_INVG_PAGE);
+            break;
+        }
     }
 }
 

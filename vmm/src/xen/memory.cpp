@@ -32,6 +32,7 @@
 namespace microv {
 
 uintptr_t winpv_hole_gfn;
+uintptr_t winpv_hole_gpa;
 size_t winpv_hole_size;
 
 static std::mutex dom_pool_mtx;
@@ -40,6 +41,13 @@ static uint64_t dom_page_id{};
 
 static std::mutex root_pool_mtx;
 static std::list<xen_pfn_t> root_pool;
+
+bool gfn_in_winpv_hole(uintptr_t gfn) noexcept
+{
+    const auto gpa = xen_addr(gfn);
+
+    return gpa >= winpv_hole_gpa && gpa < (winpv_hole_gpa + winpv_hole_size);
+}
 
 /* How many free frames from the root domain are there? */
 static inline size_t root_frames()
@@ -319,8 +327,15 @@ bool xenmem_populate_physmap(xen_vcpu *vcpu)
     expects(rsv->extent_start.p);
 
     xen_domid_t domid = rsv->domid;
-    if (rsv->domid == DOMID_SELF) {
+    if (domid == DOMID_SELF) {
         domid = vcpu->m_xen_dom->m_id;
+
+        if (domid == DOMID_WINPV) {
+            auto dom = vcpu->m_xen_dom;
+            return dom->m_memory->populate_physmap(vcpu, rsv.get());
+        }
+    } else {
+        expects(domid != DOMID_WINPV);
     }
 
     auto dom = get_xen_domain(domid);
@@ -737,6 +752,7 @@ bool xen_memory::add_to_physmap(xen_vcpu *vcpu, xen_add_to_physmap_t *atp)
     if (vcpu->m_uv_vcpu->is_root_vcpu()) {
         switch (atp->space) {
         case XENMAPSPACE_shared_info:
+            expects(gfn_in_winpv_hole(atp->gpfn));
             vcpu->m_xen_dom->init_shared_info(vcpu, atp->gpfn);
             vcpu->m_uv_vcpu->set_rax(0);
             return true;
@@ -807,8 +823,6 @@ void xen_memory::unmap_page(class xen_page *pg)
 
 int xen_memory::remove_page(xen_pfn_t gfn, bool need_invept)
 {
-    expects(m_xen_dom->m_id != DOMID_WINPV);
-
     auto itr = m_page_map.find(gfn);
     if (GSL_UNLIKELY(itr == m_page_map.end())) {
         printv("%s: gfn 0x%lx doesn't map to page\n", __func__, gfn);
@@ -879,29 +893,56 @@ bool xen_memory::decrease_reservation(xen_vcpu *v,
         uvv->set_rax(nr_done);
     } else {
         expects(v->m_xen_dom->m_id == DOMID_WINPV);
-        expects(rsv->nr_extents == 1);
-        expects(rsv->extent_order == 9);
+        expects(rsv->nr_extents >= 1U);
+        expects(rsv->extent_order == 9U);
         expects(m_ept->is_2m(xen_addr(gfn[0])));
 
-        printv("Scrubbing Windows PV hole at 0x%lx\n", xen_addr(gfn[0]));
+        const uint64_t extent_size = (1UL << rsv->extent_order) * UV_PAGE_SIZE;
+
         winpv_hole_gfn = gfn[0];
-        winpv_hole_size = (2 << 20);
+        winpv_hole_gpa = xen_addr(winpv_hole_gfn);
+        winpv_hole_size = extent_size * rsv->nr_extents;
 
-        auto buf = uvv->map_gpa_2m<uint8_t>(xen_addr(gfn[0]));
-        memset(buf.get(), 0, winpv_hole_size);
+        for (auto i = 0U; i < rsv->nr_extents; i++) {
+            // Check that the gpa's are contiguous
+            if (i < (rsv->nr_extents - 1)) {
+                expects(gfn[i] == (gfn[i + 1] - (1UL << rsv->extent_order)));
+            }
 
-        /*
-         * We assume this is from the fdo code in the Windows PV drivers
-         * that is creating the hole for various interfaces. If that is
-         * the case we should? be able to avoid a TLB shootdown because
-         * the memory hasn't been accessed yet.
-         */
+            auto buf = uvv->map_gpa_2m<uint8_t>(winpv_hole_gpa + (i * extent_size));
+            memset(buf.get(), 0, extent_size);
+        }
 
-//        m_ept->unmap(xen_addr(gfn[0]));
-//        m_ept->release(xen_addr(gfn[0]));
+        auto rc = uvv->begin_shootdown(IPI_CODE_SHOOTDOWN_TLB);
+        if (rc == AGAIN) {
+            /*
+             * If we have to try again, we need to reset the rip to point to the
+             * vmcall instruction, since vmcall_handler::handle unconditionally
+             * advances the rip prior to calling us. Subtract the 3 bytes here.
+             */
+            uvv->set_rip(uvv->rip() - 0x3);
+            uvv->set_rax(0);
 
-        nr_done = 1;
+            return true;
+        }
+
+        for (auto i = 0U; i < rsv->nr_extents; i++) {
+            m_ept->unmap(winpv_hole_gpa + (i * extent_size));
+            m_ept->release(winpv_hole_gpa + (i * extent_size));
+        }
+
+        uvv->end_shootdown();
+        uvv->invept();
+
+        for (auto i = 0U; i < rsv->nr_extents; i++) {
+            uvv->dom()->flush_iotlb_page_2m(winpv_hole_gpa + (i * extent_size));
+        }
+
+        nr_done = rsv->nr_extents;
         uvv->set_rax(nr_done);
+
+        printv("Created Windows PV hole at 0x%lx-0x%lx\n",
+               winpv_hole_gpa, winpv_hole_gpa + winpv_hole_size - 1U);
     }
 
     return true;
@@ -976,13 +1017,56 @@ bool xen_memory::populate_physmap(xen_vcpu *v, xen_memory_reservation_t *rsv)
     if (uvv->is_root_vcpu()) {
         expects(m_xen_dom->m_id == DOMID_WINPV);
         expects(rsv->extent_order == 9);
-        expects(rsv->nr_extents == 1);
+        expects(rsv->nr_extents >= 1);
         expects(ext.get()[0] == winpv_hole_gfn);
 
         printv("Filling Windows PV hole\n");
 
-        int nr_done = 1;
-        uvv->set_rax(nr_done);
+        const uint64_t extent_size = (1U << rsv->extent_order) * UV_PAGE_SIZE;
+        expects((rsv->nr_extents * extent_size) == winpv_hole_size);
+
+        auto rc = uvv->begin_shootdown(IPI_CODE_SHOOTDOWN_TLB);
+
+        if (rc == AGAIN) {
+            /*
+             * If we have to try again, we need to reset the rip to point to the
+             * vmcall instruction, since vmcall_handler::handle unconditionally
+             * advances the rip prior to calling us. Subtract the 3 bytes here.
+             */
+            uvv->set_rip(uvv->rip() - 0x3);
+            uvv->set_rax(0);
+
+            return true;
+        }
+
+        auto ept = &uvd->ept();
+
+        for (auto i = 0; i < winpv_hole_size; i += UV_PAGE_SIZE) {
+            auto gpa = winpv_hole_gpa + i;
+
+            try {
+                ept->unmap(gpa);
+                ept->release(gpa);
+            } catch (...) {
+                ;
+            }
+        }
+
+        for (auto i = 0U; i < rsv->nr_extents; i++) {
+            // Assumes the original mapping was 2MB identity mapped
+            const uint64_t gpa = winpv_hole_gpa + (i * extent_size);
+
+            ept->map_2m(gpa, gpa);
+        }
+
+        uvv->end_shootdown();
+        uvv->invept();
+
+        for (auto i = 0U; i < rsv->nr_extents; i++) {
+            uvd->flush_iotlb_page_2m(winpv_hole_gpa + (i * extent_size));
+        }
+
+        uvv->set_rax(rsv->nr_extents);
 
         return true;
     }

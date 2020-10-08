@@ -1015,6 +1015,10 @@ bool xen_vcpu::debug_hypercall(microv_vcpu *vcpu)
     }
 
     if (vcpu->is_root_vcpu()) {
+        if (rax == __HYPERVISOR_grant_table_op) {
+            return false;
+        }
+
         return true;
     }
 
@@ -1147,6 +1151,7 @@ bool xen_vcpu::root_hypercall(microv_vcpu *vcpu)
         case EVTCHNOP_send:
         case EVTCHNOP_bind_virq:
         case EVTCHNOP_alloc_unbound:
+        case EVTCHNOP_bind_interdomain:
         case EVTCHNOP_close:
         case EVTCHNOP_reset:
         case EVTCHNOP_unmask:
@@ -1167,6 +1172,8 @@ bool xen_vcpu::root_hypercall(microv_vcpu *vcpu)
     case __HYPERVISOR_grant_table_op:
         switch (vcpu->rdi()) {
         case GNTTABOP_query_size:
+        case GNTTABOP_map_grant_ref:
+        case GNTTABOP_unmap_grant_ref:
             return this->handle_grant_table_op();
         default:
             return false;
