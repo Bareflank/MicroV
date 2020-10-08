@@ -44,6 +44,7 @@ typedef struct _XENIFACE_CONTEXT_ID {
     XENIFACE_CONTEXT_TYPE  Type;
     ULONG                  RequestId;
     PEPROCESS              Process;
+    PROCESSOR_NUMBER       ProcNumber;
 } XENIFACE_CONTEXT_ID, *PXENIFACE_CONTEXT_ID;
 
 typedef struct _XENIFACE_STORE_CONTEXT {

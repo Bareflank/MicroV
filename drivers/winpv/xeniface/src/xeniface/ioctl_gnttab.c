@@ -47,14 +47,28 @@ CompleteGnttabIrp(
     PXENIFACE_FDO Fdo = Dx->Fdo;
     PIRP Irp = Context;
     PXENIFACE_CONTEXT_ID Id;
+    LONG IdType;
     PIO_WORKITEM WorkItem;
     KAPC_STATE ApcState;
     BOOLEAN ChangeProcess;
+    GROUP_AFFINITY OldAffinity;
+    GROUP_AFFINITY NewAffinity;
 
     ASSERT(Context != NULL);
 
     Id = Irp->Tail.Overlay.DriverContext[0];
     WorkItem = Irp->Tail.Overlay.DriverContext[1];
+
+    IdType = Id->Type;
+    if (IdType == XENIFACE_CONTEXT_MAP) {
+        RtlZeroMemory(&OldAffinity, sizeof(GROUP_AFFINITY));
+        RtlZeroMemory(&NewAffinity, sizeof(GROUP_AFFINITY));
+
+        NewAffinity.Group = Id->ProcNumber.Group;
+        NewAffinity.Mask = (KAFFINITY)1 << Id->ProcNumber.Number;
+
+        KeSetSystemGroupAffinityThread(&NewAffinity, &OldAffinity);
+    }
 
     // We are not guaranteed to be in the context of the process that initiated the IRP,
     // but we need to be there to unmap memory.
@@ -83,6 +97,9 @@ CompleteGnttabIrp(
 
     if (ChangeProcess)
         KeUnstackDetachProcess(&ApcState);
+
+    if (IdType == XENIFACE_CONTEXT_MAP)
+        KeRevertToUserGroupAffinityThread(&OldAffinity);
 
     IoFreeWorkItem(WorkItem);
 
@@ -512,6 +529,9 @@ IoctlGnttabMapForeignPages(
         goto fail6;
 
     RtlZeroMemory(Context, sizeof(XENIFACE_MAP_CONTEXT));
+
+    (VOID) KeGetCurrentProcessorNumberEx(&Context->Id.ProcNumber);
+
     Context->Id.Type = XENIFACE_CONTEXT_MAP;
     Context->Id.Process = PsGetCurrentProcess();
     Context->Id.RequestId = In->RequestId;

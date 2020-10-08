@@ -436,7 +436,7 @@ IoctlEvtchnNotify(
     }
 
 #if DBG
-    Info("> LocalPort %d, FO %p\n", In->LocalPort, FileObject);
+    Trace("> LocalPort %d, FO %p\n", In->LocalPort, FileObject);
 #endif
 
     return EvtchnNotify(Fdo, In->LocalPort, FileObject);
