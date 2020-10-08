@@ -16,6 +16,7 @@ build-drivers:
         - " & $env:MSBUILD_PATH /p:Configuration=\"Windows 10 Release\" /p:Platform=x64 /p:TargetVersion=Windows10 $Env:XENBUS_SLN_PATH"
         - " & $env:MSBUILD_PATH /p:Configuration=\"Windows 10 Release\" /p:Platform=x64 /p:TargetVersion=Windows10 $Env:XENVIF_SLN_PATH"
         - " & $env:MSBUILD_PATH /p:Configuration=\"Windows 10 Release\" /p:Platform=x64 /p:TargetVersion=Windows10 $Env:XENNET_SLN_PATH"
+        - " & $env:MSBUILD_PATH /p:Configuration=\"Windows 10 Release\" /p:Platform=x64 /p:TargetVersion=Windows10 $Env:XENIFACE_SLN_PATH"
 
     artifacts:
         paths:
@@ -29,6 +30,8 @@ build-drivers:
             - drivers\winpv\xennet\vs2019\Windows10Release\x64\xennet.cer
             - drivers\winpv\xenvif\xenvif\x64\*
             - drivers\winpv\xenvif\vs2019\Windows10Release\x64\xenvif.cer
+            - drivers\winpv\xeniface\xeniface\x64\*
+            - drivers\winpv\xeniface\vs2019\Windows10Release\x64\xeniface.cer
         expire_in: 30 day
 
     tags:
