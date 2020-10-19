@@ -38,6 +38,7 @@ target_include_directories(uvctl PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/${OS}>
 )
 target_sources(uvctl PRIVATE
+    log.cpp
     main.cpp
     domain.cpp
     vcpu.cpp
