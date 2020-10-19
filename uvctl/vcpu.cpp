@@ -24,6 +24,7 @@
 #include <iostream>
 
 #include "domain.h"
+#include "log.h"
 #include "vcpu.h"
 
 using namespace std::chrono;
@@ -61,8 +62,7 @@ void uvc_vcpu::unpause() noexcept
 
 void uvc_vcpu::fault(uint64_t err) const noexcept
 {
-    std::cerr << "[" << std::hex << id << "]: vcpu fault, err="
-              << std::hex << err << '\n';
+    log_msg("[0x%x]: vcpu fault, err=0x%x\n", id, err);
 }
 
 void uvc_vcpu::usleep(const microseconds &us) const

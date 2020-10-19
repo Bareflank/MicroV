@@ -27,6 +27,7 @@
 //
 
 #include <ioctl_private.h>
+#include <log.h>
 
 #include <bfgsl.h>
 #include <bfdriverinterface.h>
@@ -56,12 +57,12 @@ uvctl_ioctl_open(const GUID *guid)
                                    DIGCF_DEVICEINTERFACE | DIGCF_PRESENT);
 
     if (hDevInfo == INVALID_HANDLE_VALUE) {
-        std::cerr << "[ALERT]: SetupDiGetClassDevs failed\n";
+        log_msg("[ALERT]: SetupDiGetClassDevs failed\n");
         return hDevInfo;
     }
 
     if (!SetupDiEnumDeviceInfo(hDevInfo, 0, &devInfo)) {
-        std::cerr << "[ALERT]: SetupDiEnumDeviceInfo failed\n";
+        log_msg("[ALERT]: SetupDiEnumDeviceInfo failed\n");
         return INVALID_HANDLE_VALUE;
     }
 
@@ -70,7 +71,7 @@ uvctl_ioctl_open(const GUID *guid)
                                     guid,
                                     0,
                                     &ifInfo)) {
-        std::cerr << "[ALERT]: SetupDiEnumDeviceInterfaces failed\n";
+        log_msg("[ALERT]: SetupDiEnumDeviceInterfaces failed\n");
         return INVALID_HANDLE_VALUE;
     }
 
@@ -82,12 +83,12 @@ uvctl_ioctl_open(const GUID *guid)
                                         0,
                                         &requiredSize,
                                         NULL)) {
-        std::cerr << "[ALERT]: SetupDiGetDeviceInterfaceDetail failed (1)\n";
+        log_msg("[ALERT]: SetupDiGetDeviceInterfaceDetail failed (1)\n");
         return INVALID_HANDLE_VALUE;
     }
 
     if (GetLastError() != ERROR_INSUFFICIENT_BUFFER) {
-        std::cerr << "[ALERT]: SetupDiGetDeviceInterfaceDetail failed (2)\n";
+        log_msg("[ALERT]: SetupDiGetDeviceInterfaceDetail failed (2)\n");
         return INVALID_HANDLE_VALUE;
     }
 
@@ -109,11 +110,11 @@ uvctl_ioctl_open(const GUID *guid)
                                          requiredSize,
                                          NULL,
                                          NULL)) {
-        std::cerr << "[ALERT]: SetupDiGetDeviceInterfaceDetail failed (3)\n";
+        log_msg("[ALERT]: SetupDiGetDeviceInterfaceDetail failed (3)\n");
         return INVALID_HANDLE_VALUE;
     }
 
-    std::cout << "[DEBUG]: Creating file: " << deviceDetailData->DevicePath << '\n';
+    log_msg("[DEBUG]: Creating file: %s\n", deviceDetailData->DevicePath);
 
     return CreateFile(deviceDetailData->DevicePath,
                       GENERIC_READ | GENERIC_WRITE,
@@ -142,7 +143,7 @@ uvctl_rw_ioctl(HANDLE fd, DWORD request, void *data, DWORD size)
 
 ioctl_private::ioctl_private()
 {
-    std::cout << "[DEBUG]: uvctl process id: " << GetCurrentProcessId() << '\n';
+    log_msg("[DEBUG]: uvctl process id: %u\n", GetCurrentProcessId());
 
     builder_fd = uvctl_ioctl_open(&GUID_DEVINTERFACE_builder);
 
@@ -154,8 +155,7 @@ ioctl_private::ioctl_private()
     uint64_t rc = GetLastError();
 
     if (xenbus_fd == INVALID_HANDLE_VALUE) {
-        std::cerr << "[ALERT]: Failed to open xenbus driver. Is it loaded?\n";
-        std::cerr << "[ALERT]:  - GetLastError() == " << rc << '\n';
+        log_msg("[ALERT]: Failed to open xenbus driver. Is it loaded? err=0x%x\n", rc);
     }
 }
 
@@ -186,7 +186,7 @@ void ioctl_private::call_ioctl_destroy(domainid_t domid) noexcept
     auto rc = uvctl_rw_ioctl(fd, IOCTL_DESTROY_VM, &domid, sizeof(domid));
 
     if (rc < 0) {
-        std::cerr << "[ERROR] ioctl failed: IOCTL_DESTROY_VM\n";
+        log_msg("[ERROR] ioctl failed: IOCTL_DESTROY_VM\n");
     }
 }
 
@@ -201,6 +201,6 @@ void ioctl_private::call_ioctl_xenbus_acquire() noexcept
     auto rc = uvctl_rw_ioctl(fd, IOCTL_XENBUS_ACQUIRE, &id, sizeof(id));
 
     if (rc < 0) {
-        std::cerr << "[ERROR] ioctl failed: IOCTL_XENBUS_ACQUIRE\n";
+        log_msg("[ERROR] ioctl failed: IOCTL_XENBUS_ACQUIRE\n");
     }
 }

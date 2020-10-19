@@ -33,6 +33,7 @@
 #endif
 
 #include "domain.h"
+#include "log.h"
 #include "vcpu.h"
 
 using namespace std::chrono;
@@ -65,7 +66,7 @@ void uvc_domain::recv_uart()
 
     while (enable_uart) {
         size = __domain_op__dump_uart(id, buf.data());
-        std::cout.write(buf.data(), (int)size);
+        log_raw(buf.data(), (int)size);
         std::this_thread::sleep_for(uart_sleep);
     }
 }
@@ -78,25 +79,27 @@ void uvc_domain::recv_hvc()
 #ifdef WIN64
     /* Lock memory; this may fail the first attempt. */
     if (!VirtualLock(array.data(), HVC_TX_SIZE)) {
-        std::cout << __func__ << ": Unable to lock HVC recv array " << "(error: "
-                  << std::to_string(GetLastError()) << "), will reattempt\n";
+        log_msg("%s: Unable to lock HVC recv array (err: 0x%x), trying again\n",
+                __func__, GetLastError());
         if (!VirtualLock(array.data(), HVC_TX_SIZE)) {
-            std::cout << __func__ << ": Second attempt; unable to lock HVC recv array "
-                      << "(error: " << std::to_string(GetLastError()) << ")\n";
-	      }
+            log_msg("%s: Unable to lock HVC recv array (err: 0x%x)\n",
+                    __func__, GetLastError());
+            return;
+        }
+    }
 #else
     if (mlock(array.data(), HVC_TX_SIZE) == -1) {
-        std::cout << __func__ << ": Unable to lock array\n";
-#endif
+        log_msg("%s: Unable to lock HVC recv array (err: %d)\n",
+                __func__, errno);
+        return;
     }
+#endif
 
     while (enable_hvc) {
-        auto buf = static_cast<volatile char *>(array.data());
+        char *buf = array.data();
+        size = __domain_op__hvc_tx_get(id, buf, HVC_TX_SIZE);
 
-        size = __domain_op__hvc_tx_get(id, (char *)buf, HVC_TX_SIZE);
-
-        std::cout.write((const char *)buf, (int)size);
-        std::cout.flush();
+        log_raw(buf, (int)size);
         std::this_thread::sleep_for(hvc_sleep);
     }
 }
@@ -116,17 +119,21 @@ void uvc_domain::send_hvc()
 #ifdef WIN64
     /* Lock memory; this may fail the first attempt. */
     if (!VirtualLock(array.data(), HVC_RX_SIZE)) {
-        std::cout << __func__ << ": Unable to lock HVC send array " << "(error: "
-                  << std::to_string(GetLastError()) << "), will reattempt\n";
+        log_msg("%s: Unable to lock HVC send array (err: 0x%x), trying again\n",
+                __func__, GetLastError());
         if (!VirtualLock(array.data(), HVC_RX_SIZE)) {
-            std::cout << __func__ << ": Second attempt; unable to lock HVC send array "
-                      << "(error: " << std::to_string(GetLastError()) << ")\n";
+            log_msg("%s: Unable to lock HVC send array (err: 0x%x)\n",
+                    __func__, GetLastError());
+            return;
         }
+    }
 #else
     if (mlock(array.data(), HVC_RX_SIZE) == -1) {
-        std::cout << __func__ << ": Unable to lock array\n";
-#endif
+        log_msg("%s: Unable to lock HVC recv array (err: %d)\n",
+                __func__, errno);
+        return;
     }
+#endif
 
     while (enable_hvc) {
         std::cin.getline(array.data(), array.size());
@@ -270,20 +277,20 @@ void uvc_domain::destroy()
      * (which has joined at this point).
      */
     for (auto &c : child_list) {
-        std::cout << __func__ << ": destroying child " << std::hex << c.id << '\n';
+        log_msg("%s: destroying child 0x%x\n", __func__, c.id);
         c.destroy();
     }
 
     std::lock_guard lock(vcpu_mtx);
 
     for (auto &v : vcpu_list) {
-        std::cout << __func__ << ": halting vcpu " << std::hex << v.id << '\n';
+        log_msg("%s: halting vcpu 0x%x\n", __func__, v.id);
         v.halt();
     }
 
     for (auto &v : vcpu_list) {
         if (v.run_thread.joinable()) {
-            std::cout << __func__ << ": joining vcpu " << std::hex << v.id << '\n';
+            log_msg("%s: joining vcpu 0x%x\n", __func__, v.id);
             v.run_thread.join();
         }
     }

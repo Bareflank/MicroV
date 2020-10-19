@@ -28,6 +28,7 @@
 #endif
 
 #include "cxxopts.hpp"
+#include "log.h"
 
 #ifdef _WIN64
 #pragma warning(pop)
@@ -67,7 +68,7 @@ parse_args(int argc, char *argv[])
     auto args = options.parse(argc, argv);
 
     if (args.count("help")) {
-        std::cout << options.help() << '\n';
+        log_msg("%s\n", options.help().c_str());
         exit(EXIT_SUCCESS);
     }
 

@@ -41,6 +41,7 @@
 #include "cmdl.h"
 #include "file.h"
 #include "ioctl.h"
+#include "log.h"
 #include "verbose.h"
 #include "domain.h"
 #include "vcpu.h"
@@ -251,7 +252,7 @@ static int protected_main(const args_type &args)
     try {
         root_domain.destroy();
     } catch (const std::exception &e) {
-        std::cerr << "root_domain.destroy threw: what = " << e.what() << '\n';
+        log_msg("root_domain.destroy threw: what = %s\n", e.what());
     }
 
     ctl->call_ioctl_destroy(root_domain.id);
@@ -261,6 +262,7 @@ static int protected_main(const args_type &args)
 int main(int argc, char *argv[])
 {
     try {
+        log_set_mode(UVCTL_LOG_STDOUT);
         ctl = std::make_unique<ioctl>();
         setup_kill_signal_handler();
         args_type args = parse_args(argc, argv);
@@ -268,14 +270,13 @@ int main(int argc, char *argv[])
         return protected_main(args);
     }
     catch (const cxxopts::OptionException &e) {
-        std::cerr << "invalid arguments: " << e.what() << '\n';
+        log_msg("invalid arguments: %s\n", e.what());
     }
     catch (const std::exception &e) {
-        std::cerr << "Caught unhandled exception:" << '\n';
-        std::cerr << "    - what(): " << e.what() << '\n';
+        log_msg("Caught unhandled exception: what = %s\n", e.what());
     }
     catch (...) {
-        std::cerr << "Caught unknown exception" << '\n';
+        log_msg("Caught unknown exception\n");
     }
 
     return EXIT_FAILURE;
