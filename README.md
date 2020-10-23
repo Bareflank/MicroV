@@ -2,7 +2,9 @@
 
 ## Description
 
-[![Join the chat](https://img.shields.io/badge/chat-on%20Slack-brightgreen.svg)](https://bareflank.herokuapp.com/)
+**warning**: MicroV is currently a work in progress. If you need support now, 
+please see [Boxy](https://github.com/Bareflank/boxy) until MicroV is complete
+which is expected to be some time Q3-Q4 of 2021. 
 
 The MicroV Hypervisor is an open source, micro-hypervisor led by [Assured 
 Information Security, Inc.](https://www.ainfosec.com/), designed specifically 
@@ -159,12 +161,11 @@ No design is without its disadvantages:
   is no easy task, and should be limited to specific use cases (unless 
   performance and battery life is not important). 
 
+## **Quick start**
+TBD
+
 ## Interested In Working For AIS?
-  Check out our [Can You Hack It?®](https://www.canyouhackit.com) challenge 
-  and test your skills! Submit your score to show us what you’ve got. We have 
-  offices across the country and offer  competitive pay and outstanding 
-  benefits. Join a team that is not only committed to the future of cyberspace, 
-  but to our employee’s success as well.
+Check out our [Can You Hack It?®](https://www.canyouhackit.com) challenge and test your skills! Submit your score to show us what you’ve got. We have offices across the country and offer competitive pay and outstanding benefits. Join a team that is not only committed to the future of cyberspace, but to our employee’s success as well.
 
 <p align="center">
   <a href="https://www.ainfosec.com/">
@@ -172,54 +173,23 @@ No design is without its disadvantages:
   </a>
 </p>
 
+## Demo
+TBD
+
+## **Build Requirements**
+TBD
+
+## Usage Instructions
+TBD
+
+## **Resources**
+TBD
+
 ## Specifications
 
 The following defines the VM Specification (i.e., the CPUID/hypercall interface):</br>
 [MicroV VM Specification](https://github.com/Bareflank/MicroV/blob/master/docs/MicroV%20VM%20Specification.md)
 
-## Roadmap
-The code that is currently in this repo is a snapshot of our previous Boxy 
-repo that already provides limited support for Linux virtual machines. If you
-need something right now, please see Boxy instead as it is more up-to-date 
-and already provides some basic functionality. MicroV is the third iteration 
-of this hypervisor (the original was called the hyperkernel), and will be the 
-main hypervisor project moving forward. So with that said, this is a rough 
-overview of our roadmap for this project (as well as the other Bareflank 
-projects):
-- Before we can work on MicroV, the Bareflank hypervisor itself needs a fair 
-  amount of TLC. Specifically this includes finishing the microkernel 
-  implementation upstream, porting Bareflank to use the Bareflank Support 
-  Library (BSL) instead of using libc++, and stripping away a lot of the 
-  APIs that are no longer supported. As we perform this work, we are also 
-  adding native support for Windows (no need for Cygwin), AUTOSAR compliance, 
-  a new build system, and support for both AMD and Intel (ARM will come in 
-  the future). We expect this work will take us at least into Q3, maybe early
-  Q4 of 2020. 
-- Once the Bareflank hypervisor is ready, we will then begin the port of 
-  MicroV to the new architecture including AMD/Intel support, and support 
-  for AUTOSAR compliance. This will take us into early Q1 of 2021
-- The final step of our roadmap is to remove the remaining forms of 
-  emulation and implement the rest of MicroV's PV interface. The initial 
-  version of MicroV will have support for Console, Disk and Net, using a 
-  design that is similar to Xen, allowing backend and frontend support to 
-  be executed in any Micro VM (something that KVM's virtio is not capable 
-  of supporting). We believe this will take the better part of 2021 as 
-  this will require the implementation of multiple virtual device drivers 
-  for both Linux and Windows. 
+## License
 
-Once the above work is complete, we will cut our "first" version of MicroV. 
-Until then, you are likely better off using Boxy, at least until the 2020
-work is complete (Boxy currently doesn't have PV driver support, so MicroV 
-will be feature complete with Boxy near the beginning of 2021). Future 
-versions of MicroV will likely include the following before we would consider
-the project to be "feature complete":
-- Nested virtualization support
-- PCI pass-through support
-- Libvirt support
-- Optimizations
-- First class support for LibVMI
-- First class support for some unikernels
-
-If there are additional features that you would like to see in this feature 
-list, please add a feature request to our issue tracker, or feel free to 
-reach out to us on Slack or email. 
+The Bareflank Hypervisor is licensed under the MIT License.
