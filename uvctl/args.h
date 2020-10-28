@@ -25,6 +25,7 @@
 #ifdef _WIN64
 #pragma warning(push)
 #pragma warning(disable:4267)
+#include <malloc.h>
 #endif
 
 #include "cxxopts.hpp"
@@ -36,15 +37,22 @@
 
 #include <microv/hypercall.h>
 
+#include <cstdlib>
+#include <mutex>
+
 using args_type = cxxopts::ParseResult;
 
 inline bool verbose = false;
-inline cxxopts::Options options("uvctl", "control a microv virtual machine");
+
+inline std::mutex orig_arg_mutex;
+inline int orig_argc = 0;
+inline char **orig_argv = nullptr;
 
 inline args_type
 parse_args(int argc, char *argv[])
 {
     using namespace cxxopts;
+    cxxopts::Options options("uvctl", "control a microv virtual machine");
 
     options.add_options()
     ("h,help", "Print this help menu")
@@ -63,6 +71,9 @@ parse_args(int argc, char *argv[])
     ("xenpfd-disable", "Disable the Xen Platform PCI device")
     ("reset-xue", "Reset the xue debugger")
     ("xenstore-ready", "Tell the VMM that xenstore is ready for the root domain to use")
+#ifdef _WIN64
+    ("windows-svc", "Run uvctl as a Windows service")
+#endif
     ("dump-iommu", "Dump IOMMU faults");
 
     auto args = options.parse(argc, argv);
@@ -77,6 +88,70 @@ parse_args(int argc, char *argv[])
     }
 
     return args;
+}
+
+inline args_type parse_orig_args()
+{
+    std::lock_guard lock(orig_arg_mutex);
+
+    return parse_args(orig_argc, orig_argv);
+}
+
+inline int copy_args(int argc, char **argv)
+{
+    if (argc == 0) {
+        return -1;
+    }
+
+    std::lock_guard lock(orig_arg_mutex);
+
+    orig_argc = argc;
+    orig_argv = (char **)malloc(sizeof(char *) * argc);
+
+    if (!orig_argv) {
+        log_msg("%s: failed to malloc orig_argv\n", __func__);
+        return -1;
+    }
+
+    for (int i = 0; i < argc; i++) {
+        orig_argv[i] = (char *)malloc(strlen(argv[i]) + 1);
+
+        if (!orig_argv[i]) {
+            log_msg("%s: failed to malloc orig_argv[%d]\n", __func__, i);
+
+            for (int j = i - 1; j >= 0; j--) {
+                free(orig_argv[j]);
+            }
+
+            goto free_argv;
+        }
+
+        memcpy(orig_argv[i], argv[i], strlen(argv[i]) + 1);
+    }
+
+    return 0;
+
+free_argv:
+    free(orig_argv);
+    orig_argv = nullptr;
+
+    return -1;
+}
+
+inline void free_args()
+{
+    std::lock_guard lock(orig_arg_mutex);
+
+    if (!orig_argv) {
+        return;
+    }
+
+    for (int i = 0; i < orig_argc; i++) {
+        free(orig_argv[i]);
+    }
+
+    free(orig_argv);
+    orig_argv = nullptr;
 }
 
 #endif
