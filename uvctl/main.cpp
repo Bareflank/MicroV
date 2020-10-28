@@ -46,6 +46,10 @@
 #include "domain.h"
 #include "vcpu.h"
 
+#ifdef _WIN64
+#include "service.h"
+#endif
+
 using namespace std::chrono;
 using namespace std::chrono_literals;
 
@@ -60,6 +64,23 @@ uint64_t nuke_vm = 0;
 static void drop_nuke(int sig)
 {
     nuke_vm = 1;
+}
+
+static inline void wait_for_stop_signal(bool windows_svc)
+{
+#ifdef _WIN64
+    if (windows_svc) {
+        service_wait_for_stop_signal();
+    } else {
+        while (!nuke_vm) {
+            std::this_thread::sleep_for(1s);
+        }
+    }
+#else
+    while (!nuke_vm) {
+        std::this_thread::sleep_for(1s);
+    }
+#endif
 }
 
 static inline void setup_kill_signal_handler(void)
@@ -245,9 +266,7 @@ int protected_main(const args_type &args)
     create_vm(args, &root_domain);
     root_domain.launch();
 
-    while (!nuke_vm) {
-        std::this_thread::sleep_for(1s);
-    }
+    wait_for_stop_signal(args.count("windows-svc"));
 
     try {
         root_domain.destroy();
@@ -263,11 +282,30 @@ int main(int argc, char *argv[])
 {
     try {
         log_set_mode(UVCTL_LOG_STDOUT);
-        ctl = std::make_unique<ioctl>();
-        setup_kill_signal_handler();
         args_type args = parse_args(argc, argv);
-
+#ifndef _WIN64
+        setup_kill_signal_handler();
+        ctl = std::make_unique<ioctl>();
         return protected_main(args);
+#else
+        if (args.count("windows-svc")) {
+            log_set_mode(UVCTL_LOG_WINDOWS_SVC);
+
+            if (copy_args(argc, argv)) {
+                log_msg("uvctl: unable to copy args for Windows service\n");
+                return EXIT_FAILURE;
+            }
+
+            service_start();
+            free_args();
+
+            return EXIT_SUCCESS;
+        } else {
+            setup_kill_signal_handler();
+            ctl = std::make_unique<ioctl>();
+            return protected_main(args);
+        }
+#endif
     }
     catch (const cxxopts::OptionException &e) {
         log_msg("invalid arguments: %s\n", e.what());
