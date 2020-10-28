@@ -187,7 +187,7 @@ static void create_vm(const args_type &args, struct uvc_domain *dom)
     dom->enable_hvc = args.count("hvc");
 }
 
-static int protected_main(const args_type &args)
+int protected_main(const args_type &args)
 {
     if (bfack() == 0) {
         throw std::runtime_error("vmm not running");

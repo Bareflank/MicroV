@@ -44,6 +44,7 @@ target_sources(uvctl PRIVATE
     vcpu.cpp
     ${OS}/ioctl.cpp
     ${OS}/ioctl_private.cpp
+    $<$<BOOL:${WIN32}>:${OS}/service.cpp>
 )
 
 fini_project()
