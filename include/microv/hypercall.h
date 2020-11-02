@@ -240,6 +240,7 @@ __uart_ndec_op(uint16_t port, uint64_t val)
 #define __enum_domain_op__donate_page_r 0xBF02000000000310
 #define __enum_domain_op__donate_page_rw 0xBF02000000000311
 #define __enum_domain_op__donate_page_rwe 0xBF02000000000313
+#define __enum_domain_op__reclaim_root_pages 0xBF02000000000314
 
 #define __enum_domain_op__rax 0xBF02000000010000
 #define __enum_domain_op__set_rax 0xBF02000000010001
@@ -574,6 +575,19 @@ __domain_op__donate_page_rwe(
         foreign_domainid,
         gpa,
         foreign_gpa
+    );
+
+    return ret;
+}
+
+static inline status_t
+__domain_op__reclaim_root_pages(domainid_t foreign_domainid)
+{
+    status_t ret = _vmcall(
+        __enum_domain_op__reclaim_root_pages,
+        foreign_domainid,
+        0,
+        0
     );
 
     return ret;
