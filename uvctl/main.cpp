@@ -262,19 +262,31 @@ int protected_main(const args_type &args)
         set_affinity(0);
     }
 
+    bool windows_svc = args.count("windows-svc") != 0;
+
     struct uvc_domain root_domain;
     create_vm(args, &root_domain);
     root_domain.launch();
 
-    wait_for_stop_signal(args.count("windows-svc"));
+    wait_for_stop_signal(windows_svc);
 
-    try {
-        root_domain.destroy();
-    } catch (const std::exception &e) {
-        log_msg("root_domain.destroy threw: what = %s\n", e.what());
+    if (!windows_svc) {
+        try {
+            root_domain.destroy();
+        } catch (const std::exception &e) {
+            log_msg("root_domain.destroy threw: what = %s\n", e.what());
+        }
+
+        ctl->call_ioctl_destroy(root_domain.id);
+    } else {
+        root_domain.pause();
+        std::this_thread::sleep_for(2s);
+
+        if (__domain_op__reclaim_root_pages(root_domain.id) != SUCCESS) {
+            log_msg("%s: failed to reclaim root pages\n", __func__);
+        }
     }
 
-    ctl->call_ioctl_destroy(root_domain.id);
     return EXIT_SUCCESS;
 }
 
