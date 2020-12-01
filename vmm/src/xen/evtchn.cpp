@@ -272,6 +272,11 @@ int xen_evtchn::init_control(xen_vcpu *v, evtchn_init_control_t *ctl)
     vcpu->init_event_ctl(ctl);
     ctl->link_bits = EVTCHN_FIFO_LINK_BITS;
 
+    if (m_word_pages.size() > 0) {
+        m_word_pages.clear();
+        m_allocated_words = 0;
+    }
+
     return 0;
 }
 
