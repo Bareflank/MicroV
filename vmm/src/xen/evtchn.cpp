@@ -208,7 +208,11 @@ bool xen_evtchn_send(xen_vcpu *v)
 {
     auto uvv = v->m_uv_vcpu;
     auto arg = uvv->map_arg<evtchn_send_t>(uvv->rsi());
-    auto ret = v->m_xen_dom->m_evtchn->send(v, arg->port);
+    auto port = arg->port;
+
+    arg.reset(nullptr);
+
+    auto ret = v->m_xen_dom->m_evtchn->send(v, port);
 
     uvv->set_rax(ret);
     return true;
@@ -755,7 +759,7 @@ int xen_evtchn::reset()
     return 0;
 }
 
-void xen_evtchn::notify_remote(xen_vcpu *v, chan_t *chan)
+void xen_evtchn::notify_remote(xen_vcpu *v, chan_t *chan, domainid_t *uv_domid)
 {
     auto ldomid = m_xen_dom->m_id;
     auto rdomid = chan->rdomid;
@@ -812,6 +816,8 @@ void xen_evtchn::notify_remote(xen_vcpu *v, chan_t *chan)
     } else {
         rdom->m_evtchn->push_upcall(rport);
     }
+
+    *uv_domid = rdom->m_uv_dom->id();
 }
 
 int xen_evtchn::send(xen_vcpu *v, port_t port)
@@ -821,12 +827,24 @@ int xen_evtchn::send(xen_vcpu *v, port_t port)
     }
 
     auto chan = this->port_to_chan(port);
-    std::lock_guard guard(chan->lock);
+    spin_acquire(&chan->lock);
 
     switch (chan->state) {
-    case chan_t::state_interdomain:
-        this->notify_remote(v, chan);
+    case chan_t::state_interdomain: {
+        domainid_t uv_rdomid = INVALID_DOMAINID;
+        this->notify_remote(v, chan, &uv_rdomid);
+
+        if (uv_rdomid != INVALID_DOMAINID && m_xen_dom->m_id != DOMID_WINPV) {
+            spin_release(&chan->lock);
+
+            v->m_uv_vcpu->set_rax(0);
+            v->m_uv_vcpu->save_xstate();
+            v->m_uv_vcpu->root_vcpu()->load();
+            v->m_uv_vcpu->root_vcpu()->return_notify_domain(uv_rdomid);
+        }
+
         break;
+    }
     case chan_t::state_ipi:
         this->queue_upcall(chan);
         break;
@@ -836,6 +854,8 @@ int xen_evtchn::send(xen_vcpu *v, port_t port)
         printv("%s: ALERT: state %d unsupported\n", __func__, chan->state);
         return -EINVAL;
     }
+
+    spin_release(&chan->lock);
 
     return 0;
 }

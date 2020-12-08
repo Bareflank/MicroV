@@ -251,7 +251,7 @@ private:
     void make_chan_page(port_t port);
     int make_word_page(microv_vcpu *uvv, uintptr_t gfn);
 
-    void notify_remote(xen_vcpu *v, chan_t *chan);
+    void notify_remote(xen_vcpu *v, chan_t *chan, domainid_t *uv_rdomid);
     void push_upcall(port_t port);
     void push_upcall(chan_t *chan);
     void queue_upcall(chan_t *chan);

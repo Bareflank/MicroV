@@ -873,7 +873,7 @@ bool xen_vcpu::handle_interrupt(base_vcpu *vcpu, interrupt_handler::info_t &info
         root->queue_external_interrupt(info.vector);
         root->return_interrupted();
 
-        // unreachable
+        /* unreachable */
         return false;
     }
 
@@ -886,26 +886,25 @@ bool xen_vcpu::handle_interrupt(base_vcpu *vcpu, interrupt_handler::info_t &info
     root->m_lapic->write_eoi();
 
     auto pdev = guest_msi->pdev;
-
     expects(pdev);
-    std::lock_guard msi_lock(pdev->m_msi_mtx);
-
-    if (!guest_msi->is_enabled()) {
-        return true;
-    }
 
     auto guest = get_vcpu(pdev->m_guest_vcpuid);
-    if (!guest) {
-        return true;
+    uint64_t guest_domid = INVALID_DOMAINID;
+
+    pdev->m_msi_mtx.lock();
+
+    if (!guest_msi->is_enabled()) {
+        goto out;
     }
 
-    auto put_guest = gsl::finally([pdev]{
-        put_vcpu(pdev->m_guest_vcpuid);
-    });
+    if (!guest) {
+        goto out;
+    }
 
     if (guest->pcpuid() == m_uv_vcpu->pcpuid()) {
         if (guest == m_uv_vcpu) {
             guest->queue_external_interrupt(guest_msi->vector());
+            goto out;
         } else {
             guest->load();
             guest->queue_external_interrupt(guest_msi->vector());
@@ -914,6 +913,22 @@ bool xen_vcpu::handle_interrupt(base_vcpu *vcpu, interrupt_handler::info_t &info
     } else {
         guest->push_external_interrupt(guest_msi->vector());
     }
+
+    guest_domid = guest->dom()->id();
+
+    pdev->m_msi_mtx.unlock();
+    put_vcpu(pdev->m_guest_vcpuid);
+
+    m_uv_vcpu->save_xstate();
+    root->load();
+    root->return_notify_domain(guest_domid);
+
+    /* unreachable */
+    return false;
+
+out:
+    pdev->m_msi_mtx.unlock();
+    put_vcpu(pdev->m_guest_vcpuid);
 
     return true;
 }
