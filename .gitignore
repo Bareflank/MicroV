@@ -68,7 +68,25 @@ deploy/windows/images
 *.manifest
 
 drivers/builder/windows/x64
+
 drivers/visr/windows/x64
+drivers/visr/windows/.build_number
+drivers/visr/windows/visr/
+drivers/visr/windows/vs2019/Windows10Release/
+drivers/visr/windows/vs2019/package/Windows10Debug/
+drivers/visr/windows/vs2019/package/Windows10Release/
+drivers/visr/windows/vs2019/visr.DVL.XML
+drivers/visr/windows/vs2019/visr/Windows10Debug/
+drivers/visr/windows/vs2019/visr/Windows10Release/
+drivers/visr/windows/vs2019/visr/sdv/
+drivers/visr/windows/vs2019/visr/smvbuild.log
+drivers/visr/windows/vs2019/visr/smvexecute-InterceptedBuild.log
+drivers/visr/windows/vs2019/visr/smvexecute-NormalBuild.log
+drivers/visr/windows/vs2019/visr/smvstats.txt
+drivers/visr/windows/vs2019/visr/visr.DVL.XML
+drivers/visr/windows/vs2019/visr/visr.inf
+drivers/visr/windows/vs2019/visr/x64/
+drivers/visr/windows/vs2019/x64/
 
 drivers/winpv/xenbus/.build_number
 drivers/winpv/xenbus/include/version.h

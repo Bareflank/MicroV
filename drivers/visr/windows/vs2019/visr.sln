@@ -1,0 +1,71 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+
+#
+# Copyright (C) 2019 Assured Information Security, Inc.
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy of
+# this software and associated documentation files (the "Software"), to deal in
+# the Software without restriction, including without limitation the rights to
+# use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
+# of the Software, and to permit persons to whom the Software is furnished to do
+# so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+# FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+# DEALINGS IN THE SOFTWARE.
+
+# Visual Studio 16
+VisualStudioVersion = 16.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "version", "version\version.vcxproj", "{FC12AADB-B431-4014-8DC8-CF466754ACDC}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "visr", "visr\visr.vcxproj", "{9299115C-8A76-408B-B25B-BB3571EA196A}"
+        ProjectSection(ProjectDependencies) = postProject
+                {FC12AADB-B431-4014-8DC8-CF466754ACDC} = {FC12AADB-B431-4014-8DC8-CF466754ACDC}
+        EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "package", "package\package.vcxproj", "{7D8F74D2-3F0A-4285-8BC3-4921CB806A7A}"
+        ProjectSection(ProjectDependencies) = postProject
+                {FC12AADB-B431-4014-8DC8-CF466754ACDC} = {FC12AADB-B431-4014-8DC8-CF466754ACDC}
+                {9299115C-8A76-408B-B25B-BB3571EA196A} = {9299115C-8A76-408B-B25B-BB3571EA196A}
+        EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Windows 10 Debug|x64 = Windows 10 Debug|x64
+		Windows 10 Release|x64 = Windows 10 Release|x64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{FC12AADB-B431-4014-8DC8-CF466754ACDC}.Windows 10 Debug|x64.ActiveCfg = Windows 10 Debug|x64
+		{FC12AADB-B431-4014-8DC8-CF466754ACDC}.Windows 10 Debug|x64.Build.0 = Windows 10 Debug|x64
+		{FC12AADB-B431-4014-8DC8-CF466754ACDC}.Windows 10 Debug|x64.Deploy.0 = Windows 10 Debug|x64
+		{FC12AADB-B431-4014-8DC8-CF466754ACDC}.Windows 10 Release|x64.ActiveCfg = Windows 10 Release|x64
+		{FC12AADB-B431-4014-8DC8-CF466754ACDC}.Windows 10 Release|x64.Build.0 = Windows 10 Release|x64
+		{FC12AADB-B431-4014-8DC8-CF466754ACDC}.Windows 10 Release|x64.Deploy.0 = Windows 10 Release|x64
+		{9299115C-8A76-408B-B25B-BB3571EA196A}.Windows 10 Debug|x64.ActiveCfg = Windows 10 Debug|x64
+		{9299115C-8A76-408B-B25B-BB3571EA196A}.Windows 10 Debug|x64.Build.0 = Windows 10 Debug|x64
+		{9299115C-8A76-408B-B25B-BB3571EA196A}.Windows 10 Debug|x64.Deploy.0 = Windows 10 Debug|x64
+		{9299115C-8A76-408B-B25B-BB3571EA196A}.Windows 10 Release|x64.ActiveCfg = Windows 10 Release|x64
+		{9299115C-8A76-408B-B25B-BB3571EA196A}.Windows 10 Release|x64.Build.0 = Windows 10 Release|x64
+		{9299115C-8A76-408B-B25B-BB3571EA196A}.Windows 10 Release|x64.Deploy.0 = Windows 10 Release|x64
+		{7D8F74D2-3F0A-4285-8BC3-4921CB806A7A}.Windows 10 Debug|x64.ActiveCfg = Windows 10 Debug|x64
+		{7D8F74D2-3F0A-4285-8BC3-4921CB806A7A}.Windows 10 Debug|x64.Build.0 = Windows 10 Debug|x64
+		{7D8F74D2-3F0A-4285-8BC3-4921CB806A7A}.Windows 10 Debug|x64.Deploy.0 = Windows 10 Debug|x64
+		{7D8F74D2-3F0A-4285-8BC3-4921CB806A7A}.Windows 10 Release|x64.ActiveCfg = Windows 10 Release|x64
+		{7D8F74D2-3F0A-4285-8BC3-4921CB806A7A}.Windows 10 Release|x64.Build.0 = Windows 10 Release|x64
+		{7D8F74D2-3F0A-4285-8BC3-4921CB806A7A}.Windows 10 Release|x64.Deploy.0 = Windows 10 Release|x64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {5BB3266F-C8ED-491E-8FBD-B31BB90A5319}
+	EndGlobalSection
+EndGlobal

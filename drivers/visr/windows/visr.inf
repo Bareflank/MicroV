@@ -29,7 +29,7 @@ Class=System
 ClassGuid={4d36e97d-e325-11ce-bfc1-08002be10318}
 Provider=%ManufacturerName%
 CatalogFile=visr.cat
-DriverVer=
+DriverVer=@INF_DATE@,@MAJOR_VERSION@.@MINOR_VERSION@.@MICRO_VERSION@.@BUILD_NUMBER@
 
 [DestinationDirs]
 DefaultDestDir = 12
@@ -42,16 +42,16 @@ visr_Device_CoInstaller_CopyFiles = 11
 
 [SourceDisksFiles]
 visr.sys  = 1,,
-WdfCoInstaller$KMDFCOINSTALLERVERSION$.dll=1
+WdfCoInstaller01011.dll=1
 
 ;*****************************************
 ; Install Section
 ;*****************************************
 
 [Manufacturer]
-%ManufacturerName%=Standard,NT$ARCH$
+%ManufacturerName%=Standard,NTAMD64
 
-[Standard.NT$ARCH$]
+[Standard.NTAMD64]
 ; DisplayName            Section           DeviceId
 ; -----------            -------           --------
 %visr.DeviceDesc%=visr_Device, PCI\VEN_BFBF
@@ -89,16 +89,16 @@ AddReg=visr_Device_CoInstaller_AddReg
 CopyFiles=visr_Device_CoInstaller_CopyFiles
 
 [visr_Device_CoInstaller_AddReg]
-HKR,,CoInstallers32,0x00010000, "WdfCoInstaller$KMDFCOINSTALLERVERSION$.dll,WdfCoInstaller"
+HKR,,CoInstallers32,0x00010000, "WdfCoInstaller01011.dll,WdfCoInstaller"
 
 [visr_Device_CoInstaller_CopyFiles]
-WdfCoInstaller$KMDFCOINSTALLERVERSION$.dll
+WdfCoInstaller01011.dll
 
 [visr_Device.NT.Wdf]
 KmdfService =  visr, visr_wdfsect
 
 [visr_wdfsect]
-KmdfLibraryVersion = $KMDFVERSION$
+KmdfLibraryVersion = 1.11
 
 [Strings]
 SPSVCINST_ASSOCSERVICE= 0x00000002

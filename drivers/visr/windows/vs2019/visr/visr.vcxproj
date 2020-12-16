@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<!--
+#
+# Copyright (C) 2019 Assured Information Security, Inc.
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
+# Visual Studio 16
+-->
+
+<Project DefaultTargets="Build" ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="..\configs.props" />
+  <PropertyGroup Label="PropertySheets">
+    <DriverType>KMDF</DriverType>
+    <KMDFVersionMinor>11</KMDFVersionMinor>
+    <PlatformToolset>WindowsKernelModeDriver10.0</PlatformToolset>
+    <ConfigurationType>Driver</ConfigurationType>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{9299115C-8A76-408B-B25B-BB3571EA196A}</ProjectGuid>
+  </PropertyGroup>
+  <Import Project="..\targets.props" />
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <PropertyGroup>
+      <RunCodeAnalysis>true</RunCodeAnalysis>
+      <EnableInf2cat>false</EnableInf2cat>
+      <IntDir>..\$(ProjectName)\$(ConfigurationName)\$(Platform)\</IntDir>
+      <OutDir>..\$(ConfigurationName)\$(Platform)\</OutDir>
+      <IncludePath>..\..\..\..\..\deps\hypervisor\bfsdk\include;..\..\..\..\..\deps\hypervisor\bfelf_loader\include;..\..\..\..\..\include;..\..\;$(IncludePath)</IncludePath>
+  </PropertyGroup>
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <WarningLevel>EnableAllWarnings</WarningLevel>
+      <DisableSpecificWarnings>4820;4255;5045;%(DisableSpecificWarnings)</DisableSpecificWarnings>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <PreprocessorDefinitions>KERNEL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <EnablePREfast>true</EnablePREfast>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Platform)'=='x64'">
+    <ClCompile>
+      <PreprocessorDefinitions>__x86_64__;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)'=='Release'">
+    <ClCompile>
+      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <FilesToPackage Include="$(TargetPath)" />
+    <FilesToPackage Include="$(OutDir)$(TargetName).pdb" />
+    <FilesToPackage Include="$(WDKContentRoot)redist\wdf\$(DDKPlatform)\WdfCoInstaller$(KMDF_VERSION_MAJOR_STRING)011.dll" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\device.c" />
+    <ClCompile Include="..\..\driver.c" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\device.h" />
+    <ClInclude Include="..\..\driver.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <MASM Include="..\..\intrinsics.asm" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+</Project>
+
+
+
+
