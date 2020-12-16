@@ -72,6 +72,14 @@ typedef struct _XENBUS_EVTCHN_PARAMETERS {
 
 #define XENBUS_EVTCHN_CHANNEL_MAGIC 'NAHC'
 
+typedef struct _XENBUS_EVTCHN_USER_EVENT {
+    HANDLE      UserHandle;
+    ULONGLONG   OtherEnd;
+    PKEVENT     KernelEvent;
+    LIST_ENTRY  ListEntry;
+    ULONG       References;
+} XENBUS_EVTCHN_USER_EVENT, *PXENBUS_EVTCHN_USER_EVENT;
+
 struct _XENBUS_EVTCHN_CHANNEL {
     ULONG                       Magic;
     KSPIN_LOCK                  Lock;
@@ -88,6 +96,7 @@ struct _XENBUS_EVTCHN_CHANNEL {
     ULONG                       LocalPort;
     PROCESSOR_NUMBER            ProcNumber;
     BOOLEAN                     Closed;
+    PXENBUS_EVTCHN_USER_EVENT   UserEvent;
 };
 
 typedef struct _XENBUS_EVTCHN_PROCESSOR {
@@ -116,6 +125,7 @@ struct _XENBUS_EVTCHN_CONTEXT {
     BOOLEAN                         UseEvtchnFifoAbi;
     PXENBUS_HASH_TABLE              Table;
     LIST_ENTRY                      List;
+    LIST_ENTRY                      UserEventList;
 };
 
 #define XENBUS_EVTCHN_TAG  'CTVE'
@@ -257,21 +267,84 @@ RtlCaptureStackBackTrace(
     __out_opt   PULONG  BackTraceHash
     );
 
+static VOID
+BindUserEvent(
+    IN  PXENBUS_EVTCHN_CONTEXT  Context,
+    IN  PXENBUS_EVTCHN_CHANNEL  Channel
+    )
+{
+    PLIST_ENTRY                 ListEntry;
+    ULONGLONG                   RemoteDomain;
+    KIRQL                       OldIrql;
+    BOOLEAN                     Found = FALSE;
+
+    switch (Channel->Type) {
+    case XENBUS_EVTCHN_TYPE_UNBOUND:
+        RemoteDomain = Channel->Parameters.Unbound.RemoteDomain;
+        break;
+    case XENBUS_EVTCHN_TYPE_INTER_DOMAIN:
+        RemoteDomain = Channel->Parameters.InterDomain.RemoteDomain;
+        break;
+    case XENBUS_EVTCHN_TYPE_FIXED: {
+        ULONGLONG StorePort;
+        NTSTATUS status = HvmGetParam(HVM_PARAM_STORE_EVTCHN, &StorePort);
+        ASSERT(NT_SUCCESS(status));
+
+        if ((ULONG)StorePort == Channel->LocalPort) {
+            RemoteDomain = 0;
+            break;
+        }
+
+        return;
+    }
+    case XENBUS_EVTCHN_TYPE_INVALID:
+    case XENBUS_EVTCHN_TYPE_VIRQ:
+    default:
+        return;
+    }
+
+    KeAcquireSpinLock(&Context->Lock, &OldIrql);
+
+    for (ListEntry = Context->UserEventList.Flink;
+         ListEntry != &Context->UserEventList;
+         ListEntry = ListEntry->Flink) {
+        PXENBUS_EVTCHN_USER_EVENT UserEvent;
+
+        UserEvent = CONTAINING_RECORD(ListEntry,
+                                      XENBUS_EVTCHN_USER_EVENT,
+                                      ListEntry);
+        if (UserEvent->OtherEnd == RemoteDomain) {
+            Channel->UserEvent = UserEvent;
+            UserEvent->References++;
+            Found = TRUE;
+            break;
+        }
+    }
+
+    KeReleaseSpinLock(&Context->Lock, OldIrql);
+
+    if (!Found)
+        Warning("Channel at local port %u not bound to user event\n",
+                Channel->LocalPort);
+
+    return;
+}
+
 static PXENBUS_EVTCHN_CHANNEL
 EvtchnOpen(
-    IN  PINTERFACE          Interface,
-    IN  XENBUS_EVTCHN_TYPE  Type,
-    IN  PKSERVICE_ROUTINE   Callback,
-    IN  PVOID               Argument OPTIONAL,
+    IN  PINTERFACE            Interface,
+    IN  XENBUS_EVTCHN_TYPE    Type,
+    IN  PKSERVICE_ROUTINE     Callback,
+    IN  PVOID                 Argument OPTIONAL,
     ...
     )
 {
-    PXENBUS_EVTCHN_CONTEXT  Context = Interface->Context;
-    va_list                 Arguments;
-    PXENBUS_EVTCHN_CHANNEL  Channel;
-    ULONG                   LocalPort;
-    KIRQL                   Irql;
-    NTSTATUS                status;
+    PXENBUS_EVTCHN_CONTEXT    Context = Interface->Context;
+    va_list                   Arguments;
+    PXENBUS_EVTCHN_CHANNEL    Channel;
+    ULONG                     LocalPort;
+    KIRQL                     Irql;
+    NTSTATUS                  status;
 
     KeRaiseIrql(DISPATCH_LEVEL, &Irql); // Prevent suspend
 
@@ -281,6 +354,7 @@ EvtchnOpen(
     if (Channel == NULL)
         goto fail1;
 
+    Channel->UserEvent = NULL;
     Channel->Magic = XENBUS_EVTCHN_CHANNEL_MAGIC;
 
     (VOID) RtlCaptureStackBackTrace(1, 1, &Channel->Caller, NULL);
@@ -344,6 +418,8 @@ EvtchnOpen(
     KeLowerIrql(Irql);
 
     KeInitializeSpinLock(&Channel->Lock);
+
+    BindUserEvent(Context, Channel);
 
     return Channel;
 
@@ -836,11 +912,15 @@ EvtchnSend(
     UNREFERENCED_PARAMETER(Interface);
 
     ASSERT3U(Channel->Magic, ==, XENBUS_EVTCHN_CHANNEL_MAGIC);
+    ASSERT3U(KeGetCurrentIrql(), ==, DISPATCH_LEVEL);
 
-    ASSERT3U(KeGetCurrentIrql(), >=, DISPATCH_LEVEL);
-
-    if (Channel->Active)
+    if (Channel->Active) {
         (VOID) EventChannelSend(Channel->LocalPort);
+
+        if (Channel->UserEvent) {
+            KeSetEvent(Channel->UserEvent->KernelEvent, 0, FALSE);
+        }
+    }
 }
 
 static VOID
@@ -871,6 +951,22 @@ EvtchnClose(
     KeRaiseIrql(DISPATCH_LEVEL, &Irql); // Prevent suspend
 
     Trace("%u\n", LocalPort);
+
+    KeAcquireSpinLockAtDpcLevel(&Context->Lock);
+    if (Channel->UserEvent) {
+        PXENBUS_EVTCHN_USER_EVENT UserEvent = Channel->UserEvent;
+
+        UserEvent->References--;
+
+        if (UserEvent->References == 0) {
+            RemoveEntryList(&UserEvent->ListEntry);
+            ObDereferenceObject(UserEvent->KernelEvent);
+            __EvtchnFree(UserEvent);
+        }
+
+        Channel->UserEvent = NULL;
+    }
+    KeReleaseSpinLockFromDpcLevel(&Context->Lock);
 
     if (Channel->Active) {
         NTSTATUS    status;
@@ -906,6 +1002,60 @@ EvtchnClose(
 
 done:
     KeLowerIrql(Irql);
+}
+
+static NTSTATUS
+EvtchnAddUserEvent(
+    IN  PINTERFACE             Interface,
+    IN  HANDLE                 EventHandle,
+    IN  ULONGLONG              RemoteDomain
+    )
+{
+    PXENBUS_EVTCHN_CONTEXT     Context = Interface->Context;
+    PXENBUS_EVTCHN_USER_EVENT  UserEvent;
+    KIRQL                      OldIrql;
+    NTSTATUS                   status;
+
+    status = STATUS_NO_MEMORY;
+
+    UserEvent = __EvtchnAllocate(sizeof(XENBUS_EVTCHN_USER_EVENT));
+    if (!UserEvent) {
+        goto fail1;
+    }
+
+    RtlZeroMemory(UserEvent, sizeof(XENBUS_EVTCHN_USER_EVENT));
+
+    UserEvent->UserHandle = EventHandle;
+    UserEvent->OtherEnd = RemoteDomain;
+    UserEvent->References = 0;
+
+    status = ObReferenceObjectByHandle(EventHandle,
+                                       EVENT_MODIFY_STATE,
+                                       *ExEventObjectType,
+                                       UserMode,
+                                       &UserEvent->KernelEvent,
+                                       NULL);
+    if (!NT_SUCCESS(status)) {
+        Warning("Failed to reference event handle for domain 0x%x\n", RemoteDomain);
+        goto fail2;
+    }
+
+    KeAcquireSpinLock(&Context->Lock, &OldIrql);
+    InsertTailList(&Context->UserEventList, &UserEvent->ListEntry);
+    KeReleaseSpinLock(&Context->Lock, OldIrql);
+
+    Info("Added event handle for domain 0x%x\n", RemoteDomain);
+
+    return STATUS_SUCCESS;
+
+fail2:
+    __EvtchnFree(UserEvent);
+    Error("fail2\n");
+
+fail1:
+    Error("fail1 (0x%x)\n", status);
+
+    return status;
 }
 
 static ULONG
@@ -1805,6 +1955,22 @@ static struct _XENBUS_EVTCHN_INTERFACE_V8 EvtchnInterfaceVersion8 = {
     EvtchnClose,
 };
 
+static struct _XENBUS_EVTCHN_INTERFACE_V9 EvtchnInterfaceVersion9 = {
+    { sizeof (struct _XENBUS_EVTCHN_INTERFACE_V9), 9, NULL, NULL, NULL },
+    EvtchnAcquire,
+    EvtchnRelease,
+    EvtchnOpen,
+    EvtchnBind,
+    EvtchnUnmask,
+    EvtchnSendVersion1,
+    EvtchnTrigger,
+    EvtchnGetCount,
+    EvtchnWait,
+    EvtchnGetPort,
+    EvtchnClose,
+    EvtchnAddUserEvent,
+};
+
 NTSTATUS
 EvtchnInitialize(
     IN  PXENBUS_FDO             Fdo,
@@ -1867,6 +2033,7 @@ EvtchnInitialize(
     ASSERT(NT_SUCCESS(status));
     ASSERT((*Context)->SharedInfoInterface.Interface.Context != NULL);
 
+    InitializeListHead(&(*Context)->UserEventList);
     InitializeListHead(&(*Context)->List);
     KeInitializeSpinLock(&(*Context)->Lock);
 
@@ -1998,6 +2165,23 @@ EvtchnGetInterface(
         status = STATUS_SUCCESS;
         break;
     }
+    case 9: {
+        struct _XENBUS_EVTCHN_INTERFACE_V9  *EvtchnInterface;
+
+        EvtchnInterface = (struct _XENBUS_EVTCHN_INTERFACE_V9 *)Interface;
+
+        status = STATUS_BUFFER_OVERFLOW;
+        if (Size < sizeof (struct _XENBUS_EVTCHN_INTERFACE_V9))
+            break;
+
+        *EvtchnInterface = EvtchnInterfaceVersion9;
+
+        ASSERT3U(Interface->Version, ==, Version);
+        Interface->Context = Context;
+
+        status = STATUS_SUCCESS;
+        break;
+    }
     default:
         status = STATUS_NOT_SUPPORTED;
         break;
@@ -2028,6 +2212,7 @@ EvtchnTeardown(
 
     RtlZeroMemory(&Context->Lock, sizeof (KSPIN_LOCK));
     RtlZeroMemory(&Context->List, sizeof (LIST_ENTRY));
+    RtlZeroMemory(&Context->UserEventList, sizeof (LIST_ENTRY));
 
     RtlZeroMemory(&Context->SharedInfoInterface,
                   sizeof (XENBUS_SHARED_INFO_INTERFACE));

@@ -245,6 +245,21 @@ typedef VOID
     IN  PXENBUS_EVTCHN_CHANNEL  Channel
     );
 
+/*! \typedef XENBUS_EVTCHN_ADD_USER_EVENT
+    \brief Associate a userspace event handle with a remote domain
+
+    \param Interface The interface header
+    \param EventHandle The userspace event handle
+    \param RemoteDomain The ID of the remote domain
+    \return Success code
+*/
+typedef NTSTATUS
+(*XENBUS_EVTCHN_ADD_USER_EVENT)(
+    IN  PINTERFACE              Interface,
+    IN  HANDLE                  EventHandle,
+    IN  ULONGLONG               RemoteDomain
+    );
+
 // {BE2440AC-1098-4150-AF4D-452FADCEF923}
 DEFINE_GUID(GUID_XENBUS_EVTCHN_INTERFACE,
 0xbe2440ac, 0x1098, 0x4150, 0xaf, 0x4d, 0x45, 0x2f, 0xad, 0xce, 0xf9, 0x23);
@@ -340,7 +355,27 @@ struct _XENBUS_EVTCHN_INTERFACE_V8 {
     XENBUS_EVTCHN_CLOSE     EvtchnClose;
 };
 
-typedef struct _XENBUS_EVTCHN_INTERFACE_V8 XENBUS_EVTCHN_INTERFACE, *PXENBUS_EVTCHN_INTERFACE;
+/*! \struct _XENBUS_EVTCHN_INTERFACE_V9
+    \brief EVTCHN interface version 9
+    \ingroup interfaces
+*/
+struct _XENBUS_EVTCHN_INTERFACE_V9 {
+    INTERFACE                    Interface;
+    XENBUS_EVTCHN_ACQUIRE        EvtchnAcquire;
+    XENBUS_EVTCHN_RELEASE        EvtchnRelease;
+    XENBUS_EVTCHN_OPEN           EvtchnOpen;
+    XENBUS_EVTCHN_BIND           EvtchnBind;
+    XENBUS_EVTCHN_UNMASK         EvtchnUnmask;
+    XENBUS_EVTCHN_SEND           EvtchnSend;
+    XENBUS_EVTCHN_TRIGGER        EvtchnTrigger;
+    XENBUS_EVTCHN_GET_COUNT      EvtchnGetCount;
+    XENBUS_EVTCHN_WAIT           EvtchnWait;
+    XENBUS_EVTCHN_GET_PORT       EvtchnGetPort;
+    XENBUS_EVTCHN_CLOSE          EvtchnClose;
+    XENBUS_EVTCHN_ADD_USER_EVENT EvtchnAddUserEvent;
+};
+
+typedef struct _XENBUS_EVTCHN_INTERFACE_V9 XENBUS_EVTCHN_INTERFACE, *PXENBUS_EVTCHN_INTERFACE;
 
 /*! \def XENBUS_EVTCHN
     \brief Macro at assist in method invocation
@@ -351,7 +386,7 @@ typedef struct _XENBUS_EVTCHN_INTERFACE_V8 XENBUS_EVTCHN_INTERFACE, *PXENBUS_EVT
 #endif  // _WINDLL
 
 #define XENBUS_EVTCHN_INTERFACE_VERSION_MIN 4
-#define XENBUS_EVTCHN_INTERFACE_VERSION_MAX 8
+#define XENBUS_EVTCHN_INTERFACE_VERSION_MAX 9
 
 #endif  // _XENBUS_EVTCHN_INTERFACE_H
 
