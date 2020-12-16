@@ -29,6 +29,14 @@
 
 #include <microv/hypercall.h>
 
+#ifdef WIN64
+#include <windows.h>
+#include <windef.h>
+#endif
+
+#include <microv/visrinterface.h>
+#include <microv/xenbusinterface.h>
+
 struct uvc_domain;
 
 struct uvc_vcpu {
@@ -51,7 +59,11 @@ struct uvc_vcpu {
     void unpause() noexcept;
 
 private:
+#ifdef WIN64
     void init_events();
+    bool init_xenbus_events(HANDLE event);
+    bool init_visr_events(HANDLE event);
+#endif
     void run() const;
     void fault(uint64_t err) const noexcept;
     void usleep(const std::chrono::microseconds &us) const;
