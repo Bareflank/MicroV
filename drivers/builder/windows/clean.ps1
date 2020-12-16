@@ -19,46 +19,5 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-unset(BFFLAGS_EFI)
-unset(BFFLAGS_EFI_C)
-unset(BFFLAGS_EFI_CXX)
-unset(BFFLAGS_EFI_X86_64)
-unset(BFFLAGS_EFI_AARCH64)
-
-list(APPEND BFFLAGS_EFI
-    -isystem ${EFI_PREFIX_PATH}/include/efi/
-    -isystem ${EFI_PREFIX_PATH}/include/efi/x86_64/
-)
-
-list(APPEND BFFLAGS_EFI
-    -mno-red-zone
-    -mno-avx
-    # -maccumulate-outgoing-args
-    -g
-    -O2
-    -Wall
-    -Wextra
-    -Wno-error=pragmas
-    -fshort-wchar
-    -fno-strict-aliasing
-    -ffreestanding
-    -fno-stack-protector
-    -fno-stack-check
-    -fno-merge-all-constants
-    -DCONFIG_x86_64
-    -DGNU_EFI_USE_MS_ABI
-    -D__KERNEL__
-    -DKERNEL
-    -DEFI
-    -Wno-unknown-pragmas
-)
-
-list(APPEND BFFLAGS_EFI_C
-    --std=c11
-)
-
-list(APPEND BFFLAGS_EFI_CXX
-)
-
-list(APPEND BFFLAGS_EFI_X86_64
-)
+msbuild /t:Clean /p:Configuration="Windows 10 Debug" /p:Platform=x64 vs2019\builder.sln
+msbuild /t:Clean /p:Configuration="Windows 10 Release" /p:Platform=x64 vs2019\builder.sln

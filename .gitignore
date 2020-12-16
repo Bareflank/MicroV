@@ -68,6 +68,21 @@ deploy/windows/images
 *.manifest
 
 drivers/builder/windows/x64
+drivers/builder/windows/.build_number
+drivers/builder/windows/builder/
+drivers/builder/windows/vs2019/Windows10Release/
+drivers/builder/windows/vs2019/builder.DVL.XML
+drivers/builder/windows/vs2019/builder/Windows10Debug/
+drivers/builder/windows/vs2019/builder/Windows10Release/
+drivers/builder/windows/vs2019/builder/builder.DVL.XML
+drivers/builder/windows/vs2019/builder/builder.inf
+drivers/builder/windows/vs2019/builder/sdv/
+drivers/builder/windows/vs2019/builder/smvbuild.log
+drivers/builder/windows/vs2019/builder/smvexecute-InterceptedBuild.log
+drivers/builder/windows/vs2019/builder/smvexecute-NormalBuild.log
+drivers/builder/windows/vs2019/builder/smvstats.txt
+drivers/builder/windows/vs2019/package/Windows10Debug/
+drivers/builder/windows/vs2019/package/Windows10Release/
 
 drivers/visr/windows/x64
 drivers/visr/windows/.build_number

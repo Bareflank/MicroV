@@ -255,6 +255,7 @@ target_compile_options(bfroot INTERFACE
     $<${EFI_C}:-fno-merge-all-constants>
     $<${EFI_C}:-std=c11>
     $<${EFI_C}:-U__linux__>
+    $<${EFI_C}:-Wno-unknown-pragmas>
 )
 
 message(STATUS "EFI boot next: ${EFI_BOOT_NEXT}")

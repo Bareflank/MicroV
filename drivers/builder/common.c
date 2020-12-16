@@ -47,9 +47,9 @@
 #endif
 
 #define bfalloc_page(a) \
-    (a *)platform_memset(platform_alloc_rwe(BAREFLANK_PAGE_SIZE), 0, BAREFLANK_PAGE_SIZE);
+    (a *)platform_memset(platform_alloc_rw(BAREFLANK_PAGE_SIZE), 0, BAREFLANK_PAGE_SIZE);
 #define bfalloc_buffer(a,b) \
-    (a *)platform_memset(platform_alloc_rwe(b), 0, b);
+    (a *)platform_memset(platform_alloc_rw(b), 0, b);
 
 /* -------------------------------------------------------------------------- */
 /* VM Object                                                                  */
@@ -107,7 +107,7 @@ acquire_vm(void)
     int64_t i;
     struct vm_t *vm = 0;
 
-    platform_acquire_mutex();
+    platform_acquire_mutex(NULL);
 
     for (i = 0; i < MAX_VMS; i++) {
         vm = &g_vms[i];
@@ -125,16 +125,16 @@ acquire_vm(void)
 
 done:
 
-    platform_release_mutex();
+    platform_release_mutex(NULL);
     return vm;
 }
 
 static void
 release_vm(struct vm_t *vm)
 {
-    platform_acquire_mutex();
+    platform_acquire_mutex(NULL);
     platform_memset(vm, 0, sizeof(struct vm_t));
-    platform_release_mutex();
+    platform_release_mutex(NULL);
 }
 
 static struct vm_t *
@@ -143,7 +143,7 @@ get_vm(domainid_t domainid)
     int64_t i;
     struct vm_t *vm = 0;
 
-    platform_acquire_mutex();
+    platform_acquire_mutex(NULL);
 
     for (i = 0; i < MAX_VMS; i++) {
         vm = &g_vms[i];
@@ -159,7 +159,7 @@ get_vm(domainid_t domainid)
 
 done:
 
-    platform_release_mutex();
+    platform_release_mutex(NULL);
     return vm;
 }
 
@@ -620,7 +620,7 @@ setup_bzimage(struct vm_t *vm, struct create_vm_args *args)
         return FAILURE;
     }
 
-    kernel_offset = ((hdr->setup_sects + 1) * 512);
+    kernel_offset = (((uint64_t)hdr->setup_sects + 1) * 512);
 
     if (kernel_offset > args->image_size) {
         BFDEBUG("setup_bzimage: corrupt setup_sects\n");
@@ -996,7 +996,7 @@ set_gdt_entry(
     *descriptor |= base & 0xFF000000;
 
     *descriptor <<= 32;
-    *descriptor |= base << 16;
+    *descriptor |= (uint64_t)base << 16;
     *descriptor |= limit & 0x0000FFFF;
 }
 
@@ -1298,23 +1298,26 @@ common_destroy_vm(uint64_t domainid)
         return ret;
     }
 
-    platform_free_rwe(vm->bios_ram, BIOS_RAM_SIZE);
-    platform_free_rwe(vm->zero_page, BAREFLANK_PAGE_SIZE);
-    platform_free_rwe(vm->params, BAREFLANK_PAGE_SIZE);
-    platform_free_rwe(vm->cmdline, BAREFLANK_PAGE_SIZE);
-    platform_free_rwe(vm->gdt, BAREFLANK_PAGE_SIZE);
-    platform_free_rwe(vm->rsdp, BAREFLANK_PAGE_SIZE);
-    platform_free_rwe(vm->xsdt, BAREFLANK_PAGE_SIZE);
-    platform_free_rwe(vm->madt, BAREFLANK_PAGE_SIZE);
-    platform_free_rwe(vm->fadt, BAREFLANK_PAGE_SIZE);
-    platform_free_rwe(vm->dsdt, BAREFLANK_PAGE_SIZE);
-    platform_free_rwe(vm->addr, vm->size);
+    platform_free_rw(vm->bios_ram, BIOS_RAM_SIZE);
+    platform_free_rw(vm->zero_page, BAREFLANK_PAGE_SIZE);
+    platform_free_rw(vm->cmdline, BAREFLANK_PAGE_SIZE);
+    platform_free_rw(vm->rsdp, BAREFLANK_PAGE_SIZE);
+    platform_free_rw(vm->xsdt, BAREFLANK_PAGE_SIZE);
+    platform_free_rw(vm->madt, BAREFLANK_PAGE_SIZE);
+    platform_free_rw(vm->fadt, BAREFLANK_PAGE_SIZE);
+    platform_free_rw(vm->dsdt, BAREFLANK_PAGE_SIZE);
+    platform_free_rw(vm->addr, vm->size);
 
     if (vm->exec_mode == VM_EXEC_XENPVH) {
-        platform_free_rwe(vm->pvh_console, BAREFLANK_PAGE_SIZE);
-        platform_free_rwe(vm->pvh_store, BAREFLANK_PAGE_SIZE);
-        platform_free_rwe(vm->pvh_start_info, BAREFLANK_PAGE_SIZE);
-        platform_free_rwe(vm->pvh_modlist, BAREFLANK_PAGE_SIZE);
+        platform_free_rw(vm->pvh_console, BAREFLANK_PAGE_SIZE);
+        platform_free_rw(vm->pvh_store, BAREFLANK_PAGE_SIZE);
+        platform_free_rw(vm->pvh_start_info, BAREFLANK_PAGE_SIZE);
+        platform_free_rw(vm->pvh_modlist, BAREFLANK_PAGE_SIZE);
+    }
+
+    if (vm->exec_mode == VM_EXEC_NATIVE) {
+        platform_free_rw(vm->params, BAREFLANK_PAGE_SIZE);
+        platform_free_rw(vm->gdt, BAREFLANK_PAGE_SIZE);
     }
 
     release_vm(vm);

@@ -26,8 +26,7 @@
 #include <bfplatform.h>
 #include <common.h>
 
-#define BD_TAG 'BDLK'
-#define BD_NX_TAG 'BDNX'
+#define BUILDER_TAG 'RDLB'
 
 FAST_MUTEX g_mutex;
 
@@ -48,7 +47,7 @@ platform_alloc_rw(uint64_t len)
         return addr;
     }
 
-    addr = ExAllocatePoolWithTag(NonPagedPool, len, BD_TAG);
+    addr = ExAllocatePoolWithTag(NonPagedPoolNx, len, BUILDER_TAG);
 
     if (addr == nullptr) {
         BFALERT("platform_alloc_rw: failed to ExAllocatePoolWithTag mem: %lld\n", len);
@@ -56,10 +55,6 @@ platform_alloc_rw(uint64_t len)
 
     return addr;
 }
-
-void *
-platform_alloc_rwe(uint64_t len)
-{ return platform_alloc_rw(len); }
 
 void
 platform_free_rw(void *addr, uint64_t len)
@@ -71,12 +66,8 @@ platform_free_rw(void *addr, uint64_t len)
         return;
     }
 
-    ExFreePoolWithTag(addr, BD_TAG);
+    ExFreePoolWithTag(addr, BUILDER_TAG);
 }
-
-void
-platform_free_rwe(void *addr, uint64_t len)
-{ platform_free_rw(addr, len); }
 
 void *
 platform_virt_to_phys(void *virt)
@@ -114,13 +105,23 @@ platform_memcpy(
     return SUCCESS;
 }
 
+_IRQL_raises_(APC_LEVEL)
+_IRQL_saves_global_(OldIrql, ignored)
 void
-platform_acquire_mutex(void)
-{ ExAcquireFastMutex(&g_mutex); }
+platform_acquire_mutex(void *ignored)
+{
+    (void)ignored;
+    ExAcquireFastMutex(&g_mutex);
+}
 
+_IRQL_requires_(APC_LEVEL)
+_IRQL_restores_global_(OldIrql, ignored)
 void
-platform_release_mutex(void)
-{ ExReleaseFastMutex(&g_mutex); }
+platform_release_mutex(void *ignored)
+{
+    (void)ignored;
+    ExReleaseFastMutex(&g_mutex);
+}
 
 #define TIME_US(us) ((us) * 10)
 #define TIME_RELATIVE(t) (-(t))

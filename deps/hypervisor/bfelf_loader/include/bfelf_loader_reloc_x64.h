@@ -67,6 +67,8 @@ private_relocate_symbol(
 
     if (found_sym->st_value == 0 || found_ef == nullptr) {
         int64_t ret = 0;
+
+#pragma prefast(suppress:28182) // Dereferencing NULL pointer 'ef'
         str = &(ef->strtab[found_sym->st_name]);
 
         ret = private_get_sym_global(loader, str, &found_ef, &found_sym);

@@ -1,3 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<!--
 #
 # Copyright (C) 2019 Assured Information Security, Inc.
 #
@@ -19,46 +22,26 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-unset(BFFLAGS_EFI)
-unset(BFFLAGS_EFI_C)
-unset(BFFLAGS_EFI_CXX)
-unset(BFFLAGS_EFI_X86_64)
-unset(BFFLAGS_EFI_AARCH64)
+# Visual Studio 15
+-->
 
-list(APPEND BFFLAGS_EFI
-    -isystem ${EFI_PREFIX_PATH}/include/efi/
-    -isystem ${EFI_PREFIX_PATH}/include/efi/x86_64/
-)
-
-list(APPEND BFFLAGS_EFI
-    -mno-red-zone
-    -mno-avx
-    # -maccumulate-outgoing-args
-    -g
-    -O2
-    -Wall
-    -Wextra
-    -Wno-error=pragmas
-    -fshort-wchar
-    -fno-strict-aliasing
-    -ffreestanding
-    -fno-stack-protector
-    -fno-stack-check
-    -fno-merge-all-constants
-    -DCONFIG_x86_64
-    -DGNU_EFI_USE_MS_ABI
-    -D__KERNEL__
-    -DKERNEL
-    -DEFI
-    -Wno-unknown-pragmas
-)
-
-list(APPEND BFFLAGS_EFI_C
-    --std=c11
-)
-
-list(APPEND BFFLAGS_EFI_CXX
-)
-
-list(APPEND BFFLAGS_EFI_X86_64
-)
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Sources">
+      <UniqueIdentifier>{01371a61-2ed2-4da4-9ef8-a45467279ddb}</UniqueIdentifier>
+      <Extensions>*.c</Extensions>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\device.h" />
+    <ClInclude Include="..\..\driver.h" />
+    <ClInclude Include="..\..\queue.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\..\common.c" />
+    <ClCompile Include="..\..\device.c" />
+    <ClCompile Include="..\..\driver.c" />
+    <ClCompile Include="..\..\platform.c" />
+    <ClCompile Include="..\..\queue.c" />
+  </ItemGroup>
+</Project>

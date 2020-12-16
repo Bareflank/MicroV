@@ -115,12 +115,18 @@ platform_memcpy(
 }
 
 void
-platform_acquire_mutex(void)
-{ mutex_lock(&g_mutex); }
+platform_acquire_mutex(void *ignored)
+{
+    (void)ignored;
+    mutex_lock(&g_mutex);
+}
 
 void
-platform_release_mutex(void)
-{ mutex_unlock(&g_mutex); }
+platform_release_mutex(void *ignored)
+{
+    (void)ignored;
+    mutex_unlock(&g_mutex);
+}
 
 void
 platform_usleep(int64_t usec)
