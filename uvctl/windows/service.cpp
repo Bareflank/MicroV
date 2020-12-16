@@ -28,6 +28,7 @@
 #include <memory>
 #include <mutex>
 #include <windows.h>
+#include <microv/xenbusinterface.h>
 
 extern std::unique_ptr<ioctl> ctl;
 int protected_main(const args_type &args);
@@ -52,6 +53,9 @@ DWORD service_ctrl_handler(DWORD ctrl_code,
                            LPVOID event_data,
                            LPVOID context);
 static void mark_checkpoint();
+
+HANDLE uvctl_ioctl_open(const GUID *guid);
+int64_t uvctl_rw_ioctl(HANDLE fd, DWORD request, void *data, DWORD size);
 
 static bool init()
 {
@@ -99,6 +103,25 @@ static void send_stop_signal()
     if (!stop_event_ready.load(std::memory_order_acquire)) {
         log_msg("%s: stop event not ready!\n", __func__);
         return;
+    }
+
+    HANDLE xenbus_fd = uvctl_ioctl_open(&GUID_DEVINTERFACE_XENBUS);
+    if (xenbus_fd == INVALID_HANDLE_VALUE) {
+        log_msg("%s: failed to open xenbus handle (err=0x%x)\n",
+                __func__, GetLastError());
+    } else {
+        XENBUS_SET_BACKEND_STATE_IN state{};
+        state.BackendState = XENBUS_BACKEND_STATE_DYING;
+
+        auto rc = uvctl_rw_ioctl(xenbus_fd,
+                                 IOCTL_XENBUS_SET_BACKEND_STATE,
+                                 &state,
+                                 sizeof(state));
+        if (rc < 0) {
+            log_msg("%s: failed to set backend state for xenbus\n", __func__);
+        }
+
+        CloseHandle(xenbus_fd);
     }
 
     if (!SetEvent(service_stop_event)) {

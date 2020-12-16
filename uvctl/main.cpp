@@ -36,6 +36,7 @@
 #include <microv/bootparams.h>
 #include <microv/builderinterface.h>
 #include <microv/hypercall.h>
+#include <microv/xenbusinterface.h>
 
 #include "args.h"
 #include "cmdl.h"
@@ -55,6 +56,11 @@ using namespace std::chrono_literals;
 
 std::unique_ptr<ioctl> ctl{};
 uint64_t nuke_vm = 0;
+
+#ifdef _WIN64
+HANDLE uvctl_ioctl_open(const GUID *guid);
+int64_t uvctl_rw_ioctl(HANDLE fd, DWORD request, void *data, DWORD size);
+#endif
 
 /*
  * TODO: man 2 signal states that using signal() for registering
@@ -285,6 +291,28 @@ int protected_main(const args_type &args)
         if (__domain_op__reclaim_root_pages(root_domain.id) != SUCCESS) {
             log_msg("%s: failed to reclaim root pages\n", __func__);
         }
+
+#ifdef _WIN64
+        // TODO: consolidate the various ioctls
+        HANDLE xenbus_fd = uvctl_ioctl_open(&GUID_DEVINTERFACE_XENBUS);
+        if (xenbus_fd == INVALID_HANDLE_VALUE) {
+            log_msg("%s: failed to open xenbus handle (err=0x%x)\n",
+                    __func__, GetLastError());
+        } else {
+            XENBUS_SET_BACKEND_STATE_IN state{};
+            state.BackendState = XENBUS_BACKEND_STATE_DYING;
+
+            auto rc = uvctl_rw_ioctl(xenbus_fd,
+                                     IOCTL_XENBUS_SET_BACKEND_STATE,
+                                     &state,
+                                     sizeof(state));
+            if (rc < 0) {
+                log_msg("%s: failed to set backend state for xenbus\n", __func__);
+            }
+
+            CloseHandle(xenbus_fd);
+        }
+#endif
     }
 
     return EXIT_SUCCESS;

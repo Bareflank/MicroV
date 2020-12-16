@@ -44,17 +44,20 @@ struct uvc_vcpu {
     mutable std::unique_lock<std::mutex> event_lock{};
     std::thread run_thread{};
 
-    uvc_vcpu(vcpuid_t id, struct uvc_domain *dom) noexcept;
+    uvc_vcpu(vcpuid_t id, struct uvc_domain *dom);
     void launch();
     void halt() noexcept;
     void pause() noexcept;
     void unpause() noexcept;
 
 private:
+    void init_events();
     void run() const;
     void fault(uint64_t err) const noexcept;
     void usleep(const std::chrono::microseconds &us) const;
-    void notify(uint64_t event_code, uint64_t event_data) const;
+    void notify_mgmt_event(uint64_t event_code, uint64_t event_data) const;
+    void notify_send_event(domainid_t domain) const;
+    void wait(uint64_t us) const;
 };
 
 #endif

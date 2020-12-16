@@ -150,23 +150,12 @@ ioctl_private::ioctl_private()
     if (builder_fd == INVALID_HANDLE_VALUE) {
         throw std::runtime_error("Failed to open builder driver. Is it loaded?");
     }
-
-    xenbus_fd = uvctl_ioctl_open(&GUID_DEVINTERFACE_XENBUS);
-    uint64_t rc = GetLastError();
-
-    if (xenbus_fd == INVALID_HANDLE_VALUE) {
-        log_msg("[ALERT]: Failed to open xenbus driver. Is it loaded? err=0x%x\n", rc);
-    }
 }
 
 ioctl_private::~ioctl_private()
 {
     if (builder_fd != INVALID_HANDLE_VALUE) {
         CloseHandle(builder_fd);
-    }
-
-    if (xenbus_fd != INVALID_HANDLE_VALUE) {
-        CloseHandle(xenbus_fd);
     }
 }
 
@@ -187,20 +176,5 @@ void ioctl_private::call_ioctl_destroy(domainid_t domid) noexcept
 
     if (rc < 0) {
         log_msg("[ERROR] ioctl failed: IOCTL_DESTROY_VM\n");
-    }
-}
-
-void ioctl_private::call_ioctl_xenbus_acquire() noexcept
-{
-    if (xenbus_fd == INVALID_HANDLE_VALUE) {
-        return;
-    }
-
-    auto id = GetCurrentProcessId();
-    auto fd = xenbus_fd;
-    auto rc = uvctl_rw_ioctl(fd, IOCTL_XENBUS_ACQUIRE, &id, sizeof(id));
-
-    if (rc < 0) {
-        log_msg("[ERROR] ioctl failed: IOCTL_XENBUS_ACQUIRE\n");
     }
 }

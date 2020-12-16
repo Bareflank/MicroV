@@ -20,23 +20,112 @@
 // SOFTWARE.
 
 #include <chrono>
+#include <condition_variable>
 #include <functional>
+#include <memory>
+#include <mutex>
 #include <iostream>
+#include <vector>
 
 #include "domain.h"
 #include "log.h"
 #include "vcpu.h"
+
+#ifdef WIN64
+#include <windows.h>
+#include <windef.h>
+#endif
+
+#include <microv/visrinterface.h>
+#include <microv/xenbusinterface.h>
 
 using namespace std::chrono;
 using namespace std::chrono_literals;
 
 static constexpr auto pause_duration = 200us;
 
-uvc_vcpu::uvc_vcpu(vcpuid_t id, struct uvc_domain *dom) noexcept
+#ifdef WIN64
+static std::vector<HANDLE> event_vector;
+HANDLE uvctl_ioctl_open(const GUID *guid);
+int64_t uvctl_rw_ioctl(HANDLE fd, DWORD request, void *data, DWORD size);
+#endif
+
+uvc_vcpu::uvc_vcpu(vcpuid_t id, struct uvc_domain *dom)
 {
     this->id = id;
     this->state = runstate::halted;
     this->domain = dom;
+}
+
+void uvc_vcpu::init_events()
+{
+#ifdef WIN64
+    while (event_vector.size() <= domain->id) {
+        HANDLE event = CreateEvent(NULL, TRUE, FALSE, NULL);
+
+        if (!event) {
+            log_msg("%s: failed to create event for domain 0x%x,"
+                    " returning...\n", __func__, domain->id);
+            return;
+        }
+
+        log_msg("%s: Created handle 0x%llx for domain 0x%x\n",
+                __func__, event, domain->id);
+
+        event_vector.push_back(event);
+    }
+
+    HANDLE event = event_vector[domain->id];
+    HANDLE xenbus_fd = uvctl_ioctl_open(&GUID_DEVINTERFACE_XENBUS);
+
+    if (xenbus_fd == INVALID_HANDLE_VALUE) {
+        log_msg("%s: Domain 0x%x failed to open xenbus fd\n", __func__, domain->id);
+    }
+
+    XENBUS_ADD_USER_EVENT_IN user_event;
+    user_event.EventHandle = event;
+    user_event.RemoteDomain = domain->id - 1; /* convert microv to xen domain id */
+
+    auto rc = uvctl_rw_ioctl(xenbus_fd,
+                             IOCTL_XENBUS_ADD_USER_EVENT,
+                             &user_event,
+                             sizeof(user_event));
+
+    if (rc < 0) {
+        log_msg("%s: failed to add root event for domain 0x%x\n",
+                __func__, domain->id);
+    }
+
+    CloseHandle(xenbus_fd);
+
+    /*
+     * TODO: use a more elegant way of determining if an event
+     * should be registered with visr. For now we just assume id == 2
+     * implies the NDVM.
+     */
+    if (domain->id == 2) {
+        HANDLE visr_fd = uvctl_ioctl_open(&GUID_DEVINTERFACE_visr);
+
+        if (visr_fd == INVALID_HANDLE_VALUE) {
+            log_msg("%s: NDVM failed to open visr fd\n", __func__);
+        } else {
+            struct visr_register_event visr_event;
+            visr_event.event = event;
+
+            auto rc = uvctl_rw_ioctl(visr_fd,
+                                     IOCTL_VISR_REGISTER_EVENT,
+                                     &visr_event,
+                                     sizeof(visr_event));
+            if (rc < 0) {
+                log_msg("%s: NDVM failed to register visr event\n", __func__);
+            }
+
+            CloseHandle(visr_fd);
+        }
+    }
+#else
+    /* TODO: implement event signaling for linux */
+#endif
 }
 
 void uvc_vcpu::launch()
@@ -70,7 +159,7 @@ void uvc_vcpu::usleep(const microseconds &us) const
     std::this_thread::sleep_for(us);
 }
 
-void uvc_vcpu::notify(uint64_t event_code, uint64_t event_data) const
+void uvc_vcpu::notify_mgmt_event(uint64_t event_code, uint64_t event_data) const
 {
     std::lock_guard lock(domain->event_mtx);
 
@@ -85,6 +174,42 @@ void uvc_vcpu::notify(uint64_t event_code, uint64_t event_data) const
      * queue and/or schedule std::async tasks from the event thread.
      */
     domain->event_cond.notify_one();
+
+    std::this_thread::yield();
+}
+
+void uvc_vcpu::notify_send_event(domainid_t domid) const
+{
+    if (!domid) {
+        /*
+         * domid == 0 in this case is the root domain, which doesn't
+         * have an associated uvc_domain nor any uvc_vcpus, so just yield
+         * in this case.
+         */
+        std::this_thread::yield();
+        return;
+    }
+
+#ifdef WIN64
+    HANDLE event = event_vector[domid];
+    SetEvent(event);
+#endif
+
+    std::this_thread::yield();
+}
+
+void uvc_vcpu::wait(uint64_t us) const
+{
+#ifdef WIN64
+    HANDLE event = event_vector[domain->id];
+    DWORD ms = (DWORD)us / 1000U;
+    ms = (ms >= 1U) ? ms : 1U;
+
+    WaitForSingleObject(event, ms);
+    ResetEvent(event);
+#else
+    this->usleep(microseconds(us));
+#endif
 }
 
 /*
@@ -125,7 +250,7 @@ void uvc_vcpu::run() const
             this->fault(arg);
             return;
         case __enum_run_op__yield:
-            this->usleep(microseconds(arg));
+            this->wait(arg);
             break;
         case __enum_run_op__interrupted:
             break;
@@ -133,7 +258,10 @@ void uvc_vcpu::run() const
         case __enum_run_op__pause_domain:
         case __enum_run_op__unpause_domain:
         case __enum_run_op__destroy_domain:
-            this->notify(rc, arg);
+            this->notify_mgmt_event(rc, arg);
+            break;
+        case __enum_run_op__notify_domain:
+            this->notify_send_event(arg);
             break;
         }
     }
