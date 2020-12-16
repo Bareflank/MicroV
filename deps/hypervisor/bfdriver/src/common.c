@@ -154,8 +154,6 @@ private_add_md_to_memory_manager(struct bfelf_binary_t *module)
         exec_s &= ~(BAREFLANK_PAGE_SIZE - 1);
         exec_e &= ~(BAREFLANK_PAGE_SIZE - 1);
 
-        BFDEBUG("add md: 0x%llx-0x%llx (module)\n", exec_s, exec_e - 1);
-
         for (; exec_s <= exec_e; exec_s += BAREFLANK_PAGE_SIZE) {
             if ((instr->perm & bfpf_x) != 0) {
                 ret = private_add_raw_md_to_memory_manager(
@@ -189,8 +187,6 @@ private_add_tss_mdl(void)
             return ret;
         }
     }
-
-    BFDEBUG("add md: 0x%llx-0x%llx (tls)\n", g_tls, g_tls + g_tls_size - 1);
 
     return BF_SUCCESS;
 }
