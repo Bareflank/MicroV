@@ -96,8 +96,8 @@ AddReg = XenBus_Parameters, XenBus_Interrupts
 
 [XenBus_Parameters]
 HKR,"Parameters",,0x00000010
-HKR,"Parameters","SupportedClasses",0x00010000,"VIF","VBD","VKBD","IFACE","CONS"
-HKR,"Parameters","SyntheticClasses",0x00010000,"IFACE","CONS"
+HKR,"Parameters","SupportedClasses",0x00010000,"VIF","IFACE"
+HKR,"Parameters","SyntheticClasses",0x00010000,"IFACE"
 HKR,"Parameters","RequestKey",0x00000000,%RequestKey%
 
 [XenBus_Interrupts]
