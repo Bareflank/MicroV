@@ -78,6 +78,11 @@
 #define FDO_HOLE_4KB_PAGE_COUNT (FDO_HOLE_2MB_PAGE_COUNT * 512UL)
 #define FDO_HOLE_SIZE ((1UL << 21UL) * FDO_HOLE_2MB_PAGE_COUNT)
 
+#define TIME_US(_us)            ((_us) * 10ll)
+#define TIME_MS(_ms)            (TIME_US((_ms) * 1000ll))
+#define TIME_S(_s)              (TIME_MS((_s) * 1000ll))
+#define TIME_RELATIVE(_t)       (-(_t))
+
 struct _XENBUS_INTERRUPT {
     PXENBUS_FDO         Fdo;
     LIST_ENTRY          ListEntry;
@@ -302,6 +307,24 @@ FdoGetPhysicalDeviceObject(
     )
 {
     return __FdoGetPhysicalDeviceObject(Fdo);
+}
+
+static NTSTATUS
+__SleepIfStoreNotReady()
+{
+    LARGE_INTEGER    Timeout;
+    UINT64           Ready;
+
+    Timeout.QuadPart = TIME_RELATIVE(TIME_MS(10));
+    Ready = __event_op__is_xenstore_ready();
+    ASSERT3U(Ready, <=, 1);
+
+    if (!Ready) {
+        KeDelayExecutionThread(KernelMode, FALSE, &Timeout);
+        return STATUS_TIMEOUT;
+    }
+
+    return STATUS_SUCCESS;
 }
 
 __drv_requiresIRQL(PASSIVE_LEVEL)
@@ -1160,6 +1183,7 @@ FdoEnumerate(
     ULONG               Enumerate;
     PLIST_ENTRY         ListEntry;
     ULONG               Index;
+    DEVICE_PNP_STATE    FdoState;
     NTSTATUS            status;
 
     Trace("====>\n");
@@ -1226,11 +1250,15 @@ FdoEnumerate(
         ListEntry = Next;
     }
 
+    FdoState = __FdoGetDevicePnpState(Fdo);
+
     // Walk the class list and create PDOs for any new classes
     for (Index = 0; Classes[Index].Buffer != NULL; Index++) {
         PANSI_STRING Class = &Classes[Index];
 
-        if (Class->Length != 0) {
+        if (Class->Length != 0 &&
+            FdoState != RemovePending &&
+            FdoState != SurpriseRemovePending) {
             status = PdoCreate(Fdo, Class);
             if (NT_SUCCESS(status))
                 NeedInvalidate = TRUE;
@@ -1438,6 +1466,7 @@ FdoScan(
         PANSI_STRING            Classes;
         ULONG                   Index;
         BOOLEAN                 NeedInvalidate;
+        DEVICE_PNP_STATE        State;
 
         Trace("waiting...\n");
 
@@ -1455,6 +1484,10 @@ FdoScan(
 
         // It is not safe to use interfaces before this point
         if (!Fdo->StoreRunning)
+            goto loop;
+
+        State = __FdoGetDevicePnpState(Fdo);
+        if (State == RemovePending || State == SurpriseRemovePending)
             goto loop;
 
         status = XENBUS_STORE(Directory,
@@ -1590,9 +1623,10 @@ FdoSuspend(
     Event = ThreadGetEvent(Self);
 
     for (;;) {
-        PCHAR       Buffer;
-        BOOLEAN     Suspend;
-        NTSTATUS    status;
+        PCHAR            Buffer;
+        BOOLEAN          Suspend;
+        DEVICE_PNP_STATE State;
+        NTSTATUS         status;
 
         Trace("waiting...\n");
 
@@ -1613,6 +1647,10 @@ FdoSuspend(
             goto loop;
 
         if (!Fdo->StoreRunning)
+            goto loop;
+
+        State = __FdoGetDevicePnpState(Fdo);
+        if (State == RemovePending || State == SurpriseRemovePending)
             goto loop;
 
         status = XENBUS_STORE(Read,
@@ -1662,11 +1700,6 @@ loop:
     Info("<====\n");
     return STATUS_SUCCESS;
 }
-
-#define TIME_US(_us)            ((_us) * 10ll)
-#define TIME_MS(_ms)            (TIME_US((_ms) * 1000ll))
-#define TIME_S(_s)              (TIME_MS((_s) * 1000ll))
-#define TIME_RELATIVE(_t)       (-(_t))
 
 static VOID
 FdoDumpIoResourceDescriptor(
@@ -2561,21 +2594,7 @@ __StoreD3ToD0(
     IN PXENBUS_FDO Fdo
     )
 {
-    NTSTATUS       status;
-    LARGE_INTEGER  Timeout;
-    UINT64         Ready;
-
-    Timeout.QuadPart = TIME_RELATIVE(TIME_MS(200));
-    Ready = __event_op__is_xenstore_ready();
-    ASSERT3U(Ready, <=, 1);
-
-    if (!Ready) {
-        KeDelayExecutionThread(KernelMode, FALSE, &Timeout);
-        return STATUS_TIMEOUT;
-    }
-
-    /* Sleep one more time for good measure */
-    KeDelayExecutionThread(KernelMode, FALSE, &Timeout);
+    NTSTATUS         status;
 
     /*
      * This is the first Acquire call and is assumed to be so
@@ -2693,14 +2712,21 @@ FdoStoreD3ToD0(
                                      NULL);
         KeClearEvent(Event);
 
-again:
+        Info("awake\n");
+
         if (ThreadIsAlerted(Self)) {
             break;
         }
 
-        status = __StoreD3ToD0(Fdo);
+again:
+        status = __SleepIfStoreNotReady();
         if (status == STATUS_TIMEOUT) {
             goto again;
+        }
+
+        status = __StoreD3ToD0(Fdo);
+        if (!NT_SUCCESS(status)) {
+            Error("__StoreD3ToD0 failed\n");
         }
     }
 
@@ -2712,9 +2738,21 @@ __FdoD3ToD0(
     IN  PXENBUS_FDO Fdo
     )
 {
+    UINT64 Ready = __event_op__is_xenstore_ready();
+
+    ASSERT3U(Ready, <=, 1);
     ASSERT3U(KeGetCurrentIrql(), ==, PASSIVE_LEVEL);
 
-    ThreadWake(Fdo->StoreD3ToD0Thread);
+    if (Ready) {
+        NTSTATUS status = __StoreD3ToD0(Fdo);
+        if (!NT_SUCCESS(status)) {
+            Error("__StoreD3ToD0 failed\n");
+            return status;
+        }
+    } else {
+        ThreadWake(Fdo->StoreD3ToD0Thread);
+    }
+
     ThreadWake(Fdo->ScanThread);
 
     return STATUS_SUCCESS;
