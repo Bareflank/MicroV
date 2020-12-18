@@ -2708,11 +2708,11 @@ FdoStoreD3ToD0(
 
         Info("awake\n");
 
+again:
         if (ThreadIsAlerted(Self)) {
             break;
         }
 
-again:
         status = __SleepIfStoreNotReady();
         if (status == STATUS_TIMEOUT) {
             goto again;
