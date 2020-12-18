@@ -751,64 +751,65 @@ FdoSetActive(
     IN  PXENBUS_FDO Fdo
     )
 {
-    PCHAR           DeviceID;
-    PCHAR           InstanceID;
-    PCHAR           ActiveDeviceID;
-    PCHAR           LocationInformation;
-    NTSTATUS        status;
+//    PCHAR           DeviceID;
+//    PCHAR           InstanceID;
+//    PCHAR           ActiveDeviceID;
+//    PCHAR           LocationInformation;
+//    NTSTATUS        status;
+//
+//    status = FdoQueryId(Fdo,
+//                        BusQueryDeviceID,
+//                        &DeviceID);
+//    if (!NT_SUCCESS(status))
+//        goto fail1;
+//
+//    status = FdoQueryId(Fdo,
+//                        BusQueryInstanceID,
+//                        &InstanceID);
+//    if (!NT_SUCCESS(status))
+//        goto fail2;
+//
+//    status = FdoQueryDeviceText(Fdo,
+//                                DeviceTextLocationInformation,
+//                                &LocationInformation);
+//    if (!NT_SUCCESS(status))
+//        goto fail3;
+//
+//    status = DriverGetActive("DeviceID", &ActiveDeviceID);
+//    if (NT_SUCCESS(status)) {
+//        Fdo->Active = (_stricmp(DeviceID, ActiveDeviceID) == 0) ? TRUE : FALSE;
+//
+//        if (Fdo->Active)
+//            (VOID) DriverUpdateActive(DeviceID, InstanceID, LocationInformation);
+//
+//        ExFreePool(ActiveDeviceID);
+//    } else {
+//        status = DriverSetActive(DeviceID, InstanceID, LocationInformation);
+//        if (NT_SUCCESS(status))
+//            Fdo->Active = TRUE;
+//    }
+//
+//    ExFreePool(LocationInformation);
+//    ExFreePool(InstanceID);
+//    ExFreePool(DeviceID);
+//
+//    return STATUS_SUCCESS;
+//
+//fail3:
+//    Error("fail3\n");
+//
+//    ExFreePool(InstanceID);
+//
+//fail2:
+//    Error("fail2\n");
+//
+//    ExFreePool(DeviceID);
+//
+//fail1:
+//    Error("fail1 (%08x)\n", status);
 
-    status = FdoQueryId(Fdo,
-                        BusQueryDeviceID,
-                        &DeviceID);
-    if (!NT_SUCCESS(status))
-        goto fail1;
-
-    status = FdoQueryId(Fdo,
-                        BusQueryInstanceID,
-                        &InstanceID);
-    if (!NT_SUCCESS(status))
-        goto fail2;
-
-    status = FdoQueryDeviceText(Fdo,
-                                DeviceTextLocationInformation,
-                                &LocationInformation);
-    if (!NT_SUCCESS(status))
-        goto fail3;
-
-    status = DriverGetActive("DeviceID", &ActiveDeviceID);
-    if (NT_SUCCESS(status)) {
-        Fdo->Active = (_stricmp(DeviceID, ActiveDeviceID) == 0) ? TRUE : FALSE;
-
-        if (Fdo->Active)
-            (VOID) DriverUpdateActive(DeviceID, InstanceID, LocationInformation);
-
-        ExFreePool(ActiveDeviceID);
-    } else {
-        status = DriverSetActive(DeviceID, InstanceID, LocationInformation);
-        if (NT_SUCCESS(status))
-            Fdo->Active = TRUE;
-    }
-
-    ExFreePool(LocationInformation);
-    ExFreePool(InstanceID);
-    ExFreePool(DeviceID);
-
+    Fdo->Active = TRUE;
     return STATUS_SUCCESS;
-
-fail3:
-    Error("fail3\n");
-
-    ExFreePool(InstanceID);
-
-fail2:
-    Error("fail2\n");
-
-    ExFreePool(DeviceID);
-
-fail1:
-    Error("fail1 (%08x)\n", status);
-
-    return status;
 }
 
 static VOID
@@ -816,7 +817,7 @@ FdoClearActive(
     IN  PXENBUS_FDO Fdo
     )
 {
-    (VOID) DriverClearActive();
+//    (VOID) DriverClearActive();
 
     Fdo->Active = FALSE;
 }

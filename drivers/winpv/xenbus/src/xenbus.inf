@@ -48,7 +48,6 @@ Monitor_CopyFiles=11
 [SourceDisksFiles]
 xen.sys=0,,
 xenbus.sys=0,,
-xenfilt.sys=0,,
 xenbus_coinst.dll=0,,
 xenbus_monitor.exe=0,,
 xenbus_monitor.dll=0,,
@@ -56,7 +55,6 @@ xenbus_monitor.dll=0,,
 [XenBus_CopyFiles]
 xen.sys
 xenbus.sys
-xenfilt.sys
 
 [CoInst_CopyFiles]
 xenbus_coinst_@MAJOR_VERSION@_@MINOR_VERSION@_@MICRO_VERSION@_@BUILD_NUMBER@.dll,xenbus_coinst.dll
@@ -83,15 +81,13 @@ CopyFiles=Monitor_CopyFiles
 [XenBus_Inst.Services]
 AddService=xenbus_monitor,%SPSVCSINST_STARTSERVICE%,Monitor_Service,Monitor_EventLog
 AddService=xenbus,%SPSVCINST_ASSOCSERVICE%,XenBus_Service
-AddService=xenfilt,,XenFilt_Service,
 
 [XenBus_Service]
 DisplayName=%XenBusName%
 ServiceType=%SERVICE_KERNEL_DRIVER%
-StartType=%SERVICE_BOOT_START%
+StartType=%SERVICE_DEMAND_START%
 ErrorControl=%SERVICE_ERROR_NORMAL%
 ServiceBinary=%12%\xenbus.sys
-LoadOrderGroup="Boot Bus Extender"
 AddReg = XenBus_Parameters, XenBus_Interrupts
 
 [XenBus_Parameters]
@@ -105,20 +101,6 @@ HKR,"Interrupt Management",,0x00000010
 HKR,"Interrupt Management\MessageSignaledInterruptProperties",,0x00000010
 HKR,"Interrupt Management\MessageSignaledInterruptProperties","MSISupported",0x00010001,1
 HKR,"Interrupt Management\GroupPolicy",,0x00010001,1
-
-[XenFilt_Service]
-DisplayName=%XenFiltName%
-ServiceType=%SERVICE_KERNEL_DRIVER%
-StartType=%SERVICE_BOOT_START%
-ErrorControl=%SERVICE_ERROR_NORMAL%
-ServiceBinary=%12%\xenfilt.sys
-LoadOrderGroup="Boot Bus Extender"
-AddReg = XenFilt_Parameters
-
-[XenFilt_Parameters]
-HKR,"Parameters",,0x00000010
-HKR,"Parameters","*PNP0A03",0x00000000,"PCI"
-HKR,"Parameters","Internal_IDE_Channel",0x00000000,"IDE"
 
 [Monitor_Service]
 DisplayName=%MonitorName%
