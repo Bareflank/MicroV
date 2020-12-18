@@ -1259,7 +1259,7 @@ GetActiveDeviceInstanceID(
                            PARAMETERS_KEY(XENFILT),
                            0,
                            NULL,
-                           REG_OPTION_VOLATILE,
+                           REG_OPTION_NON_VOLATILE,
                            KEY_ALL_ACCESS,
                            NULL,
                            &ParametersKey,
