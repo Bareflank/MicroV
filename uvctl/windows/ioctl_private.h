@@ -39,11 +39,9 @@ public:
 
     void call_ioctl_create_vm(create_vm_args &args);
     void call_ioctl_destroy(domainid_t domainid) noexcept;
-    void call_ioctl_xenbus_acquire() noexcept;
 
 private:
     HANDLE builder_fd;
-    HANDLE xenbus_fd;
 };
 
 #ifdef _MSC_VER

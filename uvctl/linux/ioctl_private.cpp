@@ -28,6 +28,7 @@
 
 #include <iostream>
 #include <ioctl_private.h>
+#include <log.h>
 
 #include <bfgsl.h>
 #include <bfdriverinterface.h>
@@ -80,6 +81,6 @@ void
 ioctl_private::call_ioctl_destroy(domainid_t domainid) noexcept
 {
     if (uvctl_write_ioctl(fd, IOCTL_DESTROY_VM, &domainid) < 0) {
-        std::cerr << "[ERROR] ioctl failed: IOCTL_DESTROY_VM\n";
+        log_msg("[ERROR] ioctl failed: IOCTL_DESTROY_VM\n");
     }
 }

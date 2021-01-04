@@ -41,11 +41,3 @@ ioctl::call_ioctl_destroy(domainid_t domainid) noexcept
         d->call_ioctl_destroy(domainid);
     }
 }
-
-void
-ioctl::call_ioctl_xenbus_acquire() noexcept
-{
-    if (auto d = dynamic_cast<ioctl_private *>(m_d.get())) {
-        d->call_ioctl_xenbus_acquire();
-    }
-}

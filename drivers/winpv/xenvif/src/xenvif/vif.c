@@ -43,6 +43,29 @@
 #include "assert.h"
 #include "util.h"
 
+typedef struct _XENVIF_RECEIVER_RING
+        XENVIF_RECEIVER_RING, *PXENVIF_RECEIVER_RING;
+
+typedef struct _XENVIF_RECEIVER_HASH {
+    XENVIF_PACKET_HASH_ALGORITHM    Algorithm;
+    ULONG                           Types;
+} XENVIF_RECEIVER_HASH, *PXENVIF_RECEIVER_HASH;
+
+typedef struct _XENVIF_RECEIVER_PACKET {
+    LIST_ENTRY                      ListEntry;
+    XENVIF_PACKET_INFO              Info;
+    XENVIF_PACKET_HASH              Hash;
+    ULONG                           Offset;
+    ULONG                           Length;
+    XENVIF_PACKET_CHECKSUM_FLAGS    Flags;
+    USHORT                          MaximumSegmentSize;
+    USHORT                          TagControlInformation;
+    PXENVIF_RECEIVER_RING           Ring;
+    MDL                             Mdl;
+    PFN_NUMBER                      __Pfn;
+    PMDL                            SystemMdl;
+} XENVIF_RECEIVER_PACKET, *PXENVIF_RECEIVER_PACKET;
+
 struct _XENVIF_VIF_CONTEXT {
     PXENVIF_PDO                 Pdo;
     ERESOURCE                   Resource;
@@ -56,6 +79,9 @@ struct _XENVIF_VIF_CONTEXT {
     KEVENT                      MacEvent;
     XENBUS_SUSPEND_INTERFACE    SuspendInterface;
     PXENBUS_SUSPEND_CALLBACK    SuspendCallbackLate;
+    PXENVIF_THREAD              ReceiverThread;
+    KSPIN_LOCK                  ReceiverPacketLock;
+    LIST_ENTRY                  ReceiverPacketList;
 };
 
 C_ASSERT((FIELD_OFFSET(XENVIF_VIF_CONTEXT, Resource) & 0x7) == 0);
@@ -85,6 +111,8 @@ __AcquireLockShared(
 {
     BOOLEAN Wait = TRUE;
 
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
+
     KeEnterCriticalRegion();
     ExAcquireResourceSharedLite(&Context->Resource, Wait);
 }
@@ -95,6 +123,8 @@ __AcquireLockExclusive(
 )
 {
     BOOLEAN Wait = TRUE;
+
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
 
     KeEnterCriticalRegion();
     ExAcquireResourceExclusiveLite(&Context->Resource, Wait);
@@ -189,6 +219,8 @@ VifEnable(
 
     Trace("====>\n");
 
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
+
     __AcquireLockExclusive(Context);
 
     if (Context->Enabled)
@@ -276,6 +308,8 @@ VifDisable(
 
     Trace("====>\n");
 
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
+
     __AcquireLockExclusive(Context);
 
     if (!Context->Enabled) {
@@ -337,6 +371,8 @@ VifQueryStatistic(
     if (Index >= XENVIF_VIF_STATISTIC_COUNT)
         goto done;
 
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
+
     __AcquireLockShared(Context);
     FrontendQueryStatistic(Context->Frontend, Index, Value);
     __ReleaseLock(Context);
@@ -355,6 +391,8 @@ VifQueryRingCount(
 {
     PXENVIF_VIF_CONTEXT Context = Interface->Context;
 
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
+
     __AcquireLockShared(Context);
     *Count = FrontendGetNumQueues(Context->Frontend);
     __ReleaseLock(Context);
@@ -370,6 +408,8 @@ VifUpdateHashMapping(
     PXENVIF_VIF_CONTEXT     Context = Interface->Context;
     NTSTATUS                status;
 
+    ASSERT3U(KeGetCurrentIrql(), <=, APC_LEVEL);
+
     __AcquireLockShared(Context);
 
     status = ReceiverUpdateHashMapping(FrontendGetReceiver(Context->Frontend),
@@ -380,17 +420,74 @@ VifUpdateHashMapping(
     return status;
 }
 
-static VOID
-VifReceiverReturnPacket(
-    IN  PINTERFACE      Interface,
-    IN  PVOID           Cookie
+static NTSTATUS
+VifReceiver(
+    IN  PXENVIF_THREAD  Self,
+    IN  PVOID           _Context
     )
 {
-    PXENVIF_VIF_CONTEXT Context = Interface->Context;
+    PXENVIF_VIF_CONTEXT Context = _Context;
+    PKEVENT             Event;
 
-    __AcquireLockShared(Context);
-    ReceiverReturnPacket(FrontendGetReceiver(Context->Frontend), Cookie);
-    __ReleaseLock(Context);
+    Trace("====>\n");
+
+    Event = ThreadGetEvent(Self);
+
+    for (;;) {
+        (VOID) KeWaitForSingleObject(Event,
+                                     Executive,
+                                     KernelMode,
+                                     FALSE,
+                                     NULL);
+        KeClearEvent(Event);
+
+        if (ThreadIsAlerted(Self))
+            break;
+
+        for (;;) {
+            KIRQL                    Irql;
+            PLIST_ENTRY              ListEntry;
+            PXENVIF_RECEIVER_PACKET  Packet;
+
+            KeAcquireSpinLock(&Context->ReceiverPacketLock, &Irql);
+
+            if (IsListEmpty(&Context->ReceiverPacketList)) {
+                KeReleaseSpinLock(&Context->ReceiverPacketLock, Irql);
+                break;
+            }
+
+            ListEntry = RemoveHeadList(&Context->ReceiverPacketList);
+            KeReleaseSpinLock(&Context->ReceiverPacketLock, Irql);
+
+            Packet = CONTAINING_RECORD(ListEntry, XENVIF_RECEIVER_PACKET, ListEntry);
+            RtlZeroMemory(ListEntry, sizeof (LIST_ENTRY));
+
+            __AcquireLockShared(Context);
+            ReceiverReturnPacket(FrontendGetReceiver(Context->Frontend), Packet);
+            __ReleaseLock(Context);
+        }
+    }
+
+    Trace("<====\n");
+
+    return STATUS_SUCCESS;
+}
+
+static VOID
+VifReceiverReturnPacket(
+    IN  PINTERFACE           Interface,
+    IN  PVOID                Cookie
+    )
+{
+    PXENVIF_VIF_CONTEXT      Context = Interface->Context;
+    PXENVIF_RECEIVER_PACKET  Packet = Cookie;
+    KIRQL                    Irql;
+
+    KeAcquireSpinLock(&Context->ReceiverPacketLock, &Irql);
+    InsertTailList(&Context->ReceiverPacketList, &Packet->ListEntry);
+    KeReleaseSpinLock(&Context->ReceiverPacketLock, Irql);
+
+    ThreadWake(Context->ReceiverThread);
 }
 
 static NTSTATUS
@@ -992,6 +1089,8 @@ VifInitialize(
         goto fail1;
 
     ExInitializeResourceLite(&(*Context)->Resource);
+    KeInitializeSpinLock(&(*Context)->ReceiverPacketLock);
+    InitializeListHead(&(*Context)->ReceiverPacketList);
 
     FdoGetSuspendInterface(PdoGetFdo(Pdo),&(*Context)->SuspendInterface);
 
@@ -1003,20 +1102,35 @@ VifInitialize(
     if (!NT_SUCCESS(status))
         goto fail2;
 
+    status = ThreadCreate(VifReceiver,
+                          *Context,
+                          &(*Context)->ReceiverThread);
+    if (!NT_SUCCESS(status))
+        goto fail3;
+
     (*Context)->Pdo = Pdo;
 
     Trace("<====\n");
 
     return STATUS_SUCCESS;
 
-fail2:
+fail3:
     Error("fail3\n");
+
+    ThreadAlert((*Context)->MacThread);
+    ThreadJoin((*Context)->MacThread);
+    (*Context)->MacThread = NULL;
+
+fail2:
+    Error("fail2\n");
 
     RtlZeroMemory(&(*Context)->MacEvent, sizeof (KEVENT));
 
     RtlZeroMemory(&(*Context)->SuspendInterface,
                   sizeof (XENBUS_SUSPEND_INTERFACE));
 
+    RtlZeroMemory(&(*Context)->ReceiverPacketList, sizeof (LIST_ENTRY));
+    RtlZeroMemory(&(*Context)->ReceiverPacketLock, sizeof (KSPIN_LOCK));
     ExDeleteResourceLite(&(*Context)->Resource);
     RtlZeroMemory(&(*Context)->Resource, sizeof (ERESOURCE));
 
@@ -1109,6 +1223,10 @@ VifTeardown(
     Context->Pdo = NULL;
     Context->Version = 0;
 
+    ThreadAlert(Context->ReceiverThread);
+    ThreadJoin(Context->ReceiverThread);
+    Context->ReceiverThread = NULL;
+
     ThreadAlert(Context->MacThread);
     ThreadJoin(Context->MacThread);
     Context->MacThread = NULL;
@@ -1118,6 +1236,8 @@ VifTeardown(
     RtlZeroMemory(&Context->SuspendInterface,
                   sizeof (XENBUS_SUSPEND_INTERFACE));
 
+    RtlZeroMemory(&Context->ReceiverPacketList, sizeof (LIST_ENTRY));
+    RtlZeroMemory(&Context->ReceiverPacketLock, sizeof (KSPIN_LOCK));
     ExDeleteResourceLite(&Context->Resource);
     RtlZeroMemory(&Context->Resource, sizeof (ERESOURCE));
 

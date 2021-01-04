@@ -828,6 +828,14 @@ vcpu::return_destroy_domain(uint64_t domid)
 }
 
 void
+vcpu::return_notify_domain(uint64_t domid)
+{
+    this->load_xstate();
+    this->set_rax((domid << 4) | __enum_run_op__notify_domain);
+    this->run(&world_switch);
+}
+
+void
 vcpu::return_fault(uint64_t error)
 {
     this->load_xstate();

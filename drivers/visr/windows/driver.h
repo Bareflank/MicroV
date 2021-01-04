@@ -31,6 +31,8 @@
 #include <ntddk.h>
 #include <wdf.h>
 
+#define VISR_POOL_TAG 'RSIV'
+
 #pragma warning(pop)
 
 EXTERN_C_START

@@ -50,6 +50,7 @@ list(APPEND BFFLAGS_EFI
     -D__KERNEL__
     -DKERNEL
     -DEFI
+    -Wno-unknown-pragmas
 )
 
 list(APPEND BFFLAGS_EFI_C

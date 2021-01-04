@@ -404,7 +404,7 @@ AdapterIndicateOffloadChanged(
     }
 
     Current.Checksum.IPv6Transmit.Encapsulation = NDIS_ENCAPSULATION_IEEE_802_3;
-    Current.Checksum.IPv6Transmit.IpExtensionHeadersSupported = 1;
+    Current.Checksum.IPv6Transmit.IpExtensionHeadersSupported = NDIS_OFFLOAD_NOT_SUPPORTED;
 
     if (TxOptions->OffloadIpVersion6TcpChecksum) {
         Current.Checksum.IPv6Transmit.TcpChecksum = 1;
@@ -3192,7 +3192,7 @@ AdapterSetOffloadAttributes(
 
     Supported.Checksum.IPv6Transmit.Encapsulation = NDIS_ENCAPSULATION_IEEE_802_3;
 
-    Supported.Checksum.IPv6Transmit.IpExtensionHeadersSupported = 1;
+    Supported.Checksum.IPv6Transmit.IpExtensionHeadersSupported = NDIS_OFFLOAD_NOT_SUPPORTED;
 
     if (Options.OffloadIpVersion6TcpChecksum) {
         Supported.Checksum.IPv6Transmit.TcpChecksum = 1;

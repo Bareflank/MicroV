@@ -137,7 +137,7 @@ pthread_equal(pthread_t /*unused*/, pthread_t /*unused*/)
 extern "C" void *
 pthread_getspecific(pthread_key_t __key)
 {
-    if (__key > MAX_THREAD_SPECIFIC_DATA) {
+    if (__key >= MAX_THREAD_SPECIFIC_DATA) {
         return nullptr;
     }
 
@@ -283,7 +283,7 @@ pthread_self(void)
 extern "C" int
 pthread_setspecific(pthread_key_t __key, const void *__value)
 {
-    if (__key > MAX_THREAD_SPECIFIC_DATA) {
+    if (__key >= MAX_THREAD_SPECIFIC_DATA) {
         return -EINVAL;
     }
 

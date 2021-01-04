@@ -23,6 +23,143 @@
 #include <driver.h>
 #include <device.h>
 #include <microv/hypercall.h>
+#include <microv/visrinterface.h>
+
+extern WDFSPINLOCK VisrEventLock;
+
+typedef struct _VISR_EVENT_CONTEXT {
+    PKEVENT    Event;
+} VISR_EVENT_CONTEXT, *PVISR_EVENT_CONTEXT;
+
+PVISR_EVENT_CONTEXT EventContext = NULL;
+
+VOID
+visr_evt_io_stop(
+    _In_ WDFQUEUE Queue,
+    _In_ WDFREQUEST Request,
+    _In_ ULONG ActionFlags
+)
+{
+    UNREFERENCED_PARAMETER(Queue);
+    UNREFERENCED_PARAMETER(ActionFlags);
+
+    WdfRequestComplete(Request, STATUS_SUCCESS);
+    return;
+}
+
+VOID
+visr_evt_io_device_control(
+    _In_ WDFQUEUE Queue,
+    _In_ WDFREQUEST Request,
+    _In_ size_t OutputBufferLength,
+    _In_ size_t InputBufferLength,
+    _In_ ULONG IoControlCode
+)
+{
+    PVOID in = 0;
+    size_t in_size = 0;
+    NTSTATUS status;
+    struct visr_register_event *usr_event;
+
+    UNREFERENCED_PARAMETER(Queue);
+    UNREFERENCED_PARAMETER(OutputBufferLength);
+
+    if (InputBufferLength != 0) {
+        status = WdfRequestRetrieveInputBuffer(Request, InputBufferLength, &in, &in_size);
+
+        if (!NT_SUCCESS(status)) {
+            ERROR("IOCTL_VISR_REGISTER_EVENT: failed to retrieve input buffer\n");
+            goto fail;
+        }
+    }
+
+    switch (IoControlCode) {
+    case IOCTL_VISR_REGISTER_EVENT:
+
+        if (!in) {
+            ERROR("IOCTL_VISR_REGISTER_EVENT: in buffer is NULL\n");
+            goto fail;
+        }
+
+        usr_event = (struct visr_register_event *)in;
+
+        if (!usr_event->event) {
+            ERROR("IOCTL_VISR_REGISTER_EVENT: in->event is NULL\n");
+            goto fail;
+        }
+
+        WdfSpinLockAcquire(VisrEventLock);
+
+        if (EventContext) {
+            ERROR("IOCTL_VISR_REGISTER_EVENT: event already registered\n");
+            WdfSpinLockRelease(VisrEventLock);
+            goto fail;
+        }
+
+        EventContext = ExAllocatePoolWithTag(NonPagedPool,
+                                             sizeof(VISR_EVENT_CONTEXT),
+                                             VISR_POOL_TAG);
+        if (!EventContext) {
+            ERROR("IOCTL_VISR_REGISTER_EVENT: failed to allocate event context\n");
+            WdfSpinLockRelease(VisrEventLock);
+            goto fail;
+        }
+
+        RtlZeroMemory(EventContext, sizeof(VISR_EVENT_CONTEXT));
+
+        WdfSpinLockRelease(VisrEventLock);
+
+        status = ObReferenceObjectByHandle(usr_event->event,
+                                           EVENT_MODIFY_STATE,
+                                           *ExEventObjectType,
+                                           UserMode,
+                                           &EventContext->Event,
+                                           NULL);
+        if (!NT_SUCCESS(status)) {
+            ERROR("IOCTL_VISR_REGISTER_EVENT: failed to reference in->event\n");
+            goto fail;
+        }
+
+        KeMemoryBarrier();
+
+        break;
+    default:
+        goto fail;
+    }
+
+    WdfRequestComplete(Request, STATUS_SUCCESS);
+    return;
+
+fail:
+    WdfRequestComplete(Request, STATUS_ACCESS_DENIED);
+    return;
+}
+
+NTSTATUS
+visr_queue_init(
+    _In_ WDFDEVICE Device
+)
+{
+    WDFQUEUE queue;
+    NTSTATUS status;
+    WDF_IO_QUEUE_CONFIG queueConfig;
+
+    WDF_IO_QUEUE_CONFIG_INIT_DEFAULT_QUEUE(
+        &queueConfig,
+        WdfIoQueueDispatchParallel
+    );
+
+    queueConfig.EvtIoStop = visr_evt_io_stop;
+    queueConfig.EvtIoDeviceControl = visr_evt_io_device_control;
+
+    status = WdfIoQueueCreate(Device, &queueConfig, WDF_NO_OBJECT_ATTRIBUTES, &queue);
+    if (!NT_SUCCESS(status)) {
+        return status;
+    }
+
+    DEBUG("visr_queue_init: success\n");
+    return STATUS_SUCCESS;
+}
 
 NTSTATUS
 visr_evt_device_d0_entry(
@@ -108,6 +245,8 @@ visr_wdf_isr(
     WdfInterruptGetInfo(Interrupt, &interrupt_info);
 
     __event_op__send_vector(interrupt_info.Vector);
+    (VOID) WdfInterruptQueueDpcForIsr(Interrupt);
+
     return TRUE;
 }
 
@@ -119,6 +258,14 @@ visr_wdf_interrupt_dpc(
 {
     UNREFERENCED_PARAMETER(Interrupt);
     UNREFERENCED_PARAMETER(AssociatedObject);
+
+    WdfSpinLockAcquire(VisrEventLock);
+
+    if (EventContext) {
+        (VOID) KeSetEvent(EventContext->Event, 0, FALSE);
+    }
+
+    WdfSpinLockRelease(VisrEventLock);
 }
 
 NTSTATUS
@@ -178,6 +325,17 @@ visr_evt_device_add(
     WDF_OBJECT_ATTRIBUTES_INIT_CONTEXT_TYPE(&deviceAttributes, DEVICE_CONTEXT);
     status = WdfDeviceCreate(&DeviceInit, &deviceAttributes, &device);
     if (!NT_SUCCESS(status)) {
+        return status;
+    }
+
+    status = WdfDeviceCreateDeviceInterface(device, &GUID_DEVINTERFACE_visr, NULL);
+    if (!NT_SUCCESS(status)) {
+        return status;
+    }
+
+    status = visr_queue_init(device);
+    if (!NT_SUCCESS(status)) {
+        ERROR("Failed to initialize IO queue\n");
         return status;
     }
 

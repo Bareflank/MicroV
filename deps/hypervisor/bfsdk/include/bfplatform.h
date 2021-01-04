@@ -184,7 +184,11 @@ void *platform_get_rsdp(void);
  * Locks a global mutex that is managed by the platform logic. This can be
  * used to protect critical regions.
  */
-void platform_acquire_mutex(void);
+#if defined(_WIN64) && defined(KERNEL)
+_IRQL_raises_(APC_LEVEL)
+_IRQL_saves_global_(OldIrql, ignored)
+#endif
+void platform_acquire_mutex(void *ignored);
 
 /**
  * Release Mutex
@@ -192,7 +196,11 @@ void platform_acquire_mutex(void);
  * Unlocks a global mutex that is managed by the platform logic. This can be
  * used to protect critical regions.
  */
-void platform_release_mutex(void);
+#if defined(_WIN64) && defined(KERNEL)
+_IRQL_requires_(APC_LEVEL)
+_IRQL_restores_global_(OldIrql, ignored)
+#endif
+void platform_release_mutex(void *ignored);
 
 /**
  * Usleep

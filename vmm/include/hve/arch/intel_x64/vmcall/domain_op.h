@@ -67,6 +67,7 @@ private:
     void domain_op__donate_page_r(vcpu *vcpu);
     void domain_op__donate_page_rw(vcpu *vcpu);
     void domain_op__donate_page_rwe(vcpu *vcpu);
+    void domain_op__reclaim_root_pages(vcpu *vcpu);
 
     void domain_op__rax(vcpu *vcpu);
     void domain_op__set_rax(vcpu *vcpu);

@@ -97,9 +97,7 @@ vmcall_domain_op_handler::domain_op__destroy_domain(vcpu *vcpu)
         vcpu->remove_child_domain(child_domid);
         g_dm->destroy(child_domid, nullptr);
 
-        auto ret = vcpu->dom()->reclaim_root_pages(child_domid);
-
-        vcpu->set_rax(ret);
+        vcpu->set_rax(SUCCESS);
     }
     catchall({
         vcpu->set_rax(FAILURE);
@@ -454,6 +452,29 @@ vmcall_domain_op_handler::domain_op__donate_page_rwe(vcpu *vcpu)
     })
 }
 
+void
+vmcall_domain_op_handler::domain_op__reclaim_root_pages(vcpu *vcpu)
+{
+    try {
+        expects(foreign_domain(vcpu));
+
+        if (!vcpu->is_root_vcpu()) {
+            vcpu->set_rax(FAILURE);
+            return;
+        }
+
+        auto root_dom = vcpu->dom();
+        auto ret = root_dom->reclaim_root_pages(vcpu->rbx());
+
+        bfdebug_info(0, "reclaimed root pages");
+
+        vcpu->set_rax(ret);
+    }
+    catchall({
+        vcpu->set_rax(FAILURE);
+    })
+}
+
 #define domain_op__reg(reg)                                                     \
     void                                                                        \
     vmcall_domain_op_handler::domain_op__ ## reg(vcpu *vcpu)                    \
@@ -642,6 +663,7 @@ vmcall_domain_op_handler::dispatch(vcpu *vcpu)
         dispatch_case(donate_page_r)
         dispatch_case(donate_page_rw)
         dispatch_case(donate_page_rwe)
+        dispatch_case(reclaim_root_pages)
 
         dispatch_case(rax);
         dispatch_case(set_rax);

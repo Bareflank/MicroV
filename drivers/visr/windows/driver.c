@@ -23,6 +23,8 @@
 #include <driver.h>
 #include <device.h>
 
+WDFSPINLOCK VisrEventLock;
+
 VOID
 visr_wdf_driver_unload(
     _In_ WDFDRIVER Driver
@@ -48,6 +50,12 @@ DriverEntry(
 
     status = WdfDriverCreate(DriverObject, RegistryPath, &attributes, &config, WDF_NO_HANDLE);
     if (!NT_SUCCESS(status)) {
+        return status;
+    }
+
+    status = WdfSpinLockCreate(NULL, &VisrEventLock);
+    if (!NT_SUCCESS(status)) {
+        ERROR("Failed to create visr event lock\n");
         return status;
     }
 

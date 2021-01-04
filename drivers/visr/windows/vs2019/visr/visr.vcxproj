@@ -22,51 +22,29 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-# Visual Studio 15
+# Visual Studio 16
 -->
 
-<Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <ItemGroup Label="ProjectConfigurations">
-    <ProjectConfiguration Include="Debug|x64">
-      <Configuration>Debug</Configuration>
-      <Platform>x64</Platform>
-    </ProjectConfiguration>
-    <ProjectConfiguration Include="Release|x64">
-      <Configuration>Release</Configuration>
-      <Platform>x64</Platform>
-    </ProjectConfiguration>
-  </ItemGroup>
-  <ItemGroup>
-    <Inf Include="visr.inf" />
-  </ItemGroup>
-  <PropertyGroup Label="Globals">
-    <ProjectGuid>{9299115C-8A76-408B-B25B-BB3571EA196A}</ProjectGuid>
-    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
-    <MinimumVisualStudioVersion>12.0</MinimumVisualStudioVersion>
-    <Configuration>Debug</Configuration>
-    <Platform Condition="'$(Platform)' == ''">x64</Platform>
-    <RootNamespace>visr</RootNamespace>
-    <WindowsTargetPlatformVersion>$(LatestTargetPlatformVersion)</WindowsTargetPlatformVersion>
+<Project DefaultTargets="Build" ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="..\configs.props" />
+  <PropertyGroup Label="PropertySheets">
+    <DriverType>KMDF</DriverType>
+    <KMDFVersionMinor>11</KMDFVersionMinor>
+    <PlatformToolset>WindowsKernelModeDriver10.0</PlatformToolset>
+    <ConfigurationType>Driver</ConfigurationType>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
-    <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>WindowsKernelModeDriver10.0</PlatformToolset>
-    <ConfigurationType>Driver</ConfigurationType>
-    <DriverType>KMDF</DriverType>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{9299115C-8A76-408B-B25B-BB3571EA196A}</ProjectGuid>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
-    <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>WindowsKernelModeDriver10.0</PlatformToolset>
-    <ConfigurationType>Driver</ConfigurationType>
-    <DriverType>KMDF</DriverType>
-  </PropertyGroup>
+  <Import Project="..\targets.props" />
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
-  <ImportGroup Label="PropertySheets">
-    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-  </ImportGroup>
   <PropertyGroup>
-      <IncludePath>$(SOURCE_ROOT_DIR)\bfsdk\include;$(SOURCE_ROOT_DIR)\bfelf_loader\include;..\..\..\include;.;$(IncludePath)</IncludePath>
+      <RunCodeAnalysis>true</RunCodeAnalysis>
+      <EnableInf2cat>false</EnableInf2cat>
+      <IntDir>..\$(ProjectName)\$(ConfigurationName)\$(Platform)\</IntDir>
+      <OutDir>..\$(ConfigurationName)\$(Platform)\</OutDir>
+      <IncludePath>..\..\..\..\..\deps\hypervisor\bfsdk\include;..\..\..\..\..\deps\hypervisor\bfelf_loader\include;..\..\..\..\..\include;..\..\;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <ItemDefinitionGroup>
     <ClCompile>
@@ -74,6 +52,7 @@
       <DisableSpecificWarnings>4820;4255;5045;%(DisableSpecificWarnings)</DisableSpecificWarnings>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <PreprocessorDefinitions>KERNEL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <EnablePREfast>true</EnablePREfast>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Platform)'=='x64'">
@@ -88,21 +67,21 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <FilesToPackage Include="$(TargetPath)" />
+    <FilesToPackage Include="$(OutDir)$(TargetName).pdb" />
+    <FilesToPackage Include="$(WDKContentRoot)redist\wdf\$(DDKPlatform)\WdfCoInstaller$(KMDF_VERSION_MAJOR_STRING)011.dll" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="device.c" />
-    <ClCompile Include="driver.c" />
+    <ClCompile Include="..\..\device.c" />
+    <ClCompile Include="..\..\driver.c" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="device.h" />
-    <ClInclude Include="driver.h" />
+    <ClInclude Include="..\..\device.h" />
+    <ClInclude Include="..\..\driver.h" />
   </ItemGroup>
   <ItemGroup>
-    <MASM Include="intrinsics.asm" />
+    <MASM Include="..\..\intrinsics.asm" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
-  <ImportGroup Label="ExtensionTargets">
-  </ImportGroup>
 </Project>
 
 

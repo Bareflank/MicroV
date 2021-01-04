@@ -22,35 +22,20 @@
 #ifndef UVCTL_VERBOSE_H
 #define UVCTL_VERBOSE_H
 
-#define dump_vm_create_verbose()                                                                                                             \
+#include "log.h"
+
+#define dump_vm_create_verbose() \
     do { \
-        if (verbose) {                                                                                                                       \
-            const std::string type = (ioctl_args.file_type == VM_FILE_VMLINUX) ? std::string("vmlinux") : std::string("bzImage"); \
-            const std::string mode = (ioctl_args.exec_mode == VM_EXEC_XENPVH) ? std::string("xenpvh") : std::string("native"); \
-            std::cout << '\n';                                                                                                                  \
-            std::cout << bfcolor_cyan    "Created VM:\n" bfcolor_end;                                                             \
-            std::cout << bfcolor_magenta "--------------------------------------------------------------------------------\n" bfcolor_end;      \
-            std::cout << "    kernel" bfcolor_yellow " | " << bfcolor_green << kernel.path() << bfcolor_end "\n";                                 \
-            std::cout << "    initrd" bfcolor_yellow " | " << bfcolor_green << initrd.path() << bfcolor_end "\n";                                 \
-            std::cout << " domain id" bfcolor_yellow " | " << bfcolor_green << ioctl_args.domainid << bfcolor_end "\n";                         \
-            std::cout << "  ram size" bfcolor_yellow " | " << bfcolor_green << (ram / 0x100000U) << "MB" << bfcolor_end "\n";                  \
-            std::cout << "   cmdline" bfcolor_yellow " | " << bfcolor_green << cmdl.data() << bfcolor_end "\n";                                 \
-            std::cout << " file type" bfcolor_yellow " | " << bfcolor_green << type << bfcolor_end "\n";                                 \
-            std::cout << " exec mode" bfcolor_yellow " | " << bfcolor_green << mode << bfcolor_end "\n";                                 \
+        if (verbose) { \
+            log_msg("Created VM:\n"); \
+            log_msg("    kernel | %s\n", kernel.path().c_str()); \
+            log_msg("    initrd | %s\n", initrd.path().c_str()); \
+            log_msg(" domain id | 0x%x\n", ioctl_args.domainid); \
+            log_msg("  ram size | %luMB\n", (ram / 0x100000U)); \
+            log_msg("   cmdline | %s\n", cmdl.data()); \
+            log_msg(" file type | %s\n", (ioctl_args.file_type == VM_FILE_VMLINUX) ? "vmlinux" : "bzImage"); \
+            log_msg(" exec mode | %s\n", (ioctl_args.exec_mode == VM_EXEC_XENPVH) ? "xenpvh" : "native"); \
         } \
     } while (0)
-
-#define output_vm_uart_verbose()                                                                                                            \
-    do { \
-        if (verbose) {                                                                                                                          \
-            std::cout << '\n';                                                                                                                  \
-            std::cout << bfcolor_cyan    "Output from VM's UART:\n" bfcolor_end;                                                                \
-            std::cout << bfcolor_magenta "--------------------------------------------------------------------------------\n" bfcolor_end;      \
-            std::cout << '\n';                                                                                                                  \
-            \
-            u = std::thread(uart_thread);                                                                                                       \
-        } \
-    } while (0)
-
 
 #endif

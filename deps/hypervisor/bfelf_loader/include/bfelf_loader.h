@@ -1909,7 +1909,11 @@ private_load_binary(struct bfelf_binary_t *binary)
      */
 
     if (binary->exec == nullptr) {
+#ifdef VM_BUILDER
+        binary->exec = bfscast(char *, platform_alloc_rw(binary->exec_size));
+#else
         binary->exec = bfscast(char *, platform_alloc_rwe(binary->exec_size));
+#endif
     }
 
     if (binary->exec == nullptr) {

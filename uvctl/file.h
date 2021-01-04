@@ -22,6 +22,8 @@
 #ifndef FILE_H
 #define FILE_H
 
+#include "log.h"
+
 #include <string>
 #include <vector>
 #include <fstream>
@@ -42,7 +44,7 @@ public:
         m_data{std::istreambuf_iterator<char>(m_file), std::istreambuf_iterator<char>()}
     {
         if (m_file.fail()) {
-            std::cerr << "Failed to open " << filename << ", does it exist?\n";
+            log_msg("Failed to open %s, does it exist?\n", filename.c_str());
         }
     }
 

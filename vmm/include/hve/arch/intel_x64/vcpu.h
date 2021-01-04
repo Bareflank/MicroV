@@ -286,6 +286,18 @@ public:
     ///
     VIRTUAL void return_create_domain(uint64_t newdomid);
 
+    /// Return (Notify Domain)
+    ///
+    /// Return to the parent vCPU (i.e. resume the parent), and tell it
+    /// that an event arrived for another domain given by the domid.
+    ///
+    /// @expects
+    /// @ensures
+    ///
+    /// @param domid the domain to notify
+    ///
+    VIRTUAL void return_notify_domain(uint64_t domid);
+
     /// Halt the vCPU
     ///
     /// Halts the vCPU. The default action is to freeze the physical core

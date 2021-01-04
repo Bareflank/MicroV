@@ -333,15 +333,6 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *systab)
 {
     InitializeLib(image, systab);
 
-    Print(L"\n");
-    Print(L"  ___                __ _           _   \n");
-    Print(L" | _ ) __ _ _ _ ___ / _| |__ _ _ _ | |__\n");
-    Print(L" | _ \\/ _` | '_/ -_)  _| / _` | ' \\| / /\n");
-    Print(L" |___/\\__,_|_| \\___|_| |_\\__,_|_||_|_\\_\\\n");
-    Print(L"\n");
-    Print(L" Please give us a star on: https://github.com/Bareflank/hypervisor\n");
-    Print(L"\n");
-
     if (common_init() != BF_SUCCESS) {
         return EFI_ABORTED;
     }

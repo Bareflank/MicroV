@@ -253,11 +253,26 @@ builderEvtIoDeviceControl(
 
     switch (IoControlCode) {
         case IOCTL_CREATE_VM:
+            if (!in) {
+                BFDEBUG("IOCTL_CREATE_VM: in buffer is NULL\n");
+                goto IOCTL_FAILURE;
+            }
+
+            if (!out) {
+                BFDEBUG("IOCTL_CREATE_VM: out buffer is NULL\n");
+                goto IOCTL_FAILURE;
+            }
+
             ret = ioctl_create_vm((struct create_vm_args *)in);
-            RtlCopyMemory(out, in, out_size);
+            RtlCopyMemory(out, in, (out_size > in_size) ? in_size : out_size);
             break;
 
         case IOCTL_DESTROY_VM:
+            if (!in) {
+                BFDEBUG("IOCTL_DESTROY_VM: in buffer is NULL\n");
+                goto IOCTL_FAILURE;
+            }
+
             ret = ioctl_destroy_vm((domainid_t *)in);
             break;
 

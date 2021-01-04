@@ -36,20 +36,31 @@
 #include <microv/bootparams.h>
 #include <microv/builderinterface.h>
 #include <microv/hypercall.h>
+#include <microv/xenbusinterface.h>
 
 #include "args.h"
 #include "cmdl.h"
 #include "file.h"
 #include "ioctl.h"
+#include "log.h"
 #include "verbose.h"
 #include "domain.h"
 #include "vcpu.h"
+
+#ifdef _WIN64
+#include "service.h"
+#endif
 
 using namespace std::chrono;
 using namespace std::chrono_literals;
 
 std::unique_ptr<ioctl> ctl{};
 uint64_t nuke_vm = 0;
+
+#ifdef _WIN64
+HANDLE uvctl_ioctl_open(const GUID *guid);
+int64_t uvctl_rw_ioctl(HANDLE fd, DWORD request, void *data, DWORD size);
+#endif
 
 /*
  * TODO: man 2 signal states that using signal() for registering
@@ -59,6 +70,23 @@ uint64_t nuke_vm = 0;
 static void drop_nuke(int sig)
 {
     nuke_vm = 1;
+}
+
+static inline void wait_for_stop_signal(bool windows_svc)
+{
+#ifdef _WIN64
+    if (windows_svc) {
+        service_wait_for_stop_signal();
+    } else {
+        while (!nuke_vm) {
+            std::this_thread::sleep_for(1s);
+        }
+    }
+#else
+    while (!nuke_vm) {
+        std::this_thread::sleep_for(1s);
+    }
+#endif
 }
 
 static inline void setup_kill_signal_handler(void)
@@ -186,7 +214,7 @@ static void create_vm(const args_type &args, struct uvc_domain *dom)
     dom->enable_hvc = args.count("hvc");
 }
 
-static int protected_main(const args_type &args)
+int protected_main(const args_type &args)
 {
     if (bfack() == 0) {
         throw std::runtime_error("vmm not running");
@@ -240,42 +268,93 @@ static int protected_main(const args_type &args)
         set_affinity(0);
     }
 
+    bool windows_svc = args.count("windows-svc") != 0;
+
     struct uvc_domain root_domain;
     create_vm(args, &root_domain);
     root_domain.launch();
 
-    while (!nuke_vm) {
-        std::this_thread::sleep_for(1s);
+    wait_for_stop_signal(windows_svc);
+
+    if (!windows_svc) {
+        try {
+            root_domain.destroy();
+        } catch (const std::exception &e) {
+            log_msg("root_domain.destroy threw: what = %s\n", e.what());
+        }
+
+        ctl->call_ioctl_destroy(root_domain.id);
+    } else {
+        root_domain.pause();
+        std::this_thread::sleep_for(2s);
+
+        if (__domain_op__reclaim_root_pages(root_domain.id) != SUCCESS) {
+            log_msg("%s: failed to reclaim root pages\n", __func__);
+        }
+
+#ifdef _WIN64
+        // TODO: consolidate the various ioctls
+        HANDLE xenbus_fd = uvctl_ioctl_open(&GUID_DEVINTERFACE_XENBUS);
+        if (xenbus_fd == INVALID_HANDLE_VALUE) {
+            log_msg("%s: failed to open xenbus handle (err=0x%x)\n",
+                    __func__, GetLastError());
+        } else {
+            XENBUS_SET_BACKEND_STATE_IN state{};
+            state.BackendState = XENBUS_BACKEND_STATE_DYING;
+
+            auto rc = uvctl_rw_ioctl(xenbus_fd,
+                                     IOCTL_XENBUS_SET_BACKEND_STATE,
+                                     &state,
+                                     sizeof(state));
+            if (rc < 0) {
+                log_msg("%s: failed to set backend state for xenbus\n", __func__);
+            }
+
+            CloseHandle(xenbus_fd);
+        }
+#endif
     }
 
-    try {
-        root_domain.destroy();
-    } catch (const std::exception &e) {
-        std::cerr << "root_domain.destroy threw: what = " << e.what() << '\n';
-    }
-
-    ctl->call_ioctl_destroy(root_domain.id);
     return EXIT_SUCCESS;
 }
 
 int main(int argc, char *argv[])
 {
     try {
-        ctl = std::make_unique<ioctl>();
-        setup_kill_signal_handler();
+        log_set_mode(UVCTL_LOG_STDOUT);
         args_type args = parse_args(argc, argv);
-
+#ifndef _WIN64
+        setup_kill_signal_handler();
+        ctl = std::make_unique<ioctl>();
         return protected_main(args);
+#else
+        if (args.count("windows-svc")) {
+            log_set_mode(UVCTL_LOG_WINDOWS_SVC);
+
+            if (copy_args(argc, argv)) {
+                log_msg("uvctl: unable to copy args for Windows service\n");
+                return EXIT_FAILURE;
+            }
+
+            service_start();
+            free_args();
+
+            return EXIT_SUCCESS;
+        } else {
+            setup_kill_signal_handler();
+            ctl = std::make_unique<ioctl>();
+            return protected_main(args);
+        }
+#endif
     }
     catch (const cxxopts::OptionException &e) {
-        std::cerr << "invalid arguments: " << e.what() << '\n';
+        log_msg("invalid arguments: %s\n", e.what());
     }
     catch (const std::exception &e) {
-        std::cerr << "Caught unhandled exception:" << '\n';
-        std::cerr << "    - what(): " << e.what() << '\n';
+        log_msg("Caught unhandled exception: what = %s\n", e.what());
     }
     catch (...) {
-        std::cerr << "Caught unknown exception" << '\n';
+        log_msg("Caught unknown exception\n");
     }
 
     return EXIT_FAILURE;

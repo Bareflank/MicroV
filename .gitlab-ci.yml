@@ -4,8 +4,6 @@ stages:
 build-drivers:
     stage: build
     script:
-        - " & $env:MSBUILD_PATH /p:SOURCE_ROOT_DIR=$Env:SOURCE_ROOT_DIR /p:Configuration=Release /p:Platform=x64 /p:TargetVersion=Windows10 $Env:BUILDER_SLN_PATH"
-        - " & $env:MSBUILD_PATH /p:SOURCE_ROOT_DIR=$Env:SOURCE_ROOT_DIR /p:Configuration=Release /p:Platform=x64 /p:TargetVersion=Windows10 $Env:VISR_SLN_PATH"
         - Set-Item -Path Env:VENDOR_NAME -Value 'Xen Project'
         - Set-Item -Path Env:VENDOR_PREFIX -Value 'XP'
         - Set-Item -Path Env:PRODUCT_NAME -Value 'Xen'
@@ -13,6 +11,8 @@ build-drivers:
         - Set-Item -Path Env:MAJOR_VERSION -Value '9'
         - Set-Item -Path Env:MINOR_VERSION -Value '0'
         - Set-Item -Path Env:MICRO_VERSION -Value '0'
+        - " & $env:MSBUILD_PATH /p:Configuration=\"Windows 10 Release\" /p:Platform=x64 /p:TargetVersion=Windows10 $Env:BUILDER_SLN_PATH"
+        - " & $env:MSBUILD_PATH /p:Configuration=\"Windows 10 Release\" /p:Platform=x64 /p:TargetVersion=Windows10 $Env:VISR_SLN_PATH"
         - " & $env:MSBUILD_PATH /p:Configuration=\"Windows 10 Release\" /p:Platform=x64 /p:TargetVersion=Windows10 $Env:XENBUS_SLN_PATH"
         - " & $env:MSBUILD_PATH /p:Configuration=\"Windows 10 Release\" /p:Platform=x64 /p:TargetVersion=Windows10 $Env:XENVIF_SLN_PATH"
         - " & $env:MSBUILD_PATH /p:Configuration=\"Windows 10 Release\" /p:Platform=x64 /p:TargetVersion=Windows10 $Env:XENNET_SLN_PATH"
@@ -20,10 +20,10 @@ build-drivers:
 
     artifacts:
         paths:
-            - drivers\builder\windows\x64\Release\builder\*
-            - drivers\builder\windows\x64\Release\builder.cer
-            - drivers\visr\windows\x64\Release\visr\*
-            - drivers\visr\windows\x64\Release\visr.cer
+            - drivers\builder\windows\builder\x64\*
+            - drivers\builder\windows\vs2019\Windows10Release\x64\builder.cer
+            - drivers\visr\windows\visr\x64\*
+            - drivers\visr\windows\vs2019\Windows10Release\x64\visr.cer
             - drivers\winpv\xenbus\xenbus\x64\*
             - drivers\winpv\xenbus\vs2019\Windows10Release\x64\xenbus.cer
             - drivers\winpv\xennet\xennet\x64\*
@@ -40,8 +40,10 @@ build-drivers:
 build-userspace:
     stage: build
     script:
-        - mkdir -Force ..\build
-        - mkdir -Force ..\cache
+        - rm -Force -Recurse -ErrorAction SilentlyContinue ..\build
+        - rm -Force -Recurse -ErrorAction SilentlyContinue ..\cache
+        - mkdir ..\build
+        - mkdir ..\cache
         - cd ..\build
         - cp ..\microv\scripts\cmake\config\config.cmake ..
         - Add-Content -Path ..\config.cmake -Value "set(ENABLE_BUILD_USERSPACE ON)"
@@ -61,8 +63,10 @@ build-userspace:
 build-efi:
     stage: build
     script:
-        - mkdir -p ../build
-        - mkdir -p ../cache
+        - rm -rf ../build
+        - rm -rf ../cache
+        - mkdir ../build
+        - mkdir ../cache
         - cd ../build
         - cp ../microv/scripts/cmake/config/config.cmake ..
         - cmake ../microv/deps/hypervisor -DCONFIG=../config.cmake

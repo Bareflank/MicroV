@@ -1235,15 +1235,19 @@ bool xen_gnttab::mapspace_grant_table(xen_vcpu *vcpu, xen_add_to_physmap_t *atp)
         expects((idx & XENMAPIDX_grant_table_status) == 0);
         expects(idx < shared_map.capacity());
         expects(idx < shared_tab.capacity());
-        expects(idx == shared_map.size());
-        expects(idx == shared_tab.size());
 
         auto gpa = xen_addr(gfn);
         xen_dom->m_uv_dom->map_4k_rw(gpa, gpa);
 
         auto map = uvv->map_gpa_4k<uint8_t>(gpa);
-        shared_tab.emplace_back(map.get());
-        shared_map.emplace_back(std::move(map));
+
+        if (idx < shared_map.size()) {
+            shared_tab[idx] = map.get();
+            shared_map[idx] = std::move(map);
+        } else {
+            shared_tab.emplace_back(map.get());
+            shared_map.emplace_back(std::move(map));
+        }
 
         /* Fill in store and console entries as xl would have */
         if (idx == 0) {

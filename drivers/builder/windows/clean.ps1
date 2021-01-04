@@ -1,6 +1,3 @@
-<?xml version="1.0" encoding="utf-8"?>
-
-<!--
 #
 # Copyright (C) 2019 Assured Information Security, Inc.
 #
@@ -22,29 +19,5 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-# Visual Studio 15
--->
-
-<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <ItemGroup>
-    <Inf Include="builder.inf" />
-  </ItemGroup>
-  <ItemGroup>
-    <Filter Include="Sources">
-      <UniqueIdentifier>{01371a61-2ed2-4da4-9ef8-a45467279dda}</UniqueIdentifier>
-      <Extensions>*.c</Extensions>
-    </Filter>
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="device.h" />
-    <ClInclude Include="driver.h" />
-    <ClInclude Include="queue.h" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClCompile Include="..\common.c" />
-    <ClCompile Include="device.c" />
-    <ClCompile Include="driver.c" />
-    <ClCompile Include="platform.c" />
-    <ClCompile Include="queue.c" />
-  </ItemGroup>
-</Project>
+msbuild /t:Clean /p:Configuration="Windows 10 Debug" /p:Platform=x64 vs2019\builder.sln
+msbuild /t:Clean /p:Configuration="Windows 10 Release" /p:Platform=x64 vs2019\builder.sln
