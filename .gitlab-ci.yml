@@ -32,6 +32,8 @@ build-drivers:
             - drivers\winpv\xenvif\vs2019\Windows10Release\x64\xenvif.cer
             - drivers\winpv\xeniface\xeniface\x64\*
             - drivers\winpv\xeniface\vs2019\Windows10Release\x64\xeniface.cer
+            - drivers\winpv\xeniface\include\xencontrol.h
+            - drivers\winpv\xeniface\include\xeniface_ioctls.h
         expire_in: 30 day
 
     tags:
