@@ -249,7 +249,7 @@ DllInitialize(
 
     status = RegistryCreateSubKey(ServiceKey,
                                   "Unplug",
-                                  REG_OPTION_VOLATILE,
+                                  REG_OPTION_NON_VOLATILE,
                                   &UnplugKey);
     if (!NT_SUCCESS(status))
         goto fail5;

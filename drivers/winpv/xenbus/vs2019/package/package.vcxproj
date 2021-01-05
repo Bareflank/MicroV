@@ -39,9 +39,6 @@
     <ArchiveDir>..\..\$(SolutionName)\x64</ArchiveDir>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="..\xenfilt\xenfilt.vcxproj">
-      <Project>{d7411b2c-2c43-434d-9f56-e10a3d2f5bad}</Project>
-    </ProjectReference>
     <ProjectReference Include="..\xenbus_coinst\xenbus_coinst.vcxproj">
       <Project>{4bf41378-c01b-4002-8581-563c5f703362}</Project>
     </ProjectReference>

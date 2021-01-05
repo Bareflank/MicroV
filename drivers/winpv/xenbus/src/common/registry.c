@@ -262,7 +262,7 @@ RegistryCreateServiceKey(
     OUT PHANDLE         Key
     )
 {
-    return RegistryCreateKey(NULL, &RegistryPath, REG_OPTION_VOLATILE, Key);
+    return RegistryCreateKey(NULL, &RegistryPath, REG_OPTION_NON_VOLATILE, Key);
 }
 
 NTSTATUS
