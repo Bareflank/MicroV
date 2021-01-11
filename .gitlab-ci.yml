@@ -7,10 +7,10 @@ build-drivers:
         - Set-Item -Path Env:VENDOR_NAME -Value 'Xen Project'
         - Set-Item -Path Env:VENDOR_PREFIX -Value 'XP'
         - Set-Item -Path Env:PRODUCT_NAME -Value 'Xen'
-        - Set-Item -Path Env:BUILD_NUMBER -Value '1'
         - Set-Item -Path Env:MAJOR_VERSION -Value '9'
         - Set-Item -Path Env:MINOR_VERSION -Value '0'
         - Set-Item -Path Env:MICRO_VERSION -Value '0'
+        - .\drivers\build_num.ps1 -Prefix ".."
         - " & $env:MSBUILD_PATH /p:Configuration=\"Windows 10 Release\" /p:Platform=x64 /p:TargetVersion=Windows10 $Env:BUILDER_SLN_PATH"
         - " & $env:MSBUILD_PATH /p:Configuration=\"Windows 10 Release\" /p:Platform=x64 /p:TargetVersion=Windows10 $Env:VISR_SLN_PATH"
         - " & $env:MSBUILD_PATH /p:Configuration=\"Windows 10 Release\" /p:Platform=x64 /p:TargetVersion=Windows10 $Env:XENBUS_SLN_PATH"
