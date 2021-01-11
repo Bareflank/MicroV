@@ -266,7 +266,7 @@ void WINAPI service_main(DWORD argc, LPTSTR *argv)
      * precludes the handling of SHUTDOWN, since the service must exit
      * the PRESHUTDOWN event in the SERVICE_STOPPED state.
      */
-    ctrls = SERVICE_ACCEPT_PRESHUTDOWN;
+    ctrls = SERVICE_ACCEPT_PRESHUTDOWN | SERVICE_ACCEPT_STOP;
     state = SERVICE_RUNNING;
     exit_code = NO_ERROR;
 
@@ -330,6 +330,7 @@ DWORD service_ctrl_handler(DWORD ctrl_code,
     switch (ctrl_code) {
     case SERVICE_CONTROL_INTERROGATE:
         return NO_ERROR;
+    case SERVICE_CONTROL_STOP:
     case SERVICE_CONTROL_PRESHUTDOWN:
         set_status(SERVICE_ACCEPT_NONE, SERVICE_STOP_PENDING, NO_ERROR);
         send_stop_signal();
