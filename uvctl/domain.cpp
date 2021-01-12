@@ -104,7 +104,7 @@ void uvc_domain::recv_hvc()
     }
 }
 
-#ifdef WIN64
+#ifdef __CYGWIN__
 #define HVC_CTRL_STOP_PROCESS 0x01 /* ^A - stop in-guest process */
 #else
 #define HVC_CTRL_STOP_PROCESS 0x13 /* ^S - stop in-guest process */
