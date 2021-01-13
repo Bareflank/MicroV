@@ -42,8 +42,8 @@ build-drivers:
 build-userspace:
     stage: build
     script:
-        - rm -Force -Recurse -ErrorAction SilentlyContinue ..\build
-        - rm -Force -Recurse -ErrorAction SilentlyContinue ..\cache
+        - (rm -Force -Recurse -ErrorAction SilentlyContinue ..\build)
+        - (rm -Force -Recurse -ErrorAction SilentlyContinue ..\cache)
         - mkdir ..\build
         - mkdir ..\cache
         - cd ..\build
