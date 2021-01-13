@@ -42,15 +42,15 @@ build-drivers:
 build-userspace:
     stage: build
     script:
-        - rm -Force -Recurse -ErrorAction SilentlyContinue ..\build
-        - rm -Force -Recurse -ErrorAction SilentlyContinue ..\cache
+        - (rm -Force -Recurse -ErrorAction SilentlyContinue ..\build)
+        - (rm -Force -Recurse -ErrorAction SilentlyContinue ..\cache)
         - mkdir ..\build
         - mkdir ..\cache
         - cd ..\build
         - cp ..\microv\scripts\cmake\config\config.cmake ..
         - Add-Content -Path ..\config.cmake -Value "set(ENABLE_BUILD_USERSPACE ON)"
         - Add-Content -Path ..\config.cmake -Value "set(ENABLE_BUILD_VMM OFF)"
-        - " & 'C:/Program Files/CMake/bin/cmake.exe' ../microv/deps/hypervisor -DCONFIG=\"$Env:CONFIG_PATH\" -G \"Visual Studio 16 2019\" -A x64"
+        - " & 'C:/Program Files/CMake/bin/cmake.exe' ../microv/deps/hypervisor -DCONFIG=\"$PWD\\..\\config.cmake\" -G \"Visual Studio 16 2019\" -A x64"
         - " & $env:MSBUILD_PATH /p:Configuration=Release /p:Platform=x64 /p:TargetVersion=Windows10 hypervisor.sln"
         - cp prefixes\x86_64-userspace-pe\bin\uvctl.exe ../microv
 
