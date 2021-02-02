@@ -329,7 +329,7 @@ static void xen_gnttab_map_grant_ref(xen_vcpu *vcpu,
         return;
     }
 
-    auto fdom = get_xen_domain(map->dom);
+    auto fdom = get_dom(vcpu, map->dom);
     if (!fdom) {
         printv("%s: bad dom:0x%x\n", __func__, map->dom);
         map->status = GNTST_bad_domain;
@@ -380,7 +380,7 @@ map_frame:
     }
 
 put_domain:
-    put_xen_domain(map->dom);
+    put_dom(vcpu, map->dom);
     map->status = rc;
 }
 
@@ -406,7 +406,7 @@ void xen_gnttab_unmap_grant_ref(xen_vcpu *vcpu, gnttab_unmap_grant_ref_t *unmap)
         return;
     }
 
-    auto fdom = get_xen_domain(fdomid);
+    auto fdom = get_dom(vcpu, fdomid);
     if (!fdom) {
         printv("%s: fdom:%x not found\n", __func__, fdomid);
         unmap->status = GNTST_bad_handle;
@@ -422,7 +422,7 @@ void xen_gnttab_unmap_grant_ref(xen_vcpu *vcpu, gnttab_unmap_grant_ref_t *unmap)
         }
 
         unmap->status = GNTST_bad_handle;
-        put_xen_domain(fdomid);
+        put_dom(vcpu, fdomid);
         return;
     }
 
@@ -430,7 +430,7 @@ void xen_gnttab_unmap_grant_ref(xen_vcpu *vcpu, gnttab_unmap_grant_ref_t *unmap)
 
 unmap_frame:
     unmap->status = unmap_foreign_frame(ldom, lgpa, map_handle);
-    put_xen_domain(fdomid);
+    put_dom(vcpu, fdomid);
 }
 
 /*
@@ -906,7 +906,7 @@ bool xen_gnttab_query_size(xen_vcpu *vcpu)
         domid = vcpu->m_xen_dom->m_id;
     }
 
-    auto dom = get_xen_domain(domid);
+    auto dom = get_dom(vcpu, domid);
     if (!dom) {
         bfalert_nhex(0, "xen_domain not found:", domid);
         gqs->status = GNTST_bad_domain;
@@ -915,7 +915,7 @@ bool xen_gnttab_query_size(xen_vcpu *vcpu)
     }
 
     auto ret = dom->m_gnttab->query_size(vcpu, gqs.get());
-    put_xen_domain(domid);
+    put_dom(vcpu, domid);
 
     return ret;
 }
