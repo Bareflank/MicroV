@@ -55,6 +55,12 @@ struct gnttab_map_operand {
     xen_gnttab *gnt{nullptr};
 };
 
+struct gnttab_unmap_operand {
+    xen_domid_t domid{DOMID_INVALID};
+    xen_domain *dom{nullptr};
+    xen_gnttab *gnt{nullptr};
+};
+
 extern bool gfn_in_winpv_hole(uintptr_t gfn) noexcept;
 
 /*
@@ -385,11 +391,13 @@ out:
     map->status = rc;
 }
 
-void xen_gnttab_unmap_grant_ref(xen_vcpu *vcpu, gnttab_unmap_grant_ref_t *unmap)
+void xen_gnttab_unmap_grant_ref(xen_vcpu *vcpu,
+                                gnttab_unmap_grant_ref_t *unmap,
+                                gnttab_unmap_operand *op)
 {
     const grant_handle_t map_handle = unmap->handle;
     const grant_ref_t fref = map_handle & 0xFFFF;
-    const xen_domid_t fdomid = map_handle >> 16;
+    const xen_domid_t fdomid = op->domid;
     const uint64_t lgpa = unmap->host_addr;
 
     auto ldom = vcpu->m_xen_dom;
@@ -407,14 +415,9 @@ void xen_gnttab_unmap_grant_ref(xen_vcpu *vcpu, gnttab_unmap_grant_ref_t *unmap)
         return;
     }
 
-    auto fdom = get_dom(vcpu, fdomid);
-    if (!fdom) {
-        printv("%s: fdom:%x not found\n", __func__, fdomid);
-        unmap->status = GNTST_bad_handle;
-        return;
-    }
+    auto fdom = op->dom;
+    auto fgnt = op->gnt;
 
-    auto fgnt = fdom->m_gnttab.get();
     if (fgnt->invalid_ref(fref)) {
         printv("%s: bad fref:%u\n", __func__, fref);
 
@@ -423,7 +426,6 @@ void xen_gnttab_unmap_grant_ref(xen_vcpu *vcpu, gnttab_unmap_grant_ref_t *unmap)
         }
 
         unmap->status = GNTST_bad_handle;
-        put_dom(vcpu, fdomid);
         return;
     }
 
@@ -431,7 +433,6 @@ void xen_gnttab_unmap_grant_ref(xen_vcpu *vcpu, gnttab_unmap_grant_ref_t *unmap)
 
 unmap_frame:
     unmap->status = unmap_foreign_frame(ldom, lgpa, map_handle);
-    put_dom(vcpu, fdomid);
 }
 
 /*
@@ -887,8 +888,31 @@ bool xen_gnttab_unmap_grant_ref(xen_vcpu *vcpu)
     int rc;
     int i;
 
+    struct gnttab_unmap_operand op{};
+
     for (i = 0; i < num; i++) {
-        xen_gnttab_unmap_grant_ref(vcpu, &ops[i]);
+        xen_domid_t domid = static_cast<xen_domid_t>(ops[i].handle >> 16);
+
+        if (op.domid != domid) {
+            if (op.dom) {
+                put_dom(vcpu, op.domid);
+                op.dom = nullptr;
+                op.gnt = nullptr;
+            }
+
+            op.domid = domid;
+            op.dom = get_dom(vcpu, op.domid);
+
+            if (!op.dom) {
+                printv("%s: failed to get dom 0x%x\n", __func__, op.domid);
+                rc = GNTST_bad_domain;
+                break;
+            }
+
+            op.gnt = op.dom->m_gnttab.get();
+        }
+
+        xen_gnttab_unmap_grant_ref(vcpu, &ops[i], &op);
         rc = ops[i].status;
 
         if (rc != GNTST_okay) {
@@ -912,6 +936,10 @@ bool xen_gnttab_unmap_grant_ref(xen_vcpu *vcpu)
                 iommu->flush_iotlb_page_range(dom, ops[p].host_addr, UV_PAGE_SIZE);
             }
         }
+    }
+
+    if (op.dom) {
+        put_dom(vcpu, op.domid);
     }
 
     uvv->set_rax(rc);
