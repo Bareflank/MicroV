@@ -133,6 +133,31 @@ static inline bool has_write_access(xen_domid_t domid,
     return domid == hdr->domid && access && !readonly;
 }
 
+static inline xen_domain *get_dom(const xen_vcpu *curv,
+                                  xen_domid_t domid) noexcept
+{
+    if (domid == DOMID_SELF || domid == curv->m_xen_dom->m_id) {
+        return curv->m_xen_dom;
+    }
+
+    if (domid == DOMID_WINPV) {
+        return vcpu0->dom()->xen_dom();
+    }
+
+    /* If the source domain isn't the current domain, take out a reference */
+    return get_xen_domain(domid);
+}
+
+static inline void put_dom(const xen_vcpu *curv, xen_domid_t domid) noexcept
+{
+    if (domid == DOMID_SELF || domid == curv->m_xen_dom->m_id ||
+        domid == DOMID_WINPV) {
+        return;
+    }
+
+    put_xen_domain(domid);
+}
+
 static inline bool valid_map_arg(const gnttab_map_grant_ref_t *map) noexcept
 {
     if (!supported_map_flags(map->flags)) {
