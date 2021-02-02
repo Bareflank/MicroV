@@ -49,6 +49,12 @@ struct gnttab_copy_operand {
     bool unmap_buf{false};
 };
 
+struct gnttab_map_operand {
+    xen_domid_t domid{DOMID_INVALID};
+    xen_domain *dom{nullptr};
+    xen_gnttab *gnt{nullptr};
+};
+
 extern bool gfn_in_winpv_hole(uintptr_t gfn) noexcept;
 
 /*
@@ -311,7 +317,8 @@ static inline int unmap_foreign_frame(xen_domain *ldom,
 }
 
 static void xen_gnttab_map_grant_ref(xen_vcpu *vcpu,
-                                     gnttab_map_grant_ref_t *map)
+                                     gnttab_map_grant_ref_t *map,
+                                     gnttab_map_operand *op)
 {
     if (!valid_map_arg(map)) {
         map->status = GNTST_general_error;
@@ -329,17 +336,12 @@ static void xen_gnttab_map_grant_ref(xen_vcpu *vcpu,
         return;
     }
 
-    auto fdom = get_dom(vcpu, map->dom);
-    if (!fdom) {
-        printv("%s: bad dom:0x%x\n", __func__, map->dom);
-        map->status = GNTST_bad_domain;
-        return;
-    }
+    auto fdom = op->dom;
+    auto fgnt = op->gnt;
 
     xen_pfn_t fgfn;
     xen_page *fpg{nullptr};
 
-    auto fgnt = fdom->m_gnttab.get();
     if (fgnt->invalid_ref(map->ref)) {
         printv("%s: OOB ref:0x%x for dom:0x%x\n", __func__, map->ref, map->dom);
 
@@ -352,12 +354,12 @@ static void xen_gnttab_map_grant_ref(xen_vcpu *vcpu,
         }
 
         rc = GNTST_bad_gntref;
-        goto put_domain;
+        goto out;
     }
 
     rc = pin_granted_page(vcpu, fgnt, map);
     if (rc != GNTST_okay) {
-        goto put_domain;
+        goto out;
     }
 
     fgfn = fgnt->shared_gfn(map->ref);
@@ -369,7 +371,7 @@ static void xen_gnttab_map_grant_ref(xen_vcpu *vcpu,
                    __func__, fgfn, map->dom);
             rc = GNTST_general_error;
             unpin_granted_page(fgnt->shared_header(map->ref));
-            goto put_domain;
+            goto out;
         }
     }
 
@@ -379,8 +381,7 @@ map_frame:
         unpin_granted_page(fgnt->shared_header(map->ref));
     }
 
-put_domain:
-    put_dom(vcpu, map->dom);
+out:
     map->status = rc;
 }
 
@@ -829,8 +830,29 @@ bool xen_gnttab_map_grant_ref(xen_vcpu *vcpu)
     int rc;
     int i;
 
+    struct gnttab_map_operand op{};
+
     for (i = 0; i < num; i++) {
-        xen_gnttab_map_grant_ref(vcpu, &ops[i]);
+        if (op.domid != ops[i].dom) {
+            if (op.dom) {
+                put_dom(vcpu, op.domid);
+                op.dom = nullptr;
+                op.gnt = nullptr;
+            }
+
+            op.domid = ops[i].dom;
+            op.dom = get_dom(vcpu, op.domid);
+
+            if (!op.dom) {
+                printv("%s: failed to get dom 0x%x\n", __func__, op.domid);
+                rc = GNTST_bad_domain;
+                break;
+            }
+
+            op.gnt = op.dom->m_gnttab.get();
+        }
+
+        xen_gnttab_map_grant_ref(vcpu, &ops[i], &op);
         rc = ops[i].status;
 
         if (rc != GNTST_okay) {
@@ -846,6 +868,10 @@ bool xen_gnttab_map_grant_ref(xen_vcpu *vcpu)
      * The current IOMMU implementation also does not support CM,
      * so we don't need to flush the IOTLB either.
      */
+
+    if (op.dom) {
+        put_dom(vcpu, op.domid);
+    }
 
     uvv->set_rax(rc);
     return true;
