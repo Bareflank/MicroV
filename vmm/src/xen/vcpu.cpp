@@ -319,6 +319,8 @@ bool xen_vcpu::handle_sysctl()
         }
 
         switch (ctl->cmd) {
+        case XEN_SYSCTL_readconsole:
+            return m_xen_dom->readconsole(this, ctl.get());
         case XEN_SYSCTL_getdomaininfolist:
             return xen_domain_getinfolist(this, ctl.get());
         case XEN_SYSCTL_get_cpu_featureset:

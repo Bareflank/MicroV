@@ -25,6 +25,7 @@
 #include <map>
 #include <mutex>
 
+#include <debug/debug_ring/debug_ring.h>
 #include <arch/x64/cpuid.h>
 #include <arch/intel_x64/barrier.h>
 #include <hve/arch/intel_x64/domain.h>
@@ -1680,6 +1681,76 @@ bool xen_domain::cputopoinfo(xen_vcpu *v, struct xen_sysctl_cputopoinfo *topo)
     cpu->socket = 0;
     cpu->node = 0;
 
+    uvv->set_rax(0);
+    return true;
+}
+
+bool xen_domain::readconsole(xen_vcpu *v, struct xen_sysctl *ctl)
+{
+    expects(v->is_xenstore());
+
+    auto uvv = v->m_uv_vcpu;
+    auto op = &ctl->u.readconsole;
+
+    auto _str = uvv->map_gva_4k<char>(op->buffer.p, op->count);
+    auto str = _str.get();
+    uint64_t count = 0;
+    uint64_t idx = 0;
+
+    /* get debug ring */
+    debug_ring_resources_t *drr;
+    if (get_drr(vcpuid::invalid, &drr) != GET_DRR_SUCCESS) {
+        printv("%s: get_drr failed\n", __func__);
+        return false;
+    }
+
+    printv("%s: drr spos=%lu epos=%lu, op clear=%s inc=%s idx=%u buf=0x%lx count=%u",
+        __func__, drr->spos, drr->epos, op->clear ? "true!": "false",
+        op->incremental ? "true": "false", op->index, (uint64_t)op->buffer.p, op->count);
+
+    /*
+     * Notes:
+     *
+     * The user code (in xl_info.c/main_dmesg and libxl_console.c/libxl_xen_console_read_start)
+     * loops on this hypercall to read the debug ring buffer until the count is
+     * equal to 0, meaning that there is always at least two hypercalls
+     * to readconsole made.
+     *
+     * Our problem is that we print debug messages when a hypercall is made,
+     * including this one, causing the subsequent hcalls to readconsole to never
+     * reach a count of 0 which in turn causes an infinite loop.
+     *
+     * To prevent this, if readconsole has reached the end of the ring buffer
+     * during this hcall, we will reply with a count of 0 on the next hcall,
+     * even if new strings are being written to the ring buffer.
+     *
+     */
+    if (m_is_console_eof && op->incremental) {
+        m_is_console_eof = false;
+        op->count = 0;
+        goto end;
+    }
+
+    idx = drr->spos;
+
+    if (op->incremental && op->index) {
+        idx = op->index;
+    }
+
+    count = debug_ring_read_resume(drr, str, op->count, &idx);
+    m_is_console_eof = (count + 1 < op->count);
+
+    if (count == 0) {
+        /* Only update count when ring buffer is empty due to a bug in libxl */
+        op->count = count;
+    }
+    op->index = idx;
+
+    printf(" - new count=%lu idx=%lu", count, idx);
+
+end:
+    /* TODO: implement clearing the debug ring buffer. i.e. `xl dmesg -c` */
+    printf(" - eof=%s\n", m_is_console_eof ? "true": "false");
     uvv->set_rax(0);
     return true;
 }

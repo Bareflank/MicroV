@@ -123,6 +123,7 @@ public:
     bool unpause(xen_vcpu *v);
     bool pause(xen_vcpu *v);
 
+    bool readconsole(xen_vcpu *v, struct xen_sysctl *ctl);
     bool physinfo(xen_vcpu *v, struct xen_sysctl *ctl);
     bool move_cpupool(xen_vcpu *v, struct xen_sysctl *ctl);
 
@@ -202,6 +203,9 @@ public:
     /* Console IO */
     std::unique_ptr<microv::ring<HVC_RX_SIZE>> m_hvc_rx_ring{};
     std::unique_ptr<microv::ring<HVC_TX_SIZE>> m_hvc_tx_ring{};
+
+    /* Console Ring Buffer */
+    bool m_is_console_eof{false};
 
     /* Shared info page */
     std::unique_ptr<uint8_t[]> m_shinfo_page{};
