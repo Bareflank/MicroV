@@ -159,7 +159,7 @@ debug_ring_read_resume(struct debug_ring_resources_t *drr, char *str, uint64_t l
         content = drr->epos - drr->spos;
     }
 
-    for (i = 0, count = 0; i < content && i < len - 1; i++) {
+    for (i = 0, count = 0; i < content && count < len - 1; i++) {
         if (drr->buf[spos] != '\0') {
             str[count++] = drr->buf[spos];
         }
@@ -170,7 +170,7 @@ debug_ring_read_resume(struct debug_ring_resources_t *drr, char *str, uint64_t l
     if (idx) {
         *idx += i;
     }
-    str[i] = '\0';
+    str[count] = '\0';
     return count;
 }
 
