@@ -109,6 +109,72 @@ struct debug_ring_resources_t {
 };
 
 /**
+ * Debug Ring Read Resume
+ *
+ * Reads strings that have been written to the debug ring. Although you can
+ * provide any buffer size you want, it's advised to provide a buffer that
+ * is the same size as the buffer that was originally allocated.
+ * If the buffer provided is smaller, multiple calls to this function can be
+ * made to continue resuming reading the ring buffer.
+ *
+ * @expects none
+ * @ensures none
+ *
+ * @param drr the debug_ring_resource that was used to create the
+ *        debug ring
+ * @param str the buffer to read the string into. should be the same size
+ *        as drr in bytes
+ * @param len the length of the str buffer in bytes
+ * @param idx if provided, the start position to resume from (IN), instead of
+ *        drr->spos. Set to the current index after a partial read (OUT).
+ * @return the number of bytes read from the debug ring, 0
+ *        on error
+ */
+static inline uint64_t
+debug_ring_read_resume(struct debug_ring_resources_t *drr, char *str, uint64_t len, uint64_t *idx)
+{
+    uint64_t i;
+    uint64_t spos;
+    uint64_t count;
+    uint64_t content;
+
+    if (drr == 0 || str == 0 || len == 0) {
+        return 0;
+    }
+
+    if (drr->spos > drr->epos) {
+        return 0;
+    }
+
+    if (idx && (*idx > drr->epos || *idx < drr->spos)) {
+        return 0;
+    }
+
+    if (idx) {
+        spos = *idx % DEBUG_RING_SIZE;
+        content = drr->epos - *idx;
+    }
+    else {
+        spos = drr->spos % DEBUG_RING_SIZE;
+        content = drr->epos - drr->spos;
+    }
+
+    for (i = 0, count = 0; i < content && i < len - 1; i++) {
+        if (drr->buf[spos] != '\0') {
+            str[count++] = drr->buf[spos];
+        }
+
+        spos = ((spos + 1) % DEBUG_RING_SIZE);
+    }
+
+    if (idx) {
+        *idx += i;
+    }
+    str[i] = '\0';
+    return count;
+}
+
+/**
  * Debug Ring Read
  *
  * Reads strings that have been written to the debug ring. Although you can
@@ -129,32 +195,7 @@ struct debug_ring_resources_t {
 static inline uint64_t
 debug_ring_read(struct debug_ring_resources_t *drr, char *str, uint64_t len)
 {
-    uint64_t i;
-    uint64_t spos;
-    uint64_t count;
-    uint64_t content;
-
-    if (drr == 0 || str == 0 || len == 0) {
-        return 0;
-    }
-
-    if (drr->spos > drr->epos) {
-        return 0;
-    }
-
-    spos = drr->spos % DEBUG_RING_SIZE;
-    content = drr->epos - drr->spos;
-
-    for (i = 0, count = 0; i < content && i < len - 1; i++) {
-        if (drr->buf[spos] != '\0') {
-            str[count++] = drr->buf[spos];
-        }
-
-        spos = ((spos + 1) % DEBUG_RING_SIZE);
-    }
-
-    str[i] = '\0';
-    return count;
+    return debug_ring_read_resume(drr, str, len, NULL);
 }
 
 #ifdef __cplusplus
