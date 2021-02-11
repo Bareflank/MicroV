@@ -131,7 +131,9 @@
  *
  * Note: defined in bytes
  */
-#define DEBUG_RING_SIZE (1 << 15ULL)
+#ifndef DEBUG_RING_SIZE
+#define DEBUG_RING_SIZE (1ULL << 20)
+#endif
 
 /*
  * Stack Size
