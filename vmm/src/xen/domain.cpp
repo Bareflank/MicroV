@@ -1687,9 +1687,13 @@ bool xen_domain::cputopoinfo(xen_vcpu *v, struct xen_sysctl_cputopoinfo *topo)
 
 bool xen_domain::readconsole(xen_vcpu *v, struct xen_sysctl *ctl)
 {
-    expects(v->is_xenstore());
-
     auto uvv = v->m_uv_vcpu;
+
+    if (!v->is_xenstore()) {
+        uvv->set_rax(-EINVAL);
+        return true;
+    }
+
     auto op = &ctl->u.readconsole;
 
     auto _str = uvv->map_gva_4k<char>(op->buffer.p, op->count);
