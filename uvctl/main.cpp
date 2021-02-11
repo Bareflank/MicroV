@@ -268,6 +268,15 @@ int protected_main(const args_type &args)
         set_affinity(0);
     }
 
+    if (args.count("high-priority")) {
+#ifdef _WIN64
+        if (!SetPriorityClass(GetCurrentProcess(), HIGH_PRIORITY_CLASS)) {
+            log_msg("%s: SetPriorityClass failed (err=0x%x)\n",
+                    __func__, GetLastError());
+        }
+#endif
+    }
+
     bool windows_svc = args.count("windows-svc") != 0;
 
     struct uvc_domain root_domain;
