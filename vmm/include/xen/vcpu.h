@@ -61,6 +61,8 @@ public:
     void queue_external_interrupt(uint64_t vector);
     void inject_external_interrupt(uint64_t vector);
 
+    void update_runstate(int new_state);
+
     /*
      * Provides raw access. Use only when certain the pointer is
      * valid (e.g. xen_vcpu hypercall context).
@@ -90,7 +92,6 @@ private:
 
     bool register_vcpu_time();
     bool register_runstate();
-    void update_runstate(int new_state);
     void update_wallclock(const struct xenpf_settime64 *time);
 
     bool xen_leaf4(base_vcpu *vcpu);

@@ -558,6 +558,7 @@ bool xen_domain_destroydomain(xen_vcpu *vcpu, struct xen_domctl *ctl)
     auto root = uvv->root_vcpu();
     expects(root->is_root_vcpu());
 
+    vcpu->update_runstate(RUNSTATE_runnable);
     root->load();
     root->return_destroy_domain(uv_domid);
 
@@ -963,10 +964,15 @@ bool xen_domain::unpause(xen_vcpu *vcpu)
     put_xen_domain(m_id);
 
     if (!m_returned_new) {
+        vcpu->update_runstate(RUNSTATE_runnable);
+
         m_returned_new = true;
+
         root->load();
         root->return_create_domain(m_uv_dom->id());
     } else {
+        vcpu->update_runstate(RUNSTATE_runnable);
+
         root->load();
         root->return_unpause_domain(m_uv_dom->id());
     }

@@ -837,6 +837,8 @@ int xen_evtchn::send(xen_vcpu *v, port_t port)
         if (uv_rdomid != INVALID_DOMAINID && m_xen_dom->m_id != DOMID_WINPV) {
             spin_release(&chan->lock);
 
+            v->update_runstate(RUNSTATE_runnable);
+
             v->m_uv_vcpu->set_rax(0);
             v->m_uv_vcpu->save_xstate();
             v->m_uv_vcpu->root_vcpu()->load();
