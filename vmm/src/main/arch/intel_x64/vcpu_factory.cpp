@@ -24,6 +24,8 @@
 #include <hve/arch/intel_x64/domain.h>
 #include <hve/arch/intel_x64/vcpu.h>
 #include <xen/vcpu.h>
+#include <printv.h>
+#include <compiler.h>
 
 namespace bfvmm
 {
@@ -37,6 +39,7 @@ vcpu_factory::make(vcpuid::type vcpuid, bfobject *obj)
     using namespace microv::intel_x64;
 
     bfn::call_once(dom0_init, [&]() {
+        printv("MicroV version %s\n", MICROV_VERSION_FULL);
         microv::domain_info dom0_info{};
         g_dm->create(0, &dom0_info);
         dom0 = get_domain(0);

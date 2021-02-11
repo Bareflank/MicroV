@@ -30,7 +30,10 @@
 #cmakedefine MICROV_COMPILER "@MICROV_COMPILER@"
 #cmakedefine MICROV_VERSION "@MICROV_VERSION@"
 #cmakedefine MICROV_SUBVERSION "@MICROV_SUBVERSION@"
+#cmakedefine MICROV_EXTRAVERSION "@MICROV_EXTRAVERSION@"
 #cmakedefine MICROV_CHANGESET "@MICROV_CHANGESET@"
+#cmakedefine MICROV_COMMIT "@MICROV_COMMIT@"
+#cmakedefine MICROV_VERSION_FULL "@MICROV_VERSION_FULL@"
 
 #if __has_attribute(noderef)
     #define __iomem __attribute__((noderef))
