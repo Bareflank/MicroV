@@ -1708,10 +1708,6 @@ bool xen_domain::readconsole(xen_vcpu *v, struct xen_sysctl *ctl)
         return false;
     }
 
-    printv("%s: drr spos=%lu epos=%lu, op clear=%s inc=%s idx=%u buf=0x%lx count=%u",
-        __func__, drr->spos, drr->epos, op->clear ? "true!": "false",
-        op->incremental ? "true": "false", op->index, (uint64_t)op->buffer.p, op->count);
-
     /*
      * Notes:
      *
