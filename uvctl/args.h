@@ -74,7 +74,8 @@ parse_args(int argc, char *argv[])
 #ifdef _WIN64
     ("windows-svc", "Run uvctl as a Windows service")
 #endif
-    ("dump-iommu", "Dump IOMMU faults");
+    ("dump-iommu", "Dump IOMMU faults")
+    ("high-priority", "Run VM threads at high priority");
 
     auto args = options.parse(argc, argv);
 
