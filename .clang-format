@@ -96,7 +96,7 @@ Language: Cpp
 # MacroBlockBegin
 # MacroBlockEnd
 MaxEmptyLinesToKeep: 1
-NamespaceIndentation: All
+NamespaceIndentation: None
 # ObjCBinPackProtocolList
 # ObjCBlockIndentWidth
 # ObjCSpaceAfterProperty
