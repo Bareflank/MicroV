@@ -29,6 +29,8 @@
 
 #include <utility>
 
+extern ::microv::intel_x64::vcpu *vcpu0;
+
 namespace microv {
 
 using atomic_hdr_t = volatile std::atomic<grant_entry_header_t>;
@@ -444,6 +446,10 @@ static inline xen_domain *get_copy_dom(const xen_vcpu *curv,
         return curv->m_xen_dom;
     }
 
+    if (domid == DOMID_WINPV) {
+        return vcpu0->dom()->xen_dom();
+    }
+
     /* If the source domain isn't the current domain, take out a reference */
     return get_xen_domain(domid);
 }
@@ -451,7 +457,8 @@ static inline xen_domain *get_copy_dom(const xen_vcpu *curv,
 static inline void put_copy_dom(const xen_vcpu *curv,
                                 xen_domid_t domid) noexcept
 {
-    if (domid == DOMID_SELF || domid == curv->m_xen_dom->m_id) {
+    if (domid == DOMID_SELF || domid == curv->m_xen_dom->m_id ||
+        domid == DOMID_WINPV) {
         return;
     }
 
