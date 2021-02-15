@@ -166,6 +166,8 @@ endif()
 
 ProcessorCount(HOST_NUMBER_CORES)
 
+file(TO_CMAKE_PATH "$ENV{HOME}" USER_HOME_DIR)
+
 # ------------------------------------------------------------------------------
 # Build Command
 # ------------------------------------------------------------------------------
@@ -935,7 +937,7 @@ add_config(
 add_config(
     CONFIG_NAME XUE_DIR
     CONFIG_TYPE PATH
-    DEFAULT_VAL $ENV{HOME}/xue
+    DEFAULT_VAL ${USER_HOME_DIR}/xue
     DESCRIPTION "Path to xue debugger"
     SKIP_VALIDATION
 )
