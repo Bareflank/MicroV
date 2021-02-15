@@ -76,9 +76,6 @@ FixNamespaceComments: false
 # ForEachMacros
 IncludeBlocks: Regroup
 IncludeCategories:
-  # Headers in <> from specific external libraries.
-  - Regex:           '<(bsl)\/'
-    Priority:        3
   # Headers in <> with extension.
   - Regex:           '<([A-Za-z0-9.\Q/-_\E])+>'
     Priority:        2
