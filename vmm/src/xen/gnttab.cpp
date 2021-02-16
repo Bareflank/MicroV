@@ -29,6 +29,8 @@
 
 #include <utility>
 
+extern ::microv::intel_x64::vcpu *vcpu0;
+
 namespace microv {
 
 using atomic_hdr_t = volatile std::atomic<grant_entry_header_t>;
@@ -45,6 +47,18 @@ struct gnttab_copy_operand {
     bool is_src{false};
     bool gfn_is_direct{false};
     bool unmap_buf{false};
+};
+
+struct gnttab_map_operand {
+    xen_domid_t domid{DOMID_INVALID};
+    xen_domain *dom{nullptr};
+    xen_gnttab *gnt{nullptr};
+};
+
+struct gnttab_unmap_operand {
+    xen_domid_t domid{DOMID_INVALID};
+    xen_domain *dom{nullptr};
+    xen_gnttab *gnt{nullptr};
 };
 
 extern bool gfn_in_winpv_hole(uintptr_t gfn) noexcept;
@@ -129,6 +143,31 @@ static inline bool has_write_access(xen_domid_t domid,
     const bool readonly = hdr->flags & GTF_readonly;
 
     return domid == hdr->domid && access && !readonly;
+}
+
+static inline xen_domain *get_dom(const xen_vcpu *curv,
+                                  xen_domid_t domid) noexcept
+{
+    if (domid == DOMID_SELF || domid == curv->m_xen_dom->m_id) {
+        return curv->m_xen_dom;
+    }
+
+    if (domid == DOMID_WINPV) {
+        return vcpu0->dom()->xen_dom();
+    }
+
+    /* If the source domain isn't the current domain, take out a reference */
+    return get_xen_domain(domid);
+}
+
+static inline void put_dom(const xen_vcpu *curv, xen_domid_t domid) noexcept
+{
+    if (domid == DOMID_SELF || domid == curv->m_xen_dom->m_id ||
+        domid == DOMID_WINPV) {
+        return;
+    }
+
+    put_xen_domain(domid);
 }
 
 static inline bool valid_map_arg(const gnttab_map_grant_ref_t *map) noexcept
@@ -284,7 +323,8 @@ static inline int unmap_foreign_frame(xen_domain *ldom,
 }
 
 static void xen_gnttab_map_grant_ref(xen_vcpu *vcpu,
-                                     gnttab_map_grant_ref_t *map)
+                                     gnttab_map_grant_ref_t *map,
+                                     gnttab_map_operand *op)
 {
     if (!valid_map_arg(map)) {
         map->status = GNTST_general_error;
@@ -302,17 +342,12 @@ static void xen_gnttab_map_grant_ref(xen_vcpu *vcpu,
         return;
     }
 
-    auto fdom = get_xen_domain(map->dom);
-    if (!fdom) {
-        printv("%s: bad dom:0x%x\n", __func__, map->dom);
-        map->status = GNTST_bad_domain;
-        return;
-    }
+    auto fdom = op->dom;
+    auto fgnt = op->gnt;
 
     xen_pfn_t fgfn;
     xen_page *fpg{nullptr};
 
-    auto fgnt = fdom->m_gnttab.get();
     if (fgnt->invalid_ref(map->ref)) {
         printv("%s: OOB ref:0x%x for dom:0x%x\n", __func__, map->ref, map->dom);
 
@@ -325,12 +360,12 @@ static void xen_gnttab_map_grant_ref(xen_vcpu *vcpu,
         }
 
         rc = GNTST_bad_gntref;
-        goto put_domain;
+        goto out;
     }
 
     rc = pin_granted_page(vcpu, fgnt, map);
     if (rc != GNTST_okay) {
-        goto put_domain;
+        goto out;
     }
 
     fgfn = fgnt->shared_gfn(map->ref);
@@ -342,7 +377,7 @@ static void xen_gnttab_map_grant_ref(xen_vcpu *vcpu,
                    __func__, fgfn, map->dom);
             rc = GNTST_general_error;
             unpin_granted_page(fgnt->shared_header(map->ref));
-            goto put_domain;
+            goto out;
         }
     }
 
@@ -352,16 +387,17 @@ map_frame:
         unpin_granted_page(fgnt->shared_header(map->ref));
     }
 
-put_domain:
-    put_xen_domain(map->dom);
+out:
     map->status = rc;
 }
 
-void xen_gnttab_unmap_grant_ref(xen_vcpu *vcpu, gnttab_unmap_grant_ref_t *unmap)
+void xen_gnttab_unmap_grant_ref(xen_vcpu *vcpu,
+                                gnttab_unmap_grant_ref_t *unmap,
+                                gnttab_unmap_operand *op)
 {
     const grant_handle_t map_handle = unmap->handle;
     const grant_ref_t fref = map_handle & 0xFFFF;
-    const xen_domid_t fdomid = map_handle >> 16;
+    const xen_domid_t fdomid = op->domid;
     const uint64_t lgpa = unmap->host_addr;
 
     auto ldom = vcpu->m_xen_dom;
@@ -379,14 +415,9 @@ void xen_gnttab_unmap_grant_ref(xen_vcpu *vcpu, gnttab_unmap_grant_ref_t *unmap)
         return;
     }
 
-    auto fdom = get_xen_domain(fdomid);
-    if (!fdom) {
-        printv("%s: fdom:%x not found\n", __func__, fdomid);
-        unmap->status = GNTST_bad_handle;
-        return;
-    }
+    auto fdom = op->dom;
+    auto fgnt = op->gnt;
 
-    auto fgnt = fdom->m_gnttab.get();
     if (fgnt->invalid_ref(fref)) {
         printv("%s: bad fref:%u\n", __func__, fref);
 
@@ -395,7 +426,6 @@ void xen_gnttab_unmap_grant_ref(xen_vcpu *vcpu, gnttab_unmap_grant_ref_t *unmap)
         }
 
         unmap->status = GNTST_bad_handle;
-        put_xen_domain(fdomid);
         return;
     }
 
@@ -403,7 +433,6 @@ void xen_gnttab_unmap_grant_ref(xen_vcpu *vcpu, gnttab_unmap_grant_ref_t *unmap)
 
 unmap_frame:
     unmap->status = unmap_foreign_frame(ldom, lgpa, map_handle);
-    put_xen_domain(fdomid);
 }
 
 /*
@@ -444,6 +473,10 @@ static inline xen_domain *get_copy_dom(const xen_vcpu *curv,
         return curv->m_xen_dom;
     }
 
+    if (domid == DOMID_WINPV) {
+        return vcpu0->dom()->xen_dom();
+    }
+
     /* If the source domain isn't the current domain, take out a reference */
     return get_xen_domain(domid);
 }
@@ -451,7 +484,8 @@ static inline xen_domain *get_copy_dom(const xen_vcpu *curv,
 static inline void put_copy_dom(const xen_vcpu *curv,
                                 xen_domid_t domid) noexcept
 {
-    if (domid == DOMID_SELF || domid == curv->m_xen_dom->m_id) {
+    if (domid == DOMID_SELF || domid == curv->m_xen_dom->m_id ||
+        domid == DOMID_WINPV) {
         return;
     }
 
@@ -797,8 +831,29 @@ bool xen_gnttab_map_grant_ref(xen_vcpu *vcpu)
     int rc;
     int i;
 
+    struct gnttab_map_operand op{};
+
     for (i = 0; i < num; i++) {
-        xen_gnttab_map_grant_ref(vcpu, &ops[i]);
+        if (op.domid != ops[i].dom) {
+            if (op.dom) {
+                put_dom(vcpu, op.domid);
+                op.dom = nullptr;
+                op.gnt = nullptr;
+            }
+
+            op.domid = ops[i].dom;
+            op.dom = get_dom(vcpu, op.domid);
+
+            if (!op.dom) {
+                printv("%s: failed to get dom 0x%x\n", __func__, op.domid);
+                rc = GNTST_bad_domain;
+                break;
+            }
+
+            op.gnt = op.dom->m_gnttab.get();
+        }
+
+        xen_gnttab_map_grant_ref(vcpu, &ops[i], &op);
         rc = ops[i].status;
 
         if (rc != GNTST_okay) {
@@ -815,6 +870,10 @@ bool xen_gnttab_map_grant_ref(xen_vcpu *vcpu)
      * so we don't need to flush the IOTLB either.
      */
 
+    if (op.dom) {
+        put_dom(vcpu, op.domid);
+    }
+
     uvv->set_rax(rc);
     return true;
 }
@@ -829,8 +888,31 @@ bool xen_gnttab_unmap_grant_ref(xen_vcpu *vcpu)
     int rc;
     int i;
 
+    struct gnttab_unmap_operand op{};
+
     for (i = 0; i < num; i++) {
-        xen_gnttab_unmap_grant_ref(vcpu, &ops[i]);
+        xen_domid_t domid = static_cast<xen_domid_t>(ops[i].handle >> 16);
+
+        if (op.domid != domid) {
+            if (op.dom) {
+                put_dom(vcpu, op.domid);
+                op.dom = nullptr;
+                op.gnt = nullptr;
+            }
+
+            op.domid = domid;
+            op.dom = get_dom(vcpu, op.domid);
+
+            if (!op.dom) {
+                printv("%s: failed to get dom 0x%x\n", __func__, op.domid);
+                rc = GNTST_bad_domain;
+                break;
+            }
+
+            op.gnt = op.dom->m_gnttab.get();
+        }
+
+        xen_gnttab_unmap_grant_ref(vcpu, &ops[i], &op);
         rc = ops[i].status;
 
         if (rc != GNTST_okay) {
@@ -856,6 +938,10 @@ bool xen_gnttab_unmap_grant_ref(xen_vcpu *vcpu)
         }
     }
 
+    if (op.dom) {
+        put_dom(vcpu, op.domid);
+    }
+
     uvv->set_rax(rc);
     return true;
 }
@@ -874,7 +960,7 @@ bool xen_gnttab_query_size(xen_vcpu *vcpu)
         domid = vcpu->m_xen_dom->m_id;
     }
 
-    auto dom = get_xen_domain(domid);
+    auto dom = get_dom(vcpu, domid);
     if (!dom) {
         bfalert_nhex(0, "xen_domain not found:", domid);
         gqs->status = GNTST_bad_domain;
@@ -883,7 +969,7 @@ bool xen_gnttab_query_size(xen_vcpu *vcpu)
     }
 
     auto ret = dom->m_gnttab->query_size(vcpu, gqs.get());
-    put_xen_domain(domid);
+    put_dom(vcpu, domid);
 
     return ret;
 }
