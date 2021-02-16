@@ -31,7 +31,7 @@ AllowShortBlocksOnASingleLine: false
 AllowShortCaseLabelsOnASingleLine: false
 AllowShortFunctionsOnASingleLine: None
 AllowShortIfStatementsOnASingleLine: false
-AllowShortLambdasOnASingleLine: Empty
+# AllowShortLambdasOnASingleLine: Empty
 AllowShortLoopsOnASingleLine: false
 # AlwaysBreakAfterDefinitionReturnType
 AlwaysBreakAfterReturnType: AllDefinitions
@@ -115,7 +115,7 @@ ReflowComments: false
 SortIncludes: true
 SortUsingDeclarations: false
 SpaceAfterCStyleCast: false
-SpaceAfterLogicalNot: false
+# SpaceAfterLogicalNot: false
 SpaceAfterTemplateKeyword: false
 SpaceBeforeAssignmentOperators: true
 SpaceBeforeCpp11BracedList: false
