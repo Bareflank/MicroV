@@ -278,7 +278,7 @@ void domain::setup_dom0()
     if (g_enable_winpv) {
         m_sod_info.ram = MAX_PHYS_ADDR;
         m_sod_info.origin = domain_info::origin_root;
-        m_sod_info.xen_domid = DOMID_WINPV;
+        m_sod_info.xen_domid = DOMID_ROOTVM;
         m_sod_info.flags = DOMF_EXEC_XENPVH;
 
         m_xen_domid = create_xen_domain(this);

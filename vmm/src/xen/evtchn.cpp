@@ -834,7 +834,7 @@ int xen_evtchn::send(xen_vcpu *v, port_t port)
         domainid_t uv_rdomid = INVALID_DOMAINID;
         this->notify_remote(v, chan, &uv_rdomid);
 
-        if (uv_rdomid != INVALID_DOMAINID && m_xen_dom->m_id != DOMID_WINPV) {
+        if (uv_rdomid != INVALID_DOMAINID && m_xen_dom->m_id != DOMID_ROOTVM) {
             spin_release(&chan->lock);
 
             v->update_runstate(RUNSTATE_runnable);

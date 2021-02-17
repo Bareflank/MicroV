@@ -330,12 +330,12 @@ bool xenmem_populate_physmap(xen_vcpu *vcpu)
     if (domid == DOMID_SELF) {
         domid = vcpu->m_xen_dom->m_id;
 
-        if (domid == DOMID_WINPV) {
+        if (domid == DOMID_ROOTVM) {
             auto dom = vcpu->m_xen_dom;
             return dom->m_memory->populate_physmap(vcpu, rsv.get());
         }
     } else {
-        expects(domid != DOMID_WINPV);
+        expects(domid != DOMID_ROOTVM);
     }
 
     auto dom = get_xen_domain(domid);
@@ -892,7 +892,7 @@ bool xen_memory::decrease_reservation(xen_vcpu *v,
         this->invept();
         uvv->set_rax(nr_done);
     } else {
-        expects(v->m_xen_dom->m_id == DOMID_WINPV);
+        expects(v->m_xen_dom->m_id == DOMID_ROOTVM);
         expects(rsv->nr_extents >= 1U);
         expects(rsv->extent_order == 9U);
         expects(m_ept->is_2m(xen_addr(gfn[0])));
@@ -1015,7 +1015,7 @@ bool xen_memory::populate_physmap(xen_vcpu *v, xen_memory_reservation_t *rsv)
     }
 
     if (uvv->is_root_vcpu()) {
-        expects(m_xen_dom->m_id == DOMID_WINPV);
+        expects(m_xen_dom->m_id == DOMID_ROOTVM);
         expects(rsv->extent_order == 9);
         expects(rsv->nr_extents >= 1);
         expects(ext.get()[0] == winpv_hole_gfn);

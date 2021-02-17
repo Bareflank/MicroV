@@ -204,7 +204,7 @@ xen_hvm::xen_hvm(xen_domain *dom, xen_memory *mem) :
         return;
     }
 
-    if (xen_dom->m_id == DOMID_WINPV) {
+    if (xen_dom->m_id == DOMID_ROOTVM) {
         init_root_store_params();
         init_root_console_params();
     }
@@ -319,8 +319,8 @@ bool xen_hvm::get_param(xen_vcpu *vcpu, xen_hvm_param_t *p)
     }
 
     if (uvv->is_root_vcpu()) {
-        expects(vcpu->m_xen_dom->m_id == DOMID_WINPV);
-        expects(this->xen_dom->m_id == DOMID_WINPV);
+        expects(vcpu->m_xen_dom->m_id == DOMID_ROOTVM);
+        expects(this->xen_dom->m_id == DOMID_ROOTVM);
 
         switch (p->index) {
         case HVM_PARAM_STORE_EVTCHN:

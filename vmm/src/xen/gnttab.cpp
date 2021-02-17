@@ -152,7 +152,7 @@ static inline xen_domain *get_dom(const xen_vcpu *curv,
         return curv->m_xen_dom;
     }
 
-    if (domid == DOMID_WINPV) {
+    if (domid == DOMID_ROOTVM) {
         return vcpu0->dom()->xen_dom();
     }
 
@@ -163,7 +163,7 @@ static inline xen_domain *get_dom(const xen_vcpu *curv,
 static inline void put_dom(const xen_vcpu *curv, xen_domid_t domid) noexcept
 {
     if (domid == DOMID_SELF || domid == curv->m_xen_dom->m_id ||
-        domid == DOMID_WINPV) {
+        domid == DOMID_ROOTVM) {
         return;
     }
 
@@ -331,7 +331,7 @@ static void xen_gnttab_map_grant_ref(xen_vcpu *vcpu,
         return;
     }
 
-    if (vcpu->m_xen_dom->m_id == DOMID_WINPV) {
+    if (vcpu->m_xen_dom->m_id == DOMID_ROOTVM) {
         expects(gfn_in_winpv_hole(xen_frame(map->host_addr)));
     }
 
@@ -351,7 +351,7 @@ static void xen_gnttab_map_grant_ref(xen_vcpu *vcpu,
     if (fgnt->invalid_ref(map->ref)) {
         printv("%s: OOB ref:0x%x for dom:0x%x\n", __func__, map->ref, map->dom);
 
-        if (map->dom == DOMID_WINPV && map->ref == GNTTAB_RESERVED_XENSTORE) {
+        if (map->dom == DOMID_ROOTVM && map->ref == GNTTAB_RESERVED_XENSTORE) {
             fgfn = fdom->m_hvm->get_param(HVM_PARAM_STORE_PFN);
             fpg = fdom->m_memory.get()->find_page(fgfn);
 
@@ -372,7 +372,7 @@ static void xen_gnttab_map_grant_ref(xen_vcpu *vcpu,
     fpg = fdom->m_memory.get()->find_page(fgfn);
 
     if (!fpg) {
-        if (map->dom != DOMID_WINPV) {
+        if (map->dom != DOMID_ROOTVM) {
             printv("%s: gfn 0x%lx not mapped in dom 0x%x\n",
                    __func__, fgfn, map->dom);
             rc = GNTST_general_error;
@@ -421,7 +421,7 @@ void xen_gnttab_unmap_grant_ref(xen_vcpu *vcpu,
     if (fgnt->invalid_ref(fref)) {
         printv("%s: bad fref:%u\n", __func__, fref);
 
-        if (fdomid == DOMID_WINPV && fref == GNTTAB_RESERVED_XENSTORE) {
+        if (fdomid == DOMID_ROOTVM && fref == GNTTAB_RESERVED_XENSTORE) {
             goto unmap_frame;
         }
 
@@ -473,7 +473,7 @@ static inline xen_domain *get_copy_dom(const xen_vcpu *curv,
         return curv->m_xen_dom;
     }
 
-    if (domid == DOMID_WINPV) {
+    if (domid == DOMID_ROOTVM) {
         return vcpu0->dom()->xen_dom();
     }
 
@@ -485,7 +485,7 @@ static inline void put_copy_dom(const xen_vcpu *curv,
                                 xen_domid_t domid) noexcept
 {
     if (domid == DOMID_SELF || domid == curv->m_xen_dom->m_id ||
-        domid == DOMID_WINPV) {
+        domid == DOMID_ROOTVM) {
         return;
     }
 
@@ -647,7 +647,7 @@ static int get_copy_page(xen_domain *dom, xen_pfn_t gfn, xen_page **xpg)
         return GNTST_okay;
     }
 
-    if (dom->m_id != DOMID_WINPV) {
+    if (dom->m_id != DOMID_ROOTVM) {
         printv("%s: gfn 0x%lx doesnt map to page\n", __func__, gfn);
         return GNTST_general_error;
     }
@@ -994,7 +994,7 @@ xen_gnttab::xen_gnttab(xen_domain *dom, xen_memory *mem)
     shared_tab.reserve(max_shared_gte_pages());
 
     if (dom->m_uv_info->origin == domain_info::origin_root) {
-        if (dom->m_id == DOMID_WINPV) {
+        if (dom->m_id == DOMID_ROOTVM) {
             shared_map.reserve(max_shared_gte_pages());
         }
     } else {
@@ -1316,7 +1316,7 @@ bool xen_gnttab::mapspace_grant_table(xen_vcpu *vcpu, xen_add_to_physmap_t *atp)
     }
 
     if (uvv->is_root_vcpu()) {
-        expects(xen_dom->m_id == DOMID_WINPV);
+        expects(xen_dom->m_id == DOMID_ROOTVM);
         expects(gfn_in_winpv_hole(gfn));
         expects((idx & XENMAPIDX_grant_table_status) == 0);
         expects(idx < shared_map.capacity());

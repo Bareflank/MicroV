@@ -36,7 +36,7 @@
 
 namespace microv {
 
-constexpr xen_domid_t DOMID_WINPV = DOMID_FIRST_RESERVED - 1;
+constexpr xen_domid_t DOMID_ROOTVM = DOMID_FIRST_RESERVED - 1;
 
 xen_domid_t create_xen_domain(microv_domain *uv_dom);
 xen_domain *get_xen_domain(xen_domid_t id) noexcept;

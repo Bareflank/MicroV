@@ -32,7 +32,7 @@
  * microv/vmm/include/xen/domain.h. If that definition changes,
  * this will need to change as well.
  */
-#define DOMID_WINPV (DOMID_FIRST_RESERVED - 1)
+#define DOMID_ROOTVM (DOMID_FIRST_RESERVED - 1)
 #define ARRAY_SIZE(arr) sizeof(arr)/sizeof(arr[0])
 #define VAL_SIZE 64
 
@@ -87,7 +87,7 @@ static void xs_mkdir_ro(xs_transaction_t t, const char *path)
 
     perms[0].id = 0;
     perms[0].perms = XS_PERM_NONE;
-    perms[1].id = DOMID_WINPV;
+    perms[1].id = DOMID_ROOTVM;
     perms[1].perms = XS_PERM_READ;
 
     xs_mkdir(xsh, t, path);
@@ -102,7 +102,7 @@ static void xs_mkdir_ro_relative(xs_transaction_t t,
 
     perms[0].id = 0;
     perms[0].perms = XS_PERM_NONE;
-    perms[1].id = DOMID_WINPV;
+    perms[1].id = DOMID_ROOTVM;
     perms[1].perms = XS_PERM_READ;
 
     xs_mkdir_relative(t, root, path, perms, ARRAY_SIZE(perms));
@@ -114,7 +114,7 @@ static void xs_mkdir_rw_relative(xs_transaction_t t,
 {
     struct xs_permissions perms[1];
 
-    perms[0].id = DOMID_WINPV;
+    perms[0].id = DOMID_ROOTVM;
     perms[0].perms = XS_PERM_NONE;
 
     xs_mkdir_relative(t, root, path, perms, ARRAY_SIZE(perms));
@@ -164,7 +164,7 @@ static int make_xs_dirs(void)
         return -EINVAL;
     }
 
-    dom_root = xs_get_domain_path(xsh, DOMID_WINPV);
+    dom_root = xs_get_domain_path(xsh, DOMID_ROOTVM);
     if (!dom_root) {
         printf("%s: failed to get domain path\n", __func__);
         return -ENODEV;
@@ -180,7 +180,7 @@ static int make_xs_dirs(void)
     strcpy(val, "winpv");
     xs_write_relative(t, dom_root, "name", val);
 
-    snprintf(val, sizeof(val), "%d", DOMID_WINPV);
+    snprintf(val, sizeof(val), "%d", DOMID_ROOTVM);
     xs_write_relative(t, dom_root, "domid", val);
 
     committed = xs_transaction_end(xsh, t, 0);
@@ -202,13 +202,13 @@ static int read_xs_params(uint64_t *xs_pfn, uint64_t *xs_chn)
         return -EINVAL;
     }
 
-    err = xc_hvm_param_get(xch, DOMID_WINPV, HVM_PARAM_STORE_PFN, xs_pfn);
+    err = xc_hvm_param_get(xch, DOMID_ROOTVM, HVM_PARAM_STORE_PFN, xs_pfn);
     if (err) {
         printf("%s: failed to get store pfn, rc=%d\n", __func__, err);
         return err;
     }
 
-    err = xc_hvm_param_get(xch, DOMID_WINPV, HVM_PARAM_STORE_EVTCHN, xs_chn);
+    err = xc_hvm_param_get(xch, DOMID_ROOTVM, HVM_PARAM_STORE_EVTCHN, xs_chn);
     if (err) {
         printf("%s: failed to get store evtchn, rc=%d\n", __func__, err);
         return err;

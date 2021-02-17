@@ -216,7 +216,7 @@ bool xen_domain_getinfolist(xen_vcpu *vcpu, struct xen_sysctl *ctl)
         auto info = &buf.get()[num];
         auto dom = itr->second.first.get();
 
-        if (dom->m_id == DOMID_WINPV && !xl_created_root) {
+        if (dom->m_id == DOMID_ROOTVM && !xl_created_root) {
             continue;
         }
 
@@ -505,9 +505,9 @@ bool xen_domain_createdomain(xen_vcpu *vcpu, struct xen_domctl *ctl)
     expects((cd->flags & XEN_DOMCTL_CDF_xs_domain) == 0);
 
     if (is_root_uuid(&cd->handle[0])) {
-        printv("%s: root domain: 0x%x\n", __func__, DOMID_WINPV);
+        printv("%s: root domain: 0x%x\n", __func__, DOMID_ROOTVM);
         xl_created_root = true;
-        ctl->domain = DOMID_WINPV;
+        ctl->domain = DOMID_ROOTVM;
         vcpu->m_uv_vcpu->set_rax(0);
         return true;
     }
@@ -876,7 +876,7 @@ uint64_t xen_domain::init_shared_info(xen_vcpu *xen, uintptr_t shinfo_gpfn)
     }
 
     if (uvv->is_root_vcpu()) {
-        expects(m_id == DOMID_WINPV);
+        expects(m_id == DOMID_ROOTVM);
 
         /*
          * The shared info page is the first 4K region of the hole created by
@@ -957,7 +957,7 @@ bool xen_domain::unpause(xen_vcpu *vcpu)
     m_flags &= ~XEN_DOMINF_paused;
     m_flags |= XEN_DOMINF_running;
 
-    if (m_id == DOMID_WINPV) {
+    if (m_id == DOMID_ROOTVM) {
         uvv->set_rax(0);
         return true;
     }
