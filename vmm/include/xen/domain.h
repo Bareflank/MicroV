@@ -196,7 +196,7 @@ public:
     xen_cpupoolid_t m_cpupool_id{};
     bool m_returned_new{};
 
-    bool m_ndvm{};      /* is this an NDVM? */
+    bool m_has_passthrough_dev{};
     uint32_t m_flags{}; /* DOMINF_ flags, used for {sys,dom}ctls */
     struct xen_arch_domainconfig m_arch_config{};
 
