@@ -67,14 +67,9 @@ parse_args(int argc, char *argv[])
     ("xsvm", "The VM is a xenstore VM")
     ("ndvm", "The VM is a network device VM")
     ("hvc", "Use the hvc console")
-    ("xenpfd-enable", "Enable the Xen Platform PCI device")
-    ("xenpfd-disable", "Disable the Xen Platform PCI device")
-    ("reset-xue", "Reset the xue debugger")
-    ("xenstore-ready", "Tell the VMM that xenstore is ready for the root domain to use")
 #ifdef _WIN64
     ("windows-svc", "Run uvctl as a Windows service")
 #endif
-    ("dump-iommu", "Dump IOMMU faults")
     ("high-priority", "Run VM threads at high priority");
 
     auto args = options.parse(argc, argv);

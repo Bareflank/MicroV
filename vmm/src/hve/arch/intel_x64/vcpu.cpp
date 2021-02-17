@@ -290,10 +290,7 @@ vcpu::vcpu(
     m_vmcall_run_op_handler{this},
     m_vmcall_domain_op_handler{this},
     m_vmcall_event_op_handler{this},
-    m_vmcall_iommu_op_handler{this},
     m_vmcall_vcpu_op_handler{this},
-    m_vmcall_xue_op_handler{this},
-    m_vmcall_xenpfd_op_handler{this},
 
     m_x2apic_handler{this},
     m_pci_handler{this}

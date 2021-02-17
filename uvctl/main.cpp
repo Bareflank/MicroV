@@ -220,31 +220,6 @@ int protected_main(const args_type &args)
         throw std::runtime_error("vmm not running");
     }
 
-    if (args.count("xenstore-ready")) {
-        __event_op__set_xenstore_ready();
-        return EXIT_SUCCESS;
-    }
-
-    if (args.count("reset-xue")) {
-        __xue_op(__enum_xue_op__reset, 0, 0);
-        return EXIT_SUCCESS;
-    }
-
-    if (args.count("dump-iommu")) {
-        __iommu_op__dump();
-        return EXIT_SUCCESS;
-    }
-
-    if (args.count("xenpfd-enable")) {
-        __xenpfd_op(__enum_xenpfd_op__enable, 0, 0);
-        return EXIT_SUCCESS;
-    }
-
-    if (args.count("xenpfd-disable")) {
-        __xenpfd_op(__enum_xenpfd_op__disable, 0, 0);
-        return EXIT_SUCCESS;
-    }
-
     if (!args.count("kernel")) {
         throw std::runtime_error("must specify 'kernel'");
     }
