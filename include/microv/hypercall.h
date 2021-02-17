@@ -74,23 +74,9 @@ struct e820_entry_t {
 #define __enum_domain_op 2
 #define __enum_vcpu_op 3
 #define __enum_uart_op 4
-#define __enum_xue_op 5
 #define __enum_event_op 6
-#define __enum_iommu_op 7
-#define __enum_xenpfd_op 8
 
 #define bfopcode(a) ((a & 0x00FF000000000000) >> 48)
-
-// -----------------------------------------------------------------------------
-// IOMMU Operations
-// -----------------------------------------------------------------------------
-
-#define __enum_iommu_op__dump 0x1UL
-
-static inline status_t __iommu_op__dump(void)
-{
-    return _vmcall(0xBF07000000000000, __enum_iommu_op__dump, 0, 0);
-}
 
 // -----------------------------------------------------------------------------
 // Event Operations
@@ -135,31 +121,6 @@ __event_op__is_xenstore_ready(void)
                    __enum_event_op__is_xenstore_ready,
                    0,
                    0);
-}
-
-// -----------------------------------------------------------------------------
-// Xue Operations
-// -----------------------------------------------------------------------------
-
-#define __enum_xue_op__reset 1
-
-static inline status_t
-__xue_op(uint64_t arg1, uint64_t arg2, uint64_t arg3)
-{
-    return _vmcall(0xBF05000000000000, arg1, arg2, arg3);
-}
-
-// -----------------------------------------------------------------------------
-// Xen Platform PCI device operations
-// -----------------------------------------------------------------------------
-
-#define __enum_xenpfd_op__enable 1
-#define __enum_xenpfd_op__disable 2
-
-static inline status_t
-__xenpfd_op(uint64_t arg1, uint64_t arg2, uint64_t arg3)
-{
-    return _vmcall(0xBF08000000000000, arg1, arg2, arg3);
 }
 
 // -----------------------------------------------------------------------------

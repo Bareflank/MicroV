@@ -610,6 +610,11 @@ void debug_xen_hypercall(xen_vcpu *xenv)
     auto rax = vcpu->rax();
     auto domid = xenv->m_xen_dom->m_id;
 
+    if (rax >= HYPERCALL_RAX_MAX) {
+        printv("xen(domid=0x%x): unknown hypercall: rax=0x%lx\n", domid, rax);
+        return;
+    }
+
     printv("xen(domid=0x%x):%s:", domid, hypercall_str[rax]);
 
     switch (rax) {
