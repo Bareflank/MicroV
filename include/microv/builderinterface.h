@@ -123,7 +123,7 @@ struct create_vm_args {
     uint64_t tsc;
     char hvc;
     char xsvm;
-    char ndvm;
+    char has_passthrough_dev;
     char pad[5];
 };
 

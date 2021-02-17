@@ -172,7 +172,7 @@ static void create_vm(const args_type &args, struct uvc_domain *dom)
     }
 
     if (args.count("ndvm")) {
-        ioctl_args.ndvm = 1;
+        ioctl_args.has_passthrough_dev = 1;
         cmdl.add("pci=nocrs,lastbus=0xff");
     }
 

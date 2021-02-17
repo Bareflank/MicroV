@@ -1206,7 +1206,7 @@ static uint64_t make_dom_flags(const struct create_vm_args *args)
         flags |= DOMF_XENHVC;
     }
 
-    if (args->ndvm) {
+    if (args->has_passthrough_dev) {
         flags |= DOMF_NDVM;
     }
 
