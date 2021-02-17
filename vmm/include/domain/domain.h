@@ -95,7 +95,7 @@ struct domain_info : public bfobject {
         return flags & DOMF_XENHVC;
     }
 
-    bool is_ndvm() const noexcept
+    bool has_passthrough_dev() const noexcept
     {
         return flags & DOMF_NDVM;
     }

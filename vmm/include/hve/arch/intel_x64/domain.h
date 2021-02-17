@@ -337,7 +337,7 @@ public:
     ///
     /// @return true if NDVM
     ///
-    bool is_ndvm() const noexcept
+    bool has_passthrough_dev() const noexcept
     {
         return m_sod_info.flags & DOMF_NDVM;
     }

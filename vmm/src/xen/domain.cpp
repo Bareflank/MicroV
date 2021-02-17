@@ -713,7 +713,7 @@ xen_domain::xen_domain(microv_domain *domain)
     m_flags |= XEN_DOMINF_hap;
 
     m_numa_nodes = 1;
-    m_ndvm = m_uv_info->is_ndvm();
+    m_ndvm = m_uv_info->has_passthrough_dev();
 
     m_memory = std::make_unique<xen_memory>(this);
     m_evtchn = std::make_unique<xen_evtchn>(this);

@@ -545,7 +545,7 @@ void pci_dev::add_guest_handlers(vcpu *vcpu)
     HANDLE_CFG_ACCESS(this, guest_normal_cfg_out, pci_dir_out);
 
     auto dom = vcpu->dom();
-    if (!dom->is_ndvm()) {
+    if (!dom->has_passthrough_dev()) {
         return;
     }
 

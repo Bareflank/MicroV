@@ -297,7 +297,7 @@ void domain::setup_domU()
     if (m_sod_info.is_xen_dom()) {
         m_xen_domid = create_xen_domain(this);
         m_xen_dom = get_xen_domain(m_xen_domid);
-    } else if (m_sod_info.is_ndvm() && microv::pci_passthru) {
+    } else if (m_sod_info.has_passthrough_dev() && microv::pci_passthru) {
         for (auto pdev : pci_passthru_list) {
             this->assign_pci_device(pdev);
         }

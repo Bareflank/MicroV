@@ -394,12 +394,12 @@ vcpu::write_domU_guest_state(domain *domain)
         enable_rdtscp::enable();
 
         bfdebug_bool(0, "domain is_xsvm:", domain->is_xsvm());
-        bfdebug_bool(0, "domain is_ndvm:", domain->is_ndvm());
+        bfdebug_bool(0, "domain has_passthrough_dev:", domain->has_passthrough_dev());
 
-        if ((domain->is_xsvm() || domain->is_ndvm()) && pci_passthru) {
+        if ((domain->is_xsvm() || domain->has_passthrough_dev()) && pci_passthru) {
             init_pci_on_vcpu(this);
 
-            if (domain->is_ndvm()) {
+            if (domain->has_passthrough_dev()) {
                 domain->prepare_iommus();
                 domain->map_dma();
             }
