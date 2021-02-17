@@ -339,7 +339,7 @@ public:
     ///
     bool has_passthrough_dev() const noexcept
     {
-        return m_sod_info.flags & DOMF_NDVM;
+        return m_sod_info.flags & DOMF_PTPCI;
     }
 
     /// Set UART

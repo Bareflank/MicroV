@@ -97,7 +97,7 @@ struct domain_info : public bfobject {
 
     bool has_passthrough_dev() const noexcept
     {
-        return flags & DOMF_NDVM;
+        return flags & DOMF_PTPCI;
     }
 
     uint64_t total_ram() const noexcept

@@ -1207,7 +1207,7 @@ static uint64_t make_dom_flags(const struct create_vm_args *args)
     }
 
     if (args->has_passthrough_dev) {
-        flags |= DOMF_NDVM;
+        flags |= DOMF_PTPCI;
     }
 
     return flags;

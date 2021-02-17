@@ -1606,7 +1606,7 @@ bool xen_domain::assign_device(xen_vcpu *v,
         }
     }
 
-    m_uv_dom->sod_info()->flags |= DOMF_NDVM;
+    m_uv_dom->sod_info()->flags |= DOMF_PTPCI;
     v->m_uv_vcpu->set_rax(0);
 
     return true;

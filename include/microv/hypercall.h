@@ -344,8 +344,8 @@ __uart_ndec_op(uint16_t port, uint64_t val)
 /* Does this domain run with native microv exec mode? */
 #define DOMF_EXEC_NATIVE (1ULL << 4)
 
-/* Is this domain an NDVM? */
-#define DOMF_NDVM (1ULL << 5)
+/* Does this domain have a passthrough PCI device? */
+#define DOMF_PTPCI (1ULL << 5)
 
 struct dom_info {
     uint64_t flags;     /* DOMF_* bitmask */
