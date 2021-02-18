@@ -1,3 +1,7 @@
+<img src="https://github.com/Bareflank/MicroV/raw/master/docs/microv.png" alt="microv-logo"/>
+
+# <span style="display:none">MicroV</span> now with Xen support
+
 ## Getting Started
 
 Microv is an extension of the Bareflank hypervisor [SDK](deps/hypervisor)
