@@ -37,7 +37,7 @@
 #include <microv/visrinterface.h>
 #include <microv/xenbusinterface.h>
 
-struct uvc_domain;
+class uvc_domain;
 
 struct uvc_vcpu {
     enum runstate {
@@ -48,11 +48,11 @@ struct uvc_vcpu {
 
     vcpuid_t id{INVALID_VCPUID};
     enum runstate state{halted};
-    struct uvc_domain *domain{};
+    uvc_domain *domain{};
     mutable std::unique_lock<std::mutex> event_lock{};
     std::thread run_thread{};
 
-    uvc_vcpu(vcpuid_t id, struct uvc_domain *dom);
+    uvc_vcpu(vcpuid_t id, uvc_domain *dom);
     void launch();
     void halt() noexcept;
     void pause() noexcept;

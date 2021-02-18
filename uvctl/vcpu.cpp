@@ -43,10 +43,10 @@ int64_t uvctl_rw_ioctl(HANDLE fd, DWORD request, void *data, DWORD size);
 static std::array<HANDLE, MAX_DOMAINS> domain_events{0};
 #endif
 
-uvc_vcpu::uvc_vcpu(vcpuid_t id, struct uvc_domain *dom)
+uvc_vcpu::uvc_vcpu(vcpuid_t id, uvc_domain *dom)
 {
 #ifdef WIN64
-    if (dom->id >= domain_events.size()) {
+    if (dom->id() >= domain_events.size()) {
         log_msg("%s: Domain limit of %u reached, throwing\n",
                 __func__, domain_events.size());
         throw std::runtime_error("domain limit reached\n");
@@ -64,14 +64,14 @@ bool uvc_vcpu::init_xenbus_events(HANDLE event)
 {
     HANDLE fd = uvctl_ioctl_open(&GUID_DEVINTERFACE_XENBUS);
     if (fd == INVALID_HANDLE_VALUE) {
-        log_msg("%s: Domain 0x%x failed to open xenbus fd\n", __func__, domain->id);
+        log_msg("%s: Domain 0x%x failed to open xenbus fd\n", __func__, domain->id());
         return false;
     }
 
     XENBUS_ADD_USER_EVENT_IN user_event{0};
 
     user_event.EventHandle = event;
-    user_event.RemoteDomain = domain->id - 1; /* convert our microv ID to xen ID */
+    user_event.RemoteDomain = domain->id() - 1; /* convert our microv ID to xen ID */
 
     auto rc = uvctl_rw_ioctl(fd,
                              IOCTL_XENBUS_ADD_USER_EVENT,
@@ -81,7 +81,7 @@ bool uvc_vcpu::init_xenbus_events(HANDLE event)
 
     if (rc < 0) {
         log_msg("%s: failed to add xenbus event for domain 0x%x\n",
-                __func__, domain->id);
+                __func__, domain->id());
         return false;
     }
 
@@ -119,17 +119,17 @@ void uvc_vcpu::init_events()
     HANDLE event = CreateEvent(NULL, TRUE, FALSE, NULL);
     if (!event) {
        log_msg("%s: Failed to create event for domain 0x%x (last error = 0x%x)\n",
-               __func__, domain->id, GetLastError());
+               __func__, domain->id(), GetLastError());
        return;
     }
 
-    domain_events[domain->id] = event;
+    domain_events[domain->id()] = event;
 
     log_msg("%s: Created handle 0x%llx for domain 0x%x\n",
-            __func__, event, domain->id);
+            __func__, event, domain->id());
 
     bool xenbus_succeeded = this->init_xenbus_events(event);
-    if (!xenbus_succeeded && domain->id != 2) {
+    if (!xenbus_succeeded && domain->id() != 2) {
         goto put_event;
     }
 
@@ -138,7 +138,7 @@ void uvc_vcpu::init_events()
      * should be registered with visr. For now we just assume id == 2
      * implies the NDVM.
      */
-    if (domain->id != 2) {
+    if (domain->id() != 2) {
         return;
     }
 
@@ -149,7 +149,7 @@ void uvc_vcpu::init_events()
     return;
 
 put_event:
-    domain_events[domain->id] = 0;
+    domain_events[domain->id()] = 0;
     CloseHandle(event);
 
     return;
@@ -193,20 +193,7 @@ void uvc_vcpu::usleep(const microseconds &us) const
 
 void uvc_vcpu::notify_mgmt_event(uint64_t event_code, uint64_t event_data) const
 {
-    std::lock_guard lock(domain->event_mtx);
-
-    domain->event_code = event_code;
-    domain->event_data = event_data;
-
-    /*
-     * Since each vcpu is a potential notifier, we need to notify_one()
-     * with the lock held. Otherwise events could be dropped since the
-     * domain's event thread is essentially a one-element work queue.
-     * If this lock becomes a bottleneck, we could use a bonafide
-     * queue and/or schedule std::async tasks from the event thread.
-     */
-    domain->event_cond.notify_one();
-
+    domain->notify_event(event_code, event_data);
     std::this_thread::yield();
 }
 
@@ -232,7 +219,7 @@ void uvc_vcpu::notify_send_event(domainid_t domid) const
 void uvc_vcpu::wait(uint64_t us) const
 {
 #ifdef WIN64
-    HANDLE event = domain_events[domain->id];
+    HANDLE event = domain_events[domain->id()];
     DWORD ms = (DWORD)us / 1000U;
     ms = (ms >= 1U) ? ms : 1U;
 

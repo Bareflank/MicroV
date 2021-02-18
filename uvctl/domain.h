@@ -30,36 +30,42 @@
 
 struct uvc_vcpu;
 
-struct uvc_domain {
-    domainid_t id{INVALID_DOMAINID};
-    struct uvc_domain *parent{};
+class uvc_domain {
 
-    bool enable_uart{};
-    bool enable_hvc{};
-    bool enable_events{};
+private:
 
-    std::thread uart_recv{};
-    std::thread hvc_recv{};
-    std::thread hvc_send{};
+    const domainid_t m_id{INVALID_DOMAINID};
+    const uvc_domain *m_parent{};
 
-    std::mutex vcpu_mtx{};
-    std::list<struct uvc_vcpu> vcpu_list{};
-    std::list<struct uvc_domain> child_list{};
+    bool m_enable_uart{};
+    bool m_enable_hvc{};
+    bool m_enable_events{};
 
-    std::mutex event_mtx{};
-    std::thread event_thread{};
-    std::condition_variable event_cond{};
-    uint64_t event_code{};
-    uint64_t event_data{};
+    std::thread m_uart_recv{};
+    std::thread m_hvc_recv{};
+    std::thread m_hvc_send{};
 
-    uvc_domain();
-    uvc_domain(domainid_t id, struct uvc_domain *parent);
+    std::mutex m_vcpu_mtx{};
+    std::list<struct uvc_vcpu> m_vcpu_list{};
+    std::list<uvc_domain> m_child_list{};
+
+    std::mutex m_event_mtx{};
+    std::thread m_event_thread{};
+    std::condition_variable m_event_cond{};
+    uint64_t m_event_code{};
+    uint64_t m_event_data{};
+
+public:
+
+    uvc_domain(
+        domainid_t id, uvc_domain *parent, bool enable_uart, bool enable_hvc);
 
     void create_vcpu();
     void destroy_vcpus();
     void launch();
 
     void handle_events();
+    void notify_event(uint64_t event_code, uint64_t event_data);
     void create_child(domainid_t domid);
     void pause_child(domainid_t domid);
     void unpause_child(domainid_t domid);
@@ -74,6 +80,16 @@ struct uvc_domain {
     void send_hvc();
 
     bool is_root() const noexcept;
+    domainid_t id() const noexcept;
+
+public:
+
+    uvc_domain(uvc_domain &&) = default;
+    uvc_domain &operator=(uvc_domain &&) = default;
+
+    uvc_domain(const uvc_domain &) = delete;
+    uvc_domain &operator=(const uvc_domain &) = delete;
+
 };
 
 #endif

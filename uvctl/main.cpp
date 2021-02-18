@@ -131,7 +131,7 @@ static uint32_t vm_exec_mode(uint64_t file_type)
     }
 }
 
-static void create_vm(const args_type &args, struct uvc_domain *dom)
+static uvc_domain create_vm(const args_type &args)
 {
     using namespace std::chrono;
 
@@ -208,10 +208,8 @@ static void create_vm(const args_type &args, struct uvc_domain *dom)
     ctl->call_ioctl_create_vm(ioctl_args);
     dump_vm_create_verbose();
 
-    dom->id = ioctl_args.domainid;
-    dom->parent = nullptr;
-    dom->enable_uart = args.count("uart");
-    dom->enable_hvc = args.count("hvc");
+    return uvc_domain(
+        ioctl_args.domainid, nullptr, args.count("uart"), args.count("hvc"));
 }
 
 int protected_main(const args_type &args)
@@ -254,8 +252,7 @@ int protected_main(const args_type &args)
 
     bool windows_svc = args.count("windows-svc") != 0;
 
-    struct uvc_domain root_domain;
-    create_vm(args, &root_domain);
+    auto &&root_domain = create_vm(args);
     root_domain.launch();
 
     wait_for_stop_signal(windows_svc);
@@ -267,12 +264,12 @@ int protected_main(const args_type &args)
             log_msg("root_domain.destroy threw: what = %s\n", e.what());
         }
 
-        ctl->call_ioctl_destroy(root_domain.id);
+        ctl->call_ioctl_destroy(root_domain.id());
     } else {
         root_domain.pause();
         std::this_thread::sleep_for(2s);
 
-        if (__domain_op__reclaim_root_pages(root_domain.id) != SUCCESS) {
+        if (__domain_op__reclaim_root_pages(root_domain.id()) != SUCCESS) {
             log_msg("%s: failed to reclaim root pages\n", __func__);
         }
 
