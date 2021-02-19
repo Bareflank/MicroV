@@ -581,6 +581,8 @@ __domain_op__reclaim_root_pages(domainid_t foreign_domainid)
         return ret == 0 ? SUCCESS : FAILURE;                                    \
     }
 
+// clang-format off
+
 __domain_op__reg(rax)
 __domain_op__set_reg(rax)
 __domain_op__reg(rbx)
@@ -698,6 +700,8 @@ __domain_op__reg(ldtr_limit)
 __domain_op__set_reg(ldtr_limit)
 __domain_op__reg(ldtr_access_rights)
 __domain_op__set_reg(ldtr_access_rights)
+
+// clang-format on
 
 // -----------------------------------------------------------------------------
 // vCPU Operations

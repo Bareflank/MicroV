@@ -20,12 +20,13 @@
 # SOFTWARE.
 
 AccessModifierOffset: -4
-AlignAfterOpenBracket: AlwaysBreak
+AlignAfterOpenBracket: Align
 AlignConsecutiveAssignments: false
 AlignConsecutiveDeclarations: false
 AlignEscapedNewlines: Right
 AlignOperands: true
 AlignTrailingComments: true
+AllowAllConstructorInitializersOnNextLine: true
 AllowAllParametersOfDeclarationOnNextLine: true
 AllowShortBlocksOnASingleLine: false
 AllowShortCaseLabelsOnASingleLine: false
@@ -33,24 +34,24 @@ AllowShortFunctionsOnASingleLine: None
 AllowShortIfStatementsOnASingleLine: false
 # AllowShortLambdasOnASingleLine: Empty
 AllowShortLoopsOnASingleLine: false
-# AlwaysBreakAfterDefinitionReturnType
-AlwaysBreakAfterReturnType: AllDefinitions
+AlwaysBreakAfterDefinitionReturnType: None
+AlwaysBreakAfterReturnType: None
 AlwaysBreakBeforeMultilineStrings: true
 AlwaysBreakTemplateDeclarations: Yes
 BinPackArguments: false
 BinPackParameters: false
 BraceWrapping:
-    AfterClass: true
+    AfterClass: false
     AfterControlStatement: false
-    AfterEnum: true
+    AfterEnum: false
     AfterFunction: true
-    AfterNamespace: true
+    AfterNamespace: false
     # AfterObjCDeclaration
-    AfterStruct: true
+    AfterStruct: false
     AfterUnion: true
-    AfterExternBlock: true
+    AfterExternBlock: false
     BeforeCatch: true
-    BeforeElse: true
+    BeforeElse: false
     IndentBraces: false
     SplitEmptyFunction: false
     SplitEmptyRecord: false
@@ -59,10 +60,10 @@ BraceWrapping:
 BreakBeforeBinaryOperators: None
 BreakBeforeBraces: Custom
 BreakBeforeTernaryOperators: true
-BreakConstructorInitializers: BeforeComma
+BreakConstructorInitializers: AfterColon
 BreakInheritanceList: AfterColon
-BreakStringLiterals: true
-ColumnLimit: 100
+BreakStringLiterals: false
+ColumnLimit: 80
 # CommentPragmas
 CompactNamespaces: false
 ConstructorInitializerAllOnOneLineOrOnePerLine: true
@@ -74,17 +75,10 @@ DerivePointerAlignment: false
 # ExperimentalAutoDetectBinPacking
 FixNamespaceComments: false
 # ForEachMacros
-IncludeBlocks: Regroup
-IncludeCategories:
-  # Headers in <> with extension.
-  - Regex:           '<([A-Za-z0-9.\Q/-_\E])+>'
-    Priority:        2
-  # Headers in "" with extension.
-  - Regex:           '"([A-Za-z0-9.\Q/-_\E])+"'
-    Priority:        1
+# IncludeBlocks: Regroup
 # IncludeCategories
 # IncludeIsMainRegex
-IndentCaseLabels: true
+IndentCaseLabels: false
 IndentPPDirectives: None
 IndentWidth: 4
 IndentWrappedFunctionNames: false
@@ -108,11 +102,11 @@ NamespaceIndentation: None
 # PenaltyBreakString
 # PenaltyBreakTemplateDeclaration
 # PenaltyExcessCharacter
-# PenaltyReturnTypeOnItsOwnLine
+PenaltyReturnTypeOnItsOwnLine: 1000000
 PointerAlignment: Right
 # RawStringFormats
 ReflowComments: false
-SortIncludes: true
+SortIncludes: false
 SortUsingDeclarations: false
 SpaceAfterCStyleCast: false
 # SpaceAfterLogicalNot: false
