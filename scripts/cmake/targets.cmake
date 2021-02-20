@@ -19,15 +19,76 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+# ------------------------------------------------------------------------------
+# Clang Format
+# ------------------------------------------------------------------------------
+
+if(ENABLE_CLANG_FORMAT)
+    add_custom_target(clang-format)
+
+    # Get subtrees to exclude later since `git ls-files` doesn't support this
+    # git log | grep git-subtree-dir | sed -e 's/^.*: //g' | uniq
+    execute_process(
+        COMMAND git log
+        WORKING_DIRECTORY ${MICROV_SOURCE_ROOT_DIR}
+        RESULT_VARIABLE GITLOG_RESULT
+        OUTPUT_VARIABLE GIT_SUBTREES
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+    if (NOT GITLOG_RESULT EQUAL 0)
+        message(FATAL_ERROR "command `git log` returned ${SOURCES_RESULT}")
+    endif()
+
+    if(NOT "${GIT_SUBTREES}" STREQUAL "")
+        # Get a list of subtree directories from git log
+        string(REGEX MATCHALL "git-subtree-dir: [^ \t\r\n]*" GIT_SUBTREES
+            ${GIT_SUBTREES})
+        list(REMOVE_DUPLICATES GIT_SUBTREES)
+        list(TRANSFORM GIT_SUBTREES REPLACE "git-subtree-dir: " "")
+
+        # Turn it into a git pathspec that excludes the match
+        list(TRANSFORM GIT_SUBTREES PREPEND ":!:./")
+        list(TRANSFORM GIT_SUBTREES APPEND "/*")
+    endif()
+
+    # Find all *.h and *.cpp in git tracked files including untracked and cached
+    # files but excluding git ignored files and submodules.
+    execute_process(
+        COMMAND git ls-files --cached --others --exclude-standard -- *.h *.cpp
+                ${GIT_SUBTREES}
+        WORKING_DIRECTORY ${MICROV_SOURCE_ROOT_DIR}
+        RESULT_VARIABLE SOURCES_RESULT
+        OUTPUT_VARIABLE SOURCES
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+    if (NOT SOURCES_RESULT EQUAL 0)
+        message(FATAL_ERROR "git ls-files [...]` returned ${SOURCES_RESULT}")
+    endif()
+
+    if(NOT "${SOURCES}" STREQUAL "")
+        string(REPLACE "\n" ";" SOURCES ${SOURCES})
+        list(TRANSFORM SOURCES PREPEND "${MICROV_SOURCE_ROOT_DIR}/")
+
+        add_custom_command(TARGET clang-format
+            COMMAND ${CMAKE_COMMAND} -E chdir ${MICROV_SOURCE_ROOT_DIR}
+                    ${CLANG_FORMAT_BIN} --verbose -i ${SOURCES}
+        )
+    endif()
+
+    add_custom_command(TARGET clang-format
+        COMMAND ${CMAKE_COMMAND} -E cmake_echo_color --green "done"
+    )
+endif()
+
+# ------------------------------------------------------------------------------
+# Drivers
+# ------------------------------------------------------------------------------
+
 if(WIN32)
     return()
 endif()
 
 file(TO_NATIVE_PATH "${SOURCE_ROOT_DIR}" SOURCE_ROOT_DIR_NATIVE)
-
-# ------------------------------------------------------------------------------
-# Drivers
-# ------------------------------------------------------------------------------
 
 function(add_driver_targets DRV)
     set(SH_DIR ${MICROV_SOURCE_UTIL_DIR})

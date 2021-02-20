@@ -19,30 +19,13 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-include(${MICROV_SOURCE_CMAKE_DIR}/depends/clang_format.cmake)
-include(${MICROV_SOURCE_CMAKE_DIR}/targets.cmake)
+if(ENABLE_CLANG_FORMAT)
+    if(NOT CLANG_FORMAT_BIN)
+        find_program(CLANG_FORMAT_BIN "clang-format")
 
-if(ENABLE_BUILD_VMM)
-    add_subproject(
-        uvvmm vmm
-        DEPENDS bfvmm
-        SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}/vmm
-    )
-
-    if(ENABLE_BUILD_EFI)
-        message(STATUS "    efi binary to boot after bareflank.efi: ${EFI_BOOT_NEXT}")
+        if(NOT CLANG_FORMAT_BIN)
+            message(STATUS "Including dependency: clang-format")
+            message(FATAL_ERROR "Unable to find: clang-format")
+        endif()
     endif()
-
-    message(STATUS "    build xen components: ${BUILD_XEN}")
-    message(STATUS "    use xue usb debugger: ${USE_XUE}")
-endif()
-
-if(ENABLE_BUILD_USERSPACE)
-    add_subproject(
-        uvctl userspace
-        SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}/uvctl
-        DEPENDS bfintrinsics
-        DEPENDS bfsdk
-        DEPENDS cxxopts
-    )
 endif()

@@ -54,6 +54,7 @@ parse_args(int argc, char *argv[])
     using namespace cxxopts;
     cxxopts::Options options("uvctl", "control a microv virtual machine");
 
+    // clang-format off
     options.add_options()
     ("h,help", "Print this help menu")
     ("v,verbose", "Enable verbose output")
@@ -71,6 +72,7 @@ parse_args(int argc, char *argv[])
     ("windows-svc", "Run uvctl as a Windows service")
 #endif
     ("high-priority", "Run VM threads at high priority");
+    // clang-format on
 
     auto args = options.parse(argc, argv);
 

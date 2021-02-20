@@ -23,6 +23,8 @@
 #ifndef MICROV_ACPI_H
 #define MICROV_ACPI_H
 
+// clang-format off
+
 #include <bftypes.h>
 #include "gpalayout.h"
 
