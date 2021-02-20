@@ -1,3 +1,39 @@
+<img src="https://github.com/Bareflank/MicroV/raw/master/docs/microv.png" alt="microv-logo"/>
+
+# <span style="display:none">MicroV</span> with Xen compatibility layer
+
+**warning**: While this version of MicroV implements a subset of the Xen ABI and
+can be used instead of the Xen hypervisor, it is **NOT** a full-blown
+replacement for Xen. Please read the [assumptions and limitations section](#xen-compatibility-layer-assumptions-and-limitations)
+for more information.
+
+**warning**: MicroV is currently a work in progress. This version is still based
+on the monolithic [Boxy](https://github.com/Bareflank/boxy) architecture ( from
+[d169d541](https://github.com/Bareflank/boxy/tree/d169d5417fbb4b8577d0263bc33e55753de21c58))
+as opposed to the upcoming micro kernel architecture.
+
+## Table of content <!-- omit in toc -->
+
+- [Getting Started](#getting-started)
+- [Building](#building)
+  - [Install Dependencies](#install-dependencies)
+      - [Arch Linux](#arch-linux)
+      - [Ubuntu 17.10 (and above)](#ubuntu-1710-and-above)
+      - [Visual Studio 2019](#visual-studio-2019)
+      - [Cygwin](#cygwin)
+      - [Windows Driver Kit (WDK), version 1903](#windows-driver-kit-wdk-version-1903)
+  - [Build Desired Components](#build-desired-components)
+      - [List info about high-level targets](#list-info-about-high-level-targets)
+      - [Build, load, and unload the late-launch loader only](#build-load-and-unload-the-late-launch-loader-only)
+      - [Clean and build the late-launch loader, builder, and visr](#clean-and-build-the-late-launch-loader-builder-and-visr)
+      - [Build userspace components (uvctl) only](#build-userspace-components-uvctl-only)
+      - [Build the VMM and EFI loader only](#build-the-vmm-and-efi-loader-only)
+      - [Build the Windows PV drivers](#build-the-windows-pv-drivers)
+- [Running the VMM](#running-the-vmm)
+- [Building Guest Images](#building-guest-images)
+- [Running Guest Images](#running-guest-images)
+- [Xen compatibility layer: Assumptions and limitations](#xen-compatibility-layer-assumptions-and-limitations)
+
 ## Getting Started
 
 Microv is an extension of the Bareflank hypervisor [SDK](deps/hypervisor)
@@ -29,8 +65,7 @@ that specifies the bus/device/function to hide using pciback. Please see the
 comments in [rundom0.sh](scripts/util/rundom0.sh) for more details.
 
 On Windows, Microv supports PV networking via the winpv [drivers](drivers/winpv)
-and PCI passthrough. It also uses Inno Setup to package everything into a
-single installer binary.
+and PCI passthrough.
 
 ## Building
 
@@ -42,16 +77,16 @@ will need to set `ENABLE_BUILD_EFI` to `ON` in your cmake config file. The
 following table depicts the tested build environments for various Microv
 components:
 
-| Component | Build Environment |
-| ------ | ------ |
-| linux loader | linux |
-| windows loader | cygwin+wdk 1903|
-| efi loader | linux |
-| vmm | linux, cygwin |
-| uvctl | linux, cygwin, visual studio 2019 |
-| builder | linux, cygwin+wdk 1903|
-| visr | linux, cygwin+wdk 1903|
-| winpv drivers | ewdk 1903 |
+| Component      | Build Environment                 |
+| -------------- | --------------------------------- |
+| linux loader   | linux                             |
+| windows loader | cygwin+wdk 1903                   |
+| efi loader     | linux                             |
+| vmm            | linux, cygwin                     |
+| uvctl          | linux, cygwin, visual studio 2019 |
+| builder        | linux, cygwin+wdk 1903            |
+| visr           | linux, cygwin+wdk 1903            |
+| winpv drivers  | wdk 1903                          |
 
 ### Install Dependencies
 
@@ -69,13 +104,25 @@ $ sudo apt-get install git build-essential linux-headers-$(uname -r) nasm clang 
 ```
 
 ##### Visual Studio 2019
+
+**warning**: The newest versions of VS 2019 (v16.7+) are currently unabled to
+build Xen's Windows PV drivers. Downgrading to **VS 2019 v16.6.5** is
+currently required.
+
 - Install [CMake](https://github.com/Kitware/CMake/releases/download/v3.16.4/cmake-3.16.4-win64-x64.msi)
 - Install [NASM](https://www.nasm.us/pub/nasm/releasebuilds/2.14.03rc2/win64/nasm-2.14.03rc2-installer-x64.exe)
 - Install [Git](https://git-scm.com/download/win)
-- Install [Visual Studio 2019](https://visualstudio.microsoft.com/vs/)
-  - Check "Desktop development with C++"
-  - Check "C++ CLI / Support"
-  - Check "VC++ 2019 version xxx Libs for Spectre (x86 and x64)" where xxx is the latest version available
+- Download [Visual Studio 2019 Enterprise v16.6.5](https://download.visualstudio.microsoft.com/download/pr/067fd8d0-753e-4161-8780-dfa3e577839e/75ec991e1ceb0de45076a04c6505a2dd5f199597f32b9e93639c4935585838bd/vs_Enterprise.exe).
+Install the Community version and required components from powershell with:
+
+```powershell
+vs_Enterprise_16.6.5.exe `
+  --productId Microsoft.VisualStudio.Product.Community `
+  --includeRecommended `
+  --add Microsoft.VisualStudio.Workload.NativeDesktop `
+  --add Microsoft.VisualStudio.Component.VC.Runtimes.x86.x64.Spectre `
+  --add Microsoft.VisualStudio.Component.VC.CLI.Support
+```
 
 ##### Cygwin
 - Install [cygwin](https://www.cygwin.com/setup-x86_64.exe)
@@ -91,11 +138,6 @@ $ setup-x86_64.exe -q -P git,make,ninja,vim,gcc-core,gcc-g++,nasm,clang,clang++,
 - Follow the instructions for Visual Studio 2019 above
 - Install the [WDK](https://docs.microsoft.com/en-us/windows-hardware/drivers/download-the-wdk#download-icon-step-2-install-wdk-for-windows-10-version-1903)
   - Accept all the defaults
-
-##### Enterprise Windows Driver Kit (EWDK), version 1903
-- Make sure you have room for a 12.4 GB file on your Windows drive
-- Accept the license [terms](https://docs.microsoft.com/en-us/legal/windows/hardware/enterprise-wdk-license-2019)
-- Download the .iso
 
 ### Build Desired Components
 The following instructions assume the following directory structure:
@@ -177,29 +219,13 @@ $ make
 ```
 
 ##### Build the Windows PV drivers
-- Ensure that powershell execution policy is unrestricted:
+
+Ensure that powershell execution policy is unrestricted, and build all drivers:
 
   ```powershell
   PS> Set-ExecutionPolicy Unrestricted
+  PS> drivers\build-all.ps1
   ```
-
-- Click on the downloaded EWDK iso
-- Run `LaunchBuildEnv.cmd` as Administrator
-- In the resulting cmd prompt, navigate to the winpv drivers' [source](drivers/winpv)
-- Run `powershell .\clean-build.ps1`
-
-##### Build the Windows installer
-- Install the [Inno Setup QuickStart Pack](https://www.jrsoftware.org/download.php/ispack.exe?site=1)
-  - Accept the defaults
-- Build bareflank.efi
-- Build uvctl.exe (a Release/x64 version using Visual Studio)
-- Build the xsvm and any desired child vms (ndvm, etc.) as discussed below
-- Build the visr, builder, and winpv drivers
-- Copy bareflank.efi and uvctl.exe to [deploy/windows](deploy/windows)
-- Copy the xsvm's vmlinux and rootfs.cpio.gz to [deploy/windows](deploy/windows) and prefix each with 'xsvm-'
-- Run [make-installer.ps1](scripts/deploy/make-installer.ps1)
-  - Supply the "product name" you want to use with `-ProductName <name>`
-  - This will create an installer binary `install-<name>.exe` in `deploy/windows/output`
 
 ## Running the VMM
 
@@ -234,28 +260,13 @@ The default value points to Windows Boot Manager and is found
 to whatever EFI binary you want to run after the VMM has started (e.g. back to
 the shell or grub).
 
-Note that if you use the Windows installer, you dont need install
-the shell by hand as described above. Instead pass `-useshell` to
-[make-installer.ps1](scripts/deploy/make-installer.ps1). Then after running the
-installer itself and rebooting, you will automatically boot into the shell. From there
-you can run `bareflank.efi --enable-winpv` to start the VMM. Microv will boot
-the EFI entry given by `EFI_BOOT_NEXT` from your config.cmake like normal.
-
 ## Building Guest Images
 
 Once the VMM has been started and builder has been loaded, you can run virtual
-machines using uvctl. But before that the images must be built. This is done using
-the [br2-microv](https://gitlab.ainfosec.com/bareflank/br2-microv) repo.
-To build the images described there:
+machines using uvctl. But before that the images must be built. This can be done
+using Buildroot.
 
-```bash
-$ cd workspace
-$ git clone -b venom git@gitlab.ainfosec.com:bareflank/br2-microv.git
-```
-
-Then follow the steps in the [README](https://gitlab.ainfosec.com/bareflank/br2-microv/blob/venom/README.md).
-After you perform those steps, return to the section below for information on
-how to run the images.
+<!-- TODO -->
 
 ## Running Guest Images
 
@@ -276,4 +287,17 @@ common values for the typical options. You may need to adjust the paths for your
 system; please read the script before running it so you understand what it does.
 
 Assuming you launched the xsvm with one of the helper scripts, you can use `xl`
-to create domains you compiled in to xsvm (such as the ndvm) using the hvc console.
+to create domains you compiled in to xsvm (e.g. a domain with PCI passthrough)
+using the hvc console.
+
+## Xen compatibility layer: Assumptions and limitations
+
+- This is not a full-blown replacement for Xen.
+- We currently only support a subset of the Xen ABI but we are interested in
+adding more support.
+- To use PCI passthrough, one needs to start the hypervisor in early-launch with
+the EFI loader.
+- We currently only support single-core guest VMs.
+- Guest VMs need to be pined to the same core.
+
+<!-- TODO add table of features per ABI: (PCI passthrough, late launch, early-launch, host OS, guest OS) -->
