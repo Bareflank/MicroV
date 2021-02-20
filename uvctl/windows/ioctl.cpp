@@ -22,20 +22,17 @@
 #include <ioctl.h>
 #include <ioctl_private.h>
 
-ioctl::ioctl() :
-    m_d {std::make_unique<ioctl_private>()}
-{ }
+ioctl::ioctl() : m_d{std::make_unique<ioctl_private>()}
+{}
 
-void
-ioctl::call_ioctl_create_vm(create_vm_args &args)
+void ioctl::call_ioctl_create_vm(create_vm_args &args)
 {
     if (auto d = dynamic_cast<ioctl_private *>(m_d.get())) {
         d->call_ioctl_create_vm(args);
     }
 }
 
-void
-ioctl::call_ioctl_destroy(domainid_t domainid) noexcept
+void ioctl::call_ioctl_destroy(domainid_t domainid) noexcept
 {
     if (auto d = dynamic_cast<ioctl_private *>(m_d.get())) {
         d->call_ioctl_destroy(domainid);

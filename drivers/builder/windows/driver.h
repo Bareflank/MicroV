@@ -23,9 +23,9 @@
 #define INITGUID
 
 #pragma warning(push)
-#pragma warning(disable:4820) /* padding */
-#pragma warning(disable:4255) /* change foo() to foo(void) */
-#pragma warning(disable:4062) /* unhandled enumerator in switch */
+#pragma warning(disable : 4820) /* padding */
+#pragma warning(disable : 4255) /* change foo() to foo(void) */
+#pragma warning(disable : 4062) /* unhandled enumerator in switch */
 
 #include <ntddk.h>
 #include <wdf.h>

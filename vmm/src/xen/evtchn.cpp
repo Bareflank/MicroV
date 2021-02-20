@@ -131,7 +131,7 @@ bool xen_evtchn_status(xen_vcpu *v)
             return true;
         }
 
-        auto put_dom = gsl::finally([domid](){ put_xen_domain(domid); });
+        auto put_dom = gsl::finally([domid]() { put_xen_domain(domid); });
         rc = dom->m_evtchn->status(v, sts.get());
     }
 
@@ -156,7 +156,7 @@ bool xen_evtchn_alloc_unbound(xen_vcpu *v)
             return true;
         }
 
-        auto put_dom = gsl::finally([domid](){ put_xen_domain(domid); });
+        auto put_dom = gsl::finally([domid]() { put_xen_domain(domid); });
         rc = dom->m_evtchn->alloc_unbound(eau.get());
     }
 
@@ -269,9 +269,8 @@ int xen_evtchn::init_control(xen_vcpu *v, evtchn_init_control_t *ctl)
         return -ENOENT;
     }
 
-    auto put_vcpu = gsl::finally([this, vcpuid](){
-        m_xen_dom->put_xen_vcpu(vcpuid);
-    });
+    auto put_vcpu =
+        gsl::finally([this, vcpuid]() { m_xen_dom->put_xen_vcpu(vcpuid); });
 
     vcpu->init_event_ctl(ctl);
     ctl->link_bits = EVTCHN_FIFO_LINK_BITS;
@@ -472,9 +471,8 @@ int xen_evtchn::bind_interdomain(xen_vcpu *v, evtchn_bind_interdomain_t *ebi)
 
     this->double_event_lock(ldom, rdom);
 
-    auto unlock_events = gsl::finally([this, ldom, rdom]() {
-        this->double_event_unlock(ldom, rdom);
-    });
+    auto unlock_events = gsl::finally(
+        [this, ldom, rdom]() { this->double_event_unlock(ldom, rdom); });
 
     if (rport >= rdom->m_evtchn->m_allocated_chans) {
         return -EINVAL;
@@ -483,7 +481,9 @@ int xen_evtchn::bind_interdomain(xen_vcpu *v, evtchn_bind_interdomain_t *ebi)
     auto rchan = rdom->m_evtchn->port_to_chan(rport);
     if (rchan->state != chan_t::state_unbound || rchan->rdomid != ldomid) {
         printv("%s: ERROR: rdom %u is not accepting bindings, state=%d\n",
-                __func__, rchan->rdomid, rchan->state);
+               __func__,
+               rchan->rdomid,
+               rchan->state);
         return -EINVAL;
     }
 
@@ -496,9 +496,8 @@ int xen_evtchn::bind_interdomain(xen_vcpu *v, evtchn_bind_interdomain_t *ebi)
     auto lchan = this->port_to_chan(lport);
     double_chan_lock(lchan, rchan);
 
-    auto unlock_chans = gsl::finally([lchan, rchan]() {
-        double_chan_unlock(lchan, rchan);
-    });
+    auto unlock_chans =
+        gsl::finally([lchan, rchan]() { double_chan_unlock(lchan, rchan); });
 
     lchan->state = chan_t::state_interdomain;
     lchan->rport = rport;
@@ -597,7 +596,10 @@ int xen_evtchn::bind_virq(xen_vcpu *v, evtchn_bind_virq_t *bind)
     bind->port = port;
 
     printv("%s: bound %s to port %lu on vcpu %u\n",
-           __func__, virq_info[virq].name, port, vcpu);
+           __func__,
+           virq_info[virq].name,
+           port,
+           vcpu);
 
     return 0;
 }
@@ -696,12 +698,16 @@ again:
         rchan = rdom->m_evtchn->port_to_chan(rport);
         if (rchan->state != chan_t::state_interdomain) {
             printv("%s: ERROR: rport %u invalid state %d \n",
-                    __func__, rport, rchan->state);
+                   __func__,
+                   rport,
+                   rchan->state);
             rc = -EINVAL;
             goto out;
         } else if (rchan->rdomid != ldom->m_id) {
             printv("%s: ERROR: rport %u invalid rdom %u \n",
-                    __func__, rport, rchan->rdomid);
+                   __func__,
+                   rport,
+                   rchan->rdomid);
             rc = -EINVAL;
             goto out;
         }
@@ -748,9 +754,8 @@ int xen_evtchn::reset()
             continue;
         }
 
-        auto put_vcpu = gsl::finally([this, i](){
-            m_xen_dom->put_xen_vcpu(i);
-        });
+        auto put_vcpu =
+            gsl::finally([this, i]() { m_xen_dom->put_xen_vcpu(i); });
 
         vcpu->m_event_ctl.reset(nullptr);
     }
@@ -781,7 +786,7 @@ void xen_evtchn::notify_remote(xen_vcpu *v, chan_t *chan, domainid_t *uv_domid)
         return;
     }
 
-    auto put_rdom = gsl::finally([rdomid](){ put_xen_domain(rdomid); });
+    auto put_rdom = gsl::finally([rdomid]() { put_xen_domain(rdomid); });
 
     auto rchan = rdom->m_evtchn->port_to_chan(rport);
     if (!rchan) {
@@ -796,9 +801,8 @@ void xen_evtchn::notify_remote(xen_vcpu *v, chan_t *chan, domainid_t *uv_domid)
         return;
     }
 
-    auto put_rvcpu = gsl::finally([rdom, rvcpuid]{
-        rdom->put_xen_vcpu(rvcpuid);
-    });
+    auto put_rvcpu =
+        gsl::finally([rdom, rvcpuid] { rdom->put_xen_vcpu(rvcpuid); });
 
     /*
      * Here we check if the physical cpu we are running on is the same
@@ -1028,19 +1032,19 @@ struct event_queue *xen_evtchn::lock_old_queue(const chan_t *chan)
         auto prev_vcpuid = chan->prev_vcpuid;
         auto vcpu = m_xen_dom->get_xen_vcpu(prev_vcpuid);
         if (!vcpu) {
-            printv("%s: ERROR: prev_vcpuid %u not found\n",
-                    __func__, prev_vcpuid);
+            printv(
+                "%s: ERROR: prev_vcpuid %u not found\n", __func__, prev_vcpuid);
             return nullptr;
         }
 
-        auto put_vcpu = gsl::finally([this, prev_vcpuid](){
-            m_xen_dom->put_xen_vcpu(prev_vcpuid);
-        });
+        auto put_vcpu = gsl::finally(
+            [this, prev_vcpuid]() { m_xen_dom->put_xen_vcpu(prev_vcpuid); });
 
         auto ctl = vcpu->m_event_ctl.get();
         if (!ctl) {
             printv("%s: ERROR: prev_vcpuid %u has invalid event_control\n",
-                    __func__, prev_vcpuid);
+                   __func__,
+                   prev_vcpuid);
             return nullptr;
         }
 
@@ -1056,7 +1060,8 @@ struct event_queue *xen_evtchn::lock_old_queue(const chan_t *chan)
     }
 
     printv("%s: ALERT: lost event at port %u (too many queue changes)\n",
-           __func__, chan->port);
+           __func__,
+           chan->port);
 
     return nullptr;
 }
@@ -1102,14 +1107,13 @@ bool xen_evtchn::raise(chan_t *chan)
         return false;
     }
 
-    auto put_vcpu = gsl::finally([this, chan](){
-        m_xen_dom->put_xen_vcpu(chan->vcpuid);
-    });
+    auto put_vcpu =
+        gsl::finally([this, chan]() { m_xen_dom->put_xen_vcpu(chan->vcpuid); });
 
     auto ctl = vcpu->m_event_ctl.get();
     if (!ctl) {
-        printv("%s: vcpu %u has invalid event_control\n",
-                __func__, chan->vcpuid);
+        printv(
+            "%s: vcpu %u has invalid event_control\n", __func__, chan->vcpuid);
         return false;
     }
 
@@ -1258,7 +1262,9 @@ int xen_evtchn::make_word_page(microv_vcpu *uvv, uintptr_t gfn)
 {
     if (m_word_pages.size() >= m_word_pages.capacity()) {
         printv("%s: ERROR: word pages maxed out, size=%lu, cap=%lu\n",
-               __func__, m_word_pages.size(), m_word_pages.capacity());
+               __func__,
+               m_word_pages.size(),
+               m_word_pages.capacity());
         return -ENOSPC;
     }
 

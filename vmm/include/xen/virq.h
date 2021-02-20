@@ -34,33 +34,19 @@ struct virq {
     bool global;
 };
 
-inline std::array<struct virq, NR_VIRQS> virq_info = {{
-    {"timer", true, false, false},
-    {"debug", true, false, false},
-    {"console", true, true, true},
-    {"dom_exc", true, true, true},
-    {"tbuf", true, true, true},
-    {"unused5", false, false, false},
-    {"debugger", true, true, true},
-    {"xenoprof", true, false, false},
-    {"con_ring", true, true, true},
-    {"pcpu_state", true, true, true},
-    {"mem_event", true, true, true},
-    {"argo", true, false, true},
-    {"enomem", true, true, true},
-    {"xenpmu", true, false, false},
-    {"unused14", false, false, false},
-    {"unused15", false, false, false},
-    {"arch0", true, false, true},
-    {"arch1", true, false, true},
-    {"arch2", true, false, true},
-    {"arch3", true, false, true},
-    {"arch4", true, false, true},
-    {"arch5", true, false, true},
-    {"arch6", true, false, true},
-    {"arch7", true, false, true}
-}};
-
+inline std::array<struct virq, NR_VIRQS> virq_info = {
+    {{"timer", true, false, false},     {"debug", true, false, false},
+     {"console", true, true, true},     {"dom_exc", true, true, true},
+     {"tbuf", true, true, true},        {"unused5", false, false, false},
+     {"debugger", true, true, true},    {"xenoprof", true, false, false},
+     {"con_ring", true, true, true},    {"pcpu_state", true, true, true},
+     {"mem_event", true, true, true},   {"argo", true, false, true},
+     {"enomem", true, true, true},      {"xenpmu", true, false, false},
+     {"unused14", false, false, false}, {"unused15", false, false, false},
+     {"arch0", true, false, true},      {"arch1", true, false, true},
+     {"arch2", true, false, true},      {"arch3", true, false, true},
+     {"arch4", true, false, true},      {"arch5", true, false, true},
+     {"arch6", true, false, true},      {"arch7", true, false, true}}};
 
 }
 #endif

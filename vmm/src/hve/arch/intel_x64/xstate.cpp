@@ -103,7 +103,8 @@ xstate::xstate(class vcpu *vcpu) : m_vcpu{vcpu}
         x87->ftw = 0xFF;
     }
 
-    ensures((reinterpret_cast<uintptr_t>(m_area.get()) & (area_align - 1)) == 0);
+    ensures((reinterpret_cast<uintptr_t>(m_area.get()) & (area_align - 1)) ==
+            0);
     vcpu->add_xsetbv_handler({&xstate::handle_xsetbv, this});
 }
 

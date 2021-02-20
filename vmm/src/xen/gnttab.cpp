@@ -79,7 +79,7 @@ static inline bool mappable_gtf(const uint16_t gtf) noexcept
         return false;
     }
 
-    return (gtf & (GTF_PWT|GTF_PCD|GTF_PAT|GTF_sub_page)) == 0;
+    return (gtf & (GTF_PWT | GTF_PCD | GTF_PAT | GTF_sub_page)) == 0;
 }
 
 /*
@@ -178,8 +178,8 @@ static inline bool valid_map_arg(const gnttab_map_grant_ref_t *map) noexcept
     }
 
     if ((map->ref & 0xFFFF0000U) != 0U) {
-        printv("%s: OOB ref %u would overflow map handle\n",
-               __func__, map->ref);
+        printv(
+            "%s: OOB ref %u would overflow map handle\n", __func__, map->ref);
         return false;
     }
 
@@ -219,15 +219,21 @@ static int pin_granted_page(xen_vcpu *vcpu,
                             xen_gnttab *gnt,
                             const gnttab_map_grant_ref_t *map) noexcept
 {
-    auto atomic_hdr = reinterpret_cast<atomic_hdr_t *>(gnt->shared_header(map->ref));
+    auto atomic_hdr =
+        reinterpret_cast<atomic_hdr_t *>(gnt->shared_header(map->ref));
     auto hdr = atomic_hdr->load();
     const auto map_rw = (map->flags & GNTMAP_readonly) == 0;
     const auto pin_flags = GTF_reading | (map_rw ? GTF_writing : 0);
 
     if (already_mapped(hdr.flags)) {
-        printv("%s: WARNING: attempted to remap entry: ref:%u dom:0x%x"
-               " oldflags:0x%x newflags:0x%x\n",
-               __func__, map->ref, map->dom, hdr.flags, hdr.flags | pin_flags);
+        printv(
+            "%s: WARNING: attempted to remap entry: ref:%u dom:0x%x"
+            " oldflags:0x%x newflags:0x%x\n",
+            __func__,
+            map->ref,
+            map->dom,
+            hdr.flags,
+            hdr.flags | pin_flags);
         return GNTST_general_error;
     }
 
@@ -238,19 +244,32 @@ static int pin_granted_page(xen_vcpu *vcpu,
     for (int i = 0; i < retries; i++) {
         if (!mappable_gtf(hdr.flags)) {
             printv("%s: invalid flags: gtf:0x%x ref:%u dom:0x%x\n",
-                   __func__, hdr.flags, map->ref, fdomid);
+                   __func__,
+                   hdr.flags,
+                   map->ref,
+                   fdomid);
             return GNTST_bad_gntref;
         }
 
         if (map_rw) {
-           if (!has_write_access(ldomid, &hdr)) {
-                printv("%s: dom 0x%x doesnt have write access to ref %u"
-                       " in dom 0x%x", __func__, ldomid, map->ref, fdomid);
+            if (!has_write_access(ldomid, &hdr)) {
+                printv(
+                    "%s: dom 0x%x doesnt have write access to ref %u"
+                    " in dom 0x%x",
+                    __func__,
+                    ldomid,
+                    map->ref,
+                    fdomid);
                 return GNTST_permission_denied;
             }
         } else if (!has_read_access(ldomid, &hdr)) {
-            printv("%s: dom 0x%x doesnt have read access to ref %u"
-                   " in dom 0x%x", __func__, ldomid, map->ref, fdomid);
+            printv(
+                "%s: dom 0x%x doesnt have read access to ref %u"
+                " in dom 0x%x",
+                __func__,
+                ldomid,
+                map->ref,
+                fdomid);
             return GNTST_permission_denied;
         }
 
@@ -286,7 +305,9 @@ static inline int map_foreign_frame(xen_vcpu *vcpu,
 
     if (!lgnt->map_handles.try_emplace(map_handle, lgpa).second) {
         printv("%s: failed to add map handle 0x%x for gpa 0x%lx",
-               __func__, map_handle, lgpa);
+               __func__,
+               map_handle,
+               lgpa);
         return GNTST_no_device_space;
     }
 
@@ -314,7 +335,9 @@ static inline int unmap_foreign_frame(xen_domain *ldom,
 
     if (auto rc = ldom->m_memory.get()->remove_page(lgfn, false); rc) {
         printv("%s: failed to remove_page: gfn=0x%lx, rc=%d\n",
-               __func__, lgfn, rc);
+               __func__,
+               lgfn,
+               rc);
         return GNTST_general_error;
     }
 
@@ -374,7 +397,9 @@ static void xen_gnttab_map_grant_ref(xen_vcpu *vcpu,
     if (!fpg) {
         if (map->dom != DOMID_ROOTVM) {
             printv("%s: gfn 0x%lx not mapped in dom 0x%x\n",
-                   __func__, fgfn, map->dom);
+                   __func__,
+                   fgfn,
+                   map->dom);
             rc = GNTST_general_error;
             unpin_granted_page(fgnt->shared_header(map->ref));
             goto out;
@@ -410,7 +435,9 @@ void xen_gnttab_unmap_grant_ref(xen_vcpu *vcpu,
         return;
     } else if (itr->second != lgpa) {
         printv("%s: handle.addr=0x%lx != unmap.gpa=0x%lx\n",
-                __func__, itr->second, lgpa);
+               __func__,
+               itr->second,
+               lgpa);
         unmap->status = GNTST_bad_virt_addr;
         return;
     }
@@ -514,14 +541,20 @@ static bool valid_copy_args(gnttab_copy_t *copy)
 
     if (src->offset + copy->len > XEN_PAGE_SIZE) {
         printv("%s: src: offset(%u) + len(%u) > XEN_PAGE_SIZE(%lu)",
-                __func__, src->offset, copy->len, XEN_PAGE_SIZE);
+               __func__,
+               src->offset,
+               copy->len,
+               XEN_PAGE_SIZE);
         copy->status = GNTST_bad_copy_arg;
         return false;
     }
 
     if (dst->offset + copy->len > XEN_PAGE_SIZE) {
         printv("%s: dst: offset(%u) + len(%u) > XEN_PAGE_SIZE(%lu)",
-                __func__, src->offset, copy->len, XEN_PAGE_SIZE);
+               __func__,
+               src->offset,
+               copy->len,
+               XEN_PAGE_SIZE);
         copy->status = GNTST_bad_copy_arg;
         return false;
     }
@@ -541,9 +574,8 @@ static inline bool has_access(const gnttab_copy_operand *op,
                               xen_domid_t domid,
                               const grant_entry_header_t *hdr) noexcept
 {
-    return op->is_src ?
-           has_read_access(domid, hdr) :
-           has_write_access(domid, hdr);
+    return op->is_src ? has_read_access(domid, hdr)
+                      : has_write_access(domid, hdr);
 }
 
 static int get_copy_access(gnttab_copy_operand *op,
@@ -560,9 +592,13 @@ static int get_copy_access(gnttab_copy_operand *op,
      */
     if (already_mapped(hdr.flags)) {
         if (!has_access(op, domid, &hdr)) {
-            printv("%s: ref %u already mapped but dom 0x%x doesnt have"
-                   " %s access\n", __func__, ref, domid,
-                   op->is_src ? "read" : "write");
+            printv(
+                "%s: ref %u already mapped but dom 0x%x doesnt have"
+                " %s access\n",
+                __func__,
+                ref,
+                domid,
+                op->is_src ? "read" : "write");
             return GNTST_permission_denied;
         }
 
@@ -576,7 +612,10 @@ static int get_copy_access(gnttab_copy_operand *op,
     for (int i = 0; i < retries; i++) {
         if (!has_access(op, domid, &expect)) {
             printv("%s: dom 0x%x doesn't have %s access to ref %u\n",
-                   __func__, domid, op->is_src ? "read" : "write", ref);
+                   __func__,
+                   domid,
+                   op->is_src ? "read" : "write",
+                   ref);
             return GNTST_permission_denied;
         }
 
@@ -614,7 +653,9 @@ static int get_copy_gfn(gnttab_copy_operand *op,
 
     if (gnt->invalid_ref(ref)) {
         printv("%s: bad %s ref(%u)\n",
-               __func__, (op->is_src) ? "src" : "dst", ref);
+               __func__,
+               (op->is_src) ? "src" : "dst",
+               ref);
         return GNTST_bad_gntref;
     }
 
@@ -677,7 +718,9 @@ static int get_copy_buf(gnttab_copy_operand *op)
 
     if (!op->buf) {
         printv("%s: map_copy_page failed: gfn=0x%lx hfn=0x%lx\n",
-               __func__, xpg->gfn, xpg->page->hfn);
+               __func__,
+               xpg->gfn,
+               xpg->page->hfn);
         return GNTST_general_error;
     }
 
@@ -700,7 +743,9 @@ static int get_copy_operand(xen_vcpu *vcpu, gnttab_copy_operand *op)
     auto dom = get_copy_dom(vcpu, domid);
     if (!dom) {
         printv("%s: failed to get %s dom 0x%0x\n",
-               __func__, (op->is_src) ? "src" : "dst", domid);
+               __func__,
+               (op->is_src) ? "src" : "dst",
+               domid);
         return GNTST_bad_domain;
     }
 
@@ -831,7 +876,7 @@ bool xen_gnttab_map_grant_ref(xen_vcpu *vcpu)
     int rc;
     int i;
 
-    struct gnttab_map_operand op{};
+    struct gnttab_map_operand op {};
 
     for (i = 0; i < num; i++) {
         if (op.domid != ops[i].dom) {
@@ -888,7 +933,7 @@ bool xen_gnttab_unmap_grant_ref(xen_vcpu *vcpu)
     int rc;
     int i;
 
-    struct gnttab_unmap_operand op{};
+    struct gnttab_unmap_operand op {};
 
     for (i = 0; i < num; i++) {
         xen_domid_t domid = static_cast<xen_domid_t>(ops[i].handle >> 16);
@@ -933,7 +978,8 @@ bool xen_gnttab_unmap_grant_ref(xen_vcpu *vcpu)
             }
 
             for (auto p = 0; p < i; p++) {
-                iommu->flush_iotlb_page_range(dom, ops[p].host_addr, UV_PAGE_SIZE);
+                iommu->flush_iotlb_page_range(
+                    dom, ops[p].host_addr, UV_PAGE_SIZE);
             }
         }
     }
@@ -1049,19 +1095,19 @@ constexpr uint32_t xen_gnttab::max_status_gte_pages()
     return max_sts / status_gte_per_page;
 }
 
-inline uint32_t
-xen_gnttab::shared_to_status_pages(uint32_t shr_pages) const noexcept
+inline uint32_t xen_gnttab::shared_to_status_pages(
+    uint32_t shr_pages) const noexcept
 {
-    const auto ent_per_page = (version == 1) ? shr_v1_gte_per_page :
-                                               shr_v2_gte_per_page;
+    const auto ent_per_page =
+        (version == 1) ? shr_v1_gte_per_page : shr_v2_gte_per_page;
     const auto ent = shr_pages * ent_per_page;
     const auto rem = ent & (status_gte_per_page - 1);
 
     return (ent >> status_gte_page_shift) + (rem) ? 1 : 0;
 }
 
-inline uint32_t
-xen_gnttab::status_to_shared_pages(uint32_t sts_pages) const noexcept
+inline uint32_t xen_gnttab::status_to_shared_pages(
+    uint32_t sts_pages) const noexcept
 {
     const auto ent = sts_pages * status_gte_per_page;
     const auto rem = ent & (shr_v2_gte_per_page - 1);
@@ -1112,11 +1158,18 @@ void xen_gnttab::dump_shared_entry(grant_ref_t ref)
     if (version == 1) {
         auto ent = shr_v1_entry(ref);
         printv("%s: v1: ref:0x%x flags:0x%x domid:0x%x frame:0x%x\n",
-                __func__, ref, ent->flags, ent->domid, ent->frame);
+               __func__,
+               ref,
+               ent->flags,
+               ent->domid,
+               ent->frame);
     } else {
         auto ent = shr_v2_entry(ref);
         printv("%s: v2: ref:0x%x flags:0x%x domid:0x%x\n",
-                __func__, ref, ent->hdr.flags, ent->hdr.domid);
+               __func__,
+               ref,
+               ent->hdr.flags,
+               ent->hdr.domid);
     }
 }
 
@@ -1130,13 +1183,15 @@ int xen_gnttab::get_status_page(size_t idx, class page **page)
     return get_page(XENMEM_resource_grant_table_id_status, idx, page);
 }
 
-int xen_gnttab::get_shared_pages(size_t idx, size_t count,
+int xen_gnttab::get_shared_pages(size_t idx,
+                                 size_t count,
                                  gsl::span<class page *> pages)
 {
     return get_pages(XENMEM_resource_grant_table_id_shared, idx, count, pages);
 }
 
-int xen_gnttab::get_status_pages(size_t idx, size_t count,
+int xen_gnttab::get_status_pages(size_t idx,
+                                 size_t count,
                                  gsl::span<class page *> pages)
 {
     return get_pages(XENMEM_resource_grant_table_id_status, idx, count, pages);
@@ -1169,7 +1224,9 @@ int xen_gnttab::grow_pages(const uint32_t new_shr)
     return 0;
 }
 
-int xen_gnttab::get_pages(int tabid, size_t idx, size_t count,
+int xen_gnttab::get_pages(int tabid,
+                          size_t idx,
+                          size_t count,
                           gsl::span<class page *> pages)
 {
     expects(count <= pages.size());

@@ -26,7 +26,7 @@
 #define INITGUID
 
 #pragma warning(push)
-#pragma warning(disable:4062) /* missing enumerator in switch */
+#pragma warning(disable : 4062) /* missing enumerator in switch */
 
 #include <ntddk.h>
 #include <wdf.h>
@@ -39,10 +39,20 @@ EXTERN_C_START
 
 DRIVER_INITIALIZE DriverEntry;
 
-#define INFO(...) DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_INFO_LEVEL, __VA_ARGS__)
-#define DEBUG(...) DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_INFO_LEVEL, "[UV_VISR INFO]: " __VA_ARGS__)
-#define ALERT(...) DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_INFO_LEVEL, "[UV_VISR ALERT]: " __VA_ARGS__)
-#define ERROR(...) DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "[UV_VISR ERROR]: " __VA_ARGS__)
+#define INFO(...)                                                              \
+    DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_INFO_LEVEL, __VA_ARGS__)
+#define DEBUG(...)                                                             \
+    DbgPrintEx(DPFLTR_IHVDRIVER_ID,                                            \
+               DPFLTR_INFO_LEVEL,                                              \
+               "[UV_VISR INFO]: " __VA_ARGS__)
+#define ALERT(...)                                                             \
+    DbgPrintEx(DPFLTR_IHVDRIVER_ID,                                            \
+               DPFLTR_INFO_LEVEL,                                              \
+               "[UV_VISR ALERT]: " __VA_ARGS__)
+#define ERROR(...)                                                             \
+    DbgPrintEx(DPFLTR_IHVDRIVER_ID,                                            \
+               DPFLTR_ERROR_LEVEL,                                             \
+               "[UV_VISR ERROR]: " __VA_ARGS__)
 
 EXTERN_C_END
 

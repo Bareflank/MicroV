@@ -86,7 +86,9 @@ public:
     xen_domain(microv_domain *domain);
     ~xen_domain();
 
-    void add_root_page(uintptr_t this_gpa, uintptr_t hpa, uint32_t perm,
+    void add_root_page(uintptr_t this_gpa,
+                       uintptr_t hpa,
+                       uint32_t perm,
                        uint32_t mtype);
 
     int set_timer_mode(uint64_t mode);
@@ -172,7 +174,7 @@ public:
 
     xen_domid_t m_id{};
     xen_uuid_t m_uuid{};
-    uint32_t m_ssid{};     /* flask id */
+    uint32_t m_ssid{}; /* flask id */
 
     /* Tunables */
     uint32_t m_max_pcpus{};
@@ -189,7 +191,7 @@ public:
     uint32_t m_free_pages{};
     uint32_t m_max_mfn{};
     uint32_t m_shr_pages{};   /* nr shared pages */
-    int32_t m_out_pages{};   /* nr claimed-but-not-possessed pages */
+    int32_t m_out_pages{};    /* nr claimed-but-not-possessed pages */
     uint32_t m_paged_pages{}; /* nr paged-out pages */
 
     /* Scheduling */
@@ -198,7 +200,7 @@ public:
 
     bool m_has_passthrough_dev{};
     uint32_t m_flags{}; /* DOMINF_ flags, used for {sys,dom}ctls */
-    struct xen_arch_domainconfig m_arch_config{};
+    struct xen_arch_domainconfig m_arch_config {};
 
     /* Console IO */
     std::unique_ptr<microv::ring<HVC_RX_SIZE>> m_hvc_rx_ring{};

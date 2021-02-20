@@ -23,12 +23,9 @@
 #include <hve/arch/intel_x64/domain.h>
 #include <hve/arch/intel_x64/vmcall/vcpu_op.h>
 
-namespace microv::intel_x64
-{
+namespace microv::intel_x64 {
 
-vmcall_vcpu_op_handler::vmcall_vcpu_op_handler(
-    gsl::not_null<vcpu *> vcpu
-) :
+vmcall_vcpu_op_handler::vmcall_vcpu_op_handler(gsl::not_null<vcpu *> vcpu) :
     m_vcpu{vcpu}
 {
     using namespace vmcs_n;
@@ -36,8 +33,7 @@ vmcall_vcpu_op_handler::vmcall_vcpu_op_handler(
     vcpu->add_vmcall_handler({&vmcall_vcpu_op_handler::dispatch, this});
 }
 
-void
-vmcall_vcpu_op_handler::vcpu_op__create_vcpu(vcpu *vcpu)
+void vmcall_vcpu_op_handler::vcpu_op__create_vcpu(vcpu *vcpu)
 {
     try {
         static bool init_xstate = true;
@@ -58,63 +54,54 @@ vmcall_vcpu_op_handler::vcpu_op__create_vcpu(vcpu *vcpu)
         g_vcm->create(vcpu->rax(), dom);
         vcpu->add_child_vcpu(vcpu->rax());
     }
-    catchall({
-        vcpu->set_rax(INVALID_VCPUID);
-    })
+    catchall({ vcpu->set_rax(INVALID_VCPUID); })
 }
 
-void
-vmcall_vcpu_op_handler::vcpu_op__kill_vcpu(vcpu *vcpu)
+void vmcall_vcpu_op_handler::vcpu_op__kill_vcpu(vcpu *vcpu)
 {
     try {
-//        auto child = vcpu->find_child_vcpu(vcpu->rbx());
-//        if (child) {
-//            child->kill();
-//            vcpu->set_rax(SUCCESS);
-//        } else {
-            vcpu->set_rax(FAILURE);
-//        }
-    }
-    catchall({
+        //        auto child = vcpu->find_child_vcpu(vcpu->rbx());
+        //        if (child) {
+        //            child->kill();
+        //            vcpu->set_rax(SUCCESS);
+        //        } else {
         vcpu->set_rax(FAILURE);
-    })
+        //        }
+    }
+    catchall({ vcpu->set_rax(FAILURE); })
 }
 
-void
-vmcall_vcpu_op_handler::vcpu_op__destroy_vcpu(vcpu *vcpu)
+void vmcall_vcpu_op_handler::vcpu_op__destroy_vcpu(vcpu *vcpu)
 {
     try {
         vcpu->remove_child_vcpu(vcpu->rbx());
         g_vcm->destroy(vcpu->rbx(), nullptr);
         vcpu->set_rax(SUCCESS);
     }
-    catchall({
-        vcpu->set_rax(FAILURE);
-    })
+    catchall({ vcpu->set_rax(FAILURE); })
 }
 
-bool
-vmcall_vcpu_op_handler::dispatch(vcpu *vcpu)
+bool vmcall_vcpu_op_handler::dispatch(vcpu *vcpu)
 {
     if (bfopcode(vcpu->rax()) != __enum_vcpu_op) {
         return false;
     }
 
     switch (vcpu->rax()) {
-        case __enum_vcpu_op__create_vcpu:
-            this->vcpu_op__create_vcpu(vcpu);
-            return true;
+    case __enum_vcpu_op__create_vcpu:
+        this->vcpu_op__create_vcpu(vcpu);
+        return true;
 
-        case __enum_vcpu_op__kill_vcpu:
-            this->vcpu_op__kill_vcpu(vcpu);
-            return true;
+    case __enum_vcpu_op__kill_vcpu:
+        this->vcpu_op__kill_vcpu(vcpu);
+        return true;
 
-        case __enum_vcpu_op__destroy_vcpu:
-            this->vcpu_op__destroy_vcpu(vcpu);
-            return true;
+    case __enum_vcpu_op__destroy_vcpu:
+        this->vcpu_op__destroy_vcpu(vcpu);
+        return true;
 
-        default:
-            break;
+    default:
+        break;
     };
 
     throw std::runtime_error("unknown vcpu opcode");

@@ -33,7 +33,6 @@ struct uvc_vcpu;
 class uvc_domain {
 
 private:
-
     const domainid_t m_id{INVALID_DOMAINID};
     const uvc_domain *m_parent{};
 
@@ -56,9 +55,10 @@ private:
     uint64_t m_event_data{};
 
 public:
-
-    uvc_domain(
-        domainid_t id, uvc_domain *parent, bool enable_uart, bool enable_hvc);
+    uvc_domain(domainid_t id,
+               uvc_domain *parent,
+               bool enable_uart,
+               bool enable_hvc);
 
     void create_vcpu();
     void destroy_vcpus();
@@ -83,13 +83,11 @@ public:
     domainid_t id() const noexcept;
 
 public:
-
     uvc_domain(uvc_domain &&) = default;
     uvc_domain &operator=(uvc_domain &&) = default;
 
     uvc_domain(const uvc_domain &) = delete;
     uvc_domain &operator=(const uvc_domain &) = delete;
-
 };
 
 #endif

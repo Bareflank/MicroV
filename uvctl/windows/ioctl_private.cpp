@@ -51,10 +51,8 @@ uvctl_ioctl_open(const GUID *guid)
     SP_INTERFACE_DEVICE_DATA ifInfo;
     ifInfo.cbSize = sizeof(SP_INTERFACE_DEVICE_DATA);
 
-    hDevInfo = SetupDiGetClassDevs(guid,
-                                   0,
-                                   0,
-                                   DIGCF_DEVICEINTERFACE | DIGCF_PRESENT);
+    hDevInfo =
+        SetupDiGetClassDevs(guid, 0, 0, DIGCF_DEVICEINTERFACE | DIGCF_PRESENT);
 
     if (hDevInfo == INVALID_HANDLE_VALUE) {
         log_msg("[ALERT]: SetupDiGetClassDevs failed\n");
@@ -66,23 +64,15 @@ uvctl_ioctl_open(const GUID *guid)
         return INVALID_HANDLE_VALUE;
     }
 
-    if (!SetupDiEnumDeviceInterfaces(hDevInfo,
-                                    &devInfo,
-                                    guid,
-                                    0,
-                                    &ifInfo)) {
+    if (!SetupDiEnumDeviceInterfaces(hDevInfo, &devInfo, guid, 0, &ifInfo)) {
         log_msg("[ALERT]: SetupDiEnumDeviceInterfaces failed\n");
         return INVALID_HANDLE_VALUE;
     }
 
     DWORD requiredSize = 0;
 
-    if (SetupDiGetDeviceInterfaceDetail(hDevInfo,
-                                        &ifInfo,
-                                        NULL,
-                                        0,
-                                        &requiredSize,
-                                        NULL)) {
+    if (SetupDiGetDeviceInterfaceDetail(
+            hDevInfo, &ifInfo, NULL, 0, &requiredSize, NULL)) {
         log_msg("[ALERT]: SetupDiGetDeviceInterfaceDetail failed (1)\n");
         return INVALID_HANDLE_VALUE;
     }
@@ -99,17 +89,12 @@ uvctl_ioctl_open(const GUID *guid)
         return INVALID_HANDLE_VALUE;
     }
 
-    auto ___ = gsl::finally([&]
-    { free(deviceDetailData); });
+    auto ___ = gsl::finally([&] { free(deviceDetailData); });
 
     deviceDetailData->cbSize = sizeof(SP_INTERFACE_DEVICE_DETAIL_DATA);
 
-    if (!SetupDiGetDeviceInterfaceDetail(hDevInfo,
-                                         &ifInfo,
-                                         deviceDetailData,
-                                         requiredSize,
-                                         NULL,
-                                         NULL)) {
+    if (!SetupDiGetDeviceInterfaceDetail(
+            hDevInfo, &ifInfo, deviceDetailData, requiredSize, NULL, NULL)) {
         log_msg("[ALERT]: SetupDiGetDeviceInterfaceDetail failed (3)\n");
         return INVALID_HANDLE_VALUE;
     }
@@ -125,8 +110,7 @@ uvctl_ioctl_open(const GUID *guid)
                       NULL);
 }
 
-int64_t
-uvctl_rw_ioctl(HANDLE fd, DWORD request, void *data, DWORD size)
+int64_t uvctl_rw_ioctl(HANDLE fd, DWORD request, void *data, DWORD size)
 {
     DWORD bytes = 0;
 
@@ -148,7 +132,8 @@ ioctl_private::ioctl_private()
     builder_fd = uvctl_ioctl_open(&GUID_DEVINTERFACE_builder);
 
     if (builder_fd == INVALID_HANDLE_VALUE) {
-        throw std::runtime_error("Failed to open builder driver. Is it loaded?");
+        throw std::runtime_error(
+            "Failed to open builder driver. Is it loaded?");
     }
 }
 
@@ -162,7 +147,8 @@ ioctl_private::~ioctl_private()
 void ioctl_private::call_ioctl_create_vm(create_vm_args &args)
 {
     auto fd = builder_fd;
-    auto rc = uvctl_rw_ioctl(fd, IOCTL_CREATE_VM, &args, sizeof(create_vm_args));
+    auto rc =
+        uvctl_rw_ioctl(fd, IOCTL_CREATE_VM, &args, sizeof(create_vm_args));
 
     if (rc < 0) {
         throw std::runtime_error("ioctl failed: IOCTL_CREATE_VM");

@@ -32,10 +32,8 @@
 namespace microv {
 
 xen_version::xen_version(xen_vcpu *xen) :
-    m_xen_vcpu{xen},
-    m_xen_dom{xen->m_xen_dom},
-    m_uv_vcpu{xen->m_uv_vcpu}
-{ }
+    m_xen_vcpu{xen}, m_xen_dom{xen->m_xen_dom}, m_uv_vcpu{xen->m_uv_vcpu}
+{}
 
 bool xen_version::changeset()
 {
@@ -136,7 +134,8 @@ bool xen_version::capabilities()
 
 bool xen_version::platform_parameters()
 {
-    auto params = m_uv_vcpu->map_arg<xen_platform_parameters_t>(m_uv_vcpu->rsi());
+    auto params =
+        m_uv_vcpu->map_arg<xen_platform_parameters_t>(m_uv_vcpu->rsi());
     params->virt_start = HYPERVISOR_VIRT_START;
     m_uv_vcpu->set_rax(0);
     return true;

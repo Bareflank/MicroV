@@ -66,7 +66,8 @@ static const char *hypercall_str[HYPERCALL_RAX_MAX] = {
     [__HYPERVISOR_physdev_op_compat] = "physdev_op_compat",
     [__HYPERVISOR_grant_table_op] = "grant_table_op",
     [__HYPERVISOR_vm_assist] = "vm_assist",
-    [__HYPERVISOR_update_va_mapping_otherdomain] = "update_va_mapping_otherdomain",
+    [__HYPERVISOR_update_va_mapping_otherdomain] =
+        "update_va_mapping_otherdomain",
     [__HYPERVISOR_iret] = "iret",
     [__HYPERVISOR_vcpu_op] = "vcpu_op",
     [__HYPERVISOR_set_segment_base] = "set_segment_base",
@@ -93,8 +94,7 @@ static const char *hypercall_str[HYPERCALL_RAX_MAX] = {
     [__HYPERVISOR_arch_4] = "arch_4",
     [__HYPERVISOR_arch_5] = "arch_5",
     [__HYPERVISOR_arch_6] = "arch_6",
-    [__HYPERVISOR_arch_7] = "arch_7"
-};
+    [__HYPERVISOR_arch_7] = "arch_7"};
 
 #define XENPF_MAX (XENPF_get_symbol + 1)
 static const char *xenpf_str[XENPF_MAX] = {
@@ -119,8 +119,7 @@ static const char *xenpf_str[XENPF_MAX] = {
     [XENPF_mem_hotadd] = "mem_hotadd",
     [XENPF_core_parking] = "core_parking",
     [XENPF_resource_op] = "resource_op",
-    [XENPF_get_symbol] = "get_symbol"
-};
+    [XENPF_get_symbol] = "get_symbol"};
 
 #define XENMEM_MAX (XENMEM_acquire_resource + 1)
 static const char *xenmem_str[XENMEM_MAX] = {
@@ -151,8 +150,7 @@ static const char *xenmem_str[XENMEM_MAX] = {
     [XENMEM_claim_pages] = "claim_pages",
     [XENMEM_reserved_device_memory_map] = "reserved_device_memory_map",
     [XENMEM_acquire_resource] = "acquire_resource",
-    [XENMEM_get_vnumainfo] = "get_vnumainfo"
-};
+    [XENMEM_get_vnumainfo] = "get_vnumainfo"};
 
 #define XENVER_MAX (XENVER_build_id + 1)
 static const char *xenver_str[XENVER_MAX] = {
@@ -166,8 +164,7 @@ static const char *xenver_str[XENVER_MAX] = {
     [XENVER_pagesize] = "pagesize",
     [XENVER_guest_handle] = "guest_handle",
     [XENVER_commandline] = "commandline",
-    [XENVER_build_id] = "build_id"
-};
+    [XENVER_build_id] = "build_id"};
 
 #define GNTTAB_MAX (GNTTABOP_cache_flush + 1)
 static const char *gnttab_str[GNTTAB_MAX] = {
@@ -183,8 +180,7 @@ static const char *gnttab_str[GNTTAB_MAX] = {
     [GNTTABOP_get_status_frames] = "get_status_frames",
     [GNTTABOP_get_version] = "get_version",
     [GNTTABOP_swap_grant_ref] = "swap_grant_ref",
-    [GNTTABOP_cache_flush] = "cache_flush"
-};
+    [GNTTABOP_cache_flush] = "cache_flush"};
 
 #define VMASST_MAX (VMASST_TYPE_m2p_strict + 1)
 static const char *vmasst_str[VMASST_MAX] = {
@@ -194,8 +190,7 @@ static const char *vmasst_str[VMASST_MAX] = {
     [VMASST_TYPE_pae_extended_cr3] = "pae_extended_cr3",
     [VMASST_TYPE_architectural_iopl] = "architectural_iopl",
     [VMASST_TYPE_runstate_update_flag] = "runstate_update_flag",
-    [VMASST_TYPE_m2p_strict] = "m2p_strict"
-};
+    [VMASST_TYPE_m2p_strict] = "m2p_strict"};
 
 #define VCPU_MAX (VCPUOP_register_vcpu_time_memory_area + 1)
 static const char *vcpu_str[VCPU_MAX] = {
@@ -212,8 +207,7 @@ static const char *vcpu_str[VCPU_MAX] = {
     [VCPUOP_register_vcpu_info] = "register_vcpu_info",
     [VCPUOP_send_nmi] = "send_nmi",
     [VCPUOP_get_physid] = "get_physid",
-    [VCPUOP_register_vcpu_time_memory_area] = "register_vcpu_time_memory_area"
-};
+    [VCPUOP_register_vcpu_time_memory_area] = "register_vcpu_time_memory_area"};
 
 #define FLASK_MAX (FLASK_DEVICETREE_LABEL + 1)
 static const char *flask_str[FLASK_MAX] = {
@@ -241,8 +235,7 @@ static const char *flask_str[FLASK_MAX] = {
     [FLASK_DEL_OCONTEXT] = "del_ocontext",
     [FLASK_GET_PEER_SID] = "get_peer_sid",
     [FLASK_RELABEL_DOMAIN] = "relabel_domain",
-    [FLASK_DEVICETREE_LABEL] = "devicetree_label"
-};
+    [FLASK_DEVICETREE_LABEL] = "devicetree_label"};
 
 #define EVTCHN_MAX (EVTCHNOP_set_priority + 1)
 static const char *evtchn_str[EVTCHN_MAX] = {
@@ -259,8 +252,7 @@ static const char *evtchn_str[EVTCHN_MAX] = {
     [EVTCHNOP_reset] = "reset",
     [EVTCHNOP_init_control] = "init_control",
     [EVTCHNOP_expand_array] = "expand_array",
-    [EVTCHNOP_set_priority] = "set_priority"
-};
+    [EVTCHNOP_set_priority] = "set_priority"};
 
 #define PHYSDEV_MAX (PHYSDEVOP_release_msix + 1)
 static const char *physdev_str[PHYSDEV_MAX] = {
@@ -288,8 +280,7 @@ static const char *physdev_str[PHYSDEV_MAX] = {
     [PHYSDEVOP_restore_msi_ext] = "restore_msi_ext",
     [PHYSDEVOP_prepare_msix] = "prepare_msix",
     [PHYSDEVOP_release_msix] = "release_msix",
-    [PHYSDEVOP_dbgp_op] = "dbgp_op"
-};
+    [PHYSDEVOP_dbgp_op] = "dbgp_op"};
 
 #define HVM_MAX (HVMOP_altp2m + 1)
 static const char *hvm_str[HVM_MAX] = {
@@ -304,8 +295,7 @@ static const char *hvm_str[HVM_MAX] = {
     [HVMOP_get_mem_type] = "get_mem_type",
     [HVMOP_set_evtchn_upcall_vector] = "set_evtchn_upcall_vector",
     [HVMOP_guest_request_vm_event] = "guest_request_vm_event",
-    [HVMOP_altp2m] = "altp2m"
-};
+    [HVMOP_altp2m] = "altp2m"};
 
 static const char *hvm_param_str[HVM_NR_PARAMS] = {
     [HVM_PARAM_CALLBACK_IRQ] = "callback_irq",
@@ -341,8 +331,7 @@ static const char *hvm_param_str[HVM_NR_PARAMS] = {
     [HVM_PARAM_ALTP2M] = "altp2m",
     [HVM_PARAM_X87_FIP_WIDTH] = "x87_fip_width",
     [HVM_PARAM_VM86_TSS_SIZED] = "vm86_tss_sized",
-    [HVM_PARAM_MCA_CAP] = "mca_cap"
-};
+    [HVM_PARAM_MCA_CAP] = "mca_cap"};
 
 #define SYSCTL_MAX (XEN_SYSCTL_get_cpu_policy + 1)
 static const char *sysctl_str[SYSCTL_MAX] = {
@@ -372,8 +361,7 @@ static const char *sysctl_str[SYSCTL_MAX] = {
     [XEN_SYSCTL_get_cpu_featureset] = "get_cpu_featureset",
     [XEN_SYSCTL_livepatch_op] = "livepatch_op",
     [XEN_SYSCTL_set_parameter] = "set_parameter",
-    [XEN_SYSCTL_get_cpu_policy] = "get_cpu_policy"
-};
+    [XEN_SYSCTL_get_cpu_policy] = "get_cpu_policy"};
 
 #define SCHED_MAX (SCHEDOP_pin_override + 1)
 static const char *sched_str[SCHED_MAX] = {
@@ -384,8 +372,7 @@ static const char *sched_str[SCHED_MAX] = {
     [SCHEDOP_remote_shutdown] = "remote_shutdown",
     [SCHEDOP_shutdown_code] = "shutdown_code",
     [SCHEDOP_watchdog] = "watchdog",
-    [SCHEDOP_pin_override] = "pin_override"
-};
+    [SCHEDOP_pin_override] = "pin_override"};
 
 #define DOMCTL_MAX (XEN_DOMCTL_get_cpu_policy + 1)
 static const char *domctl_str[DOMCTL_MAX] = {
@@ -434,7 +421,8 @@ static const char *domctl_str[DOMCTL_MAX] = {
     [XEN_DOMCTL_get_device_group] = "get_device_group",
     [XEN_DOMCTL_set_machine_address_size] = "set_machine_address_size",
     [XEN_DOMCTL_get_machine_address_size] = "get_machine_address_size",
-    [XEN_DOMCTL_suppress_spurious_page_faults] = "suppress_spurious_page_faults",
+    [XEN_DOMCTL_suppress_spurious_page_faults] =
+        "suppress_spurious_page_faults",
     [XEN_DOMCTL_debug_op] = "debug_op",
     [XEN_DOMCTL_gethvmcontext_partial] = "gethvmcontext_partial",
     [XEN_DOMCTL_vm_event_op] = "vm_event_op",
@@ -460,8 +448,7 @@ static const char *domctl_str[DOMCTL_MAX] = {
     [XEN_DOMCTL_psr_alloc] = "psr_alloc",
     [XEN_DOMCTL_soft_reset] = "soft_reset",
     [XEN_DOMCTL_vuart_op] = "vuart_op",
-    [XEN_DOMCTL_get_cpu_policy] = "get_cpu_policy"
-};
+    [XEN_DOMCTL_get_cpu_policy] = "get_cpu_policy"};
 
 namespace microv {
 
@@ -500,7 +487,6 @@ static void debug_gnttab(microv_vcpu *vcpu)
     } else {
         printf("%s", gnttab_str[vcpu->rdi()]);
     }
-
 }
 
 static void debug_vmasst(microv_vcpu *vcpu)
@@ -525,7 +511,6 @@ static void debug_vcpu(microv_vcpu *vcpu)
     } else {
         printf("%s", vcpu_str[vcpu->rdi()]);
     }
-
 }
 
 static void debug_flask(microv_vcpu *vcpu)

@@ -57,9 +57,23 @@ struct visr_register_event {
 };
 
 DEFINE_GUID(GUID_DEVINTERFACE_visr,
-    0x0156f59a, 0xdf90, 0x4ac6, 0x85, 0xad, 0xcf, 0xd9, 0x34, 0x25, 0x65, 0xc5);
+            0x0156f59a,
+            0xdf90,
+            0x4ac6,
+            0x85,
+            0xad,
+            0xcf,
+            0xd9,
+            0x34,
+            0x25,
+            0x65,
+            0xc5);
 
-#define IOCTL_VISR_REGISTER_EVENT CTL_CODE(VISR_DEVICETYPE, IOCTL_VISR_REGISTER_EVENT_CMD, METHOD_IN_DIRECT, FILE_READ_DATA | FILE_WRITE_DATA)
+#define IOCTL_VISR_REGISTER_EVENT                                              \
+    CTL_CODE(VISR_DEVICETYPE,                                                  \
+             IOCTL_VISR_REGISTER_EVENT_CMD,                                    \
+             METHOD_IN_DIRECT,                                                 \
+             FILE_READ_DATA | FILE_WRITE_DATA)
 
 #endif
 

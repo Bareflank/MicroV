@@ -32,7 +32,8 @@
 /* -------------------------------------------------------------------------- */
 
 #define COMMON_NO_HYPERVISOR bfscast(status_t, 0x8000000000000001)
-#define COMMON_CREATE_VM_FROM_BZIMAGE_FAILED bfscast(status_t, 0x8000000000000002)
+#define COMMON_CREATE_VM_FROM_BZIMAGE_FAILED                                   \
+    bfscast(status_t, 0x8000000000000002)
 #define COMMON_CREATE_VM_FAILED bfscast(status_t, 0x8000000000000003)
 
 /* -------------------------------------------------------------------------- */

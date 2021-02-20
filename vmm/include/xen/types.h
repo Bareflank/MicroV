@@ -36,23 +36,23 @@
 
 /* Base hypervisor types */
 namespace bfvmm::intel_x64 {
-    class vcpu;
-    class hlt_handler;
-    class ept_violation_handler;
-    class exception_handler;
-    class external_interrupt_handler;
-    class io_instruction_handler;
-    class wrmsr_handler;
+class vcpu;
+class hlt_handler;
+class ept_violation_handler;
+class exception_handler;
+class external_interrupt_handler;
+class io_instruction_handler;
+class wrmsr_handler;
 
-    namespace ept {
-        class mmap;
-    }
+namespace ept {
+class mmap;
+}
 }
 
 /* Microv vcpu and domain */
 namespace microv::intel_x64 {
-    class domain;
-    class vcpu;
+class domain;
+class vcpu;
 }
 
 namespace microv {

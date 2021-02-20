@@ -30,15 +30,12 @@
 // Definitions
 // -----------------------------------------------------------------------------
 
-namespace microv::intel_x64
-{
+namespace microv::intel_x64 {
 
 class vcpu;
 
-class x2apic_handler
-{
+class x2apic_handler {
 public:
-
     /// Constructor
     ///
     /// @expects
@@ -46,8 +43,7 @@ public:
     ///
     /// @param vcpu the vcpu object for this handler
     ///
-    x2apic_handler(
-        gsl::not_null<vcpu *> vcpu);
+    x2apic_handler(gsl::not_null<vcpu *> vcpu);
 
     /// Destructor
     ///
@@ -66,138 +62,136 @@ public:
     uint8_t timer_vector() const noexcept;
 
 public:
-
     /// @cond
 
-    bool handle_rdmsr_0x0000001B(
-        vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info);
-    bool handle_wrmsr_0x0000001B(
-        vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info);
+    bool handle_rdmsr_0x0000001B(vcpu_t *vcpu,
+                                 bfvmm::intel_x64::rdmsr_handler::info_t &info);
+    bool handle_wrmsr_0x0000001B(vcpu_t *vcpu,
+                                 bfvmm::intel_x64::wrmsr_handler::info_t &info);
 
-    bool handle_rdmsr_0x00000802(
-        vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info);
-    bool handle_wrmsr_0x00000802(
-        vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info);
-    bool handle_rdmsr_0x00000803(
-        vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info);
-    bool handle_wrmsr_0x00000803(
-        vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info);
-    bool handle_rdmsr_0x00000808(
-        vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info);
-    bool handle_wrmsr_0x00000808(
-        vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info);
-    bool handle_rdmsr_0x0000080B(
-        vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info);
-    bool handle_wrmsr_0x0000080B(
-        vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info);
-    bool handle_rdmsr_0x0000080D(
-        vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info);
-    bool handle_wrmsr_0x0000080D(
-        vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info);
-    bool handle_rdmsr_0x0000080F(
-        vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info);
-    bool handle_wrmsr_0x0000080F(
-        vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info);
-    bool handle_rdmsr_0x00000828(
-        vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info);
-    bool handle_wrmsr_0x00000828(
-        vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info);
+    bool handle_rdmsr_0x00000802(vcpu_t *vcpu,
+                                 bfvmm::intel_x64::rdmsr_handler::info_t &info);
+    bool handle_wrmsr_0x00000802(vcpu_t *vcpu,
+                                 bfvmm::intel_x64::wrmsr_handler::info_t &info);
+    bool handle_rdmsr_0x00000803(vcpu_t *vcpu,
+                                 bfvmm::intel_x64::rdmsr_handler::info_t &info);
+    bool handle_wrmsr_0x00000803(vcpu_t *vcpu,
+                                 bfvmm::intel_x64::wrmsr_handler::info_t &info);
+    bool handle_rdmsr_0x00000808(vcpu_t *vcpu,
+                                 bfvmm::intel_x64::rdmsr_handler::info_t &info);
+    bool handle_wrmsr_0x00000808(vcpu_t *vcpu,
+                                 bfvmm::intel_x64::wrmsr_handler::info_t &info);
+    bool handle_rdmsr_0x0000080B(vcpu_t *vcpu,
+                                 bfvmm::intel_x64::rdmsr_handler::info_t &info);
+    bool handle_wrmsr_0x0000080B(vcpu_t *vcpu,
+                                 bfvmm::intel_x64::wrmsr_handler::info_t &info);
+    bool handle_rdmsr_0x0000080D(vcpu_t *vcpu,
+                                 bfvmm::intel_x64::rdmsr_handler::info_t &info);
+    bool handle_wrmsr_0x0000080D(vcpu_t *vcpu,
+                                 bfvmm::intel_x64::wrmsr_handler::info_t &info);
+    bool handle_rdmsr_0x0000080F(vcpu_t *vcpu,
+                                 bfvmm::intel_x64::rdmsr_handler::info_t &info);
+    bool handle_wrmsr_0x0000080F(vcpu_t *vcpu,
+                                 bfvmm::intel_x64::wrmsr_handler::info_t &info);
+    bool handle_rdmsr_0x00000828(vcpu_t *vcpu,
+                                 bfvmm::intel_x64::rdmsr_handler::info_t &info);
+    bool handle_wrmsr_0x00000828(vcpu_t *vcpu,
+                                 bfvmm::intel_x64::wrmsr_handler::info_t &info);
 
-    bool handle_rdmsr_0x00000810(
-        vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info);
-    bool handle_wrmsr_0x00000810(
-        vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info);
-    bool handle_rdmsr_0x00000811(
-        vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info);
-    bool handle_wrmsr_0x00000811(
-        vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info);
-    bool handle_rdmsr_0x00000812(
-        vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info);
-    bool handle_wrmsr_0x00000812(
-        vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info);
-    bool handle_rdmsr_0x00000813(
-        vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info);
-    bool handle_wrmsr_0x00000813(
-        vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info);
-    bool handle_rdmsr_0x00000814(
-        vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info);
-    bool handle_wrmsr_0x00000814(
-        vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info);
-    bool handle_rdmsr_0x00000815(
-        vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info);
-    bool handle_wrmsr_0x00000815(
-        vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info);
-    bool handle_rdmsr_0x00000816(
-        vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info);
-    bool handle_wrmsr_0x00000816(
-        vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info);
-    bool handle_rdmsr_0x00000817(
-        vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info);
-    bool handle_wrmsr_0x00000817(
-        vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info);
+    bool handle_rdmsr_0x00000810(vcpu_t *vcpu,
+                                 bfvmm::intel_x64::rdmsr_handler::info_t &info);
+    bool handle_wrmsr_0x00000810(vcpu_t *vcpu,
+                                 bfvmm::intel_x64::wrmsr_handler::info_t &info);
+    bool handle_rdmsr_0x00000811(vcpu_t *vcpu,
+                                 bfvmm::intel_x64::rdmsr_handler::info_t &info);
+    bool handle_wrmsr_0x00000811(vcpu_t *vcpu,
+                                 bfvmm::intel_x64::wrmsr_handler::info_t &info);
+    bool handle_rdmsr_0x00000812(vcpu_t *vcpu,
+                                 bfvmm::intel_x64::rdmsr_handler::info_t &info);
+    bool handle_wrmsr_0x00000812(vcpu_t *vcpu,
+                                 bfvmm::intel_x64::wrmsr_handler::info_t &info);
+    bool handle_rdmsr_0x00000813(vcpu_t *vcpu,
+                                 bfvmm::intel_x64::rdmsr_handler::info_t &info);
+    bool handle_wrmsr_0x00000813(vcpu_t *vcpu,
+                                 bfvmm::intel_x64::wrmsr_handler::info_t &info);
+    bool handle_rdmsr_0x00000814(vcpu_t *vcpu,
+                                 bfvmm::intel_x64::rdmsr_handler::info_t &info);
+    bool handle_wrmsr_0x00000814(vcpu_t *vcpu,
+                                 bfvmm::intel_x64::wrmsr_handler::info_t &info);
+    bool handle_rdmsr_0x00000815(vcpu_t *vcpu,
+                                 bfvmm::intel_x64::rdmsr_handler::info_t &info);
+    bool handle_wrmsr_0x00000815(vcpu_t *vcpu,
+                                 bfvmm::intel_x64::wrmsr_handler::info_t &info);
+    bool handle_rdmsr_0x00000816(vcpu_t *vcpu,
+                                 bfvmm::intel_x64::rdmsr_handler::info_t &info);
+    bool handle_wrmsr_0x00000816(vcpu_t *vcpu,
+                                 bfvmm::intel_x64::wrmsr_handler::info_t &info);
+    bool handle_rdmsr_0x00000817(vcpu_t *vcpu,
+                                 bfvmm::intel_x64::rdmsr_handler::info_t &info);
+    bool handle_wrmsr_0x00000817(vcpu_t *vcpu,
+                                 bfvmm::intel_x64::wrmsr_handler::info_t &info);
 
-    bool handle_rdmsr_0x00000820(
-        vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info);
-    bool handle_wrmsr_0x00000820(
-        vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info);
-    bool handle_rdmsr_0x00000821(
-        vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info);
-    bool handle_wrmsr_0x00000821(
-        vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info);
-    bool handle_rdmsr_0x00000822(
-        vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info);
-    bool handle_wrmsr_0x00000822(
-        vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info);
-    bool handle_rdmsr_0x00000823(
-        vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info);
-    bool handle_wrmsr_0x00000823(
-        vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info);
-    bool handle_rdmsr_0x00000824(
-        vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info);
-    bool handle_wrmsr_0x00000824(
-        vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info);
-    bool handle_rdmsr_0x00000825(
-        vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info);
-    bool handle_wrmsr_0x00000825(
-        vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info);
-    bool handle_rdmsr_0x00000826(
-        vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info);
-    bool handle_wrmsr_0x00000826(
-        vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info);
-    bool handle_rdmsr_0x00000827(
-        vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info);
-    bool handle_wrmsr_0x00000827(
-        vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info);
+    bool handle_rdmsr_0x00000820(vcpu_t *vcpu,
+                                 bfvmm::intel_x64::rdmsr_handler::info_t &info);
+    bool handle_wrmsr_0x00000820(vcpu_t *vcpu,
+                                 bfvmm::intel_x64::wrmsr_handler::info_t &info);
+    bool handle_rdmsr_0x00000821(vcpu_t *vcpu,
+                                 bfvmm::intel_x64::rdmsr_handler::info_t &info);
+    bool handle_wrmsr_0x00000821(vcpu_t *vcpu,
+                                 bfvmm::intel_x64::wrmsr_handler::info_t &info);
+    bool handle_rdmsr_0x00000822(vcpu_t *vcpu,
+                                 bfvmm::intel_x64::rdmsr_handler::info_t &info);
+    bool handle_wrmsr_0x00000822(vcpu_t *vcpu,
+                                 bfvmm::intel_x64::wrmsr_handler::info_t &info);
+    bool handle_rdmsr_0x00000823(vcpu_t *vcpu,
+                                 bfvmm::intel_x64::rdmsr_handler::info_t &info);
+    bool handle_wrmsr_0x00000823(vcpu_t *vcpu,
+                                 bfvmm::intel_x64::wrmsr_handler::info_t &info);
+    bool handle_rdmsr_0x00000824(vcpu_t *vcpu,
+                                 bfvmm::intel_x64::rdmsr_handler::info_t &info);
+    bool handle_wrmsr_0x00000824(vcpu_t *vcpu,
+                                 bfvmm::intel_x64::wrmsr_handler::info_t &info);
+    bool handle_rdmsr_0x00000825(vcpu_t *vcpu,
+                                 bfvmm::intel_x64::rdmsr_handler::info_t &info);
+    bool handle_wrmsr_0x00000825(vcpu_t *vcpu,
+                                 bfvmm::intel_x64::wrmsr_handler::info_t &info);
+    bool handle_rdmsr_0x00000826(vcpu_t *vcpu,
+                                 bfvmm::intel_x64::rdmsr_handler::info_t &info);
+    bool handle_wrmsr_0x00000826(vcpu_t *vcpu,
+                                 bfvmm::intel_x64::wrmsr_handler::info_t &info);
+    bool handle_rdmsr_0x00000827(vcpu_t *vcpu,
+                                 bfvmm::intel_x64::rdmsr_handler::info_t &info);
+    bool handle_wrmsr_0x00000827(vcpu_t *vcpu,
+                                 bfvmm::intel_x64::wrmsr_handler::info_t &info);
 
-    bool handle_rdmsr_0x00000832(
-        vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info);
-    bool handle_wrmsr_0x00000832(
-        vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info);
-    bool handle_rdmsr_0x00000834(
-        vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info);
-    bool handle_wrmsr_0x00000834(
-        vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info);
-    bool handle_rdmsr_0x00000835(
-        vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info);
-    bool handle_wrmsr_0x00000835(
-        vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info);
-    bool handle_rdmsr_0x00000836(
-        vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info);
-    bool handle_wrmsr_0x00000836(
-        vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info);
-    bool handle_rdmsr_0x00000837(
-        vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info);
-    bool handle_wrmsr_0x00000837(
-        vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info);
-    bool handle_rdmsr_0x00000838(
-        vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info);
-    bool handle_wrmsr_0x00000838(
-        vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info);
+    bool handle_rdmsr_0x00000832(vcpu_t *vcpu,
+                                 bfvmm::intel_x64::rdmsr_handler::info_t &info);
+    bool handle_wrmsr_0x00000832(vcpu_t *vcpu,
+                                 bfvmm::intel_x64::wrmsr_handler::info_t &info);
+    bool handle_rdmsr_0x00000834(vcpu_t *vcpu,
+                                 bfvmm::intel_x64::rdmsr_handler::info_t &info);
+    bool handle_wrmsr_0x00000834(vcpu_t *vcpu,
+                                 bfvmm::intel_x64::wrmsr_handler::info_t &info);
+    bool handle_rdmsr_0x00000835(vcpu_t *vcpu,
+                                 bfvmm::intel_x64::rdmsr_handler::info_t &info);
+    bool handle_wrmsr_0x00000835(vcpu_t *vcpu,
+                                 bfvmm::intel_x64::wrmsr_handler::info_t &info);
+    bool handle_rdmsr_0x00000836(vcpu_t *vcpu,
+                                 bfvmm::intel_x64::rdmsr_handler::info_t &info);
+    bool handle_wrmsr_0x00000836(vcpu_t *vcpu,
+                                 bfvmm::intel_x64::wrmsr_handler::info_t &info);
+    bool handle_rdmsr_0x00000837(vcpu_t *vcpu,
+                                 bfvmm::intel_x64::rdmsr_handler::info_t &info);
+    bool handle_wrmsr_0x00000837(vcpu_t *vcpu,
+                                 bfvmm::intel_x64::wrmsr_handler::info_t &info);
+    bool handle_rdmsr_0x00000838(vcpu_t *vcpu,
+                                 bfvmm::intel_x64::rdmsr_handler::info_t &info);
+    bool handle_wrmsr_0x00000838(vcpu_t *vcpu,
+                                 bfvmm::intel_x64::wrmsr_handler::info_t &info);
 
     /// @endcond
 
 private:
-
     vcpu *m_vcpu;
 
     uint64_t m_0x0000001B{0xFEE00D00};
@@ -229,7 +223,6 @@ private:
     uint64_t m_0x00000837{1U << 16U};
 
 public:
-
     /// @cond
 
     x2apic_handler(x2apic_handler &&) = default;

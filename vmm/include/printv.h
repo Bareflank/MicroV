@@ -25,9 +25,15 @@
 #include <bfdebug.h>
 #include <stdio.h>
 
-#define printv(fmt, ...) \
-        printf("%s[%s%s0x%lx%s%s]%s " fmt, \
-        bfcolor_cyan, bfcolor_end, bfcolor_yellow, thread_context_cpuid(), \
-        bfcolor_end, bfcolor_cyan, bfcolor_end, ##__VA_ARGS__)
+#define printv(fmt, ...)                                                       \
+    printf("%s[%s%s0x%lx%s%s]%s " fmt,                                         \
+           bfcolor_cyan,                                                       \
+           bfcolor_end,                                                        \
+           bfcolor_yellow,                                                     \
+           thread_context_cpuid(),                                             \
+           bfcolor_end,                                                        \
+           bfcolor_cyan,                                                       \
+           bfcolor_end,                                                        \
+           ##__VA_ARGS__)
 
 #endif

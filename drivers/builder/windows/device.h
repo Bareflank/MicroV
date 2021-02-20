@@ -30,8 +30,6 @@ typedef struct _DEVICE_CONTEXT {
 WDF_DECLARE_CONTEXT_TYPE_WITH_NAME(DEVICE_CONTEXT, DeviceGetContext)
 
 NTSTATUS
-builderCreateDevice(
-    _Inout_ PWDFDEVICE_INIT DeviceInit
-);
+builderCreateDevice(_Inout_ PWDFDEVICE_INIT DeviceInit);
 
 EXTERN_C_END

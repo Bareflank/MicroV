@@ -42,7 +42,7 @@
 namespace microv {
 
 namespace intel_x64 {
-    class vmcall_event_op_handler;
+class vmcall_event_op_handler;
 }
 
 class xen_vcpu {
@@ -55,7 +55,10 @@ public:
     void init_event_ctl(evtchn_init_control_t *ctl);
     uint64_t runstate_time(int state);
 
-    void invept() const { m_uv_dom->invept(); }
+    void invept() const
+    {
+        m_uv_dom->invept();
+    }
 
     void push_external_interrupt(uint64_t vector);
     void queue_external_interrupt(uint64_t vector);
@@ -164,7 +167,6 @@ public:
     xen_vcpu(const xen_vcpu &) = delete;
     xen_vcpu &operator=(xen_vcpu &&) = delete;
     xen_vcpu &operator=(const xen_vcpu &) = delete;
-
 };
 }
 

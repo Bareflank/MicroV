@@ -24,7 +24,7 @@
 
 #ifdef _WIN64
 #pragma warning(push)
-#pragma warning(disable:4267)
+#pragma warning(disable : 4267)
 #include <malloc.h>
 #endif
 
@@ -48,8 +48,7 @@ inline std::mutex orig_arg_mutex;
 inline int orig_argc = 0;
 inline char **orig_argv = nullptr;
 
-inline args_type
-parse_args(int argc, char *argv[])
+inline args_type parse_args(int argc, char *argv[])
 {
     using namespace cxxopts;
     cxxopts::Options options("uvctl", "control a microv virtual machine");

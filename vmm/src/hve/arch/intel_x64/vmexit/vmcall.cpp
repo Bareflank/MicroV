@@ -22,20 +22,14 @@
 #include <hve/arch/intel_x64/vcpu.h>
 #include <hve/arch/intel_x64/vmexit/vmcall.h>
 
-namespace microv::intel_x64
-{
+namespace microv::intel_x64 {
 
-vmcall_handler::vmcall_handler(
-    gsl::not_null<vcpu *> vcpu
-) :
-    m_vcpu{vcpu}
+vmcall_handler::vmcall_handler(gsl::not_null<vcpu *> vcpu) : m_vcpu{vcpu}
 {
     using namespace vmcs_n;
 
-    vcpu->add_handler(
-        exit_reason::basic_exit_reason::vmcall,
-        {&vmcall_handler::handle, this}
-    );
+    vcpu->add_handler(exit_reason::basic_exit_reason::vmcall,
+                      {&vmcall_handler::handle, this});
 }
 
 // -----------------------------------------------------------------------------
@@ -51,11 +45,9 @@ void vmcall_handler::add_handler(const handler_delegate_t &d)
 // Handlers
 // -----------------------------------------------------------------------------
 
-static bool
-vmcall_error(gsl::not_null<vcpu *> vcpu, const std::string &str)
+static bool vmcall_error(gsl::not_null<vcpu *> vcpu, const std::string &str)
 {
-    bfdebug_transaction(0, [&](std::string * msg) {
-
+    bfdebug_transaction(0, [&](std::string *msg) {
         bferror_lnbr(0, msg);
         bferror_info(0, ("vmcall error: " + str).c_str(), msg);
         bferror_brk1(0, msg);
@@ -67,8 +59,7 @@ vmcall_error(gsl::not_null<vcpu *> vcpu, const std::string &str)
             bferror_subnhex(0, "rbx", vcpu->rbx(), msg);
             bferror_subnhex(0, "rcx", vcpu->rcx(), msg);
             bferror_subnhex(0, "rdx", vcpu->rdx(), msg);
-        }
-        else {
+        } else {
             /* Xen hypercall */
             bferror_info(0, "Xen hypercall:");
             bferror_subnhex(0, "rax", vcpu->rax(), msg);
@@ -86,12 +77,9 @@ vmcall_error(gsl::not_null<vcpu *> vcpu, const std::string &str)
     return true;
 }
 
-bool
-vmcall_handler::handle(vcpu_t *vcpu)
+bool vmcall_handler::handle(vcpu_t *vcpu)
 {
-    auto ___ = gsl::finally([&] {
-        vcpu->load();
-    });
+    auto ___ = gsl::finally([&] { vcpu->load(); });
 
     vcpu->advance();
 
@@ -102,11 +90,9 @@ vmcall_handler::handle(vcpu_t *vcpu)
             }
         }
     }
-    catchall({
-        return vmcall_error(m_vcpu, "vmcall threw exception");
-    })
+    catchall({ return vmcall_error(m_vcpu, "vmcall threw exception"); })
 
-    return vmcall_error(m_vcpu, "unknown vmcall");
+        return vmcall_error(m_vcpu, "unknown vmcall");
 }
 
 }

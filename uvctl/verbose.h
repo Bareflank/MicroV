@@ -24,18 +24,22 @@
 
 #include "log.h"
 
-#define dump_vm_create_verbose() \
-    do { \
-        if (verbose) { \
-            log_msg("Created VM:\n"); \
-            log_msg("    kernel | %s\n", kernel.path().c_str()); \
-            log_msg("    initrd | %s\n", initrd.path().c_str()); \
-            log_msg(" domain id | 0x%x\n", ioctl_args.domainid); \
-            log_msg("  ram size | %luMB\n", (ram / 0x100000U)); \
-            log_msg("   cmdline | %s\n", cmdl.data()); \
-            log_msg(" file type | %s\n", (ioctl_args.file_type == VM_FILE_VMLINUX) ? "vmlinux" : "bzImage"); \
-            log_msg(" exec mode | %s\n", (ioctl_args.exec_mode == VM_EXEC_XENPVH) ? "xenpvh" : "native"); \
-        } \
+#define dump_vm_create_verbose()                                               \
+    do {                                                                       \
+        if (verbose) {                                                         \
+            log_msg("Created VM:\n");                                          \
+            log_msg("    kernel | %s\n", kernel.path().c_str());               \
+            log_msg("    initrd | %s\n", initrd.path().c_str());               \
+            log_msg(" domain id | 0x%x\n", ioctl_args.domainid);               \
+            log_msg("  ram size | %luMB\n", (ram / 0x100000U));                \
+            log_msg("   cmdline | %s\n", cmdl.data());                         \
+            log_msg(" file type | %s\n",                                       \
+                    (ioctl_args.file_type == VM_FILE_VMLINUX) ? "vmlinux"      \
+                                                              : "bzImage");    \
+            log_msg(" exec mode | %s\n",                                       \
+                    (ioctl_args.exec_mode == VM_EXEC_XENPVH) ? "xenpvh"        \
+                                                             : "native");      \
+        }                                                                      \
     } while (0)
 
 #endif

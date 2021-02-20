@@ -29,15 +29,12 @@
 // Definitions
 // -----------------------------------------------------------------------------
 
-namespace microv
-{
+namespace microv {
 
 /// Domain Factory
 ///
-class domain_factory
-{
+class domain_factory {
 public:
-
     /// Default Constructor
     ///
     /// @expects none
@@ -61,11 +58,10 @@ public:
     /// @param obj object passed to the domain
     /// @return returns a pointer to a newly created vCPU.
     ///
-    virtual std::unique_ptr<domain> make(
-        domain::id_t domainid, bfobject *obj = nullptr);
+    virtual std::unique_ptr<domain> make(domain::id_t domainid,
+                                         bfobject *obj = nullptr);
 
 public:
-
     /// @cond
 
     domain_factory(domain_factory &&) noexcept = default;

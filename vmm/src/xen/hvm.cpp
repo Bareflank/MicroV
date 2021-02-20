@@ -131,10 +131,7 @@ void xen_hvm::init_root_store_params()
     store_page = std::make_unique<uint8_t[]>(UV_PAGE_SIZE);
 
     evtchn_alloc_unbound_t store_chan = {
-        .dom = DOMID_SELF,
-        .remote_dom = 0,
-        .port = 0
-    };
+        .dom = DOMID_SELF, .remote_dom = 0, .port = 0};
 
     if (int rc = xen_dom->m_evtchn->alloc_unbound(&store_chan); rc) {
         printv("winpv: failed to alloc store port, rc=%d\n", rc);
@@ -149,11 +146,8 @@ void xen_hvm::init_root_store_params()
     params[HVM_PARAM_STORE_PFN] = gpfn;
     params[HVM_PARAM_STORE_EVTCHN] = port;
 
-    xen_dom->m_memory->add_vmm_backed_page(gpfn,
-                                           pg_perm_rw,
-                                           pg_mtype_wb,
-                                           store_page.get(),
-                                           false);
+    xen_dom->m_memory->add_vmm_backed_page(
+        gpfn, pg_perm_rw, pg_mtype_wb, store_page.get(), false);
 
     const auto gpa = xen_addr(gpfn);
 
@@ -166,10 +160,7 @@ void xen_hvm::init_root_console_params()
     console_page = std::make_unique<uint8_t[]>(UV_PAGE_SIZE);
 
     evtchn_alloc_unbound_t console_chan = {
-        .dom = DOMID_SELF,
-        .remote_dom = 0,
-        .port = 0
-    };
+        .dom = DOMID_SELF, .remote_dom = 0, .port = 0};
 
     if (int rc = xen_dom->m_evtchn->alloc_unbound(&console_chan); rc) {
         printv("winpv: failed to alloc console port, rc=%d\n", rc);
@@ -184,11 +175,8 @@ void xen_hvm::init_root_console_params()
     params[HVM_PARAM_CONSOLE_PFN] = gpfn;
     params[HVM_PARAM_CONSOLE_EVTCHN] = port;
 
-    xen_dom->m_memory->add_vmm_backed_page(gpfn,
-                                           pg_perm_rw,
-                                           pg_mtype_wb,
-                                           console_page.get(),
-                                           false);
+    xen_dom->m_memory->add_vmm_backed_page(
+        gpfn, pg_perm_rw, pg_mtype_wb, console_page.get(), false);
 
     const auto gpa = xen_addr(gpfn);
 
@@ -196,9 +184,7 @@ void xen_hvm::init_root_console_params()
     xen_dom->m_uv_dom->m_vmm_map_whitelist.try_emplace(gpa, gpa);
 }
 
-xen_hvm::xen_hvm(xen_domain *dom, xen_memory *mem) :
-    xen_dom{dom},
-    xen_mem{mem}
+xen_hvm::xen_hvm(xen_domain *dom, xen_memory *mem) : xen_dom{dom}, xen_mem{mem}
 {
     if (xen_dom->m_uv_info->origin != domain_info::origin_root) {
         return;

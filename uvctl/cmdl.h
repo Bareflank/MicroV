@@ -24,18 +24,14 @@
 
 #include <string>
 
-namespace bfn
-{
+namespace bfn {
 
-class cmdl
-{
+class cmdl {
     using pointer = const char *;
     using size_type = std::size_t;
 
 public:
-
-    void
-    add(const std::string &str)
+    void add(const std::string &str)
     {
         if (!m_cmdline.empty()) {
             m_cmdline += " ";
@@ -44,16 +40,17 @@ public:
         m_cmdline += str;
     }
 
-    pointer
-    data() const noexcept
-    { return m_cmdline.c_str(); }
+    pointer data() const noexcept
+    {
+        return m_cmdline.c_str();
+    }
 
-    size_type
-    size() const noexcept
-    { return m_cmdline.size(); }
+    size_type size() const noexcept
+    {
+        return m_cmdline.size();
+    }
 
 private:
-
     std::string m_cmdline;
 };
 

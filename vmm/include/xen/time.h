@@ -66,12 +66,13 @@ static inline uint64_t tsc_to_pet(uint64_t tsc, uint64_t pet_shift) noexcept
 }
 
 /* Taken from xen/include/asm-x86/div64.h */
-#define do_div(n, base) ({ \
-    uint32_t __base = (base); \
-    uint32_t __rem; \
-    __rem = ((uint64_t)(n)) % __base; \
-    (n) = ((uint64_t)(n)) / __base; \
-    __rem; \
-})
+#define do_div(n, base)                                                        \
+    ({                                                                         \
+        uint32_t __base = (base);                                              \
+        uint32_t __rem;                                                        \
+        __rem = ((uint64_t)(n)) % __base;                                      \
+        (n) = ((uint64_t)(n)) / __base;                                        \
+        __rem;                                                                 \
+    })
 
 #endif

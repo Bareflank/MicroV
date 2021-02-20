@@ -444,10 +444,8 @@ bool xenmem_acquire_resource(xen_vcpu *vcpu)
 
 /* class xen_memory */
 xen_memory::xen_memory(xen_domain *dom) :
-    m_xen_dom{dom},
-    m_ept{&dom->m_uv_dom->ept()}
-{
-}
+    m_xen_dom{dom}, m_ept{&dom->m_uv_dom->ept()}
+{}
 
 void xen_memory::add_ept_handlers(xen_vcpu *v)
 {
@@ -455,7 +453,8 @@ void xen_memory::add_ept_handlers(xen_vcpu *v)
 
     uvv->add_ept_read_violation_handler({&xen_memory::handle_ept_read, this});
     uvv->add_ept_write_violation_handler({&xen_memory::handle_ept_write, this});
-    uvv->add_ept_execute_violation_handler({&xen_memory::handle_ept_exec, this});
+    uvv->add_ept_execute_violation_handler(
+        {&xen_memory::handle_ept_exec, this});
 }
 
 int xen_memory::back_page(class xen_page *pg)
@@ -613,7 +612,8 @@ int xen_memory::map_page(xen_pfn_t gfn, uint32_t perms)
 
     if (pg->present) {
         printv("%s: warning: gfn 0x%0lx already present, returning\n",
-                __func__, gfn);
+               __func__,
+               gfn);
         return 0;
     }
 
@@ -639,9 +639,8 @@ void xen_memory::add_page(xen_pfn_t gfn, uint32_t perms, uint32_t mtype)
 }
 
 /* Add a page with root backing */
-void xen_memory::add_root_backed_page(xen_pfn_t gfn, uint32_t perms,
-                                      uint32_t mtype, xen_pfn_t hfn,
-                                      bool need_map)
+void xen_memory::add_root_backed_page(
+    xen_pfn_t gfn, uint32_t perms, uint32_t mtype, xen_pfn_t hfn, bool need_map)
 {
     expects(m_page_map.count(gfn) == 0);
 
@@ -654,9 +653,8 @@ void xen_memory::add_root_backed_page(xen_pfn_t gfn, uint32_t perms,
 }
 
 /* Add a page with vmm backing */
-void xen_memory::add_vmm_backed_page(xen_pfn_t gfn, uint32_t perms,
-                                     uint32_t mtype, void *ptr,
-                                     bool need_map)
+void xen_memory::add_vmm_backed_page(
+    xen_pfn_t gfn, uint32_t perms, uint32_t mtype, void *ptr, bool need_map)
 {
     expects(m_page_map.count(gfn) == 0);
 
@@ -669,8 +667,10 @@ void xen_memory::add_vmm_backed_page(xen_pfn_t gfn, uint32_t perms,
 }
 
 /* Add a page from another domain */
-void xen_memory::add_foreign_page(xen_pfn_t gfn, uint32_t perms,
-                                  uint32_t mtype, class page *fpg)
+void xen_memory::add_foreign_page(xen_pfn_t gfn,
+                                  uint32_t perms,
+                                  uint32_t mtype,
+                                  class page *fpg)
 {
     expects(m_page_map.count(gfn) == 0);
 
@@ -681,7 +681,9 @@ void xen_memory::add_foreign_page(xen_pfn_t gfn, uint32_t perms,
     if (!xenpg->backed()) {
         if (auto rc = this->back_page(xenpg); rc) {
             printv("%s: failed to back foreign page at gfn 0x%lx, rc=%d\n",
-                   __func__, gfn, rc);
+                   __func__,
+                   gfn,
+                   rc);
             return;
         }
     }
@@ -690,7 +692,9 @@ void xen_memory::add_foreign_page(xen_pfn_t gfn, uint32_t perms,
 }
 
 /* Add a page already created from this domain */
-void xen_memory::add_local_page(xen_pfn_t gfn, uint32_t perms, uint32_t mtype,
+void xen_memory::add_local_page(xen_pfn_t gfn,
+                                uint32_t perms,
+                                uint32_t mtype,
                                 class page *pg)
 {
     expects(m_page_map.count(gfn) == 0);
@@ -700,7 +704,9 @@ void xen_memory::add_local_page(xen_pfn_t gfn, uint32_t perms, uint32_t mtype,
     if (!xenpg->backed()) {
         if (auto rc = this->back_page(xenpg); rc) {
             printv("%s: failed to back local page at gfn 0x%lx, rc=%d\n",
-                   __func__, gfn, rc);
+                   __func__,
+                   gfn,
+                   rc);
             return;
         }
     }
@@ -708,7 +714,9 @@ void xen_memory::add_local_page(xen_pfn_t gfn, uint32_t perms, uint32_t mtype,
     this->map_page(xenpg);
 }
 
-void xen_memory::add_raw_page(xen_pfn_t gfn, uint32_t perms, uint32_t mtype,
+void xen_memory::add_raw_page(xen_pfn_t gfn,
+                              uint32_t perms,
+                              uint32_t mtype,
                               xen_pfn_t hfn)
 {
     expects(m_page_map.count(gfn) == 0);
@@ -806,7 +814,8 @@ bool xen_memory::add_to_physmap_batch(xen_vcpu *v,
         put_xen_domain(fdomid);
 
         return true;
-    } catch (...) {
+    }
+    catch (...) {
         uvv->set_rax(-EFAULT);
         put_xen_domain(fdomid);
 
@@ -909,7 +918,8 @@ bool xen_memory::decrease_reservation(xen_vcpu *v,
                 expects(gfn[i] == (gfn[i + 1] - (1UL << rsv->extent_order)));
             }
 
-            auto buf = uvv->map_gpa_2m<uint8_t>(winpv_hole_gpa + (i * extent_size));
+            auto buf =
+                uvv->map_gpa_2m<uint8_t>(winpv_hole_gpa + (i * extent_size));
             memset(buf.get(), 0, extent_size);
         }
 
@@ -942,7 +952,8 @@ bool xen_memory::decrease_reservation(xen_vcpu *v,
         uvv->set_rax(nr_done);
 
         printv("Created Windows PV hole at 0x%lx-0x%lx\n",
-               winpv_hole_gpa, winpv_hole_gpa + winpv_hole_size - 1U);
+               winpv_hole_gpa,
+               winpv_hole_gpa + winpv_hole_size - 1U);
     }
 
     return true;
@@ -967,7 +978,10 @@ bool xen_memory::claim_pages(xen_vcpu *v, xen_memory_reservation_t *rsv)
     uint64_t claim = rsv->nr_extents;
 
     printv("%s: claimed_pages:%lu root_pages:%lu vmm_pages:%lu\n",
-           __func__, claim, root_pages, vmm_pages);
+           __func__,
+           claim,
+           root_pages,
+           vmm_pages);
 
     if (claim > avail) {
         printv("%s: ERROR: can't claim amount requested\n", __func__);
@@ -978,7 +992,10 @@ bool xen_memory::claim_pages(xen_vcpu *v, xen_memory_reservation_t *rsv)
     m_xen_dom->m_out_pages = claim;
 
     printv("%s: staked %ld pages (%lu MB) (flags=0x%x)\n",
-            __func__, claim, (claim * XEN_PAGE_SIZE) >> 20, rsv->mem_flags);
+           __func__,
+           claim,
+           (claim * XEN_PAGE_SIZE) >> 20,
+           rsv->mem_flags);
 
     uvv->set_rax(0);
     return true;
@@ -1047,7 +1064,8 @@ bool xen_memory::populate_physmap(xen_vcpu *v, xen_memory_reservation_t *rsv)
             try {
                 ept->unmap(gpa);
                 ept->release(gpa);
-            } catch (...) {
+            }
+            catch (...) {
                 ;
             }
         }
@@ -1091,8 +1109,10 @@ bool xen_memory::set_memory_map(xen_vcpu *v, xen_foreign_memory_map_t *fmap)
         auto entry = &e820_buf[i];
 
         printv("%s: e820: addr:0x%lx size:%luKB type:%s\n",
-                __func__, entry->addr, entry->size >> 12,
-                e820_type_str(entry->type));
+               __func__,
+               entry->addr,
+               entry->size >> 12,
+               e820_type_str(entry->type));
 
         e820_dom->push_back(*entry);
 
@@ -1107,7 +1127,8 @@ bool xen_memory::set_memory_map(xen_vcpu *v, xen_foreign_memory_map_t *fmap)
     return true;
 }
 
-bool xen_memory::remove_from_physmap(xen_vcpu *v, xen_remove_from_physmap_t *rmap)
+bool xen_memory::remove_from_physmap(xen_vcpu *v,
+                                     xen_remove_from_physmap_t *rmap)
 {
     this->remove_page(rmap->gpfn, true);
 

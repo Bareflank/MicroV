@@ -25,12 +25,10 @@
 #include <capstone/capstone.h>
 #include <cstdint>
 
-namespace microv::intel_x64
-{
+namespace microv::intel_x64 {
 
 class disassembler {
 public:
-
     using insn_t = struct cs_insn;
     using operand_t = struct cs_x86_op;
 
@@ -39,11 +37,7 @@ public:
     /// The mode used to interpret the instruction's bytes. This is the
     /// mode the processor was in when the instruction was executed.
     ///
-    enum insn_mode {
-        insn_mode_16bit,
-        insn_mode_32bit,
-        insn_mode_64bit
-    };
+    enum insn_mode { insn_mode_16bit, insn_mode_32bit, insn_mode_64bit };
 
     /// disassembler
     ///
@@ -74,7 +68,10 @@ public:
     ///         caller is responsible for freeing the pointer via
     ///         disassembler::free_insn.
     ///
-    insn_t *disasm_single(const uint8_t *buf, uint64_t addr, uint64_t len, int32_t mode);
+    insn_t *disasm_single(const uint8_t *buf,
+                          uint64_t addr,
+                          uint64_t len,
+                          int32_t mode);
 
     /// free_insn
     ///
@@ -94,7 +91,6 @@ public:
     /// @endcond
 
 private:
-
     using handle = ::csh;
 
     handle mode_to_handle(int32_t mode) const noexcept;

@@ -27,7 +27,9 @@
 #include <bftypes.h>
 
 constexpr auto is_power_of_2(const uint64_t n)
-{ return (n > 0) && ((n & (n - 1)) == 0); }
+{
+    return (n > 0) && ((n & (n - 1)) == 0);
+}
 
 constexpr auto next_power_of_2(uint64_t n)
 {
@@ -37,10 +39,7 @@ constexpr auto next_power_of_2(uint64_t n)
     return n;
 }
 
-template<
-    uint64_t s,
-    typename std::enable_if_t<is_power_of_2(s)> * = nullptr
-    >
+template<uint64_t s, typename std::enable_if_t<is_power_of_2(s)> * = nullptr>
 constexpr auto log2()
 {
     for (auto i = 0; i < 64; i++) {

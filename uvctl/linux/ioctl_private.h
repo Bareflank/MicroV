@@ -24,10 +24,8 @@
 
 #include <ioctl.h>
 
-class ioctl_private : public ioctl_private_base
-{
+class ioctl_private : public ioctl_private_base {
 public:
-
     ioctl_private();
     ~ioctl_private() override;
 
@@ -35,7 +33,6 @@ public:
     void call_ioctl_destroy(domainid_t domainid) noexcept;
 
 private:
-
     int fd;
 };
 

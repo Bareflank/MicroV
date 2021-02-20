@@ -29,15 +29,12 @@
 // Definitions
 // -----------------------------------------------------------------------------
 
-namespace microv::intel_x64
-{
+namespace microv::intel_x64 {
 
 class vcpu;
 
-class io_instruction_handler
-{
+class io_instruction_handler {
 public:
-
     /// Constructor
     ///
     /// @expects
@@ -45,8 +42,7 @@ public:
     ///
     /// @param vcpu the vcpu object for this handler
     ///
-    io_instruction_handler(
-        gsl::not_null<vcpu *> vcpu);
+    io_instruction_handler(gsl::not_null<vcpu *> vcpu);
 
     /// Destructor
     ///
@@ -56,7 +52,6 @@ public:
     ~io_instruction_handler() = default;
 
 public:
-
     /// @cond
 
     bool handle_in_0x0070(
@@ -79,11 +74,9 @@ public:
     /// @endcond
 
 private:
-
     vcpu *m_vcpu;
 
 public:
-
     /// @cond
 
     io_instruction_handler(io_instruction_handler &&) = default;

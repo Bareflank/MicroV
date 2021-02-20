@@ -36,7 +36,10 @@ constexpr uint32_t xen_cpufeat_to_word(uint32_t feat)
 constexpr auto xen_last_cpufeat = XEN_X86_FEATURE_AVX512_BF16;
 constexpr auto xen_cpufeat_words = xen_cpufeat_to_word(xen_last_cpufeat) + 1;
 constexpr auto xen_leaf_base = 0x40000100;
-constexpr auto xen_leaf(int i) { return xen_leaf_base + i; }
+constexpr auto xen_leaf(int i)
+{
+    return xen_leaf_base + i;
+}
 
 /*
  * xen_init_cpufeatures

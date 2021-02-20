@@ -55,17 +55,14 @@ inline constexpr uint32_t IPI_CODE_SHOOTDOWN_TLB = 1U;
 inline constexpr uint32_t IPI_CODE_SHOOTDOWN_IO_BITMAP = 2U;
 
 namespace microv {
-    class xen_vcpu;
-    struct msi_desc;
+class xen_vcpu;
+struct msi_desc;
 }
 
-namespace microv::intel_x64
-{
+namespace microv::intel_x64 {
 
-class vcpu : public bfvmm::intel_x64::vcpu
-{
+class vcpu : public bfvmm::intel_x64::vcpu {
 public:
-
     /// Constructor
     ///
     /// @expects
@@ -73,9 +70,7 @@ public:
     ///
     /// @param id the id of this vcpu
     ///
-    explicit vcpu(
-        vcpuid::type id,
-        gsl::not_null<domain *> domain);
+    explicit vcpu(vcpuid::type id, gsl::not_null<domain *> domain);
 
     /// Destructor
     ///
@@ -106,7 +101,6 @@ public:
     void write_domU_guest_state(domain *domain);
 
 public:
-
     int32_t insn_mode() const noexcept;
     microv::xen_vcpu *xen_vcpu() noexcept;
     void set_xenstore_ready() noexcept;
@@ -158,7 +152,10 @@ public:
     ///
     /// @return the vCPU's domain
     ///
-    domain *dom() { return m_domain; }
+    domain *dom()
+    {
+        return m_domain;
+    }
 
     //--------------------------------------------------------------------------
     // VMCall

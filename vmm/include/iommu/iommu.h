@@ -38,7 +38,7 @@
 #include "../pci/cfg.h"
 
 namespace microv::intel_x64 {
-    class domain;
+class domain;
 }
 
 namespace microv {
@@ -48,8 +48,8 @@ using namespace iommu_regs;
 
 class iommu {
 public:
-    static constexpr auto table_size = UV_PAGE_SIZE /
-                                       sizeof(struct iommu_entry);
+    static constexpr auto table_size =
+        UV_PAGE_SIZE / sizeof(struct iommu_entry);
     using entry_t = struct iommu_entry;
     using dom_t = class microv::intel_x64::domain;
     using bus_t = uint32_t;
@@ -98,7 +98,6 @@ public:
     iommu &operator=(const iommu &) = delete;
 
 private:
-
     /* Invalidation granularity values */
     enum {
         IOTLB_INVG_RESERVED,
@@ -164,17 +163,47 @@ private:
         ::microv::write32(val, (volatile void __iomem *)addr);
     }
 
-    uint32_t read_gcmd() { return read32(gcmd_offset); }
-    uint32_t read_gsts() { return read32(gsts_offset); }
-    uint64_t read_rtaddr() { return read64(rtaddr_offset); }
-    uint64_t read_ccmd() { return read64(ccmd_offset); }
-    uint64_t read_iotlb() { return read64(m_iotlb_reg_off + 8); }
+    uint32_t read_gcmd()
+    {
+        return read32(gcmd_offset);
+    }
+    uint32_t read_gsts()
+    {
+        return read32(gsts_offset);
+    }
+    uint64_t read_rtaddr()
+    {
+        return read64(rtaddr_offset);
+    }
+    uint64_t read_ccmd()
+    {
+        return read64(ccmd_offset);
+    }
+    uint64_t read_iotlb()
+    {
+        return read64(m_iotlb_reg_off + 8);
+    }
 
-    void write_gcmd(uint32_t val) { write32(gcmd_offset, val); }
-    void write_rtaddr(uint64_t val) { write64(rtaddr_offset, val); }
-    void write_ccmd(uint64_t val) { write64(ccmd_offset, val); }
-    void write_iotlb(uint64_t val) { write64(m_iotlb_reg_off + 8, val); }
-    void write_iva(uint64_t val) { write64(m_iotlb_reg_off, val); }
+    void write_gcmd(uint32_t val)
+    {
+        write32(gcmd_offset, val);
+    }
+    void write_rtaddr(uint64_t val)
+    {
+        write64(rtaddr_offset, val);
+    }
+    void write_ccmd(uint64_t val)
+    {
+        write64(ccmd_offset, val);
+    }
+    void write_iotlb(uint64_t val)
+    {
+        write64(m_iotlb_reg_off + 8, val);
+    }
+    void write_iva(uint64_t val)
+    {
+        write64(m_iotlb_reg_off, val);
+    }
 
     void map_regs_into_vmm();
     void unmap_regs_from_root_dom();

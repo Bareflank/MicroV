@@ -86,7 +86,10 @@ class xen_gnttab {
     std::vector<status_gte_t *> status_tab{};
 
 public:
-    static constexpr uint32_t max_shared_gte_pages() { return 64; }
+    static constexpr uint32_t max_shared_gte_pages()
+    {
+        return 64;
+    }
 
     /* Used for debug purposes to ensure maps are unique for a given domain */
     std::unordered_map<grant_handle_t, uint64_t> map_handles{};
@@ -102,11 +105,15 @@ public:
     int get_shared_page(size_t pg_idx, class page **page);
     int get_status_page(size_t pg_idx, class page **page);
 
-    int get_pages(int tabid, size_t pg_idx, size_t count,
+    int get_pages(int tabid,
+                  size_t pg_idx,
+                  size_t count,
                   gsl::span<class page *> pages);
-    int get_shared_pages(size_t pg_idx, size_t count,
+    int get_shared_pages(size_t pg_idx,
+                         size_t count,
                          gsl::span<class page *> pages);
-    int get_status_pages(size_t pg_idx, size_t count,
+    int get_status_pages(size_t pg_idx,
+                         size_t count,
                          gsl::span<class page *> pages);
 
     bool query_size(xen_vcpu *vcpu, gnttab_query_size_t *gqs);

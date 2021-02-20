@@ -22,39 +22,44 @@
 #include <bfdebug.h>
 #include <domain/domain.h>
 
-namespace microv
+namespace microv {
+
+domain::domain(id_t domainid) : m_id{domainid}
+{}
+
+void domain::run(bfobject *obj)
 {
+    bfignored(obj);
+}
 
-domain::domain(id_t domainid) :
-    m_id{domainid}
-{ }
+void domain::hlt(bfobject *obj)
+{
+    bfignored(obj);
+}
 
-void
-domain::run(bfobject *obj)
-{ bfignored(obj); }
+void domain::init(bfobject *obj)
+{
+    bfignored(obj);
+}
 
-void
-domain::hlt(bfobject *obj)
-{ bfignored(obj); }
+void domain::fini(bfobject *obj)
+{
+    bfignored(obj);
+}
 
-void
-domain::init(bfobject *obj)
-{ bfignored(obj); }
+domain::id_t domain::id() const noexcept
+{
+    return m_id;
+}
 
-void
-domain::fini(bfobject *obj)
-{ bfignored(obj); }
+void domain::set_entry(uint64_t gpa) noexcept
+{
+    m_entry = gpa;
+}
 
-domain::id_t
-domain::id() const noexcept
-{ return m_id; }
-
-void
-domain::set_entry(uint64_t gpa) noexcept
-{ m_entry = gpa; }
-
-uint64_t
-domain::entry() const noexcept
-{ return m_entry; }
+uint64_t domain::entry() const noexcept
+{
+    return m_entry;
+}
 
 }

@@ -30,18 +30,15 @@
 // Implementation
 //--------------------------------------------------------------------------
 
-#define EMULATE_IO_INSTRUCTION(a,b,c)                                      \
+#define EMULATE_IO_INSTRUCTION(a, b, c)                                        \
     vcpu->emulate_io_instruction(a, {&uart::b, this}, {&uart::c, this});
 
-namespace microv::intel_x64
-{
+namespace microv::intel_x64 {
 
-uart::uart(port_type port) :
-    m_port{port}
-{ }
+uart::uart(port_type port) : m_port{port}
+{}
 
-void
-uart::enable(gsl::not_null<vcpu *> vcpu)
+void uart::enable(gsl::not_null<vcpu *> vcpu)
 {
     if (vcpu->is_dom0()) {
         bfdebug_nhex(1, "uart: dom0 not supported", m_port);
@@ -61,8 +58,7 @@ uart::enable(gsl::not_null<vcpu *> vcpu)
     vcpu->add_vmcall_handler({&uart::vmcall_dispatch, this});
 }
 
-void
-uart::disable(gsl::not_null<vcpu *> vcpu)
+void uart::disable(gsl::not_null<vcpu *> vcpu)
 {
     if (vcpu->is_dom0()) {
         bfdebug_nhex(1, "uart: dom0 not supported", m_port);
@@ -82,8 +78,7 @@ uart::disable(gsl::not_null<vcpu *> vcpu)
     vcpu->add_vmcall_handler({&uart::vmcall_dispatch, this});
 }
 
-void
-uart::pass_through(gsl::not_null<vcpu *> vcpu)
+void uart::pass_through(gsl::not_null<vcpu *> vcpu)
 {
     if (vcpu->is_dom0()) {
         bfdebug_nhex(1, "uart: dom0 not supported", m_port);
@@ -103,8 +98,7 @@ uart::pass_through(gsl::not_null<vcpu *> vcpu)
     vcpu->add_vmcall_handler({&uart::vmcall_dispatch, this});
 }
 
-uint64_t
-uart::dump(const gsl::span<char> &buffer)
+uint64_t uart::dump(const gsl::span<char> &buffer)
 {
     uint64_t i;
     std::lock_guard lock(m_mutex);
@@ -117,8 +111,7 @@ uart::dump(const gsl::span<char> &buffer)
     return i;
 }
 
-bool
-uart::io_zero_handler(
+bool uart::io_zero_handler(
     vcpu_t *vcpu, bfvmm::intel_x64::io_instruction_handler::info_t &info)
 {
     bfignored(vcpu);
@@ -127,8 +120,7 @@ uart::io_zero_handler(
     return true;
 }
 
-bool
-uart::io_ignore_handler(
+bool uart::io_ignore_handler(
     vcpu_t *vcpu, bfvmm::intel_x64::io_instruction_handler::info_t &info)
 {
     bfignored(vcpu);
@@ -137,8 +129,7 @@ uart::io_ignore_handler(
     return true;
 }
 
-bool
-uart::reg0_in_handler(
+bool uart::reg0_in_handler(
     vcpu_t *vcpu, bfvmm::intel_x64::io_instruction_handler::info_t &info)
 {
     bfignored(vcpu);
@@ -146,16 +137,14 @@ uart::reg0_in_handler(
 
     if (this->dlab()) {
         info.val = m_baud_rate_l;
-    }
-    else {
+    } else {
         info.val = 0x0;
     }
 
     return true;
 }
 
-bool
-uart::reg1_in_handler(
+bool uart::reg1_in_handler(
     vcpu_t *vcpu, bfvmm::intel_x64::io_instruction_handler::info_t &info)
 {
     bfignored(vcpu);
@@ -163,16 +152,14 @@ uart::reg1_in_handler(
 
     if (this->dlab()) {
         info.val = m_baud_rate_h;
-    }
-    else {
+    } else {
         info.val = 0x0;
     }
 
     return true;
 }
 
-bool
-uart::reg2_in_handler(
+bool uart::reg2_in_handler(
     vcpu_t *vcpu, bfvmm::intel_x64::io_instruction_handler::info_t &info)
 {
     bfignored(vcpu);
@@ -183,8 +170,7 @@ uart::reg2_in_handler(
     return true;
 }
 
-bool
-uart::reg3_in_handler(
+bool uart::reg3_in_handler(
     vcpu_t *vcpu, bfvmm::intel_x64::io_instruction_handler::info_t &info)
 {
     bfignored(vcpu);
@@ -194,8 +180,7 @@ uart::reg3_in_handler(
     return true;
 }
 
-bool
-uart::reg4_in_handler(
+bool uart::reg4_in_handler(
     vcpu_t *vcpu, bfvmm::intel_x64::io_instruction_handler::info_t &info)
 {
     bfignored(vcpu);
@@ -206,8 +191,7 @@ uart::reg4_in_handler(
     return true;
 }
 
-bool
-uart::reg5_in_handler(
+bool uart::reg5_in_handler(
     vcpu_t *vcpu, bfvmm::intel_x64::io_instruction_handler::info_t &info)
 {
     bfignored(vcpu);
@@ -216,8 +200,7 @@ uart::reg5_in_handler(
     return true;
 }
 
-bool
-uart::reg6_in_handler(
+bool uart::reg6_in_handler(
     vcpu_t *vcpu, bfvmm::intel_x64::io_instruction_handler::info_t &info)
 {
     bfignored(vcpu);
@@ -228,8 +211,7 @@ uart::reg6_in_handler(
     return true;
 }
 
-bool
-uart::reg7_in_handler(
+bool uart::reg7_in_handler(
     vcpu_t *vcpu, bfvmm::intel_x64::io_instruction_handler::info_t &info)
 {
     bfignored(vcpu);
@@ -240,8 +222,7 @@ uart::reg7_in_handler(
     return true;
 }
 
-bool
-uart::reg0_out_handler(
+bool uart::reg0_out_handler(
     vcpu_t *vcpu, bfvmm::intel_x64::io_instruction_handler::info_t &info)
 {
     bfignored(vcpu);
@@ -249,16 +230,14 @@ uart::reg0_out_handler(
 
     if (this->dlab()) {
         m_baud_rate_l = gsl::narrow<data_type>(info.val);
-    }
-    else {
+    } else {
         this->write(gsl::narrow<char>(info.val));
     }
 
     return true;
 }
 
-bool
-uart::reg1_out_handler(
+bool uart::reg1_out_handler(
     vcpu_t *vcpu, bfvmm::intel_x64::io_instruction_handler::info_t &info)
 {
     bfignored(vcpu);
@@ -266,8 +245,7 @@ uart::reg1_out_handler(
 
     if (this->dlab()) {
         m_baud_rate_h = gsl::narrow<data_type>(info.val);
-    }
-    else {
+    } else {
         if (info.val != 0) {
             bfalert_info(1, "uart: none-zero write to reg1 unsupported");
         }
@@ -276,8 +254,7 @@ uart::reg1_out_handler(
     return true;
 }
 
-bool
-uart::reg2_out_handler(
+bool uart::reg2_out_handler(
     vcpu_t *vcpu, bfvmm::intel_x64::io_instruction_handler::info_t &info)
 {
     bfignored(vcpu);
@@ -286,8 +263,7 @@ uart::reg2_out_handler(
     return true;
 }
 
-bool
-uart::reg3_out_handler(
+bool uart::reg3_out_handler(
     vcpu_t *vcpu, bfvmm::intel_x64::io_instruction_handler::info_t &info)
 {
     bfignored(vcpu);
@@ -297,8 +273,7 @@ uart::reg3_out_handler(
     return true;
 }
 
-bool
-uart::reg4_out_handler(
+bool uart::reg4_out_handler(
     vcpu_t *vcpu, bfvmm::intel_x64::io_instruction_handler::info_t &info)
 {
     bfignored(vcpu);
@@ -307,8 +282,7 @@ uart::reg4_out_handler(
     return true;
 }
 
-bool
-uart::reg5_out_handler(
+bool uart::reg5_out_handler(
     vcpu_t *vcpu, bfvmm::intel_x64::io_instruction_handler::info_t &info)
 {
     bfignored(vcpu);
@@ -318,8 +292,7 @@ uart::reg5_out_handler(
     return true;
 }
 
-bool
-uart::reg6_out_handler(
+bool uart::reg6_out_handler(
     vcpu_t *vcpu, bfvmm::intel_x64::io_instruction_handler::info_t &info)
 {
     bfignored(vcpu);
@@ -329,8 +302,7 @@ uart::reg6_out_handler(
     return true;
 }
 
-bool
-uart::reg7_out_handler(
+bool uart::reg7_out_handler(
     vcpu_t *vcpu, bfvmm::intel_x64::io_instruction_handler::info_t &info)
 {
     bfignored(vcpu);
@@ -340,24 +312,21 @@ uart::reg7_out_handler(
     return true;
 }
 
-void
-uart::write(const char c)
+void uart::write(const char c)
 {
     if (m_index < m_buffer.size()) {
         m_buffer.at(m_index++) = c;
     }
 }
 
-void
-uart::write(const char *str)
+void uart::write(const char *str)
 {
     for (auto i = 0U; i < strlen(str); i++) {
         this->write(str[i]);
     }
 }
 
-bool
-uart::vmcall_dispatch(vcpu *vcpu)
+bool uart::vmcall_dispatch(vcpu *vcpu)
 {
     if (bfopcode(vcpu->rax()) != __enum_uart_op) {
         return false;
@@ -368,20 +337,20 @@ uart::vmcall_dispatch(vcpu *vcpu)
     }
 
     switch (vcpu->rbx()) {
-        case __enum_uart_op__char:
-            this->write(gsl::narrow_cast<char>(vcpu->rdx()));
-            break;
+    case __enum_uart_op__char:
+        this->write(gsl::narrow_cast<char>(vcpu->rdx()));
+        break;
 
-        case __enum_uart_op__nhex:
-            this->write(bfn::to_string(vcpu->rdx(), 16).c_str());
-            break;
+    case __enum_uart_op__nhex:
+        this->write(bfn::to_string(vcpu->rdx(), 16).c_str());
+        break;
 
-        case __enum_uart_op__ndec:
-            this->write(bfn::to_string(vcpu->rdx(), 10).c_str());
-            break;
+    case __enum_uart_op__ndec:
+        this->write(bfn::to_string(vcpu->rdx(), 10).c_str());
+        break;
 
-        default:
-            vcpu->halt("unknown uart op");
+    default:
+        vcpu->halt("unknown uart op");
     };
 
     return true;

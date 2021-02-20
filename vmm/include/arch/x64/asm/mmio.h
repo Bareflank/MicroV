@@ -79,9 +79,7 @@ static inline uint64_t read64_relaxed(volatile void __iomem *addr)
 {
     uint64_t ret;
 
-    __asm volatile("movq %1, %0"
-                   : "=r"(ret)
-                   : "m"(*(volatile uint64_t *)addr));
+    __asm volatile("movq %1, %0" : "=r"(ret) : "m"(*(volatile uint64_t *)addr));
 
     return ret;
 }
@@ -90,9 +88,7 @@ static inline uint32_t read32_relaxed(volatile void __iomem *addr)
 {
     uint32_t ret;
 
-    __asm volatile("movl %1, %0"
-                   : "=r"(ret)
-                   : "m"(*(volatile uint32_t *)addr));
+    __asm volatile("movl %1, %0" : "=r"(ret) : "m"(*(volatile uint32_t *)addr));
 
     return ret;
 }
@@ -101,9 +97,7 @@ static inline uint16_t read16_relaxed(volatile void __iomem *addr)
 {
     uint16_t ret;
 
-    __asm volatile("movw %1, %0"
-                   : "=r"(ret)
-                   : "m"(*(volatile uint16_t *)addr));
+    __asm volatile("movw %1, %0" : "=r"(ret) : "m"(*(volatile uint16_t *)addr));
 
     return ret;
 }
@@ -112,9 +106,7 @@ static inline uint8_t read8_relaxed(volatile void __iomem *addr)
 {
     uint8_t ret;
 
-    __asm volatile("movb %1, %0"
-                   : "=r"(ret)
-                   : "m"(*(volatile uint8_t *)addr));
+    __asm volatile("movb %1, %0" : "=r"(ret) : "m"(*(volatile uint8_t *)addr));
 
     return ret;
 }
@@ -153,30 +145,22 @@ static inline void write8(uint8_t val, volatile void __iomem *addr)
 
 static inline void write64_relaxed(uint64_t val, volatile void __iomem *addr)
 {
-    __asm volatile("movq %0, %1"
-                   :
-                   : "r"(val), "m"(*(volatile uint64_t *)addr));
+    __asm volatile("movq %0, %1" : : "r"(val), "m"(*(volatile uint64_t *)addr));
 }
 
 static inline void write32_relaxed(uint32_t val, volatile void __iomem *addr)
 {
-    __asm volatile("movl %0, %1"
-                   :
-                   : "r"(val), "m"(*(volatile uint32_t *)addr));
+    __asm volatile("movl %0, %1" : : "r"(val), "m"(*(volatile uint32_t *)addr));
 }
 
 static inline void write16_relaxed(uint16_t val, volatile void __iomem *addr)
 {
-    __asm volatile("movw %0, %1"
-                   :
-                   : "r"(val), "m"(*(volatile uint16_t *)addr));
+    __asm volatile("movw %0, %1" : : "r"(val), "m"(*(volatile uint16_t *)addr));
 }
 
 static inline void write8_relaxed(uint8_t val, volatile void __iomem *addr)
 {
-    __asm volatile("movb %0, %1"
-                   :
-                   : "r"(val), "m"(*(volatile uint8_t *)addr));
+    __asm volatile("movb %0, %1" : : "r"(val), "m"(*(volatile uint8_t *)addr));
 }
 
 }

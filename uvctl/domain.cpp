@@ -42,12 +42,14 @@ using namespace std::chrono_literals;
 static constexpr auto uart_sleep = 100ms;
 static constexpr auto hvc_sleep = 100ms;
 
-uvc_domain::uvc_domain(
-    domainid_t id, uvc_domain *parent, bool enable_uart, bool enable_hvc)
-    : m_id{id}
-    , m_parent{parent}
-    , m_enable_uart{enable_uart}
-    , m_enable_hvc{enable_hvc}
+uvc_domain::uvc_domain(domainid_t id,
+                       uvc_domain *parent,
+                       bool enable_uart,
+                       bool enable_hvc) :
+    m_id{id},
+    m_parent{parent},
+    m_enable_uart{enable_uart},
+    m_enable_hvc{enable_hvc}
 {}
 
 bool uvc_domain::is_root() const noexcept
@@ -81,17 +83,19 @@ void uvc_domain::recv_hvc()
     /* Lock memory; this may fail the first attempt. */
     if (!VirtualLock(array.data(), HVC_TX_SIZE)) {
         log_msg("%s: Unable to lock HVC recv array (err: 0x%x), trying again\n",
-                __func__, GetLastError());
+                __func__,
+                GetLastError());
         if (!VirtualLock(array.data(), HVC_TX_SIZE)) {
             log_msg("%s: Unable to lock HVC recv array (err: 0x%x)\n",
-                    __func__, GetLastError());
+                    __func__,
+                    GetLastError());
             return;
         }
     }
 #else
     if (mlock(array.data(), HVC_TX_SIZE) == -1) {
-        log_msg("%s: Unable to lock HVC recv array (err: %d)\n",
-                __func__, errno);
+        log_msg(
+            "%s: Unable to lock HVC recv array (err: %d)\n", __func__, errno);
         return;
     }
 #endif
@@ -121,17 +125,19 @@ void uvc_domain::send_hvc()
     /* Lock memory; this may fail the first attempt. */
     if (!VirtualLock(array.data(), HVC_RX_SIZE)) {
         log_msg("%s: Unable to lock HVC send array (err: 0x%x), trying again\n",
-                __func__, GetLastError());
+                __func__,
+                GetLastError());
         if (!VirtualLock(array.data(), HVC_RX_SIZE)) {
             log_msg("%s: Unable to lock HVC send array (err: 0x%x)\n",
-                    __func__, GetLastError());
+                    __func__,
+                    GetLastError());
             return;
         }
     }
 #else
     if (mlock(array.data(), HVC_RX_SIZE) == -1) {
-        log_msg("%s: Unable to lock HVC recv array (err: %d)\n",
-                __func__, errno);
+        log_msg(
+            "%s: Unable to lock HVC recv array (err: %d)\n", __func__, errno);
         return;
     }
 #endif
@@ -167,7 +173,7 @@ void uvc_domain::handle_events()
 {
     std::unique_lock lock(m_event_mtx);
 
-    m_event_cond.wait(lock, [&](){
+    m_event_cond.wait(lock, [&]() {
         switch (m_event_code) {
         case __enum_run_op__create_domain:
             this->create_child(m_event_data);
@@ -335,7 +341,8 @@ void uvc_domain::launch()
         }
 
         m_enable_events = true;
-        m_event_thread = std::thread(std::bind(&uvc_domain::handle_events, this));
+        m_event_thread =
+            std::thread(std::bind(&uvc_domain::handle_events, this));
     }
 
     std::lock_guard lock(m_vcpu_mtx);

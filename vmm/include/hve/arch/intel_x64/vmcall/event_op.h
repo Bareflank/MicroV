@@ -28,8 +28,7 @@
 // Definitions
 // -----------------------------------------------------------------------------
 
-namespace microv::intel_x64
-{
+namespace microv::intel_x64 {
 
 class vcpu;
 
@@ -39,7 +38,6 @@ private:
     vcpu *m_vcpu{};
 
 public:
-
     void send_bdf(uint64_t bdf);
     void send_vector(uint64_t root_vector);
 
@@ -49,7 +47,8 @@ public:
     vmcall_event_op_handler(vmcall_event_op_handler &&) = default;
     vmcall_event_op_handler &operator=(vmcall_event_op_handler &&) = default;
     vmcall_event_op_handler(const vmcall_event_op_handler &) = delete;
-    vmcall_event_op_handler &operator=(const vmcall_event_op_handler &) = delete;
+    vmcall_event_op_handler &operator=(const vmcall_event_op_handler &) =
+        delete;
 };
 
 }

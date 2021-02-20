@@ -102,27 +102,34 @@ static bool ept_violation_handler(vcpu_t *vcpu)
 }
 
 static bool handle_root_ept_violation(
-    vcpu_t *vcpu,
-    bfvmm::intel_x64::ept_violation_handler::info_t &info)
+    vcpu_t *vcpu, bfvmm::intel_x64::ept_violation_handler::info_t &info)
 {
     auto qual = info.exit_qualification;
 
     switch (qual & 0x7) {
     case 1:
         printv("ALERT: EPT read qual:0x%lx gva:0x%lx gpa:0x%lx\n",
-               qual, info.gva, info.gpa);
+               qual,
+               info.gva,
+               info.gpa);
         break;
     case 2:
         printv("ALERT: EPT write qual:0x%lx gva:0x%lx gpa:0x%lx\n",
-               qual, info.gva, info.gpa);
+               qual,
+               info.gva,
+               info.gpa);
         break;
     case 4:
         printv("ALERT: EPT exec qual:0x%lx gva:0x%lx gpa:0x%lx\n",
-               qual, info.gva, info.gpa);
+               qual,
+               info.gva,
+               info.gpa);
         break;
     default:
         printv("ERROR: EPT unexpected qual:0x%lx gva:0x%lx gpa:0x%lx\n",
-               qual, info.gva, info.gpa);
+               qual,
+               info.gva,
+               info.gpa);
         return false;
     }
 
@@ -134,7 +141,8 @@ static bool handle_root_ept_violation(
     /* Check VMM pages */
     if (g_mm->get_phys_map()->count(gpa_4k)) {
         printv("ALERT: EPT violation to vmm page 0x%lx, skipping rip=0x%lx\n",
-                gpa_4k, vcpu->rip());
+               gpa_4k,
+               vcpu->rip());
         return true;
     }
 
@@ -149,18 +157,28 @@ static bool handle_root_ept_violation(
             }
 
             if (bar.contains(info.gpa)) {
-                printv("ALERT: EPT violation to BAR[%u] 0x%lx-0x%lx of passthrough"
-                       " device %s at gpa 0x%lx, skipping rip=0x%lx\n",
-                       reg - 4, bar.addr, bar.last(), pdev->m_bdf_str, info.gpa,
-                       vcpu->rip());
+                printv(
+                    "ALERT: EPT violation to BAR[%u] 0x%lx-0x%lx of passthrough"
+                    " device %s at gpa 0x%lx, skipping rip=0x%lx\n",
+                    reg - 4,
+                    bar.addr,
+                    bar.last(),
+                    pdev->m_bdf_str,
+                    info.gpa,
+                    vcpu->rip());
                 return true;
             }
 
             if (gpa_4k == bfn::upper(bar.last(), ::x64::pt::from)) {
-                printv("ALERT: EPT violation to last page of BAR[%u] 0x%lx-0x%lx of"
-                       " passthrough device %s at gpa 0x%lx, skipping rip=0x%lx\n",
-                       reg - 4, bar.addr, bar.last(), pdev->m_bdf_str, info.gpa,
-                       vcpu->rip());
+                printv(
+                    "ALERT: EPT violation to last page of BAR[%u] 0x%lx-0x%lx of"
+                    " passthrough device %s at gpa 0x%lx, skipping rip=0x%lx\n",
+                    reg - 4,
+                    bar.addr,
+                    bar.last(),
+                    pdev->m_bdf_str,
+                    info.gpa,
+                    vcpu->rip());
                 return true;
             }
         }
@@ -168,8 +186,11 @@ static bool handle_root_ept_violation(
 
     /* Check donated pages */
     if (vcpu_cast(vcpu)->dom()->page_already_donated(gpa_4k)) {
-        printv("ALERT: EPT violation to donated page at gpa 0x%lx, skipping"
-               " rip=0x%lx\n", gpa_4k, vcpu->rip());
+        printv(
+            "ALERT: EPT violation to donated page at gpa 0x%lx, skipping"
+            " rip=0x%lx\n",
+            gpa_4k,
+            vcpu->rip());
         return true;
     }
 
@@ -228,9 +249,12 @@ static void unmap_vmm()
         try {
             ept->unmap(gpa_4k);
             ept->release(gpa_4k);
-        } catch (std::runtime_error &e) {
+        }
+        catch (std::runtime_error &e) {
             printv("ept: %s: failed to unmap 0x%lx, what=%s\n",
-                   __func__, gpa_4k, e.what());
+                   __func__,
+                   gpa_4k,
+                   e.what());
         }
     }
 }
@@ -239,8 +263,7 @@ static void unmap_vmm()
 // Implementation
 //------------------------------------------------------------------------------
 
-namespace microv::intel_x64
-{
+namespace microv::intel_x64 {
 
 bool vcpu::handle_rdcr8(vcpu_t *vcpu)
 {
@@ -272,10 +295,7 @@ bool vcpu::handle_wrcr8(vcpu_t *vcpu)
     return true;
 }
 
-vcpu::vcpu(
-    vcpuid::type id,
-    gsl::not_null<domain *> domain
-) :
+vcpu::vcpu(vcpuid::type id, gsl::not_null<domain *> domain) :
     bfvmm::intel_x64::vcpu{id, domain->global_state()},
     m_domain{domain},
 
@@ -318,8 +338,7 @@ vcpu::vcpu(
 
         this->add_handler(vmcs_n::exit_reason::basic_exit_reason::init_signal,
                           {&vcpu::handle_root_init_signal, this});
-    }
-    else {
+    } else {
         this->write_domU_guest_state(domain);
 
         this->init_xstate();
@@ -338,8 +357,7 @@ vcpu::vcpu(
 // Setup
 //------------------------------------------------------------------------------
 
-bool
-vcpu::handle_invalid_opcode(
+bool vcpu::handle_invalid_opcode(
     ::bfvmm::intel_x64::vcpu *vcpu,
     ::bfvmm::intel_x64::exception_handler::info_t &info)
 {
@@ -371,16 +389,14 @@ vcpu::handle_invalid_opcode(
     return true;
 }
 
-void
-vcpu::write_dom0_guest_state(domain *domain)
+void vcpu::write_dom0_guest_state(domain *domain)
 {
     if (domain->exec_mode() == VM_EXEC_XENPVH) {
         m_xen_vcpu = std::make_unique<class xen_vcpu>(this);
     }
 }
 
-void
-vcpu::write_domU_guest_state(domain *domain)
+void vcpu::write_domU_guest_state(domain *domain)
 {
     this->setup_default_register_state();
     this->setup_default_controls();
@@ -394,9 +410,11 @@ vcpu::write_domU_guest_state(domain *domain)
         enable_rdtscp::enable();
 
         bfdebug_bool(0, "domain is_xsvm:", domain->is_xsvm());
-        bfdebug_bool(0, "domain has_passthrough_dev:", domain->has_passthrough_dev());
+        bfdebug_bool(
+            0, "domain has_passthrough_dev:", domain->has_passthrough_dev());
 
-        if ((domain->is_xsvm() || domain->has_passthrough_dev()) && pci_passthru) {
+        if ((domain->is_xsvm() || domain->has_passthrough_dev()) &&
+            pci_passthru) {
             init_pci_on_vcpu(this);
 
             if (domain->has_passthrough_dev()) {
@@ -448,7 +466,8 @@ void vcpu::add_child_vcpu(vcpuid_t child_id)
 
         m_child_vcpus[child_id] = child;
         ensures(m_child_vcpus.count(child_id) == 1);
-    } catch (...) {
+    }
+    catch (...) {
         if (child) {
             put_vcpu(child_id);
         }
@@ -487,7 +506,8 @@ void vcpu::add_child_domain(domainid_t child_id)
 
         m_child_doms[child_id] = child;
         ensures(m_child_doms.count(child_id) == 1);
-    } catch (...) {
+    }
+    catch (...) {
         if (child) {
             put_domain(child_id);
         }
@@ -523,14 +543,14 @@ bool vcpu::handle_0x4BF00010(bfvmm::intel_x64::vcpu *vcpu)
     }
 #endif
 
-    bfn::call_once(disasm_ready, []{ init_disasm(); });
+    bfn::call_once(disasm_ready, [] { init_disasm(); });
     m_lapic = std::make_unique<lapic>(this);
 
     if (g_uefi_boot) {
         /* Order matters with these init functions */
-        bfn::call_once(acpi_ready, []{ init_acpi(); });
-        bfn::call_once(pci_ready, []{ init_pci(); });
-        bfn::call_once(vtd_ready, []{ init_vtd(); });
+        bfn::call_once(acpi_ready, [] { init_acpi(); });
+        bfn::call_once(pci_ready, [] { init_pci(); });
+        bfn::call_once(vtd_ready, [] { init_vtd(); });
 
         if (pci_passthru) {
             m_pci_handler.enable();
@@ -631,9 +651,8 @@ int64_t vcpu::begin_shootdown(uint32_t desired_code)
      */
 
     uint64_t self_mask = 1ULL << this->id();
-    uint64_t online_mask = (nr_root_vcpus < 64U)
-                           ? (1ULL << nr_root_vcpus) - 1U
-                           : ~0ULL;
+    uint64_t online_mask =
+        (nr_root_vcpus < 64U) ? (1ULL << nr_root_vcpus) - 1U : ~0ULL;
 
     uint64_t all_not_self_mask = ~self_mask & online_mask;
     auto shootdown_mask = &this->dom()->m_shootdown_mask;
@@ -677,7 +696,8 @@ bool vcpu::handle_root_init_signal(::bfvmm::intel_x64::vcpu *current)
     auto ipi_code = this->dom()->m_ipi_code.load();
 
     if (ipi_code == 0) {
-        vmcs_n::guest_activity_state::set(vmcs_n::guest_activity_state::wait_for_sipi);
+        vmcs_n::guest_activity_state::set(
+            vmcs_n::guest_activity_state::wait_for_sipi);
         return true;
     }
 
@@ -750,49 +770,52 @@ void vcpu::handle_shootdown_io_bitmap()
 // Domain Info
 //------------------------------------------------------------------------------
 
-bool
-vcpu::is_dom0() const
-{ return m_domain->id() == 0; }
+bool vcpu::is_dom0() const
+{
+    return m_domain->id() == 0;
+}
 
-bool
-vcpu::is_domU() const
-{ return m_domain->id() != 0; }
+bool vcpu::is_domU() const
+{
+    return m_domain->id() != 0;
+}
 
-domain::id_t
-vcpu::domid() const
-{ return m_domain->id(); }
+domain::id_t vcpu::domid() const
+{
+    return m_domain->id();
+}
 
 //------------------------------------------------------------------------------
 // VMCall
 //------------------------------------------------------------------------------
 
-void
-vcpu::add_vmcall_handler(
-    const vmcall_handler::handler_delegate_t &d)
-{ m_vmcall_handler.add_handler(std::move(d)); }
+void vcpu::add_vmcall_handler(const vmcall_handler::handler_delegate_t &d)
+{
+    m_vmcall_handler.add_handler(std::move(d));
+}
 
 //------------------------------------------------------------------------------
 // root vCPU
 //------------------------------------------------------------------------------
 
-void
-vcpu::set_root_vcpu(gsl::not_null<vcpu *> vcpu)
-{ m_root_vcpu = vcpu; }
+void vcpu::set_root_vcpu(gsl::not_null<vcpu *> vcpu)
+{
+    m_root_vcpu = vcpu;
+}
 
-vcpu *
-vcpu::root_vcpu() const
-{ return m_root_vcpu; }
+vcpu *vcpu::root_vcpu() const
+{
+    return m_root_vcpu;
+}
 
-void
-vcpu::return_hlt()
+void vcpu::return_hlt()
 {
     this->load_xstate();
     this->set_rax(__enum_run_op__hlt);
     this->run(&world_switch);
 }
 
-void
-vcpu::return_create_domain(uint64_t newdomid)
+void vcpu::return_create_domain(uint64_t newdomid)
 {
     this->add_child_domain(newdomid);
     this->load_xstate();
@@ -800,56 +823,49 @@ vcpu::return_create_domain(uint64_t newdomid)
     this->run(&world_switch);
 }
 
-void
-vcpu::return_pause_domain(uint64_t domid)
+void vcpu::return_pause_domain(uint64_t domid)
 {
     this->load_xstate();
     this->set_rax((domid << 4) | __enum_run_op__pause_domain);
     this->run(&world_switch);
 }
 
-void
-vcpu::return_unpause_domain(uint64_t domid)
+void vcpu::return_unpause_domain(uint64_t domid)
 {
     this->load_xstate();
     this->set_rax((domid << 4) | __enum_run_op__unpause_domain);
     this->run(&world_switch);
 }
 
-void
-vcpu::return_destroy_domain(uint64_t domid)
+void vcpu::return_destroy_domain(uint64_t domid)
 {
     this->load_xstate();
     this->set_rax((domid << 4) | __enum_run_op__destroy_domain);
     this->run(&world_switch);
 }
 
-void
-vcpu::return_notify_domain(uint64_t domid)
+void vcpu::return_notify_domain(uint64_t domid)
 {
     this->load_xstate();
     this->set_rax((domid << 4) | __enum_run_op__notify_domain);
     this->run(&world_switch);
 }
 
-void
-vcpu::return_fault(uint64_t error)
+void vcpu::return_fault(uint64_t error)
 {
     this->load_xstate();
     this->set_rax((error << 4) | __enum_run_op__fault);
     this->run(&world_switch);
 }
 
-void
-vcpu::return_interrupted()
+void vcpu::return_interrupted()
 {
     this->load_xstate();
     this->set_rax(__enum_run_op__interrupted);
     this->run(&world_switch);
 }
 
-void
-vcpu::return_yield(uint64_t usec)
+void vcpu::return_yield(uint64_t usec)
 {
     this->load_xstate();
     this->set_rax((usec << 4) | __enum_run_op__yield);
@@ -860,8 +876,7 @@ vcpu::return_yield(uint64_t usec)
 // Halt
 //------------------------------------------------------------------------------
 
-void
-vcpu::halt(const std::string &str)
+void vcpu::halt(const std::string &str)
 {
     this->dump(("halting vcpu: " + str).c_str());
 
@@ -875,8 +890,7 @@ vcpu::halt(const std::string &str)
 
         root_vcpu->load();
         root_vcpu->return_fault();
-    }
-    else {
+    } else {
         ::x64::pm::stop();
     }
 }
@@ -885,9 +899,10 @@ vcpu::halt(const std::string &str)
 // APIC
 //------------------------------------------------------------------------------
 
-uint8_t
-vcpu::apic_timer_vector()
-{ return m_x2apic_handler.timer_vector(); }
+uint8_t vcpu::apic_timer_vector()
+{
+    return m_x2apic_handler.timer_vector();
+}
 
 //------------------------------------------------------------------------------
 // Setup Functions
@@ -902,8 +917,7 @@ uint64_t vcpu::is_xenstore_ready() noexcept
     return m_domain->m_xenstore_ready;
 }
 
-void
-vcpu::setup_default_controls()
+void vcpu::setup_default_controls()
 {
     using namespace vmcs_n;
     using namespace vm_entry_controls;
@@ -925,8 +939,7 @@ vcpu::setup_default_controls()
     rdseed_exiting::disable();
 }
 
-void
-vcpu::setup_default_handlers()
+void vcpu::setup_default_handlers()
 {
     this->add_default_cpuid_emulator(::cpuid_zeros_emulator);
     this->add_default_wrmsr_handler(::wrmsr_handler);
@@ -937,8 +950,7 @@ vcpu::setup_default_handlers()
     this->add_default_ept_execute_violation_handler(::ept_violation_handler);
 }
 
-void
-vcpu::setup_default_register_state()
+void vcpu::setup_default_register_state()
 {
     using namespace vmcs_n;
 
@@ -1096,7 +1108,8 @@ void vcpu::map_msi(const struct msi_desc *root_msi,
         try {
             auto msi_map = &root_vcpu->m_msi_map;
             msi_map->try_emplace(root_vector, root_msi, guest_msi);
-        } catch (...) {
+        }
+        catch (...) {
             bferror_info(0, "exception mapping msi");
             put_vcpu(i);
             throw;

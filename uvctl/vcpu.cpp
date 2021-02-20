@@ -48,7 +48,8 @@ uvc_vcpu::uvc_vcpu(vcpuid_t id, uvc_domain *dom)
 #ifdef WIN64
     if (dom->id() >= domain_events.size()) {
         log_msg("%s: Domain limit of %u reached, throwing\n",
-                __func__, domain_events.size());
+                __func__,
+                domain_events.size());
         throw std::runtime_error("domain limit reached\n");
     }
 #endif
@@ -64,24 +65,26 @@ bool uvc_vcpu::init_xenbus_events(HANDLE event)
 {
     HANDLE fd = uvctl_ioctl_open(&GUID_DEVINTERFACE_XENBUS);
     if (fd == INVALID_HANDLE_VALUE) {
-        log_msg("%s: Domain 0x%x failed to open xenbus fd\n", __func__, domain->id());
+        log_msg("%s: Domain 0x%x failed to open xenbus fd\n",
+                __func__,
+                domain->id());
         return false;
     }
 
     XENBUS_ADD_USER_EVENT_IN user_event{0};
 
     user_event.EventHandle = event;
-    user_event.RemoteDomain = domain->id() - 1; /* convert our microv ID to xen ID */
+    user_event.RemoteDomain =
+        domain->id() - 1; /* convert our microv ID to xen ID */
 
-    auto rc = uvctl_rw_ioctl(fd,
-                             IOCTL_XENBUS_ADD_USER_EVENT,
-                             &user_event,
-                             sizeof(user_event));
+    auto rc = uvctl_rw_ioctl(
+        fd, IOCTL_XENBUS_ADD_USER_EVENT, &user_event, sizeof(user_event));
     CloseHandle(fd);
 
     if (rc < 0) {
         log_msg("%s: failed to add xenbus event for domain 0x%x\n",
-                __func__, domain->id());
+                __func__,
+                domain->id());
         return false;
     }
 
@@ -96,14 +99,14 @@ bool uvc_vcpu::init_visr_events(HANDLE event)
         return false;
     }
 
-    struct visr_register_event user_event{0};
+    struct visr_register_event user_event {
+        0
+    };
 
     user_event.event = event;
 
-    auto rc = uvctl_rw_ioctl(fd,
-                             IOCTL_VISR_REGISTER_EVENT,
-                             &user_event,
-                             sizeof(user_event));
+    auto rc = uvctl_rw_ioctl(
+        fd, IOCTL_VISR_REGISTER_EVENT, &user_event, sizeof(user_event));
     CloseHandle(fd);
 
     if (rc < 0) {
@@ -118,15 +121,20 @@ void uvc_vcpu::init_events()
 {
     HANDLE event = CreateEvent(NULL, TRUE, FALSE, NULL);
     if (!event) {
-       log_msg("%s: Failed to create event for domain 0x%x (last error = 0x%x)\n",
-               __func__, domain->id(), GetLastError());
-       return;
+        log_msg(
+            "%s: Failed to create event for domain 0x%x (last error = 0x%x)\n",
+            __func__,
+            domain->id(),
+            GetLastError());
+        return;
     }
 
     domain_events[domain->id()] = event;
 
     log_msg("%s: Created handle 0x%llx for domain 0x%x\n",
-            __func__, event, domain->id());
+            __func__,
+            event,
+            domain->id());
 
     bool xenbus_succeeded = this->init_xenbus_events(event);
     if (!xenbus_succeeded && domain->id() != 2) {

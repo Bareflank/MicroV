@@ -86,7 +86,8 @@ void log_set_mode(int mode) noexcept
     try {
         std::lock_guard lock(log_mutex);
         log_mode = mode;
-    } catch (std::exception &e) {
+    }
+    catch (std::exception &e) {
         std::cerr << __func__ << ": failed (what=" << e.what() << ")\n";
     }
 }
@@ -115,7 +116,8 @@ void log_msg(const char *fmt, ...) noexcept
             log_msg_stdout(msg);
             break;
         }
-    } catch (std::exception &e) {
+    }
+    catch (std::exception &e) {
         std::cerr << __func__ << ": failed (what=" << e.what() << ")\n";
     }
 }
@@ -144,7 +146,8 @@ void log_raw(char *buf, int size) noexcept
             log_raw_stdout(buf, size);
             break;
         }
-    } catch (std::exception &e) {
+    }
+    catch (std::exception &e) {
         std::cerr << __func__ << ": failed (what=" << e.what() << ")\n";
     }
 }

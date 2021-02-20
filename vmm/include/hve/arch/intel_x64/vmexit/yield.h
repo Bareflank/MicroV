@@ -31,18 +31,15 @@
 // -----------------------------------------------------------------------------
 
 namespace microv {
-    class xen_vcpu;
+class xen_vcpu;
 }
 
-namespace microv::intel_x64
-{
+namespace microv::intel_x64 {
 
 class vcpu;
 
-class yield_handler
-{
+class yield_handler {
 public:
-
     /// Constructor
     ///
     /// @expects
@@ -60,15 +57,14 @@ public:
     ~yield_handler() = default;
 
 public:
-
     /// @cond
 
     bool handle_hlt(vcpu_t *vcpu, bfvmm::intel_x64::hlt_handler::info_t &info);
     bool handle_preemption(vcpu_t *vcpu);
-    bool handle_rdmsr_0x000006E0(
-        vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info);
-    bool handle_wrmsr_0x000006E0(
-        vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info);
+    bool handle_rdmsr_0x000006E0(vcpu_t *vcpu,
+                                 bfvmm::intel_x64::rdmsr_handler::info_t &info);
+    bool handle_wrmsr_0x000006E0(vcpu_t *vcpu,
+                                 bfvmm::intel_x64::wrmsr_handler::info_t &info);
 
     /// @endcond
 
@@ -80,7 +76,6 @@ private:
     uint64_t m_pet_shift;
 
 public:
-
     /// @cond
 
     yield_handler(yield_handler &&) = default;

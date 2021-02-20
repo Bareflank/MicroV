@@ -47,13 +47,7 @@ namespace microv {
 constexpr auto drs_offset = 48;
 
 /* Remapping structure types */
-enum drs_type {
-    drs_drhd,
-    drs_rmrr,
-    drs_atsr,
-    drs_rhsa,
-    drs_andd
-};
+enum drs_type { drs_drhd, drs_rmrr, drs_atsr, drs_rhsa, drs_andd };
 
 /* Common remapping structure header */
 struct drs_hdr {

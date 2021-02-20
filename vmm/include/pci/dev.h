@@ -55,8 +55,8 @@ struct pci_dev {
     vcpuid_t m_guest_vcpuid{};
 
     std::mutex m_msi_mtx{};
-    struct msi_desc m_guest_msi{};
-    struct msi_desc m_root_msi{};
+    struct msi_desc m_guest_msi {};
+    struct msi_desc m_root_msi {};
     bool m_msi_mapped{};
 
     struct pci_dev *m_bridge{};
@@ -112,7 +112,8 @@ struct pci_dev {
     void add_root_handlers(vcpu *vcpu);
     void add_guest_handlers(vcpu *vcpu);
     void get_relocated_bars(bool type_pmio, pci_bar_list &relocated_bars);
-    void show_relocated_bars(bool type_pmio, const pci_bar_list &relocated_bars);
+    void show_relocated_bars(bool type_pmio,
+                             const pci_bar_list &relocated_bars);
     void relocate_pmio_bars(base_vcpu *vcpu, cfg_info &info);
     void relocate_mmio_bars(base_vcpu *vcpu, cfg_info &info);
 

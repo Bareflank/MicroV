@@ -22,12 +22,10 @@
 #include <hve/arch/intel_x64/vcpu.h>
 #include <hve/arch/intel_x64/vmexit/external_interrupt.h>
 
-namespace microv::intel_x64
-{
+namespace microv::intel_x64 {
 
 external_interrupt_handler::external_interrupt_handler(
-    gsl::not_null<vcpu *> vcpu
-) :
+    gsl::not_null<vcpu *> vcpu) :
     m_vcpu{vcpu}
 {
     using namespace vmcs_n;
@@ -44,8 +42,7 @@ external_interrupt_handler::external_interrupt_handler(
 // Handlers
 // -----------------------------------------------------------------------------
 
-bool
-external_interrupt_handler::handle(
+bool external_interrupt_handler::handle(
     vcpu_t *vcpu, bfvmm::intel_x64::external_interrupt_handler::info_t &info)
 {
     bfignored(vcpu);

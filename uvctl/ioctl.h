@@ -41,10 +41,8 @@
 ///
 /// Only needed for dynamic cast
 ///
-class ioctl_private_base
-{
+class ioctl_private_base {
 public:
-
     /// Default Constructor
     ///
     ioctl_private_base() = default;
@@ -60,10 +58,8 @@ public:
 /// that for this class to function, the driver entry must be loaded, and
 /// bfm must be executed with the proper permissions.
 ///
-class ioctl
-{
+class ioctl {
 public:
-
     using file_type = std::vector<gsl::byte>;
     using size_type = std::size_t;
 
@@ -104,7 +100,6 @@ public:
     void call_ioctl_destroy(domainid_t domainid) noexcept;
 
 private:
-
     std::unique_ptr<ioctl_private_base> m_d;
 };
 

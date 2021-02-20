@@ -74,7 +74,7 @@ struct event_channel {
     using state_t = enum state;
 
     state_t state{state_free};
-    struct spin_lock lock{};
+    struct spin_lock lock {};
 
     /* Defined when state == state_virq */
     uint32_t virq{invalid_virq};
@@ -159,7 +159,7 @@ struct event_channel {
  * whenever its corresponding queue is not empty.
  */
 struct event_queue {
-    struct spin_lock lock{};
+    struct spin_lock lock {};
     std::atomic<evtchn_port_t> *head{};
     evtchn_port_t tail{};
     uint8_t priority{EVTCHN_FIFO_PRIORITY_DEFAULT};
@@ -182,7 +182,8 @@ struct event_control {
         ready = reinterpret_cast<std::atomic<uint32_t> *>(&blk->ready);
 
         for (auto i = 0U; i <= EVTCHN_FIFO_PRIORITY_MIN; i++) {
-            queue[i].head = reinterpret_cast<std::atomic<uint32_t> *>(&blk->head[i]);
+            queue[i].head =
+                reinterpret_cast<std::atomic<uint32_t> *>(&blk->head[i]);
             queue[i].tail = 0;
             queue[i].priority = gsl::narrow_cast<uint8_t>(i);
         }
@@ -227,8 +228,10 @@ private:
     friend class xen_evtchn;
 
     static constexpr auto bits_per_xen_ulong = sizeof(xen_ulong_t) * 8;
-    static constexpr auto words_per_page = ::x64::pt::page_size / sizeof(word_t);
-    static constexpr auto chans_per_page = ::x64::pt::page_size / sizeof(chan_t);
+    static constexpr auto words_per_page =
+        ::x64::pt::page_size / sizeof(word_t);
+    static constexpr auto chans_per_page =
+        ::x64::pt::page_size / sizeof(chan_t);
     static constexpr auto port_mask = max_channels - 1U;
     static constexpr auto word_mask = words_per_page - 1U;
     static constexpr auto chan_mask = chans_per_page - 1U;
@@ -261,7 +264,7 @@ private:
     bool raise(chan_t *chan);
     struct event_queue *lock_old_queue(const chan_t *chan);
 
-    struct spin_lock m_event_lock{};
+    struct spin_lock m_event_lock {};
     uint64_t m_allocated_chans{};
     uint64_t m_allocated_words{};
 
@@ -274,7 +277,6 @@ private:
     port_t m_nr_ports{};
 
 public:
-
     ~xen_evtchn() = default;
     xen_evtchn(xen_evtchn &&) = delete;
     xen_evtchn(const xen_evtchn &) = delete;

@@ -28,17 +28,13 @@
 // Definitions
 // -----------------------------------------------------------------------------
 
-namespace microv::intel_x64
-{
+namespace microv::intel_x64 {
 
 class vcpu;
 
-class vmcall_domain_op_handler
-{
+class vmcall_domain_op_handler {
 public:
-
-    vmcall_domain_op_handler(
-        gsl::not_null<vcpu *> vcpu);
+    vmcall_domain_op_handler(gsl::not_null<vcpu *> vcpu);
 
     /// Destructor
     ///
@@ -48,7 +44,6 @@ public:
     ~vmcall_domain_op_handler() = default;
 
 private:
-
     void domain_op__create_domain(vcpu *vcpu);
     void domain_op__destroy_domain(vcpu *vcpu);
     void domain_op__read_tsc(vcpu *vcpu) noexcept;
@@ -190,18 +185,17 @@ private:
     bool dispatch(vcpu *vcpu);
 
 private:
-
     vcpu *m_vcpu;
 
 public:
-
     /// @cond
 
     vmcall_domain_op_handler(vmcall_domain_op_handler &&) = default;
     vmcall_domain_op_handler &operator=(vmcall_domain_op_handler &&) = default;
 
     vmcall_domain_op_handler(const vmcall_domain_op_handler &) = delete;
-    vmcall_domain_op_handler &operator=(const vmcall_domain_op_handler &) = delete;
+    vmcall_domain_op_handler &operator=(const vmcall_domain_op_handler &) =
+        delete;
 
     /// @endcond
 };

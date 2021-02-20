@@ -103,8 +103,7 @@ struct page_range {
     page_range &operator=(page_range &&rhs) = default;
 
     page_range(uint64_t start, uint64_t count) :
-        m_page_start{start},
-        m_page_count{count}
+        m_page_start{start}, m_page_count{count}
     {
         expects(uv_align_page(start) == start);
     }

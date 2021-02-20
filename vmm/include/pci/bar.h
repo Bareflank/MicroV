@@ -115,7 +115,7 @@ inline void __parse_bars(uint32_t cf8,
                          pci_bar_list &bars)
 {
     for (auto i = 0; i < bar_regs.size(); i++) {
-        struct pci_bar bar{};
+        struct pci_bar bar {};
         const auto reg = bar_regs[i];
 
         __parse_bar(cf8, reg, &bar);

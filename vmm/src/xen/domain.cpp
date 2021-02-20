@@ -69,13 +69,7 @@ static_assert(ref_t::is_always_lock_free);
 static bool xl_created_root = false;
 
 /* UUID of the root domain */
-static xen_uuid_t root_uuid = {
-    1, 0, 0, 0,
-    0, 0,
-    0, 0,
-    0, 0,
-    0, 0, 0, 0, 0, 0
-};
+static xen_uuid_t root_uuid = {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
 std::mutex dom_mutex;
 std::mutex ref_mutex;
@@ -141,7 +135,8 @@ xen_domain *get_xen_domain(xen_domid_t id) noexcept
         } else {
             return nullptr;
         }
-    } catch (...) {
+    }
+    catch (...) {
         printv("%s: threw exception for id 0x%x\n", __func__, id);
         return nullptr;
     }
@@ -156,7 +151,8 @@ void put_xen_domain(xen_domid_t id) noexcept
         if (itr != ref_map.end()) {
             itr->second->fetch_sub(1);
         }
-    } catch (...) {
+    }
+    catch (...) {
         printv("%s: threw exception for id 0x%x\n", __func__, id);
     }
 }
@@ -512,7 +508,7 @@ bool xen_domain_createdomain(xen_vcpu *vcpu, struct xen_domctl *ctl)
         return true;
     }
 
-    struct microv::domain_info info{};
+    struct microv::domain_info info {};
 
     info.flags = DOMF_EXEC_XENPVH;
     info.wc_sec = vcpu->m_xen_dom->m_uv_info->wc_sec;
@@ -530,10 +526,14 @@ bool xen_domain_createdomain(xen_vcpu *vcpu, struct xen_domctl *ctl)
     ctl->domain = info.xen_domid;
     vcpu->m_uv_vcpu->set_rax(0);
 
-    printv("createdomain: id:%u flags:0x%x vcpus:%u evtchn:%u grant:%u maptrack:%u\n",
-           ctl->domain, cd->flags, cd->max_vcpus,
-           cd->max_evtchn_port, cd->max_grant_frames,
-           cd->max_maptrack_frames);
+    printv(
+        "createdomain: id:%u flags:0x%x vcpus:%u evtchn:%u grant:%u maptrack:%u\n",
+        ctl->domain,
+        cd->flags,
+        cd->max_vcpus,
+        cd->max_evtchn_port,
+        cd->max_grant_frames,
+        cd->max_maptrack_frames);
 
     return true;
 }
@@ -573,7 +573,9 @@ bool xen_domain_numainfo(xen_vcpu *vcpu, xen_sysctl_t *ctl)
     auto numa = &ctl->u.numainfo;
 
     printv("numainfo: num_nodes:%u, meminfo.p:%p, distance.p:%p\n",
-            numa->num_nodes, numa->meminfo.p, numa->distance.p);
+           numa->num_nodes,
+           numa->meminfo.p,
+           numa->distance.p);
 
     auto dom0 = get_xen_domain(0);
     if (!dom0) {
@@ -741,8 +743,10 @@ int xen_domain::acquire_gnttab_pages(xen_mem_acquire_resource_t *res,
     }
 }
 
-void xen_domain::add_root_page(uintptr_t gpa, uintptr_t hpa,
-                               uint32_t perm, uint32_t mtype)
+void xen_domain::add_root_page(uintptr_t gpa,
+                               uintptr_t hpa,
+                               uint32_t perm,
+                               uint32_t mtype)
 {
     xen_pfn_t gfn = xen_frame(gpa);
     xen_pfn_t hfn = xen_frame(hpa);
@@ -862,7 +866,7 @@ uint64_t xen_domain::init_shared_info(xen_vcpu *xen, uintptr_t shinfo_gpfn)
 
         /* Set wallclock from start-of-day info */
         auto now = ::x64::read_tsc::get();
-        auto wc_nsec = tsc_to_ns(now - m_uv_info->tsc, m_tsc_shift,  m_tsc_mul);
+        auto wc_nsec = tsc_to_ns(now - m_uv_info->tsc, m_tsc_shift, m_tsc_mul);
         auto wc_sec = wc_nsec / 1000000000ULL;
 
         wc_nsec += m_uv_info->wc_nsec;
@@ -898,9 +902,8 @@ uint64_t xen_domain::init_shared_info(xen_vcpu *xen, uintptr_t shinfo_gpfn)
     return 0;
 }
 
-void xen_domain::update_wallclock(
-    xen_vcpu *vcpu,
-    const struct xenpf_settime64 *time) noexcept
+void xen_domain::update_wallclock(xen_vcpu *vcpu,
+                                  const struct xenpf_settime64 *time) noexcept
 {
     m_shinfo->wc_version++;
     ::intel_x64::wmb();
@@ -1149,7 +1152,11 @@ static void dump_hvm_hw_mtrr(struct hvm_hw_mtrr *mtrr)
         if (!base && !mask) {
             continue;
         }
-        printv("  MTRR: physbase[%d]:0x%lx physmask[%d]:0x%lx\n", i, base, i, mask);
+        printv("  MTRR: physbase[%d]:0x%lx physmask[%d]:0x%lx\n",
+               i,
+               base,
+               i,
+               mask);
     }
 
     for (auto i = 0; i < NUM_FIXED_MSR; i++) {
@@ -1247,8 +1254,7 @@ static void dump_hvm_hw_cpu(struct hvm_hw_cpu *cpu)
     printv("  CPU: msr_syscall_mask:0x%lx\n", cpu->msr_syscall_mask);
 }
 
-bool xen_domain::gethvmcontext(xen_vcpu *v,
-                               struct xen_domctl_hvmcontext *ctx)
+bool xen_domain::gethvmcontext(xen_vcpu *v, struct xen_domctl_hvmcontext *ctx)
 {
     auto uvv = v->m_uv_vcpu;
 
@@ -1367,8 +1373,7 @@ void xen_domain::set_uv_dom_ctx(struct hvm_hw_cpu *cpu)
     dom->set_ia32_pat(0x0606060606060606);
 }
 
-bool xen_domain::sethvmcontext(xen_vcpu *v,
-                               struct xen_domctl_hvmcontext *ctx)
+bool xen_domain::sethvmcontext(xen_vcpu *v, struct xen_domctl_hvmcontext *ctx)
 {
     expects(ctx->size);
     expects(ctx->buffer.p);
@@ -1380,8 +1385,8 @@ bool xen_domain::sethvmcontext(xen_vcpu *v,
 
     auto hsd = reinterpret_cast<struct hvm_save_descriptor *>(buf + off);
     while (hsd->typecode != HVM_SAVE_CODE(END)) {
-//        printv("HVM set type: %d\n", hsd->typecode);
-//        printv("HVM set size: %d\n", hsd->length);
+        //        printv("HVM set type: %d\n", hsd->typecode);
+        //        printv("HVM set size: %d\n", hsd->length);
 
         off += sizeof(*hsd);
         switch (hsd->typecode) {
@@ -1392,24 +1397,24 @@ bool xen_domain::sethvmcontext(xen_vcpu *v,
             this->set_uv_dom_ctx((struct hvm_hw_cpu *)(buf + off));
             uvv->set_rax(0);
             return true;
-//            uvv->save_xstate();
-//
-//            auto root = uvv->root_vcpu();
-//            expects(root->is_root_vcpu());
-//            put_xen_domain(m_id);
-//
-//            root->load();
-//            root->return_new_domain(m_uv_dom->id());
-//
-//            /*
-//             * This should be unreachable, but if for whatever reason we return
-//             * here, we need to get_xen_domain before the corresponding put in
-//             * xen_domain_sethvmcontext
-//             */
-//            bferror_info(0, "returned from return_new_domain");
-//            get_xen_domain(m_id);
+            //            uvv->save_xstate();
+            //
+            //            auto root = uvv->root_vcpu();
+            //            expects(root->is_root_vcpu());
+            //            put_xen_domain(m_id);
+            //
+            //            root->load();
+            //            root->return_new_domain(m_uv_dom->id());
+            //
+            //            /*
+            //             * This should be unreachable, but if for whatever reason we return
+            //             * here, we need to get_xen_domain before the corresponding put in
+            //             * xen_domain_sethvmcontext
+            //             */
+            //            bferror_info(0, "returned from return_new_domain");
+            //            get_xen_domain(m_id);
 
-//            return false;
+            //            return false;
         }
         case HVM_SAVE_CODE(HEADER):
             break;
@@ -1458,8 +1463,12 @@ bool xen_domain::set_max_mem(xen_vcpu *v, struct xen_domctl_max_mem *mem)
 
 bool xen_domain::set_tsc_info(xen_vcpu *v, struct xen_domctl_tsc_info *info)
 {
-    printv("domain: settscinfo: mode:%u gtsc_khz:%u incarnation:%u elapsed_nsec:%lu\n",
-            info->tsc_mode, info->gtsc_khz, info->incarnation, info->elapsed_nsec);
+    printv(
+        "domain: settscinfo: mode:%u gtsc_khz:%u incarnation:%u elapsed_nsec:%lu\n",
+        info->tsc_mode,
+        info->gtsc_khz,
+        info->incarnation,
+        info->elapsed_nsec);
 
     /* 0 is the default when TSC is monotonic and guest access tsc directly */
     expects(!info->tsc_mode);
@@ -1485,14 +1494,14 @@ bool xen_domain::shadow_op(xen_vcpu *v, struct xen_domctl_shadow_op *shadow)
 
 bool xen_domain::set_cpuid(xen_vcpu *v, struct xen_domctl_cpuid *cpuid)
 {
-//    printv("%s: leaf:%x subleaf:%x eax:%x ebx:%x ecx:%x edx:%x\n",
-//            __func__,
-//            cpuid->input[0],
-//            cpuid->input[1],
-//            cpuid->eax,
-//            cpuid->ebx,
-//            cpuid->ecx,
-//            cpuid->edx);
+    //    printv("%s: leaf:%x subleaf:%x eax:%x ebx:%x ecx:%x edx:%x\n",
+    //            __func__,
+    //            cpuid->input[0],
+    //            cpuid->input[1],
+    //            cpuid->eax,
+    //            cpuid->ebx,
+    //            cpuid->ecx,
+    //            cpuid->edx);
 
     v->m_uv_vcpu->set_rax(0);
     return true;
@@ -1502,16 +1511,14 @@ bool xen_domain::ioport_perm(xen_vcpu *v,
                              struct xen_domctl_ioport_permission *perm)
 {
     printv("%s: [0x%x-0x%x] (%s)\n",
-            __func__,
-            perm->first_port,
-            perm->first_port + perm->nr_ports - 1,
-            (perm->allow_access) ? "allow" : "deny");
+           __func__,
+           perm->first_port,
+           perm->first_port + perm->nr_ports - 1,
+           (perm->allow_access) ? "allow" : "deny");
 
-    const struct io_region pmio = {
-        .base = perm->first_port,
-        .size = perm->nr_ports,
-        .type = io_region::pmio_t
-    };
+    const struct io_region pmio = {.base = perm->first_port,
+                                   .size = perm->nr_ports,
+                                   .type = io_region::pmio_t};
 
     m_assigned_pmio.push_back(pmio);
     v->m_uv_vcpu->set_rax(0);
@@ -1523,16 +1530,14 @@ bool xen_domain::iomem_perm(xen_vcpu *v,
                             struct xen_domctl_iomem_permission *perm)
 {
     printv("%s: [0x%lx-0x%lx] (%s)\n",
-            __func__,
-            xen_addr(perm->first_mfn),
-            xen_addr(perm->first_mfn + perm->nr_mfns) - 1,
-            (perm->allow_access) ? "allow" : "deny");
+           __func__,
+           xen_addr(perm->first_mfn),
+           xen_addr(perm->first_mfn + perm->nr_mfns) - 1,
+           (perm->allow_access) ? "allow" : "deny");
 
-    const struct io_region mmio = {
-        .base = xen_addr(perm->first_mfn),
-        .size = perm->nr_mfns * UV_PAGE_SIZE,
-        .type = io_region::mmio_t
-    };
+    const struct io_region mmio = {.base = xen_addr(perm->first_mfn),
+                                   .size = perm->nr_mfns * UV_PAGE_SIZE,
+                                   .type = io_region::mmio_t};
 
     m_assigned_mmio.push_back(mmio);
     v->m_uv_vcpu->set_rax(0);
@@ -1553,7 +1558,8 @@ bool xen_domain::assign_device(xen_vcpu *v,
 
     auto dev = find_passthru_dev(bdf);
     if (!dev) {
-        printv("%s: assigned non-passthru device %s\n", __func__, dev->bdf_str());
+        printv(
+            "%s: assigned non-passthru device %s\n", __func__, dev->bdf_str());
         return true;
     }
 
@@ -1582,8 +1588,7 @@ bool xen_domain::assign_device(xen_vcpu *v,
 
             if (!found) {
                 printv("%s: no matching region found ", __func__);
-                printf("for PMIO BAR [0x%lx-0x%lx]\n",
-                        bar.addr, bar.last());
+                printf("for PMIO BAR [0x%lx-0x%lx]\n", bar.addr, bar.last());
                 return false;
             }
         } else {
@@ -1599,8 +1604,7 @@ bool xen_domain::assign_device(xen_vcpu *v,
 
             if (!found) {
                 printv("%s: no matching region found ", __func__);
-                printf("for MMIO BAR [0x%lx-0x%lx]\n",
-                        bar.addr, bar.last());
+                printf("for MMIO BAR [0x%lx-0x%lx]\n", bar.addr, bar.last());
                 return false;
             }
         }
@@ -1616,7 +1620,8 @@ bool xen_domain::assign_device(xen_vcpu *v,
  * TODO: The ABI used here is wonky...if the tools ever ask for more than the
  * feature mask, we need to do more digging into the implementation
  */
-bool xen_domain::getvcpuextstate(xen_vcpu *v, struct xen_domctl_vcpuextstate *ext)
+bool xen_domain::getvcpuextstate(xen_vcpu *v,
+                                 struct xen_domctl_vcpuextstate *ext)
 {
     expects(ext->vcpu == 0);
 
@@ -1657,7 +1662,7 @@ bool xen_domain::numainfo(xen_vcpu *v, struct xen_sysctl_numainfo *numa)
     }
 
     if (numa->distance.p) {
-        auto map =  uvv->map_arg<uint32_t>(numa->distance.p);
+        auto map = uvv->map_arg<uint32_t>(numa->distance.p);
         auto dist = map.get();
         *dist = 0;
     }
@@ -1756,7 +1761,7 @@ bool xen_domain::readconsole(xen_vcpu *v, struct xen_sysctl *ctl)
 
 end:
     /* TODO: implement clearing the debug ring buffer. i.e. `xl dmesg -c` */
-    printf(" - eof=%s\n", m_is_console_eof ? "true": "false");
+    printf(" - eof=%s\n", m_is_console_eof ? "true" : "false");
     uvv->set_rax(0);
     return true;
 }
@@ -1781,8 +1786,8 @@ bool xen_domain::physinfo(xen_vcpu *v, struct xen_sysctl *ctl)
     info->cpu_khz = m_tsc_khz;
     info->capabilities = XEN_SYSCTL_PHYSCAP_hvm;
     info->capabilities |= XEN_SYSCTL_PHYSCAP_directio; /* IOMMU support */
-    info->total_pages = m_total_pages; /* domain RAM size */
-    info->free_pages = m_free_pages; /* ??? */
+    info->total_pages = m_total_pages;                 /* domain RAM size */
+    info->free_pages = m_free_pages;                   /* ??? */
     info->scrub_pages = 0; /* ??? (appear in calc of free memory) */
     info->outstanding_pages = m_out_pages;
     info->max_mfn = m_max_mfn;

@@ -87,40 +87,26 @@ struct e820_entry_t {
 #define __enum_event_op__set_xenstore_ready 0x3UL
 #define __enum_event_op__is_xenstore_ready 0x4UL
 
-static inline status_t
-__event_op__send_vector(uint64_t vector)
+static inline status_t __event_op__send_vector(uint64_t vector)
 {
-    return _vmcall(0xBF06000000000000,
-                   __enum_event_op__send_vector,
-                   vector,
-                   0);
+    return _vmcall(0xBF06000000000000, __enum_event_op__send_vector, vector, 0);
 }
 
-static inline status_t
-__event_op__send_bdf(uint64_t bdf)
+static inline status_t __event_op__send_bdf(uint64_t bdf)
 {
-    return _vmcall(0xBF06000000000000,
-                   __enum_event_op__send_bdf,
-                   bdf,
-                   0);
+    return _vmcall(0xBF06000000000000, __enum_event_op__send_bdf, bdf, 0);
 }
 
-static inline status_t
-__event_op__set_xenstore_ready(void)
+static inline status_t __event_op__set_xenstore_ready(void)
 {
-    return _vmcall(0xBF06000000000000,
-                   __enum_event_op__set_xenstore_ready,
-                   0,
-                   0);
+    return _vmcall(
+        0xBF06000000000000, __enum_event_op__set_xenstore_ready, 0, 0);
 }
 
-static inline status_t
-__event_op__is_xenstore_ready(void)
+static inline status_t __event_op__is_xenstore_ready(void)
 {
-    return _vmcall(0xBF06000000000000,
-                   __enum_event_op__is_xenstore_ready,
-                   0,
-                   0);
+    return _vmcall(
+        0xBF06000000000000, __enum_event_op__is_xenstore_ready, 0, 0);
 }
 
 // -----------------------------------------------------------------------------
@@ -140,12 +126,9 @@ __event_op__is_xenstore_ready(void)
 #define run_op_ret_op(a) ((0x000000000000000FULL & a) >> 0)
 #define run_op_ret_arg(a) ((0xFFFFFFFFFFFFFFF0ULL & a) >> 4)
 
-static inline vcpuid_t
-__run_op(vcpuid_t vcpuid, uint64_t arg1, uint64_t arg2)
+static inline vcpuid_t __run_op(vcpuid_t vcpuid, uint64_t arg1, uint64_t arg2)
 {
-    return _vmcall(
-        0xBF01000000000000, vcpuid, arg1, arg2
-    );
+    return _vmcall(0xBF01000000000000, vcpuid, arg1, arg2);
 }
 
 // -----------------------------------------------------------------------------
@@ -156,28 +139,19 @@ __run_op(vcpuid_t vcpuid, uint64_t arg1, uint64_t arg2)
 #define __enum_uart_op__nhex 2
 #define __enum_uart_op__ndec 3
 
-static inline vcpuid_t
-__uart_char_op(uint16_t port, uint64_t c)
+static inline vcpuid_t __uart_char_op(uint16_t port, uint64_t c)
 {
-    return _vmcall(
-        0xBF04000000000000, __enum_uart_op__char, port, c
-    );
+    return _vmcall(0xBF04000000000000, __enum_uart_op__char, port, c);
 }
 
-static inline vcpuid_t
-__uart_nhex_op(uint16_t port, uint64_t val)
+static inline vcpuid_t __uart_nhex_op(uint16_t port, uint64_t val)
 {
-    return _vmcall(
-        0xBF04000000000000, __enum_uart_op__nhex, port, val
-    );
+    return _vmcall(0xBF04000000000000, __enum_uart_op__nhex, port, val);
 }
 
-static inline vcpuid_t
-__uart_ndec_op(uint16_t port, uint64_t val)
+static inline vcpuid_t __uart_ndec_op(uint16_t port, uint64_t val)
 {
-    return _vmcall(
-        0xBF04000000000000, __enum_uart_op__ndec, port, val
-    );
+    return _vmcall(0xBF04000000000000, __enum_uart_op__ndec, port, val);
 }
 
 // -----------------------------------------------------------------------------
@@ -348,57 +322,46 @@ __uart_ndec_op(uint16_t port, uint64_t val)
 #define DOMF_PTPCI (1ULL << 5)
 
 struct dom_info {
-    uint64_t flags;     /* DOMF_* bitmask */
-    uint64_t wc_sec;    /* seconds since UNIX epoch */
-    uint64_t wc_nsec;   /* nanoseconds since UNIX epoch */
-    uint64_t tsc;       /* TSC value associated with above wc_* times */
-    uint64_t ram;       /* bytes of ram */
+    uint64_t flags;   /* DOMF_* bitmask */
+    uint64_t wc_sec;  /* seconds since UNIX epoch */
+    uint64_t wc_nsec; /* nanoseconds since UNIX epoch */
+    uint64_t tsc;     /* TSC value associated with above wc_* times */
+    uint64_t ram;     /* bytes of ram */
 };
 
-static inline domainid_t
-__domain_op__create_domain(struct dom_info *info)
+static inline domainid_t __domain_op__create_domain(struct dom_info *info)
 {
-    return _vmcall(
-        __enum_domain_op__create_domain,
-        (uint64_t)info,
-        0,
-        0
-    );
+    return _vmcall(__enum_domain_op__create_domain, (uint64_t)info, 0, 0);
 }
 
-static inline status_t
-__domain_op__destroy_domain(domainid_t foreign_domainid)
+static inline status_t __domain_op__destroy_domain(domainid_t foreign_domainid)
 {
-    status_t ret = _vmcall(
-        __enum_domain_op__destroy_domain,
-        foreign_domainid,
-        0,
-        0
-    );
+    status_t ret =
+        _vmcall(__enum_domain_op__destroy_domain, foreign_domainid, 0, 0);
 
     return ret == 0 ? SUCCESS : FAILURE;
 }
 
-static inline uint64_t
-__domain_op__read_tsc(void)
+static inline uint64_t __domain_op__read_tsc(void)
 {
     return _vmcall(__enum_domain_op__read_tsc, 0, 0, 0);
 }
 
-static inline status_t
-__domain_op__invept(domainid_t did)
+static inline status_t __domain_op__invept(domainid_t did)
 {
     return _vmcall(__enum_domain_op__invept, did, 0, 0);
 }
 
-static inline uint64_t
-__domain_op__hvc_rx_put(domainid_t did, char *buf, uint64_t len)
+static inline uint64_t __domain_op__hvc_rx_put(domainid_t did,
+                                               char *buf,
+                                               uint64_t len)
 {
     return _vmcall(__enum_domain_op__hvc_rx_put, did, (uint64_t)buf, len);
 }
 
-static inline uint64_t
-__domain_op__hvc_tx_get(domainid_t did, char *buf, uint64_t len)
+static inline uint64_t __domain_op__hvc_tx_get(domainid_t did,
+                                               char *buf,
+                                               uint64_t len)
 {
     return _vmcall(__enum_domain_op__hvc_tx_get, did, (uint64_t)buf, len);
 }
@@ -407,178 +370,123 @@ __domain_op__hvc_tx_get(domainid_t did, char *buf, uint64_t len)
  * Add an e820 entry to the domain. The entry specifies a range
  * from [base, end) with the given type.
  */
-static inline status_t
-__domain_op__add_e820_entry(domainid_t foreign_domainid,
-                            uintptr_t base,
-                            uintptr_t end,
-                            uintptr_t type)
+static inline status_t __domain_op__add_e820_entry(domainid_t foreign_domainid,
+                                                   uintptr_t base,
+                                                   uintptr_t end,
+                                                   uintptr_t type)
+{
+    return _vmcall(__enum_domain_op__add_e820_entry,
+                   foreign_domainid,
+                   base,
+                   end | (type << 56));
+}
+
+static inline status_t __domain_op__set_uart(domainid_t foreign_domainid,
+                                             uint64_t uart)
+{
+    status_t ret =
+        _vmcall(__enum_domain_op__set_uart, foreign_domainid, uart, 0);
+
+    return ret == 0 ? SUCCESS : FAILURE;
+}
+
+static inline status_t __domain_op__set_pt_uart(domainid_t foreign_domainid,
+                                                uint64_t uart)
+{
+    status_t ret =
+        _vmcall(__enum_domain_op__set_pt_uart, foreign_domainid, uart, 0);
+
+    return ret == 0 ? SUCCESS : FAILURE;
+}
+
+static inline uint64_t __domain_op__dump_uart(domainid_t domainid, char *buffer)
 {
     return _vmcall(
-        __enum_domain_op__add_e820_entry,
-        foreign_domainid,
-        base,
-        end | (type << 56)
-    );
+        __enum_domain_op__dump_uart, domainid, bfrcast(uint64_t, buffer), 0);
 }
 
-static inline status_t
-__domain_op__set_uart(domainid_t foreign_domainid, uint64_t uart)
+static inline status_t __domain_op__share_page_r(domainid_t foreign_domainid,
+                                                 uint64_t gpa,
+                                                 uint64_t foreign_gpa)
 {
     status_t ret = _vmcall(
-        __enum_domain_op__set_uart,
-        foreign_domainid,
-        uart,
-        0
-    );
+        __enum_domain_op__share_page_r, foreign_domainid, gpa, foreign_gpa);
 
     return ret == 0 ? SUCCESS : FAILURE;
 }
 
-static inline status_t
-__domain_op__set_pt_uart(domainid_t foreign_domainid, uint64_t uart)
+static inline status_t __domain_op__share_page_rw(domainid_t foreign_domainid,
+                                                  uint64_t gpa,
+                                                  uint64_t foreign_gpa)
 {
     status_t ret = _vmcall(
-        __enum_domain_op__set_pt_uart,
-        foreign_domainid,
-        uart,
-        0
-    );
+        __enum_domain_op__share_page_rw, foreign_domainid, gpa, foreign_gpa);
 
     return ret == 0 ? SUCCESS : FAILURE;
 }
 
-static inline uint64_t
-__domain_op__dump_uart(domainid_t domainid, char *buffer)
-{
-    return _vmcall(
-        __enum_domain_op__dump_uart,
-        domainid,
-        bfrcast(uint64_t, buffer),
-        0
-    );
-}
-
-static inline status_t
-__domain_op__share_page_r(
-    domainid_t foreign_domainid, uint64_t gpa, uint64_t foreign_gpa)
+static inline status_t __domain_op__share_page_rwe(domainid_t foreign_domainid,
+                                                   uint64_t gpa,
+                                                   uint64_t foreign_gpa)
 {
     status_t ret = _vmcall(
-        __enum_domain_op__share_page_r,
-        foreign_domainid,
-        gpa,
-        foreign_gpa
-    );
+        __enum_domain_op__share_page_rwe, foreign_domainid, gpa, foreign_gpa);
 
     return ret == 0 ? SUCCESS : FAILURE;
 }
 
-static inline status_t
-__domain_op__share_page_rw(
-    domainid_t foreign_domainid, uint64_t gpa, uint64_t foreign_gpa)
+static inline status_t __domain_op__donate_page_r(domainid_t foreign_domainid,
+                                                  uint64_t gpa,
+                                                  uint64_t foreign_gpa)
 {
     status_t ret = _vmcall(
-        __enum_domain_op__share_page_rw,
-        foreign_domainid,
-        gpa,
-        foreign_gpa
-    );
-
-    return ret == 0 ? SUCCESS : FAILURE;
-}
-
-static inline status_t
-__domain_op__share_page_rwe(
-    domainid_t foreign_domainid, uint64_t gpa, uint64_t foreign_gpa)
-{
-    status_t ret = _vmcall(
-        __enum_domain_op__share_page_rwe,
-        foreign_domainid,
-        gpa,
-        foreign_gpa
-    );
-
-    return ret == 0 ? SUCCESS : FAILURE;
-}
-
-static inline status_t
-__domain_op__donate_page_r(
-    domainid_t foreign_domainid, uint64_t gpa, uint64_t foreign_gpa)
-{
-    status_t ret = _vmcall(
-        __enum_domain_op__donate_page_r,
-        foreign_domainid,
-        gpa,
-        foreign_gpa
-    );
+        __enum_domain_op__donate_page_r, foreign_domainid, gpa, foreign_gpa);
 
     return ret;
 }
 
-static inline status_t
-__domain_op__donate_page_rw(
-    domainid_t foreign_domainid, uint64_t gpa, uint64_t foreign_gpa)
+static inline status_t __domain_op__donate_page_rw(domainid_t foreign_domainid,
+                                                   uint64_t gpa,
+                                                   uint64_t foreign_gpa)
 {
     status_t ret = _vmcall(
-        __enum_domain_op__donate_page_rw,
-        foreign_domainid,
-        gpa,
-        foreign_gpa
-    );
+        __enum_domain_op__donate_page_rw, foreign_domainid, gpa, foreign_gpa);
 
     return ret;
 }
 
-static inline status_t
-__domain_op__donate_page_rwe(
-    domainid_t foreign_domainid, uint64_t gpa, uint64_t foreign_gpa)
+static inline status_t __domain_op__donate_page_rwe(domainid_t foreign_domainid,
+                                                    uint64_t gpa,
+                                                    uint64_t foreign_gpa)
 {
     status_t ret = _vmcall(
-        __enum_domain_op__donate_page_rwe,
-        foreign_domainid,
-        gpa,
-        foreign_gpa
-    );
+        __enum_domain_op__donate_page_rwe, foreign_domainid, gpa, foreign_gpa);
 
     return ret;
 }
 
-static inline status_t
-__domain_op__reclaim_root_pages(domainid_t foreign_domainid)
+static inline status_t __domain_op__reclaim_root_pages(
+    domainid_t foreign_domainid)
 {
-    status_t ret = _vmcall(
-        __enum_domain_op__reclaim_root_pages,
-        foreign_domainid,
-        0,
-        0
-    );
+    status_t ret =
+        _vmcall(__enum_domain_op__reclaim_root_pages, foreign_domainid, 0, 0);
 
     return ret;
 }
 
-#define __domain_op__reg(reg)                                                   \
-    static inline uint64_t                                                      \
-    __domain_op__ ## reg(domainid_t domainid)                                   \
-    {                                                                           \
-        return _vmcall(                                                         \
-            __enum_domain_op__## reg,                                           \
-            domainid,                                                           \
-            0,                                                                  \
-            0                                                                   \
-        );                                                                      \
+#define __domain_op__reg(reg)                                                  \
+    static inline uint64_t __domain_op__##reg(domainid_t domainid)             \
+    {                                                                          \
+        return _vmcall(__enum_domain_op__##reg, domainid, 0, 0);               \
     }
 
-#define __domain_op__set_reg(reg)                                               \
-    static inline status_t                                                      \
-    __domain_op__set_ ## reg(domainid_t domainid, uint64_t val)                 \
-    {                                                                           \
-        status_t ret = _vmcall(                                                 \
-            __enum_domain_op__set_ ## reg,                                      \
-            domainid,                                                           \
-            val,                                                                \
-            0                                                                   \
-        );                                                                      \
-                                                                                \
-        return ret == 0 ? SUCCESS : FAILURE;                                    \
+#define __domain_op__set_reg(reg)                                              \
+    static inline status_t __domain_op__set_##reg(domainid_t domainid,         \
+                                                  uint64_t val)                \
+    {                                                                          \
+        status_t ret = _vmcall(__enum_domain_op__set_##reg, domainid, val, 0); \
+                                                                               \
+        return ret == 0 ? SUCCESS : FAILURE;                                   \
     }
 
 // clang-format off
@@ -711,37 +619,20 @@ __domain_op__set_reg(ldtr_access_rights)
 #define __enum_vcpu_op__kill_vcpu 0xBF03000000000101
 #define __enum_vcpu_op__destroy_vcpu 0xBF03000000000102
 
-static inline vcpuid_t
-__vcpu_op__create_vcpu(domainid_t domainid)
+                                                                                                static inline vcpuid_t
+    __vcpu_op__create_vcpu(domainid_t domainid)
 {
-    return _vmcall(
-        __enum_vcpu_op__create_vcpu,
-        domainid,
-        0,
-        0
-    );
+    return _vmcall(__enum_vcpu_op__create_vcpu, domainid, 0, 0);
 }
 
-static inline status_t
-__vcpu_op__kill_vcpu(vcpuid_t vcpuid)
+static inline status_t __vcpu_op__kill_vcpu(vcpuid_t vcpuid)
 {
-    return _vmcall(
-        __enum_vcpu_op__kill_vcpu,
-        vcpuid,
-        0,
-        0
-    );
+    return _vmcall(__enum_vcpu_op__kill_vcpu, vcpuid, 0, 0);
 }
 
-static inline status_t
-__vcpu_op__destroy_vcpu(vcpuid_t vcpuid)
+static inline status_t __vcpu_op__destroy_vcpu(vcpuid_t vcpuid)
 {
-    return _vmcall(
-        __enum_vcpu_op__destroy_vcpu,
-        vcpuid,
-        0,
-        0
-    );
+    return _vmcall(__enum_vcpu_op__destroy_vcpu, vcpuid, 0, 0);
 }
 
 #pragma pack(pop)

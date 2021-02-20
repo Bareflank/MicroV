@@ -55,7 +55,9 @@ class xen_page {
 public:
     static constexpr xen_pfn_t invalid_frame = ~0U;
 
-    xen_page(xen_pfn_t gfn, uint32_t perms, uint32_t mtype,
+    xen_page(xen_pfn_t gfn,
+             uint32_t perms,
+             uint32_t mtype,
              class page *pg) noexcept
     {
         this->gfn = gfn;

@@ -49,7 +49,7 @@ private:
     uint32_t *m_xapic_hva{};
     uintptr_t m_xapic_hpa{};
     uintptr_t m_base_addr{};
-    struct access_ops m_ops{};
+    struct access_ops m_ops {};
     std::mutex m_mutex{};
 
     void init_xapic();
@@ -60,7 +60,6 @@ private:
     bool emulate_wrmsr_base(base_vcpu *v, wrmsr_handler::info_t &info);
 
 public:
-
     enum icr_delivery_mode : uint64_t {
         fixed = 0,
         lowest_priority = 1,
@@ -70,20 +69,11 @@ public:
         sipi = 6
     };
 
-    enum icr_destination_mode : uint64_t {
-        physical = 0,
-        logical = 1
-    };
+    enum icr_destination_mode : uint64_t { physical = 0, logical = 1 };
 
-    enum icr_level : uint64_t {
-        deassert = 0,
-        assert = 1
-    };
+    enum icr_level : uint64_t { deassert = 0, assert = 1 };
 
-    enum icr_trigger_mode : uint64_t {
-        edge = 0,
-        level = 1
-    };
+    enum icr_trigger_mode : uint64_t { edge = 0, level = 1 };
 
     enum icr_destination_shorthand : uint64_t {
         none = 0,

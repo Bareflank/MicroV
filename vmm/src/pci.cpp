@@ -31,8 +31,8 @@
 #include <pci/pci.h>
 #include <printv.h>
 
-#define HANDLE_CFG_ACCESS(ptr, memfn, dir) \
-vcpu->add_pci_cfg_handler(ptr->m_cf8, {&pci_dev::memfn, ptr}, dir)
+#define HANDLE_CFG_ACCESS(ptr, memfn, dir)                                     \
+    vcpu->add_pci_cfg_handler(ptr->m_cf8, {&pci_dev::memfn, ptr}, dir)
 
 extern microv::intel_x64::vcpu *vcpu0;
 
@@ -156,8 +156,8 @@ static void probe_bus(uint32_t b, struct pci_dev *bridge)
                 continue;
             }
 
-            auto [itr, new_dev] =
-                pci_map.try_emplace(addr, std::make_unique<pci_dev>(addr, bridge));
+            auto [itr, new_dev] = pci_map.try_emplace(
+                addr, std::make_unique<pci_dev>(addr, bridge));
 
             if (!new_dev) {
                 continue;
@@ -194,9 +194,13 @@ static void probe_bus(uint32_t b, struct pci_dev *bridge)
 
                     if (bar.addr != bfn::upper(bar.addr, ::x64::pt::from)) {
                         misaligned_bar = true;
-                        printv("pci: %s: MMIO BAR[%u] at 0x%lx-0x%lx is not"
-                               " 4K-aligned, disabling passthrough\n",
-                               pdev->bdf_str(), reg - 4, bar.addr, bar.last());
+                        printv(
+                            "pci: %s: MMIO BAR[%u] at 0x%lx-0x%lx is not"
+                            " 4K-aligned, disabling passthrough\n",
+                            pdev->bdf_str(),
+                            reg - 4,
+                            bar.addr,
+                            bar.last());
                         break;
                     }
                 }
@@ -306,8 +310,8 @@ static void map_mmio_bar(::bfvmm::intel_x64::ept::mmap *ept,
 
     for (auto gpa = bar->addr; gpa <= bar->last(); gpa += 4096) {
         const auto memtype = bar->prefetchable
-                             ? mmap::memory_type::write_combining
-                             : mmap::memory_type::uncacheable;
+                                 ? mmap::memory_type::write_combining
+                                 : mmap::memory_type::uncacheable;
 
         const auto perms = mmap::attr_type::read_write;
 
@@ -342,8 +346,12 @@ pci_dev::pci_dev(uint32_t addr, struct pci_dev *parent_bridge)
 
     m_cf8 = addr;
 
-    snprintf(m_bdf_str, sizeof(m_bdf_str), "%02x:%02x.%01x",
-             pci_cfg_bus(m_cf8), pci_cfg_dev(m_cf8), pci_cfg_fun(m_cf8));
+    snprintf(m_bdf_str,
+             sizeof(m_bdf_str),
+             "%02x:%02x.%01x",
+             pci_cfg_bus(m_cf8),
+             pci_cfg_dev(m_cf8),
+             pci_cfg_fun(m_cf8));
 
     ensures(!m_bdf_str[sizeof(m_bdf_str) - 1]);
 
@@ -407,8 +415,10 @@ void pci_dev::parse_capabilities()
     auto is_64bit = msi_64bit(msi);
 
     printv("pci: %s: MSI %s-bit, vectors:%u, masking%s\n",
-            bdf_str(), is_64bit ? "64" : "32", nr_vectors,
-            per_vector_mask ? "+" : "-");
+           bdf_str(),
+           is_64bit ? "64" : "32",
+           nr_vectors,
+           per_vector_mask ? "+" : "-");
 
     if (msi_enabled(msi)) {
         printv("pci: %s: MSI is enabled...disabling\n", bdf_str());
@@ -478,7 +488,10 @@ void pci_dev::add_root_handlers(vcpu *vcpu)
 
         if (vcpu->id() == 0) {
             printv("pci: %s: PMIO BAR[%u] at 0x%lx-0x%lx\n",
-                   this->bdf_str(), reg - 4, bar.addr, bar.last());
+                   this->bdf_str(),
+                   reg - 4,
+                   bar.addr,
+                   bar.last());
         }
     }
 
@@ -497,7 +510,10 @@ void pci_dev::add_root_handlers(vcpu *vcpu)
         unmap_mmio_bar(&vcpu->dom()->ept(), &bar);
 
         printv("pci: %s: MMIO BAR[%u] at 0x%lx-0x%lx (%s, %s)\n",
-               this->bdf_str(), reg - 4, bar.addr, bar.last(),
+               this->bdf_str(),
+               reg - 4,
+               bar.addr,
+               bar.last(),
                bar.type == microv::pci_bar_mm_64bit ? "64-bit" : "32-bit",
                bar.prefetchable ? "prefetchable" : "non-prefetchable");
     }
@@ -646,8 +662,10 @@ bool pci_dev::guest_normal_cfg_out(base_vcpu *vcpu, cfg_info &info)
     const bool now_enabled = m_guest_msi.is_enabled();
 
     if (now_enabled && !m_root_msi.is_enabled()) {
-        printv("pci: %s: MSI root disabled on guest enable. "
-               "MSI messages will not be delivered!\n", bdf_str());
+        printv(
+            "pci: %s: MSI root disabled on guest enable. "
+            "MSI messages will not be delivered!\n",
+            bdf_str());
         return true;
     }
 
@@ -667,7 +685,10 @@ bool pci_dev::guest_normal_cfg_out(base_vcpu *vcpu, cfg_info &info)
         }
 
         printv("pci: %s: enabling MSI: ctrl:0x%04x addr:0x%016lx data:0x%08x\n",
-               bdf_str(), val >> 16, m_root_msi.addr(), m_root_msi.data());
+               bdf_str(),
+               val >> 16,
+               m_root_msi.addr(),
+               m_root_msi.data());
     }
 
     pci_cfg_write_reg(m_cf8, info.reg, val);
@@ -727,7 +748,7 @@ void pci_dev::get_relocated_bars(bool type_pmio, pci_bar_list &relocated_bars)
             continue;
         }
 
-        struct pci_bar new_bar{};
+        struct pci_bar new_bar {};
 
         __parse_bar(m_cf8, reg, &new_bar);
 
@@ -746,7 +767,8 @@ void pci_dev::get_relocated_bars(bool type_pmio, pci_bar_list &relocated_bars)
     }
 }
 
-void pci_dev::show_relocated_bars(bool type_pmio, const pci_bar_list &relocated_bars)
+void pci_dev::show_relocated_bars(bool type_pmio,
+                                  const pci_bar_list &relocated_bars)
 {
     for (const auto &pair : relocated_bars) {
         const auto reg = pair.first;
@@ -754,10 +776,16 @@ void pci_dev::show_relocated_bars(bool type_pmio, const pci_bar_list &relocated_
 
         if (type_pmio) {
             printv("pci: %s: PMIO BAR[%u] relocated to 0x%lx-0x%lx\n",
-                   this->bdf_str(), reg - 4, bar.addr, bar.last());
+                   this->bdf_str(),
+                   reg - 4,
+                   bar.addr,
+                   bar.last());
         } else {
             printv("pci: %s: MMIO BAR[%u] relocated to 0x%lx-0x%lx (%s, %s)\n",
-                   this->bdf_str(), reg - 4, bar.addr, bar.last(),
+                   this->bdf_str(),
+                   reg - 4,
+                   bar.addr,
+                   bar.last(),
                    bar.type == microv::pci_bar_mm_64bit ? "64-bit" : "32-bit",
                    bar.prefetchable ? "prefetchable" : "nonprefetchable");
         }
@@ -802,7 +830,7 @@ void pci_dev::relocate_pmio_bars(base_vcpu *vcpu, cfg_info &info)
                 continue;
             }
 
-            auto put = gsl::finally([&]{ put_vcpu(id); });
+            auto put = gsl::finally([&] { put_vcpu(id); });
 
             map_pmio_bar(v, &old_bar);
             unmap_pmio_bar(v, &new_bar);

@@ -34,8 +34,7 @@
 // Definitions
 // -----------------------------------------------------------------------------
 
-namespace microv
-{
+namespace microv {
 
 struct domain_info : public bfobject {
     virtual ~domain_info() = default;
@@ -65,15 +64,11 @@ struct domain_info : public bfobject {
     uint64_t ram{};
 
     /* Xen-specific domain info */
-    enum domain_origin {
-        origin_domctl,
-        origin_uvctl,
-        origin_root
-    };
+    enum domain_origin { origin_domctl, origin_uvctl, origin_root };
 
     int origin{};
     xen_domid_t xen_domid{};
-    struct xen_domctl_createdomain domctl_create{};
+    struct xen_domctl_createdomain domctl_create {};
 
     bool is_root() const noexcept
     {
@@ -235,12 +230,10 @@ public:
     uintptr_t entry() const noexcept;
 
 private:
-
     id_t m_id;
     uintptr_t m_entry;
 
 public:
-
     /// @cond
 
     domain(domain &&) = delete;

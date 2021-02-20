@@ -62,12 +62,12 @@ static bool init()
     std::lock_guard lock(service_mutex);
     stop_event_ready.store(false, std::memory_order_release);
 
-    service_handle = RegisterServiceCtrlHandlerEx(SERVICE_NAME,
-                                                  service_ctrl_handler,
-                                                  NULL);
+    service_handle =
+        RegisterServiceCtrlHandlerEx(SERVICE_NAME, service_ctrl_handler, NULL);
     if (!service_handle) {
         log_msg("%s: failed to register ctrl handler (err=0x%x)\n",
-                __func__, GetLastError());
+                __func__,
+                GetLastError());
         return false;
     }
 
@@ -108,15 +108,14 @@ static void send_stop_signal()
     HANDLE xenbus_fd = uvctl_ioctl_open(&GUID_DEVINTERFACE_XENBUS);
     if (xenbus_fd == INVALID_HANDLE_VALUE) {
         log_msg("%s: failed to open xenbus handle (err=0x%x)\n",
-                __func__, GetLastError());
+                __func__,
+                GetLastError());
     } else {
         XENBUS_SET_BACKEND_STATE_IN state{};
         state.BackendState = XENBUS_BACKEND_STATE_DYING;
 
-        auto rc = uvctl_rw_ioctl(xenbus_fd,
-                                 IOCTL_XENBUS_SET_BACKEND_STATE,
-                                 &state,
-                                 sizeof(state));
+        auto rc = uvctl_rw_ioctl(
+            xenbus_fd, IOCTL_XENBUS_SET_BACKEND_STATE, &state, sizeof(state));
         if (rc < 0) {
             log_msg("%s: failed to set backend state for xenbus\n", __func__);
         }
@@ -126,7 +125,8 @@ static void send_stop_signal()
 
     if (!SetEvent(service_stop_event)) {
         log_msg("%s: failed to signal stop event (err=0x%x)\n",
-                __func__, GetLastError());
+                __func__,
+                GetLastError());
     }
 }
 
@@ -134,7 +134,8 @@ static void send_stop_signal()
 static bool __set_status()
 {
     if (!SetServiceStatus(service_handle, &service_status)) {
-        log_msg("%s: failed to set status (err=0x%x)\n", __func__, GetLastError());
+        log_msg(
+            "%s: failed to set status (err=0x%x)\n", __func__, GetLastError());
         return false;
     }
 
@@ -201,7 +202,8 @@ DWORD WINAPI vm_worker(LPVOID param)
         args_type args = parse_orig_args();
         ctl = std::make_unique<ioctl>();
         return protected_main(args);
-    } catch (const std::exception &e) {
+    }
+    catch (const std::exception &e) {
         log_msg("%s: caught exception: what = %s\n", __func__, e.what());
     }
 
@@ -231,7 +233,8 @@ void WINAPI service_main(DWORD argc, LPTSTR *argv)
         exit_code = GetLastError();
 
         log_msg("%s: failed to create stop event (err=0x%x)\n",
-                __func__, exit_code);
+                __func__,
+                exit_code);
 
         stop_with_error(exit_code);
         return;
@@ -249,8 +252,8 @@ void WINAPI service_main(DWORD argc, LPTSTR *argv)
     if (!vm_thread) {
         exit_code = GetLastError();
 
-        log_msg("%s: failed to create vm thread (err=0x%x)\n",
-                __func__, exit_code);
+        log_msg(
+            "%s: failed to create vm thread (err=0x%x)\n", __func__, exit_code);
 
         CloseHandle(service_stop_event);
         stop_with_error(exit_code);
@@ -308,13 +311,12 @@ void service_wait_for_stop_signal() noexcept
 void service_start() noexcept
 {
     SERVICE_TABLE_ENTRY table[] = {
-        {SERVICE_NAME, (LPSERVICE_MAIN_FUNCTION)service_main},
-        {NULL, NULL}
-    };
+        {SERVICE_NAME, (LPSERVICE_MAIN_FUNCTION)service_main}, {NULL, NULL}};
 
     if (!StartServiceCtrlDispatcher(table)) {
         log_msg("%s: failed to start ctrl dispatcher (err=0x%x)\n",
-                __func__, GetLastError());
+                __func__,
+                GetLastError());
     }
 }
 

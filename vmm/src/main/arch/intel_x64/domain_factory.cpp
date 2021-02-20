@@ -22,16 +22,13 @@
 #include <domain/factory.h>
 #include <hve/arch/intel_x64/domain.h>
 
-namespace microv
-{
+namespace microv {
 
-std::unique_ptr<domain>
-domain_factory::make(domain::id_t domainid, bfobject *obj)
+std::unique_ptr<domain> domain_factory::make(domain::id_t domainid,
+                                             bfobject *obj)
 {
     return std::make_unique<microv::intel_x64::domain>(
-               domainid,
-               dynamic_cast<struct domain_info *>(obj)
-           );
+        domainid, dynamic_cast<struct domain_info *>(obj));
 }
 
 }

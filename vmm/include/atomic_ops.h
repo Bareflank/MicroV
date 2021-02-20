@@ -36,24 +36,21 @@ static inline bool test_and_set_bit(std::atomic<uint32_t> *word,
     return (word->fetch_or(mask) & mask) != 0;
 }
 
-static inline bool test_bit(std::atomic<uint32_t> *word,
-                            uint32_t bit) noexcept
+static inline bool test_bit(std::atomic<uint32_t> *word, uint32_t bit) noexcept
 {
     uint32_t mask = 1 << bit;
 
     return (word->load() & mask) != 0;
 }
 
-static inline void clear_bit(std::atomic<uint32_t> *word,
-                             uint32_t bit) noexcept
+static inline void clear_bit(std::atomic<uint32_t> *word, uint32_t bit) noexcept
 {
     uint32_t mask = ~(1 << bit);
 
     word->fetch_and(mask);
 }
 
-static inline void set_bit(std::atomic<uint32_t> *word,
-                           uint32_t bit) noexcept
+static inline void set_bit(std::atomic<uint32_t> *word, uint32_t bit) noexcept
 {
     uint32_t mask = (1 << bit);
 

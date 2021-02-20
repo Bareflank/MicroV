@@ -41,14 +41,12 @@
 // Unit Test Seems
 // -----------------------------------------------------------------------------
 
-int
-uvctl_ioctl_open()
+int uvctl_ioctl_open()
 {
     return open("/dev/" BUILDER_NAME, O_RDWR);
 }
 
-int64_t
-uvctl_write_ioctl(int fd, unsigned long request, const void *data)
+int64_t uvctl_write_ioctl(int fd, unsigned long request, const void *data)
 {
     return ioctl(fd, request, data);
 }
@@ -69,16 +67,14 @@ ioctl_private::~ioctl_private()
     close(fd);
 }
 
-void
-ioctl_private::call_ioctl_create_vm(create_vm_args &args)
+void ioctl_private::call_ioctl_create_vm(create_vm_args &args)
 {
     if (uvctl_write_ioctl(fd, IOCTL_CREATE_VM, &args) < 0) {
         throw std::runtime_error("ioctl failed: IOCTL_CREATE_VM");
     }
 }
 
-void
-ioctl_private::call_ioctl_destroy(domainid_t domainid) noexcept
+void ioctl_private::call_ioctl_destroy(domainid_t domainid) noexcept
 {
     if (uvctl_write_ioctl(fd, IOCTL_DESTROY_VM, &domainid) < 0) {
         log_msg("[ERROR] ioctl failed: IOCTL_DESTROY_VM\n");

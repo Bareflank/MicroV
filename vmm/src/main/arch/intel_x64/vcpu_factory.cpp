@@ -27,14 +27,12 @@
 #include <printv.h>
 #include <compiler.h>
 
-namespace bfvmm
-{
+namespace bfvmm {
 
 static bfn::once_flag dom0_init;
 static microv::intel_x64::domain *dom0{};
 
-std::unique_ptr<vcpu>
-vcpu_factory::make(vcpuid::type vcpuid, bfobject *obj)
+std::unique_ptr<vcpu> vcpu_factory::make(vcpuid::type vcpuid, bfobject *obj)
 {
     using namespace microv::intel_x64;
 
@@ -47,12 +45,10 @@ vcpu_factory::make(vcpuid::type vcpuid, bfobject *obj)
 
     if (vcpuid::is_root_vcpu(vcpuid)) {
         return std::make_unique<microv::intel_x64::vcpu>(
-                vcpuid,
-                dynamic_cast<domain *>(dom0));
+            vcpuid, dynamic_cast<domain *>(dom0));
     } else {
         return std::make_unique<microv::intel_x64::vcpu>(
-                vcpuid,
-                dynamic_cast<domain *>(obj));
+            vcpuid, dynamic_cast<domain *>(obj));
     }
 }
 

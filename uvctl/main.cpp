@@ -108,7 +108,7 @@ static uint32_t vm_file_type(const char *data, uint64_t size)
      */
     expects(size > 0x1f1 + sizeof(struct setup_header));
 
-    const char elf_magic[4] = { 0x7F, 'E', 'L', 'F'};
+    const char elf_magic[4] = {0x7F, 'E', 'L', 'F'};
     if (std::memcmp(data, elf_magic, 4) == 0) {
         return VM_FILE_VMLINUX;
     }
@@ -125,9 +125,12 @@ static uint32_t vm_file_type(const char *data, uint64_t size)
 static uint32_t vm_exec_mode(uint64_t file_type)
 {
     switch (file_type) {
-        case VM_FILE_VMLINUX: return VM_EXEC_XENPVH;
-        case VM_FILE_BZIMAGE: return VM_EXEC_NATIVE;
-        default: throw std::invalid_argument("Unknown VM exec mode");
+    case VM_FILE_VMLINUX:
+        return VM_EXEC_XENPVH;
+    case VM_FILE_BZIMAGE:
+        return VM_EXEC_NATIVE;
+    default:
+        throw std::invalid_argument("Unknown VM exec mode");
     }
 }
 
@@ -153,17 +156,14 @@ static uvc_domain create_vm(const args_type &args)
     uint64_t uart = 0;
     if (args.count("uart")) {
         uart = args["uart"].as<uint64_t>();
-        cmdl.add(
-            "console=uart,io," + bfn::to_string(uart, 16) + ",115200n8"
-        );
+        cmdl.add("console=uart,io," + bfn::to_string(uart, 16) + ",115200n8");
     }
 
     uint64_t pt_uart = 0;
     if (args.count("pt_uart")) {
         pt_uart = args["pt_uart"].as<uint64_t>();
-        cmdl.add(
-            "console=uart,io," + bfn::to_string(pt_uart, 16) + ",115200n8,keep"
-        );
+        cmdl.add("console=uart,io," + bfn::to_string(pt_uart, 16) +
+                 ",115200n8,keep");
     }
 
     if (args.count("hvc")) {
@@ -202,7 +202,8 @@ static uvc_domain create_vm(const args_type &args)
     auto now = system_clock::now();
     auto tsc = __domain_op__read_tsc();
     ioctl_args.wc_sec = duration_cast<seconds>(now.time_since_epoch()).count();
-    ioctl_args.wc_nsec = duration_cast<nanoseconds>(now.time_since_epoch()).count();
+    ioctl_args.wc_nsec =
+        duration_cast<nanoseconds>(now.time_since_epoch()).count();
     ioctl_args.tsc = tsc;
 
     ctl->call_ioctl_create_vm(ioctl_args);
@@ -228,8 +229,7 @@ int protected_main(const args_type &args)
 
     if (args.count("affinity")) {
         set_affinity(args["affinity"].as<uint64_t>());
-    }
-    else {
+    } else {
 
         // TODO:
         //
@@ -245,7 +245,8 @@ int protected_main(const args_type &args)
 #ifdef _WIN64
         if (!SetPriorityClass(GetCurrentProcess(), HIGH_PRIORITY_CLASS)) {
             log_msg("%s: SetPriorityClass failed (err=0x%x)\n",
-                    __func__, GetLastError());
+                    __func__,
+                    GetLastError());
         }
 #endif
     }
@@ -260,7 +261,8 @@ int protected_main(const args_type &args)
     if (!windows_svc) {
         try {
             root_domain.destroy();
-        } catch (const std::exception &e) {
+        }
+        catch (const std::exception &e) {
             log_msg("root_domain.destroy threw: what = %s\n", e.what());
         }
 
@@ -278,7 +280,8 @@ int protected_main(const args_type &args)
         HANDLE xenbus_fd = uvctl_ioctl_open(&GUID_DEVINTERFACE_XENBUS);
         if (xenbus_fd == INVALID_HANDLE_VALUE) {
             log_msg("%s: failed to open xenbus handle (err=0x%x)\n",
-                    __func__, GetLastError());
+                    __func__,
+                    GetLastError());
         } else {
             XENBUS_SET_BACKEND_STATE_IN state{};
             state.BackendState = XENBUS_BACKEND_STATE_DYING;
@@ -288,7 +291,8 @@ int protected_main(const args_type &args)
                                      &state,
                                      sizeof(state));
             if (rc < 0) {
-                log_msg("%s: failed to set backend state for xenbus\n", __func__);
+                log_msg("%s: failed to set backend state for xenbus\n",
+                        __func__);
             }
 
             CloseHandle(xenbus_fd);

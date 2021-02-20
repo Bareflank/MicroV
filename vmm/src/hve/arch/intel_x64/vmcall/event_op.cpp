@@ -30,8 +30,7 @@
 #include <pci/dev.h>
 #include <pci/msi.h>
 
-namespace microv::intel_x64
-{
+namespace microv::intel_x64 {
 
 static uint64_t xenstore_ready = 0;
 
@@ -89,7 +88,7 @@ void vmcall_event_op_handler::send_bdf(uint64_t bdf)
         return;
     }
 
-    auto put_guest = gsl::finally([pdev]{ put_vcpu(pdev->m_guest_vcpuid); });
+    auto put_guest = gsl::finally([pdev] { put_vcpu(pdev->m_guest_vcpuid); });
 
     if (m_vcpu->pcpuid() == guest->pcpuid()) {
         guest->load();
@@ -119,7 +118,7 @@ void vmcall_event_op_handler::send_vector(uint64_t root_vector)
         return;
     }
 
-    auto put_guest = gsl::finally([pdev]{ put_vcpu(pdev->m_guest_vcpuid); });
+    auto put_guest = gsl::finally([pdev] { put_vcpu(pdev->m_guest_vcpuid); });
 
     if (m_vcpu->pcpuid() == guest->pcpuid()) {
         guest->load();

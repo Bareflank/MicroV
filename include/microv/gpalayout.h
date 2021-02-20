@@ -28,12 +28,12 @@
 #include <bferrorcodes.h>
 
 enum e820_type {
-	E820_TYPE_RAM		= 1,
-	E820_TYPE_RESERVED	= 2,
-	E820_TYPE_ACPI		= 3,
-	E820_TYPE_NVS		= 4,
-	E820_TYPE_UNUSABLE	= 5,
-	E820_TYPE_PMEM		= 7
+    E820_TYPE_RAM = 1,
+    E820_TYPE_RESERVED = 2,
+    E820_TYPE_ACPI = 3,
+    E820_TYPE_NVS = 4,
+    E820_TYPE_UNUSABLE = 5,
+    E820_TYPE_PMEM = 7
 };
 
 /**
@@ -79,45 +79,44 @@ enum e820_type {
  * not have to all be mapped). Unusable memory cannot not be mapped.
  */
 
-#define BIOS_RAM_ADDR           0x0
-#define BIOS_RAM_SIZE           0xE8000
+#define BIOS_RAM_ADDR 0x0
+#define BIOS_RAM_SIZE 0xE8000
 
-#define RESERVED1_ADDR          0xEB000
-#define RESERVED1_SIZE          (0xF0000 - 0xEB000)
+#define RESERVED1_ADDR 0xEB000
+#define RESERVED1_SIZE (0xF0000 - 0xEB000)
 
-#define BOOT_PARAMS_PAGE_GPA    0xE8000
-#define COMMAND_LINE_PAGE_GPA   0xE9000
-#define INITIAL_GDT_GPA         0xEA000
-#define PVH_START_INFO_GPA      0xEB000
-#define PVH_CONSOLE_GPA         0xEC000
-#define PVH_MODLIST_GPA         0xED000
-#define PVH_STORE_GPA           0xEE000
+#define BOOT_PARAMS_PAGE_GPA 0xE8000
+#define COMMAND_LINE_PAGE_GPA 0xE9000
+#define INITIAL_GDT_GPA 0xEA000
+#define PVH_START_INFO_GPA 0xEB000
+#define PVH_CONSOLE_GPA 0xEC000
+#define PVH_MODLIST_GPA 0xED000
+#define PVH_STORE_GPA 0xEE000
 
-#define ACPI_RSDP_GPA           0xF0000
-#define ACPI_XSDT_GPA           0xF1000
-#define ACPI_MADT_GPA           0xF2000
-#define ACPI_FADT_GPA           0xF3000
-#define ACPI_DSDT_GPA           0xF4000
-#define ACPI_MCFG_GPA           0xF5000
-#define RESERVED2_ADDR          0xF6000
+#define ACPI_RSDP_GPA 0xF0000
+#define ACPI_XSDT_GPA 0xF1000
+#define ACPI_MADT_GPA 0xF2000
+#define ACPI_FADT_GPA 0xF3000
+#define ACPI_DSDT_GPA 0xF4000
+#define ACPI_MCFG_GPA 0xF5000
+#define RESERVED2_ADDR 0xF6000
 
-#define NATIVE_LOAD_GPA         0x100000
-#define PVH_LOAD_GPA            0x1000000
-#define XAPIC_GPA               0xFEE00000
+#define NATIVE_LOAD_GPA 0x100000
+#define PVH_LOAD_GPA 0x1000000
+#define XAPIC_GPA 0xFEE00000
 
 /* Maximum number of bytes allocated to microv guests */
-#define UVG_MAX_BYTES           (1ULL << 32)
+#define UVG_MAX_BYTES (1ULL << 32)
 
 /* Microv guests use 4K pages */
-#define UVG_PAGE_SHIFT          12
-#define UVG_PAGE_SIZE           (1ULL << UVG_PAGE_SHIFT)
+#define UVG_PAGE_SHIFT 12
+#define UVG_PAGE_SIZE (1ULL << UVG_PAGE_SHIFT)
 
 /* Max number of 4K pages allocated to PVH guests */
-#define UVG_MAX_PAGES           (UVG_MAX_BYTES >> UVG_PAGE_SHIFT)
-#define UVG_MAX_MFN             (UVG_MAX_PAGES - 1)
+#define UVG_MAX_PAGES (UVG_MAX_BYTES >> UVG_PAGE_SHIFT)
+#define UVG_MAX_MFN (UVG_MAX_PAGES - 1)
 
-int64_t
-add_e820_entry(void *vm, uint64_t saddr, uint64_t eaddr, uint32_t type);
+int64_t add_e820_entry(void *vm, uint64_t saddr, uint64_t eaddr, uint32_t type);
 
 /**
  * Setup E820 Map
@@ -136,8 +135,9 @@ add_e820_entry(void *vm, uint64_t saddr, uint64_t eaddr, uint32_t type);
  * @param load_addr the load address of the kernel image
  * @return SUCCESS on success, FAILURE otherwise
  */
-static inline int64_t
-setup_e820_map(void *vm, uint64_t size, uint32_t load_addr)
+static inline int64_t setup_e820_map(void *vm,
+                                     uint64_t size,
+                                     uint32_t load_addr)
 {
     status_t ret = 0;
 

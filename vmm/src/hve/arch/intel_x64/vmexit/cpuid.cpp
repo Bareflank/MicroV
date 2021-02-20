@@ -22,15 +22,14 @@
 #include <hve/arch/intel_x64/vcpu.h>
 #include <hve/arch/intel_x64/vmexit/cpuid.h>
 
-#define EMULATE_CPUID(a,b)                                                     \
+#define EMULATE_CPUID(a, b)                                                    \
     m_vcpu->add_cpuid_emulator(a, {&cpuid_handler::b, this});
 
 // -----------------------------------------------------------------------------
 // Implementation
 // -----------------------------------------------------------------------------
 
-namespace microv::intel_x64
-{
+namespace microv::intel_x64 {
 
 // Passthrough should only be used for cpuid leaves that 1) we dont mind the
 // guest seeing and 2) have no reserved bits.
@@ -46,10 +45,7 @@ static inline bool cpuid_passthrough(vcpu_t *vcpu)
     return vcpu->advance();
 }
 
-cpuid_handler::cpuid_handler(
-    gsl::not_null<vcpu *> vcpu
-) :
-    m_vcpu{vcpu}
+cpuid_handler::cpuid_handler(gsl::not_null<vcpu *> vcpu) : m_vcpu{vcpu}
 {
     using namespace vmcs_n;
 
@@ -94,8 +90,7 @@ cpuid_handler::cpuid_handler(
 // Root Handlers
 // -----------------------------------------------------------------------------
 
-bool
-cpuid_handler::root_0x00000007(vcpu_t *vcpu)
+bool cpuid_handler::root_0x00000007(vcpu_t *vcpu)
 {
     auto subleaf = vcpu->rcx();
 
@@ -109,8 +104,7 @@ cpuid_handler::root_0x00000007(vcpu_t *vcpu)
     return vcpu->advance();
 }
 
-bool
-cpuid_handler::root_0x0000000D(vcpu_t *vcpu)
+bool cpuid_handler::root_0x0000000D(vcpu_t *vcpu)
 {
     auto subleaf = vcpu->rcx();
 
@@ -130,8 +124,7 @@ cpuid_handler::root_0x0000000D(vcpu_t *vcpu)
     return vcpu->advance();
 }
 
-bool
-cpuid_handler::root_0x00000014(vcpu_t *vcpu)
+bool cpuid_handler::root_0x00000014(vcpu_t *vcpu)
 {
     // Clear all Intel PT specific leaves
 
@@ -147,8 +140,7 @@ cpuid_handler::root_0x00000014(vcpu_t *vcpu)
 // Guest Handlers
 // -----------------------------------------------------------------------------
 
-bool
-cpuid_handler::handle_0x00000000(vcpu_t *vcpu)
+bool cpuid_handler::handle_0x00000000(vcpu_t *vcpu)
 {
     return cpuid_passthrough(vcpu);
 }
@@ -161,30 +153,31 @@ static inline void handle_0x00000001_rcx(vcpu_t *vcpu)
 
     rcx |= ecx::sse3::mask;
     rcx |= ecx::pclmulqdq::mask;
-//  rcx |= ecx::dtes64::mask;
-//  rcx |= ecx::monitor::mask;
+    //  rcx |= ecx::dtes64::mask;
+    //  rcx |= ecx::monitor::mask;
 
-//  rcx |= ecx::ds_cpl::mask;
-//  rcx |= ecx::vmx::mask;
-//  rcx |= ecx::smx::mask;
-//  rcx |= ecx::eist::mask;
+    //  rcx |= ecx::ds_cpl::mask;
+    //  rcx |= ecx::vmx::mask;
+    //  rcx |= ecx::smx::mask;
+    //  rcx |= ecx::eist::mask;
 
-//  rcx |= ecx::tm2::mask;
+    //  rcx |= ecx::tm2::mask;
     rcx |= ecx::ssse3::mask;
-//  rcx |= ecx::cnxt_id::mask;
-//  rcx |= ecx::sdbg::mask;
+    //  rcx |= ecx::cnxt_id::mask;
+    //  rcx |= ecx::sdbg::mask;
 
     rcx |= ecx::fma::mask;
     rcx |= ecx::cmpxchg16b::mask;
-//  rcx |= ecx::xtpr_update_control::mask;
-//  rcx |= ecx::pdcm::mask;
+    //  rcx |= ecx::xtpr_update_control::mask;
+    //  rcx |= ecx::pdcm::mask;
 
-//  bit 16 reserved
-    using namespace ::intel_x64::vmcs::secondary_processor_based_vm_execution_controls;
+    //  bit 16 reserved
+    using namespace ::intel_x64::vmcs::
+        secondary_processor_based_vm_execution_controls;
     if (enable_invpcid::is_enabled()) {
         rcx |= ecx::pcid::mask;
     }
-//  rcx |= ecx::dca::mask;
+    //  rcx |= ecx::dca::mask;
     rcx |= ecx::sse41::mask;
 
     rcx |= ecx::sse42::mask;
@@ -195,12 +188,12 @@ static inline void handle_0x00000001_rcx(vcpu_t *vcpu)
     rcx |= ecx::tsc_deadline::mask;
     rcx |= ecx::aesni::mask;
     rcx |= ecx::xsave::mask;
-//  rcx |= ecx::osxsave::mask; // handled below
+    //  rcx |= ecx::osxsave::mask; // handled below
 
     rcx |= ecx::avx::mask;
     rcx |= ecx::f16c::mask;
     rcx |= ecx::rdrand::mask;
-    rcx |= 0x80000000U; // set bit 31 to tell Linux it is in a VM
+    rcx |= 0x80000000U;    // set bit 31 to tell Linux it is in a VM
 
     // Set osxsave based on current cr4 value
     if (::intel_x64::cr4::osxsave::is_enabled(vcpu->cr4())) {
@@ -218,32 +211,32 @@ static inline void handle_0x00000001_rdx(vcpu_t *vcpu)
 
     rdx |= edx::fpu::mask;
     rdx |= edx::vme::mask;
-//  rdx |= edx::de::mask;
+    //  rdx |= edx::de::mask;
     rdx |= edx::pse::mask;
 
     rdx |= edx::tsc::mask;
     rdx |= edx::msr::mask;
     rdx |= edx::pae::mask;
-//    rdx |= edx::mce::mask;
+    //    rdx |= edx::mce::mask;
 
     rdx |= edx::cx8::mask;
     rdx |= edx::apic::mask;
-//  bit 10 reserved
-//  rdx |= edx::sep::mask;
+    //  bit 10 reserved
+    //  rdx |= edx::sep::mask;
 
     rdx |= edx::mtrr::mask;
     rdx |= edx::pge::mask;
-//    rdx |= edx::mca::mask;
+    //    rdx |= edx::mca::mask;
     rdx |= edx::cmov::mask;
 
     rdx |= edx::pat::mask;
     rdx |= edx::pse_36::mask;
-//  rdx |= edx::psn::mask;
+    //  rdx |= edx::psn::mask;
     rdx |= edx::clfsh::mask;
 
-//  bit 20 reserved
-//  rdx |= edx::ds::mask;
-//  rdx |= edx::acpi::mask;
+    //  bit 20 reserved
+    //  rdx |= edx::ds::mask;
+    //  rdx |= edx::acpi::mask;
     rdx |= edx::mmx::mask;
 
     rdx |= edx::fxsr::mask;
@@ -251,16 +244,15 @@ static inline void handle_0x00000001_rdx(vcpu_t *vcpu)
     rdx |= edx::sse2::mask;
     rdx |= edx::ss::mask;
 
-//  rdx |= edx::htt::mask;
-//  rdx |= edx::tm::mask;
-//  bit 30 reserved
-//  rdx |= edx::pbe::mask;
+    //  rdx |= edx::htt::mask;
+    //  rdx |= edx::tm::mask;
+    //  bit 30 reserved
+    //  rdx |= edx::pbe::mask;
 
     vcpu->set_rdx(vcpu->rdx() & rdx);
 }
 
-bool
-cpuid_handler::handle_0x00000001(vcpu_t *vcpu)
+bool cpuid_handler::handle_0x00000001(vcpu_t *vcpu)
 {
     vcpu->execute_cpuid();
 
@@ -273,14 +265,12 @@ cpuid_handler::handle_0x00000001(vcpu_t *vcpu)
     return vcpu->advance();
 }
 
-bool
-cpuid_handler::handle_0x00000002(vcpu_t *vcpu)
+bool cpuid_handler::handle_0x00000002(vcpu_t *vcpu)
 {
     return cpuid_passthrough(vcpu);
 }
 
-bool
-cpuid_handler::handle_0x00000004(vcpu_t *vcpu)
+bool cpuid_handler::handle_0x00000004(vcpu_t *vcpu)
 {
     vcpu->execute_cpuid();
 
@@ -296,8 +286,7 @@ cpuid_handler::handle_0x00000004(vcpu_t *vcpu)
     return vcpu->advance();
 }
 
-bool
-cpuid_handler::handle_0x00000007(vcpu_t *vcpu)
+bool cpuid_handler::handle_0x00000007(vcpu_t *vcpu)
 {
     using namespace ::intel_x64::cpuid::extended_feature_flags::subleaf0;
 
@@ -317,8 +306,8 @@ cpuid_handler::handle_0x00000007(vcpu_t *vcpu)
     vcpu->set_rax(0);
 
     rbx |= ebx::fsgsbase::mask;
-//    rbx |= ebx::ia32_tsc_adjust::mask;
-//    rbx |= ebx::sgx::mask;
+    //    rbx |= ebx::ia32_tsc_adjust::mask;
+    //    rbx |= ebx::sgx::mask;
     rbx |= ebx::bmi1::mask;
 
     rbx |= ebx::hle::mask;
@@ -328,16 +317,17 @@ cpuid_handler::handle_0x00000007(vcpu_t *vcpu)
 
     rbx |= ebx::bmi2::mask;
     rbx |= ebx::movsb::mask;
-    using namespace ::intel_x64::vmcs::secondary_processor_based_vm_execution_controls;
+    using namespace ::intel_x64::vmcs::
+        secondary_processor_based_vm_execution_controls;
     if (enable_invpcid::is_enabled()) {
         rbx |= ebx::invpcid::mask;
     }
-//    rbx |= ebx::rtm::mask;
+    //    rbx |= ebx::rtm::mask;
 
-//    rbx |= ebx::rtm_m::mask;
+    //    rbx |= ebx::rtm_m::mask;
     rbx |= ebx::fpucs_fpuds::mask;
-//    rbx |= ebx::mpx::mask;
-//    rbx |= ebx::rdt_a::mask;
+    //    rbx |= ebx::mpx::mask;
+    //    rbx |= ebx::rdt_a::mask;
 
     rbx |= ebx::rdseed::mask;
     rbx |= ebx::adx::mask;
@@ -346,12 +336,11 @@ cpuid_handler::handle_0x00000007(vcpu_t *vcpu)
     rbx |= ebx::clflushopt::mask;
 
     rbx |= ebx::clwb::mask;
-//    rbx |= ebx::trace::mask;
+    //    rbx |= ebx::trace::mask;
 
     rbx |= ebx::sha::mask;
 
     vcpu->set_rbx(vcpu->rbx() & rbx);
-
 
     // TODO: look into passing through bit 2 (UMIP)
     // TODO: look into passing through bit 25 (CLDEMOTE)
@@ -367,8 +356,7 @@ cpuid_handler::handle_0x00000007(vcpu_t *vcpu)
 
 // TODO: look into leaf 9 (direct cache access) for NDVM
 
-bool
-cpuid_handler::handle_0x0000000A(vcpu_t *vcpu)
+bool cpuid_handler::handle_0x0000000A(vcpu_t *vcpu)
 {
     vcpu->execute_cpuid();
 
@@ -383,8 +371,7 @@ cpuid_handler::handle_0x0000000A(vcpu_t *vcpu)
     return vcpu->advance();
 }
 
-bool
-cpuid_handler::handle_0x0000000D(vcpu_t *vcpu)
+bool cpuid_handler::handle_0x0000000D(vcpu_t *vcpu)
 {
     const auto subleaf = vcpu->rcx();
     vcpu->execute_cpuid();
@@ -417,8 +404,7 @@ cpuid_handler::handle_0x0000000D(vcpu_t *vcpu)
     return vcpu->advance();
 }
 
-bool
-cpuid_handler::handle_0x00000015(vcpu_t *vcpu)
+bool cpuid_handler::handle_0x00000015(vcpu_t *vcpu)
 {
     vcpu->execute_cpuid();
 
@@ -426,8 +412,7 @@ cpuid_handler::handle_0x00000015(vcpu_t *vcpu)
     return vcpu->advance();
 }
 
-bool
-cpuid_handler::handle_0x00000016(vcpu_t *vcpu)
+bool cpuid_handler::handle_0x00000016(vcpu_t *vcpu)
 {
     vcpu->execute_cpuid();
 
@@ -439,8 +424,7 @@ cpuid_handler::handle_0x00000016(vcpu_t *vcpu)
     return vcpu->advance();
 }
 
-bool
-cpuid_handler::handle_0x80000000(vcpu_t *vcpu)
+bool cpuid_handler::handle_0x80000000(vcpu_t *vcpu)
 {
     vcpu->execute_cpuid();
 
@@ -451,8 +435,7 @@ cpuid_handler::handle_0x80000000(vcpu_t *vcpu)
     return vcpu->advance();
 }
 
-bool
-cpuid_handler::handle_0x80000001(vcpu_t *vcpu)
+bool cpuid_handler::handle_0x80000001(vcpu_t *vcpu)
 {
     vcpu->execute_cpuid();
 
@@ -463,26 +446,22 @@ cpuid_handler::handle_0x80000001(vcpu_t *vcpu)
     return vcpu->advance();
 }
 
-bool
-cpuid_handler::handle_0x80000002(vcpu_t *vcpu)
+bool cpuid_handler::handle_0x80000002(vcpu_t *vcpu)
 {
     return cpuid_passthrough(vcpu);
 }
 
-bool
-cpuid_handler::handle_0x80000003(vcpu_t *vcpu)
+bool cpuid_handler::handle_0x80000003(vcpu_t *vcpu)
 {
     return cpuid_passthrough(vcpu);
 }
 
-bool
-cpuid_handler::handle_0x80000004(vcpu_t *vcpu)
+bool cpuid_handler::handle_0x80000004(vcpu_t *vcpu)
 {
     return cpuid_passthrough(vcpu);
 }
 
-bool
-cpuid_handler::handle_0x80000006(vcpu_t *vcpu)
+bool cpuid_handler::handle_0x80000006(vcpu_t *vcpu)
 {
     vcpu->execute_cpuid();
 
@@ -494,8 +473,7 @@ cpuid_handler::handle_0x80000006(vcpu_t *vcpu)
     return vcpu->advance();
 }
 
-bool
-cpuid_handler::handle_0x80000007(vcpu_t *vcpu)
+bool cpuid_handler::handle_0x80000007(vcpu_t *vcpu)
 {
     vcpu->execute_cpuid();
 
@@ -511,8 +489,7 @@ cpuid_handler::handle_0x80000007(vcpu_t *vcpu)
     return vcpu->advance();
 }
 
-bool
-cpuid_handler::handle_0x80000008(vcpu_t *vcpu)
+bool cpuid_handler::handle_0x80000008(vcpu_t *vcpu)
 {
     vcpu->execute_cpuid();
 
@@ -524,8 +501,7 @@ cpuid_handler::handle_0x80000008(vcpu_t *vcpu)
     return vcpu->advance();
 }
 
-bool
-cpuid_handler::handle_0x40000000(vcpu_t *vcpu)
+bool cpuid_handler::handle_0x40000000(vcpu_t *vcpu)
 {
     vcpu->set_rax(0xBFBFBFBF);
     return vcpu->advance();

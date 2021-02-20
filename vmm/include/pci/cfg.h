@@ -72,7 +72,7 @@ constexpr uint32_t pci_nr_dev = 32;
 constexpr uint32_t pci_nr_fun = 8;
 constexpr uint32_t pci_nr_devfn = 256;
 
-constexpr uint32_t pci_en_mask  = 0x80000000;
+constexpr uint32_t pci_en_mask = 0x80000000;
 constexpr uint32_t pci_bus_mask = 0x00FF0000;
 constexpr uint32_t pci_dev_mask = 0x0000F800;
 constexpr uint32_t pci_fun_mask = 0x00000700;
@@ -81,10 +81,7 @@ constexpr uint32_t pci_off_mask = 0x00000003;
 
 constexpr uint32_t pci_cfg_addr_inval = ~pci_en_mask;
 
-enum {
-    pci_dir_in,
-    pci_dir_out
-};
+enum { pci_dir_in, pci_dir_out };
 
 constexpr bool pci_cfg_addr_enabled(uint32_t addr)
 {

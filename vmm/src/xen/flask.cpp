@@ -25,9 +25,8 @@
 
 namespace microv {
 
-xen_flask::xen_flask(xen_vcpu *xen) :
-    m_uv_vcpu{xen->m_uv_vcpu}
-{ }
+xen_flask::xen_flask(xen_vcpu *xen) : m_uv_vcpu{xen->m_uv_vcpu}
+{}
 
 bool xen_flask::handle(xen_flask_op_t *fop)
 {

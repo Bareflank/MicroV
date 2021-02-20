@@ -28,20 +28,18 @@
 #include <vector>
 #include <fstream>
 
-namespace bfn
-{
+namespace bfn {
 
-class file
-{
+class file {
     using pointer = const char *;
     using size_type = std::size_t;
 
 public:
-
     file(const std::string &filename) :
         m_path{filename},
         m_file{filename, std::ios::in | std::ios::binary},
-        m_data{std::istreambuf_iterator<char>(m_file), std::istreambuf_iterator<char>()}
+        m_data{std::istreambuf_iterator<char>(m_file),
+               std::istreambuf_iterator<char>()}
     {
         if (m_file.fail()) {
             log_msg("Failed to open %s, does it exist?\n", filename.c_str());
@@ -49,22 +47,24 @@ public:
     }
 
     ~file()
-    { }
+    {}
 
-    pointer
-    data() const noexcept
-    { return m_data.data(); }
+    pointer data() const noexcept
+    {
+        return m_data.data();
+    }
 
-    size_type
-    size() const noexcept
-    { return m_data.size(); }
+    size_type size() const noexcept
+    {
+        return m_data.size();
+    }
 
-    const std::string &
-    path() const noexcept
-    { return m_path; }
+    const std::string &path() const noexcept
+    {
+        return m_path;
+    }
 
 private:
-
     std::string m_path;
     std::fstream m_file;
     std::vector<char> m_data;

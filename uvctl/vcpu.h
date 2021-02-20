@@ -40,14 +40,10 @@
 class uvc_domain;
 
 struct uvc_vcpu {
-    enum runstate {
-        running,
-        paused,
-        halted
-    };
+    enum runstate { running, paused, halted };
 
     vcpuid_t id{INVALID_VCPUID};
-    enum runstate state{halted};
+    enum runstate state { halted };
     uvc_domain *domain{};
     mutable std::unique_lock<std::mutex> event_lock{};
     std::thread run_thread{};

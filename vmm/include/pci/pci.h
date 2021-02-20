@@ -25,7 +25,7 @@
 namespace microv {
 
 namespace intel_x64 {
-    class vcpu;
+class vcpu;
 }
 
 inline bool pci_passthru = false;

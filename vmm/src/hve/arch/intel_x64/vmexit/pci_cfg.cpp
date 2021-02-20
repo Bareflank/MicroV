@@ -27,10 +27,9 @@
 #include <pci/pci.h>
 #include <printv.h>
 
-#define MEMBER_EMU_IO(p, i, o) \
-m_vcpu->emulate_io_instruction(p, \
-                               {&pci_cfg_handler::i, this}, \
-                               {&pci_cfg_handler::o, this});
+#define MEMBER_EMU_IO(p, i, o)                                                 \
+    m_vcpu->emulate_io_instruction(                                            \
+        p, {&pci_cfg_handler::i, this}, {&pci_cfg_handler::o, this});
 
 using namespace ::x64::portio;
 using base_vcpu = microv::intel_x64::pci_cfg_handler::base_vcpu;
@@ -210,7 +209,8 @@ static void update_ecam_read_mov(base_vcpu *vcpu,
         return;
     }
     default:
-        printv("%s: destination operand size=%u invalid\n", __func__, dst->size);
+        printv(
+            "%s: destination operand size=%u invalid\n", __func__, dst->size);
         return;
     }
 }
@@ -220,12 +220,11 @@ static void update_ecam_read_cmp_rflags(const disassembler::insn_t *insn,
                                         uint32_t src2)
 {
     /* Flags updated by the cmp instruction */
-    constexpr uint64_t status_flags = ::x64::rflags::carry_flag::mask |
-                                      ::x64::rflags::parity_flag::mask |
-                                      ::x64::rflags::auxiliary_carry_flag::mask |
-                                      ::x64::rflags::zero_flag::mask |
-                                      ::x64::rflags::sign_flag::mask |
-                                      ::x64::rflags::overflow_flag::mask;
+    constexpr uint64_t status_flags =
+        ::x64::rflags::carry_flag::mask | ::x64::rflags::parity_flag::mask |
+        ::x64::rflags::auxiliary_carry_flag::mask |
+        ::x64::rflags::zero_flag::mask | ::x64::rflags::sign_flag::mask |
+        ::x64::rflags::overflow_flag::mask;
 
     uint64_t size = insn->detail->x86.operands[0].size;
     uint64_t cmp_rflags = 0;
@@ -239,8 +238,7 @@ static void update_ecam_read_cmp_rflags(const disassembler::insn_t *insn,
             "popq %0\t\n"
             : "=r"(cmp_rflags)
             : "g"((uint8_t)src1), "g"((uint8_t)src2)
-            : "cc"
-        );
+            : "cc");
     } else if (size == 2) {
         asm volatile(
             "movw %1, %%ax \t\n"
@@ -250,8 +248,7 @@ static void update_ecam_read_cmp_rflags(const disassembler::insn_t *insn,
             "popq %0\t\n"
             : "=r"(cmp_rflags)
             : "g"((uint16_t)src1), "g"((uint16_t)src2)
-            : "cc"
-        );
+            : "cc");
     } else {
         asm volatile(
             "movl %1, %%eax \t\n"
@@ -261,8 +258,7 @@ static void update_ecam_read_cmp_rflags(const disassembler::insn_t *insn,
             "popq %0\t\n"
             : "=r"(cmp_rflags)
             : "g"(src1), "g"(src2)
-            : "cc"
-        );
+            : "cc");
     }
 
     uint64_t rflags = vmcs_n::guest_rflags::get();
@@ -277,62 +273,58 @@ static void update_ecam_read_test_rflags(const disassembler::insn_t *insn,
                                          uint32_t src1,
                                          uint32_t src2)
 {
-   /* Flags updated by the test instruction */
-   constexpr uint64_t status_flags = ::x64::rflags::carry_flag::mask |
-                                     ::x64::rflags::parity_flag::mask |
-                                     ::x64::rflags::zero_flag::mask |
-                                     ::x64::rflags::sign_flag::mask |
-                                     ::x64::rflags::overflow_flag::mask;
+    /* Flags updated by the test instruction */
+    constexpr uint64_t status_flags =
+        ::x64::rflags::carry_flag::mask | ::x64::rflags::parity_flag::mask |
+        ::x64::rflags::zero_flag::mask | ::x64::rflags::sign_flag::mask |
+        ::x64::rflags::overflow_flag::mask;
 
-   uint64_t size = insn->detail->x86.operands[0].size;
-   uint64_t test_rflags = 0;
+    uint64_t size = insn->detail->x86.operands[0].size;
+    uint64_t test_rflags = 0;
 
-   if (size == 1) {
-       asm volatile(
-           "movb %1, %%al \t\n"
-           "movb %2, %%dl \t\n"
-           "test %%al, %%dl \t\n"
-           "pushfq \t\n"
-           "popq %0\t\n"
-           : "=r"(test_rflags)
-           : "g"((uint8_t)src1), "g"((uint8_t)src2)
-           : "cc"
-       );
-   } else if (size == 2) {
-       asm volatile(
-           "movw %1, %%ax \t\n"
-           "movw %2, %%dx \t\n"
-           "test %%ax, %%dx \t\n"
-           "pushfq \t\n"
-           "popq %0\t\n"
-           : "=r"(test_rflags)
-           : "g"((uint16_t)src1), "g"((uint16_t)src2)
-           : "cc"
-       );
-   } else {
-       asm volatile(
-           "movl %1, %%eax \t\n"
-           "movl %2, %%edx \t\n"
-           "test %%eax, %%edx \t\n"
-           "pushfq \t\n"
-           "popq %0\t\n"
-           : "=r"(test_rflags)
-           : "g"(src1), "g"(src2)
-           : "cc"
-       );
-   }
+    if (size == 1) {
+        asm volatile(
+            "movb %1, %%al \t\n"
+            "movb %2, %%dl \t\n"
+            "test %%al, %%dl \t\n"
+            "pushfq \t\n"
+            "popq %0\t\n"
+            : "=r"(test_rflags)
+            : "g"((uint8_t)src1), "g"((uint8_t)src2)
+            : "cc");
+    } else if (size == 2) {
+        asm volatile(
+            "movw %1, %%ax \t\n"
+            "movw %2, %%dx \t\n"
+            "test %%ax, %%dx \t\n"
+            "pushfq \t\n"
+            "popq %0\t\n"
+            : "=r"(test_rflags)
+            : "g"((uint16_t)src1), "g"((uint16_t)src2)
+            : "cc");
+    } else {
+        asm volatile(
+            "movl %1, %%eax \t\n"
+            "movl %2, %%edx \t\n"
+            "test %%eax, %%edx \t\n"
+            "pushfq \t\n"
+            "popq %0\t\n"
+            : "=r"(test_rflags)
+            : "g"(src1), "g"(src2)
+            : "cc");
+    }
 
-   uint64_t rflags = vmcs_n::guest_rflags::get();
+    uint64_t rflags = vmcs_n::guest_rflags::get();
 
-   rflags &= ~status_flags;
-   rflags |= (test_rflags & status_flags);
+    rflags &= ~status_flags;
+    rflags |= (test_rflags & status_flags);
 
-   vmcs_n::guest_rflags::set(rflags);
+    vmcs_n::guest_rflags::set(rflags);
 }
 
 static int64_t extract_reg_value(base_vcpu *vcpu,
-                                  const disassembler::operand_t *src,
-                                  uint32_t *val)
+                                 const disassembler::operand_t *src,
+                                 uint32_t *val)
 {
     switch (src->size) {
     case 1: {
@@ -411,7 +403,9 @@ static bool valid_ecam_read_cmp(const disassembler::insn_t *insn) noexcept
 
     if (src1->size != src2->size) {
         printv("%s: insn operands have different sizes: src1=%u, src2=%u\n",
-               __func__, src1->size, src2->size);
+               __func__,
+               src1->size,
+               src2->size);
         return false;
     }
 
@@ -446,7 +440,9 @@ static bool valid_ecam_read_test(const disassembler::insn_t *insn) noexcept
 
     if (src1->size != src2->size) {
         printv("%s: insn operands have different sizes: src1=%u, src2=%u\n",
-               __func__, src1->size, src2->size);
+               __func__,
+               src1->size,
+               src2->size);
         return false;
     }
 
@@ -475,7 +471,7 @@ static bool ecam_read_get_op(uint64_t index,
         pci_cfg_handler::pmio_info pi = {
             .port_number = 0xCFC + (gpa - gpa_4b),
             .size_of_access = static_cast<uint64_t>(op->size - 1),
-            .address = 0,            /* unused */
+            .address = 0, /* unused */
             .val = 0,
             .ignore_write = false,   /* unused */
             .ignore_advance = false, /* unused */
@@ -485,7 +481,7 @@ static bool ecam_read_get_op(uint64_t index,
         cfg_info ci = {
             .exit_info = pi,
             .reg = static_cast<uint32_t>(gpa_4b - gpa_4k) >> 2,
-            .again = false           /* unused */
+            .again = false /* unused */
         };
 
         /* Call the handler registered via vcpu::add_pci_cfg_handler */
@@ -530,7 +526,9 @@ static bool valid_ecam_read(const disassembler::insn_t *insn) noexcept
         return valid_ecam_read_test(insn);
     default:
         printv("%s: unexpected ECAM read insn: %s %s\n",
-               __func__, insn->mnemonic, insn->op_str);
+               __func__,
+               insn->mnemonic,
+               insn->op_str);
         return false;
     }
 }
@@ -593,8 +591,7 @@ static const std::unordered_map<cfg_key, struct cfg_access> cfg_map = {
     {make_cfg_key(0xCFD, 2), {0x00FFFF00, 8}},
     {make_cfg_key(0xCFE, 1), {0x00FF0000, 16}},
     {make_cfg_key(0xCFE, 2), {0xFFFF0000, 16}},
-    {make_cfg_key(0xCFF, 1), {0xFF000000, 24}}
-};
+    {make_cfg_key(0xCFF, 1), {0xFF000000, 24}}};
 
 static inline void phys_in(uint32_t addr, cfg_info &info)
 {
@@ -731,7 +728,8 @@ void pci_cfg_handler::add_in_handler(uint64_t addr, const delegate_t &hdlr)
     }
 
     this->map_bdf_to_ecam(bdf);
-    m_vcpu->add_ept_read_violation_handler({&pci_cfg_handler::mmio_data_in, this});
+    m_vcpu->add_ept_read_violation_handler(
+        {&pci_cfg_handler::mmio_data_in, this});
 }
 
 void pci_cfg_handler::add_out_handler(uint64_t addr, const delegate_t &hdlr)
@@ -744,7 +742,8 @@ void pci_cfg_handler::add_out_handler(uint64_t addr, const delegate_t &hdlr)
     }
 
     this->map_bdf_to_ecam(bdf);
-    m_vcpu->add_ept_write_violation_handler({&pci_cfg_handler::mmio_data_out, this});
+    m_vcpu->add_ept_write_violation_handler(
+        {&pci_cfg_handler::mmio_data_out, this});
 }
 
 disassembler::insn_t *pci_cfg_handler::disasm_ecam_read(uint32_t bdf)
@@ -761,7 +760,9 @@ disassembler::insn_t *pci_cfg_handler::disasm_ecam_read(uint32_t bdf)
 
     if (len > MAX_X86_INSN_LEN) {
         printv("%s: instruction length %lu is invalid, rip=0x%lx\n",
-               __func__, len, rip);
+               __func__,
+               len,
+               rip);
         return nullptr;
     }
 
@@ -774,13 +775,20 @@ disassembler::insn_t *pci_cfg_handler::disasm_ecam_read(uint32_t bdf)
         return nullptr;
     }
 
-    printv("%s: %02x:%02x.%x: %s %s\n", __func__,
-           pci_cfg_bus(bdf), pci_cfg_dev(bdf), pci_cfg_fun(bdf),
-           insn->mnemonic, insn->op_str);
+    printv("%s: %02x:%02x.%x: %s %s\n",
+           __func__,
+           pci_cfg_bus(bdf),
+           pci_cfg_dev(bdf),
+           pci_cfg_fun(bdf),
+           insn->mnemonic,
+           insn->op_str);
 
     if (!valid_ecam_read(insn)) {
         printv("%s: invalid ECAM read, rip=0x%lx: %s %s\n",
-               __func__, rip, insn->mnemonic, insn->op_str);
+               __func__,
+               rip,
+               insn->mnemonic,
+               insn->op_str);
         return nullptr;
     }
 
@@ -803,7 +811,9 @@ disassembler::operand_t *pci_cfg_handler::disasm_ecam_write()
 
     if (len > MAX_X86_INSN_LEN) {
         printv("%s: instruction length %lu is invalid, rip=0x%lx\n",
-               __func__, len, rip);
+               __func__,
+               len,
+               rip);
         return nullptr;
     }
 
@@ -832,7 +842,8 @@ bool pci_cfg_handler::mmio_data_in(base_vcpu *vcpu, mmio_info &info)
 
     if (ecam_itr == m_ecam_map.end()) {
         printv("%s: ECAM page 0x%lx does not have an assigned BDF\n",
-               __func__, ecam_addr);
+               __func__,
+               ecam_addr);
         return false;
     }
 
@@ -840,8 +851,8 @@ bool pci_cfg_handler::mmio_data_in(base_vcpu *vcpu, mmio_info &info)
     auto hdlr_itr = m_in_hdlrs.find(ecam_bdf);
 
     if (hdlr_itr == m_in_hdlrs.end()) {
-        printv("%s: ECAM page 0x%lx does not have handler\n",
-               __func__, ecam_addr);
+        printv(
+            "%s: ECAM page 0x%lx does not have handler\n", __func__, ecam_addr);
         return false;
     }
 
@@ -864,7 +875,7 @@ bool pci_cfg_handler::mmio_data_in(base_vcpu *vcpu, mmio_info &info)
         pmio_info pi = {
             .port_number = 0xCFC + (info.gpa - gpa_4b),
             .size_of_access = size - 1,
-            .address = 0,            /* unused */
+            .address = 0, /* unused */
             .val = 0,
             .ignore_write = false,   /* unused */
             .ignore_advance = false, /* unused */
@@ -874,7 +885,7 @@ bool pci_cfg_handler::mmio_data_in(base_vcpu *vcpu, mmio_info &info)
         cfg_info ci = {
             .exit_info = pi,
             .reg = static_cast<uint32_t>(gpa_4b - ecam_addr) >> 2,
-            .again = false           /* unused */
+            .again = false /* unused */
         };
 
         /* Call the handler registered via vcpu::add_pci_cfg_handler */
@@ -939,7 +950,8 @@ bool pci_cfg_handler::mmio_data_out(base_vcpu *vcpu, mmio_info &info)
 
     if (ecam_itr == m_ecam_map.end()) {
         printv("%s: ECAM page 0x%lx does not have an assigned BDF\n",
-               __func__, ecam_addr);
+               __func__,
+               ecam_addr);
         return false;
     }
 
@@ -947,14 +959,15 @@ bool pci_cfg_handler::mmio_data_out(base_vcpu *vcpu, mmio_info &info)
     auto hdlr_itr = m_out_hdlrs.find(ecam_bdf);
 
     if (hdlr_itr == m_out_hdlrs.end()) {
-        printv("%s: ECAM page 0x%lx does not have handler\n",
-               __func__, ecam_addr);
+        printv(
+            "%s: ECAM page 0x%lx does not have handler\n", __func__, ecam_addr);
         return false;
     }
 
     auto src_op = this->disasm_ecam_write();
     if (!src_op) {
-        printv("%s: disasm_ecam_write failed @ gpa=0x%lx\n", __func__, info.gpa);
+        printv(
+            "%s: disasm_ecam_write failed @ gpa=0x%lx\n", __func__, info.gpa);
         return true;
     }
 
@@ -975,18 +988,16 @@ bool pci_cfg_handler::mmio_data_out(base_vcpu *vcpu, mmio_info &info)
     pmio_info pi = {
         .port_number = 0xCFC + (info.gpa - gpa_4b),
         .size_of_access = static_cast<uint64_t>(src_op->size - 1),
-        .address = 0,            /* unused */
+        .address = 0, /* unused */
         .val = val,
         .ignore_write = false,   /* unused */
         .ignore_advance = false, /* unused */
         .reps = 1                /* unused */
     };
 
-    cfg_info ci = {
-        .exit_info = pi,
-        .reg = static_cast<uint32_t>(gpa_4b - ecam_addr) >> 2,
-        .again = false
-    };
+    cfg_info ci = {.exit_info = pi,
+                   .reg = static_cast<uint32_t>(gpa_4b - ecam_addr) >> 2,
+                   .again = false};
 
     if (!hdlr_itr->second(vcpu, ci)) {
         return false;
@@ -1021,7 +1032,7 @@ bool pci_cfg_handler::pmio_data_in(base_vcpu *vcpu, pmio_info &info)
     cfg_info ci = {
         .exit_info = info,
         .reg = pci_cfg_reg(m_cf8),
-        .again = false             /* unused */
+        .again = false /* unused */
     };
 
     if (iter == m_in_hdlrs.end()) {
@@ -1037,10 +1048,7 @@ bool pci_cfg_handler::pmio_data_out(base_vcpu *vcpu, pmio_info &info)
     const auto iter = m_out_hdlrs.find(bdf);
 
     cfg_info ci = {
-        .exit_info = info,
-        .reg = pci_cfg_reg(m_cf8),
-        .again = false
-    };
+        .exit_info = info, .reg = pci_cfg_reg(m_cf8), .again = false};
 
     bool handled = false;
 

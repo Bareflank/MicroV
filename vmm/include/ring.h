@@ -33,9 +33,8 @@
 
 namespace microv {
 
-template<
-    size_t size,
-    typename std::enable_if_t<is_power_of_2(size)>* = nullptr>
+template<size_t size,
+         typename std::enable_if_t<is_power_of_2(size)> * = nullptr>
 class ring {
 public:
     ring() = default;
@@ -66,7 +65,6 @@ public:
     }
 
 private:
-
     size_t next(size_t pos)
     {
         return (pos + 1) & (size - 1);

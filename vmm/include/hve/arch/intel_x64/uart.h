@@ -37,15 +37,12 @@
 // Definition
 //------------------------------------------------------------------------------
 
-namespace microv::intel_x64
-{
+namespace microv::intel_x64 {
 
 class vcpu;
 
-class uart
-{
+class uart {
 public:
-
     using port_type = uint16_t;
     using data_type = uint8_t;
 
@@ -120,7 +117,6 @@ public:
     uint64_t dump(const gsl::span<char> &buffer);
 
 private:
-
     bool io_zero_handler(
         vcpu_t *vcpu, bfvmm::intel_x64::io_instruction_handler::info_t &info);
     bool io_ignore_handler(
@@ -161,7 +157,9 @@ private:
         vcpu_t *vcpu, bfvmm::intel_x64::io_instruction_handler::info_t &info);
 
     bool dlab() const
-    { return m_line_control_register & 0x80; }
+    {
+        return m_line_control_register & 0x80;
+    }
 
     void write(const char c);
     void write(const char *str);
@@ -169,7 +167,6 @@ private:
     bool vmcall_dispatch(vcpu *vcpu);
 
 private:
-
     port_type m_port{};
 
     std::mutex m_mutex{};
@@ -179,7 +176,6 @@ private:
     data_type m_baud_rate_l{};
     data_type m_baud_rate_h{};
     data_type m_line_control_register{};
-
 };
 
 }

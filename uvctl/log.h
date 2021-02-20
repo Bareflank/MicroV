@@ -22,10 +22,7 @@
 #ifndef UVCTL_LOG_H
 #define UVCTL_LOG_H
 
-enum uvctl_log_mode {
-    UVCTL_LOG_STDOUT,
-    UVCTL_LOG_WINDOWS_SVC
-};
+enum uvctl_log_mode { UVCTL_LOG_STDOUT, UVCTL_LOG_WINDOWS_SVC };
 
 void log_set_mode(int mode) noexcept;
 void log_msg(const char *fmt, ...) noexcept;

@@ -29,17 +29,13 @@
 // Definitions
 // -----------------------------------------------------------------------------
 
-namespace microv::intel_x64
-{
+namespace microv::intel_x64 {
 
 class vcpu;
 
-class vmcall_run_op_handler
-{
+class vmcall_run_op_handler {
 public:
-
-    vmcall_run_op_handler(
-        gsl::not_null<vcpu *> vcpu);
+    vmcall_run_op_handler(gsl::not_null<vcpu *> vcpu);
 
     /// Destructor
     ///
@@ -49,18 +45,15 @@ public:
     ~vmcall_run_op_handler() = default;
 
 private:
-
     bool dispatch(vcpu *vcpu);
 
 private:
-
     vcpu *m_vcpu;
 
     vcpu *m_child_vcpu;
     vcpuid_t m_child_vcpuid;
 
 public:
-
     /// @cond
 
     vmcall_run_op_handler(vmcall_run_op_handler &&) = default;

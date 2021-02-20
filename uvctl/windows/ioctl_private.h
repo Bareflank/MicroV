@@ -30,10 +30,8 @@
 #pragma warning(disable : 4251)
 #endif
 
-class ioctl_private : public ioctl_private_base
-{
+class ioctl_private : public ioctl_private_base {
 public:
-
     ioctl_private();
     ~ioctl_private() override;
 

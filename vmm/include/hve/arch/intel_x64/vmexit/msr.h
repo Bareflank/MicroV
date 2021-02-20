@@ -32,15 +32,12 @@
 // Definitions
 // -----------------------------------------------------------------------------
 
-namespace microv::intel_x64
-{
+namespace microv::intel_x64 {
 
 class vcpu;
 
-class msr_handler
-{
+class msr_handler {
 public:
-
     /// Constructor
     ///
     /// @expects
@@ -48,8 +45,7 @@ public:
     ///
     /// @param vcpu the vcpu object for this handler
     ///
-    msr_handler(
-        gsl::not_null<vcpu *> vcpu);
+    msr_handler(gsl::not_null<vcpu *> vcpu);
 
     /// Destructor
     ///
@@ -59,64 +55,58 @@ public:
     ~msr_handler() = default;
 
 public:
-
     /// @cond
 
     void isolate_msr(uint32_t msr);
 
-    void isolate_msr__on_run(
-        bfobject *obj);
-    bool isolate_msr__on_exit(
-        vcpu_t *vcpu);
-    bool isolate_msr__on_write(
-        vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info);
+    void isolate_msr__on_run(bfobject *obj);
+    bool isolate_msr__on_exit(vcpu_t *vcpu);
+    bool isolate_msr__on_write(vcpu_t *vcpu,
+                               bfvmm::intel_x64::wrmsr_handler::info_t &info);
 
     /// @endcond
 
 public:
-
     /// @cond
 
-    bool root_rdmsr_intel_pt(
-        vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info);
-    bool root_wrmsr_intel_pt(
-        vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info);
+    bool root_rdmsr_intel_pt(vcpu_t *vcpu,
+                             bfvmm::intel_x64::rdmsr_handler::info_t &info);
+    bool root_wrmsr_intel_pt(vcpu_t *vcpu,
+                             bfvmm::intel_x64::wrmsr_handler::info_t &info);
 
-    bool handle_rdmsr_0x00000034(
-        vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info);
-    bool handle_wrmsr_0x00000034(
-        vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info);
-    bool handle_rdmsr_0x000000CE(
-        vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info);
-    bool handle_wrmsr_0x000000CE(
-        vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info);
-    bool handle_rdmsr_0x00000140(
-        vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info);
-    bool handle_wrmsr_0x00000140(
-        vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info);
-    bool handle_rdmsr_0x000001A0(
-        vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info);
-    bool handle_wrmsr_0x000001A0(
-        vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info);
-    bool handle_rdmsr_0x00000606(
-        vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info);
-    bool handle_wrmsr_0x00000606(
-        vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info);
-    bool handle_rdmsr_0x0000064E(
-        vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info);
-    bool handle_wrmsr_0x0000064E(
-        vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info);
+    bool handle_rdmsr_0x00000034(vcpu_t *vcpu,
+                                 bfvmm::intel_x64::rdmsr_handler::info_t &info);
+    bool handle_wrmsr_0x00000034(vcpu_t *vcpu,
+                                 bfvmm::intel_x64::wrmsr_handler::info_t &info);
+    bool handle_rdmsr_0x000000CE(vcpu_t *vcpu,
+                                 bfvmm::intel_x64::rdmsr_handler::info_t &info);
+    bool handle_wrmsr_0x000000CE(vcpu_t *vcpu,
+                                 bfvmm::intel_x64::wrmsr_handler::info_t &info);
+    bool handle_rdmsr_0x00000140(vcpu_t *vcpu,
+                                 bfvmm::intel_x64::rdmsr_handler::info_t &info);
+    bool handle_wrmsr_0x00000140(vcpu_t *vcpu,
+                                 bfvmm::intel_x64::wrmsr_handler::info_t &info);
+    bool handle_rdmsr_0x000001A0(vcpu_t *vcpu,
+                                 bfvmm::intel_x64::rdmsr_handler::info_t &info);
+    bool handle_wrmsr_0x000001A0(vcpu_t *vcpu,
+                                 bfvmm::intel_x64::wrmsr_handler::info_t &info);
+    bool handle_rdmsr_0x00000606(vcpu_t *vcpu,
+                                 bfvmm::intel_x64::rdmsr_handler::info_t &info);
+    bool handle_wrmsr_0x00000606(vcpu_t *vcpu,
+                                 bfvmm::intel_x64::wrmsr_handler::info_t &info);
+    bool handle_rdmsr_0x0000064E(vcpu_t *vcpu,
+                                 bfvmm::intel_x64::rdmsr_handler::info_t &info);
+    bool handle_wrmsr_0x0000064E(vcpu_t *vcpu,
+                                 bfvmm::intel_x64::wrmsr_handler::info_t &info);
 
     /// @endcond
 
 private:
-
     vcpu *m_vcpu;
 
     std::unordered_map<uint32_t, uint64_t> m_msrs;
 
 public:
-
     /// @cond
 
     msr_handler(msr_handler &&) = default;

@@ -33,7 +33,7 @@ extern "C" {
 #define XENBUS_ADD_USER_EVENT_CMD 0x802
 #define XENBUS_SET_BACKEND_STATE_CMD 0x803
 
-#define XENBUS_DEVICETYPE  0x02a /* FILE_DEVICE_BUS_EXTENDER */
+#define XENBUS_DEVICETYPE 0x02a /* FILE_DEVICE_BUS_EXTENDER */
 
 /* -------------------------------------------------------------------------- */
 /* Windows Interfaces                                                         */
@@ -50,39 +50,48 @@ extern "C" {
 #endif
 
 typedef struct _XENBUS_ADD_USER_EVENT_IN {
-    HANDLE    EventHandle;  /*!< Handle to an event object that will receive notifications */
+    HANDLE
+        EventHandle; /*!< Handle to an event object that will receive notifications */
     ULONGLONG RemoteDomain; /*!< Xen domain ID of the remote */
 } XENBUS_ADD_USER_EVENT_IN, *PXENBUS_ADD_USER_EVENT_IN;
 
-enum {
-    XENBUS_BACKEND_STATE_INVALID = 0,
-    XENBUS_BACKEND_STATE_DYING = 1
-};
+enum { XENBUS_BACKEND_STATE_INVALID = 0, XENBUS_BACKEND_STATE_DYING = 1 };
 
 typedef struct _XENBUS_SET_BACKEND_STATE_IN {
-    ULONG BackendState; /*!< The state of the backend service VM (i.e. the one acting as dom0) */
+    ULONG
+        BackendState; /*!< The state of the backend service VM (i.e. the one acting as dom0) */
 } XENBUS_SET_BACKEND_STATE_IN, *PXENBUS_SET_BACKEND_STATE_IN;
 
 DEFINE_GUID(GUID_DEVINTERFACE_XENBUS,
             0x6ff82786,
             0x6a1c,
             0x4a69,
-            0x9f, 0x6a, 0x13, 0x2e, 0x0d, 0xa9, 0x86, 0x0b);
+            0x9f,
+            0x6a,
+            0x13,
+            0x2e,
+            0x0d,
+            0xa9,
+            0x86,
+            0x0b);
 
-#define IOCTL_XENBUS_ACQUIRE CTL_CODE(XENBUS_DEVICETYPE,                   \
-                                      XENBUS_ACQUIRE_CMD,                  \
-                                      METHOD_IN_DIRECT,                    \
-                                      FILE_READ_DATA | FILE_WRITE_DATA)
+#define IOCTL_XENBUS_ACQUIRE                                                   \
+    CTL_CODE(XENBUS_DEVICETYPE,                                                \
+             XENBUS_ACQUIRE_CMD,                                               \
+             METHOD_IN_DIRECT,                                                 \
+             FILE_READ_DATA | FILE_WRITE_DATA)
 
-#define IOCTL_XENBUS_ADD_USER_EVENT CTL_CODE(XENBUS_DEVICETYPE,                   \
-                                             XENBUS_ADD_USER_EVENT_CMD,          \
-                                             METHOD_IN_DIRECT,                    \
-                                             FILE_READ_DATA | FILE_WRITE_DATA)
+#define IOCTL_XENBUS_ADD_USER_EVENT                                            \
+    CTL_CODE(XENBUS_DEVICETYPE,                                                \
+             XENBUS_ADD_USER_EVENT_CMD,                                        \
+             METHOD_IN_DIRECT,                                                 \
+             FILE_READ_DATA | FILE_WRITE_DATA)
 
-#define IOCTL_XENBUS_SET_BACKEND_STATE CTL_CODE(XENBUS_DEVICETYPE,                   \
-                                                XENBUS_SET_BACKEND_STATE_CMD,        \
-                                                METHOD_IN_DIRECT,                    \
-                                                FILE_READ_DATA | FILE_WRITE_DATA)
+#define IOCTL_XENBUS_SET_BACKEND_STATE                                         \
+    CTL_CODE(XENBUS_DEVICETYPE,                                                \
+             XENBUS_SET_BACKEND_STATE_CMD,                                     \
+             METHOD_IN_DIRECT,                                                 \
+             FILE_READ_DATA | FILE_WRITE_DATA)
 
 #endif
 

@@ -74,9 +74,9 @@ inline void cte_clear_present(struct iommu_entry *cte)
 }
 
 /* Context entry translation types */
-#define CTE_TT_U 0U /* Untranslated only */
+#define CTE_TT_U 0U   /* Untranslated only */
 #define CTE_TT_UTT 1U /* Untranslated, Translated and Translation requests */
-#define CTE_TT_PT 2U /* Pass-through */
+#define CTE_TT_PT 2U  /* Pass-through */
 
 inline void cte_set_tt(struct iommu_entry *cte, unsigned int tt)
 {

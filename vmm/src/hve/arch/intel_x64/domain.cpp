@@ -39,8 +39,7 @@ using namespace microv;
 // Implementation
 // -----------------------------------------------------------------------------
 
-namespace microv::intel_x64
-{
+namespace microv::intel_x64 {
 
 /*
  * Note a domain is not a per-cpu structure, but this code is using the EPT
@@ -79,8 +78,7 @@ domain::domain(id_t domainid, struct domain_info *info) :
 
     if (domainid == 0) {
         this->setup_dom0();
-    }
-    else {
+    } else {
         this->setup_domU();
     }
 }
@@ -102,7 +100,7 @@ void domain::assign_pci_device(struct pci_dev *pdev)
 void domain::add_iommu(microv::iommu *iommu)
 {
     spin_acquire(&this->m_iommu_lock);
-    auto release = gsl::finally([&]{ spin_release(&this->m_iommu_lock); });
+    auto release = gsl::finally([&] { spin_release(&this->m_iommu_lock); });
 
     if (m_iommu_set.count(iommu)) {
         return;
@@ -114,7 +112,7 @@ void domain::add_iommu(microv::iommu *iommu)
 void domain::remove_iommu(microv::iommu *iommu)
 {
     spin_acquire(&this->m_iommu_lock);
-    auto release = gsl::finally([&]{ spin_release(&this->m_iommu_lock); });
+    auto release = gsl::finally([&] { spin_release(&this->m_iommu_lock); });
 
     m_iommu_set.erase(iommu);
 }
@@ -138,8 +136,12 @@ void domain::prepare_iommus()
 
     if (!coherent) {
         m_ept_map.flush_tables();
-        printv("%s: flushed domain 0x%lx EPT tables: coherent=%u, snoop_ctl=%u\n",
-               __func__, this->id(), coherent, snoop_ctl);
+        printv(
+            "%s: flushed domain 0x%lx EPT tables: coherent=%u, snoop_ctl=%u\n",
+            __func__,
+            this->id(),
+            coherent,
+            snoop_ctl);
     }
 
     m_dma_map_ready = true;
@@ -304,15 +306,13 @@ void domain::setup_domU()
     }
 }
 
-void
-domain::add_e820_entry(uintptr_t base, uintptr_t end, uint32_t type)
+void domain::add_e820_entry(uintptr_t base, uintptr_t end, uint32_t type)
 {
-    struct e820_entry_t ent = { base, end - base, type};
+    struct e820_entry_t ent = {base, end - base, type};
     m_e820.push_back(ent);
 }
 
-void
-domain::share_root_page(vcpu *root, uint64_t perm, uint64_t mtype)
+void domain::share_root_page(vcpu *root, uint64_t perm, uint64_t mtype)
 {
     expects(root->is_root_vcpu());
 
@@ -327,8 +327,8 @@ domain::share_root_page(vcpu *root, uint64_t perm, uint64_t mtype)
     }
 }
 
-static domain::page_range_iterator
-find_page_range(domain::page_range_set *range_set, uint64_t page_gpa)
+static domain::page_range_iterator find_page_range(
+    domain::page_range_set *range_set, uint64_t page_gpa)
 {
     if (range_set->empty()) {
         return range_set->end();
@@ -352,16 +352,14 @@ find_page_range(domain::page_range_set *range_set, uint64_t page_gpa)
     return range->contains(page_gpa) ? range : range_set->end();
 }
 
-static void
-extend_page_range_above(domain::page_range_iterator &range)
+static void extend_page_range_above(domain::page_range_iterator &range)
 {
     auto range_ptr = (page_range *)&(*range);
 
     range_ptr->m_page_count++;
 }
 
-static void
-extend_page_range_below(domain::page_range_iterator &range)
+static void extend_page_range_below(domain::page_range_iterator &range)
 {
     auto range_ptr = (page_range *)&(*range);
 
@@ -369,11 +367,10 @@ extend_page_range_below(domain::page_range_iterator &range)
     range_ptr->m_page_count++;
 }
 
-bool
-domain::page_already_donated(uint64_t page_gpa)
+bool domain::page_already_donated(uint64_t page_gpa)
 {
     spin_acquire(&m_donated_page_lock);
-    auto release = gsl::finally([&]{ spin_release(&m_donated_page_lock); });
+    auto release = gsl::finally([&] { spin_release(&m_donated_page_lock); });
 
     for (auto &pair : m_donated_page_map) {
         auto range_set = pair.second.get();
@@ -386,20 +383,18 @@ domain::page_already_donated(uint64_t page_gpa)
     return false;
 }
 
-bool
-domain::donated_pages_to_guest(domainid_t guest_domid)
+bool domain::donated_pages_to_guest(domainid_t guest_domid)
 {
     spin_acquire(&m_donated_page_lock);
-    auto release = gsl::finally([&]{ spin_release(&m_donated_page_lock); });
+    auto release = gsl::finally([&] { spin_release(&m_donated_page_lock); });
 
     return m_donated_page_map.count(guest_domid) != 0;
 }
 
-bool
-domain::page_already_donated(domainid_t guest_domid, uint64_t page_gpa)
+bool domain::page_already_donated(domainid_t guest_domid, uint64_t page_gpa)
 {
     spin_acquire(&m_donated_page_lock);
-    auto release = gsl::finally([&]{ spin_release(&m_donated_page_lock); });
+    auto release = gsl::finally([&] { spin_release(&m_donated_page_lock); });
 
     auto itr = m_donated_page_map.find(guest_domid);
     if (itr == m_donated_page_map.end()) {
@@ -411,11 +406,11 @@ domain::page_already_donated(domainid_t guest_domid, uint64_t page_gpa)
     return find_page_range(range_set, page_gpa) != range_set->end();
 }
 
-void
-domain::add_page_to_donated_range(domainid_t guest_domid, uint64_t page_gpa)
+void domain::add_page_to_donated_range(domainid_t guest_domid,
+                                       uint64_t page_gpa)
 {
     spin_acquire(&m_donated_page_lock);
-    auto release = gsl::finally([&]{ spin_release(&m_donated_page_lock); });
+    auto release = gsl::finally([&] { spin_release(&m_donated_page_lock); });
 
     auto itr = m_donated_page_map.find(guest_domid);
     if (itr == m_donated_page_map.end()) {
@@ -460,11 +455,11 @@ domain::add_page_to_donated_range(domainid_t guest_domid, uint64_t page_gpa)
     return;
 }
 
-void
-domain::remove_page_from_donated_range(domainid_t guest_domid, uint64_t page_gpa)
+void domain::remove_page_from_donated_range(domainid_t guest_domid,
+                                            uint64_t page_gpa)
 {
     spin_acquire(&m_donated_page_lock);
-    auto release = gsl::finally([&]{ spin_release(&m_donated_page_lock); });
+    auto release = gsl::finally([&] { spin_release(&m_donated_page_lock); });
 
     auto itr = m_donated_page_map.find(guest_domid);
     if (itr == m_donated_page_map.end()) {
@@ -519,13 +514,12 @@ domain::remove_page_from_donated_range(domainid_t guest_domid, uint64_t page_gpa
     }
 }
 
-int64_t
-domain::donate_root_page(vcpu *root,
-                         uint64_t root_gpa,
-                         domain *guest_dom,
-                         uint64_t guest_gpa,
-                         uint64_t perm,
-                         uint64_t mtype)
+int64_t domain::donate_root_page(vcpu *root,
+                                 uint64_t root_gpa,
+                                 domain *guest_dom,
+                                 uint64_t guest_gpa,
+                                 uint64_t perm,
+                                 uint64_t mtype)
 {
     expects(this->id() == 0);
 
@@ -559,16 +553,19 @@ domain::donate_root_page(vcpu *root,
             root->invept();
 
             this->add_page_to_donated_range(guest_dom->id(), root_gpa_4k);
-
-        } catch (std::exception &e) {
+        }
+        catch (std::exception &e) {
             printv("%s: failed to get hpa @ gpa=0x%lx, what=%s\n",
-                   __func__, root_gpa_4k, e.what());
+                   __func__,
+                   root_gpa_4k,
+                   e.what());
             return FAILURE;
         }
     }
 
     if (guest_dom->is_xen_dom()) {
-        guest_dom->xen_dom()->add_root_page(guest_gpa, root_gpa_4k, perm, mtype);
+        guest_dom->xen_dom()->add_root_page(
+            guest_gpa, root_gpa_4k, perm, mtype);
     } else {
         guest_dom->ept().map_4k(guest_gpa, root_gpa_4k, perm, mtype);
     }
@@ -576,8 +573,7 @@ domain::donate_root_page(vcpu *root,
     return SUCCESS;
 }
 
-int64_t
-domain::reclaim_root_page(domainid_t guest_domid, uint64_t root_gpa)
+int64_t domain::reclaim_root_page(domainid_t guest_domid, uint64_t root_gpa)
 {
     /* Reclaim must happen by the root itself */
     if (this->id() != 0) {
@@ -611,8 +607,7 @@ domain::reclaim_root_page(domainid_t guest_domid, uint64_t root_gpa)
     return SUCCESS;
 }
 
-int64_t
-domain::reclaim_root_pages(domainid_t guest_domid)
+int64_t domain::reclaim_root_pages(domainid_t guest_domid)
 {
     /* Reclaim must happen by the root itself */
     if (this->id() != 0) {
@@ -625,7 +620,7 @@ domain::reclaim_root_pages(domainid_t guest_domid)
     }
 
     spin_acquire(&m_donated_page_lock);
-    auto release = gsl::finally([&]{ spin_release(&m_donated_page_lock); });
+    auto release = gsl::finally([&] { spin_release(&m_donated_page_lock); });
 
     auto itr = m_donated_page_map.find(guest_domid);
     if (itr == m_donated_page_map.end()) {
@@ -657,68 +652,78 @@ domain::reclaim_root_pages(domainid_t guest_domid)
     return SUCCESS;
 }
 
-void
-domain::map_1g_r(uintptr_t gpa, uintptr_t hpa)
-{ m_ept_map.map_1g(gpa, hpa, ept::mmap::attr_type::read_only); }
-
-void
-domain::map_2m_r(uintptr_t gpa, uintptr_t hpa)
-{ m_ept_map.map_2m(gpa, hpa, ept::mmap::attr_type::read_only); }
-
-void
-domain::map_4k_r(uintptr_t gpa, uintptr_t hpa)
-{ m_ept_map.map_4k(gpa, hpa, ept::mmap::attr_type::read_only); }
-
-void
-domain::map_1g_rw(uintptr_t gpa, uintptr_t hpa)
-{ m_ept_map.map_1g(gpa, hpa, ept::mmap::attr_type::read_write); }
-
-void
-domain::map_2m_rw(uintptr_t gpa, uintptr_t hpa)
-{ m_ept_map.map_2m(gpa, hpa, ept::mmap::attr_type::read_write); }
-
-void
-domain::map_4k_rw(uintptr_t gpa, uintptr_t hpa)
-{ m_ept_map.map_4k(gpa, hpa, ept::mmap::attr_type::read_write); }
-
-void
-domain::map_4k_rw_wc(uintptr_t gpa, uintptr_t hpa)
+void domain::map_1g_r(uintptr_t gpa, uintptr_t hpa)
 {
-    m_ept_map.map_4k(gpa, hpa,
+    m_ept_map.map_1g(gpa, hpa, ept::mmap::attr_type::read_only);
+}
+
+void domain::map_2m_r(uintptr_t gpa, uintptr_t hpa)
+{
+    m_ept_map.map_2m(gpa, hpa, ept::mmap::attr_type::read_only);
+}
+
+void domain::map_4k_r(uintptr_t gpa, uintptr_t hpa)
+{
+    m_ept_map.map_4k(gpa, hpa, ept::mmap::attr_type::read_only);
+}
+
+void domain::map_1g_rw(uintptr_t gpa, uintptr_t hpa)
+{
+    m_ept_map.map_1g(gpa, hpa, ept::mmap::attr_type::read_write);
+}
+
+void domain::map_2m_rw(uintptr_t gpa, uintptr_t hpa)
+{
+    m_ept_map.map_2m(gpa, hpa, ept::mmap::attr_type::read_write);
+}
+
+void domain::map_4k_rw(uintptr_t gpa, uintptr_t hpa)
+{
+    m_ept_map.map_4k(gpa, hpa, ept::mmap::attr_type::read_write);
+}
+
+void domain::map_4k_rw_wc(uintptr_t gpa, uintptr_t hpa)
+{
+    m_ept_map.map_4k(gpa,
+                     hpa,
                      ept::mmap::attr_type::read_write,
                      ept::mmap::memory_type::write_combining);
 }
 
-void
-domain::map_4k_rw_uc(uintptr_t gpa, uintptr_t hpa)
+void domain::map_4k_rw_uc(uintptr_t gpa, uintptr_t hpa)
 {
-    m_ept_map.map_4k(gpa, hpa,
+    m_ept_map.map_4k(gpa,
+                     hpa,
                      ept::mmap::attr_type::read_write,
                      ept::mmap::memory_type::uncacheable);
 }
 
-void
-domain::map_1g_rwe(uintptr_t gpa, uintptr_t hpa)
-{ m_ept_map.map_1g(gpa, hpa, ept::mmap::attr_type::read_write_execute); }
+void domain::map_1g_rwe(uintptr_t gpa, uintptr_t hpa)
+{
+    m_ept_map.map_1g(gpa, hpa, ept::mmap::attr_type::read_write_execute);
+}
 
-void
-domain::map_2m_rwe(uintptr_t gpa, uintptr_t hpa)
-{ m_ept_map.map_2m(gpa, hpa, ept::mmap::attr_type::read_write_execute); }
+void domain::map_2m_rwe(uintptr_t gpa, uintptr_t hpa)
+{
+    m_ept_map.map_2m(gpa, hpa, ept::mmap::attr_type::read_write_execute);
+}
 
-void
-domain::map_4k_rwe(uintptr_t gpa, uintptr_t hpa)
-{ m_ept_map.map_4k(gpa, hpa, ept::mmap::attr_type::read_write_execute); }
+void domain::map_4k_rwe(uintptr_t gpa, uintptr_t hpa)
+{
+    m_ept_map.map_4k(gpa, hpa, ept::mmap::attr_type::read_write_execute);
+}
 
-void
-domain::unmap(uintptr_t gpa)
-{ m_ept_map.unmap(gpa); }
+void domain::unmap(uintptr_t gpa)
+{
+    m_ept_map.unmap(gpa);
+}
 
-void
-domain::release(uintptr_t gpa)
-{ m_ept_map.release(gpa); }
+void domain::release(uintptr_t gpa)
+{
+    m_ept_map.release(gpa);
+}
 
-uint64_t
-domain::exec_mode() const noexcept
+uint64_t domain::exec_mode() const noexcept
 {
     if (m_sod_info.flags & DOMF_EXEC_XENPVH) {
         return VM_EXEC_XENPVH;
@@ -727,16 +732,17 @@ domain::exec_mode() const noexcept
     return VM_EXEC_NATIVE;
 }
 
-void
-domain::set_uart(uart::port_type uart) noexcept
-{ m_uart_port = uart; }
+void domain::set_uart(uart::port_type uart) noexcept
+{
+    m_uart_port = uart;
+}
 
-void
-domain::set_pt_uart(uart::port_type uart) noexcept
-{ m_pt_uart_port = uart; }
+void domain::set_pt_uart(uart::port_type uart) noexcept
+{
+    m_pt_uart_port = uart;
+}
 
-void
-domain::setup_vcpu_uarts(gsl::not_null<vcpu *> vcpu)
+void domain::setup_vcpu_uarts(gsl::not_null<vcpu *> vcpu)
 {
     // Note:
     //
@@ -752,51 +758,62 @@ domain::setup_vcpu_uarts(gsl::not_null<vcpu *> vcpu)
 
     if (m_pt_uart_port == 0) {
         switch (m_uart_port) {
-            case 0x3F8: m_uart_3F8.enable(vcpu); break;
-            case 0x2F8: m_uart_2F8.enable(vcpu); break;
-            case 0x3E8: m_uart_3E8.enable(vcpu); break;
-            case 0x2E8: m_uart_2E8.enable(vcpu); break;
+        case 0x3F8:
+            m_uart_3F8.enable(vcpu);
+            break;
+        case 0x2F8:
+            m_uart_2F8.enable(vcpu);
+            break;
+        case 0x3E8:
+            m_uart_3E8.enable(vcpu);
+            break;
+        case 0x2E8:
+            m_uart_2E8.enable(vcpu);
+            break;
 
-            default:
-                break;
+        default:
+            break;
         };
-    }
-    else {
+    } else {
         m_pt_uart = std::make_unique<uart>(m_pt_uart_port);
         m_pt_uart->pass_through(vcpu);
     }
 }
 
-uint64_t
-domain::dump_uart(const gsl::span<char> &buffer)
+uint64_t domain::dump_uart(const gsl::span<char> &buffer)
 {
     if (m_pt_uart) {
         m_pt_uart->dump(buffer);
-    }
-    else {
+    } else {
         switch (m_uart_port) {
-            case 0x3F8: return m_uart_3F8.dump(buffer);
-            case 0x2F8: return m_uart_2F8.dump(buffer);
-            case 0x3E8: return m_uart_3E8.dump(buffer);
-            case 0x2E8: return m_uart_2E8.dump(buffer);
+        case 0x3F8:
+            return m_uart_3F8.dump(buffer);
+        case 0x2F8:
+            return m_uart_2F8.dump(buffer);
+        case 0x3E8:
+            return m_uart_3E8.dump(buffer);
+        case 0x2E8:
+            return m_uart_2E8.dump(buffer);
 
-            default:
-                break;
+        default:
+            break;
         };
     }
 
     return 0;
 }
 
-#define domain_reg(reg)                                                         \
-    uint64_t                                                                    \
-    domain::reg() const noexcept                                                \
-    { return m_ ## reg; }
+#define domain_reg(reg)                                                        \
+    uint64_t domain::reg() const noexcept                                      \
+    {                                                                          \
+        return m_##reg;                                                        \
+    }
 
-#define domain_set_reg(reg)                                                     \
-    void                                                                        \
-    domain::set_ ## reg(uint64_t val) noexcept                                  \
-    { m_ ## reg = val; }
+#define domain_set_reg(reg)                                                    \
+    void domain::set_##reg(uint64_t val) noexcept                              \
+    {                                                                          \
+        m_##reg = val;                                                         \
+    }
 
 domain_reg(rax);
 domain_set_reg(rax);

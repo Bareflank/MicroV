@@ -52,18 +52,12 @@ extern "C" {
 /**
  * VM file types
  */
-enum vm_file_type {
-    VM_FILE_BZIMAGE = 0,
-    VM_FILE_VMLINUX = 1
-};
+enum vm_file_type { VM_FILE_BZIMAGE = 0, VM_FILE_VMLINUX = 1 };
 
 /**
  * VM execution modes
  */
-enum vm_exec_mode {
-    VM_EXEC_NATIVE = 0,
-    VM_EXEC_XENPVH = 1
-};
+enum vm_exec_mode { VM_EXEC_NATIVE = 0, VM_EXEC_XENPVH = 1 };
 
 /**
  * @struct create_vm_args
@@ -133,7 +127,8 @@ struct create_vm_args {
 
 #ifdef __linux__
 
-#define IOCTL_CREATE_VM _IOWR(BUILDER_MAJOR, IOCTL_CREATE_VM_CMD, struct create_vm_args *)
+#define IOCTL_CREATE_VM                                                        \
+    _IOWR(BUILDER_MAJOR, IOCTL_CREATE_VM_CMD, struct create_vm_args *)
 #define IOCTL_DESTROY_VM _IOW(BUILDER_MAJOR, IOCTL_DESTROY_VM_CMD, domainid_t *)
 
 #endif
@@ -147,10 +142,28 @@ struct create_vm_args {
 #include <initguid.h>
 
 DEFINE_GUID(GUID_DEVINTERFACE_builder,
-    0x0156f59a, 0xdf90, 0x4ac6, 0x85, 0x3d, 0xcf, 0xd9, 0x3e, 0x25, 0x65, 0xc2);
+            0x0156f59a,
+            0xdf90,
+            0x4ac6,
+            0x85,
+            0x3d,
+            0xcf,
+            0xd9,
+            0x3e,
+            0x25,
+            0x65,
+            0xc2);
 
-#define IOCTL_CREATE_VM CTL_CODE(BUILDER_DEVICETYPE, IOCTL_CREATE_VM_CMD, METHOD_IN_DIRECT, FILE_READ_DATA | FILE_WRITE_DATA)
-#define IOCTL_DESTROY_VM CTL_CODE(BUILDER_DEVICETYPE, IOCTL_DESTROY_VM_CMD, METHOD_IN_DIRECT, FILE_READ_DATA | FILE_WRITE_DATA)
+#define IOCTL_CREATE_VM                                                        \
+    CTL_CODE(BUILDER_DEVICETYPE,                                               \
+             IOCTL_CREATE_VM_CMD,                                              \
+             METHOD_IN_DIRECT,                                                 \
+             FILE_READ_DATA | FILE_WRITE_DATA)
+#define IOCTL_DESTROY_VM                                                       \
+    CTL_CODE(BUILDER_DEVICETYPE,                                               \
+             IOCTL_DESTROY_VM_CMD,                                             \
+             METHOD_IN_DIRECT,                                                 \
+             FILE_READ_DATA | FILE_WRITE_DATA)
 
 #endif
 

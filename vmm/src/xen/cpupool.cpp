@@ -31,8 +31,8 @@
 namespace microv {
 
 std::mutex cpupool_mutex;
-std::unordered_map<xen_cpupoolid_t,
-                   std::unique_ptr<class xen_cpupool>> cpupool_map;
+std::unordered_map<xen_cpupoolid_t, std::unique_ptr<class xen_cpupool>>
+    cpupool_map;
 
 void xen_cpupool_add_domain(xen_cpupoolid_t id, xen_domid_t domid)
 {
@@ -156,7 +156,11 @@ bool xen_cpupool_op(xen_vcpu *vcpu, struct xen_sysctl *ctl)
     auto op = &ctl->u.cpupool_op;
 
     printv("cpupool: op:0x%x poolid:0x%x schedid:0x%x domid:0x%x cpu:0x%x\n",
-            op->op, op->cpupool_id, op->sched_id, op->domid, op->cpu);
+           op->op,
+           op->cpupool_id,
+           op->sched_id,
+           op->domid,
+           op->cpu);
 
     switch (op->op) {
     case XEN_SYSCTL_CPUPOOL_OP_MOVEDOMAIN:
@@ -183,11 +187,11 @@ xen_cpupool *get_cpupool(xen_cpupoolid_t id) noexcept
         } else {
             return nullptr;
         }
-    } catch (...) {
+    }
+    catch (...) {
         printv("%s: threw exception for id 0x%x\n", __func__, id);
         return nullptr;
     }
-
 }
 
 xen_cpupool::xen_cpupool(xen_cpupoolid_t id)

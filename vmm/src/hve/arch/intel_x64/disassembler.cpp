@@ -25,8 +25,7 @@
 #include <printv.h>
 #include <cstdint>
 
-namespace microv::intel_x64
-{
+namespace microv::intel_x64 {
 
 #define pr_err() cs_strerror(cs_errno(handle))
 
@@ -48,8 +47,7 @@ disassembler::~disassembler()
     cs_close(&m_handle_16);
 }
 
-disassembler::handle
-disassembler::mode_to_handle(int32_t mode) const noexcept
+disassembler::handle disassembler::mode_to_handle(int32_t mode) const noexcept
 {
     switch (mode) {
     case insn_mode_16bit:
@@ -63,11 +61,10 @@ disassembler::mode_to_handle(int32_t mode) const noexcept
     }
 }
 
-disassembler::insn_t *
-disassembler::disasm_single(const uint8_t *buf,
-                            uint64_t gva,
-                            uint64_t len,
-                            int32_t mode)
+disassembler::insn_t *disassembler::disasm_single(const uint8_t *buf,
+                                                  uint64_t gva,
+                                                  uint64_t len,
+                                                  int32_t mode)
 {
     auto handle = this->mode_to_handle(mode);
     if (!handle) {
@@ -93,8 +90,7 @@ disassembler::disasm_single(const uint8_t *buf,
     return insn;
 }
 
-void
-disassembler::free_insn(insn_t *insn)
+void disassembler::free_insn(insn_t *insn)
 {
     if (!insn) {
         return;
@@ -115,4 +111,3 @@ void init_disasm()
 }
 
 }
-

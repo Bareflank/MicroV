@@ -29,15 +29,12 @@
 // Definitions
 // -----------------------------------------------------------------------------
 
-namespace microv::intel_x64
-{
+namespace microv::intel_x64 {
 
 class vcpu;
 
-class external_interrupt_handler
-{
+class external_interrupt_handler {
 public:
-
     /// Constructor
     ///
     /// @expects
@@ -45,8 +42,7 @@ public:
     ///
     /// @param vcpu the vcpu object for this interrupt window handler
     ///
-    external_interrupt_handler(
-        gsl::not_null<vcpu *> vcpu);
+    external_interrupt_handler(gsl::not_null<vcpu *> vcpu);
 
     /// Destructor
     ///
@@ -56,27 +52,26 @@ public:
     ~external_interrupt_handler() = default;
 
 public:
-
     /// @cond
 
-    bool handle(
-        vcpu_t *vcpu, bfvmm::intel_x64::external_interrupt_handler::info_t &info);
+    bool handle(vcpu_t *vcpu,
+                bfvmm::intel_x64::external_interrupt_handler::info_t &info);
 
     /// @endcond
 
 private:
-
     vcpu *m_vcpu;
 
 public:
-
     /// @cond
 
     external_interrupt_handler(external_interrupt_handler &&) = default;
-    external_interrupt_handler &operator=(external_interrupt_handler &&) = default;
+    external_interrupt_handler &operator=(external_interrupt_handler &&) =
+        default;
 
     external_interrupt_handler(const external_interrupt_handler &) = delete;
-    external_interrupt_handler &operator=(const external_interrupt_handler &) = delete;
+    external_interrupt_handler &operator=(const external_interrupt_handler &) =
+        delete;
 
     /// @endcond
 };

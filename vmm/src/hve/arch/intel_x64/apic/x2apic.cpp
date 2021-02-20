@@ -24,7 +24,7 @@
 
 #include <iostream>
 
-#define EMULATE_MSR(a,r,w)                                                     \
+#define EMULATE_MSR(a, r, w)                                                   \
     m_vcpu->emulate_rdmsr(a, {&x2apic_handler::r, this});                      \
     m_vcpu->emulate_wrmsr(a, {&x2apic_handler::w, this});
 
@@ -32,13 +32,9 @@
 // Implementation
 // -----------------------------------------------------------------------------
 
-namespace microv::intel_x64
-{
+namespace microv::intel_x64 {
 
-x2apic_handler::x2apic_handler(
-    gsl::not_null<vcpu *> vcpu
-) :
-    m_vcpu{vcpu}
+x2apic_handler::x2apic_handler(gsl::not_null<vcpu *> vcpu) : m_vcpu{vcpu}
 {
     using namespace vmcs_n;
 
@@ -82,8 +78,7 @@ x2apic_handler::x2apic_handler(
     EMULATE_MSR(0x00000838, handle_rdmsr_0x00000838, handle_wrmsr_0x00000838);
 }
 
-uint8_t
-x2apic_handler::timer_vector() const noexcept
+uint8_t x2apic_handler::timer_vector() const noexcept
 {
     using namespace ::intel_x64::msrs::ia32_x2apic_lvt_timer;
 
@@ -98,8 +93,7 @@ x2apic_handler::timer_vector() const noexcept
 // General MSRs
 // -----------------------------------------------------------------------------
 
-bool
-x2apic_handler::handle_rdmsr_0x0000001B(
+bool x2apic_handler::handle_rdmsr_0x0000001B(
     vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info)
 {
     bfignored(vcpu);
@@ -108,8 +102,7 @@ x2apic_handler::handle_rdmsr_0x0000001B(
     return true;
 }
 
-bool
-x2apic_handler::handle_wrmsr_0x0000001B(
+bool x2apic_handler::handle_wrmsr_0x0000001B(
     vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info)
 {
     if ((info.val & 0xFFF) != 0xD00) {
@@ -124,8 +117,7 @@ x2apic_handler::handle_wrmsr_0x0000001B(
 // General Purpose Registers
 // -----------------------------------------------------------------------------
 
-bool
-x2apic_handler::handle_rdmsr_0x00000802(
+bool x2apic_handler::handle_rdmsr_0x00000802(
     vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info)
 {
     bfignored(vcpu);
@@ -134,8 +126,7 @@ x2apic_handler::handle_rdmsr_0x00000802(
     return true;
 }
 
-bool
-x2apic_handler::handle_wrmsr_0x00000802(
+bool x2apic_handler::handle_wrmsr_0x00000802(
     vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info)
 {
     bfignored(info);
@@ -144,8 +135,7 @@ x2apic_handler::handle_wrmsr_0x00000802(
     return true;
 }
 
-bool
-x2apic_handler::handle_rdmsr_0x00000803(
+bool x2apic_handler::handle_rdmsr_0x00000803(
     vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info)
 {
     bfignored(vcpu);
@@ -154,8 +144,7 @@ x2apic_handler::handle_rdmsr_0x00000803(
     return true;
 }
 
-bool
-x2apic_handler::handle_wrmsr_0x00000803(
+bool x2apic_handler::handle_wrmsr_0x00000803(
     vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info)
 {
     bfignored(info);
@@ -164,8 +153,7 @@ x2apic_handler::handle_wrmsr_0x00000803(
     return true;
 }
 
-bool
-x2apic_handler::handle_rdmsr_0x00000808(
+bool x2apic_handler::handle_rdmsr_0x00000808(
     vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info)
 {
     bfignored(vcpu);
@@ -174,8 +162,7 @@ x2apic_handler::handle_rdmsr_0x00000808(
     return true;
 }
 
-bool
-x2apic_handler::handle_wrmsr_0x00000808(
+bool x2apic_handler::handle_wrmsr_0x00000808(
     vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info)
 {
     if (info.val != 0 && info.val != 0x10) {
@@ -185,8 +172,7 @@ x2apic_handler::handle_wrmsr_0x00000808(
     return true;
 }
 
-bool
-x2apic_handler::handle_rdmsr_0x0000080B(
+bool x2apic_handler::handle_rdmsr_0x0000080B(
     vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info)
 {
     bfignored(info);
@@ -195,8 +181,7 @@ x2apic_handler::handle_rdmsr_0x0000080B(
     return true;
 }
 
-bool
-x2apic_handler::handle_wrmsr_0x0000080B(
+bool x2apic_handler::handle_wrmsr_0x0000080B(
     vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info)
 {
     bfignored(vcpu);
@@ -205,8 +190,7 @@ x2apic_handler::handle_wrmsr_0x0000080B(
     return true;
 }
 
-bool
-x2apic_handler::handle_rdmsr_0x0000080D(
+bool x2apic_handler::handle_rdmsr_0x0000080D(
     vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info)
 {
     bfignored(vcpu);
@@ -217,8 +201,7 @@ x2apic_handler::handle_rdmsr_0x0000080D(
     return true;
 }
 
-bool
-x2apic_handler::handle_wrmsr_0x0000080D(
+bool x2apic_handler::handle_wrmsr_0x0000080D(
     vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info)
 {
     bfignored(info);
@@ -227,8 +210,7 @@ x2apic_handler::handle_wrmsr_0x0000080D(
     return true;
 }
 
-bool
-x2apic_handler::handle_rdmsr_0x0000080F(
+bool x2apic_handler::handle_rdmsr_0x0000080F(
     vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info)
 {
     bfignored(vcpu);
@@ -237,8 +219,7 @@ x2apic_handler::handle_rdmsr_0x0000080F(
     return true;
 }
 
-bool
-x2apic_handler::handle_wrmsr_0x0000080F(
+bool x2apic_handler::handle_wrmsr_0x0000080F(
     vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info)
 {
     bfignored(vcpu);
@@ -247,8 +228,7 @@ x2apic_handler::handle_wrmsr_0x0000080F(
     return true;
 }
 
-bool
-x2apic_handler::handle_rdmsr_0x00000828(
+bool x2apic_handler::handle_rdmsr_0x00000828(
     vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info)
 {
     bfignored(vcpu);
@@ -257,8 +237,7 @@ x2apic_handler::handle_rdmsr_0x00000828(
     return true;
 }
 
-bool
-x2apic_handler::handle_wrmsr_0x00000828(
+bool x2apic_handler::handle_wrmsr_0x00000828(
     vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info)
 {
     bfignored(vcpu);
@@ -271,8 +250,7 @@ x2apic_handler::handle_wrmsr_0x00000828(
 // ISR
 // -----------------------------------------------------------------------------
 
-bool
-x2apic_handler::handle_rdmsr_0x00000810(
+bool x2apic_handler::handle_rdmsr_0x00000810(
     vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info)
 {
     bfignored(vcpu);
@@ -281,8 +259,7 @@ x2apic_handler::handle_rdmsr_0x00000810(
     return true;
 }
 
-bool
-x2apic_handler::handle_wrmsr_0x00000810(
+bool x2apic_handler::handle_wrmsr_0x00000810(
     vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info)
 {
     bfignored(info);
@@ -291,8 +268,7 @@ x2apic_handler::handle_wrmsr_0x00000810(
     return true;
 }
 
-bool
-x2apic_handler::handle_rdmsr_0x00000811(
+bool x2apic_handler::handle_rdmsr_0x00000811(
     vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info)
 {
     bfignored(vcpu);
@@ -301,8 +277,7 @@ x2apic_handler::handle_rdmsr_0x00000811(
     return true;
 }
 
-bool
-x2apic_handler::handle_wrmsr_0x00000811(
+bool x2apic_handler::handle_wrmsr_0x00000811(
     vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info)
 {
     bfignored(info);
@@ -311,8 +286,7 @@ x2apic_handler::handle_wrmsr_0x00000811(
     return true;
 }
 
-bool
-x2apic_handler::handle_rdmsr_0x00000812(
+bool x2apic_handler::handle_rdmsr_0x00000812(
     vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info)
 {
     bfignored(vcpu);
@@ -321,8 +295,7 @@ x2apic_handler::handle_rdmsr_0x00000812(
     return true;
 }
 
-bool
-x2apic_handler::handle_wrmsr_0x00000812(
+bool x2apic_handler::handle_wrmsr_0x00000812(
     vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info)
 {
     bfignored(info);
@@ -331,8 +304,7 @@ x2apic_handler::handle_wrmsr_0x00000812(
     return true;
 }
 
-bool
-x2apic_handler::handle_rdmsr_0x00000813(
+bool x2apic_handler::handle_rdmsr_0x00000813(
     vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info)
 {
     bfignored(vcpu);
@@ -341,8 +313,7 @@ x2apic_handler::handle_rdmsr_0x00000813(
     return true;
 }
 
-bool
-x2apic_handler::handle_wrmsr_0x00000813(
+bool x2apic_handler::handle_wrmsr_0x00000813(
     vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info)
 {
     bfignored(info);
@@ -351,8 +322,7 @@ x2apic_handler::handle_wrmsr_0x00000813(
     return true;
 }
 
-bool
-x2apic_handler::handle_rdmsr_0x00000814(
+bool x2apic_handler::handle_rdmsr_0x00000814(
     vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info)
 {
     bfignored(vcpu);
@@ -361,8 +331,7 @@ x2apic_handler::handle_rdmsr_0x00000814(
     return true;
 }
 
-bool
-x2apic_handler::handle_wrmsr_0x00000814(
+bool x2apic_handler::handle_wrmsr_0x00000814(
     vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info)
 {
     bfignored(info);
@@ -371,8 +340,7 @@ x2apic_handler::handle_wrmsr_0x00000814(
     return true;
 }
 
-bool
-x2apic_handler::handle_rdmsr_0x00000815(
+bool x2apic_handler::handle_rdmsr_0x00000815(
     vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info)
 {
     bfignored(vcpu);
@@ -381,8 +349,7 @@ x2apic_handler::handle_rdmsr_0x00000815(
     return true;
 }
 
-bool
-x2apic_handler::handle_wrmsr_0x00000815(
+bool x2apic_handler::handle_wrmsr_0x00000815(
     vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info)
 {
     bfignored(info);
@@ -391,8 +358,7 @@ x2apic_handler::handle_wrmsr_0x00000815(
     return true;
 }
 
-bool
-x2apic_handler::handle_rdmsr_0x00000816(
+bool x2apic_handler::handle_rdmsr_0x00000816(
     vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info)
 {
     bfignored(vcpu);
@@ -401,8 +367,7 @@ x2apic_handler::handle_rdmsr_0x00000816(
     return true;
 }
 
-bool
-x2apic_handler::handle_wrmsr_0x00000816(
+bool x2apic_handler::handle_wrmsr_0x00000816(
     vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info)
 {
     bfignored(info);
@@ -411,8 +376,7 @@ x2apic_handler::handle_wrmsr_0x00000816(
     return true;
 }
 
-bool
-x2apic_handler::handle_rdmsr_0x00000817(
+bool x2apic_handler::handle_rdmsr_0x00000817(
     vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info)
 {
     bfignored(vcpu);
@@ -421,8 +385,7 @@ x2apic_handler::handle_rdmsr_0x00000817(
     return true;
 }
 
-bool
-x2apic_handler::handle_wrmsr_0x00000817(
+bool x2apic_handler::handle_wrmsr_0x00000817(
     vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info)
 {
     bfignored(info);
@@ -435,8 +398,7 @@ x2apic_handler::handle_wrmsr_0x00000817(
 // IRR
 // -----------------------------------------------------------------------------
 
-bool
-x2apic_handler::handle_rdmsr_0x00000820(
+bool x2apic_handler::handle_rdmsr_0x00000820(
     vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info)
 {
     bfignored(vcpu);
@@ -445,8 +407,7 @@ x2apic_handler::handle_rdmsr_0x00000820(
     return true;
 }
 
-bool
-x2apic_handler::handle_wrmsr_0x00000820(
+bool x2apic_handler::handle_wrmsr_0x00000820(
     vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info)
 {
     bfignored(info);
@@ -455,8 +416,7 @@ x2apic_handler::handle_wrmsr_0x00000820(
     return true;
 }
 
-bool
-x2apic_handler::handle_rdmsr_0x00000821(
+bool x2apic_handler::handle_rdmsr_0x00000821(
     vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info)
 {
     bfignored(vcpu);
@@ -465,8 +425,7 @@ x2apic_handler::handle_rdmsr_0x00000821(
     return true;
 }
 
-bool
-x2apic_handler::handle_wrmsr_0x00000821(
+bool x2apic_handler::handle_wrmsr_0x00000821(
     vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info)
 {
     bfignored(info);
@@ -475,8 +434,7 @@ x2apic_handler::handle_wrmsr_0x00000821(
     return true;
 }
 
-bool
-x2apic_handler::handle_rdmsr_0x00000822(
+bool x2apic_handler::handle_rdmsr_0x00000822(
     vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info)
 {
     bfignored(vcpu);
@@ -485,8 +443,7 @@ x2apic_handler::handle_rdmsr_0x00000822(
     return true;
 }
 
-bool
-x2apic_handler::handle_wrmsr_0x00000822(
+bool x2apic_handler::handle_wrmsr_0x00000822(
     vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info)
 {
     bfignored(info);
@@ -495,8 +452,7 @@ x2apic_handler::handle_wrmsr_0x00000822(
     return true;
 }
 
-bool
-x2apic_handler::handle_rdmsr_0x00000823(
+bool x2apic_handler::handle_rdmsr_0x00000823(
     vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info)
 {
     bfignored(vcpu);
@@ -505,8 +461,7 @@ x2apic_handler::handle_rdmsr_0x00000823(
     return true;
 }
 
-bool
-x2apic_handler::handle_wrmsr_0x00000823(
+bool x2apic_handler::handle_wrmsr_0x00000823(
     vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info)
 {
     bfignored(info);
@@ -515,8 +470,7 @@ x2apic_handler::handle_wrmsr_0x00000823(
     return true;
 }
 
-bool
-x2apic_handler::handle_rdmsr_0x00000824(
+bool x2apic_handler::handle_rdmsr_0x00000824(
     vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info)
 {
     bfignored(vcpu);
@@ -525,8 +479,7 @@ x2apic_handler::handle_rdmsr_0x00000824(
     return true;
 }
 
-bool
-x2apic_handler::handle_wrmsr_0x00000824(
+bool x2apic_handler::handle_wrmsr_0x00000824(
     vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info)
 {
     bfignored(info);
@@ -535,8 +488,7 @@ x2apic_handler::handle_wrmsr_0x00000824(
     return true;
 }
 
-bool
-x2apic_handler::handle_rdmsr_0x00000825(
+bool x2apic_handler::handle_rdmsr_0x00000825(
     vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info)
 {
     bfignored(vcpu);
@@ -545,8 +497,7 @@ x2apic_handler::handle_rdmsr_0x00000825(
     return true;
 }
 
-bool
-x2apic_handler::handle_wrmsr_0x00000825(
+bool x2apic_handler::handle_wrmsr_0x00000825(
     vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info)
 {
     bfignored(info);
@@ -555,8 +506,7 @@ x2apic_handler::handle_wrmsr_0x00000825(
     return true;
 }
 
-bool
-x2apic_handler::handle_rdmsr_0x00000826(
+bool x2apic_handler::handle_rdmsr_0x00000826(
     vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info)
 {
     bfignored(vcpu);
@@ -565,8 +515,7 @@ x2apic_handler::handle_rdmsr_0x00000826(
     return true;
 }
 
-bool
-x2apic_handler::handle_wrmsr_0x00000826(
+bool x2apic_handler::handle_wrmsr_0x00000826(
     vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info)
 {
     bfignored(info);
@@ -575,8 +524,7 @@ x2apic_handler::handle_wrmsr_0x00000826(
     return true;
 }
 
-bool
-x2apic_handler::handle_rdmsr_0x00000827(
+bool x2apic_handler::handle_rdmsr_0x00000827(
     vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info)
 {
     bfignored(vcpu);
@@ -585,8 +533,7 @@ x2apic_handler::handle_rdmsr_0x00000827(
     return true;
 }
 
-bool
-x2apic_handler::handle_wrmsr_0x00000827(
+bool x2apic_handler::handle_wrmsr_0x00000827(
     vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info)
 {
     bfignored(info);
@@ -599,8 +546,7 @@ x2apic_handler::handle_wrmsr_0x00000827(
 // LVT
 // -----------------------------------------------------------------------------
 
-bool
-x2apic_handler::handle_rdmsr_0x00000832(
+bool x2apic_handler::handle_rdmsr_0x00000832(
     vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info)
 {
     bfignored(vcpu);
@@ -609,8 +555,7 @@ x2apic_handler::handle_rdmsr_0x00000832(
     return true;
 }
 
-bool
-x2apic_handler::handle_wrmsr_0x00000832(
+bool x2apic_handler::handle_wrmsr_0x00000832(
     vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info)
 {
     bfignored(vcpu);
@@ -619,8 +564,7 @@ x2apic_handler::handle_wrmsr_0x00000832(
     return true;
 }
 
-bool
-x2apic_handler::handle_rdmsr_0x00000834(
+bool x2apic_handler::handle_rdmsr_0x00000834(
     vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info)
 {
     bfignored(vcpu);
@@ -629,8 +573,7 @@ x2apic_handler::handle_rdmsr_0x00000834(
     return true;
 }
 
-bool
-x2apic_handler::handle_wrmsr_0x00000834(
+bool x2apic_handler::handle_wrmsr_0x00000834(
     vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info)
 {
     bfignored(vcpu);
@@ -638,8 +581,7 @@ x2apic_handler::handle_wrmsr_0x00000834(
     return true;
 }
 
-bool
-x2apic_handler::handle_rdmsr_0x00000835(
+bool x2apic_handler::handle_rdmsr_0x00000835(
     vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info)
 {
     bfignored(vcpu);
@@ -648,20 +590,18 @@ x2apic_handler::handle_rdmsr_0x00000835(
     return true;
 }
 
-bool
-x2apic_handler::handle_wrmsr_0x00000835(
+bool x2apic_handler::handle_wrmsr_0x00000835(
     vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info)
 {
     bfignored(vcpu);
 
-//    bfalert_nhex(0, "unimplemented write to LINT0", info.val);
+    //    bfalert_nhex(0, "unimplemented write to LINT0", info.val);
 
     m_0x00000835 = info.val & 0xFFFFFFFF;
     return true;
 }
 
-bool
-x2apic_handler::handle_rdmsr_0x00000836(
+bool x2apic_handler::handle_rdmsr_0x00000836(
     vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info)
 {
     bfignored(vcpu);
@@ -670,20 +610,18 @@ x2apic_handler::handle_rdmsr_0x00000836(
     return true;
 }
 
-bool
-x2apic_handler::handle_wrmsr_0x00000836(
+bool x2apic_handler::handle_wrmsr_0x00000836(
     vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info)
 {
     bfignored(vcpu);
 
-//    bfalert_nhex(0, "unimplemented write to LINT1", info.val);
+    //    bfalert_nhex(0, "unimplemented write to LINT1", info.val);
 
     m_0x00000836 = info.val & 0xFFFFFFFF;
     return true;
 }
 
-bool
-x2apic_handler::handle_rdmsr_0x00000837(
+bool x2apic_handler::handle_rdmsr_0x00000837(
     vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info)
 {
     bfignored(vcpu);
@@ -692,8 +630,7 @@ x2apic_handler::handle_rdmsr_0x00000837(
     return true;
 }
 
-bool
-x2apic_handler::handle_wrmsr_0x00000837(
+bool x2apic_handler::handle_wrmsr_0x00000837(
     vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info)
 {
     bfignored(vcpu);
@@ -702,8 +639,7 @@ x2apic_handler::handle_wrmsr_0x00000837(
     return true;
 }
 
-bool
-x2apic_handler::handle_rdmsr_0x00000838(
+bool x2apic_handler::handle_rdmsr_0x00000838(
     vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info)
 {
     bfignored(vcpu);
@@ -712,8 +648,7 @@ x2apic_handler::handle_rdmsr_0x00000838(
     return true;
 }
 
-bool
-x2apic_handler::handle_wrmsr_0x00000838(
+bool x2apic_handler::handle_wrmsr_0x00000838(
     vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info)
 {
     if (info.val != 0) {

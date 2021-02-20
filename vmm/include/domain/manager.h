@@ -36,10 +36,8 @@
 /// @expects none
 /// @ensures ret != nullptr
 ///
-#define g_dm                                                                    \
-    bfmanager<                                                                  \
-    microv::domain,                                                             \
-    microv::domain_factory,                                                     \
-    microv::domain::id_t>::instance()
+#define g_dm                                                                   \
+    bfmanager<microv::domain, microv::domain_factory, microv::domain::id_t>::  \
+        instance()
 
 #endif

@@ -45,7 +45,7 @@ static std::unordered_map<uintptr_t, page_ptr<char>> tables_spoof;
 static void acpi_table_add(uintptr_t gpa)
 {
     auto hdr = vcpu0->map_gpa_4k<acpi_header_t>(gpa, 1);
-    struct acpi_table tab{};
+    struct acpi_table tab {};
 
     memcpy(tab.sig.data(), hdr->signature, sizeof(hdr->signature));
     tab.gpa = gpa;
@@ -75,7 +75,9 @@ static void parse_rsdp()
     tables_2m_gpas.insert(bfn::upper(g_rsdp, 21));
 
     printv("acpi: RSDP: %#lx-%#lx (%uB).\n",
-        g_rsdp, g_rsdp + rsdp->length - 1, rsdp->length);
+           g_rsdp,
+           g_rsdp + rsdp->length - 1,
+           rsdp->length);
 }
 
 static void parse_xsdt()
@@ -91,7 +93,7 @@ static void parse_xsdt()
     auto entries_gpa = xsdt_gpa + HDR_SIZE;
     auto entries_size = xsdt_hdr->length - HDR_SIZE;
     auto entries_map = vcpu0->map_gpa_4k<uintptr_t>(entries_gpa, entries_size);
-    auto entries = reinterpret_cast<uintptr_t*>(entries_map.get());
+    auto entries = reinterpret_cast<uintptr_t *>(entries_map.get());
     auto n = entries_size / XSDT_ENTRY_SIZE;
 
     for (auto i = 0; i < n; ++i) {
@@ -130,10 +132,15 @@ int init_acpi()
     parse_rsdp();
     parse_xsdt();
 
-    for (auto const& tab : table_list) {
+    for (auto const &tab : table_list) {
         printv("acpi: %c%c%c%c: %#lx-%#lx (%luB).\n",
-            tab.sig[0], tab.sig[1], tab.sig[2], tab.sig[3],
-            tab.gpa, tab.gpa + tab.len - 1, tab.len);
+               tab.sig[0],
+               tab.sig[1],
+               tab.sig[2],
+               tab.sig[3],
+               tab.gpa,
+               tab.gpa + tab.len - 1,
+               tab.len);
     }
 
     /*
@@ -141,8 +148,8 @@ int init_acpi()
      * facilitate later remapping of individual tables like the DMAR
      */
     printv("acpi: reducing granularity of %luMB table region to 4KB\n",
-        tables_2m_gpas.size() * 2);
-    for (auto const& gpa : tables_2m_gpas) {
+           tables_2m_gpas.size() * 2);
+    for (auto const &gpa : tables_2m_gpas) {
         using namespace bfvmm::intel_x64::ept;
 
         auto dom0 = vcpu0->dom();
@@ -204,9 +211,13 @@ void hide_acpi_table(struct acpi_table *tab)
     tab->hidden = true;
 
     printv("acpi: hiding table %c%c%c%c %#lx-%#lx (%luB).\n",
-            tab->sig[0], tab->sig[1], tab->sig[2], tab->sig[3],
-            tab->gpa, tab->gpa + tab->len - 1,
-            tab->len);
+           tab->sig[0],
+           tab->sig[1],
+           tab->sig[2],
+           tab->sig[3],
+           tab->gpa,
+           tab->gpa + tab->len - 1,
+           tab->len);
 }
 
 }

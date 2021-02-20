@@ -271,7 +271,8 @@ void init_xen_platform_pci(xen_vcpu *vcpu)
         const auto f = pci_cfg_fun(pci_cfg_addr);
 
         snprintf(bdf_str, sizeof(bdf_str), "%02x:%02x.%1x", b, d, f);
-        printv("xen-pfd: using BDF %s, device state: %s\n", bdf_str,
+        printv("xen-pfd: using BDF %s, device state: %s\n",
+               bdf_str,
                enabled ? "enabled" : "disabled");
     }
 

@@ -42,18 +42,16 @@
 // -----------------------------------------------------------------------------
 
 namespace microv {
-    class iommu;
-    struct pci_dev;
+class iommu;
+struct pci_dev;
 }
 
-namespace microv::intel_x64
-{
+namespace microv::intel_x64 {
 
 class vcpu;
 
 class domain : public microv::domain {
 public:
-
     /// Constructor
     ///
     /// @expects
@@ -526,27 +524,39 @@ public:
     bool page_already_donated(uint64_t page_gpa);
     bool page_already_donated(domainid_t guest_domid, uint64_t page_gpa);
     void add_page_to_donated_range(domainid_t guest_domid, uint64_t page_gpa);
-    void remove_page_from_donated_range(domainid_t guest_domid, uint64_t page_gpa);
+    void remove_page_from_donated_range(domainid_t guest_domid,
+                                        uint64_t page_gpa);
 
     std::vector<e820_entry_t> &e820()
-    { return m_e820; }
+    {
+        return m_e820;
+    }
 
     bfvmm::intel_x64::ept::mmap &ept()
-    { return m_ept_map; }
+    {
+        return m_ept_map;
+    }
 
-    gsl::not_null<bfvmm::intel_x64::vcpu_global_state_t *>
-    global_state()
-    { return &m_vcpu_global_state; }
+    gsl::not_null<bfvmm::intel_x64::vcpu_global_state_t *> global_state()
+    {
+        return &m_vcpu_global_state;
+    }
 
     /* Start-of-day info */
     struct microv::domain_info *sod_info()
-    { return &m_sod_info; }
+    {
+        return &m_sod_info;
+    }
 
     void invept() const
-    { ::intel_x64::vmx::invept_single_context(m_eptp); }
+    {
+        ::intel_x64::vmx::invept_single_context(m_eptp);
+    }
 
     void add_vcpu(vcpuid::type vcpuid)
-    { m_vcpuid.emplace_back(vcpuid); }
+    {
+        m_vcpuid.emplace_back(vcpuid);
+    }
 
     std::mutex e820_mtx;
     uint64_t m_xenstore_ready{};
@@ -642,10 +652,9 @@ private:
     uint64_t m_ldtr_limit{};
     uint64_t m_ldtr_access_rights{};
 
-    struct microv::domain_info m_sod_info{};
+    struct microv::domain_info m_sod_info {};
 
 public:
-
     using page_range_set = std::set<struct page_range, std::less<>>;
     using page_range_set_ptr = std::unique_ptr<page_range_set>;
     using page_range_iterator = page_range_set::iterator;

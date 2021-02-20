@@ -93,8 +93,11 @@ void parse_rmrrs(const struct acpi_table *dmar)
         }
 
         auto rmrr = reinterpret_cast<const struct rmrr *>(drs);
-        printv("rmrr[%u]: 0x%lx-0x%lx, segment 0x%04x, scopes ", rmrr_count,
-               rmrr->base, rmrr->limit, rmrr->seg_nr);
+        printv("rmrr[%u]: 0x%lx-0x%lx, segment 0x%04x, scopes ",
+               rmrr_count,
+               rmrr->base,
+               rmrr->limit,
+               rmrr->seg_nr);
 
         rmrr_count++;
 
@@ -114,7 +117,7 @@ void parse_rmrrs(const struct acpi_table *dmar)
 
             auto path_len = (scope->length - sizeof(*scope)) / 2;
             auto path = reinterpret_cast<struct dmar_devscope_path *>(
-                            ds + sizeof(*scope));
+                ds + sizeof(*scope));
 
             auto bus = scope->start_bus;
             auto dev = path[0].dev;
@@ -300,7 +303,8 @@ void iommu::init_regs()
     if (m_psi_supported) {
         m_mamv = ((m_cap & cap_mamv_mask) >> cap_mamv_from);
         printv("iommu[%u]: page-selective invalidation supported (mamv=%u)\n",
-               m_id, m_mamv);
+               m_id,
+               m_mamv);
     } else {
         m_mamv = 0;
         printv("iommu[%u]: page-selective invalidation not supported\n", m_id);
@@ -357,8 +361,8 @@ void iommu::bind_devices()
     m_scope_all = (m_drhd->flags & DRHD_FLAG_PCI_ALL) != 0;
 
     if (!m_scope_all) {
-        auto drhd_end = reinterpret_cast<uint8_t *>(m_drhd) +
-                        m_drhd->hdr.length;
+        auto drhd_end =
+            reinterpret_cast<uint8_t *>(m_drhd) + m_drhd->hdr.length;
 
         /* First device scope entry */
         uint8_t *ds = reinterpret_cast<uint8_t *>(m_scope);
@@ -372,7 +376,7 @@ void iommu::bind_devices()
 
             auto path_len = (scope->length - sizeof(*scope)) / 2;
             auto path = reinterpret_cast<struct dmar_devscope_path *>(
-                            ds + sizeof(*scope));
+                ds + sizeof(*scope));
 
             auto bus = scope->start_bus;
             auto dev = path[0].dev;
@@ -429,37 +433,39 @@ void iommu::dump_devices()
 
 static void dump_caps(uint32_t id, uint64_t caps)
 {
-    printv("iommu[%u]: caps -> afl:%lu rwbf:%lu plmr:%lu phmr:%lu cm:%lu"
-           " sagaw:0x%lx mgaw:%lu zlr:%lu psi:%lu dwd:%lu drd:%lu pi:%lu\n",
-           id,
-           (caps & cap_afl_mask) >> cap_afl_from,
-           (caps & cap_rwbf_mask) >> cap_rwbf_from,
-           (caps & cap_plmr_mask) >> cap_plmr_from,
-           (caps & cap_phmr_mask) >> cap_phmr_from,
-           (caps & cap_cm_mask) >> cap_cm_from,
-           (caps & cap_sagaw_mask) >> cap_sagaw_from,
-           ((caps & cap_mgaw_mask) >> cap_mgaw_from) + 1,
-           (caps & cap_zlr_mask) >> cap_zlr_from,
-           (caps & cap_psi_mask) >> cap_psi_from,
-           (caps & cap_dwd_mask) >> cap_dwd_from,
-           (caps & cap_drd_mask) >> cap_drd_from,
-           (caps & cap_pi_mask) >> cap_pi_from);
+    printv(
+        "iommu[%u]: caps -> afl:%lu rwbf:%lu plmr:%lu phmr:%lu cm:%lu"
+        " sagaw:0x%lx mgaw:%lu zlr:%lu psi:%lu dwd:%lu drd:%lu pi:%lu\n",
+        id,
+        (caps & cap_afl_mask) >> cap_afl_from,
+        (caps & cap_rwbf_mask) >> cap_rwbf_from,
+        (caps & cap_plmr_mask) >> cap_plmr_from,
+        (caps & cap_phmr_mask) >> cap_phmr_from,
+        (caps & cap_cm_mask) >> cap_cm_from,
+        (caps & cap_sagaw_mask) >> cap_sagaw_from,
+        ((caps & cap_mgaw_mask) >> cap_mgaw_from) + 1,
+        (caps & cap_zlr_mask) >> cap_zlr_from,
+        (caps & cap_psi_mask) >> cap_psi_from,
+        (caps & cap_dwd_mask) >> cap_dwd_from,
+        (caps & cap_drd_mask) >> cap_drd_from,
+        (caps & cap_pi_mask) >> cap_pi_from);
 }
 
 static void dump_ecaps(uint32_t id, uint64_t ecaps)
 {
-    printv("iommu[%u]: ecaps -> c:%lu qi:%lu dt:%lu ir:%lu pt:%lu sc:%lu"
-           " nest:%lu pasid:%lu smts:%lu\n",
-           id,
-           (ecaps & ecap_c_mask) >> ecap_c_from,
-           (ecaps & ecap_qi_mask) >> ecap_qi_from,
-           (ecaps & ecap_dt_mask) >> ecap_dt_from,
-           (ecaps & ecap_ir_mask) >> ecap_ir_from,
-           (ecaps & ecap_pt_mask) >> ecap_pt_from,
-           (ecaps & ecap_sc_mask) >> ecap_sc_from,
-           (ecaps & ecap_nest_mask) >> ecap_nest_from,
-           (ecaps & ecap_pasid_mask) >> ecap_pasid_from,
-           (ecaps & ecap_smts_mask) >> ecap_smts_from);
+    printv(
+        "iommu[%u]: ecaps -> c:%lu qi:%lu dt:%lu ir:%lu pt:%lu sc:%lu"
+        " nest:%lu pasid:%lu smts:%lu\n",
+        id,
+        (ecaps & ecap_c_mask) >> ecap_c_from,
+        (ecaps & ecap_qi_mask) >> ecap_qi_from,
+        (ecaps & ecap_dt_mask) >> ecap_dt_from,
+        (ecaps & ecap_ir_mask) >> ecap_ir_from,
+        (ecaps & ecap_pt_mask) >> ecap_pt_from,
+        (ecaps & ecap_sc_mask) >> ecap_sc_from,
+        (ecaps & ecap_nest_mask) >> ecap_nest_from,
+        (ecaps & ecap_pasid_mask) >> ecap_pasid_from,
+        (ecaps & ecap_smts_mask) >> ecap_smts_from);
 }
 
 #define FSTS_FRI (0xFF00UL)
@@ -523,8 +529,15 @@ void iommu::ack_faults()
             auto addr = frcd->data[0];
             const char *str = fault_name((t1 << 1) | t2);
 
-            printv("iommu[%u]: fault: %02lx:%02lx.%1lx addr:0x%lx reason:0x%lx (%s)\n",
-                   m_id, bus, dev, fun, addr, reason, str);
+            printv(
+                "iommu[%u]: fault: %02lx:%02lx.%1lx addr:0x%lx reason:0x%lx (%s)\n",
+                m_id,
+                bus,
+                dev,
+                fun,
+                addr,
+                reason,
+                str);
 
             /* Ack the fault */
             frcd->data[1] |= FRCD_F;
@@ -536,8 +549,7 @@ void iommu::ack_faults()
     }
 
     if (fsts & 0xFC) {
-        printv("iommu[%u]: unsupported errors pending: fsts=%x",
-               m_id, fsts);
+        printv("iommu[%u]: unsupported errors pending: fsts=%x", m_id, fsts);
     }
 
     /* Ack all faults */
@@ -642,7 +654,9 @@ void iommu::flush_ctx_cache(const dom_t *dom)
     /* Fallback to global invalidation if domain is out of range */
     if (domid >= nr_domains()) {
         printv("iommu[%u]: %s: WARNING: did:0x%lx out of range\n",
-               m_id, __func__, domid);
+               m_id,
+               __func__,
+               domid);
         this->flush_ctx_cache();
         return;
     }
@@ -658,16 +672,18 @@ void iommu::flush_ctx_cache(const dom_t *dom)
 
 /* Device-selective invalidation of context-cache */
 void iommu::flush_ctx_cache(const dom_t *dom,
-                          uint32_t bus,
-                          uint32_t dev,
-                          uint32_t fun)
+                            uint32_t bus,
+                            uint32_t dev,
+                            uint32_t fun)
 {
     const uint64_t domid = this->did(dom);
 
     /* Fallback to global invalidation if domain is out of range */
     if (domid >= nr_domains()) {
         printv("iommu[%u]: %s: WARNING: did:0x%lx out of range\n",
-               m_id, __func__, domid);
+               m_id,
+               __func__,
+               domid);
         this->flush_ctx_cache();
         return;
     }
@@ -717,7 +733,9 @@ void iommu::flush_ctx_cache(const dom_t *dom,
     /* Fallback to global invalidation if domain is out of range */
     if (domid >= nr_domains()) {
         printv("iommu[%u]: %s: WARNING: did:0x%lx out of range\n",
-               m_id, __func__, domid);
+               m_id,
+               __func__,
+               domid);
         return this->flush_iotlb();
     }
 
@@ -767,7 +785,9 @@ uint64_t iommu::flush_iotlb_page_order(const dom_t *dom,
     const uint64_t domid = this->did(dom);
     if (domid >= nr_domains()) {
         printv("iommu[%u]: %s: WARNING: did:0x%lx out of range\n",
-               m_id, __func__, domid);
+               m_id,
+               __func__,
+               domid);
         return this->flush_iotlb();
     }
 
@@ -820,10 +840,15 @@ void iommu::flush_iotlb_page_range(const dom_t *dom,
 
             switch (iaig) {
             case IOTLB_INVG_RESERVED:
-                printv("iommu[%u]: %s: invalidation failed for range 0x%lx-0x%lx\n",
-                       m_id, __func__, gpa, gpa + bytes - 1);
+                printv(
+                    "iommu[%u]: %s: invalidation failed for range 0x%lx-0x%lx\n",
+                    m_id,
+                    __func__,
+                    gpa,
+                    gpa + bytes - 1);
                 printv("iommu[%u]: %s: falling back to domain invalidation\n",
-                       m_id, __func__);
+                       m_id,
+                       __func__);
                 this->flush_iotlb(dom);
                 return;
             case IOTLB_INVG_GLOBAL:
@@ -848,9 +873,13 @@ void iommu::flush_iotlb_page_range(const dom_t *dom,
         switch (iaig) {
         case IOTLB_INVG_RESERVED:
             printv("iommu[%u]: %s: invalidation failed for range 0x%lx-0x%lx\n",
-                   m_id, __func__, gpa, gpa + bytes - 1);
+                   m_id,
+                   __func__,
+                   gpa,
+                   gpa + bytes - 1);
             printv("iommu[%u]: %s: falling back to domain invalidation\n",
-                   m_id, __func__);
+                   m_id,
+                   __func__);
             this->flush_iotlb(dom);
             return;
         case IOTLB_INVG_GLOBAL:
@@ -911,8 +940,7 @@ void iommu::clflush_range(void *p, unsigned int bytes)
 }
 
 iommu::iommu(struct drhd *drhd, uint32_t id) :
-    m_id{id},
-    m_root{make_page<entry_t>()}
+    m_id{id}, m_root{make_page<entry_t>()}
 {
     this->m_drhd = drhd;
 

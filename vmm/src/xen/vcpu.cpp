@@ -83,9 +83,9 @@ bool xen_vcpu::xen_leaf4(base_vcpu *vcpu)
 {
     uint32_t rax = 0;
 
-//  rax |= XEN_HVM_CPUID_APIC_ACCESS_VIRT;
+    //  rax |= XEN_HVM_CPUID_APIC_ACCESS_VIRT;
     rax |= XEN_HVM_CPUID_X2APIC_VIRT;
-//  rax |= XEN_HVM_CPUID_IOMMU_MAPPINGS;
+    //  rax |= XEN_HVM_CPUID_IOMMU_MAPPINGS;
     rax |= XEN_HVM_CPUID_VCPU_ID_PRESENT;
     rax |= XEN_HVM_CPUID_DOMID_PRESENT;
 
@@ -152,9 +152,8 @@ bool xen_vcpu::handle_physdev_op()
         default:
             return false;
         }
-    } catchall ({
-        return false;
-    })
+    }
+    catchall({ return false; })
 }
 
 bool xen_vcpu::handle_console_io()
@@ -216,11 +215,10 @@ bool xen_vcpu::handle_memory_op()
         default:
             break;
         }
-    } catchall ({
-        return false;
-    })
+    }
+    catchall({ return false; })
 
-    return false;
+        return false;
 }
 
 bool xen_vcpu::handle_xen_version()
@@ -252,9 +250,8 @@ bool xen_vcpu::handle_xen_version()
         default:
             return false;
         }
-    } catchall ({
-        return false;
-    })
+    }
+    catchall({ return false; })
 }
 
 bool xen_vcpu::handle_hvm_op()
@@ -302,11 +299,10 @@ bool xen_vcpu::handle_event_channel_op()
         default:
             return false;
         }
-    } catchall({
-        return false;
-    })
+    }
+    catchall({ return false; })
 
-    return false;
+        return false;
 }
 
 bool xen_vcpu::handle_sysctl()
@@ -340,9 +336,8 @@ bool xen_vcpu::handle_sysctl()
             bfalert_nhex(0, "unimplemented sysctl", ctl->cmd);
             return false;
         }
-    } catchall({
-        return false;
-    })
+    }
+    catchall({ return false; })
 }
 
 /* xl create */
@@ -402,9 +397,8 @@ bool xen_vcpu::handle_domctl()
             bfalert_nhex(0, "unimplemented domctl", ctl->cmd);
             return false;
         }
-    } catchall({
-        return false;
-    })
+    }
+    catchall({ return false; })
 }
 
 bool xen_vcpu::handle_grant_table_op()
@@ -431,9 +425,8 @@ bool xen_vcpu::handle_grant_table_op()
         default:
             return false;
         }
-    } catchall ({
-        return false;
-    })
+    }
+    catchall({ return false; })
 }
 
 bool xen_vcpu::handle_platform_op()
@@ -498,7 +491,8 @@ int xen_vcpu::set_timer()
 {
     auto pet = 0ULL;
     auto vti = this->vcpu_time();
-    auto sst = m_uv_vcpu->map_arg<vcpu_set_singleshot_timer_t>(m_uv_vcpu->rdx());
+    auto sst =
+        m_uv_vcpu->map_arg<vcpu_set_singleshot_timer_t>(m_uv_vcpu->rdx());
 
     /* Get the preemption timer ticks corresponding to the deadline */
     if (vti->system_time >= sst->timeout_abs_ns) {
@@ -540,7 +534,8 @@ bool xen_vcpu::handle_vcpu_op()
     case VCPUOP_set_singleshot_timer:
         m_uv_vcpu->set_rax(this->set_timer());
         if (!m_pet_hdlrs_added) {
-            m_uv_vcpu->add_preemption_timer_handler({&xen_vcpu::handle_pet, this});
+            m_uv_vcpu->add_preemption_timer_handler(
+                {&xen_vcpu::handle_pet, this});
             m_uv_vcpu->add_hlt_handler({&xen_vcpu::handle_hlt, this});
             m_uv_vcpu->add_exit_handler({&xen_vcpu::vmexit_save_tsc, this});
             m_uv_vcpu->emulate_wrmsr(0x6E0, {handle_tsc_deadline});
@@ -843,7 +838,8 @@ void xen_vcpu::inject_external_interrupt(uint64_t vector)
  * TODO: add different handlers as more and more state comes online as an
  * optmization to save unnecessary branch instructions.
  */
-bool xen_vcpu::handle_interrupt(base_vcpu *vcpu, interrupt_handler::info_t &info)
+bool xen_vcpu::handle_interrupt(base_vcpu *vcpu,
+                                interrupt_handler::info_t &info)
 {
     auto root = m_uv_vcpu->root_vcpu();
 
@@ -924,8 +920,7 @@ out:
 }
 
 bool xen_vcpu::handle_machine_check(
-    base_vcpu *vcpu,
-    bfvmm::intel_x64::exception_handler::info_t &info)
+    base_vcpu *vcpu, bfvmm::intel_x64::exception_handler::info_t &info)
 {
     m_uv_vcpu->save_xstate();
     this->update_runstate(RUNSTATE_runnable);
@@ -955,9 +950,8 @@ bool xen_vcpu::handle_nmi(base_vcpu *vcpu)
     return true;
 }
 
-bool xen_vcpu::handle_hlt(
-    base_vcpu *vcpu,
-    bfvmm::intel_x64::hlt_handler::info_t &info)
+bool xen_vcpu::handle_hlt(base_vcpu *vcpu,
+                          bfvmm::intel_x64::hlt_handler::info_t &info)
 {
     bfignored(vcpu);
     bfignored(info);
@@ -1001,21 +995,21 @@ bool xen_vcpu::debug_hypercall(microv_vcpu *vcpu)
     if (rax == __HYPERVISOR_sysctl) {
         auto ctl = vcpu->map_arg<xen_sysctl_t>(rdi);
         switch (ctl->cmd) {
-            case XEN_SYSCTL_physinfo:
-            case XEN_SYSCTL_getdomaininfolist:
-                return false;
-            default:
-                break;
+        case XEN_SYSCTL_physinfo:
+        case XEN_SYSCTL_getdomaininfolist:
+            return false;
+        default:
+            break;
         }
     }
 
     if (rax == __HYPERVISOR_xsm_op) {
         auto op = vcpu->map_arg<xen_flask_op_t>(rdi);
         switch (op->cmd) {
-            case FLASK_SID_TO_CONTEXT:
-                return false;
-            default:
-                break;
+        case FLASK_SID_TO_CONTEXT:
+            return false;
+        default:
+            break;
         }
     }
 
@@ -1075,11 +1069,13 @@ bool xen_vcpu::debug_hypercall(microv_vcpu *vcpu)
         return false;
     }
 
-    if (rax == __HYPERVISOR_memory_op && rdi == XENMEM_get_sharing_freed_pages) {
+    if (rax == __HYPERVISOR_memory_op &&
+        rdi == XENMEM_get_sharing_freed_pages) {
         return false;
     }
 
-    if (rax == __HYPERVISOR_memory_op && rdi == XENMEM_get_sharing_shared_pages) {
+    if (rax == __HYPERVISOR_memory_op &&
+        rdi == XENMEM_get_sharing_shared_pages) {
         return false;
     }
 
@@ -1189,9 +1185,7 @@ bool xen_vcpu::root_hypercall(microv_vcpu *vcpu)
 }
 
 xen_vcpu::xen_vcpu(microv_vcpu *vcpu) :
-    m_uv_vcpu{vcpu},
-    m_uv_dom{vcpu->dom()},
-    m_xen_dom{m_uv_dom->xen_dom()}
+    m_uv_vcpu{vcpu}, m_uv_dom{vcpu->dom()}, m_xen_dom{m_uv_dom->xen_dom()}
 {
     /* Set the reset value of MXCSR */
     vcpu->set_mxcsr(0x1F80);

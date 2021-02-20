@@ -22,10 +22,10 @@
 #include <hve/arch/intel_x64/vcpu.h>
 #include <hve/arch/intel_x64/vmexit/msr.h>
 
-#define ADD_WRMSR_HANDLER(a,w)                                                 \
+#define ADD_WRMSR_HANDLER(a, w)                                                \
     m_vcpu->add_wrmsr_handler(a, {&msr_handler::w, this});
 
-#define EMULATE_MSR(a,r,w)                                                     \
+#define EMULATE_MSR(a, r, w)                                                   \
     m_vcpu->emulate_rdmsr(a, {&msr_handler::r, this});                         \
     m_vcpu->emulate_wrmsr(a, {&msr_handler::w, this});
 
@@ -33,23 +33,10 @@
 // Implementation
 // -----------------------------------------------------------------------------
 
-namespace microv::intel_x64
-{
+namespace microv::intel_x64 {
 
-static inline bool
-rdmsr_inject_gp(vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info)
-{
-    // Inject #GP
-    vcpu->inject_exception(13, 0);
-
-    info.ignore_advance = true;
-    info.ignore_write = true;
-
-    return true;
-}
-
-static inline bool
-wrmsr_inject_gp(vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info)
+static inline bool rdmsr_inject_gp(
+    vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info)
 {
     // Inject #GP
     vcpu->inject_exception(13, 0);
@@ -60,10 +47,19 @@ wrmsr_inject_gp(vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info)
     return true;
 }
 
-msr_handler::msr_handler(
-    gsl::not_null<vcpu *> vcpu
-) :
-    m_vcpu{vcpu}
+static inline bool wrmsr_inject_gp(
+    vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info)
+{
+    // Inject #GP
+    vcpu->inject_exception(13, 0);
+
+    info.ignore_advance = true;
+    info.ignore_write = true;
+
+    return true;
+}
+
+msr_handler::msr_handler(gsl::not_null<vcpu *> vcpu) : m_vcpu{vcpu}
 {
     using namespace vmcs_n;
     using namespace ::intel_x64::cpuid;
@@ -120,13 +116,11 @@ msr_handler::msr_handler(
 // Root MSR Functions
 // -----------------------------------------------------------------------------
 
-
 // -----------------------------------------------------------------------------
 // Isolate MSR Functions
 // -----------------------------------------------------------------------------
 
-void
-msr_handler::isolate_msr(uint32_t msr)
+void msr_handler::isolate_msr(uint32_t msr)
 {
     m_vcpu->pass_through_rdmsr_access(msr);
     ADD_WRMSR_HANDLER(msr, isolate_msr__on_write);
@@ -138,8 +132,7 @@ msr_handler::isolate_msr(uint32_t msr)
     }
 }
 
-void
-msr_handler::isolate_msr__on_run(bfobject *obj)
+void msr_handler::isolate_msr__on_run(bfobject *obj)
 {
     // Note:
     //
@@ -196,9 +189,7 @@ msr_handler::isolate_msr__on_run(bfobject *obj)
     }
 }
 
-bool
-msr_handler::isolate_msr__on_exit(
-    vcpu_t *vcpu)
+bool msr_handler::isolate_msr__on_exit(vcpu_t *vcpu)
 {
     bfignored(vcpu);
 
@@ -217,8 +208,7 @@ msr_handler::isolate_msr__on_exit(
     return false;
 }
 
-bool
-msr_handler::isolate_msr__on_write(
+bool msr_handler::isolate_msr__on_write(
     vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info)
 {
     bfignored(vcpu);
@@ -231,15 +221,13 @@ msr_handler::isolate_msr__on_write(
 // Root Emulators
 // -----------------------------------------------------------------------------
 
-bool
-msr_handler::root_rdmsr_intel_pt(
+bool msr_handler::root_rdmsr_intel_pt(
     vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info)
 {
     return rdmsr_inject_gp(vcpu, info);
 }
 
-bool
-msr_handler::root_wrmsr_intel_pt(
+bool msr_handler::root_wrmsr_intel_pt(
     vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info)
 {
     return wrmsr_inject_gp(vcpu, info);
@@ -249,8 +237,7 @@ msr_handler::root_wrmsr_intel_pt(
 // Guest Emulators
 // -----------------------------------------------------------------------------
 
-bool
-msr_handler::handle_rdmsr_0x00000034(
+bool msr_handler::handle_rdmsr_0x00000034(
     vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info)
 {
     bfignored(vcpu);
@@ -259,8 +246,7 @@ msr_handler::handle_rdmsr_0x00000034(
     return true;
 }
 
-bool
-msr_handler::handle_wrmsr_0x00000034(
+bool msr_handler::handle_wrmsr_0x00000034(
     vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info)
 {
     bfignored(info);
@@ -269,23 +255,19 @@ msr_handler::handle_wrmsr_0x00000034(
     return true;
 }
 
-bool
-msr_handler::handle_rdmsr_0x000000CE(
+bool msr_handler::handle_rdmsr_0x000000CE(
     vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info)
 {
     bfignored(vcpu);
 
     info.val =
-        emulate_rdmsr(
-            gsl::narrow_cast<::x64::msrs::field_type>(vcpu->rcx())
-        );
+        emulate_rdmsr(gsl::narrow_cast<::x64::msrs::field_type>(vcpu->rcx()));
 
     info.val &= 0xFF00;
     return true;
 }
 
-bool
-msr_handler::handle_wrmsr_0x000000CE(
+bool msr_handler::handle_wrmsr_0x000000CE(
     vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info)
 {
     bfignored(info);
@@ -294,8 +276,7 @@ msr_handler::handle_wrmsr_0x000000CE(
     return false;
 }
 
-bool
-msr_handler::handle_rdmsr_0x00000140(
+bool msr_handler::handle_rdmsr_0x00000140(
     vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info)
 {
     bfignored(vcpu);
@@ -307,8 +288,7 @@ msr_handler::handle_rdmsr_0x00000140(
     return true;
 }
 
-bool
-msr_handler::handle_wrmsr_0x00000140(
+bool msr_handler::handle_wrmsr_0x00000140(
     vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info)
 {
     bfignored(info);
@@ -317,23 +297,19 @@ msr_handler::handle_wrmsr_0x00000140(
     return true;
 }
 
-bool
-msr_handler::handle_rdmsr_0x000001A0(
+bool msr_handler::handle_rdmsr_0x000001A0(
     vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info)
 {
     bfignored(vcpu);
 
     info.val =
-        emulate_rdmsr(
-            gsl::narrow_cast<::x64::msrs::field_type>(vcpu->rcx())
-        );
+        emulate_rdmsr(gsl::narrow_cast<::x64::msrs::field_type>(vcpu->rcx()));
 
     info.val &= 0x1801;
     return true;
 }
 
-bool
-msr_handler::handle_wrmsr_0x000001A0(
+bool msr_handler::handle_wrmsr_0x000001A0(
     vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info)
 {
     bfignored(info);
@@ -342,8 +318,7 @@ msr_handler::handle_wrmsr_0x000001A0(
     return false;
 }
 
-bool
-msr_handler::handle_rdmsr_0x00000606(
+bool msr_handler::handle_rdmsr_0x00000606(
     vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info)
 {
     bfignored(vcpu);
@@ -355,8 +330,7 @@ msr_handler::handle_rdmsr_0x00000606(
     return true;
 }
 
-bool
-msr_handler::handle_wrmsr_0x00000606(
+bool msr_handler::handle_wrmsr_0x00000606(
     vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info)
 {
     bfignored(info);
@@ -365,8 +339,7 @@ msr_handler::handle_wrmsr_0x00000606(
     return true;
 }
 
-bool
-msr_handler::handle_rdmsr_0x0000064E(
+bool msr_handler::handle_rdmsr_0x0000064E(
     vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info)
 {
     bfignored(vcpu);
@@ -375,8 +348,7 @@ msr_handler::handle_rdmsr_0x0000064E(
     return true;
 }
 
-bool
-msr_handler::handle_wrmsr_0x0000064E(
+bool msr_handler::handle_wrmsr_0x0000064E(
     vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info)
 {
     bfignored(info);

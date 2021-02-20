@@ -27,17 +27,19 @@
 namespace microv {
 
 xen_physdev::xen_physdev(xen_vcpu *xen) :
-    m_xen_vcpu{xen},
-    m_uv_vcpu{xen->m_uv_vcpu}
-{
-}
+    m_xen_vcpu{xen}, m_uv_vcpu{xen->m_uv_vcpu}
+{}
 
 bool xen_physdev::pci_device_add()
 {
     auto pda = m_uv_vcpu->map_arg<physdev_pci_device_add_t>(m_uv_vcpu->rsi());
 
     printv("pci_device_add: %04x:%02x:%02x.%02x, flags: 0x%x\n",
-        pda->seg, pda->bus, pda->devfn >> 3, pda->devfn & 7, pda->flags);
+           pda->seg,
+           pda->bus,
+           pda->devfn >> 3,
+           pda->devfn & 7,
+           pda->flags);
 
     m_uv_vcpu->set_rax(0);
     return true;

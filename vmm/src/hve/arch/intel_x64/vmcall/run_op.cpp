@@ -22,12 +22,9 @@
 #include <hve/arch/intel_x64/vcpu.h>
 #include <hve/arch/intel_x64/vmcall/run_op.h>
 
-namespace microv::intel_x64
-{
+namespace microv::intel_x64 {
 
-vmcall_run_op_handler::vmcall_run_op_handler(
-    gsl::not_null<vcpu *> vcpu
-) :
+vmcall_run_op_handler::vmcall_run_op_handler(gsl::not_null<vcpu *> vcpu) :
     m_vcpu{vcpu}
 {
     using namespace vmcs_n;
@@ -35,8 +32,7 @@ vmcall_run_op_handler::vmcall_run_op_handler(
     vcpu->add_vmcall_handler({&vmcall_run_op_handler::dispatch, this});
 }
 
-bool
-vmcall_run_op_handler::dispatch(vcpu *root)
+bool vmcall_run_op_handler::dispatch(vcpu *root)
 {
     // Note:
     //
@@ -74,11 +70,9 @@ vmcall_run_op_handler::dispatch(vcpu *root)
         /* unreachable */
         root->set_rax(__enum_run_op__hlt);
     }
-    catchall({
-        root->set_rax(__enum_run_op__fault);
-    })
+    catchall({ root->set_rax(__enum_run_op__fault); })
 
-    return true;
+        return true;
 }
 
 }

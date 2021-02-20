@@ -29,15 +29,12 @@
 // Definitions
 // -----------------------------------------------------------------------------
 
-namespace microv::intel_x64
-{
+namespace microv::intel_x64 {
 
 class vcpu;
 
-class cpuid_handler
-{
+class cpuid_handler {
 public:
-
     /// Constructor
     ///
     /// @expects
@@ -45,8 +42,7 @@ public:
     ///
     /// @param vcpu the vcpu object for this handler
     ///
-    cpuid_handler(
-        gsl::not_null<vcpu *> vcpu);
+    cpuid_handler(gsl::not_null<vcpu *> vcpu);
 
     /// Destructor
     ///
@@ -56,7 +52,6 @@ public:
     ~cpuid_handler() = default;
 
 public:
-
     /// @cond
 
     bool root_0x00000007(vcpu_t *vcpu);
@@ -86,11 +81,9 @@ public:
     /// @endcond
 
 private:
-
     vcpu *m_vcpu;
 
 public:
-
     /// @cond
 
     cpuid_handler(cpuid_handler &&) = default;

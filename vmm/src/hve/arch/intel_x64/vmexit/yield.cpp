@@ -22,16 +22,15 @@
 #include <hve/arch/intel_x64/vcpu.h>
 #include <hve/arch/intel_x64/vmexit/yield.h>
 
-#define EMULATE_MSR(a,r,w)                                                      \
-    m_vcpu->emulate_rdmsr(a, {&yield_handler::r, this});                        \
+#define EMULATE_MSR(a, r, w)                                                   \
+    m_vcpu->emulate_rdmsr(a, {&yield_handler::r, this});                       \
     m_vcpu->emulate_wrmsr(a, {&yield_handler::w, this});
 
 // -----------------------------------------------------------------------------
 // Implementation
 // -----------------------------------------------------------------------------
 
-namespace microv::intel_x64
-{
+namespace microv::intel_x64 {
 
 //
 // The following formula for the TSC frequency (in MHz) is derived from the
@@ -93,39 +92,39 @@ static uint64_t bus_freq_khz()
     }
 
     switch (display_model) {
-        case 0x4E: // section 2.16
-        case 0x55:
-        case 0x5E:
-        case 0x66:
-        case 0x8E:
-        case 0x9E:
-        case 0x5C: // table 2-12
-        case 0x7A:
-        case 0x2A: // table 2-19
-        case 0x2D:
-        case 0x3A: // table 2-24
-        case 0x3E: // table 2-25
-        case 0x3C: // table 2-28
-        case 0x3F:
-        case 0x45:
-        case 0x46:
-        case 0x3D: // section 2.14
-        case 0x47:
-        case 0x4F: // table 2-35
-        case 0x56:
-        case 0x57: // table 2-43
-        case 0x85:
-            return 100000;
+    case 0x4E:    // section 2.16
+    case 0x55:
+    case 0x5E:
+    case 0x66:
+    case 0x8E:
+    case 0x9E:
+    case 0x5C:    // table 2-12
+    case 0x7A:
+    case 0x2A:    // table 2-19
+    case 0x2D:
+    case 0x3A:    // table 2-24
+    case 0x3E:    // table 2-25
+    case 0x3C:    // table 2-28
+    case 0x3F:
+    case 0x45:
+    case 0x46:
+    case 0x3D:    // section 2.14
+    case 0x47:
+    case 0x4F:    // table 2-35
+    case 0x56:
+    case 0x57:    // table 2-43
+    case 0x85:
+        return 100000;
 
-        case 0x1A: // table 2-14
-        case 0x1E:
-        case 0x1F:
-        case 0x2E:
-            return 133330;
+    case 0x1A:    // table 2-14
+    case 0x1E:
+    case 0x1F:
+    case 0x2E:
+        return 133330;
 
-        default:
-            bfalert_nhex(0, "Unknown cpuid display_model", display_model);
-            return 0;
+    default:
+        bfalert_nhex(0, "Unknown cpuid display_model", display_model);
+        return 0;
     }
 }
 
@@ -155,13 +154,16 @@ static inline uint64_t pet_freq_khz(uint64_t tsc_freq_khz)
 }
 
 static inline bool tsc_supported()
-{ return ::intel_x64::cpuid::feature_information::edx::tsc::is_enabled(); }
+{
+    return ::intel_x64::cpuid::feature_information::edx::tsc::is_enabled();
+}
 
 static inline bool invariant_tsc_supported()
-{ return ::intel_x64::cpuid::invariant_tsc::edx::available::is_enabled(); }
+{
+    return ::intel_x64::cpuid::invariant_tsc::edx::available::is_enabled();
+}
 
-yield_handler::yield_handler(gsl::not_null<vcpu *> vcpu) :
-    m_vcpu{vcpu}
+yield_handler::yield_handler(gsl::not_null<vcpu *> vcpu) : m_vcpu{vcpu}
 {
     using namespace vmcs_n;
     using namespace ::intel_x64::msrs;
@@ -180,13 +182,10 @@ yield_handler::yield_handler(gsl::not_null<vcpu *> vcpu) :
         vcpu->halt("No TSC frequency info available. System unsupported");
     }
 
-    vcpu->add_hlt_handler(
-        {&yield_handler::handle_hlt, this}
-    );
+    vcpu->add_hlt_handler({&yield_handler::handle_hlt, this});
 
     vcpu->add_preemption_timer_handler(
-        {&yield_handler::handle_preemption, this}
-    );
+        {&yield_handler::handle_preemption, this});
 
     EMULATE_MSR(0x000006E0, handle_rdmsr_0x000006E0, handle_wrmsr_0x000006E0);
 }
@@ -195,10 +194,8 @@ yield_handler::yield_handler(gsl::not_null<vcpu *> vcpu) :
 // Handlers
 // -----------------------------------------------------------------------------
 
-bool
-yield_handler::handle_hlt(
-    vcpu_t *vcpu,
-    bfvmm::intel_x64::hlt_handler::info_t &info)
+bool yield_handler::handle_hlt(vcpu_t *vcpu,
+                               bfvmm::intel_x64::hlt_handler::info_t &info)
 {
     bfignored(vcpu);
 
@@ -252,9 +249,7 @@ yield_handler::handle_hlt(
 
     vmcs_n::guest_interruptibility_state::blocking_by_sti::disable();
 
-    m_vcpu->inject_external_interrupt(
-        m_vcpu->apic_timer_vector()
-    );
+    m_vcpu->inject_external_interrupt(m_vcpu->apic_timer_vector());
 
     m_vcpu->disable_preemption_timer();
     m_vcpu->advance();
@@ -270,21 +265,17 @@ yield_handler::handle_hlt(
     return true;
 }
 
-bool
-yield_handler::handle_preemption(vcpu_t *vcpu)
+bool yield_handler::handle_preemption(vcpu_t *vcpu)
 {
     bfignored(vcpu);
 
-    m_vcpu->queue_external_interrupt(
-        m_vcpu->apic_timer_vector()
-    );
+    m_vcpu->queue_external_interrupt(m_vcpu->apic_timer_vector());
 
     m_vcpu->disable_preemption_timer();
     return true;
 }
 
-bool
-yield_handler::handle_rdmsr_0x000006E0(
+bool yield_handler::handle_rdmsr_0x000006E0(
     vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info)
 {
     bfignored(info);
@@ -293,8 +284,7 @@ yield_handler::handle_rdmsr_0x000006E0(
     return true;
 }
 
-bool
-yield_handler::handle_wrmsr_0x000006E0(
+bool yield_handler::handle_wrmsr_0x000006E0(
     vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info)
 {
     bfignored(vcpu);
@@ -309,9 +299,7 @@ yield_handler::handle_wrmsr_0x000006E0(
         return true;
     }
 
-    m_vcpu->queue_external_interrupt(
-        m_vcpu->apic_timer_vector()
-    );
+    m_vcpu->queue_external_interrupt(m_vcpu->apic_timer_vector());
 
     return true;
 }

@@ -28,15 +28,12 @@
 // Definitions
 // -----------------------------------------------------------------------------
 
-namespace microv::intel_x64
-{
+namespace microv::intel_x64 {
 
 class vcpu;
 
-class vmcall_handler
-{
+class vmcall_handler {
 public:
-
     /// Handler delegate type
     ///
     /// The type of delegate clients must use when registering
@@ -51,8 +48,7 @@ public:
     ///
     /// @param vcpu the vcpu object for this interrupt window handler
     ///
-    vmcall_handler(
-        gsl::not_null<vcpu *> vcpu);
+    vmcall_handler(gsl::not_null<vcpu *> vcpu);
 
     /// Destructor
     ///
@@ -62,7 +58,6 @@ public:
     ~vmcall_handler() = default;
 
 public:
-
     /// Add Handler
     ///
     /// @expects
@@ -73,7 +68,6 @@ public:
     void add_handler(const handler_delegate_t &d);
 
 public:
-
     /// @cond
 
     bool handle(vcpu_t *vcpu);
@@ -81,12 +75,10 @@ public:
     /// @endcond
 
 private:
-
     vcpu *m_vcpu;
     std::list<handler_delegate_t> m_handlers;
 
 public:
-
     /// @cond
 
     vmcall_handler(vmcall_handler &&) = default;
