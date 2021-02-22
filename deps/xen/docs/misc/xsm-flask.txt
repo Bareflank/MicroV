@@ -1,0 +1,288 @@
+                     -----------------------
+                     XSM/FLASK Configuration
+                     -----------------------
+
+Xen provides a security framework called XSM, and FLASK is an implementation of
+a security model using this framework (at the time of writing, it is the only
+one). FLASK defines a mandatory access control policy providing fine-grained
+controls over Xen domains, allowing the policy writer to define what
+interactions between domains, devices, and the hypervisor are permitted.
+
+Some examples of what FLASK can do:
+ - Prevent two domains from communicating via event channels or grants
+ - Control which domains can use device passthrough (and which devices)
+ - Restrict or audit operations performed by privileged domains
+ - Prevent a privileged domain from arbitrarily mapping pages from other domains
+
+Some of these examples require dom0 disaggregation to be useful, since the
+domain build process requires the ability to write to the new domain's memory.
+
+Security Status of dom0 disaggregation
+--------------------------------------
+
+Xen supports disaggregation of various support and management
+functions into their own domains, via the XSM mechanisms described in
+this document.
+
+However the implementations of these support and management interfaces
+were originally written to be used only by the totally-privileged
+dom0, and have not been reviewed for security when exposed to
+supposedly-only-semi-privileged disaggregated management domains.  But
+such management domains are (in such a design) to be seen as
+potentially hostile, e.g. due to privilege escalation following
+exploitation of a bug in the management domain.
+
+Until the interfaces have been properly reviewed for security against
+hostile callers, the Xen.org security team intends (subject of course
+to the permission of anyone disclosing to us) to handle these and
+future vulnerabilities in these interfaces in public, as if they were
+normal non-security-related bugs.
+
+This applies only to bugs which do no more than reduce the security of
+a radically disaggregated system to the security of a
+non-disaggregated one.  Here a "radically disaggregated system" is one
+which uses the XSM mechanism to delegate the affected interfaces to
+other-than-fully-trusted domains.
+
+This policy does not apply to bugs which affect stub device models,
+driver domains, or stub xenstored - even if those bugs do no worse
+than reduce the security of such a system to one whose device models,
+backend drivers, or xenstore, run in dom0.
+
+For more information see http://xenbits.xen.org/xsa/advisory-77.html.
+
+The following interfaces are covered by this statement.  Interfaces
+not listed here are considered safe for disaggregation, security
+issues found in interfaces not listed here will be handled according
+to the normal security problem response policy
+http://www.xenproject.org/security-policy.html.
+
+__HYPERVISOR_domctl (xen/include/public/domctl.h)
+
+ All subops except the following are covered by this statement.  (That
+ is, only the subops below are considered safe for disaggregation.)
+
+ * XEN_DOMCTL_ioport_mapping
+ * XEN_DOMCTL_memory_mapping
+ * XEN_DOMCTL_bind_pt_irq
+ * XEN_DOMCTL_unbind_pt_irq
+
+__HYPERVISOR_sysctl (xen/include/public/sysctl.h)
+
+ All subops are covered by this statement.  (That is, no subops are
+ considered safe for disaggregation.)
+
+__HYPERVISOR_memory_op (xen/include/public/memory.h)
+
+ The following subops are covered by this statement. subops not listed
+ here are considered safe for disaggregation.
+
+ * XENMEM_set_pod_target
+ * XENMEM_get_pod_target
+ * XENMEM_claim_pages
+
+
+Setting up FLASK
+----------------
+
+Xen must be compiled with XSM and FLASK enabled; by default, the security
+framework is disabled. Running 'make -C xen menuconfig' and enabling XSM
+and FLASK inside 'Common Features'; this change requires a make clean and
+rebuild.
+
+FLASK uses only one domain configuration parameter (seclabel) defining the
+full security label of the newly created domain. If using the example policy,
+"seclabel='system_u:system_r:domU_t'" is an example of a normal domain. The
+labels are in the same format as SELinux labels; see http://selinuxproject.org
+for more details on the use of the user, role, and optional MLS/MCS labels.
+
+FLASK policy overview
+---------------------
+
+Most of FLASK policy consists of defining the interactions allowed between
+different types (domU_t would be the type in this example). For simple policies,
+only type enforcement is used and the user and role are set to system_u and
+system_r for all domains.
+
+The FLASK security framework is mostly configured using a security policy file.
+It relies on the SELinux compiler "checkpolicy"; if this is available, the
+policy will be compiled as part of the tools build.  If hypervisor support for a
+built-in policy is enabled ("Compile Xen with a built-in security policy"), the
+policy will be built during the hypervisor build.
+
+The policy is generated from definition files in tools/flask/policy.  Most
+changes to security policy will involve creating or modifying modules found in
+tools/flask/policy/modules/.  The modules.conf file there defines what modules
+are enabled and has short descriptions of each module.
+
+If not using the built-in policy, the XSM policy file needs to be copied to
+/boot and loaded as a module by grub.  The exact position and filename of the
+module does not matter as long as it is after the Xen kernel; it is normally
+placed either just above the dom0 kernel or at the end.  Once dom0 is running,
+the policy can be reloaded using "xl loadpolicy".
+
+The example policy included with Xen demonstrates most of the features of FLASK
+that can be used without dom0 disaggregation. The main types for domUs are:
+
+ - domU_t is a domain that can communicate with any other domU_t
+ - isolated_domU_t can only communicate with dom0
+ - prot_domU_t is a domain type whose creation can be disabled with a boolean
+ - nomigrate_t is a domain that must be created via the nomigrate_t_building
+   type, and whose memory cannot be read by dom0 once created
+
+HVM domains with stubdomain device models also need a type for the stub domain.
+The example policy defines dm_dom_t for the device model of a domU_t domain;
+there are no device model types defined for the other domU types.
+
+One disadvantage of using type enforcement to enforce isolation is that a new
+type is needed for each group of domains. The user field can be used to address
+this for the most common case of groups that can communicate internally but not
+externally; see "Users and roles" below.
+
+Type transitions
+----------------
+
+Xen defines a number of operations such as memory mapping that are necessary for
+a domain to perform on itself, but are also undesirable to allow a domain to
+perform on every other domain of the same label. While it is possible to address
+this by only creating one domain per type, this solution significantly limits
+the flexibility of the type system. Another method to address this issue is to
+duplicate the permission names for every operation that can be performed on the
+current domain or on other domains; however, this significantly increases the
+necessary number of permissions and complicates the XSM hooks. Instead, this is
+addressed by allowing a distinct type to be used for a domain's access to
+itself. The same applies for a device model domain's access to its designated
+target, allowing the IS_PRIV_FOR checks used in Xen's DAC model to be
+implemented in FLASK.
+
+Upon domain creation (or relabel), a type transition is computed using the
+domain's label as the source and target. The result of this computation is used
+as the target when the domain accesses itself. In the example policy, this
+computed type is the result of appending _self to a domain's type: domU_t_self
+for domU_t. If no type transition rule exists, the domain will continue to use
+its own label for both the source and target. An AVC message will look like:
+
+    scontext=system_u:system_r:domU_t tcontext=system_u:system_r:domU_t_self
+
+A similar type transition is done when a device model domain is associated with
+its target using the set_target operation. The transition is computed with the
+target domain as the source and the device model domain as the target: this
+ordering was chosen in order to preserve the original label for the target when
+no type transition rule exists. In the example policy, these computed types are
+the result of appending _target to the domain.
+
+Type transitions are also used to compute the labels of event channels.
+
+Users and roles
+---------------
+
+The default user and role used for domains is system_u and system_r.  Users are
+visible in the labels of domains and associated objects (event channels); when
+the vm_role module is enabled, "user_1:vm_r:domU_t" is a valid label for a
+domain created by the user_1 user.
+
+Access control rules involving users and roles are defined in a module's
+constraints file (for example, vm_rule.cons). The vm_role module defines one
+role (vm_r) and three users (user_1 .. user_3), along with constraints that
+prevent different users from communicating using grants or event channels, while
+still allowing communication with the system_u user where dom0 resides.
+
+Resource Policy
+---------------
+
+The example policy also includes a resource type (nic_dev_t) for device
+passthrough, configured to allow use by domU_t. To label the PCI device 3:2.0
+for passthrough, run:
+
+	tools/flask/utils/flask-label-pci 0000:03:02.0 system_u:object_r:nic_dev_t
+
+This command must be rerun on each boot or after any policy reload.
+
+When first loading or writing a policy, you should run FLASK in permissive mode
+(flask=permissive on the command line) and check the Xen logs (xl dmesg) for AVC
+denials before using it in enforcing mode (the default value of the boot
+parameter, which can also be changed using xl setenforce).  When using the
+default types for domains (domU_t), the example policy shipped with Xen should
+allow the same operations on or between domains as when not using FLASK.
+
+
+MLS/MCS policy
+--------------
+
+If you want to use the MLS policy, then set TYPE=xen-mls in the policy Makefile
+before building the policy.  Note that the MLS constraints in policy/mls
+are incomplete and are only a sample.
+
+
+AVC denials
+-----------
+
+XSM:Flask will emit avc: denied messages when a permission is denied by the
+policy, just like SELinux. For example, if the HVM rules are removed from the
+declare_domain and create_domain interfaces:
+
+# xl dmesg | grep avc
+(XEN) avc:  denied  { setparam } for domid=0 scontext=system_u:system_r:dom0_t tcontext=system_u:system_r:domU_t tclass=hvm
+(XEN) avc:  denied  { getparam } for domid=0 scontext=system_u:system_r:dom0_t tcontext=system_u:system_r:domU_t tclass=hvm
+(XEN) avc:  denied  { irqlevel } for domid=0 scontext=system_u:system_r:dom0_t tcontext=system_u:system_r:domU_t tclass=hvm
+(XEN) avc:  denied  { pciroute } for domid=0 scontext=system_u:system_r:dom0_t tcontext=system_u:system_r:domU_t tclass=hvm
+(XEN) avc:  denied  { setparam } for domid=4 scontext=system_u:system_r:domU_t tcontext=system_u:system_r:domU_t tclass=hvm
+(XEN) avc:  denied  { cacheattr } for domid=0 scontext=system_u:system_r:dom0_t tcontext=system_u:system_r:domU_t tclass=hvm
+(XEN) avc:  denied  { pcilevel } for domid=0 scontext=system_u:system_r:dom0_t tcontext=system_u:system_r:domU_t tclass=hvm
+
+Existing SELinux tools such as audit2allow can be applied to these denials, e.g.
+xl dmesg | audit2allow
+
+The generated allow rules can then be fed back into the policy by adding them to
+a module, although manual review is advised and will often lead to adding
+parameterized rules to the interfaces in xen.if to address the general case.
+
+
+Device Labeling in Policy
+-------------------------
+
+FLASK is capable of labeling devices and enforcing policies associated with
+them. There are two methods to label devices: dynamic labeling using
+flask-label-pci or similar tools run in dom0, or static labeling defined in
+policy. Static labeling will make security policy machine-specific and may
+prevent the system from booting after any hardware changes (adding PCI cards,
+memory, or even changing certain BIOS settings). Dynamic labeling requires that
+the domain performing the labeling be trusted to label all the devices in the
+system properly.
+
+IRQs, PCI devices, I/O memory and x86 IO ports can all have labels defined.
+There are examples commented out in tools/flask/policy/policy/device_contexts.
+
+Device Labeling
+---------------
+
+The "lspci -vvn" command can be used to output all the devices and identifiers
+associated with them.  For example, to label an Intel e1000e ethernet card the
+lspci output is..
+
+00:19.0 0200: 8086:10de (rev 02)
+        Subsystem: 1028:0276
+        Interrupt: pin A routed to IRQ 33
+        Region 0: Memory at febe0000 (32-bit, non-prefetchable) [size=128K]
+        Region 1: Memory at febd9000 (32-bit, non-prefetchable) [size=4K]
+        Region 2: I/O ports at ecc0 [size=32]
+        Kernel modules: e1000e
+
+The labeling can be done with these lines in device_contexts:
+
+pirqcon 33 system_u:object_r:nicP_t
+iomemcon 0xfebe0-0xfebff system_u:object_r:nicP_t
+iomemcon 0xfebd9 system_u:object_r:nicP_t
+ioportcon 0xecc0-0xecdf system_u:object_r:nicP_t
+pcidevicecon 0xc800 system_u:object_r:nicP_t
+
+The PCI device label must be computed as the 32-bit SBDF number for the PCI
+device. It the PCI device is aaaa:bb:cc.d or bb:cc.d, then the SBDF can be
+calculated using:
+	SBDF = (a << 16) | (b << 8) | (c << 3) | d
+
+The AVC denials for IRQs, memory, ports, and PCI devices will normally contain
+the ranges being denied to more easily determine what resources are required.
+When running in permissive mode, only the first denial of a given
+source/destination is printed to the log, so labeling devices using this method
+may require multiple passes to find all required ranges.

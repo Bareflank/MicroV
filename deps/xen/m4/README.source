@@ -1,0 +1,43 @@
+About
+=====
+This documents the upstream sources for the different slew of different
+m4 sources we have picked up or developed.
+
+ax_compare_version.m4
+=====================
+This file was fetched from
+http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_compare_version.m4
+
+Also see http://www.gnu.org/software/autoconf-archive/ax_compare_version.html
+
+pkg.m4
+======
+The pkg-config m4 macro library comes from the upstream pkg-config
+git repository [0]. If you update the m4 library update this file
+with provenance and last commit ID information. For documentation
+on how to use this read the pkg-config(1) man page.
+
+Do not modify this file yourself, if you want to evolve it send
+patches upstream and then synch back here.
+
+[0]: git://anongit.freedesktop.org/pkg-config
+
+The last synch was from commit:
+
+commit 4f0084d9d3b8726a797a373c7ec5e406000995d0
+Author: Dan Nicholson <dbn.lists@gmail.com>
+Date:   Mon Feb 3 15:59:18 2014 -0800
+
+    glib: Fix Makefiles to suppress warnings from automake
+
+    With the newly added glib.mk, some of the noinst_* variables need to use
+    += in the evaluation to avoid multiple definition warnings from
+    automake.
+
+systemd.m4
+==========
+
+systemd.m4 was contributed to by Luis R. Rodriguez <mcgrof@do-not-panic.com>,
+its current home project can be found at:
+
+https://github.com/mcgrof/funk-systemd

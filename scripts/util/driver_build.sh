@@ -20,13 +20,20 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-# $1 == BOXY_SOURCE_ROOT_DIR
+# $1 == MICROV_SOURCE_ROOT_DIR
 # $2 == SOURCE_ROOT_DIR
+# $3 == DRIVER
 
 msbuild_2015="/cygdrive/c/Program Files (x86)/MSBuild/14.0/Bin/MSBuild.exe"
 msbuild_2017="/cygdrive/c/Program Files (x86)/Microsoft Visual Studio/2017/Community/MSBuild/15.0/bin/msbuild.exe"
+msbuild_2019="/cygdrive/c/Program Files (x86)/Microsoft Visual Studio/2019/Community/MSBuild/current/bin/msbuild.exe"
 
 find_msbuild() {
+
+    if [[ -f $msbuild_2019 ]]; then
+        msbuild=$msbuild_2019
+        return
+    fi
 
     if [[ -f $msbuild_2017 ]]; then
         msbuild=$msbuild_2017
@@ -45,24 +52,27 @@ find_msbuild() {
 case $(uname -s) in
 CYGWIN_NT-6.1*)
     find_msbuild
-    cd $1/bfbuilder/src/platform/windows/
+    cd $1/drivers/$3/windows
+    sln=$(find . -name "*.sln")
     SOURCE_ROOT_DIR=`cygpath -w -m $2`
-    >&2 eval "'$msbuild' /p:SOURCE_ROOT_DIR=$SOURCE_ROOT_DIR /m:3 /p:Configuration=Release /p:Platform=x64 /p:TargetVersion=Windows7 bfbuilder.sln"
+    >&2 eval "'$msbuild' /p:SOURCE_ROOT_DIR=$SOURCE_ROOT_DIR /p:Configuration=Release /p:Platform=x64 /p:TargetVersion=Windows7 $sln"
     ;;
 CYGWIN_NT-6.3*)
     find_msbuild
-    cd $1/bfbuilder/src/platform/windows/
+    cd $1/drivers/$3/windows
+    sln=$(find . -name "*.sln")
     SOURCE_ROOT_DIR=`cygpath -w -m $2`
-    >&2 eval "'$msbuild' /p:SOURCE_ROOT_DIR=$SOURCE_ROOT_DIR /m:3 /p:Configuration=Release /p:Platform=x64 /p:TargetVersion=WindowsV6.3 bfbuilder.sln"
+    >&2 eval "'$msbuild' /p:SOURCE_ROOT_DIR=$SOURCE_ROOT_DIR /p:Configuration=Release /p:Platform=x64 /p:TargetVersion=WindowsV6.3 $sln"
     ;;
 CYGWIN_NT-10.0*)
     find_msbuild
-    cd $1/bfbuilder/src/platform/windows/
+    cd $1/drivers/$3/windows
+    sln=$(find . -name "*.sln")
     SOURCE_ROOT_DIR=`cygpath -w -m $2`
-    >&2 eval "'$msbuild' /p:SOURCE_ROOT_DIR=$SOURCE_ROOT_DIR /m:3 /p:Configuration=Release /p:Platform=x64 /p:TargetVersion=Windows10 bfbuilder.sln"
+    >&2 eval "'$msbuild' /p:SOURCE_ROOT_DIR=$SOURCE_ROOT_DIR /p:Configuration=Release /p:Platform=x64 /p:TargetVersion=Windows10 $sln"
     ;;
 Linux)
-    cd $1/bfbuilder/src/platform/linux
+    cd $1/drivers/$3/linux
     make SOURCE_ROOT_DIR=$2 -j3
     ;;
 *)

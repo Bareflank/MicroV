@@ -1,0 +1,12 @@
+[Unit]
+Description=Xen driver domain device daemon
+Requires=proc-xen.mount
+After=proc-xen.mount
+ConditionVirtualization=xen
+
+[Service]
+Type=forking
+ExecStart=@sbindir@/xl devd
+
+[Install]
+WantedBy=multi-user.target

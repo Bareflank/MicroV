@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+	<PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Windows 10 Debug|Win32'">
+		<TargetVersion>Windows10</TargetVersion>
+		<UseDebugLibraries>true</UseDebugLibraries>
+	</PropertyGroup>
+	<PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Windows 10 Release|Win32'">
+		<TargetVersion>Windows10</TargetVersion>
+		<UseDebugLibraries>false</UseDebugLibraries>
+	</PropertyGroup>
+	<PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Windows 10 Debug|x64'">
+		<TargetVersion>Windows10</TargetVersion>
+		<UseDebugLibraries>true</UseDebugLibraries>
+	</PropertyGroup>
+	<PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Windows 10 Release|x64'">
+		<TargetVersion>Windows10</TargetVersion>
+		<UseDebugLibraries>false</UseDebugLibraries>
+	</PropertyGroup>
+	<PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Windows 8 Debug|Win32'">
+		<TargetVersion>Windows8</TargetVersion>
+		<UseDebugLibraries>true</UseDebugLibraries>
+	</PropertyGroup>
+	<PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Windows 8 Release|Win32'">
+		<TargetVersion>Windows8</TargetVersion>
+		<UseDebugLibraries>false</UseDebugLibraries>
+	</PropertyGroup>
+	<PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Windows 8 Debug|x64'">
+		<TargetVersion>Windows8</TargetVersion>
+		<UseDebugLibraries>true</UseDebugLibraries>
+	</PropertyGroup>
+	<PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Windows 8 Release|x64'">
+		<TargetVersion>Windows8</TargetVersion>
+		<UseDebugLibraries>false</UseDebugLibraries>
+	</PropertyGroup>
+</Project>

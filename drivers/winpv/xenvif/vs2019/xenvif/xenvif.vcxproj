@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="..\configs.props" />
+  <PropertyGroup Label="PropertySheets">
+    <DriverType>WDM</DriverType>
+    <PlatformToolset>WindowsKernelModeDriver10.0</PlatformToolset>
+    <ConfigurationType>Driver</ConfigurationType>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{C3F96D4C-E441-47F7-A44C-D2D0543C1D18}</ProjectGuid>
+  </PropertyGroup>
+  <Import Project="..\targets.props" />
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <PropertyGroup>
+    <RunCodeAnalysis>true</RunCodeAnalysis>
+    <EnableInf2cat>false</EnableInf2cat>
+    <IntDir>..\$(ProjectName)\$(ConfigurationName)\$(Platform)\</IntDir>
+    <OutDir>..\$(ConfigurationName)\$(Platform)\</OutDir>
+  </PropertyGroup>
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <AdditionalIncludeDirectories>$(WindowsSdkDir)\include\km;..\..\include;..\..\include\xen;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>PROJECT=$(ProjectName);POOL_NX_OPTIN=1;NT_PROCESSOR_GROUPS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <WarningLevel>EnableAllWarnings</WarningLevel>
+      <DisableSpecificWarnings>4464;4711;4770;4548;4820;4668;4255;5045;6001;6054;26451;28196;30030;30029;%(DisableSpecificWarnings)</DisableSpecificWarnings>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <EnablePREfast>true</EnablePREfast>
+    </ClCompile>
+    <ResourceCompile>
+      <AdditionalIncludeDirectories>..\..\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ResourceCompile>
+    <Link>
+      <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
+      <AdditionalDependencies>$(DDK_LIB_PATH)/Rtlver.lib;$(DDK_LIB_PATH)/libcntpr.lib;$(DDK_LIB_PATH)/aux_klib.lib;$(DDK_LIB_PATH)/ksecdd.lib;$(DDK_LIB_PATH)/procgrp.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Platform)'=='Win32'">
+    <ClCompile>
+      <PreprocessorDefinitions>__i386__;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Platform)'=='x64'">
+    <ClCompile>
+      <PreprocessorDefinitions>__x86_64__;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)'=='Windows 8 Release'">
+    <ClCompile>
+      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+      <WholeProgramOptimization>true</WholeProgramOptimization>
+      <AdditionalOptions>/Qspectre %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <FilesToPackage Include="$(TargetPath)" />
+    <FilesToPackage Include="$(OutDir)$(TargetName).pdb" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="../../src/xenvif/bus.c" />
+    <ClCompile Include="../../src/xenvif/checksum.c" />
+    <ClCompile Include="../../src/xenvif/driver.c" />
+    <ClCompile Include="../../src/xenvif/fdo.c" />
+    <ClCompile Include="../../src/xenvif/frontend.c" />
+    <ClCompile Include="../../src/xenvif/link.c" />
+    <ClCompile Include="../../src/xenvif/mac.c" />
+    <ClCompile Include="../../src/xenvif/parse.c" />
+    <ClCompile Include="../../src/xenvif/pdo.c" />
+    <ClCompile Include="../../src/xenvif/receiver.c" />
+    <ClCompile Include="../../src/xenvif/registry.c" />
+    <ClCompile Include="../../src/xenvif/settings.c" />
+    <ClCompile Include="../../src/xenvif/thread.c" />
+    <ClCompile Include="../../src/xenvif/transmitter.c" />
+    <ClCompile Include="../../src/xenvif/controller.c" />
+    <ClCompile Include="../../src/xenvif/vif.c" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="..\..\src\xenvif\xenvif.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\package\package.vcxproj" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+</Project>

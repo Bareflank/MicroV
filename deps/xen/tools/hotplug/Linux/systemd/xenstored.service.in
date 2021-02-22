@@ -1,0 +1,19 @@
+[Unit]
+Description=The Xen xenstore
+Requires=proc-xen.mount var-lib-xenstored.mount
+After=proc-xen.mount var-lib-xenstored.mount
+Before=libvirtd.service libvirt-guests.service
+RefuseManualStop=true
+ConditionPathExists=/proc/xen/capabilities
+
+[Service]
+Type=notify
+NotifyAccess=all
+RemainAfterExit=true
+ExecStartPre=/bin/grep -q control_d /proc/xen/capabilities
+ExecStart=@XEN_SCRIPT_DIR@/launch-xenstore
+
+[Install]
+WantedBy=multi-user.target
+Also=proc-xen.mount
+Also=var-lib-xenstored.mount

@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="..\configs.props" />
+  <PropertyGroup Label="PropertySheets">
+    <PlatformToolset>WindowsKernelModeDriver10.0</PlatformToolset>
+    <ConfigurationType>Utility</ConfigurationType>
+    <DriverType>Package</DriverType>
+    <DisableFastUpToDateCheck>true</DisableFastUpToDateCheck>
+    <SupportsPackaging>true</SupportsPackaging>
+    <DriverTargetPlatform>Desktop</DriverTargetPlatform>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{445FD18F-97E3-4E5D-825F-151026242C05}</ProjectGuid>
+  </PropertyGroup>
+  <Import Project="..\targets.props" />
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <PropertyGroup>
+    <EnableInf2cat>true</EnableInf2cat>
+    <Inf2CatWindowsVersionList Condition="'$(Platform)'=='x64'">8_x64;Server8_x64;10_x64;Server10_x64</Inf2CatWindowsVersionList>
+    <Inf2CatWindowsVersionList Condition="'$(Platform)'=='Win32'">8_x86;10_x86</Inf2CatWindowsVersionList>
+    <DebuggerFlavor>DbgengKernelDebugger</DebuggerFlavor>
+    <EnableDeployment>False</EnableDeployment>
+    <ImportToStore>False</ImportToStore>
+    <InstallMode>None</InstallMode>
+    <ScriptDeviceQuery>%PathToInf%</ScriptDeviceQuery>
+    <EnableVerifier>False</EnableVerifier>
+    <AllDrivers>False</AllDrivers>
+    <VerifyProjectOutput>True</VerifyProjectOutput>
+    <VerifyFlags>133563</VerifyFlags>
+    <IntDir>..\$(ProjectName)\$(ConfigurationName)\$(Platform)\</IntDir>
+    <OutDir>..\$(ConfigurationName)\$(Platform)\</OutDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Platform)'=='Win32'">
+    <ArchiveDir>..\..\$(SolutionName)\x86</ArchiveDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Platform)'=='x64'">
+    <ArchiveDir>..\..\$(SolutionName)\x64</ArchiveDir>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\xennet\xennet.vcxproj">
+      <Project>{97D9942B-5EA3-488C-B512-C96E5D077F8E}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\xennet_coinst\xennet_coinst.vcxproj">
+      <Project>{3EDD837A-C1BE-47D4-9603-16B61353670B}</Project>
+    </ProjectReference>
+    <FilesToPackage Include="..\xennet.inf" />
+  </ItemGroup>
+  <ItemGroup Condition="Exists('$(DPINST_REDIST)')">
+    <FilesToPackage Include="$(DPINST_REDIST)\x86\dpinst.exe" Condition="'$(Platform)'=='Win32'" />
+    <FilesToPackage Include="$(DPINST_REDIST)\x64\dpinst.exe" Condition="'$(Platform)'=='x64'" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+  <ItemGroup>
+    <PackageFiles Include="$(OutDir)\$(ProjectName)\*" />
+  </ItemGroup>
+  <Target Name="Archive" AfterTargets="TestSign">
+    <Copy
+       SourceFiles="@(PackageFiles)"
+       DestinationFiles="@(PackageFiles->'$(ArchiveDir)\%(FileName)%(Extension)')"
+    />
+  </Target>
+</Project>

@@ -1,0 +1,213 @@
+# Macro definitions for FLASK policy
+
+################################################################################
+#
+# Domain creation and setup
+#
+################################################################################
+define(`declare_domain_common', `
+	allow $1 $2:grant { query setup };
+	allow $1 $2:mmu { adjust physmap map_read map_write stat pinpage updatemp mmuext_op };
+	allow $1 $2:hvm { getparam setparam altp2mhvm_op };
+	allow $1 $2:domain2 get_vnumainfo;
+')
+
+# declare_domain(type, attrs...)
+#   Declare a domain type, along with associated _self and _channel types
+#   Allow the domain to perform basic operations on itself
+define(`declare_domain', `
+	type $1, domain_type`'ifelse(`$#', `1', `', `,shift($@)');
+	type $1_self, domain_type, domain_self_type;
+	type_transition $1 $1:domain $1_self;
+	type $1_channel, event_type;
+	type_transition $1 domain_type:event $1_channel;
+	declare_domain_common($1, $1_self)
+')
+
+# declare_singleton_domain(type, attrs...)
+#   Declare a domain type and associated _channel types.
+#   Note: Because the domain can perform basic operations on itself and any
+#   other domain of the same type, this constructor should be used for types
+#   containing at most one domain. This is not enforced by policy.
+define(`declare_singleton_domain', `
+	type $1, domain_type`'ifelse(`$#', `1', `', `,shift($@)');
+	define(`$1_self', `$1')
+	type $1_channel, event_type;
+	type_transition $1 domain_type:event $1_channel;
+	declare_domain_common($1, $1)
+')
+
+# declare_build_label(type)
+#   Declare a paired _building type for the given domain type
+define(`declare_build_label', `
+	type $1_building, domain_type;
+	type_transition $1_building domain_type:event $1_channel;
+	allow $1_building $1 : domain transition;
+')
+
+define(`create_domain_common', `
+	allow $1 $2:domain { create max_vcpus setdomainmaxmem setaddrsize
+			getdomaininfo hypercall setvcpucontext getscheduler
+			getvcpuinfo getaddrsize getaffinity setaffinity
+			settime setdomainhandle getvcpucontext set_misc_info };
+	allow $1 $2:domain2 { set_cpuid settsc setscheduler setclaim
+			set_vnumainfo get_vnumainfo cacheflush
+			psr_cmt_op psr_alloc soft_reset
+			resource_map get_cpu_policy };
+	allow $1 $2:security check_context;
+	allow $1 $2:shadow enable;
+	allow $1 $2:mmu { map_read map_write adjust memorymap physmap pinpage mmuext_op updatemp };
+	allow $1 $2:grant setup;
+	allow $1 $2:hvm { getparam hvmctl sethvmc
+			setparam nested altp2mhvm altp2mhvm_op dm };
+')
+
+# create_domain(priv, target)
+#   Allow a domain to be created directly
+define(`create_domain', `
+	create_domain_common($1, $2)
+	allow $1 $2_channel:event create;
+')
+
+# create_domain_build_label(priv, target)
+#   Allow a domain to be created via its domain build label
+define(`create_domain_build_label', `
+	create_domain_common($1, $2_building)
+	allow $1 $2_channel:event create;
+	allow $1 $2_building:domain2 relabelfrom;
+	allow $1 $2:domain2 relabelto;
+	allow $2_building $2:domain transition;
+')
+
+# manage_domain(priv, target)
+#   Allow managing a running domain
+define(`manage_domain', `
+	allow $1 $2:domain { getdomaininfo getvcpuinfo getaffinity
+			getaddrsize pause unpause trigger shutdown destroy
+			setaffinity setdomainmaxmem getscheduler resume
+			setpodtarget getpodtarget };
+    allow $1 $2:domain2 set_vnumainfo;
+')
+
+# migrate_domain_out(priv, target)
+#   Allow creation of a snapshot or migration image from a domain
+#   (inbound migration is the same as domain creation)
+define(`migrate_domain_out', `
+	allow $1 domxen_t:mmu map_read;
+	allow $1 $2:hvm { gethvmc getparam };
+	allow $1 $2:mmu { stat pageinfo map_read };
+	allow $1 $2:domain { getaddrsize getvcpucontext pause destroy };
+	allow $1 $2:domain2 gettsc;
+	allow $1 $2:shadow { enable disable logdirty };
+')
+
+################################################################################
+#
+# Inter-domain communication
+#
+################################################################################
+
+# create_channel(source, dest, chan-label)
+#   This allows an event channel to be created from domains with labels
+#   <source> to <dest> and will label it <chan-label>
+define(`create_channel', `
+	allow $1 $3:event { create send status };
+	allow $3 $2:event { bind };
+')
+
+# domain_event_comms(dom1, dom2)
+#   Allow two domain types to communicate using event channels
+define(`domain_event_comms', `
+	create_channel($1, $2, $1_channel)
+	create_channel($2, $1, $2_channel)
+')
+
+# domain_comms(dom1, dom2)
+#   Allow two domain types to communicate using grants and event channels
+define(`domain_comms', `
+	domain_event_comms($1, $2)
+	allow $1 $2:grant { map_read map_write copy unmap };
+	allow $2 $1:grant { map_read map_write copy unmap };
+')
+
+# domain_self_comms(domain)
+#   Allow a non-singleton domain type to communicate with itself using grants
+#   and event channels
+define(`domain_self_comms', `
+	create_channel($1, $1_self, $1_channel)
+	allow $1 $1_self:grant { map_read map_write copy unmap };
+')
+
+# device_model(dm_dom, hvm_dom)
+#   Define how a device model domain interacts with its target
+define(`device_model', `
+	type $2_target, domain_type, domain_target_type;
+	type_transition $2 $1:domain $2_target;
+	allow $1 $2:domain set_target;
+
+	type_transition $2_target domain_type:event $2_channel;
+	create_channel($1, $2_target, $1_channel)
+	create_channel($2, $1, $2_channel)
+	allow $1 $2_channel:event create;
+
+	allow $1 $2_target:domain { getdomaininfo shutdown };
+	allow $1 $2_target:mmu { map_read map_write adjust physmap target_hack };
+	allow $1 $2_target:hvm { getparam setparam hvmctl dm };
+	allow $1 $2_target:domain2 resource_map;
+')
+
+# make_device_model(priv, dm_dom, hvm_dom)
+#   Allow creation of a device model and HVM domain pair
+define(`make_device_model', `
+	device_model($2, $3)
+	allow $1 $2:domain2 make_priv_for;
+	allow $1 $3:domain2 set_as_target;
+')
+################################################################################
+#
+# Device types and delegation (PCI passthrough)
+#
+################################################################################
+
+# use_device_iommu(domain, device)
+#   Allow a device to be used by a domain
+#   only if an IOMMU provides isolation.
+define(`use_device_iommu', `
+    allow $1 $1_self:mmu exchange;
+    allow $1 $2:resource use_iommu;
+    allow $1 domio_t:mmu { map_read map_write };
+')
+
+# use_device_iommu_nointremap(domain, device)
+#   Allow a device to be used by a domain
+#   only if an IOMMU is active, even if it does not support
+#   interrupt remapping.
+#   Allows acceptance of (typically older) less isolating hardware.
+define(`use_device_iommu_nointremap', `
+    allow $1 $1_self:mmu exchange;
+    allow $1 $2:resource { use_iommu use_iommu_nointremap };
+    allow $1 domio_t:mmu { map_read map_write };
+')
+
+# use_device_noiommu(domain, device)
+#   Allow a device to be used by a domain
+#   even without an IOMMU available.
+define(`use_device_noiommu', `
+    allow $1 $1_self:mmu exchange;
+    allow $1 $2:resource { use_iommu use_iommu_nointremap use_noiommu };
+    allow $1 domio_t:mmu { map_read map_write };
+')
+
+# admin_device(domain, device)
+#   Allow a device to be used and delegated by a domain
+define(`admin_device', `
+    allow $1 $2:resource { setup stat_device add_device add_irq add_iomem add_ioport remove_device remove_irq remove_iomem remove_ioport plug unplug };
+    allow $1 $2:hvm bind_irq;
+    use_device_noiommu($1, $2)
+')
+
+# delegate_devices(priv-domain, target-domain)
+#   Allow devices to be delegated
+define(`delegate_devices', `
+    allow $1 $2:resource { add remove };
+')

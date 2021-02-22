@@ -1,0 +1,119 @@
+#!/bin/bash
+#
+# xencommons    Script to start and stop xenstored and xenconsoled
+#
+# Author:       Ian Jackson <ian.jackson@eu.citrix.com>
+#
+# chkconfig: 2345 70 10
+# description: Starts and stops xenstored and xenconsoled
+### BEGIN INIT INFO
+# Provides:          xenstored xenconsoled xen
+# Required-Start:    $syslog $remote_fs
+# Should-Start:
+# Required-Stop:     $syslog $remote_fs
+# Should-Stop:
+# Default-Start:     2 3 5
+# Default-Stop:      0 1 6
+# Short-Description: Start/stop xenstored and xenconsoled
+# Description:       Starts and stops the daemons needed for xl
+### END INIT INFO
+
+BACKEND_MODULES="@LINUX_BACKEND_MODULES@"
+
+. @XEN_SCRIPT_DIR@/hotplugpath.sh
+
+xencommons_config=@CONFIG_DIR@/@CONFIG_LEAF_DIR@
+
+test -f $xencommons_config/xencommons && . $xencommons_config/xencommons
+
+XENCONSOLED_PIDFILE=@XEN_RUN_DIR@/xenconsoled.pid
+QEMU_PIDFILE=@XEN_RUN_DIR@/qemu-dom0.pid
+shopt -s extglob
+
+# not running in Xen dom0 or domU
+if ! test -d /proc/xen ; then
+	exit 0
+fi
+
+# mount xenfs in dom0 or domU with a pv_ops kernel
+if test "x$1" = xstart && \
+   ! test -f /proc/xen/capabilities && \
+   ! grep '^xenfs ' /proc/mounts >/dev/null;
+then
+	mount -t xenfs xenfs /proc/xen
+fi
+
+# run this script only in dom0:
+# no capabilities file in xenlinux domU kernel
+# empty capabilities file in pv_ops domU kernel
+if test -f /proc/xen/capabilities && \
+   ! grep -q "control_d" /proc/xen/capabilities ; then
+	exit 0
+fi
+
+do_start () {
+	local mod
+
+	for mod in $BACKEND_MODULES ; do modprobe "$mod" &>/dev/null ; done
+
+	mkdir -m700 -p ${XEN_RUN_DIR}
+	mkdir -m700 -p ${XEN_LOCK_DIR}
+	mkdir -p ${XEN_LOG_DIR}
+
+	@XEN_SCRIPT_DIR@/launch-xenstore || exit 1
+
+	echo Setting domain 0 name, domid and JSON config...
+	${LIBEXEC_BIN}/xen-init-dom0 ${XEN_DOM0_UUID}
+
+	echo Starting xenconsoled...
+	test -z "$XENCONSOLED_TRACE" || XENCONSOLED_ARGS=" --log=$XENCONSOLED_TRACE"
+	${sbindir}/xenconsoled --pid-file=$XENCONSOLED_PIDFILE $XENCONSOLED_ARGS
+	echo Starting QEMU as disk backend for dom0
+	test -z "$QEMU_XEN" && QEMU_XEN="@qemu_xen_path@"
+	$QEMU_XEN -xen-domid 0 -xen-attach -name dom0 -nographic -M xenpv -daemonize \
+		-monitor /dev/null -serial /dev/null -parallel /dev/null \
+		-pidfile $QEMU_PIDFILE
+}
+do_stop () {
+        echo Stopping xenconsoled
+	if read 2>/dev/null <$XENCONSOLED_PIDFILE pid; then
+		kill $pid
+		while kill -9 $pid >/dev/null 2>&1; do sleep 1; done
+		rm -f $XENCONSOLED_PIDFILE
+	fi
+
+	echo Stopping QEMU
+	if read 2>/dev/null <$QEMU_PIDFILE pid; then
+		kill $pid
+		while kill -9 $pid >/dev/null 2>&1; do sleep 1; done
+		rm -f $QEMU_PIDFILE
+	fi
+
+	echo WARNING: Not stopping xenstored, as it cannot be restarted.
+}
+
+case "$1" in
+  start)
+	do_start
+	;;
+  status)
+        test -f @XEN_RUN_DIR@/xenstored.pid
+	;;
+  stop)
+	do_stop
+	;;
+  reload)
+	echo >&2 'Reload not available; use force-reload'; exit 1
+	;;
+  force-reload|restart)
+        do_stop
+	do_start
+	;;
+  *)
+	# do not advertise unreasonable commands that there is no reason
+	# to use with this device
+	echo $"Usage: $0 {start|stop|status|restart|force-reload}"
+	exit 1
+esac
+
+exit $?

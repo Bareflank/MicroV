@@ -1,0 +1,87 @@
+stages:
+    - build
+
+build-drivers:
+    stage: build
+    script:
+        - Set-Item -Path Env:VENDOR_NAME -Value 'Xen Project'
+        - Set-Item -Path Env:VENDOR_PREFIX -Value 'XP'
+        - Set-Item -Path Env:PRODUCT_NAME -Value 'Xen'
+        - Set-Item -Path Env:MAJOR_VERSION -Value '9'
+        - Set-Item -Path Env:MINOR_VERSION -Value '0'
+        - Set-Item -Path Env:MICRO_VERSION -Value '0'
+        - .\drivers\build_num.ps1 -Prefix ".."
+        - " & $env:MSBUILD_PATH /p:Configuration=\"Windows 10 Release\" /p:Platform=x64 /p:TargetVersion=Windows10 $Env:BUILDER_SLN_PATH"
+        - " & $env:MSBUILD_PATH /p:Configuration=\"Windows 10 Release\" /p:Platform=x64 /p:TargetVersion=Windows10 $Env:VISR_SLN_PATH"
+        - " & $env:MSBUILD_PATH /p:Configuration=\"Windows 10 Release\" /p:Platform=x64 /p:TargetVersion=Windows10 $Env:XENBUS_SLN_PATH"
+        - " & $env:MSBUILD_PATH /p:Configuration=\"Windows 10 Release\" /p:Platform=x64 /p:TargetVersion=Windows10 $Env:XENVIF_SLN_PATH"
+        - " & $env:MSBUILD_PATH /p:Configuration=\"Windows 10 Release\" /p:Platform=x64 /p:TargetVersion=Windows10 $Env:XENNET_SLN_PATH"
+        - " & $env:MSBUILD_PATH /p:Configuration=\"Windows 10 Release\" /p:Platform=x64 /p:TargetVersion=Windows10 $Env:XENIFACE_SLN_PATH"
+
+    artifacts:
+        paths:
+            - drivers\builder\windows\builder\x64\*
+            - drivers\builder\windows\vs2019\Windows10Release\x64\builder.cer
+            - drivers\visr\windows\visr\x64\*
+            - drivers\visr\windows\vs2019\Windows10Release\x64\visr.cer
+            - drivers\winpv\xenbus\xenbus\x64\*
+            - drivers\winpv\xenbus\vs2019\Windows10Release\x64\xenbus.cer
+            - drivers\winpv\xennet\xennet\x64\*
+            - drivers\winpv\xennet\vs2019\Windows10Release\x64\xennet.cer
+            - drivers\winpv\xenvif\xenvif\x64\*
+            - drivers\winpv\xenvif\vs2019\Windows10Release\x64\xenvif.cer
+            - drivers\winpv\xeniface\xeniface\x64\*
+            - drivers\winpv\xeniface\vs2019\Windows10Release\x64\xeniface.cer
+            - drivers\winpv\xeniface\include\xencontrol.h
+            - drivers\winpv\xeniface\include\xeniface_ioctls.h
+        expire_in: 30 day
+
+    tags:
+        - ais-windows
+
+build-userspace:
+    stage: build
+    script:
+        - (rm -Force -Recurse -ErrorAction SilentlyContinue ..\build)
+        - (rm -Force -Recurse -ErrorAction SilentlyContinue ..\cache)
+        - mkdir ..\build
+        - mkdir ..\cache
+        - cd ..\build
+        - cp ..\microv\scripts\cmake\config\config.cmake ..
+        - Add-Content -Path ..\config.cmake -Value "set(ENABLE_BUILD_USERSPACE ON)"
+        - Add-Content -Path ..\config.cmake -Value "set(ENABLE_BUILD_VMM OFF)"
+        - " & 'C:/Program Files/CMake/bin/cmake.exe' ../microv/deps/hypervisor -DCONFIG=\"$PWD\\..\\config.cmake\" -G \"Visual Studio 16 2019\" -A x64"
+        - " & $env:MSBUILD_PATH /p:Configuration=Release /p:Platform=x64 /p:TargetVersion=Windows10 hypervisor.sln"
+        - cp prefixes\x86_64-userspace-pe\bin\uvctl.exe ../microv
+
+    artifacts:
+        paths:
+            - uvctl.exe
+        expire_in: 30 day
+
+    tags:
+        - ais-windows
+
+build-efi:
+    stage: build
+    script:
+        - rm -rf ../build
+        - rm -rf ../cache
+        - mkdir ../build
+        - mkdir ../cache
+        - cd ../build
+        - cp ../microv/scripts/cmake/config/config.cmake ..
+        - cmake ../microv/deps/hypervisor -DCONFIG=../config.cmake
+        - echo 'set(ENABLE_BUILD_USERSPACE OFF)' >> ../config.cmake
+        - echo 'set(ENABLE_BUILD_VMM ON)' >> ../config.cmake
+        - echo 'set(ENABLE_BUILD_EFI ON)' >> ../config.cmake
+        - make
+        - cp prefixes/x86_64-efi-pe/bin/bareflank.efi ../microv
+
+    artifacts:
+        paths:
+            - bareflank.efi
+        expire_in: 30 day
+
+    tags:
+       - ais-linux

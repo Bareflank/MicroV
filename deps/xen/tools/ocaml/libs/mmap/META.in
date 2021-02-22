@@ -1,0 +1,4 @@
+version = "@VERSION@"
+description = "Mmap interface extension"
+archive(byte) = "xenmmap.cma"
+archive(native) = "xenmmap.cmxa"

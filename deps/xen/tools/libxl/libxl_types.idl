@@ -1,0 +1,1201 @@
+# -*- python -*-
+#
+# Builtin libxl types
+#
+
+namespace("libxl_")
+
+libxl_defbool = Builtin("defbool", json_parse_type="JSON_STRING", passby=PASS_BY_REFERENCE, copy_fn=None,
+                        check_default_fn="libxl__defbool_is_default")
+libxl_domid = Builtin("domid", json_gen_fn = "yajl_gen_integer", json_parse_fn = "libxl__uint32_parse_json",
+                      json_parse_type = "JSON_INTEGER", autogenerate_json = False, copy_fn=None)
+libxl_devid = Builtin("devid", json_gen_fn = "yajl_gen_integer", json_parse_fn = "libxl__int_parse_json",
+                      json_parse_type = "JSON_INTEGER", autogenerate_json = False, signed = True, init_val="-1",
+                      copy_fn=None)
+libxl_uuid = Builtin("uuid", json_parse_type="JSON_STRING", passby=PASS_BY_REFERENCE, check_default_fn="libxl_uuid_is_nil",
+                     copy_fn="libxl_uuid_copy")
+libxl_mac = Builtin("mac", json_parse_type="JSON_STRING", passby=PASS_BY_REFERENCE, check_default_fn="libxl__mac_is_default",
+                    copy_fn="libxl_mac_copy")
+libxl_bitmap = Builtin("bitmap", json_parse_type="JSON_ARRAY", dispose_fn="libxl_bitmap_dispose", passby=PASS_BY_REFERENCE,
+                       check_default_fn="libxl_bitmap_is_empty", copy_fn="libxl_bitmap_copy_alloc")
+libxl_cpuid_policy_list = Builtin("cpuid_policy_list", dispose_fn="libxl_cpuid_dispose", passby=PASS_BY_REFERENCE,
+                                  json_parse_type="JSON_ARRAY", check_default_fn="libxl__cpuid_policy_is_empty",
+                                  copy_fn="libxl_cpuid_policy_list_copy")
+
+libxl_string_list = Builtin("string_list", dispose_fn="libxl_string_list_dispose", passby=PASS_BY_REFERENCE,
+                            json_parse_type="JSON_ARRAY", check_default_fn="libxl__string_list_is_empty",
+                            copy_fn="libxl_string_list_copy")
+libxl_key_value_list = Builtin("key_value_list", dispose_fn="libxl_key_value_list_dispose", passby=PASS_BY_REFERENCE,
+                               json_parse_type="JSON_MAP", check_default_fn="libxl__key_value_list_is_empty",
+                               copy_fn="libxl_key_value_list_copy")
+libxl_hwcap = Builtin("hwcap", passby=PASS_BY_REFERENCE, json_parse_type="JSON_ARRAY",
+                      check_default_fn="libxl__hwcap_is_default", copy_fn="libxl_hwcap_copy")
+libxl_ms_vm_genid = Builtin("ms_vm_genid", passby=PASS_BY_REFERENCE, check_default_fn="libxl_ms_vm_genid_is_zero",
+                            copy_fn="libxl_ms_vm_genid_copy")
+
+#
+# Specific integer types
+#
+
+MemKB = UInt(64, init_val = "LIBXL_MEMKB_DEFAULT", json_gen_fn = "libxl__uint64_gen_json")
+
+#
+# Constants / Enumerations
+#
+
+libxl_error = Enumeration("error", [
+    (-1, "NONSPECIFIC"),
+    (-2, "VERSION"),
+    (-3, "FAIL"),
+    (-4, "NI"),
+    (-5, "NOMEM"),
+    (-6, "INVAL"),
+    (-7, "BADFAIL"),
+    (-8, "GUEST_TIMEDOUT"),
+    (-9, "TIMEDOUT"),
+    (-10, "NOPARAVIRT"),
+    (-11, "NOT_READY"),
+    (-12, "OSEVENT_REG_FAIL"),
+    (-13, "BUFFERFULL"),
+    (-14, "UNKNOWN_CHILD"),
+    (-15, "LOCK_FAIL"),
+    (-16, "JSON_CONFIG_EMPTY"),
+    (-17, "DEVICE_EXISTS"),
+    (-18, "CHECKPOINT_DEVOPS_DOES_NOT_MATCH"),
+    (-19, "CHECKPOINT_DEVICE_NOT_SUPPORTED"),
+    (-20, "VNUMA_CONFIG_INVALID"),
+    (-21, "DOMAIN_NOTFOUND"),
+    (-22, "ABORTED"),
+    (-23, "NOTFOUND"),
+    (-24, "DOMAIN_DESTROYED"), # Target domain ceased to exist during op
+    (-25, "FEATURE_REMOVED"), # For functionality that has been removed
+    (-26, "PROTOCOL_ERROR_QMP"),
+    (-27, "UNKNOWN_QMP_ERROR"),
+    (-28, "QMP_GENERIC_ERROR"), # unspecified qmp error
+    (-29, "QMP_COMMAND_NOT_FOUND"), # the requested command has not been found
+    (-30, "QMP_DEVICE_NOT_ACTIVE"), # a device has failed to be become active
+    (-31, "QMP_DEVICE_NOT_FOUND"), # the requested device has not been found
+    (-32, "QEMU_API"), # QEMU's replies don't contains expected members
+    ], value_namespace = "")
+
+libxl_domain_type = Enumeration("domain_type", [
+    (-1, "INVALID"),
+    (1, "HVM"),
+    (2, "PV"),
+    (3, "PVH"),
+    ], init_val = "LIBXL_DOMAIN_TYPE_INVALID")
+
+libxl_rdm_reserve_strategy = Enumeration("rdm_reserve_strategy", [
+    (0, "ignore"),
+    (1, "host"),
+    ])
+
+libxl_rdm_reserve_policy = Enumeration("rdm_reserve_policy", [
+    (-1, "invalid"),
+    (0, "strict"),
+    (1, "relaxed"),
+    ], init_val = "LIBXL_RDM_RESERVE_POLICY_INVALID")
+
+libxl_channel_connection = Enumeration("channel_connection", [
+    (0, "UNKNOWN"),
+    (1, "PTY"),
+    (2, "SOCKET"), # a listening Unix domain socket
+    ])
+
+libxl_device_model_version = Enumeration("device_model_version", [
+    (0, "UNKNOWN"),
+    (1, "QEMU_XEN_TRADITIONAL"), # Historical qemu-xen device model (qemu-dm)
+    (2, "QEMU_XEN"),             # Upstream based qemu-xen device model
+    ])
+
+libxl_console_type = Enumeration("console_type", [
+    (0, "UNKNOWN"),
+    (1, "SERIAL"),
+    (2, "PV"),
+    (3, "VUART"),
+    ])
+
+libxl_disk_format = Enumeration("disk_format", [
+    (0, "UNKNOWN"),
+    (1, "QCOW"),
+    (2, "QCOW2"),
+    (3, "VHD"),
+    (4, "RAW"),
+    (5, "EMPTY"),
+    (6, "QED"),
+    ])
+
+libxl_disk_backend = Enumeration("disk_backend", [
+    (0, "UNKNOWN"),
+    (1, "PHY"),
+    (2, "TAP"),
+    (3, "QDISK"),
+    ])
+
+libxl_nic_type = Enumeration("nic_type", [
+    (0, "UNKNOWN"),
+    (1, "VIF_IOEMU"),
+    (2, "VIF"),
+    ])
+
+libxl_action_on_shutdown = Enumeration("action_on_shutdown", [
+    (1, "DESTROY"),
+
+    (2, "RESTART"),
+    (3, "RESTART_RENAME"),
+
+    (4, "PRESERVE"),
+
+    (5, "COREDUMP_DESTROY"),
+    (6, "COREDUMP_RESTART"),
+
+    (7, "SOFT_RESET"),
+    ], init_val = "LIBXL_ACTION_ON_SHUTDOWN_DESTROY")
+
+libxl_trigger = Enumeration("trigger", [
+    (0, "UNKNOWN"),
+    (1, "POWER"),
+    (2, "SLEEP"),
+    (3, "NMI"),
+    (4, "INIT"),
+    (5, "RESET"),
+    (6, "S3RESUME"),
+    ])
+
+libxl_tsc_mode = Enumeration("tsc_mode", [
+    (0, "default"),
+    (1, "always_emulate"),
+    (2, "native"),
+    (3, "native_paravirt"),
+    ])
+
+libxl_gfx_passthru_kind = Enumeration("gfx_passthru_kind", [
+    (0, "default"),
+    (1, "igd"),
+    ])
+
+# Consistent with the values defined for HVM_PARAM_TIMER_MODE.
+libxl_timer_mode = Enumeration("timer_mode", [
+    (-1, "unknown"),
+    (0, "delay_for_missed_ticks"),
+    (1, "no_delay_for_missed_ticks"),
+    (2, "no_missed_ticks_pending"),
+    (3, "one_missed_tick_pending"),
+    ], init_val = "LIBXL_TIMER_MODE_DEFAULT",
+       check_default_fn = "libxl__timer_mode_is_default")
+
+libxl_bios_type = Enumeration("bios_type", [
+    (0, "unknown"),
+    (1, "rombios"),
+    (2, "seabios"),
+    (3, "ovmf"),
+    ])
+
+# Consistent with values defined in domctl.h
+# Except unknown which we have made up
+libxl_scheduler = Enumeration("scheduler", [
+    (0, "unknown"),
+    (4, "sedf"),
+    (5, "credit"),
+    (6, "credit2"),
+    (7, "arinc653"),
+    (8, "rtds"),
+    (9, "null"),
+    ])
+
+# Consistent with SHUTDOWN_* in sched.h (apart from UNKNOWN)
+libxl_shutdown_reason = Enumeration("shutdown_reason", [
+    (-1, "unknown"),
+    (0, "poweroff"),
+    (1, "reboot"),
+    (2, "suspend"),
+    (3, "crash"),
+    (4, "watchdog"),
+    (5, "soft_reset"),
+    ], init_val = "LIBXL_SHUTDOWN_REASON_UNKNOWN")
+
+libxl_vga_interface_type = Enumeration("vga_interface_type", [
+    (0, "UNKNOWN"),
+    (1, "CIRRUS"),
+    (2, "STD"),
+    (3, "NONE"),
+    (4, "QXL"),
+    ], init_val = "LIBXL_VGA_INTERFACE_TYPE_UNKNOWN")
+
+libxl_vendor_device = Enumeration("vendor_device", [
+    (0, "NONE"),
+    (1, "XENSERVER"),
+    ])
+
+libxl_viridian_enlightenment = Enumeration("viridian_enlightenment", [
+    (0, "base"),
+    (1, "freq"),
+    (2, "time_ref_count"),
+    (3, "reference_tsc"),
+    (4, "hcall_remote_tlb_flush"),
+    (5, "apic_assist"),
+    (6, "crash_ctl"),
+    (7, "synic"),
+    (8, "stimer"),
+    (9, "hcall_ipi"),
+    ])
+
+libxl_hdtype = Enumeration("hdtype", [
+    (1, "IDE"),
+    (2, "AHCI"),
+    ], init_val = "LIBXL_HDTYPE_IDE")
+
+# Consistent with the values defined for migration_stream.
+libxl_checkpointed_stream = Enumeration("checkpointed_stream", [
+    (0, "NONE"),
+    (1, "REMUS"),
+    (2, "COLO"),
+    ])
+
+libxl_vuart_type = Enumeration("vuart_type", [
+    (0, "unknown"),
+    (1, "sbsa_uart"),
+    ])
+
+libxl_vkb_backend = Enumeration("vkb_backend", [
+    (0, "UNKNOWN"),
+    (1, "QEMU"),
+    (2, "LINUX")
+    ])
+
+#
+# Complex libxl types
+#
+
+libxl_ioport_range = Struct("ioport_range", [
+    ("first", uint32),
+    ("number", uint32),
+    ])
+
+libxl_iomem_range = Struct("iomem_range", [
+    # start host frame number to be mapped to the guest
+    ("start", uint64),
+    # number of frames to be mapped
+    ("number", uint64),
+    # guest frame number used as a start for the mapping
+    ("gfn", uint64, {'init_val': "LIBXL_INVALID_GFN"}),
+    ])
+
+libxl_vga_interface_info = Struct("vga_interface_info", [
+    ("kind",    libxl_vga_interface_type),
+    ])
+
+libxl_vnc_info = Struct("vnc_info", [
+    ("enable",        libxl_defbool),
+    # "address:port" that should be listened on
+    ("listen",        string),
+    ("passwd",        string),
+    ("display",       integer),
+    # If set then try to find an unused port
+    ("findunused",    libxl_defbool),
+    ])
+
+libxl_spice_info = Struct("spice_info", [
+    ("enable",      libxl_defbool),
+    # At least one of spice port or spicetls_post must be given
+    ("port",        integer),
+    ("tls_port",    integer),
+    # Interface to bind to
+    ("host",        string),
+    # enable client connection with no password
+    ("disable_ticketing", libxl_defbool),
+    ("passwd",      string),
+    ("agent_mouse", libxl_defbool),
+    ("vdagent",     libxl_defbool),
+    ("clipboard_sharing", libxl_defbool),
+    ("usbredirection", integer),
+    ("image_compression", string),
+    ("streaming_video", string),
+    ])
+
+libxl_sdl_info = Struct("sdl_info", [
+    ("enable",        libxl_defbool),
+    ("opengl",        libxl_defbool),
+    ("display",       string),
+    ("xauthority",    string),
+    ])
+
+libxl_dominfo = Struct("dominfo",[
+    ("uuid",        libxl_uuid),
+    ("domid",       libxl_domid),
+    ("ssidref",     uint32),
+    ("ssid_label",  string),
+    ("running",     bool),
+    ("blocked",     bool),
+    ("paused",      bool),
+    ("shutdown",    bool),
+    ("dying",       bool),
+    ("never_stop",  bool),
+
+    # Valid iff ->shutdown is true.
+    #
+    # Otherwise set to a value guaranteed not to clash with any valid
+    # LIBXL_SHUTDOWN_REASON_* constant.
+    ("shutdown_reason", libxl_shutdown_reason),
+    ("outstanding_memkb",  MemKB),
+    ("current_memkb",   MemKB),
+    ("shared_memkb", MemKB),
+    ("paged_memkb", MemKB),
+    ("max_memkb",   MemKB),
+    ("cpu_time",    uint64),
+    ("vcpu_max_id", uint32),
+    ("vcpu_online", uint32),
+    ("cpupool",     uint32),
+    ("domain_type", libxl_domain_type),
+    ], dir=DIR_OUT)
+
+libxl_cpupoolinfo = Struct("cpupoolinfo", [
+    ("poolid",      uint32),
+    ("pool_name",   string),
+    ("sched",       libxl_scheduler),
+    ("n_dom",       uint32),
+    ("cpumap",      libxl_bitmap)
+    ], dir=DIR_OUT)
+
+libxl_channelinfo = Struct("channelinfo", [
+    ("backend", string),
+    ("backend_id", uint32),
+    ("frontend", string),
+    ("frontend_id", uint32),
+    ("devid", libxl_devid),
+    ("state", integer),
+    ("evtch", integer),
+    ("rref", integer),
+    ("u", KeyedUnion(None, libxl_channel_connection, "connection",
+           [("unknown", None),
+            ("pty", Struct(None, [("path", string),])),
+            ("socket", None),
+           ])),
+    ], dir=DIR_OUT)
+
+libxl_vminfo = Struct("vminfo", [
+    ("uuid", libxl_uuid),
+    ("domid", libxl_domid),
+    ], dir=DIR_OUT)
+
+libxl_version_info = Struct("version_info", [
+    ("xen_version_major", integer),
+    ("xen_version_minor", integer),
+    ("xen_version_extra", string),
+    ("compiler",          string),
+    ("compile_by",        string),
+    ("compile_domain",    string),
+    ("compile_date",      string),
+    ("capabilities",      string),
+    ("changeset",         string),
+    ("virt_start",        uint64),
+    ("pagesize",          integer),
+    ("commandline",       string),
+    ("build_id",          string),
+    ], dir=DIR_OUT)
+
+libxl_domain_create_info = Struct("domain_create_info",[
+    ("type",         libxl_domain_type),
+    ("hap",          libxl_defbool),
+    ("oos",          libxl_defbool),
+    ("ssidref",      uint32),
+    ("ssid_label",   string),
+    ("name",         string),
+    ("uuid",         libxl_uuid),
+    ("xsdata",       libxl_key_value_list),
+    ("platformdata", libxl_key_value_list),
+    ("poolid",       uint32),
+    ("pool_name",    string),
+    ("run_hotplug_scripts",libxl_defbool),
+    ("driver_domain",libxl_defbool),
+    ], dir=DIR_IN)
+
+libxl_domain_restore_params = Struct("domain_restore_params", [
+    ("checkpointed_stream", integer),
+    ("stream_version", uint32, {'init_val': '1'}),
+    ("colo_proxy_script", string),
+    ("userspace_colo_proxy", libxl_defbool),
+    ])
+
+libxl_sched_params = Struct("sched_params",[
+    ("vcpuid",       integer, {'init_val': 'LIBXL_SCHED_PARAM_VCPU_INDEX_DEFAULT'}),
+    ("weight",       integer, {'init_val': 'LIBXL_DOMAIN_SCHED_PARAM_WEIGHT_DEFAULT'}),
+    ("cap",          integer, {'init_val': 'LIBXL_DOMAIN_SCHED_PARAM_CAP_DEFAULT'}),
+    ("period",       integer, {'init_val': 'LIBXL_DOMAIN_SCHED_PARAM_PERIOD_DEFAULT'}),
+    ("extratime",    integer, {'init_val': 'LIBXL_DOMAIN_SCHED_PARAM_EXTRATIME_DEFAULT'}),
+    ("budget",       integer, {'init_val': 'LIBXL_DOMAIN_SCHED_PARAM_BUDGET_DEFAULT'}),
+    ])
+
+libxl_vcpu_sched_params = Struct("vcpu_sched_params",[
+    ("sched",        libxl_scheduler),
+    ("vcpus",        Array(libxl_sched_params, "num_vcpus")),
+    ])
+
+libxl_domain_sched_params = Struct("domain_sched_params",[
+    ("sched",        libxl_scheduler),
+    ("weight",       integer, {'init_val': 'LIBXL_DOMAIN_SCHED_PARAM_WEIGHT_DEFAULT'}),
+    ("cap",          integer, {'init_val': 'LIBXL_DOMAIN_SCHED_PARAM_CAP_DEFAULT'}),
+    ("period",       integer, {'init_val': 'LIBXL_DOMAIN_SCHED_PARAM_PERIOD_DEFAULT'}),
+    ("budget",       integer, {'init_val': 'LIBXL_DOMAIN_SCHED_PARAM_BUDGET_DEFAULT'}),
+    ("extratime",    integer, {'init_val': 'LIBXL_DOMAIN_SCHED_PARAM_EXTRATIME_DEFAULT'}),
+
+    # The following three parameters ('slice' and 'latency') are deprecated,
+    # and will have no effect if used, since the SEDF scheduler has been removed.
+    # Note that 'period' and 'extratime' was an SDF parameter too, but it is still effective
+    # as they are now used (together with 'budget') by the RTDS scheduler.
+    ("slice",        integer, {'init_val': 'LIBXL_DOMAIN_SCHED_PARAM_SLICE_DEFAULT'}),
+    ("latency",      integer, {'init_val': 'LIBXL_DOMAIN_SCHED_PARAM_LATENCY_DEFAULT'}),
+    ])
+
+libxl_vnode_info = Struct("vnode_info", [
+    ("memkb", MemKB),
+    ("distances", Array(uint32, "num_distances")), # distances from this node to other nodes
+    ("pnode", uint32), # physical node of this node
+    ("vcpus", libxl_bitmap), # vcpus in this node
+    ])
+
+libxl_gic_version = Enumeration("gic_version", [
+    (0, "DEFAULT"),
+    (0x20, "v2"),
+    (0x30, "v3")
+    ], init_val = "LIBXL_GIC_VERSION_DEFAULT")
+
+libxl_rdm_reserve = Struct("rdm_reserve", [
+    ("strategy",    libxl_rdm_reserve_strategy),
+    ("policy",      libxl_rdm_reserve_policy),
+    ])
+
+# Consistent with the values defined for HVM_PARAM_ALTP2M
+libxl_altp2m_mode = Enumeration("altp2m_mode", [
+    (0, "disabled"),
+    (1, "mixed"),
+    (2, "external"),
+    (3, "limited"),
+    ], init_val = "LIBXL_ALTP2M_MODE_DISABLED")
+
+libxl_domain_build_info = Struct("domain_build_info",[
+    ("max_vcpus",       integer),
+    ("root_domain",     integer),
+    ("avail_vcpus",     libxl_bitmap),
+    ("cpumap",          libxl_bitmap),
+    ("nodemap",         libxl_bitmap),
+    ("vcpu_hard_affinity", Array(libxl_bitmap, "num_vcpu_hard_affinity")),
+    ("vcpu_soft_affinity", Array(libxl_bitmap, "num_vcpu_soft_affinity")),
+    ("numa_placement",  libxl_defbool),
+    ("tsc_mode",        libxl_tsc_mode),
+    ("max_memkb",       MemKB),
+    ("target_memkb",    MemKB),
+    ("video_memkb",     MemKB),
+    ("shadow_memkb",    MemKB),
+    ("rtc_timeoffset",  uint32),
+    ("exec_ssidref",    uint32),
+    ("exec_ssid_label", string),
+    ("localtime",       libxl_defbool),
+    ("disable_migrate", libxl_defbool),
+    ("cpuid",           libxl_cpuid_policy_list),
+    ("blkdev_start",    string),
+
+    ("vnuma_nodes", Array(libxl_vnode_info, "num_vnuma_nodes")),
+
+    ("max_grant_frames",    uint32, {'init_val': 'LIBXL_MAX_GRANT_FRAMES_DEFAULT'}),
+    ("max_maptrack_frames", uint32, {'init_val': 'LIBXL_MAX_MAPTRACK_FRAMES_DEFAULT'}),
+
+    ("device_model_version", libxl_device_model_version),
+    ("device_model_stubdomain", libxl_defbool),
+    # if you set device_model you must set device_model_version too
+    ("device_model",     string),
+    ("device_model_ssidref", uint32),
+    ("device_model_ssid_label", string),
+    ("device_model_user", string),
+
+    # extra parameters pass directly to qemu, NULL terminated
+    ("extra",            libxl_string_list),
+    # extra parameters pass directly to qemu for PV guest, NULL terminated
+    ("extra_pv",         libxl_string_list),
+    # extra parameters pass directly to qemu for HVM guest, NULL terminated
+    ("extra_hvm",        libxl_string_list),
+    #  parameters for all type of scheduler
+    ("sched_params",     libxl_domain_sched_params),
+
+    ("ioports",          Array(libxl_ioport_range, "num_ioports")),
+    ("irqs",             Array(uint32, "num_irqs")),
+    ("iomem",            Array(libxl_iomem_range, "num_iomem")),
+    ("claim_mode",	     libxl_defbool),
+    ("event_channels",   uint32),
+    ("kernel",           string),
+    ("cmdline",          string),
+    ("ramdisk",          string),
+    # Given the complexity of verifying the validity of a device tree,
+    # libxl doesn't do any security check on it. It's the responsibility
+    # of the caller to provide only trusted device tree.
+    # Note that the partial device tree should avoid to use the phandle
+    # 65000 which is reserved by the toolstack.
+    ("device_tree",      string),
+    ("acpi",             libxl_defbool),
+    ("bootloader",       string),
+    ("bootloader_args",  libxl_string_list),
+    ("timer_mode",       libxl_timer_mode),
+    ("nested_hvm",       libxl_defbool),
+    ("apic",             libxl_defbool),
+    ("dm_restrict",      libxl_defbool),
+    ("u", KeyedUnion(None, libxl_domain_type, "type",
+                [("hvm", Struct(None, [("firmware",         string),
+                                       ("bios",             libxl_bios_type),
+                                       ("pae",              libxl_defbool),
+                                       ("apic",             libxl_defbool, {'deprecated_by': 'apic'}),
+                                       # The following acpi field is deprecated.
+                                       # Please use the unified acpi field above
+                                       # which works for both x86 and ARM.
+                                       ("acpi",             libxl_defbool),
+                                       ("acpi_s3",          libxl_defbool),
+                                       ("acpi_s4",          libxl_defbool),
+                                       ("acpi_laptop_slate",libxl_defbool),
+                                       ("nx",               libxl_defbool),
+                                       ("viridian",         libxl_defbool),
+                                       ("viridian_enable",  libxl_bitmap),
+                                       ("viridian_disable", libxl_bitmap),
+                                       ("timeoffset",       string),
+                                       ("hpet",             libxl_defbool),
+                                       ("vpt_align",        libxl_defbool),
+                                       ("mmio_hole_memkb",  MemKB),
+                                       ("timer_mode",       libxl_timer_mode, {'deprecated_by': 'timer_mode'}),
+                                       ("nested_hvm",       libxl_defbool, {'deprecated_by': 'nested_hvm'}),
+                                       # The u.hvm.altp2m field is used solely
+                                       # for x86 HVM guests and is maintained
+                                       # for legacy purposes.
+                                       ("altp2m",           libxl_defbool),
+                                       ("system_firmware",  string),
+                                       ("smbios_firmware",  string),
+                                       ("acpi_firmware",    string),
+                                       ("hdtype",           libxl_hdtype),
+                                       ("nographic",        libxl_defbool),
+                                       ("vga",              libxl_vga_interface_info),
+                                       ("vnc",              libxl_vnc_info),
+                                       # keyboard layout, default is en-us keyboard
+                                       ("keymap",           string),
+                                       ("sdl",              libxl_sdl_info),
+                                       ("spice",            libxl_spice_info),
+
+                                       ("gfx_passthru",     libxl_defbool),
+                                       ("gfx_passthru_kind", libxl_gfx_passthru_kind),
+
+                                       ("serial",           string),
+                                       ("boot",             string),
+                                       ("usb",              libxl_defbool),
+                                       ("usbversion",       integer),
+                                       # usbdevice:
+                                       # - "tablet" for absolute mouse,
+                                       # - "mouse" for PS/2 protocol relative mouse
+                                       ("usbdevice",        string),
+                                       ("vkb_device",       libxl_defbool),
+                                       ("soundhw",          string),
+                                       ("xen_platform_pci", libxl_defbool),
+                                       ("usbdevice_list",   libxl_string_list),
+                                       ("vendor_device",    libxl_vendor_device),
+                                       # See libxl_ms_vm_genid_generate()
+                                       ("ms_vm_genid",      libxl_ms_vm_genid),
+                                       ("serial_list",      libxl_string_list),
+                                       ("rdm", libxl_rdm_reserve),
+                                       ("rdm_mem_boundary_memkb", MemKB),
+                                       ("mca_caps",         uint64),
+                                       ])),
+                 ("pv", Struct(None, [("kernel", string, {'deprecated_by': 'kernel'}),
+                                      ("slack_memkb", MemKB),
+                                      ("bootloader", string, {'deprecated_by': 'bootloader'}),
+                                      ("bootloader_args", libxl_string_list, {'deprecated_by': 'bootloader_args'}),
+                                      ("cmdline", string, {'deprecated_by': 'cmdline'}),
+                                      ("ramdisk", string, {'deprecated_by': 'ramdisk'}),
+                                      ("features", string, {'const': True}),
+                                      # Use host's E820 for PCI passthrough.
+                                      ("e820_host", libxl_defbool),
+                                      ])),
+                 ("pvh", Struct(None, [("pvshim", libxl_defbool),
+                                       ("pvshim_path", string),
+                                       ("pvshim_cmdline", string),
+                                       ("pvshim_extra", string), # eg "loglvl=all guest_loglvl=all apic_verbosity=debug e820-verbose"
+                                       ])),
+                 ("invalid", None),
+                 ], keyvar_init_val = "LIBXL_DOMAIN_TYPE_INVALID")),
+
+
+    ("arch_arm", Struct(None, [("gic_version", libxl_gic_version),
+                               ("vuart", libxl_vuart_type),
+                              ])),
+    # Alternate p2m is not bound to any architecture or guest type, as it is
+    # supported by x86 HVM and ARM support is planned.
+    ("altp2m", libxl_altp2m_mode),
+
+    ], dir=DIR_IN,
+       copy_deprecated_fn="libxl__domain_build_info_copy_deprecated",
+)
+
+libxl_device_vfb = Struct("device_vfb", [
+    ("backend_domid", libxl_domid),
+    ("backend_domname",string),
+    ("devid",         libxl_devid),
+    ("vnc",           libxl_vnc_info),
+    ("sdl",           libxl_sdl_info),
+    # set keyboard layout, default is en-us keyboard
+    ("keymap",        string),
+    ])
+
+libxl_device_vkb = Struct("device_vkb", [
+    ("backend_domid", libxl_domid),
+    ("backend_domname", string),
+    ("devid", libxl_devid),
+    ("backend_type", libxl_vkb_backend),
+    ("unique_id", string),
+    ("feature_disable_keyboard", bool),
+    ("feature_disable_pointer", bool),
+    ("feature_abs_pointer", bool),
+    ("feature_raw_pointer", bool),
+    ("feature_multi_touch", bool),
+    ("width", uint32),
+    ("height", uint32),
+    ("multi_touch_width", uint32),
+    ("multi_touch_height", uint32),
+    ("multi_touch_num_contacts", uint32)
+    ])
+
+libxl_device_disk = Struct("device_disk", [
+    ("backend_domid", libxl_domid),
+    ("backend_domname", string),
+    ("pdev_path", string),
+    ("vdev", string),
+    ("backend", libxl_disk_backend),
+    ("format", libxl_disk_format),
+    ("script", string),
+    ("removable", integer),
+    ("readwrite", integer),
+    ("is_cdrom", integer),
+    ("direct_io_safe", bool),
+    ("discard_enable", libxl_defbool),
+    # Note that the COLO configuration settings should be considered unstable.
+    # They may change incompatibly in future versions of Xen.
+    ("colo_enable", libxl_defbool),
+    ("colo_restore_enable", libxl_defbool),
+    ("colo_host", string),
+    ("colo_port", integer),
+    ("colo_export", string),
+    ("active_disk", string),
+    ("hidden_disk", string)
+    ])
+
+libxl_device_nic = Struct("device_nic", [
+    ("backend_domid", libxl_domid),
+    ("backend_domname", string),
+    ("devid", libxl_devid),
+    ("mtu", integer),
+    ("model", string),
+    ("mac", libxl_mac),
+    ("ip", string),
+    ("bridge", string),
+    ("ifname", string),
+    ("script", string),
+    ("nictype", libxl_nic_type),
+    ("rate_bytes_per_interval", uint64),
+    ("rate_interval_usecs", uint32),
+    ("gatewaydev", string),
+    # Note that the COLO configuration settings should be considered unstable.
+    # They may change incompatibly in future versions of Xen.
+    ("coloft_forwarddev", string),
+    ("colo_sock_mirror_id", string),
+    ("colo_sock_mirror_ip", string),
+    ("colo_sock_mirror_port", string),
+    ("colo_sock_compare_pri_in_id", string),
+    ("colo_sock_compare_pri_in_ip", string),
+    ("colo_sock_compare_pri_in_port", string),
+    ("colo_sock_compare_sec_in_id", string),
+    ("colo_sock_compare_sec_in_ip", string),
+    ("colo_sock_compare_sec_in_port", string),
+    ("colo_sock_compare_notify_id", string),
+    ("colo_sock_compare_notify_ip", string),
+    ("colo_sock_compare_notify_port", string),
+    ("colo_sock_redirector0_id", string),
+    ("colo_sock_redirector0_ip", string),
+    ("colo_sock_redirector0_port", string),
+    ("colo_sock_redirector1_id", string),
+    ("colo_sock_redirector1_ip", string),
+    ("colo_sock_redirector1_port", string),
+    ("colo_sock_redirector2_id", string),
+    ("colo_sock_redirector2_ip", string),
+    ("colo_sock_redirector2_port", string),
+    ("colo_filter_mirror_queue", string),
+    ("colo_filter_mirror_outdev", string),
+    ("colo_filter_redirector0_queue", string),
+    ("colo_filter_redirector0_indev", string),
+    ("colo_filter_redirector0_outdev", string),
+    ("colo_filter_redirector1_queue", string),
+    ("colo_filter_redirector1_indev", string),
+    ("colo_filter_redirector1_outdev", string),
+    ("colo_compare_pri_in", string),
+    ("colo_compare_sec_in", string),
+    ("colo_compare_out", string),
+    ("colo_compare_notify_dev", string),
+    ("colo_sock_sec_redirector0_id", string),
+    ("colo_sock_sec_redirector0_ip", string),
+    ("colo_sock_sec_redirector0_port", string),
+    ("colo_sock_sec_redirector1_id", string),
+    ("colo_sock_sec_redirector1_ip", string),
+    ("colo_sock_sec_redirector1_port", string),
+    ("colo_filter_sec_redirector0_queue", string),
+    ("colo_filter_sec_redirector0_indev", string),
+    ("colo_filter_sec_redirector0_outdev", string),
+    ("colo_filter_sec_redirector1_queue", string),
+    ("colo_filter_sec_redirector1_indev", string),
+    ("colo_filter_sec_redirector1_outdev", string),
+    ("colo_filter_sec_rewriter0_queue", string),
+    ("colo_checkpoint_host", string),
+    ("colo_checkpoint_port", string)
+    ])
+
+libxl_device_pci = Struct("device_pci", [
+    ("func",      uint8),
+    ("dev",       uint8),
+    ("bus",       uint8),
+    ("domain",    integer),
+    ("vdevfn",    uint32),
+    ("vfunc_mask", uint32),
+    ("msitranslate", bool),
+    ("power_mgmt", bool),
+    ("permissive", bool),
+    ("seize", bool),
+    ("rdm_policy",      libxl_rdm_reserve_policy),
+    ])
+
+libxl_device_rdm = Struct("device_rdm", [
+    ("start", uint64),
+    ("size", uint64),
+    ("policy", libxl_rdm_reserve_policy),
+    ])
+
+libxl_usbctrl_type = Enumeration("usbctrl_type", [
+    (0, "AUTO"),
+    (1, "PV"),
+    (2, "DEVICEMODEL"),
+    (3, "QUSB"),
+    ])
+
+libxl_usbdev_type = Enumeration("usbdev_type", [
+    (1, "hostdev"),
+    ])
+
+libxl_device_usbctrl = Struct("device_usbctrl", [
+    ("type", libxl_usbctrl_type),
+    ("devid", libxl_devid),
+    ("version", integer),
+    ("ports", integer),
+    ("backend_domid", libxl_domid),
+    ("backend_domname", string),
+   ])
+
+libxl_device_usbdev = Struct("device_usbdev", [
+    ("ctrl", libxl_devid),
+    ("port", integer),
+    ("u", KeyedUnion(None, libxl_usbdev_type, "type",
+           [("hostdev", Struct(None, [
+                 ("hostbus",   uint8),
+                 ("hostaddr",  uint8)])),
+           ])),
+    ])
+
+libxl_device_dtdev = Struct("device_dtdev", [
+    ("path", string),
+    ])
+
+libxl_device_vtpm = Struct("device_vtpm", [
+    ("backend_domid",    libxl_domid),
+    ("backend_domname",  string),
+    ("devid",            libxl_devid),
+    ("uuid",             libxl_uuid),
+])
+
+libxl_device_p9 = Struct("device_p9", [
+    ("backend_domid",    libxl_domid),
+    ("backend_domname",  string),
+    ("tag",              string),
+    ("path",             string),
+    ("security_model",   string),
+    ("devid",            libxl_devid),
+])
+
+libxl_device_pvcallsif = Struct("device_pvcallsif", [
+    ("backend_domid",    libxl_domid),
+    ("backend_domname",  string),
+    ("devid",            libxl_devid),
+])
+
+libxl_device_channel = Struct("device_channel", [
+    ("backend_domid", libxl_domid),
+    ("backend_domname", string),
+    ("devid", libxl_devid),
+    ("name", string),
+    ("u", KeyedUnion(None, libxl_channel_connection, "connection",
+           [("unknown", None),
+            ("pty", None),
+            ("socket", Struct(None, [("path", string)])),
+           ])),
+])
+
+libxl_connector_param = Struct("connector_param", [
+    ("unique_id", string),
+    ("width", uint32),
+    ("height", uint32)
+    ])
+
+libxl_device_vdispl = Struct("device_vdispl", [
+    ("backend_domid", libxl_domid),
+    ("backend_domname", string),
+    ("devid", libxl_devid),
+    ("be_alloc", bool),
+    ("connectors", Array(libxl_connector_param, "num_connectors"))
+    ])
+
+libxl_vsnd_pcm_format = Enumeration("vsnd_pcm_format", [
+    (1,  "S8"),
+    (2,  "U8"),
+    (3,  "S16_LE"),
+    (4,  "S16_BE"),
+    (5,  "U16_LE"),
+    (6,  "U16_BE"),
+    (7,  "S24_LE"),
+    (8,  "S24_BE"),
+    (9,  "U24_LE"),
+    (10, "U24_BE"),
+    (11, "S32_LE"),
+    (12, "S32_BE"),
+    (13, "U32_LE"),
+    (14, "U32_BE"),
+    (15, "F32_LE"),
+    (16, "F32_BE"),
+    (17, "F64_LE"),
+    (18, "F64_BE"),
+    (19, "IEC958_SUBFRAME_LE"),
+    (20, "IEC958_SUBFRAME_BE"),
+    (21, "MU_LAW"),
+    (22, "A_LAW"),
+    (23, "IMA_ADPCM"),
+    (24, "MPEG"),
+    (25, "GSM")
+    ])
+
+libxl_vsnd_params = Struct("vsnd_params", [
+    ("sample_rates", Array(uint32, "num_sample_rates")),
+    ("sample_formats", Array(libxl_vsnd_pcm_format, "num_sample_formats")),
+    ("channels_min", uint32),
+    ("channels_max", uint32),
+    ("buffer_size", uint32)
+    ])
+
+libxl_vsnd_stream_type = Enumeration("vsnd_stream_type", [
+    (1, "P"),
+    (2, "C")
+    ])
+
+libxl_vsnd_stream = Struct("vsnd_stream", [
+    ("unique_id", string),
+    ("type", libxl_vsnd_stream_type),
+    ("params", libxl_vsnd_params)
+    ])
+
+libxl_vsnd_pcm = Struct("vsnd_pcm", [
+    ("name", string),
+    ("params", libxl_vsnd_params),
+    ("streams", Array(libxl_vsnd_stream, "num_vsnd_streams"))
+    ])
+
+libxl_device_vsnd = Struct("device_vsnd", [
+    ("backend_domid", libxl_domid),
+    ("backend_domname", string),
+    ("devid", libxl_devid),
+    ("short_name", string),
+    ("long_name", string),
+    ("params", libxl_vsnd_params),
+    ("pcms", Array(libxl_vsnd_pcm, "num_vsnd_pcms"))
+    ])
+
+libxl_domain_config = Struct("domain_config", [
+    ("c_info", libxl_domain_create_info),
+    ("b_info", libxl_domain_build_info),
+
+    ("disks", Array(libxl_device_disk, "num_disks")),
+    ("nics", Array(libxl_device_nic, "num_nics")),
+    ("pcidevs", Array(libxl_device_pci, "num_pcidevs")),
+    ("rdms", Array(libxl_device_rdm, "num_rdms")),
+    ("dtdevs", Array(libxl_device_dtdev, "num_dtdevs")),
+    ("vfbs", Array(libxl_device_vfb, "num_vfbs")),
+    ("vkbs", Array(libxl_device_vkb, "num_vkbs")),
+    ("vtpms", Array(libxl_device_vtpm, "num_vtpms")),
+    ("p9s", Array(libxl_device_p9, "num_p9s")),
+    ("pvcallsifs", Array(libxl_device_pvcallsif, "num_pvcallsifs")),
+    ("vdispls", Array(libxl_device_vdispl, "num_vdispls")),
+    ("vsnds", Array(libxl_device_vsnd, "num_vsnds")),
+    # a channel manifests as a console with a name,
+    # see docs/misc/channels.txt
+    ("channels", Array(libxl_device_channel, "num_channels")),
+    ("usbctrls", Array(libxl_device_usbctrl, "num_usbctrls")),
+    ("usbdevs", Array(libxl_device_usbdev, "num_usbdevs")),
+
+    ("on_poweroff", libxl_action_on_shutdown),
+    ("on_reboot", libxl_action_on_shutdown),
+    ("on_watchdog", libxl_action_on_shutdown),
+    ("on_crash", libxl_action_on_shutdown),
+    ("on_soft_reset", libxl_action_on_shutdown),
+    ], dir=DIR_IN)
+
+libxl_diskinfo = Struct("diskinfo", [
+    ("backend", string),
+    ("backend_id", uint32),
+    ("frontend", string),
+    ("frontend_id", uint32),
+    ("devid", libxl_devid),
+    ("state", integer),
+    ("evtch", integer),
+    ("rref", integer),
+    ], dir=DIR_OUT)
+
+libxl_nicinfo = Struct("nicinfo", [
+    ("backend", string),
+    ("backend_id", uint32),
+    ("frontend", string),
+    ("frontend_id", uint32),
+    ("devid", libxl_devid),
+    ("state", integer),
+    ("evtch", integer),
+    ("rref_tx", integer),
+    ("rref_rx", integer),
+    ], dir=DIR_OUT)
+
+libxl_vtpminfo = Struct("vtpminfo", [
+    ("backend", string),
+    ("backend_id", uint32),
+    ("frontend", string),
+    ("frontend_id", uint32),
+    ("devid", libxl_devid),
+    ("state", integer),
+    ("evtch", integer),
+    ("rref", integer),
+    ("uuid", libxl_uuid),
+    ], dir=DIR_OUT)
+
+libxl_usbctrlinfo = Struct("usbctrlinfo", [
+    ("type", libxl_usbctrl_type),
+    ("devid", libxl_devid),
+    ("version", integer),
+    ("ports", integer),
+    ("backend", string),
+    ("backend_id", uint32),
+    ("frontend", string),
+    ("frontend_id", uint32),
+    ("state", integer),
+    ("evtch", integer),
+    ("ref_urb", integer),
+    ("ref_conn", integer),
+    ], dir=DIR_OUT)
+
+libxl_vcpuinfo = Struct("vcpuinfo", [
+    ("vcpuid", uint32),
+    ("cpu", uint32),
+    ("online", bool),
+    ("blocked", bool),
+    ("running", bool),
+    ("vcpu_time", uint64), # total vcpu time ran (ns)
+    ("cpumap", libxl_bitmap), # current hard cpu affinity
+    ("cpumap_soft", libxl_bitmap), # current soft cpu affinity
+    ], dir=DIR_OUT)
+
+libxl_physinfo = Struct("physinfo", [
+    ("threads_per_core", uint32),
+    ("cores_per_socket", uint32),
+
+    ("max_cpu_id", uint32),
+    ("nr_cpus", uint32),
+    ("cpu_khz", uint32),
+
+    ("total_pages", uint64),
+    ("free_pages", uint64),
+    ("scrub_pages", uint64),
+    ("outstanding_pages", uint64),
+    ("sharing_freed_pages", uint64),
+    ("sharing_used_frames", uint64),
+    ("max_possible_mfn", uint64),
+
+    ("nr_nodes", uint32),
+    ("hw_cap", libxl_hwcap),
+
+    ("cap_hvm", bool),
+    ("cap_pv", bool),
+    ("cap_hvm_directio", bool), # No longer HVM specific
+    ], dir=DIR_OUT)
+
+libxl_connectorinfo = Struct("connectorinfo", [
+    ("unique_id", string),
+    ("width", uint32),
+    ("height", uint32),
+    ("req_evtch", integer),
+    ("req_rref", integer),
+    ("evt_evtch", integer),
+    ("evt_rref", integer),
+    ], dir=DIR_OUT)
+
+libxl_vdisplinfo = Struct("vdisplinfo", [
+    ("backend", string),
+    ("backend_id", uint32),
+    ("frontend", string),
+    ("frontend_id", uint32),
+    ("devid", libxl_devid),
+    ("state", integer),
+    ("be_alloc", bool),
+    ("connectors", Array(libxl_connectorinfo, "num_connectors"))
+    ], dir=DIR_OUT)
+
+libxl_streaminfo = Struct("streaminfo", [
+    ("req_evtch", integer),
+    ("req_rref", integer)
+    ])
+
+libxl_pcminfo = Struct("pcminfo", [
+    ("streams", Array(libxl_streaminfo, "num_vsnd_streams"))
+    ])
+
+libxl_vsndinfo = Struct("vsndinfo", [
+    ("backend", string),
+    ("backend_id", uint32),
+    ("frontend", string),
+    ("frontend_id", uint32),
+    ("devid", libxl_devid),
+    ("state", integer),
+    ("pcms", Array(libxl_pcminfo, "num_vsnd_pcms"))
+    ])
+
+libxl_vkbinfo = Struct("vkbinfo", [
+    ("backend", string),
+    ("backend_id", uint32),
+    ("frontend", string),
+    ("frontend_id", uint32),
+    ("devid", libxl_devid),
+    ("state", integer),
+    ("evtch", integer),
+    ("rref", integer)
+    ], dir=DIR_OUT)
+
+# NUMA node characteristics: size and free are how much memory it has, and how
+# much of it is free, respectively. dists is an array of distances from this
+# node to each other node.
+libxl_numainfo = Struct("numainfo", [
+    ("size", uint64),
+    ("free", uint64),
+    ("dists", Array(uint32, "num_dists")),
+    ], dir=DIR_OUT)
+
+libxl_cputopology = Struct("cputopology", [
+    ("core", uint32),
+    ("socket", uint32),
+    ("node", uint32),
+    ], dir=DIR_OUT)
+
+libxl_pcitopology = Struct("pcitopology", [
+    ("seg", uint16),
+    ("bus", uint8),
+    ("devfn", uint8),
+    ("node", uint32),
+    ], dir=DIR_OUT)
+
+libxl_sched_credit_params = Struct("sched_credit_params", [
+    ("tslice_ms", integer),
+    ("ratelimit_us", integer),
+    ("vcpu_migr_delay_us", integer),
+    ], dispose_fn=None)
+
+libxl_sched_credit2_params = Struct("sched_credit2_params", [
+    ("ratelimit_us", integer),
+    ], dispose_fn=None)
+
+libxl_domain_remus_info = Struct("domain_remus_info",[
+    ("interval",             integer),
+    ("allow_unsafe",         libxl_defbool),
+    ("blackhole",            libxl_defbool),
+    ("compression",          libxl_defbool),
+    ("netbuf",               libxl_defbool),
+    ("netbufscript",         string),
+    ("diskbuf",              libxl_defbool),
+    ("colo",                 libxl_defbool),
+    ("userspace_colo_proxy", libxl_defbool)
+    ])
+
+libxl_event_type = Enumeration("event_type", [
+    (1, "DOMAIN_SHUTDOWN"),
+    (2, "DOMAIN_DEATH"),
+    (3, "DISK_EJECT"),
+    (4, "OPERATION_COMPLETE"),
+    (5, "DOMAIN_CREATE_CONSOLE_AVAILABLE"),
+    ])
+
+libxl_ev_user = UInt(64)
+
+libxl_ev_link = Builtin("ev_link", json_parse_type="JSON_STRING", passby=PASS_BY_REFERENCE, private=True)
+
+libxl_event = Struct("event",[
+    ("link",     libxl_ev_link),
+     # for use by libxl; caller may use this once the event has been
+     #   returned by libxl_event_{check,wait}
+    ("domid",    libxl_domid),
+    ("domuuid",  libxl_uuid),
+    ("for_user", libxl_ev_user),
+    ("u", KeyedUnion(None, libxl_event_type, "type",
+          [("domain_shutdown", Struct(None, [
+                                             ("shutdown_reason", uint8),
+                                      ])),
+           ("domain_death", None),
+           ("disk_eject", Struct(None, [
+                                        ("vdev", string),
+                                        ("disk", libxl_device_disk),
+                                 ])),
+           ("operation_complete", Struct(None, [
+                                        ("rc", integer),
+                                 ])),
+           ("domain_create_console_available", None),
+           ]))])
+
+libxl_psr_cmt_type = Enumeration("psr_cmt_type", [
+    (1, "CACHE_OCCUPANCY"),
+    (2, "TOTAL_MEM_COUNT"),
+    (3, "LOCAL_MEM_COUNT"),
+    ])
+
+libxl_psr_cbm_type = Enumeration("psr_cbm_type", [
+    (0, "UNKNOWN"),
+    (1, "L3_CBM"),
+    (2, "L3_CBM_CODE"),
+    (3, "L3_CBM_DATA"),
+    (4, "L2_CBM"),
+    (5, "MBA_THRTL"),
+    ])
+
+libxl_psr_cat_info = Struct("psr_cat_info", [
+    ("id", uint32),
+    ("cos_max", uint32),
+    ("cbm_len", uint32),
+    ("cdp_enabled", bool),
+    ])
+
+libxl_psr_feat_type = Enumeration("psr_feat_type", [
+    (1, "CAT"),
+    (2, "MBA"),
+    ])
+
+libxl_psr_hw_info = Struct("psr_hw_info", [
+    ("id", uint32),
+    ("u", KeyedUnion(None, libxl_psr_feat_type, "type",
+          [("cat", Struct(None, [
+                                    ("cos_max",     uint32),
+                                    ("cbm_len",     uint32),
+                                    ("cdp_enabled", bool),
+                               ])),
+           ("mba", Struct(None, [
+                                    ("cos_max",     uint32),
+                                    ("thrtl_max",   uint32),
+                                    ("linear",      bool),
+                               ])),
+          ]))
+    ], dir=DIR_OUT)

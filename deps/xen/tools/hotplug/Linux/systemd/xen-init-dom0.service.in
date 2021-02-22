@@ -1,0 +1,15 @@
+[Unit]
+Description=xen-init-dom0, initialise Dom0 configuration (xenstore nodes, JSON configuration stub)
+Requires=xenstored.service proc-xen.mount
+After=xenstored.service proc-xen.mount
+ConditionPathExists=/proc/xen/capabilities
+
+[Service]
+Type=oneshot
+RemainAfterExit=true
+EnvironmentFile=@CONFIG_DIR@/@CONFIG_LEAF_DIR@/xencommons
+ExecStartPre=/bin/grep -q control_d /proc/xen/capabilities
+ExecStart=@LIBEXEC_BIN@/xen-init-dom0 $XEN_DOM0_UUID
+
+[Install]
+WantedBy=multi-user.target

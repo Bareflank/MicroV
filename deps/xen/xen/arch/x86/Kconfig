@@ -1,0 +1,229 @@
+config X86_64
+	def_bool y
+
+config X86
+	def_bool y
+	select ACPI
+	select ACPI_LEGACY_TABLES_LOOKUP
+	select ARCH_SUPPORTS_INT128
+	select COMPAT
+	select CORE_PARKING
+	select HAS_ALTERNATIVE
+	select HAS_CPUFREQ
+	select HAS_EHCI
+	select HAS_EX_TABLE
+	select HAS_FAST_MULTIPLY
+	select HAS_GDBSX
+	select HAS_IOPORTS
+	select HAS_KEXEC
+	select MEM_ACCESS_ALWAYS_ON
+	select HAS_MEM_PAGING
+	select HAS_MEM_SHARING
+	select HAS_NS16550
+	select HAS_PASSTHROUGH
+	select HAS_PCI
+	select HAS_PDX
+	select HAS_UBSAN
+	select HAS_VPCI if !PV_SHIM_EXCLUSIVE && HVM
+	select NEEDS_LIBELF
+	select NUMA
+
+config ARCH_DEFCONFIG
+	string
+	default "arch/x86/configs/x86_64_defconfig"
+
+menu "Architecture Features"
+
+source "arch/Kconfig"
+
+config PV
+	def_bool y
+	prompt "PV support"
+	---help---
+	  Interfaces to support PV domains. These require guest kernel support
+	  to run as a PV guest, but don't require any specific hardware support.
+
+	  This option is needed if you want to run PV domains.
+
+	  If unsure, say Y.
+
+config PV_LINEAR_PT
+       bool "Support for PV linear pagetables"
+       depends on PV
+       default y
+       ---help---
+         Linear pagetables (also called "recursive pagetables") refers
+         to the practice of a guest operating system having pagetable
+         entries pointing to other pagetables of the same level (i.e.,
+         allowing L2 PTEs to point to other L2 pages).  Some operating
+         systems use it as a simple way to consistently map the current
+         process's pagetables into its own virtual address space.
+
+         Linux and MiniOS don't use this technique.  NetBSD and Novell
+         Netware do; there may be other custom operating systems which
+         do.  If you're certain you don't plan on having PV guests
+         which use this feature, turning it off can reduce the attack
+         surface.
+
+         If unsure, say Y.
+
+config HVM
+	def_bool !PV_SHIM_EXCLUSIVE
+	prompt "HVM support"
+	---help---
+	  Interfaces to support HVM domains.  HVM domains require hardware
+	  virtualisation extensions (e.g. Intel VT-x, AMD SVM), but can boot
+	  guests which have no specific Xen knowledge.
+
+	  This option is needed if you want to run HVM or PVH domains.
+
+	  If unsure, say Y.
+
+config SHADOW_PAGING
+        bool "Shadow Paging"
+        default y
+        ---help---
+
+          Shadow paging is a software alternative to hardware paging support
+          (Intel EPT, AMD NPT).
+
+          It is required for:
+            * Running HVM guests on hardware lacking hardware paging support
+              (First-generation Intel VT-x or AMD SVM).
+            * Live migration of PV guests.
+            * L1TF sidechannel mitigation for PV guests.
+
+          Under a small number of specific workloads, shadow paging may be
+          deliberately used as a performance optimisation.
+
+          If unsure, say Y.
+
+config BIGMEM
+	bool "big memory support"
+	default n
+	---help---
+	  Allows Xen to support up to 123Tb of memory.
+
+	  This requires enlarging struct page_info as well as shrinking
+	  the always accessible direct mapped memory range.
+
+	  If unsure, say N.
+
+config HVM_FEP
+	bool "HVM Forced Emulation Prefix support" if EXPERT = "y"
+	default DEBUG
+	depends on HVM
+	---help---
+
+	  Compiles in a feature that allows HVM guest to arbitrarily
+	  exercise the instruction emulator.
+
+	  This feature can only be enabled during boot time with
+	  appropriate hypervisor command line option. Please read
+	  hypervisor command line documentation before trying to use
+	  this feature.
+
+	  This is strictly for testing purposes, and not appropriate
+	  for use in production.
+
+	  If unsure, say N.
+
+config TBOOT
+	def_bool y
+	prompt "Xen tboot support" if EXPERT = "y"
+	select CRYPTO
+	---help---
+	  Allows support for Trusted Boot using the Intel(R) Trusted Execution
+	  Technology (TXT)
+
+	  If unsure, say Y.
+
+choice
+	prompt "Alignment of Xen image"
+	default XEN_ALIGN_2M if PV_SHIM_EXCLUSIVE
+	default XEN_ALIGN_DEFAULT
+	---help---
+	  Specify alignment for Xen image.
+
+	  If unsure, choose "default".
+
+config XEN_ALIGN_DEFAULT
+	bool "Default alignment"
+	---help---
+	  Pick alignment according to build variants.
+
+	  For EFI build the default alignment is 2M. For ELF build
+	  the default alignment is 4K due to syslinux failing to handle
+	  the increment of image size induced by 2M alignment.
+
+config XEN_ALIGN_2M
+	bool "2M alignment"
+
+endchoice
+
+config XEN_GUEST
+	def_bool n
+	prompt "Xen Guest"
+	---help---
+	  Support for Xen detecting when it is running under Xen.
+
+	  If unsure, say N.
+
+config PVH_GUEST
+	def_bool n
+	prompt "PVH Guest"
+	depends on XEN_GUEST
+	---help---
+	  Support booting using the PVH ABI.
+
+	  If unsure, say N.
+
+config PV_SHIM
+	def_bool n
+	prompt "PV Shim"
+	depends on PV && XEN_GUEST
+	---help---
+	  Build Xen with a mode which acts as a shim to allow PV guest to run
+	  in an HVM/PVH container. This mode can only be enabled with command
+	  line option.
+
+	  If unsure, say N.
+
+config PV_SHIM_EXCLUSIVE
+	def_bool n
+	prompt "PV Shim Exclusive"
+	depends on PV_SHIM
+	---help---
+	  Build Xen in a way which unconditionally assumes PV_SHIM mode.  This
+	  option is only intended for use when building a dedicated PV Shim
+	  firmware, and will not function correctly in other scenarios.
+
+	  If unsure, say N.
+endmenu
+
+source "common/Kconfig"
+
+source "drivers/Kconfig"
+
+menu "Deprecated Functionality"
+
+config PV_LDT_PAGING
+	bool "PV LDT Paging-out support"
+	depends on PV
+	---help---
+	  For a very long time, the PV ABI has included the ability to page
+	  out the LDT by transitioning its mapping to not-present.  This
+	  functionality is believed to only exist for the PV Windows XP port
+	  which never came to anything.
+
+	  The implementation contains a vCPU scalability limitation in a
+	  position which is prohibitively complicated to resolve.  As the
+	  feature is believed to be unused in practice, removing the feature
+	  is the easiest remediation.
+
+	  If you discover a usecase which is broken by this option being off,
+	  please contact xen-devel@lists.xenproject.org urgently.  Baring
+	  something unexpected, the code and this option will be deleted 2
+	  releases after Xen 4.12.
+
+endmenu

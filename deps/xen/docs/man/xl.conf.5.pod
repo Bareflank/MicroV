@@ -1,0 +1,217 @@
+=head1 NAME
+
+/etc/xen/xl.conf - XL Global/Host Configuration 
+
+=head1 DESCRIPTION
+
+The F<xl.conf> file allows configuration of hostwide C<xl> toolstack
+options.
+
+For details of per-domain configuration options please see
+L<xl.cfg(5)>.
+
+=head1 SYNTAX
+
+The config file consists of a series of C<KEY=VALUE> pairs.
+
+A value C<VALUE> is one of:
+
+=over 4
+
+=item B<"STRING">
+
+A string, surrounded by either single or double quotes.
+
+=item B<NUMBER>
+
+A number, in either decimal, octal (using a C<0> prefix) or
+hexadecimal (using an C<0x> prefix).
+
+=item B<BOOLEAN>
+
+A C<NUMBER> interpreted as C<False> (C<0>) or C<True> (any other
+value).
+
+=item B<[ VALUE, VALUE, ... ]>
+
+A list of C<VALUES> of the above types. Lists are homogeneous and are
+not nested.
+
+=back
+
+The semantics of each C<KEY> defines which form of C<VALUE> is required.
+
+=head1 OPTIONS
+
+=over 4
+
+=item B<autoballoon="off"|"on"|"auto">
+
+If set to "on" then C<xl> will automatically reduce the amount of
+memory assigned to domain 0 in order to free memory for new domains.
+
+If set to "off" then C<xl> will not automatically reduce the amount of
+domain 0 memory.
+
+If set to "auto" then auto-ballooning will be disabled if the
+C<dom0_mem> option was provided on the Xen command line.
+
+You are strongly recommended to set this to C<"off"> (or C<"auto">) if
+you use the C<dom0_mem> hypervisor command line to reduce the amount
+of memory given to domain 0 by default.
+
+Default: C<"auto">
+
+=item B<run_hotplug_scripts=BOOLEAN>
+
+If disabled hotplug scripts will be called from udev, as it used to
+be in the previous releases. With the default option, hotplug scripts
+will be launched by xl directly.
+
+Default: C<1>
+
+=item B<lockfile="PATH">
+
+Sets the path to the lock file used by xl to serialise certain
+operations (primarily domain creation).
+
+Default: C</var/lock/xl>
+
+=item B<max_grant_frames=NUMBER>
+
+Sets the default value for the C<max_grant_frames> domain config value.
+
+Default: C<32> on hosts up to 16TB of memory, C<64> on hosts larger than 16TB
+
+=item B<max_maptrack_frames=NUMBER>
+
+Sets the default value for the C<max_maptrack_frames> domain config value.
+
+Default: C<1024>
+
+=item B<vif.default.script="PATH">
+
+Configures the default hotplug script used by virtual network devices.
+
+The old B<vifscript> option is deprecated and should not be used.
+
+Default: C</etc/xen/scripts/vif-bridge>
+
+=item B<vif.default.bridge="NAME">
+
+Configures the default bridge to set for virtual network devices.
+
+The old B<defaultbridge> option is deprecated and should not be used.
+
+Default: C<xenbr0>
+
+=item B<vif.default.backend="NAME">
+
+Configures the default backend to set for virtual network devices.
+
+Default: C<0>
+
+=item B<vif.default.gatewaydev="NAME">
+
+Configures the default gateway device to set for virtual network devices.
+
+Default: C<None>
+
+=item B<remus.default.netbufscript="PATH">
+
+Configures the default script used by Remus to setup network buffering.
+
+Default: C</etc/xen/scripts/remus-netbuf-setup>
+
+=item B<colo.default.proxyscript="PATH">
+
+Configures the default script used by COLO to setup colo-proxy.
+
+Default: C</etc/xen/scripts/colo-proxy-setup>
+
+=item B<output_format="json|sxp">
+
+Configures the default output format used by xl when printing "machine
+readable" information. The default is to use the C<JSON>
+L<http://www.json.org/> syntax. However for compatibility with the
+previous C<xm> toolstack this can be configured to use the old C<SXP>
+(S-Expression-like) syntax instead.
+
+Default: C<json>
+
+=item B<blkdev_start="NAME">
+
+Configures the name of the first block device to be used for temporary
+block device allocations by the toolstack.
+The default choice is "xvda".
+
+=item B<claim_mode=BOOLEAN>
+
+If this option is enabled then when a guest is created there will be an
+guarantee that there is memory available for the guest.
+The self-balloon mechanism can deflate/inflate the balloon
+quickly and the amount of free memory (which C<xl info> can show) is
+stale the moment it is printed. When claim is enabled a reservation for
+the amount of memory (see 'memory' in xl.conf(5)) is set, which is then
+reduced as the domain's memory is populated and eventually reaches zero.
+The free memory in C<xl info> is the combination of the hypervisor's
+free heap memory minus the outstanding claims value.
+
+If the reservation cannot be meet the guest creation fails immediately
+instead of taking seconds/minutes (depending on the size of the guest)
+while the guest is populated.
+
+Default: C<1>
+
+=over 4
+
+=item C<0>
+
+No claim is made. Memory population during guest creation will be
+attempted as normal and may fail due to memory exhaustion.
+
+=item C<1>
+
+Normal memory and freeable pool of ephemeral pages (tmem) is used when
+calculating whether there is enough memory free to launch a guest.
+This guarantees immediate feedback whether the guest can be launched due
+to memory exhaustion (which can take a long time to find out if launching
+massively huge guests).
+
+=back
+
+=item B<vm.cpumask>="CPULIST"
+
+=item B<vm.hvm.cpumask>="CPULIST"
+
+=item B<vm.pv.cpumask>="CPULIST"
+
+Global masks that are applied when creating guests and pinning vcpus
+to indicate which cpus they are allowed to run on.  Specifically,
+C<vm.cpumask> applies to all guest types, C<vm.hvm.cpumask> applies to
+both HVM and PVH guests and C<vm.pv.cpumask> applies to PV guests.
+
+The hard affinity of guest's vcpus are logical-AND'ed with respective
+masks. If the resulting affinity mask is empty, operation will fail.
+
+Use --ignore-global-affinity-masks to skip applying global masks.
+
+The default value for these masks are all 1's, i.e. all cpus are allowed.
+
+Due to bug(s), these options may not interact well with other options
+concerning CPU affinity. One example is CPU pools. Users should always double
+check that the required affinity has taken effect.
+
+=back
+
+=head1 SEE ALSO
+
+=over 4
+
+=item L<xl(1)>
+
+=item L<xl.cfg(5)>
+
+=item http://www.json.org/
+
+=back

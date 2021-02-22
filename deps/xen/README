@@ -1,0 +1,209 @@
+#################################
+ _  _    _ _____                       _        _     _
+| || |  / |___ /       _   _ _ __  ___| |_ __ _| |__ | | ___
+| || |_ | | |_ \ _____| | | | '_ \/ __| __/ _` | '_ \| |/ _ \
+|__   _|| |___) |_____| |_| | | | \__ \ || (_| | |_) | |  __/
+   |_|(_)_|____/       \__,_|_| |_|___/\__\__,_|_.__/|_|\___|
+
+#################################
+
+http://www.xen.org/
+
+What is Xen?
+============
+
+Xen is a Virtual Machine Monitor (VMM) originally developed by the
+Systems Research Group of the University of Cambridge Computer
+Laboratory, as part of the UK-EPSRC funded XenoServers project.  Xen
+is freely-distributable Open Source software, released under the GNU
+GPL. Since its initial public release, Xen has grown a large
+development community, spearheaded by xen.org (http://www.xen.org).
+
+This file contains some quick-start instructions to install Xen on
+your system. For more information see http:/www.xen.org/ and
+http://wiki.xen.org/
+
+Quick-Start Guide
+=================
+
+First, this is just a quick-start guide. For more comprehensive
+information see the INSTALL file and the Xen wiki at
+http://wiki.xenproject.org and in particular
+http://wiki.xenproject.org/wiki/Getting_Started.
+
+Second, there are a number of prerequisites for building a Xen source
+release. Make sure you have all the following installed, either by
+visiting the project webpage or installing a pre-built package
+provided by your OS distributor:
+    * GNU Make v3.80 or later
+    * C compiler and linker:
+      - For x86:
+        - GCC 4.1.2_20070115 or later
+        - GNU Binutils 2.16.91.0.5 or later
+        or
+        - Clang/LLVM 3.5 or later
+      - For ARM:
+        - GCC 4.8 or later
+        - GNU Binutils 2.24 or later
+    * Development install of zlib (e.g., zlib-dev)
+    * Development install of Python 2.6 or later (e.g., python-dev)
+    * Development install of curses (e.g., libncurses-dev)
+    * Development install of openssl (e.g., openssl-dev)
+    * Development install of x11 (e.g. xorg-x11-dev)
+    * Development install of uuid (e.g. uuid-dev)
+    * Development install of yajl (e.g. libyajl-dev)
+    * Development install of libaio (e.g. libaio-dev) version 0.3.107 or
+      greater.
+    * Development install of GLib v2.0 (e.g. libglib2.0-dev)
+    * Development install of Pixman (e.g. libpixman-1-dev)
+    * pkg-config
+    * bridge-utils package (/sbin/brctl)
+    * iproute package (/sbin/ip)
+    * GNU bison and GNU flex
+    * GNU gettext
+    * ACPI ASL compiler (iasl)
+    * Libc multiarch package (e.g. libc6-dev-i386 / glibc-devel.i686).
+      Required when building on a 64-bit platform to build
+      32-bit components which are enabled on a default build.
+
+In addition to the above there are a number of optional build
+prerequisites. Omitting these will cause the related features to be
+disabled at compile time:
+    * Development install of Ocaml (e.g. ocaml-nox and
+      ocaml-findlib). Required to build ocaml components which
+      includes the alternative ocaml xenstored.
+    * cmake (if building vtpm stub domains)
+    * pandoc, transfig, pod2{man,html,text} for rendering various pieces of
+      documentation into alternative formats
+    * figlet (for generating the traditional Xen start of day banner)
+    * systemd daemon development files
+    * Development install of libnl3 (e.g., libnl-3-200,
+      libnl-3-dev, etc).  Required if network buffering is desired
+      when using Remus with libxl.  See docs/README.remus for detailed
+      information.
+    * 16-bit x86 assembler, loader and compiler for qemu-traditional / rombios
+      (dev86 rpm or bin86 & bcc debs)
+    * Development install of liblzma for rombios
+
+Second, you need to acquire a suitable kernel for use in domain 0. If
+possible you should use a kernel provided by your OS distributor. If
+no suitable kernel is available from your OS distributor then refer to
+http://wiki.xen.org/wiki/XenDom0Kernels for suggestions for
+suitable kernels to use.
+If you are looking to compile a Dom0 kernel from source, please refer to
+http://wiki.xen.org/wiki/XenParavirtOps.
+
+[NB. Unless noted otherwise, all the following steps should be
+performed with root privileges.]
+
+1. Download and untar the source tarball file. This will be a
+   file named xen-unstable-src.tgz, or xen-$version-src.tgz.
+   You can also pull the current version from the git or mercurial
+   repositories at http://xenbits.xen.org/
+
+    # tar xzf xen-unstable-src.tgz
+
+   Assuming you are using the unstable tree, this will
+   untar into xen-unstable. The rest of the instructions
+   use the unstable tree as an example, substitute the
+   version for unstable.
+
+2. cd to xen-unstable (or whatever you sensibly rename it to).
+
+3. For the very first build, or if you want to destroy build trees,
+   perform the following steps:
+
+    # ./configure
+    # make world
+    # make install
+
+   See the documentation in the INSTALL file for more info.
+
+   This will create and install onto the local machine. It will build
+   the xen binary (xen.gz), the tools and the documentation.
+
+   You can override the destination for make install by setting DESTDIR
+   to some value.
+
+4. To rebuild an existing tree without modifying the config:
+    # make dist
+
+   This will build and install xen, tools, and docs into the local dist/
+   directory.
+
+   You can override the destination for make install by setting DISTDIR
+   to some value.
+
+   make install and make dist differ in that make install does the
+   right things for your local machine (installing the appropriate
+   version of udev scripts, for example), but make dist includes all
+   versions of those scripts, so that you can copy the dist directory
+   to another machine and install from that distribution.
+
+xenstore: xenstored and oxenstored
+====================================
+
+Xen uses a configuration database called xenstore [0] to maintain configuration
+and status information shared between domains. A daemon is implemented as part
+of xenstore to act as an interface for access to the database for dom0 and
+guests. Two xenstored daemons are supported, one written in C which we refer
+to as the xenstored (sometimes referred to as cxenstored), and another written
+in Ocaml called oxenstored. Details for xenstore and the different
+implementations can be found on the wiki's xenstore reference guide [1] and
+the xenstored [2] page. You can choose which xenstore you want to enable as
+default on a system through configure:
+
+	./configure --with-xenstored=xenstored
+	./configure --with-xenstored=oxenstored
+
+By default oxenstored will be used if the ocaml development tools are found.
+If you enable oxenstored the xenstored will still be built and installed,
+the xenstored used can be changed through the configuration file:
+
+/etc/sysconfig/xencommons
+or
+/etc/default/xencommons
+
+You can change the preferred xenstored you want to use in the configuration
+but since we cannot stop the daemon a reboot will be required to make the
+change take effect.
+
+[0] http://wiki.xen.org/wiki/XenStore
+[1] http://wiki.xen.org/wiki/XenStoreReference
+[2] http://wiki.xen.org/wiki/Xenstored
+
+Python Runtime Libraries
+========================
+
+Various tools, such as pygrub, have the following runtime dependencies:
+
+    * Python 2.6 or later.
+          URL:    http://www.python.org/
+          Debian: python
+
+Note that the build system expects `python` to be available. If your system
+only has `python2` or `python3` but not `python` (as in Linux From Scratch),
+you will need to create a symlink for it, or specify PYTHON= when invoking
+make, like (note the position of PYTHON= matters):
+
+    # make PYTHON=/usr/bin/python3
+
+Intel(R) Trusted Execution Technology Support
+=============================================
+
+Intel's technology for safer computing, Intel(R) Trusted Execution Technology
+(Intel(R) TXT), defines platform-level enhancements that provide the building
+blocks for creating trusted platforms.  For more information, see
+http://www.intel.com/technology/security/.
+
+Intel(R) TXT support is provided by the Trusted Boot (tboot) module in
+conjunction with minimal logic in the Xen hypervisor.
+
+Tboot is an open source, pre- kernel/VMM module that uses Intel(R) TXT to
+perform a measured and verified launch of an OS kernel/VMM.
+
+The Trusted Boot module is available from
+http://sourceforge.net/projects/tboot.  This project hosts the code in a
+mercurial repo at http://tboot.sourceforge.net/hg/tboot.hg and contains
+tarballs of the source.  Instructions in the tboot README describe how
+to modify grub.conf to use tboot to launch Xen.

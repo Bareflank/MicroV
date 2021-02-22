@@ -23,6 +23,7 @@
 # $1 == CMAKE_SOURCE_DIR
 
 certmgr_10_0_00000_0="/cygdrive/c/Program Files (x86)/Windows Kits/10/bin/x64/certmgr"
+certmgr_10_0_18362_0="/cygdrive/c/Program Files (x86)/Windows Kits/10/bin/10.0.18362.0/x64/certmgr"
 certmgr_10_0_17763_0="/cygdrive/c/Program Files (x86)/Windows Kits/10/bin/10.0.17763.0/x64/certmgr"
 certmgr_10_0_17134_0="/cygdrive/c/Program Files (x86)/Windows Kits/10/bin/10.0.17134.0/x64/certmgr"
 certmgr_10_0_16299_0="/cygdrive/c/Program Files (x86)/Windows Kits/10/bin/10.0.16299.0/x64/certmgr"
@@ -33,6 +34,11 @@ find_certmgr() {
 
     if [[ -f $certmgr_10_0_00000_0 ]]; then
         certmgr=$certmgr_10_0_00000_0
+        return
+    fi
+
+    if [[ -f $certmgr_10_0_18362_0 ]]; then
+        certmgr=$certmgr_10_0_18362_0
         return
     fi
 
@@ -68,14 +74,23 @@ find_certmgr() {
 case $(uname -s) in
 CYGWIN_NT*)
     find_certmgr
-    cd $1/bfbuilder/src/platform/windows
-    >&2 eval "'$certmgr' /add x64/Release/bfbuilder.cer /s /r localMachine root"
-    >&2 eval "'$certmgr' /add x64/Release/bfbuilder.cer /s /r localMachine trustedpublisher"
-    >&2 /cygdrive/c/Program\ Files\ \(x86\)/Windows\ Kits/10/Tools/x64/devcon remove "ROOT\bfbuilder"
-    >&2 /cygdrive/c/Program\ Files\ \(x86\)/Windows\ Kits/10/Tools/x64/devcon install x64/Release/bfbuilder/bfbuilder.inf "ROOT\bfbuilder"
+    cd $1/drivers/$2/windows
+
+    if [[ $2 == "builder" ]]; then
+        root='ROOT\'
+        root="$root$2"
+        >&2 eval "'$certmgr' /add x64/Release/$2.cer /s /r localMachine root"
+        >&2 eval "'$certmgr' /add x64/Release/$2.cer /s /r localMachine trustedpublisher"
+        >&2 /cygdrive/c/Program\ Files\ \(x86\)/Windows\ Kits/10/Tools/x64/devcon remove "$root"
+        >&2 /cygdrive/c/Program\ Files\ \(x86\)/Windows\ Kits/10/Tools/x64/devcon install x64/Release/$2/$2.inf "$root"
+    fi
+
+    if [[ $2 == "visr" ]]; then
+        >&2 /cygdrive/c/windows/system32/pnputil /add-driver x64/Release/$2/$2.inf > x64/Release/$2/pnputil.out
+    fi
     ;;
 Linux)
-    cd $1/bfbuilder/src/platform/linux
+    cd $1/drivers/$2/linux
     sudo make unload 1> /dev/null 2> /dev/null
     sudo make load 1> /dev/null 2> /dev/null
     ;;

@@ -1,0 +1,45 @@
+Warning:
+
+The xenpaging code is new and not fully debugged.
+Usage of xenpaging can crash Xen or cause severe data corruption in the
+guest memory and its filesystems!
+
+Description:
+
+xenpaging writes memory pages of a given guest to a file and moves the
+pages back to the pool of available memory.  Once the guests wants to
+access the paged-out memory, the page is read from disk and placed into
+memory.  This allows the sum of all running guests to use more memory
+than physically available on the host.
+
+Requirements:
+
+xenpaging relies on Intel EPT or AMD RVI, other hardware is not
+supported. Only HVM guests are supported.  The dom0 kernel needs
+paging-aware backend drivers to handle paged granttable entries.
+Currently only dom0 kernels based on classic Xen Linux support this
+functionality.
+
+Usage:
+
+Up to now xenpaging is not integrated into libxl/xend, so it has to be
+started manually for each guest.
+
+Once the guest is running, run xenpaging with the guest_id and the path
+to the pagefile:
+ 
+ /usr/lib/xen/bin/xenpaging -f /path/to/page_file -d dom_id &
+
+Once xenpaging runs it needs a memory target, which is the memory
+footprint of the guest. This value (in KiB) must be written manually to
+xenstore. The following example sets the target to 512MB:
+
+ xenstore-write /local/domain/<dom_id>/memory/target-tot_pages $((1024*512))
+
+Now xenpaging tries to page-out as many pages to keep the overall memory
+footprint of the guest at 512MB.
+
+Todo:
+- integrate xenpaging into libxl
+
+# vim: tw=72

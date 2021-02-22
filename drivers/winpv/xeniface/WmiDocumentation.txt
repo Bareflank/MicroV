@@ -1,0 +1,145 @@
+The Windows Guest WMI Interface
+===============================
+
+The Windows Guest WMI interface is intended to replace as the mechanism of
+choice for communicating with xenstore (and other hypervisor interfaces). It
+is provided by the device driver xeniface.sys, which forms part of the Windows PV
+Drivers. Access to this interface is available to those users which have been
+granted to the root\wmi namespace - which is to say the device driver namespace.
+By default this is administrators only.
+
+The WMI Interface provides a base singleton object which can be used to generate
+individual session objects. These session objects represent individual applications
+(or functions of an application), and are the objects used to interact with
+xenstore - to read write, set and unset watches. Sessions may also take advantage
+of the transaction semantics to ensure atomicity of xenstore operations.
+
+The lifetime of watches and transactions are limited by the lifetime of the session
+object which creates them.
+
+For branding purposes an object name PREFIX can be set at build time using the
+OBJECT_PREFIX environment variable.
+
+On driverload, one object is made available via WMI:
+
+<PREFIX>XenStoreBase
+
+A singleton object representing xenstore
+
+Properties:
+    Uint64 XenTime:
+        LocalTime as set by windows for the VM, and then adjusted by the 
+        Hypervisor's clock.
+Methods:
+    AddSession(String Id) returns SessionId:
+        Add a <PREFIX>XenStoreSession object to the WMI namespace
+        The returned value (session id) is a unique value whcih can be used to
+        identify the session which has been created (in case multiple sessions
+        have the same string identifier)
+
+
+<PREFIX>XenStoreSession
+
+Each instance represents a single session of communication with xenstore
+
+Properties:
+    String ID:
+        A string to identify the use of the session, which can be used to
+        determine if any sessions which have been left open can be closed
+    Uint32 SessionId:
+        An integer, unique amongst all sessions.  This is the same as the value
+        returned at the time the session was created with AddSession
+
+Methods:
+    StartTransaction:
+        Until the transaction is ended, all activities on this session
+        occur within a transaction (hence will not affect xenstore until
+        they are comitted)
+    CommitTransaction:
+        Attempt to commit the current session's transaction.  If this fails,
+        the transaction has not succeded, and may need to be retried.
+    EndTransaction:
+        Cancel the current transaction without committing
+
+    GetValue(String Pathname) returns String:  return the value stored at
+        the path PathName in xenStore
+    GetChildren(String Pathname) returns children{ NoOfChildNodes, string[NoOfChildNodes]ChildNodes}:  
+        For a given node (at PathName), this returns an object containing the 
+        number of child nodes, and an array of strings, where each string 
+        is the full pathname of a child node.
+    RemoveValue(string PathName): 
+        Removes an entry from xenstore (and, if they exist, all descendent 
+        entries)
+    SetValue(string Pathname, String value): 
+        set the value at a give pathname to value
+
+    Log(string): Outputs a log message to the hypervisor  
+
+    SetWatch(string pathname):
+        register your interest in receiving an event when a particular
+        xenstore entry (at pathname) changes.  Note that multiple changes of
+        the same entry occurring soon after one another may be coalesced 
+        into one WMI event (which will be received after all changes 
+        referenced by the coalesced event occur)
+
+    RemoveWatch(string pathname):
+        indicate you no longer want to receive an event when a particular
+        xenstore entry (at pathname) changes.
+
+    EndSession():
+	  Terminate this session.  Remove the session object from the WMI namespace.
+        All watches and transactions associated with the session will be ended.
+
+About events:
+
+<PREFIX>XenStoreWatchEvent:
+
+Event emitted when a particular xenstore entry has changed.  Registering your interest in receiving such an event can be done by calling <PREFIX>XenStoreSession.SetWatch(pathname)
+
+    string EventId : The pathname of the xen store value which has changed
+
+<PREFIX>XenStoreUnsuspendedEvent:
+
+    Event emitted whenever a vm resumes from being suspended.
+
+
+Use:
+
+    (The following example uses powershell to show how the xenstore wmi
+    interface can be scripted)
+
+    Locate the base object
+
+    $base = gwmi -n root\wmi -cl <PREFIX>XenStoreBase
+
+    Create a session
+
+    $sid = $base.AddSession("MyNewSession")
+
+    $session = gwmi -n root\wmi -q "select * from <PREFIX>XenStoreSession where SessionId=$($sid.SessionId)"
+
+    Write a value
+
+    $session.SetValue("data/TempValue","This is a string")
+
+    Read a value
+
+    $session.GetValue("data/TempValue").value
+
+    Remove a value
+
+    $session.RemoveValue("data/TempValue")
+
+    Examine Children
+
+    $session.GetChildren("data").children
+
+    Set Watch
+
+    $watch = Register-WMiEvent -n root\wmi -q "select * from <PREFIX>XenStoreWatchEvent where EventId='data/TempValue'" -action {write $session.getvalue("data/TempValue") }
+
+    $session.setvalue("data/TempValue","HELLO")
+    $session.setvalue("data/TempValue","WORLD")
+
+    $watch.action.output
+

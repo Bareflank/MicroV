@@ -1,0 +1,97 @@
+#!/bin/sh -e
+
+# $NetBSD: block-nbsd,v 1.1.1.1 2008/08/07 20:26:57 cegger Exp $
+# Called by xenbackendd
+# Usage: block xsdir_backend_path state
+
+DIR=$(dirname "$0")
+. "${DIR}/hotplugpath.sh"
+
+PATH=${bindir}:${sbindir}:${LIBEXEC_BIN}:/bin:/usr/bin:/sbin:/usr/sbin
+export PATH
+
+error() {
+	echo "$@" >&2
+	xenstore-write $xpath/hotplug-status error \
+	               $xpath/hotplug-error "$@"
+	exit 1
+}
+	
+
+xpath=$1
+xstatus=$2
+xparams=$(xenstore-read "$xpath/params")
+if [ -b "$xparams" ]; then
+	xtype="phy"
+elif [ -f "$xparams" ]; then
+	xtype="file"
+elif [ -z "$xparams" ]; then
+	error "$xpath/params is empty, unable to attach block device."
+else
+	error "$xparams is not a valid file type to use as block device." \
+	      "Only block and regular image files accepted."
+fi
+
+case $xstatus in
+6)
+	# device removed
+	case $xtype in
+	file)
+		vnd=$(xenstore-read "$xpath/vnd" || echo none)
+		if [ $vnd != none ]; then
+			vnconfig -u $vnd
+		fi
+		;;
+	phy)
+		;;
+	*)
+		echo "unknown type $xtype" >&2
+		;;
+	esac
+	xenstore-rm $xpath
+	exit 0
+	;;
+2)
+	case $xtype in
+	file)
+		# Store the list of available vnd(4) devices in
+		#``available_disks'', and mark them as ``free''.
+		list=`ls -1 /dev/vnd[0-9]*d | sed "s,/dev/vnd,,;s,d,," | sort -n`
+		for i in $list; do
+			disk="vnd$i"
+			available_disks="$available_disks $disk"
+			eval $disk=free
+		done
+		# Mark the used vnd(4) devices as ``used''.
+		for disk in `sysctl hw.disknames`; do
+			case $disk in
+			vnd[0-9]*) eval $disk=used ;;
+			esac
+		done
+		# Configure the first free vnd(4) device.
+		for disk in $available_disks; do
+			eval status=\$$disk
+			if [ "$status" = "free" ] && \
+			    vnconfig /dev/${disk}d $xparams >/dev/null; then
+				device=/dev/${disk}d
+				break	
+			fi
+		done
+		if [ x$device = x ] ; then
+			error "no available vnd device"
+		fi
+		xenstore-write $xpath/vnd $device
+		;;
+	phy)
+		device=$xparams
+		;;
+	esac
+	physical_device=$(stat -f '%r' "$device")
+	xenstore-write $xpath/physical-device $physical_device
+	xenstore-write $xpath/hotplug-status connected
+	exit 0
+	;;
+*)
+	exit 0
+	;;
+esac

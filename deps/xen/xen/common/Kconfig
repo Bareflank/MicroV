@@ -1,0 +1,359 @@
+
+menu "Common Features"
+
+config COMPAT
+	bool
+	help
+	  32-bit interface support on 64-bit Xen which is used for both
+	  HVM and PV guests. HVMLoader makes 32-bit hypercalls irrespective
+	  of the destination runmode of the guest.
+
+config CORE_PARKING
+	bool
+
+config GRANT_TABLE
+	bool "Grant table support" if EXPERT = "y"
+	default y
+	---help---
+	  Grant table provides a generic mechanism to memory sharing
+	  between domains. This shared memory interface underpins the
+	  split device drivers for block and network IO in a classic
+	  Xen setup.
+
+	  If unsure, say Y.
+
+config HAS_ALTERNATIVE
+	bool
+
+config HAS_DEVICE_TREE
+	bool
+
+config HAS_EX_TABLE
+	bool
+
+config HAS_FAST_MULTIPLY
+	bool
+
+config MEM_ACCESS_ALWAYS_ON
+	bool
+
+config MEM_ACCESS
+	def_bool MEM_ACCESS_ALWAYS_ON
+	prompt "Memory Access and VM events" if !MEM_ACCESS_ALWAYS_ON
+	---help---
+
+	  Framework to configure memory access types for guests and receive
+	  related events in userspace.
+
+config HAS_MEM_PAGING
+	bool
+
+config HAS_MEM_SHARING
+	bool
+
+config HAS_PDX
+	bool
+
+config HAS_UBSAN
+	bool
+
+config HAS_KEXEC
+	bool
+
+config HAS_GDBSX
+	bool
+
+config HAS_IOPORTS
+	bool
+
+config NEEDS_LIBELF
+	bool
+
+config NEEDS_LIST_SORT
+	bool
+
+config HAS_BUILD_ID
+	string
+	option env="XEN_HAS_BUILD_ID"
+
+config HAS_CHECKPOLICY
+	string
+	option env="XEN_HAS_CHECKPOLICY"
+
+config KEXEC
+	bool "kexec support"
+	default y
+	depends on HAS_KEXEC
+	---help---
+	  Allows a running Xen hypervisor to be replaced with another OS
+	  without rebooting. This is primarily used to execute a crash
+	  environment to collect information on a Xen hypervisor or dom0 crash.
+
+	  If unsure, say Y.
+
+config XENOPROF
+	def_bool y
+	prompt "Xen Oprofile Support" if EXPERT = "y"
+	depends on X86
+	---help---
+	  Xen OProfile (Xenoprof) is a system-wide profiler for Xen virtual
+	  machine environments, capable of profiling the Xen virtual machine
+	  monitor, multiple Linux guest operating systems, and applications
+	  running on them.
+
+	  If unsure, say Y.
+
+config XSM
+	bool "Xen Security Modules support"
+	default n
+	---help---
+	  Enables the security framework known as Xen Security Modules which
+	  allows administrators fine-grained control over a Xen domain and
+	  its capabilities by defining permissible interactions between domains,
+	  the hypervisor itself, and related resources such as memory and
+	  devices.
+
+	  If unsure, say N.
+
+config XSM_FLASK
+	def_bool y
+	prompt "FLux Advanced Security Kernel support"
+	depends on XSM
+	---help---
+	  Enables FLASK (FLux Advanced Security Kernel) as the access control
+	  mechanism used by the XSM framework.  This provides a mandatory access
+	  control framework by which security enforcement, isolation, and
+	  auditing can be achieved with fine granular control via a security
+	  policy.
+
+	  If unsure, say Y.
+
+config XSM_FLASK_AVC_STATS
+	def_bool y
+	prompt "Maintain statistics on the FLASK access vector cache" if EXPERT = "y"
+	depends on XSM_FLASK
+	---help---
+	  Maintain counters on the access vector cache that can be viewed using
+	  the FLASK_AVC_CACHESTATS sub-op of the xsm_op hypercall.  Disabling
+	  this will save a tiny amount of memory and time to update the stats.
+
+	  If unsure, say Y.
+
+config XSM_FLASK_POLICY
+	bool "Compile Xen with a built-in FLASK security policy"
+	default y if HAS_CHECKPOLICY = "y"
+	depends on XSM_FLASK
+	---help---
+	  This includes a default XSM policy in the hypervisor so that the
+	  bootloader does not need to load a policy to get sane behavior from an
+	  XSM-enabled hypervisor.  If this is disabled, a policy must be
+	  provided by the bootloader or by Domain 0.  Even if this is enabled, a
+	  policy provided by the bootloader will override it.
+
+	  This requires that the SELinux policy compiler (checkpolicy) be
+	  available when compiling the hypervisor.
+
+	  If unsure, say Y.
+
+config XSM_SILO
+	def_bool y
+	prompt "SILO support"
+	depends on XSM
+	---help---
+	  Enables SILO as the access control mechanism used by the XSM framework.
+	  This is not the default module, add boot parameter xsm=silo to choose
+	  it. This will deny any unmediated communication channels (grant tables
+	  and event channels) between unprivileged VMs.
+
+	  If unsure, say Y.
+
+choice
+	prompt "Default XSM implementation"
+	depends on XSM
+	default XSM_FLASK_DEFAULT if XSM_FLASK
+	default XSM_SILO_DEFAULT if XSM_SILO
+	default XSM_DUMMY_DEFAULT
+	config XSM_DUMMY_DEFAULT
+		bool "Match non-XSM behavior"
+	config XSM_FLASK_DEFAULT
+		bool "FLux Advanced Security Kernel" if XSM_FLASK
+	config XSM_SILO_DEFAULT
+		bool "SILO" if XSM_SILO
+endchoice
+
+config LATE_HWDOM
+	bool "Dedicated hardware domain"
+	default n
+	depends on XSM && X86
+	---help---
+	  Allows the creation of a dedicated hardware domain distinct from
+	  domain 0 that manages devices without needing access to other
+	  privileged functionality such as the ability to manage domains.
+	  This requires that the actual domain 0 be a stub domain that
+	  constructs the actual hardware domain instead of initializing the
+	  hardware itself.  Because the hardware domain needs access to
+	  hypercalls not available to unprivileged guests, an XSM policy
+	  is required to properly define the privilege of these domains.
+
+	  This feature does nothing if the "hardware_dom" boot parameter is
+	  not present.  If this feature is being used for security, it should
+	  be combined with an IOMMU in strict mode.
+
+	  If unsure, say N.
+
+config ARGO
+	bool "Argo: hypervisor-mediated interdomain communication" if EXPERT = "y"
+	---help---
+	  Enables a hypercall for domains to ask the hypervisor to perform
+	  data transfer of messages between domains.
+
+	  This allows communication channels to be established that do not
+	  require any shared memory between domains; the hypervisor is the
+	  entity that each domain interacts with. The hypervisor is able to
+	  enforce Mandatory Access Control policy over the communication.
+
+	  If XSM_FLASK is enabled, XSM policy can govern which domains may
+	  communicate via the Argo system.
+
+	  This feature does nothing if the "argo" boot parameter is not present.
+	  Argo is disabled at runtime by default.
+
+	  If unsure, say N.
+
+menu "Schedulers"
+	visible if EXPERT = "y"
+
+config SCHED_CREDIT
+	bool "Credit scheduler support"
+	default y
+	---help---
+	  The traditional credit scheduler is a general purpose scheduler.
+
+config SCHED_CREDIT2
+	bool "Credit2 scheduler support"
+	default y
+	---help---
+	  The credit2 scheduler is a general purpose scheduler that is
+	  optimized for lower latency and higher VM density.
+
+config SCHED_RTDS
+	bool "RTDS scheduler support (EXPERIMENTAL)"
+	default y
+	---help---
+	  The RTDS scheduler is a soft and firm real-time scheduler for
+	  multicore, targeted for embedded, automotive, graphics and gaming
+	  in the cloud, and general low-latency workloads.
+
+config SCHED_ARINC653
+	bool "ARINC653 scheduler support (EXPERIMENTAL)"
+	default DEBUG
+	---help---
+	  The ARINC653 scheduler is a hard real-time scheduler for single
+	  cores, targeted for avionics, drones, and medical devices.
+
+config SCHED_NULL
+	bool "Null scheduler support (EXPERIMENTAL)"
+	default y
+	---help---
+	  The null scheduler is a static, zero overhead scheduler,
+	  for when there always are less vCPUs than pCPUs, typically
+	  in embedded or HPC scenarios.
+
+choice
+	prompt "Default Scheduler?"
+	default SCHED_CREDIT2_DEFAULT
+
+	config SCHED_CREDIT_DEFAULT
+		bool "Credit Scheduler" if SCHED_CREDIT
+	config SCHED_CREDIT2_DEFAULT
+		bool "Credit2 Scheduler" if SCHED_CREDIT2
+	config SCHED_RTDS_DEFAULT
+		bool "RT Scheduler" if SCHED_RTDS
+	config SCHED_ARINC653_DEFAULT
+		bool "ARINC653 Scheduler" if SCHED_ARINC653
+	config SCHED_NULL_DEFAULT
+		bool "Null Scheduler" if SCHED_NULL
+endchoice
+
+config SCHED_DEFAULT
+	string
+	default "credit" if SCHED_CREDIT_DEFAULT
+	default "credit2" if SCHED_CREDIT2_DEFAULT
+	default "rtds" if SCHED_RTDS_DEFAULT
+	default "arinc653" if SCHED_ARINC653_DEFAULT
+	default "null" if SCHED_NULL_DEFAULT
+	default "credit2"
+
+endmenu
+
+config CRYPTO
+	bool
+
+config LIVEPATCH
+	bool "Live patching support"
+	default X86
+	depends on HAS_BUILD_ID = "y"
+	---help---
+	  Allows a running Xen hypervisor to be dynamically patched using
+	  binary patches without rebooting. This is primarily used to binarily
+	  patch in the field an hypervisor with XSA fixes.
+
+	  If unsure, say Y.
+
+config FAST_SYMBOL_LOOKUP
+	bool "Fast symbol lookup (bigger binary)"
+	default y
+	depends on LIVEPATCH
+	---help---
+	  When searching for symbol addresses we can use the built-in system
+	  that is optimized for searching symbols using addresses as the key.
+	  However using it for the inverse (find address using the symbol name)
+	  it is slow. This extra data and code (~55kB) speeds up the search.
+	  The only user of this is Live patching.
+
+	  If unsure, say Y.
+
+config SUPPRESS_DUPLICATE_SYMBOL_WARNINGS
+	bool "Suppress duplicate symbol warnings" if !LIVEPATCH
+	default y if !LIVEPATCH
+	---help---
+	  Multiple symbols with the same name aren't generally a problem
+	  unless Live patching is to be used, so these warnings can be
+	  suppressed by enabling this option.  Certain other options (known
+	  to produce many duplicate names) may select this to avoid the
+	  build becoming overly verbose.
+
+config CMDLINE
+	string "Built-in hypervisor command string" if EXPERT = "y"
+	default ""
+	---help---
+	  Enter arguments here that should be compiled into the hypervisor
+	  image and used at boot time. When the system boots, this string
+	  will be parsed prior to the bootloader command line. So if a
+	  non-cumulative option is set both in this string and in the
+	  bootloader command line, only the latter one will take effect.
+
+config CMDLINE_OVERRIDE
+	bool "Built-in command line overrides bootloader arguments"
+	default n
+	depends on CMDLINE != ""
+	---help---
+	  Set this option to 'Y' to have the hypervisor ignore the bootloader
+	  command line, and use ONLY the built-in command line.
+
+	  This is used to work around broken bootloaders. This should
+	  be set to 'N' under normal conditions.
+
+config DOM0_MEM
+	string "Default value for dom0_mem boot parameter"
+	default ""
+	---help---
+	  Sets a default value for dom0_mem, e.g. "512M".
+	  The specified string will be used for the dom0_mem parameter in
+	  case it was not specified on the command line.
+
+	  See docs/misc/xen-command-line.markdown for the supported syntax.
+
+	  Leave empty if you are not sure what to specify.
+
+endmenu

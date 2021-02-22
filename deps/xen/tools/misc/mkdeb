@@ -1,0 +1,65 @@
+#!/bin/sh
+#
+# mkdeb: package the dist/install output of a Xen build in a .deb 
+#
+# Takes 2 arguments, the path to the dist directory and the version
+
+set -e
+
+if test -z "$1" -o -z "$2" ; then 
+  echo "usage: $0 path-to-XEN_ROOT xen-version"
+  exit 1
+fi 
+
+cd $1
+version=$2
+
+# map the architecture, if necessary
+case "$XEN_TARGET_ARCH" in
+  x86_32|x86_32p)  arch=i386 ;;
+  x86_64)  arch=amd64 ;;
+  arm32)   arch=armhf ;;
+  arm64)   arch=$XEN_TARGET_ARCH;;
+  *) echo "Unknown XEN_TARGET_ARCH $XEN_TARGET_ARCH" >&2
+     exit 1
+     ;;
+esac
+
+# Prepare the directory to package
+cd dist
+rm -rf deb
+cp -a install deb
+
+# Debian doesn't use /usr/lib64 for 64-bit libraries
+if test -d deb/usr/lib64 ; then 
+  cp -a deb/usr/lib64/* deb/usr/lib/
+  rm -rf deb/usr/lib64
+fi
+
+# Fill in the debian boilerplate
+mkdir -p deb/DEBIAN
+cat >deb/DEBIAN/control <<EOF
+Package: xen-upstream
+Source: xen-upstream
+Version: $version
+Architecture: $arch
+Maintainer: Unmaintained snapshot
+Section: admin
+Priority: optional
+Installed-Size: $(du -ks deb | cut -f1)
+Description: Xen upstream testing build snapshot
+ Warning: This is a custom testing build of Xen; it is not an
+ officially supported Debian package. Please not distribute.
+ It is just the output of a xen "make dist" wrapped in a .deb
+ to make it easy to update and uninstall.
+EOF
+# Find all /etc files and add them to conffiles
+find deb/etc -type f -printf /etc/%P\\n >deb/DEBIAN/conffiles
+
+
+# Package it up
+chown -R root:root deb
+dpkg-deb --build -z0 deb xen-upstream-$version.deb
+
+# Tidy up after ourselves
+rm -rf deb

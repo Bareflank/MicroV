@@ -1,0 +1,133 @@
+[Dynamic, Provider("WMIProv"),
+ WMI,
+ Description("Xenstore Node"),
+ guid("{1D80EB99-A1D6-4492-B62F-8B4549FF0B5E}"),
+ locale("MS\\0x409")]
+class @OBJECT_PREFIX@XenStoreNodes
+{
+    [key, read]
+     string InstanceName;
+    [read] boolean Active;
+
+    [WmiDataId(1),
+     read,
+     Description("Number of child nodes")]
+    uint32 NoOfChildNodes;
+
+    [WmiDataId(2),
+     read,
+     WmiSizeIs("NoOfChildNodes"),
+     Description("Child Nodes")]
+    string ChildNodes[];
+    
+};
+
+[Dynamic, Provider("WMIProv"),
+ WMI,
+ Description("Xenstore Session"),
+ guid("{12138A69-97B2-49DD-B9DE-54749AABC789}"),
+ locale("MS\\0x409")]
+
+class @OBJECT_PREFIX@XenStoreSession
+{
+    [key, read]
+     string InstanceName;
+    [read] boolean Active;
+
+    [WmiDataId(1), read]
+    uint32 SessionId;
+    [WmiDataId(2),read]
+    string Id;
+
+    [Implemented, WmiMethodId(1), Description("Get Value")]
+        void GetValue([In, IDQualifier(0)]string Pathname, [Out, IDQualifier(1)]string value);
+    
+    [Implemented, WmiMethodId(2), Description("Get Children")]
+        void GetChildren([In, IDQualifier(0)]string Pathname, [Out, IDQualifier(1)]@OBJECT_PREFIX@XenStoreNodes children);
+
+    [Implemented, WmiMethodId(3), Description("Set Value")]
+        void SetValue([In, IDQualifier(0)]string Pathname, [In, IDQualifier(1)]string value);
+
+    [Implemented, WmiMethodId(4), Description("End Session")]
+        void EndSession();
+
+    [Implemented, WmiMethodId(5), Description("Set Watch")]
+        void SetWatch([In, IDQualifier(0)]string Pathname);
+
+    [Implemented, WmiMethodId(6), Description("Remove Watch")]
+        void RemoveWatch([In, IDQualifier(0)]string Pathname);
+    
+    [Implemented, WmiMethodId(7), Description("Remove Value")]
+        void RemoveValue([In, IDQualifier(0)]string Pathname);
+
+    [Implemented, WmiMethodId(8), Description("Log")]
+        void Log([In, IDQualifier(0)]string Message); 
+
+    [Implemented, WmiMethodId(9), Description("Start Transaction")]
+        void StartTransaction();
+
+    [Implemented, WmiMethodId(10), Description("Commit Transaction")]
+        void CommitTransaction();
+    
+    [Implemented, WmiMethodId(11), Description("Abort Transaction")]
+        void AbortTransaction();
+    
+    [Implemented, WmiMethodId(12), Description("Get First Child")]
+        void GetFirstChild([In, IDQualifier(0)]string InPath, [Out, IDQualifier(1)]string OutPath);
+
+    [Implemented, WmiMethodId(13), Description("Get Next Sibling")]
+        void GetNextSibling([In, IDQualifier(0)]string InPath, [Out, IDQualifier(1)]string OutPath);
+};
+[WMI, Dynamic, Provider("WMIProv"),
+ guid("{8C436757-56BA-4273-9E58-CA4E689260E5}"),
+ locale("MS\\0x409"),
+ WmiExpense(1),
+ Description("Event notifying XenStore")]
+class @OBJECT_PREFIX@XenStoreWatchEvent : WMIEvent
+{
+    [key, read]
+    string        InstanceName;
+
+    [read]
+    boolean        Active;
+
+    [read,
+     Description("Triggered Event Id"),
+     WmiDataId(1)]    string    EventId;
+};
+
+[Dynamic, Provider("WMIProv"),
+ WMI,
+ Description("Base XenStore Object"),
+ guid("{AB8136BF-8EA7-420D-ADAD-89C83E587925}"),
+ locale("MS\\0x409")]
+class @OBJECT_PREFIX@XenStoreBase {
+   [key, read]
+    string        InstanceName;
+
+    [read]
+    boolean        Active;
+
+    
+    [read,
+     Description("Time provided by Xen hypervisor"),
+     WmiDataId(1)] uint64 XenTime;
+
+    [Implemented, WmiMethodId(1), Description("Add new session")]
+        void AddSession([In, IDQualifier(0)]string Id, [Out, IDQualifier(2)]uint32 SessionId);
+
+};
+
+[WMI, Dynamic, Provider("WMIProv"),
+ guid("{6456AAFA-4D71-497C-A34E-26AA995B14A4}"),
+ locale("MS\\0x409"),
+ WmiExpense(1),
+ Description("Event notifying the VM has unsuspended")]
+class @OBJECT_PREFIX@XenStoreUnsuspendedEvent : WMIEvent
+{
+    [key, read]
+    string        InstanceName;
+
+    [read]
+    boolean        Active;
+};

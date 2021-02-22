@@ -19,58 +19,30 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-# ------------------------------------------------------------------------------
-# Project includes
-# ------------------------------------------------------------------------------
-
-include(${CMAKE_CURRENT_LIST_DIR}/scripts/cmake/config/default.cmake)
-
-# ------------------------------------------------------------------------------
-# Targets
-# ------------------------------------------------------------------------------
-
-include(${BOXY_SOURCE_CMAKE_DIR}/targets.cmake)
-
-# ------------------------------------------------------------------------------
-# General Dependencies
-# ------------------------------------------------------------------------------
-
-if(ENABLE_BUILD_GUEST)
-    include_dependency(BOXY_SOURCE_DEPENDS_DIR linux)
-endif()
-
-# ------------------------------------------------------------------------------
-# VMM
-# ------------------------------------------------------------------------------
+include(${MICROV_SOURCE_CMAKE_DIR}/depends/clang_format.cmake)
+include(${MICROV_SOURCE_CMAKE_DIR}/targets.cmake)
 
 if(ENABLE_BUILD_VMM)
     add_subproject(
-        boxy_bfvmm vmm
+        uvvmm vmm
         DEPENDS bfvmm
-        SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}/bfvmm
+        SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}/vmm
     )
+
+    if(ENABLE_BUILD_EFI)
+        message(STATUS "    efi binary to boot after bareflank.efi: ${EFI_BOOT_NEXT}")
+    endif()
+
+    message(STATUS "    build xen components: ${BUILD_XEN}")
+    message(STATUS "    use xue usb debugger: ${USE_XUE}")
 endif()
 
-# ------------------------------------------------------------------------------
-# bfexec
-# ------------------------------------------------------------------------------
-
-add_subproject(
-    bfexec userspace
-    SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}/bfexec
-    DEPENDS bfintrinsics
-    DEPENDS bfsdk
-    DEPENDS cxxopts
-)
-
-# ------------------------------------------------------------------------------
-# bflinux
-# ------------------------------------------------------------------------------
-
-if(NOT WIN32 AND NOT CYGWIN)
+if(ENABLE_BUILD_USERSPACE)
     add_subproject(
-        bflinux userspace
-        SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}/bflinux
+        uvctl userspace
+        SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}/uvctl
         DEPENDS bfintrinsics
+        DEPENDS bfsdk
+        DEPENDS cxxopts
     )
 endif()

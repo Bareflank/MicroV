@@ -20,7 +20,68 @@
 # SOFTWARE.
 
 # ------------------------------------------------------------------------------
-# Driver
+# Clang Format
+# ------------------------------------------------------------------------------
+
+if(ENABLE_CLANG_FORMAT)
+    add_custom_target(clang-format)
+
+    # Get subtrees to exclude later since `git ls-files` doesn't support this
+    # git log | grep git-subtree-dir | sed -e 's/^.*: //g' | uniq
+    execute_process(
+        COMMAND git log
+        WORKING_DIRECTORY ${MICROV_SOURCE_ROOT_DIR}
+        RESULT_VARIABLE GITLOG_RESULT
+        OUTPUT_VARIABLE GIT_SUBTREES
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+    if (NOT GITLOG_RESULT EQUAL 0)
+        message(FATAL_ERROR "command `git log` returned ${SOURCES_RESULT}")
+    endif()
+
+    if(NOT "${GIT_SUBTREES}" STREQUAL "")
+        # Get a list of subtree directories from git log
+        string(REGEX MATCHALL "git-subtree-dir: [^ \t\r\n]*" GIT_SUBTREES
+            ${GIT_SUBTREES})
+        list(REMOVE_DUPLICATES GIT_SUBTREES)
+        list(TRANSFORM GIT_SUBTREES REPLACE "git-subtree-dir: " "")
+
+        # Turn it into a git pathspec that excludes the match
+        list(TRANSFORM GIT_SUBTREES PREPEND ":!:./")
+        list(TRANSFORM GIT_SUBTREES APPEND "/*")
+    endif()
+
+    # Find all *.h and *.cpp in git tracked files including untracked and cached
+    # files but excluding git ignored files and submodules.
+    execute_process(
+        COMMAND git ls-files --cached --others --exclude-standard -- *.h *.cpp
+                ${GIT_SUBTREES}
+        WORKING_DIRECTORY ${MICROV_SOURCE_ROOT_DIR}
+        RESULT_VARIABLE SOURCES_RESULT
+        OUTPUT_VARIABLE SOURCES
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+    if (NOT SOURCES_RESULT EQUAL 0)
+        message(FATAL_ERROR "git ls-files [...]` returned ${SOURCES_RESULT}")
+    endif()
+
+    if(NOT "${SOURCES}" STREQUAL "")
+        string(REPLACE "\n" ";" SOURCES ${SOURCES})
+        list(TRANSFORM SOURCES PREPEND "${MICROV_SOURCE_ROOT_DIR}/")
+
+        add_custom_command(TARGET clang-format
+            COMMAND ${CMAKE_COMMAND} -E chdir ${MICROV_SOURCE_ROOT_DIR}
+                    ${CLANG_FORMAT_BIN} --verbose -i ${SOURCES}
+        )
+    endif()
+
+    add_custom_command(TARGET clang-format
+        COMMAND ${CMAKE_COMMAND} -E cmake_echo_color --green "done"
+    )
+endif()
+
+# ------------------------------------------------------------------------------
+# Drivers
 # ------------------------------------------------------------------------------
 
 if(WIN32)
@@ -29,59 +90,75 @@ endif()
 
 file(TO_NATIVE_PATH "${SOURCE_ROOT_DIR}" SOURCE_ROOT_DIR_NATIVE)
 
-add_custom_target_category("Boxy Driver")
+function(add_driver_targets DRV)
+    set(SH_DIR ${MICROV_SOURCE_UTIL_DIR})
+    set(MV_SRC ${MICROV_SOURCE_ROOT_DIR})
+    set(BF_SRC ${SOURCE_ROOT_DIR_NATIVE})
 
-add_custom_target(builder_build
-    COMMAND ${BOXY_SOURCE_UTIL_DIR}/driver_build.sh ${BOXY_SOURCE_ROOT_DIR} ${SOURCE_ROOT_DIR_NATIVE}
-    USES_TERMINAL
-)
-add_custom_target_info(
-    TARGET builder_build
-    COMMENT "Build the boxy driver"
-)
+    add_custom_target(${DRV}_build
+        COMMAND ${SH_DIR}/driver_build.sh ${MV_SRC} ${BF_SRC} ${DRV}
+        USES_TERMINAL
+    )
+    add_custom_target_info(
+        TARGET ${DRV}_build
+        COMMENT "Build the ${DRV} driver"
+    )
 
-add_custom_target(builder_clean
-    COMMAND ${BOXY_SOURCE_UTIL_DIR}/driver_clean.sh ${BOXY_SOURCE_ROOT_DIR} ${SOURCE_ROOT_DIR_NATIVE}
-    USES_TERMINAL
-)
-add_custom_target_info(
-    TARGET builder_clean
-    COMMENT "Clean the boxy driver"
-)
+    add_custom_target(${DRV}_clean
+        COMMAND ${SH_DIR}/driver_clean.sh ${MV_SRC} ${DRV}
+        USES_TERMINAL
+    )
+    add_custom_target_info(
+        TARGET ${DRV}_clean
+        COMMENT "Clean the ${DRV} driver"
+    )
 
-add_custom_target(builder_load
-    COMMAND ${BOXY_SOURCE_UTIL_DIR}/driver_load.sh ${BOXY_SOURCE_ROOT_DIR}  ${SOURCE_ROOT_DIR_NATIVE}
-    USES_TERMINAL
-)
-add_custom_target_info(
-    TARGET builder_load
-    COMMENT "Load the boxy driver"
-)
+    add_custom_target(${DRV}_load
+        COMMAND ${SH_DIR}/driver_load.sh ${MV_SRC} ${DRV}
+        USES_TERMINAL
+    )
+    add_custom_target_info(
+        TARGET ${DRV}_load
+        COMMENT "Load the ${DRV} driver"
+    )
 
-add_custom_target(builder_unload
-    COMMAND ${BOXY_SOURCE_UTIL_DIR}/driver_unload.sh ${BOXY_SOURCE_ROOT_DIR} ${SOURCE_ROOT_DIR_NATIVE}
-    USES_TERMINAL
-)
-add_custom_target_info(
-    TARGET builder_unload
-    COMMENT "Unload the boxy driver"
-)
+    add_custom_target(${DRV}_unload
+        COMMAND ${SH_DIR}/driver_unload.sh ${MV_SRC} ${DRV}
+        USES_TERMINAL
+    )
+    add_custom_target_info(
+        TARGET ${DRV}_unload
+        COMMENT "Unload the ${DRV} driver"
+    )
 
-add_custom_target(
-    builder_quick
-    COMMAND ${CMAKE_COMMAND} --build . --target builder_unload
-    COMMAND ${CMAKE_COMMAND} --build . --target builder_clean
-    COMMAND ${CMAKE_COMMAND} --build . --target builder_build
-    COMMAND ${CMAKE_COMMAND} --build . --target builder_load
-    USES_TERMINAL
-)
-add_custom_target_info(
-    TARGET builder_quick
-    COMMENT "Unload, clean, build, and load the Bareflank driver"
-)
+    add_custom_target(
+        ${DRV}_quick
+        COMMAND ${CMAKE_COMMAND} --build . --target ${DRV}_unload
+        COMMAND ${CMAKE_COMMAND} --build . --target ${DRV}_clean
+        COMMAND ${CMAKE_COMMAND} --build . --target ${DRV}_build
+        COMMAND ${CMAKE_COMMAND} --build . --target ${DRV}_load
+        USES_TERMINAL
+    )
+    add_custom_target_info(
+        TARGET ${DRV}_quick
+        COMMENT "Unload, clean, build, and load the ${DRV} driver"
+    )
 
-add_dependencies(driver_build builder_build)
-add_dependencies(driver_clean builder_clean)
-add_dependencies(driver_load builder_load)
-add_dependencies(driver_unload builder_unload)
-add_dependencies(driver_quick builder_quick)
+    add_dependencies(driver_unload ${DRV}_unload)
+    add_dependencies(driver_clean ${DRV}_clean)
+    add_dependencies(driver_build ${DRV}_build)
+    add_dependencies(driver_load ${DRV}_load)
+    add_dependencies(driver_quick ${DRV}_quick)
+endfunction(add_driver_targets)
+
+if(BUILD_BUILDER OR BUILD_VISR)
+    add_custom_target_category("MicroV Drivers")
+endif()
+
+if(BUILD_BUILDER)
+    add_driver_targets(builder)
+endif()
+
+if(BUILD_VISR)
+    add_driver_targets(visr)
+endif()

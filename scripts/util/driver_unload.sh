@@ -22,10 +22,21 @@
 
 case $(uname -s) in
 CYGWIN_NT*)
-    >&2 /cygdrive/c/Program\ Files\ \(x86\)/Windows\ Kits/10/Tools/x64/devcon remove "ROOT\bfbuilder"
+    if [[ $2 == "builder" ]]; then
+        root='ROOT\'
+        root="$root$2"
+        >&2 /cygdrive/c/Program\ Files\ \(x86\)/Windows\ Kits/10/Tools/x64/devcon remove "$root"
+    fi
+
+    if [[ $2 == "visr" ]]; then
+        cd $1/drivers/$2/windows
+        oem=$(grep Published x64/Release/visr/pnputil.out | awk '{print $NF}')
+        oem=$(echo $oem | tr -d '[:space:]')
+        /cygdrive/c/windows/system32/pnputil /delete-driver $oem
+    fi
     ;;
 Linux)
-    cd $1/bfbuilder/src/platform/linux
+    cd $1/drivers/$2/linux
     sudo make unload 1> /dev/null 2> /dev/null
     ;;
 *)

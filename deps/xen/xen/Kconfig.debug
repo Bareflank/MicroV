@@ -1,0 +1,110 @@
+
+menu "Debugging Options"
+
+config DEBUG
+	bool "Developer Checks"
+	default y
+	---help---
+	  If you say Y here this will enable developer checks such as asserts
+	  and extra printks. This option is intended for development purposes
+	  only, and not for production use.
+
+	  You probably want to say 'N' here.
+
+if DEBUG || EXPERT = "y"
+
+config CRASH_DEBUG
+	bool "Crash Debugging Support"
+	depends on X86
+	---help---
+	  If you want to attach gdb to Xen to debug Xen if it crashes
+	  then say Y.
+
+config DEBUG_INFO
+	bool "Compile Xen with debug info"
+	default y
+	---help---
+	  If you say Y here the resulting Xen will include debugging info
+	  resulting in a larger binary image.
+
+config FRAME_POINTER
+	bool "Compile Xen with frame pointers"
+	default DEBUG
+	---help---
+	  If you say Y here the resulting Xen will be slightly larger and
+	  maybe slower, but it gives very useful debugging information
+	  in case of any Xen bugs.
+
+config COVERAGE
+	bool "Code coverage support"
+	depends on !LIVEPATCH
+	select SUPPRESS_DUPLICATE_SYMBOL_WARNINGS
+	---help---
+	  Enable code coverage support.
+
+	  If unsure, say N here.
+
+config LOCK_PROFILE
+	bool "Lock Profiling"
+	---help---
+	  Lock profiling allows you to see how often locks are taken and blocked.
+	  You can use serial console to print (and reset) using 'l' and 'L'
+	  respectively, or the 'xenlockprof' tool.
+
+config PERF_COUNTERS
+	bool "Performance Counters"
+	---help---
+	  Enables software performance counters that allows you to analyze
+	  bottlenecks in the system.  To access this data you can use serial
+	  console to print (and reset) using 'p' and 'P' respectively, or
+	  the 'xenperf' tool.
+
+config PERF_ARRAYS
+	bool "Performance Counter Array Histograms"
+	depends on PERF_COUNTERS
+	---help---
+	  Enables software performance counter array histograms.
+
+
+config VERBOSE_DEBUG
+	bool "Verbose debug messages"
+	default DEBUG
+	---help---
+	  Guest output from HYPERVISOR_console_io and hypervisor parsing
+	  ELF images (dom0) will be logged in the Xen ring buffer.
+
+config DEVICE_TREE_DEBUG
+	bool "Device tree debug messages"
+	depends on HAS_DEVICE_TREE
+	---help---
+	  Device tree parsing and DOM0 device tree building messages are
+	  logged in the Xen ring buffer.
+	  If unsure, say N here.
+
+config SCRUB_DEBUG
+	bool "Page scrubbing test"
+	default DEBUG
+	---help---
+	  Verify that pages that need to be scrubbed before being allocated to
+	  a guest are indeed scrubbed.
+
+config UBSAN
+	bool "Undefined behaviour sanitizer"
+	depends on HAS_UBSAN
+	---help---
+	  Enable undefined behaviour sanitizer. It uses compiler to insert code
+	  snippets so that undefined behaviours in C are detected during runtime.
+	  This requires a UBSAN capable compiler and it is a debug only feature.
+
+	  If unsure, say N here.
+
+config DEBUG_TRACE
+	bool "Debug trace support"
+	---help---
+	  Debug trace enables to record debug trace messages which are printed
+	  either directly to the console or are printed to console in case of
+	  a system crash.
+
+endif # DEBUG || EXPERT
+
+endmenu

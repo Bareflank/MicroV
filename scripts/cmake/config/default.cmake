@@ -19,81 +19,49 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-# ------------------------------------------------------------------------------
-# Source Tree
-# ------------------------------------------------------------------------------
-
-set(BOXY_SOURCE_ROOT_DIR ${CMAKE_CURRENT_LIST_DIR}/../../..
+get_filename_component( MICROV_SOURCE_ROOT_DIR "${CMAKE_CURRENT_LIST_DIR}/../../.." ABSOLUTE CACHE)
+set(MICROV_SOURCE_ROOT_DIR ${MICROV_SOURCE_ROOT_DIR}
     CACHE INTERNAL
-    "BOXY Source root direfctory"
+    "Microv root directory"
 )
 
-set(BOXY_SOURCE_CMAKE_DIR ${BOXY_SOURCE_ROOT_DIR}/scripts/cmake
+set(MICROV_SOURCE_CMAKE_DIR ${MICROV_SOURCE_ROOT_DIR}/scripts/cmake
     CACHE INTERNAL
-    "BOXY Cmake directory"
+    "Microv cmake scripts directory"
 )
 
-set(BOXY_SOURCE_CONFIG_DIR ${BOXY_SOURCE_ROOT_DIR}/scripts/cmake/config
+set(MICROV_SOURCE_DEPS_DIR ${MICROV_SOURCE_ROOT_DIR}/deps
     CACHE INTERNAL
-    "BOXY Cmake configurations directory"
+    "Microv concurrently-developed dependencies directory"
 )
 
-set(BOXY_SOURCE_DEPENDS_DIR ${BOXY_SOURCE_ROOT_DIR}/scripts/cmake/depends
+set(MICROV_SOURCE_DEPENDS_DIR ${MICROV_SOURCE_ROOT_DIR}/scripts/cmake/depends
     CACHE INTERNAL
-    "BOXY Cmake dependencies directory"
+    "Microv static dependencies directory"
 )
 
-set(BOXY_SOURCE_UTIL_DIR ${BOXY_SOURCE_ROOT_DIR}/scripts/util
+set(MICROV_SOURCE_UTIL_DIR ${MICROV_SOURCE_ROOT_DIR}/scripts/util
     CACHE INTERNAL
-    "BOXY Utility directory"
+    "Microv utility scripts directory"
 )
-
-set(BOXY_SOURCE_BFDRIVER_DIR ${BOXY_SOURCE_ROOT_DIR}/bfdriver
-    CACHE INTERNAL
-    "BOXY bfdriver source dir"
-)
-
-set(BOXY_SOURCE_BFEXEC_DIR ${BOXY_SOURCE_ROOT_DIR}/bfexec
-    CACHE INTERNAL
-    "BOXY bfexec source dir"
-)
-
-set(BOXY_SOURCE_BFLINUX_DIR ${BOXY_SOURCE_ROOT_DIR}/bflinux
-    CACHE INTERNAL
-    "BOXY bflinux source dir"
-)
-
-set(BOXY_SOURCE_BFSDK_DIR ${BOXY_SOURCE_ROOT_DIR}/bfsdk
-    CACHE INTERNAL
-    "BOXY bfsdk source dir"
-)
-
-set(BOXY_SOURCE_BFVMM_DIR ${BOXY_SOURCE_ROOT_DIR}/bfvmm
-    CACHE INTERNAL
-    "BOXY bfvmm source dir"
-)
-
-# ------------------------------------------------------------------------------
-# Links
-# ------------------------------------------------------------------------------
-
-set(LINUX_URL "https://github.com/Bareflank/linux/archive/boxy_1.zip"
-    CACHE INTERNAL FORCE
-    "Linux URL"
-)
-
-set(LINUX_URL_MD5 "481f81505b4f73349e501f70c15a4946"
-    CACHE INTERNAL FORCE
-    "Linux URL MD5 hash"
-)
-
-# ------------------------------------------------------------------------------
-# Boxy guest
-# ------------------------------------------------------------------------------
 
 add_config(
-    CONFIG_NAME ENABLE_BUILD_GUEST
+    CONFIG_NAME BUILD_BUILDER
     CONFIG_TYPE BOOL
-    DEFAULT_VAL ON
-    DESCRIPTION "Build a minimal Linux guest along with the VMM"
+    DEFAULT_VAL OFF
+    DESCRIPTION "Build driver for running guest VMs"
+)
+
+add_config(
+    CONFIG_NAME BUILD_VISR
+    CONFIG_TYPE BOOL
+    DEFAULT_VAL OFF
+    DESCRIPTION "Build driver for PCI passthrough"
+)
+
+add_config(
+    CONFIG_NAME EFI_BOOT_NEXT
+    CONFIG_TYPE STRING
+    DEFAULT_VAL "/EFI/boot/bootx64.efi"
+    DESCRIPTION "Path (relative to ESP mount point) to EFI binary to boot after bareflank.efi"
 )

@@ -1,0 +1,34 @@
+--- a/src/arch/x86/prefix/romprefix.S	2016-10-10 13:09:18.126031400 +0100
++++ b/src/arch/x86/prefix/romprefix.S	2016-10-10 13:11:22.930680278 +0100
+@@ -468,6 +468,7 @@
+ 	testb	$PCI_FUNC_MASK, init_pci_busdevfn
+ 	jnz	no_shell
+ .endif
++#ifndef NO_POST_PROMPT
+ 	/* Prompt for POST-time shell */
+ 	movw	$init_message_prompt, %si
+ 	xorw	%di, %di
+@@ -495,6 +496,7 @@
+ 	pushw	%cs
+ 	call	exec
++#endif
+ no_shell:
+ 	movb	$( '\n' ), %al
+ 	xorw	%di, %di
+ 	call	print_character
+@@ -636,6 +638,7 @@
+ init_message_int19:
+ 	.asciz	" INT19"
+ 	.size	init_message_int19, . - init_message_int19
++#ifndef NO_POST_PROMPT
+ init_message_prompt:
+ 	.asciz	"\nPress Ctrl-B to configure "
+ 	.size	init_message_prompt, . - init_message_prompt
+@@ -645,6 +648,7 @@
+ init_message_done:
+ 	.asciz	"\n\n"
+ 	.size	init_message_done, . - init_message_done
++#endif
+ 
+ /* PCI bus:dev.fn
+  *

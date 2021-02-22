@@ -1,0 +1,93 @@
+                                IOEMU stubdom
+                                =============
+
+  This boosts HVM performance by putting ioemu in its own lightweight domain.
+
+General Configuration
+=====================
+
+Due to a race between the creation of the IOEMU stubdomain itself and allocation
+of video memory for the HVM domain, you need to avoid the need for ballooning,
+by using the hypervisor dom0_mem= option for instance.
+
+Using with XL
+-------------
+
+The enable IOEMU stub domains set the following in your domain
+config:
+
+    device_model_stubdomain_override = 1
+
+See xl.cfg(5) for more details of the xl domain configuration syntax
+and http://wiki.xen.org/wiki/Device_Model_Stub_Domains for more
+information on device model stub domains
+
+
+                                   PV-GRUB
+                                   =======
+
+  This replaces pygrub to boot domU images safely: it runs the regular grub
+inside the created domain itself and uses regular domU facilities to read the
+disk / fetch files from network etc. ; it eventually loads the PV kernel and
+chain-boots it.
+  
+Configuration
+=============
+
+In your PV config,
+
+- use pv-grub.gz as kernel:
+
+kernel = "pv-grub.gz"
+
+- set the path to menu.lst, as seen from the domU, in extra:
+
+extra = "(hd0,0)/boot/grub/menu.lst"
+
+or you can provide the content of a menu.lst stored in dom0 by passing it as a
+ramdisk:
+
+ramdisk = "/boot/domU-1-menu.lst"
+
+or you can also use a tftp path (dhcp will be automatically performed):
+
+extra = "(nd)/somepath/menu.lst"
+
+or you can set it in option 150 of your dhcp server and leave extra and ramdisk
+empty (dhcp will be automatically performed)
+
+Limitations
+===========
+
+- You can not boot a 64bit kernel with a 32bit-compiled PV-GRUB and vice-versa.
+To cross-compile a 32bit PV-GRUB,
+
+export XEN_TARGET_ARCH=x86_32
+
+- bootsplash is supported, but the ioemu backend does not yet support restart
+for use by the booted kernel.
+
+- PV-GRUB doesn't support virtualized partitions. For instance:
+
+disk = [ 'phy:hda7,hda7,w' ]
+
+will be seen by PV-GRUB as (hd0), not (hd0,6), since GRUB will not see any
+partition table.
+
+
+                                Your own stubdom
+                                ================
+
+  By running
+
+cd stubdom/
+make c-stubdom
+
+  or
+
+cd stubdom/
+make caml-stubdom
+
+  you can compile examples of C or caml stub domain kernels.  You can use these
+and the relevant Makefile rules as basis to build your own stub domain kernel.
+Available libraries are libc, libxc, libxs, zlib and libpci.
