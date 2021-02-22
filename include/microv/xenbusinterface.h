@@ -50,16 +50,16 @@ extern "C" {
 #endif
 
 typedef struct _XENBUS_ADD_USER_EVENT_IN {
-    HANDLE
-        EventHandle; /*!< Handle to an event object that will receive notifications */
+    /*!< Handle to an event object that will receive notifications */
+    HANDLE EventHandle;
     ULONGLONG RemoteDomain; /*!< Xen domain ID of the remote */
 } XENBUS_ADD_USER_EVENT_IN, *PXENBUS_ADD_USER_EVENT_IN;
 
 enum { XENBUS_BACKEND_STATE_INVALID = 0, XENBUS_BACKEND_STATE_DYING = 1 };
 
 typedef struct _XENBUS_SET_BACKEND_STATE_IN {
-    ULONG
-        BackendState; /*!< The state of the backend service VM (i.e. the one acting as dom0) */
+    /*!< The state of the backend service VM (i.e. the one acting as dom0) */
+    ULONG BackendState;
 } XENBUS_SET_BACKEND_STATE_IN, *PXENBUS_SET_BACKEND_STATE_IN;
 
 DEFINE_GUID(GUID_DEVINTERFACE_XENBUS,
