@@ -7,10 +7,11 @@ can be used instead of the Xen hypervisor, it is **NOT** a full-blown
 replacement for Xen. Please read the [assumptions and limitations section](#xen-compatibility-layer-assumptions-and-limitations)
 for more information.
 
-**warning**: MicroV is currently a work in progress. This version is still based
-on the monolithic [Boxy](https://github.com/Bareflank/boxy) architecture ( from
+**warning**: This version of MicroV is the result of several research efforts, and as 
+such is not production quality. It is currently a work in progress. This version is still based
+on the monolithic [Boxy](https://github.com/Bareflank/boxy) architecture (from
 [d169d541](https://github.com/Bareflank/boxy/tree/d169d5417fbb4b8577d0263bc33e55753de21c58))
-as opposed to the upcoming micro kernel architecture.
+as opposed to the upcoming microkernel architecture.
 
 ## Table of content <!-- omit in toc -->
 
