@@ -20,7 +20,8 @@
 # SOFTWARE.
 
 include(${MICROV_SOURCE_CMAKE_DIR}/depends/clang_format.cmake)
-include(${MICROV_SOURCE_CMAKE_DIR}/targets.cmake)
+include(${MICROV_SOURCE_CMAKE_DIR}/targets/clang_format.cmake)
+include(${MICROV_SOURCE_CMAKE_DIR}/targets/drivers.cmake)
 
 if(ENABLE_BUILD_VMM)
     add_subproject(

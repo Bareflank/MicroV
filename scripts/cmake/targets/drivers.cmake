@@ -20,48 +20,6 @@
 # SOFTWARE.
 
 # ------------------------------------------------------------------------------
-# Clang Format
-# ------------------------------------------------------------------------------
-
-if(ENABLE_CLANG_FORMAT)
-    add_custom_target(clang-format)
-
-    # Build git ls-files command line argument
-    file(STRINGS "${MICROV_SOURCE_ROOT_DIR}/.gitsubtrees" GIT_SUBTREES)
-    list(TRANSFORM GIT_SUBTREES PREPEND ":!:./")
-    list(TRANSFORM GIT_SUBTREES APPEND "/*")
-
-    # Find all *.h and *.cpp in git tracked files including untracked and cached
-    # files but excluding git ignored files and submodules.
-    execute_process(
-        COMMAND git ls-files --cached --others --exclude-standard -- *.h *.cpp
-                ${GIT_SUBTREES}
-        WORKING_DIRECTORY ${MICROV_SOURCE_ROOT_DIR}
-        RESULT_VARIABLE SOURCES_RESULT
-        OUTPUT_VARIABLE SOURCES
-        OUTPUT_STRIP_TRAILING_WHITESPACE
-    )
-
-    if (NOT SOURCES_RESULT EQUAL 0)
-        message(FATAL_ERROR "git ls-files [...]` returned ${SOURCES_RESULT}")
-    endif()
-
-    if(NOT "${SOURCES}" STREQUAL "")
-        string(REPLACE "\n" ";" SOURCES ${SOURCES})
-        list(TRANSFORM SOURCES PREPEND "${MICROV_SOURCE_ROOT_DIR}/")
-
-        add_custom_command(TARGET clang-format
-            COMMAND ${CMAKE_COMMAND} -E chdir ${MICROV_SOURCE_ROOT_DIR}
-                    ${CLANG_FORMAT_BIN} --verbose -i ${SOURCES}
-        )
-    endif()
-
-    add_custom_command(TARGET clang-format
-        COMMAND ${CMAKE_COMMAND} -E cmake_echo_color --green "done"
-    )
-endif()
-
-# ------------------------------------------------------------------------------
 # Drivers
 # ------------------------------------------------------------------------------
 
