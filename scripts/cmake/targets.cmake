@@ -26,30 +26,10 @@
 if(ENABLE_CLANG_FORMAT)
     add_custom_target(clang-format)
 
-    # Get subtrees to exclude later since `git ls-files` doesn't support this
-    # git log | grep git-subtree-dir | sed -e 's/^.*: //g' | uniq
-    execute_process(
-        COMMAND git log
-        WORKING_DIRECTORY ${MICROV_SOURCE_ROOT_DIR}
-        RESULT_VARIABLE GITLOG_RESULT
-        OUTPUT_VARIABLE GIT_SUBTREES
-        OUTPUT_STRIP_TRAILING_WHITESPACE
-    )
-    if (NOT GITLOG_RESULT EQUAL 0)
-        message(FATAL_ERROR "command `git log` returned ${SOURCES_RESULT}")
-    endif()
-
-    if(NOT "${GIT_SUBTREES}" STREQUAL "")
-        # Get a list of subtree directories from git log
-        string(REGEX MATCHALL "git-subtree-dir: [^ \t\r\n]*" GIT_SUBTREES
-            ${GIT_SUBTREES})
-        list(REMOVE_DUPLICATES GIT_SUBTREES)
-        list(TRANSFORM GIT_SUBTREES REPLACE "git-subtree-dir: " "")
-
-        # Turn it into a git pathspec that excludes the match
-        list(TRANSFORM GIT_SUBTREES PREPEND ":!:./")
-        list(TRANSFORM GIT_SUBTREES APPEND "/*")
-    endif()
+    # Build git ls-files command line argument
+    file(STRINGS "${MICROV_SOURCE_ROOT_DIR}/.gitsubtrees" GIT_SUBTREES)
+    list(TRANSFORM GIT_SUBTREES PREPEND ":!:./")
+    list(TRANSFORM GIT_SUBTREES APPEND "/*")
 
     # Find all *.h and *.cpp in git tracked files including untracked and cached
     # files but excluding git ignored files and submodules.
@@ -61,6 +41,7 @@ if(ENABLE_CLANG_FORMAT)
         OUTPUT_VARIABLE SOURCES
         OUTPUT_STRIP_TRAILING_WHITESPACE
     )
+
     if (NOT SOURCES_RESULT EQUAL 0)
         message(FATAL_ERROR "git ls-files [...]` returned ${SOURCES_RESULT}")
     endif()
