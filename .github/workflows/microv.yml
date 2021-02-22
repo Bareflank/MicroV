@@ -1,0 +1,36 @@
+name: CI Tests for MicroV
+on: push
+
+jobs:
+
+  clang-format:
+    runs-on: ubuntu-20.04
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        path: microv
+
+    - name: Setup
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y python clang clang-format cmake
+      shell: bash
+
+    - name: Validate Source Formatting
+      run: |
+        mkdir build && cd build
+        cp ../microv/scripts/cmake/config/config.cmake ..
+        echo 'set(ENABLE_BUILD_VMM OFF)' >> ../config.cmake
+        echo 'set(BUILD_XEN OFF)' >> ../config.cmake
+        echo 'set(BUILD_BUILDER OFF)' >> ../config.cmake
+        echo 'set(ENABLE_CLANG_FORMAT ON)' >> ../config.cmake
+        cmake ../microv/deps/hypervisor -DCONFIG=../config.cmake
+        make clang-format
+        cd ../microv
+        if [[ -n $(git diff) ]]; then
+          echo "You must run make clang-format before submitting a pull request"
+          echo ""
+          git diff
+          exit -1
+        fi
+      shell: bash
