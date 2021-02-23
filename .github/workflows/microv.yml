@@ -34,3 +34,27 @@ jobs:
           exit -1
         fi
       shell: bash
+
+  build-efi:
+    runs-on: ubuntu-20.04
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        path: microv
+
+    - name: Setup
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y python build-essential linux-headers-$(uname -r) nasm clang cmake libelf-dev
+      shell: bash
+
+    - name: Build EFI
+      run: |
+        mkdir build && cd build
+        cp ../microv/scripts/cmake/config/config.cmake ..
+        echo 'set(ENABLE_BUILD_USERSPACE OFF)' >> ../config.cmake
+        echo 'set(ENABLE_BUILD_VMM ON)' >> ../config.cmake
+        echo 'set(ENABLE_BUILD_EFI ON)' >> ../config.cmake
+        cmake ../microv/deps/hypervisor -DCONFIG=../config.cmake -DCMAKE_CXX_FLAGS="--verbose "
+        make
+      shell: bash
