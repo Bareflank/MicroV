@@ -1,5 +1,8 @@
 name: CI Tests for MicroV
-on: push
+on:
+  push:
+    paths-ignore:
+      - '**.md'
 
 jobs:
 
