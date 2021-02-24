@@ -30,6 +30,10 @@ if ($Debug) {
     $build_type = "checked"
 }
 
+if ([string]::IsNullOrEmpty($Env:VisualStudioVersion)) {
+	Set-Item -Path Env:VisualStudioVersion -Value '16.0'
+}
+
 pushd builder\windows
 .\clean.ps1
 .\build.ps1 -type $build_type
