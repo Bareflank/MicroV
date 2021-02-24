@@ -61,3 +61,33 @@ jobs:
         cmake ../microv/deps/hypervisor -DCONFIG=../config.cmake -DCMAKE_CXX_FLAGS="--verbose "
         make
       shell: bash
+
+  build-userpace:
+    runs-on: windows-2019
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        path: microv
+
+    - name: Setup MSBuild (PATH)
+      id: setup_msbuild_path
+      uses: microsoft/setup-msbuild@v1.0.2
+
+    - name: Setup
+      run: |
+        $MSBUILD_PATH = "${{steps.setup_msbuild_path.outputs.msbuildPath}}"
+        echo msbuild path: $MSBUILD_PATH
+        echo $MSBUILD_PATH | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        choco install nasm
+        echo "C:\Program Files\NASM" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+      shell: pwsh
+
+    - name: Build Userspace
+      run: |
+        mkdir build && cd build
+        cp ..\microv\scripts\cmake\config\config.cmake ..
+        Add-Content -Path ..\config.cmake -Value "set(ENABLE_BUILD_USERSPACE ON)"
+        Add-Content -Path ..\config.cmake -Value "set(ENABLE_BUILD_VMM OFF)"
+        cmake ../microv/deps/hypervisor -DCONFIG=..\config.cmake -G "Visual Studio 16 2019" -A x64
+        & msbuild /p:Configuration=Release /p:Platform=x64 /p:TargetVersion=Windows10 hypervisor.sln
+      shell: pwsh
