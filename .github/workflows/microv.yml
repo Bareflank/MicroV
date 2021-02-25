@@ -62,6 +62,12 @@ jobs:
         make
       shell: bash
 
+    - uses: actions/upload-artifact@v2
+      with:
+        name: microv_efi
+        path: |
+          build/prefixes/x86_64-efi-pe/bin/bareflank.efi
+
   build-userpace:
     runs-on: windows-2019
     steps:
@@ -92,6 +98,12 @@ jobs:
         & msbuild /p:Configuration=Release /p:Platform=x64 /p:TargetVersion=Windows10 hypervisor.sln
       shell: pwsh
 
+    - uses: actions/upload-artifact@v2
+      with:
+        name: microv_userspace
+        path: |
+          build/prefixes/x86_64-userspace-pe/bin/uvctl.exe
+
   build-drivers:
     runs-on: windows-2019
     steps:
@@ -117,3 +129,22 @@ jobs:
         cd .\microv\drivers
         .\build-all.ps1
       shell: pwsh
+
+    - uses: actions/upload-artifact@v2
+      with:
+        name: microv_drivers
+        path: |
+          microv/drivers/builder/windows/builder/x64/*
+          microv/drivers/builder/windows/vs2019/Windows10Release/x64/builder.cer
+          microv/drivers/visr/windows/visr/x64/*
+          microv/drivers/visr/windows/vs2019/Windows10Release/x64/visr.cer
+          microv/drivers/winpv/xenbus/xenbus/x64/*
+          microv/drivers/winpv/xenbus/vs2019/Windows10Release/x64/xenbus.cer
+          microv/drivers/winpv/xennet/xennet/x64/*
+          microv/drivers/winpv/xennet/vs2019/Windows10Release/x64/xennet.cer
+          microv/drivers/winpv/xenvif/xenvif/x64/*
+          microv/drivers/winpv/xenvif/vs2019/Windows10Release/x64/xenvif.cer
+          microv/drivers/winpv/xeniface/xeniface/x64/*
+          microv/drivers/winpv/xeniface/vs2019/Windows10Release/x64/xeniface.cer
+          microv/drivers/winpv/xeniface/include/xencontrol.h
+          microv/drivers/winpv/xeniface/include/xeniface_ioctls.h
