@@ -106,18 +106,13 @@ $ sudo apt-get install git build-essential linux-headers-$(uname -r) nasm clang 
 
 ##### Visual Studio 2019
 
-**warning**: The newest versions of VS 2019 (v16.7+) are currently unabled to
-build Xen's Windows PV drivers. Downgrading to **VS 2019 v16.6.5** is
-currently required.
-
 - Install [CMake](https://github.com/Kitware/CMake/releases/download/v3.16.4/cmake-3.16.4-win64-x64.msi)
 - Install [NASM](https://www.nasm.us/pub/nasm/releasebuilds/2.14.03rc2/win64/nasm-2.14.03rc2-installer-x64.exe)
 - Install [Git](https://git-scm.com/download/win)
-- Download [Visual Studio 2019 Enterprise v16.6.5](https://download.visualstudio.microsoft.com/download/pr/067fd8d0-753e-4161-8780-dfa3e577839e/75ec991e1ceb0de45076a04c6505a2dd5f199597f32b9e93639c4935585838bd/vs_Enterprise.exe).
-Install the Community version and required components from powershell with:
+- Download [Visual Studio 2019](https://visualstudio.microsoft.com/vs/) and install it with the required components from powershell:
 
 ```powershell
-vs_Enterprise_16.6.5.exe `
+.\vs_community.exe `
   --productId Microsoft.VisualStudio.Product.Community `
   --includeRecommended `
   --add Microsoft.VisualStudio.Workload.NativeDesktop `
