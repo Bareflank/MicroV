@@ -220,7 +220,9 @@ Ensure that powershell execution policy is unrestricted, and build all drivers:
 
   ```powershell
   PS> Set-ExecutionPolicy Unrestricted
-  PS> drivers\build-all.ps1
+  PS> cd microv\drivers
+  PS> $env:Path += 'C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\MSBuild\Current\Bin\;'
+  PS> .\build-all.ps1
   ```
 
 ## Running the VMM
