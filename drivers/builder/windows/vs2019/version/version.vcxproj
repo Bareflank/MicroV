@@ -13,4 +13,5 @@
   </Target>
   <Target Name="Clean">
   </Target>
+  <Target Name="GetProjectInfoForReference" />
 </Project>

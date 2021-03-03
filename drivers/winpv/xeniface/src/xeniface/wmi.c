@@ -228,10 +228,12 @@ USHORT Utf8FromUtf32(CHAR *dest, ULONG utf32) {
     }
 }
 
+#if (_MSC_VER <= 1922)
 typedef struct {
     USHORT Length;
     CHAR Buffer[1];
 } UTF8_STRING;
+#endif
 
 USHORT CountBytesUtf16FromUtf8String(const UTF8_STRING *utf8) {
     ULONG utf32;

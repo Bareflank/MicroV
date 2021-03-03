@@ -1,0 +1,7 @@
+drivers/winpv/xeniface
+drivers/winpv/xenvif
+drivers/winpv/xennet
+drivers/winpv/xenbus
+deps/xue
+deps/hypervisor
+deps/xen

@@ -1,0 +1,153 @@
+name: CI Tests for MicroV
+on:
+  push:
+    paths-ignore:
+      - '**.md'
+  pull_request:
+    paths-ignore:
+      - '**.md'
+
+jobs:
+
+  clang-format:
+    runs-on: ubuntu-20.04
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        path: microv
+
+    - name: Setup
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y python clang clang-format cmake
+      shell: bash
+
+    - name: Validate Source Formatting
+      run: |
+        mkdir build && cd build
+        cp ../microv/scripts/cmake/config/config.cmake ..
+        echo 'set(ENABLE_BUILD_VMM OFF)' >> ../config.cmake
+        echo 'set(BUILD_XEN OFF)' >> ../config.cmake
+        echo 'set(BUILD_BUILDER OFF)' >> ../config.cmake
+        echo 'set(ENABLE_CLANG_FORMAT ON)' >> ../config.cmake
+        cmake ../microv/deps/hypervisor -DCONFIG=../config.cmake
+        make clang-format
+        cd ../microv
+        if [[ -n $(git diff) ]]; then
+          echo "You must run make clang-format before submitting a pull request"
+          echo ""
+          git diff
+          exit -1
+        fi
+      shell: bash
+
+  build-efi:
+    runs-on: ubuntu-20.04
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        path: microv
+
+    - name: Setup
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y python build-essential linux-headers-$(uname -r) nasm clang cmake libelf-dev
+      shell: bash
+
+    - name: Build EFI
+      run: |
+        mkdir build && cd build
+        cp ../microv/scripts/cmake/config/config.cmake ..
+        echo 'set(ENABLE_BUILD_USERSPACE OFF)' >> ../config.cmake
+        echo 'set(ENABLE_BUILD_VMM ON)' >> ../config.cmake
+        echo 'set(ENABLE_BUILD_EFI ON)' >> ../config.cmake
+        cmake ../microv/deps/hypervisor -DCONFIG=../config.cmake -DCMAKE_CXX_FLAGS="--verbose "
+        make
+      shell: bash
+
+    - uses: actions/upload-artifact@v2
+      with:
+        name: microv_efi
+        path: |
+          build/prefixes/x86_64-efi-pe/bin/bareflank.efi
+
+  build-userpace:
+    runs-on: windows-2019
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        path: microv
+
+    - name: Setup MSBuild (PATH)
+      id: setup_msbuild_path
+      uses: microsoft/setup-msbuild@v1.0.2
+
+    - name: Setup
+      run: |
+        $MSBUILD_PATH = "${{steps.setup_msbuild_path.outputs.msbuildPath}}"
+        echo msbuild path: $MSBUILD_PATH
+        echo $MSBUILD_PATH | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        choco install nasm
+        echo "C:\Program Files\NASM" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+      shell: pwsh
+
+    - name: Build Userspace
+      run: |
+        mkdir build && cd build
+        cp ..\microv\scripts\cmake\config\config.cmake ..
+        Add-Content -Path ..\config.cmake -Value "set(ENABLE_BUILD_USERSPACE ON)"
+        Add-Content -Path ..\config.cmake -Value "set(ENABLE_BUILD_VMM OFF)"
+        cmake ../microv/deps/hypervisor -DCONFIG=..\config.cmake -G "Visual Studio 16 2019" -A x64
+        & msbuild /p:Configuration=Release /p:Platform=x64 /p:TargetVersion=Windows10 hypervisor.sln
+      shell: pwsh
+
+    - uses: actions/upload-artifact@v2
+      with:
+        name: microv_userspace
+        path: |
+          build/prefixes/x86_64-userspace-pe/bin/uvctl.exe
+
+  build-drivers:
+    runs-on: windows-2019
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        path: microv
+
+    - name: Setup MSBuild (PATH)
+      id: setup_msbuild_path
+      uses: microsoft/setup-msbuild@v1.0.2
+
+    - name: Setup
+      run: |
+        $MSBUILD_PATH = "${{steps.setup_msbuild_path.outputs.msbuildPath}}"
+        echo "msbuild path: $MSBUILD_PATH"
+        echo $MSBUILD_PATH | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        choco install nasm
+        echo "C:\Program Files\NASM" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+      shell: pwsh
+
+    - name: Build Drivers
+      run: |
+        cd .\microv\drivers
+        .\build-all.ps1
+      shell: pwsh
+
+    - uses: actions/upload-artifact@v2
+      with:
+        name: microv_drivers
+        path: |
+          microv/drivers/builder/windows/builder/x64/*
+          microv/drivers/builder/windows/vs2019/Windows10Release/x64/builder.cer
+          microv/drivers/visr/windows/visr/x64/*
+          microv/drivers/visr/windows/vs2019/Windows10Release/x64/visr.cer
+          microv/drivers/winpv/xenbus/xenbus/x64/*
+          microv/drivers/winpv/xenbus/vs2019/Windows10Release/x64/xenbus.cer
+          microv/drivers/winpv/xennet/xennet/x64/*
+          microv/drivers/winpv/xennet/vs2019/Windows10Release/x64/xennet.cer
+          microv/drivers/winpv/xenvif/xenvif/x64/*
+          microv/drivers/winpv/xenvif/vs2019/Windows10Release/x64/xenvif.cer
+          microv/drivers/winpv/xeniface/xeniface/x64/*
+          microv/drivers/winpv/xeniface/vs2019/Windows10Release/x64/xeniface.cer
+          microv/drivers/winpv/xeniface/include/xencontrol.h
+          microv/drivers/winpv/xeniface/include/xeniface_ioctls.h
