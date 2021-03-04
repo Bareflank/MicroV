@@ -61,6 +61,7 @@ jobs:
         echo 'set(ENABLE_BUILD_USERSPACE OFF)' >> ../config.cmake
         echo 'set(ENABLE_BUILD_VMM ON)' >> ../config.cmake
         echo 'set(ENABLE_BUILD_EFI ON)' >> ../config.cmake
+        echo 'set(XEN_REGISTER_SEND ON)' >> ../config.cmake
         cmake ../microv/deps/hypervisor -DCONFIG=../config.cmake -DCMAKE_CXX_FLAGS="--verbose "
         make
       shell: bash
@@ -130,7 +131,7 @@ jobs:
     - name: Build Drivers
       run: |
         cd .\microv\drivers
-        .\build-all.ps1
+        .\build-all.ps1 -RegisterSend
       shell: pwsh
 
     - uses: actions/upload-artifact@v2

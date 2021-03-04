@@ -65,3 +65,10 @@ add_config(
     DEFAULT_VAL "/EFI/boot/bootx64.efi"
     DESCRIPTION "Path (relative to ESP mount point) to EFI binary to boot after bareflank.efi"
 )
+
+add_config(
+    CONFIG_NAME XEN_REGISTER_SEND
+    CONFIG_TYPE BOOL
+    DEFAULT_VAL OFF
+    DESCRIPTION "Use a register-based EVTCHNOP_send. Note this requires guest modifications"
+)

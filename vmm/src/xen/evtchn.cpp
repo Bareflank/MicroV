@@ -207,10 +207,14 @@ bool xen_evtchn_close(xen_vcpu *v)
 bool xen_evtchn_send(xen_vcpu *v)
 {
     auto uvv = v->m_uv_vcpu;
+#ifndef XEN_REGISTER_SEND
     auto arg = uvv->map_arg<evtchn_send_t>(uvv->rsi());
     auto port = arg->port;
 
     arg.reset(nullptr);
+#else
+    auto port = uvv->rsi();
+#endif
 
     auto ret = v->m_xen_dom->m_evtchn->send(v, port);
 

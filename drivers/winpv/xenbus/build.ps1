@@ -5,7 +5,8 @@
 param(
 	[Parameter(Mandatory = $true)]
 	[string]$Type,
-	[switch]$Sdv
+	[switch]$Sdv,
+        [switch]$RegisterSend
 )
 
 #
@@ -26,7 +27,8 @@ Function Win8Build {
 		SolutionDir = $solutiondir[$visualstudioversion];
 		ConfigurationBase = $configurationbase[$visualstudioversion];
 		Arch = $Arch;
-		Type = $Type
+		Type = $Type;
+                RegisterSend = $RegisterSend
 		}
 	& ".\msbuild.ps1" @params
 }
@@ -45,7 +47,8 @@ Function Win10Build {
 		SolutionDir = $solutiondir[$visualstudioversion];
 		ConfigurationBase = $configurationbase[$visualstudioversion];
 		Arch = $Arch;
-		Type = $Type
+		Type = $Type;
+                RegisterSend = $RegisterSend
 		}
 	& ".\msbuild.ps1" @params
 }
@@ -60,7 +63,8 @@ Function SdvBuild {
 		SolutionDir = $solutiondir[$visualstudioversion];
 		ConfigurationBase = $configurationbase[$visualstudioversion];
 		Arch = $arch;
-		Type = "sdv"
+		Type = "sdv";
+                RegisterSend = $RegisterSend
 		}
 	& ".\msbuild.ps1" @params
 }

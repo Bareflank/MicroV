@@ -20,7 +20,8 @@
 # SOFTWARE.
 
 param(
-    [switch] $Debug
+    [switch] $Debug,
+    [switch] $RegisterSend
 )
 
 $dir_list = Get-ChildItem $dir -Directory | Select-Object Name
@@ -35,6 +36,17 @@ foreach ($d in $dir_list)
 {
     pushd $d.Name
     .\clean.ps1
-    .\build.ps1 -type $build_type
+
+    if ($d.Name -eq "xenbus") {
+        if ($RegisterSend) {
+            .\build.ps1 -type $build_type -RegisterSend
+        } else {
+            .\build.ps1 -type $build_type
+        }
+    } else {
+        .\build.ps1 -type $build_type
+    }
+
+
     popd
 }
