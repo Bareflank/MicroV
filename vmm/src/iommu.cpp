@@ -225,7 +225,6 @@ void iommu::map_regs_into_vmm()
         // contiguous, so we just need to make the map bigger.
 
         g_cr3->unmap(m_reg_hva);
-        ::x64::tlb::invlpg(m_reg_hva);
         g_mm->free_map(reinterpret_cast<void *>(m_reg_hva));
 
         uint64_t size = UV_PAGE_SIZE * m_reg_page_count;

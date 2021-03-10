@@ -40,6 +40,7 @@
 #include <bfupperlower.h>
 
 #include <memory_manager/memory_manager.h>
+#include <arch/x64/tlb.h>
 
 // -----------------------------------------------------------------------------
 // Mutexes
@@ -247,7 +248,13 @@ memory_manager::alloc_map(size_type size) noexcept
     std::lock_guard<std::mutex> lock(alloc_mem_map_mutex());
 
     try {
-        return reinterpret_cast<pointer>(g_mem_map_pool.allocate(size));
+        auto ptr = g_mem_map_pool.allocate(size);
+
+        for (auto i = 0; i < size; i += BAREFLANK_PAGE_SIZE) {
+            ::x64::tlb::invlpg((uintptr_t)ptr + i);
+        }
+
+        return ptr;
     }
     catch (...)
     { WARNING("memory_manager::alloc_map: std::bad_alloc thrown"); }

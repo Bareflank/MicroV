@@ -51,7 +51,6 @@ unmapper::operator()(void *p) const
 
     for (auto hva = m_hva; hva < m_hva + m_len; hva += page_size) {
         g_cr3->unmap(hva);
-        ::x64::tlb::invlpg(hva);
     }
 
     g_mm->free_map(reinterpret_cast<void *>(m_hva));
