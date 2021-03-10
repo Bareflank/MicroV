@@ -489,7 +489,6 @@ static inline uint8_t *map_copy_page(const class xen_page *pg)
 static inline void unmap_copy_page(uint8_t *ptr)
 {
     g_cr3->unmap(ptr);
-    ::x64::tlb::invlpg(ptr);
     g_mm->free_map(ptr);
 }
 
