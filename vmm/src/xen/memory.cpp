@@ -445,7 +445,9 @@ bool xenmem_acquire_resource(xen_vcpu *vcpu)
 /* class xen_memory */
 xen_memory::xen_memory(xen_domain *dom) :
     m_xen_dom{dom}, m_ept{&dom->m_uv_dom->ept()}
-{}
+{
+    memset(&m_page_map_lock, 0, sizeof(m_page_map_lock));
+}
 
 void xen_memory::add_ept_handlers(xen_vcpu *v)
 {
@@ -623,12 +625,14 @@ int xen_memory::map_page(xen_pfn_t gfn, uint32_t perms)
 
 void xen_memory::add_page(xen_pfn_t gfn, uint32_t perms, uint32_t mtype)
 {
+    std::lock_guard lock(m_page_map_lock);
+
     expects(m_page_map.count(gfn) == 0);
 
     auto pg = alloc_unbacked_page();
     m_page_map.try_emplace(gfn, xen_page(gfn, perms, mtype, pg));
 
-    auto xenpg = this->find_page(gfn);
+    auto xenpg = this->find_page(gfn, true);
     auto rc = this->back_page(xenpg);
     if (rc) {
         printv("%s: failed to back gfn 0x%lx, rc=%d\n", __func__, gfn, rc);
@@ -642,13 +646,15 @@ void xen_memory::add_page(xen_pfn_t gfn, uint32_t perms, uint32_t mtype)
 void xen_memory::add_root_backed_page(
     xen_pfn_t gfn, uint32_t perms, uint32_t mtype, xen_pfn_t hfn, bool need_map)
 {
+    std::lock_guard lock(m_page_map_lock);
+
     expects(m_page_map.count(gfn) == 0);
 
     auto pg = alloc_root_backed_page(hfn);
     m_page_map.try_emplace(gfn, xen_page(gfn, perms, mtype, pg));
 
     if (need_map) {
-        this->map_page(this->find_page(gfn));
+        this->map_page(this->find_page(gfn, true));
     }
 }
 
@@ -656,13 +662,15 @@ void xen_memory::add_root_backed_page(
 void xen_memory::add_vmm_backed_page(
     xen_pfn_t gfn, uint32_t perms, uint32_t mtype, void *ptr, bool need_map)
 {
+    std::lock_guard lock(m_page_map_lock);
+
     expects(m_page_map.count(gfn) == 0);
 
     auto pg = alloc_vmm_backed_page(ptr);
     m_page_map.try_emplace(gfn, xen_page(gfn, perms, mtype, pg));
 
     if (need_map) {
-        this->map_page(this->find_page(gfn));
+        this->map_page(this->find_page(gfn, true));
     }
 }
 
@@ -672,12 +680,14 @@ void xen_memory::add_foreign_page(xen_pfn_t gfn,
                                   uint32_t mtype,
                                   class page *fpg)
 {
+    std::lock_guard lock(m_page_map_lock);
+
     expects(m_page_map.count(gfn) == 0);
 
     fpg->refcnt++;
     m_page_map.try_emplace(gfn, xen_page(gfn, perms, mtype, fpg));
 
-    auto xenpg = this->find_page(gfn);
+    auto xenpg = this->find_page(gfn, true);
     if (!xenpg->backed()) {
         if (auto rc = this->back_page(xenpg); rc) {
             printv("%s: failed to back foreign page at gfn 0x%lx, rc=%d\n",
@@ -697,10 +707,12 @@ void xen_memory::add_local_page(xen_pfn_t gfn,
                                 uint32_t mtype,
                                 class page *pg)
 {
+    std::lock_guard lock(m_page_map_lock);
+
     expects(m_page_map.count(gfn) == 0);
     m_page_map.try_emplace(gfn, xen_page(gfn, perms, mtype, pg));
 
-    auto xenpg = this->find_page(gfn);
+    auto xenpg = this->find_page(gfn, true);
     if (!xenpg->backed()) {
         if (auto rc = this->back_page(xenpg); rc) {
             printv("%s: failed to back local page at gfn 0x%lx, rc=%d\n",
@@ -719,22 +731,34 @@ void xen_memory::add_raw_page(xen_pfn_t gfn,
                               uint32_t mtype,
                               xen_pfn_t hfn)
 {
+    std::lock_guard lock(m_page_map_lock);
+
     expects(m_page_map.count(gfn) == 0);
 
     auto pg = alloc_raw_page(hfn);
     m_page_map.try_emplace(gfn, xen_page(gfn, perms, mtype, pg));
 
-    this->map_page(this->find_page(gfn));
+    this->map_page(this->find_page(gfn, true));
 }
 
-class xen_page *xen_memory::find_page(xen_pfn_t gfn)
+class xen_page *xen_memory::find_page(xen_pfn_t gfn, bool locked)
 {
-    auto itr = m_page_map.find(gfn);
-    if (itr != m_page_map.end()) {
-        return &itr->second;
+    xen_page *xpg = nullptr;
+
+    if (!locked) {
+        spin_acquire(&m_page_map_lock);
     }
 
-    return nullptr;
+    auto itr = m_page_map.find(gfn);
+    if (itr != m_page_map.end()) {
+        xpg = &itr->second;
+    }
+
+    if (!locked) {
+        spin_release(&m_page_map_lock);
+    }
+
+    return xpg;
 }
 
 bool xen_memory::add_to_physmap(xen_vcpu *vcpu, xen_add_to_physmap_t *atp)
@@ -832,6 +856,8 @@ void xen_memory::unmap_page(class xen_page *pg)
 
 int xen_memory::remove_page(xen_pfn_t gfn, bool need_invept)
 {
+    std::lock_guard lock(m_page_map_lock);
+
     auto itr = m_page_map.find(gfn);
     if (GSL_UNLIKELY(itr == m_page_map.end())) {
         printv("%s: gfn 0x%lx doesn't map to page\n", __func__, gfn);
