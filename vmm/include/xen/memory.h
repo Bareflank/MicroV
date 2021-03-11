@@ -83,7 +83,7 @@ public:
     bool remove_from_physmap(xen_vcpu *v, xen_remove_from_physmap_t *rmap);
 
     /* Page management */
-    class xen_page *find_page(xen_pfn_t gfn);
+    class xen_page *find_page(xen_pfn_t gfn, bool locked = false);
 
     void add_page(xen_pfn_t gfn, uint32_t perms, uint32_t mtype);
     void add_root_backed_page(xen_pfn_t gfn,
@@ -120,15 +120,16 @@ public:
     xen_domain *m_xen_dom{};
     bfvmm::intel_x64::ept::mmap *m_ept{};
     std::unordered_map<xen_pfn_t, class xen_page> m_page_map;
+    struct spin_lock m_page_map_lock {};
     void *m_pages{};
     uintptr_t m_pages_hpa{};
     uintptr_t m_next_hpa{};
 
 public:
     ~xen_memory() = default;
-    xen_memory(xen_memory &&) = default;
+    xen_memory(xen_memory &&) = delete;
     xen_memory(const xen_memory &) = delete;
-    xen_memory &operator=(xen_memory &&) = default;
+    xen_memory &operator=(xen_memory &&) = delete;
     xen_memory &operator=(const xen_memory &) = delete;
 };
 
