@@ -120,11 +120,15 @@ jobs:
 
     - name: Setup
       run: |
+        # Get dependencies
         $MSBUILD_PATH = "${{steps.setup_msbuild_path.outputs.msbuildPath}}"
         echo "msbuild path: $MSBUILD_PATH"
         echo $MSBUILD_PATH | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
         choco install nasm
         echo "C:\Program Files\NASM" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        # Set latest build number
+        $runs = Invoke-WebRequest -Headers @{"Authorization" = 'token ${{ secrets.GITHUB_TOKEN }}'} -Uri 'https://api.github.com/repos/bareflank/microv/actions/runs?branch=mono&status=success' | ConvertFrom-Json
+        $Env:BUILD_NUMBER = $runs.total_count + 10
       shell: pwsh
 
     - name: Build Drivers
