@@ -23,7 +23,9 @@
 #include <bfdebug.h>
 #include <bfplatform.h>
 
+#include <linux/kernel.h>
 #include <linux/delay.h>
+#include <linux/io.h>
 #include <linux/mm.h>
 #include <linux/vmalloc.h>
 
