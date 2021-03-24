@@ -20,7 +20,8 @@
 # SOFTWARE.
 
 param(
-    [switch] $Debug
+    [switch] $Debug,
+    [switch] $RegisterSend
 )
 
 $dir_list = Get-ChildItem $dir -Directory | Select-Object Name
@@ -45,5 +46,9 @@ pushd visr\windows
 popd
 
 pushd winpv
-.\clean-build.ps1 $Debug
+if ($RegisterSend) {
+    .\clean-build.ps1 $Debug -RegisterSend
+} else {
+    .\clean-build.ps1 $Debug
+}
 popd

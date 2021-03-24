@@ -54,13 +54,17 @@ EventChannelSend(
     IN  evtchn_port_t   LocalPort
     )
 {
-    struct evtchn_send  op;
     LONG_PTR            rc;
     NTSTATUS            status;
 
+#ifndef XEN_REGISTER_SEND
+    struct evtchn_send  op;
     op.port = LocalPort;
 
     rc = EventChannelOp(EVTCHNOP_send, &op);
+#else
+    rc = EventChannelOp(EVTCHNOP_send, (PVOID)LocalPort);
+#endif
 
     if (rc < 0) {
         ERRNO_TO_STATUS(-rc, status);
