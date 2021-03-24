@@ -21,7 +21,7 @@
 
 param(
     [switch] $Debug,
-    [switch] $RegisterSend
+    [switch] $RegisterBasedAbi
 )
 
 $dir_list = Get-ChildItem $dir -Directory | Select-Object Name
@@ -46,8 +46,8 @@ pushd visr\windows
 popd
 
 pushd winpv
-if ($RegisterSend) {
-    .\clean-build.ps1 $Debug -RegisterSend
+if ($RegisterBasedAbi) {
+    .\clean-build.ps1 $Debug -RegisterBasedAbi
 } else {
     .\clean-build.ps1 $Debug
 }

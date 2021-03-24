@@ -57,7 +57,7 @@ EventChannelSend(
     LONG_PTR            rc;
     NTSTATUS            status;
 
-#ifndef XEN_REGISTER_SEND
+#ifndef XEN_REGISTER_BASED_ABI
     struct evtchn_send  op;
     op.port = LocalPort;
 

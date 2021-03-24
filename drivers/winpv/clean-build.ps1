@@ -21,7 +21,7 @@
 
 param(
     [switch] $Debug,
-    [switch] $RegisterSend
+    [switch] $RegisterBasedAbi
 )
 
 $dir_list = Get-ChildItem $dir -Directory | Select-Object Name
@@ -38,8 +38,8 @@ foreach ($d in $dir_list)
     .\clean.ps1
 
     if ($d.Name -eq "xenbus") {
-        if ($RegisterSend) {
-            .\build.ps1 -type $build_type -RegisterSend
+        if ($RegisterBasedAbi) {
+            .\build.ps1 -type $build_type -RegisterBasedAbi
         } else {
             .\build.ps1 -type $build_type
         }

@@ -6,7 +6,7 @@ param(
 	[Parameter(Mandatory = $true)]
 	[string]$Type,
 	[switch]$Sdv,
-        [switch]$RegisterSend
+        [switch]$RegisterBasedAbi
 )
 
 #
@@ -28,7 +28,7 @@ Function Win8Build {
 		ConfigurationBase = $configurationbase[$visualstudioversion];
 		Arch = $Arch;
 		Type = $Type;
-                RegisterSend = $RegisterSend
+                RegisterBasedAbi = $RegisterBasedAbi
 		}
 	& ".\msbuild.ps1" @params
 }
@@ -48,7 +48,7 @@ Function Win10Build {
 		ConfigurationBase = $configurationbase[$visualstudioversion];
 		Arch = $Arch;
 		Type = $Type;
-                RegisterSend = $RegisterSend
+                RegisterBasedAbi = $RegisterBasedAbi
 		}
 	& ".\msbuild.ps1" @params
 }
@@ -64,7 +64,7 @@ Function SdvBuild {
 		ConfigurationBase = $configurationbase[$visualstudioversion];
 		Arch = $arch;
 		Type = "sdv";
-                RegisterSend = $RegisterSend
+                RegisterBasedAbi = $RegisterBasedAbi
 		}
 	& ".\msbuild.ps1" @params
 }
