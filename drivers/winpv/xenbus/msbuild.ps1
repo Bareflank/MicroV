@@ -37,6 +37,10 @@ Function Run-MSBuild {
 	$c += Join-Path -Path $SolutionPath -ChildPath $Name
 
 	Invoke-Expression $c
+
+        if ($LastExitCode) {
+            Throw "xenbus build failed!"
+        }
 }
 
 Function Run-MSBuildSDV {

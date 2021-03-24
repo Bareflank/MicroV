@@ -1640,6 +1640,7 @@ __FrontendQueryStatistic(
 {
     ULONG                       Index;
 
+    ASSERT(Name >= XENVIF_TRANSMITTER_PACKETS_DROPPED);
     ASSERT(Name < XENVIF_VIF_STATISTIC_COUNT);
 
     *Value = 0;
@@ -1672,6 +1673,7 @@ FrontendIncrementStatistic(
     KIRQL                       Irql;
     PXENVIF_FRONTEND_STATISTICS Statistics;
 
+    ASSERT(Name >= XENVIF_TRANSMITTER_PACKETS_DROPPED);
     ASSERT(Name < XENVIF_VIF_STATISTIC_COUNT);
 
     KeRaiseIrql(DISPATCH_LEVEL, &Irql);

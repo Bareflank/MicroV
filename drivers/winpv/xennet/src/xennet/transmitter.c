@@ -307,6 +307,7 @@ __TransmitterSendNetBufferList(
 
         __TransmitterGetNetBufferList(Transmitter, NetBufferList);
 
+#pragma warning(suppress: 28182) // Dereferencing NULL pointer 'NetBuffer'
         status = XENVIF_VIF(TransmitterQueuePacket,
                             AdapterGetVifInterface(Transmitter->Adapter),
                             NET_BUFFER_CURRENT_MDL(NetBuffer),

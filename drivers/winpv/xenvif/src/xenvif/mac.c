@@ -965,6 +965,8 @@ MacSetFilterLevel(
 {
     NTSTATUS                    status;
 
+    ASSERT(Type >= ETHERNET_ADDRESS_TYPE_INVALID);
+
     status = STATUS_INVALID_PARAMETER;
     if (Type >= ETHERNET_ADDRESS_TYPE_COUNT)
         goto fail1;
@@ -1003,6 +1005,8 @@ MacQueryFilterLevel(
     )
 {
     NTSTATUS                        status;
+
+    ASSERT(Type >= ETHERNET_ADDRESS_TYPE_INVALID);
 
     status = STATUS_INVALID_PARAMETER;
     if (Type >= ETHERNET_ADDRESS_TYPE_COUNT)
