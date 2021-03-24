@@ -67,7 +67,7 @@ add_config(
 )
 
 add_config(
-    CONFIG_NAME XEN_REGISTER_SEND
+    CONFIG_NAME XEN_REGISTER_BASED_ABI
     CONFIG_TYPE BOOL
     DEFAULT_VAL OFF
     DESCRIPTION "Use a register-based EVTCHNOP_send. Note this requires guest modifications"

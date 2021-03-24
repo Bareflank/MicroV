@@ -207,7 +207,7 @@ bool xen_evtchn_close(xen_vcpu *v)
 bool xen_evtchn_send(xen_vcpu *v)
 {
     auto uvv = v->m_uv_vcpu;
-#ifndef XEN_REGISTER_SEND
+#ifndef XEN_REGISTER_BASED_ABI
     auto arg = uvv->map_arg<evtchn_send_t>(uvv->rsi());
     auto port = arg->port;
 

@@ -8,7 +8,7 @@ param(
 	[string]$Arch,
 	[Parameter(Mandatory = $true)]
 	[string]$Type,
-        [switch]$RegisterSend
+        [switch]$RegisterBasedAbi
 )
 
 Function Run-MSBuild {
@@ -24,8 +24,8 @@ Function Run-MSBuild {
 	$c = "msbuild.exe"
 	$c += " /m:4"
 
-        if ($RegisterSend) {
-                $c += " /p:XEN_REGISTER_SEND=1"
+        if ($RegisterBasedAbi) {
+                $c += " /p:XEN_REGISTER_BASED_ABI=1"
         }
 
 	$c += [string]::Format(" /p:Configuration=""{0}""", $Configuration)
