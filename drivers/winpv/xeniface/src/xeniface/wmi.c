@@ -228,14 +228,12 @@ USHORT Utf8FromUtf32(CHAR *dest, ULONG utf32) {
     }
 }
 
-#if (_MSC_VER <= 1922)
 typedef struct {
     USHORT Length;
     CHAR Buffer[1];
-} UTF8_STRING;
-#endif
+} WMI_UTF8_STRING;
 
-USHORT CountBytesUtf16FromUtf8String(const UTF8_STRING *utf8) {
+USHORT CountBytesUtf16FromUtf8String(const WMI_UTF8_STRING *utf8) {
     ULONG utf32;
     int i = 0;
     USHORT bytecount = 0;
@@ -255,7 +253,7 @@ USHORT CountBytesUtf16FromUtf8(const UCHAR *utf8) {
     }
     return bytecount * sizeof(WCHAR);
 }
-NTSTATUS GetUTF8String(UTF8_STRING** utf8, USHORT bufsize, LPWSTR ustring)
+NTSTATUS GetUTF8String(WMI_UTF8_STRING** utf8, USHORT bufsize, LPWSTR ustring)
 {
     USHORT bytecount = 0;
     USHORT i;
@@ -266,7 +264,7 @@ NTSTATUS GetUTF8String(UTF8_STRING** utf8, USHORT bufsize, LPWSTR ustring)
         bytecount += CountUtf8FromUtf32(utf32);
     }
 
-    *utf8 = ExAllocatePoolWithTag(NonPagedPool, sizeof(UTF8_STRING)+bytecount, 'XIU8');
+    *utf8 = ExAllocatePoolWithTag(NonPagedPool, sizeof(WMI_UTF8_STRING)+bytecount, 'XIU8');
     if ((*utf8) == NULL)
         return STATUS_INSUFFICIENT_RESOURCES;
 
@@ -283,11 +281,11 @@ NTSTATUS GetUTF8String(UTF8_STRING** utf8, USHORT bufsize, LPWSTR ustring)
     return STATUS_SUCCESS;
 }
 
-void FreeUTF8String(UTF8_STRING *utf8) {
+void FreeUTF8String(WMI_UTF8_STRING *utf8) {
     ExFreePoolWithTag(utf8, 'XIU8');
 }
 
-NTSTATUS GetCountedUTF8String(UTF8_STRING **utf8, UCHAR *location)
+NTSTATUS GetCountedUTF8String(WMI_UTF8_STRING **utf8, UCHAR *location)
 {
     USHORT bufsize = *(USHORT*)location;
     LPWSTR ustring = (LPWSTR)(location+sizeof(USHORT));
@@ -1455,7 +1453,7 @@ SessionExecuteRemoveValue(UCHAR *InBuffer,
     ULONG RequiredSize;
     NTSTATUS status;
     UCHAR* upathname;
-    UTF8_STRING *pathname;
+    WMI_UTF8_STRING *pathname;
     XenStoreSession *session;
     char *tmpbuffer;
 
@@ -1628,8 +1626,8 @@ SessionExecuteSetValue(UCHAR *InBuffer,
     NTSTATUS status;
     UCHAR* upathname;
     UCHAR* uvalue;
-    UTF8_STRING* pathname;
-    UTF8_STRING* value;
+    WMI_UTF8_STRING* pathname;
+    WMI_UTF8_STRING* value;
     XenStoreSession *session;
     char *tmppath;
     char* tmpvalue;
@@ -1702,7 +1700,7 @@ SessionExecuteGetFirstChild(UCHAR *InBuffer,
     ULONG RequiredSize;
     UCHAR *uloc;
     NTSTATUS status;
-    UTF8_STRING* path;
+    WMI_UTF8_STRING* path;
     PCHAR listresults;
     size_t stringarraysize;
     UCHAR *valuepos;
@@ -1815,7 +1813,7 @@ SessionExecuteGetNextSibling(UCHAR *InBuffer,
     ULONG RequiredSize;
     UCHAR *uloc;
     NTSTATUS status;
-    UTF8_STRING* path;
+    WMI_UTF8_STRING* path;
     ANSI_STRING checkleaf;
     PCHAR listresults;
     PCHAR nextresult;
@@ -1993,7 +1991,7 @@ SessionExecuteGetChildren(UCHAR *InBuffer,
     ULONG RequiredSize;
     UCHAR *uloc;
     NTSTATUS status;
-    UTF8_STRING* path;
+    WMI_UTF8_STRING* path;
     PCHAR listresults;
     PCHAR nextresults;
     ULONG *noofnodes;
@@ -2262,7 +2260,7 @@ SessionExecuteGetValue(UCHAR *InBuffer,
                         UNICODE_STRING *instance,
                         OUT ULONG_PTR *byteswritten) {
     NTSTATUS status;
-    UTF8_STRING* path;
+    WMI_UTF8_STRING* path;
     UCHAR *uloc;
     char *value;
     UCHAR *valuepos;
