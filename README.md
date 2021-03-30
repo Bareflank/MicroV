@@ -1,4 +1,4 @@
-<img src="https://github.com/Bareflank/hypervisor/raw/master/.github/images/microv_logo.png" alt="microv-logo"/>
+<img src="https://github.com/Bareflank/MicroV/raw/master/.github/images/microv_logo.png" alt="microv-logo"/>
 
 ## Description
 
@@ -10,11 +10,11 @@ Information Security, Inc.](https://www.ainfosec.com/), designed specifically
 to run micro VMs (i.e., tiny virtual machines that require little or no
 emulation).
 
-<img src="https://github.com/Bareflank/hypervisor/raw/master/.github/images/high_level.png" alt="highlevel"/>
+<img src="https://github.com/Bareflank/MicroV/raw/master/.github/images/high_level.png" alt="highlevel"/>
 
 ## Advantages:
 Unlike existing hypervisors, MicroV's design has some unique advantages including:
-<img src="https://github.com/Bareflank/hypervisor/raw/master/.github/images/cross_platform.png" alt="cross-platform" align="right" height="300" />
+<img src="https://github.com/Bareflank/MicroV/raw/master/.github/images/cross_platform.png" alt="cross-platform" align="right" height="300" />
 - **Cross-Platform Support:** In open source, examples of hypervisors that are
   capable of supporting guest virtual machines include Xen, KVM, and
   VirtualBox. The first two only support Linux and BSD and VirtualBox
@@ -79,7 +79,7 @@ Unlike existing hypervisors, MicroV's design has some unique advantages includin
   0 or Ring 3 of the guest root VM, which is the main virtual machine on the
   system.
 
-  <img src="https://github.com/Bareflank/hypervisor/raw/master/.github/images/scheduler.png" alt="cross-platform" align="right" height="300" />
+  <img src="https://github.com/Bareflank/MicroV/raw/master/.github/images/scheduler.png" alt="cross-platform" align="right" height="300" />
 - **Scheduling:** Although closely related to performance, MicroV leverages a
   hybrid design, incorporating the design goals of Xen to provide disaggregation
   and deprivilege while leveraging the scheduling benefits of hypervisor designs
@@ -107,7 +107,7 @@ Unlike existing hypervisors, MicroV's design has some unique advantages includin
   None of these hypervisors support both.
 
   <p align="center">
-  <img src="https://github.com/Bareflank/hypervisor/raw/master/.github/images/boot_order.png" alt="highlevel" height="300"/>
+  <img src="https://github.com/Bareflank/MicroV/raw/master/.github/images/boot_order.png" alt="highlevel" height="300"/>
   </p>
 
   Early boot is critical in supporting a fully deprivileged host while late
@@ -168,7 +168,7 @@ Check out our [Can You Hack It?®](https://www.canyouhackit.com) challenge and t
 
 <p align="center">
   <a href="https://www.ainfosec.com/">
-    <img src="https://github.com/Bareflank/hypervisor/raw/master/.github/images/ais.png" alt="cross-platform" height="100" />
+    <img src="https://github.com/Bareflank/MicroV/raw/master/.github/images/ais.png" alt="cross-platform" height="100" />
   </a>
 </p>
 
