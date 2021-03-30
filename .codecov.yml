@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2019 Assured Information Security, Inc.
+# Copyright (C) 2020 Assured Information Security, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -19,41 +19,30 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-# Prerequisites
-*.d
+codecov:
+  require_ci_to_pass: yes
 
-# Compiled Object files
-*.slo
-*.lo
-*.o
-*.obj
+coverage:
+  precision: 2
+  round: down
+  range: "100...100"
 
-# Precompiled Headers
-*.gch
-*.pch
+  status:
+    project: yes
+    patch: yes
+    changes: yes
 
-# Compiled Dynamic libraries
-*.so
-*.dylib
-*.dll
+parsers:
+  gcov:
+    branch_detection:
+      conditional: yes
+      loop: yes
+      method: yes
+      macro: yes
 
-# Fortran module files
-*.mod
-*.smod
+ignore:
 
-# Compiled Static libraries
-*.lai
-*.la
-*.a
-*.lib
-
-# Executables
-*.exe
-*.out
-*.app
-
-# Others
-.vscode/
-build/
-site/
-doxygen_output/
+comment:
+  layout: "reach,diff,flags,tree"
+  behavior: default
+  require_changes: no

@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2019 Assured Information Security, Inc.
+# Copyright (C) 2020 Assured Information Security, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -19,41 +19,15 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-# Prerequisites
-*.d
+include(FetchContent)
+set(FETCHCONTENT_BASE_DIR ${CMAKE_BINARY_DIR}/depend)
 
-# Compiled Object files
-*.slo
-*.lo
-*.o
-*.obj
+include(${CMAKE_CURRENT_LIST_DIR}/depend/hypervisor.cmake)
 
-# Precompiled Headers
-*.gch
-*.pch
+include(${bsl_SOURCE_DIR}/cmake/config/all_projects.cmake)
+include(${bsl_SOURCE_DIR}/cmake/config/cmake.cmake)
+include(${CMAKE_CURRENT_LIST_DIR}/config/default.cmake)
+include(${CMAKE_CURRENT_LIST_DIR}/validate.cmake)
 
-# Compiled Dynamic libraries
-*.so
-*.dylib
-*.dll
-
-# Fortran module files
-*.mod
-*.smod
-
-# Compiled Static libraries
-*.lai
-*.la
-*.a
-*.lib
-
-# Executables
-*.exe
-*.out
-*.app
-
-# Others
-.vscode/
-build/
-site/
-doxygen_output/
+include(${bsl_SOURCE_DIR}/cmake/build_types.cmake)
+include(${bsl_SOURCE_DIR}/cmake/find_programs.cmake)

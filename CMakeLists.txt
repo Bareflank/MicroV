@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2019 Assured Information Security, Inc.
+# Copyright (C) 2020 Assured Information Security, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -19,58 +19,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-# ------------------------------------------------------------------------------
-# Project includes
-# ------------------------------------------------------------------------------
+cmake_minimum_required(VERSION 3.13)
+project(microv CXX)
 
-include(${CMAKE_CURRENT_LIST_DIR}/scripts/cmake/config/default.cmake)
-
-# ------------------------------------------------------------------------------
-# Targets
-# ------------------------------------------------------------------------------
-
-include(${BOXY_SOURCE_CMAKE_DIR}/targets.cmake)
-
-# ------------------------------------------------------------------------------
-# General Dependencies
-# ------------------------------------------------------------------------------
-
-if(ENABLE_BUILD_GUEST)
-    include_dependency(BOXY_SOURCE_DEPENDS_DIR linux)
-endif()
-
-# ------------------------------------------------------------------------------
-# VMM
-# ------------------------------------------------------------------------------
-
-if(ENABLE_BUILD_VMM)
-    add_subproject(
-        boxy_bfvmm vmm
-        DEPENDS bfvmm
-        SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}/bfvmm
-    )
-endif()
-
-# ------------------------------------------------------------------------------
-# bfexec
-# ------------------------------------------------------------------------------
-
-add_subproject(
-    bfexec userspace
-    SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}/bfexec
-    DEPENDS bfintrinsics
-    DEPENDS bfsdk
-    DEPENDS cxxopts
-)
-
-# ------------------------------------------------------------------------------
-# bflinux
-# ------------------------------------------------------------------------------
-
-if(NOT WIN32 AND NOT CYGWIN)
-    add_subproject(
-        bflinux userspace
-        SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}/bflinux
-        DEPENDS bfintrinsics
-    )
-endif()
+include(${CMAKE_CURRENT_LIST_DIR}/cmake/init_build.cmake)
