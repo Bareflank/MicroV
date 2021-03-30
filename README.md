@@ -3,7 +3,7 @@
 ## Description
 
 **warning**: MicroV is currently a work in progress. If you need support now,
-please see [Mono](https://github.com/Bareflank/MicroV/tree/mono) until MicroV is more complete which is expected to be some time Q3-Q4 of 2021.
+please see the [Mono](https://github.com/Bareflank/MicroV/tree/mono) branch until MicroV is more complete which is expected to be some time Q3-Q4 of 2021.
 
 The MicroV Hypervisor is an open source, micro-hypervisor led by [Assured
 Information Security, Inc.](https://www.ainfosec.com/), designed specifically
