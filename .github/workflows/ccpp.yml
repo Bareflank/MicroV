@@ -1,0 +1,170 @@
+name: CI Tests
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  Doxygen:
+    runs-on: ubuntu-20.04
+    steps:
+    - uses: actions/checkout@v2
+    - name: Setup
+      run: |
+        chmod +x utils/linux/doxygen
+      shell: bash
+    - name: Validate Documentation
+      run: |
+        utils/linux/doxygen .doxygen
+      shell: bash
+
+  Clang_Format:
+    runs-on: ubuntu-20.04
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        path: hypervisor
+    - name: Setup
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y clang lld cmake ninja-build
+      shell: bash
+    - name: Validate Source Formatting
+      run: |
+        sudo tar -xzvf hypervisor/utils/linux/llvm-bareflank.tar.gz -C /usr/lib/
+        export PATH="/usr/lib/llvm-bareflank/bin:$PATH"
+        mkdir build && cd build
+        cmake -GNinja -DCMAKE_CXX_COMPILER="clang++" -DCMAKE_BUILD_TYPE=DEBUG -DENABLE_CLANG_FORMAT=ON ../hypervisor
+        ninja format
+        cd ../hypervisor
+        if [[ -n $(git diff) ]]; then
+          echo "You must run make format before submitting a pull request"
+          echo ""
+          git diff
+          exit -1
+        fi
+      shell: bash
+
+  Clang_Tidy:
+    runs-on: ubuntu-20.04
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        path: hypervisor
+    - name: Setup
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y clang lld cmake ninja-build
+      shell: bash
+    - name: Validate Compliance
+      run: |
+        sudo tar -xzvf hypervisor/utils/linux/llvm-bareflank.tar.gz -C /usr/lib/
+        export PATH="/usr/lib/llvm-bareflank/bin:$PATH"
+        mkdir build && cd build
+        cmake -GNinja -DCMAKE_CXX_COMPILER="clang++" -DCMAKE_BUILD_TYPE=CLANG_TIDY -DBUILD_EXAMPLES=ON -DBUILD_TESTS=ON ../hypervisor
+        ninja
+      shell: bash
+
+  ASAN:
+    runs-on: ubuntu-20.04
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        path: hypervisor
+    - name: Setup
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y clang lld cmake ninja-build
+      shell: bash
+    - name: Validate ASAN
+      run: |
+        mkdir build && cd build
+        cmake -GNinja -DCMAKE_CXX_COMPILER="clang++" -DCMAKE_BUILD_TYPE=ASAN -DBUILD_EXAMPLES=ON -DBUILD_TESTS=ON ../hypervisor
+        ninja
+        ninja unittest
+      shell: bash
+
+  UBSAN:
+    runs-on: ubuntu-20.04
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        path: hypervisor
+    - name: Setup
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y clang lld cmake ninja-build
+      shell: bash
+    - name: Validate UBSAN
+      run: |
+        mkdir build && cd build
+        cmake -GNinja -DCMAKE_CXX_COMPILER="clang++" -DCMAKE_BUILD_TYPE=UBSAN -DBUILD_EXAMPLES=ON -DBUILD_TESTS=ON ../hypervisor
+        ninja
+        ninja unittest
+      shell: bash
+
+  Release:
+    runs-on: ubuntu-20.04
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        path: hypervisor
+    - name: Setup
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y clang lld cmake ninja-build
+      shell: bash
+    - name: Validate Release Build
+      run: |
+        mkdir build && cd build
+        cmake -GNinja -DCMAKE_CXX_COMPILER="clang++" -DCMAKE_BUILD_TYPE=RELEASE -DBUILD_EXAMPLES=ON ../hypervisor
+        ninja
+      shell: bash
+
+  Debug:
+    runs-on: ubuntu-20.04
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        path: hypervisor
+    - name: Setup
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y clang lld cmake ninja-build
+      shell: bash
+    - name: Validate Debug Build
+      run: |
+        mkdir build && cd build
+        cmake -GNinja -DCMAKE_CXX_COMPILER="clang++" -DCMAKE_BUILD_TYPE=DEBUG -DBUILD_EXAMPLES=ON -DBUILD_TESTS=ON ../hypervisor
+        ninja
+        ninja unittest
+      shell: bash
+
+  # Codecov:
+  #   runs-on: ubuntu-20.04
+  #   steps:
+  #   - uses: actions/checkout@v2
+  #     with:
+  #       path: hypervisor
+  #   - name: Setup
+  #     run: |
+  #       sudo apt-get update
+  #       sudo apt-get install -y clang lld cmake ninja-build
+  #       wget https://github.com/mozilla/grcov/releases/download/v0.5.9/grcov-linux-x86_64.tar.bz2
+  #       tar xvf grcov-linux-x86_64.tar.bz2
+  #       sudo mv grcov /usr/bin/
+  #     shell: bash
+  #   - name: Gather Codecov Info
+  #     run: |
+  #       mkdir build && cd build
+  #       cmake -GNinja -DCMAKE_CXX_COMPILER="clang++" -DCMAKE_BUILD_TYPE=CODECOV -DBUILD_TESTS=ON ../hypervisor
+  #       ninja
+  #       ninja codecov-info
+  #     shell: bash
+  #   - name: Upload Codecov Info
+  #     run: |
+  #       cd build
+  #       ninja codecov-upload-ci
+  #     shell: bash
