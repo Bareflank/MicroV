@@ -66,6 +66,11 @@ extern uint64_t no_pci_pt_count;
 #define EFI_BOOT_NEXT L"\\EFI\\boot\\bootx64.efi"
 #endif
 
+#define EFI_CONFIG_FILE_MAX_SIZE (EFI_PAGE_SIZE >> 2)
+#ifndef EFI_CONFIG_FILE_PATH
+#define EFI_CONFIG_FILE_PATH L"\\EFI\\boot\\bareflank.cfg"
+#endif
+
 void unmap_vmm_from_root_domain(void);
 
 static int64_t
@@ -251,12 +256,9 @@ load_start_vm(EFI_HANDLE ParentImage)
     return EFI_ABORTED;
 }
 
-void parse_cmdline(EFI_HANDLE image)
+void parse_cmdline(INTN argc, CHAR16 **argv)
 {
-    INTN argc, i;
-    CHAR16 **argv;
-
-    argc = GetShellArgcArgv(image, &argv);
+    INTN i;
 
     for (i = 0; i < argc; i++) {
         if (!StrnCmp(opt_enable_xue, argv[i], StrLen(opt_enable_xue))) {
@@ -324,6 +326,123 @@ void parse_cmdline(EFI_HANDLE image)
     }
 }
 
+static UINTN read_file(EFI_LOADED_IMAGE *image, const CHAR16 *path, void **buffer)
+{
+    UINTN size = 0;
+    EFI_HANDLE dev_hdl;
+    SIMPLE_READ_FILE read_hdl;
+    char *buf_tmp = NULL;
+    const unsigned buf_size = 512;
+    UINTN file_buf_size = 0;
+    UINTN read_size = buf_size;
+
+    EFI_DEVICE_PATH *fd_path = FileDevicePath(image->DeviceHandle, (CHAR16 *) path);
+    EFI_STATUS status = OpenSimpleReadFile(FALSE, NULL, 0, &fd_path, &dev_hdl, &read_hdl);
+    gBS->FreePool(fd_path);
+
+    if (EFI_ERROR(status)) {
+        return 0;
+    }
+
+    while(read_size == buf_size) {
+        read_size = buf_size;
+        file_buf_size = size + buf_size;
+        buf_tmp = ReallocatePool(buf_tmp, size, file_buf_size);
+        status = ReadSimpleReadFile(read_hdl, size, &read_size, buf_tmp + size);
+
+        size += read_size;
+
+        if (EFI_ERROR(status)) {
+            BFALERT("OpenSimpleReadFile: failed to read chunk (%r)\n", status);
+        }
+    }
+
+    buf_tmp = ReallocatePool(buf_tmp, file_buf_size, size);
+    *buffer = buf_tmp;
+
+    return size;
+}
+
+/**
+ * Reads an ascii config file and builds a unicode cmdline string.
+ * Lines starting with `#` are ignored and whitespaces are removed.
+ * Returns the number of arguments argc and sets argv to an array of arguments
+ * with argv[0] set to arg0.
+ */
+static INTN get_args_from_cfg(EFI_HANDLE hdl, CHAR16 *arg0, CHAR16 **argv[])
+{
+    EFI_LOADED_IMAGE* image;
+    INTN argc = 0;
+    UINTN size_ascii = 0;
+    char *buf_ascii = NULL;
+    char *buf_unicode = NULL;
+    char **buf_argv = NULL;
+    UINTN i = 0;
+    UINTN j = 0;
+    BOOLEAN in_comment = FALSE;
+    BOOLEAN in_whitespace = TRUE; /* or start */
+
+    gBS->HandleProtocol(hdl, &LoadedImageProtocol, (void**)&image);
+
+    size_ascii = read_file(image, EFI_CONFIG_FILE_PATH, (void**) &buf_ascii);
+    if (size_ascii > EFI_CONFIG_FILE_MAX_SIZE) {
+        BFDEBUG("get_args_from_cfg: config file size of %d bytes is too large\n", size_ascii);
+        return 0;
+    }
+
+    /* Build unicode cmdline argc argv: */
+
+    buf_unicode = AllocatePool(size_ascii << 1);
+    buf_argv = AllocatePool(size_ascii >> 1);
+    buf_argv[argc++] = (char *) arg0;
+
+    for (; i < size_ascii; i++) {
+        switch(buf_ascii[i]) {
+            case '\n': /* 10 */
+                if (in_comment) {
+                    in_comment = FALSE;
+                }
+                /* fall through */
+            case '\t': /* 9 */
+                /* fall through */
+            case ' ': /* 32 */
+                in_whitespace = TRUE;
+                continue;
+            case '!' ... '~': /* 33 ... 126: main ascii chars */
+                if (buf_ascii[i] == '#') {
+                    in_comment = TRUE;
+                    continue;
+                }
+                break;
+            default:
+                continue;
+        }
+
+        if (in_comment) {
+            continue;
+        }
+
+        if (in_whitespace) {
+            in_whitespace = FALSE;
+            buf_unicode[j++] = '\0';
+            buf_unicode[j++] = '\0';
+            buf_argv[argc++] = &buf_unicode[j];
+        }
+
+        buf_unicode[j++] = buf_ascii[i];
+        buf_unicode[j++] = '\0';
+    }
+
+    buf_unicode[j++] = '\0';
+    buf_unicode[j++] = '\0';
+
+    *argv = (CHAR16 **) buf_argv;
+
+    gBS->FreePool(buf_ascii);
+
+    return argc;
+}
+
 /* -------------------------------------------------------------------------- */
 /* Entry / Exit                                                               */
 /* -------------------------------------------------------------------------- */
@@ -331,6 +450,9 @@ void parse_cmdline(EFI_HANDLE image)
 EFI_STATUS
 efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *systab)
 {
+    INTN argc;
+    CHAR16 **argv;
+
     InitializeLib(image, systab);
 
     if (common_init() != BF_SUCCESS) {
@@ -338,7 +460,18 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *systab)
     }
 
     g_enable_winpv = 1;
-    parse_cmdline(image);
+
+    argc = GetShellArgcArgv(image, &argv);
+    if (argc <= 1) {
+        /* Read config file */
+        argc = get_args_from_cfg(image, argv[0], &argv);
+        if (argc > 1) {
+            Print(L"[BAREFLANK INFO]: Reading config file from %s\n", EFI_CONFIG_FILE_PATH);
+        } else {
+            BFDEBUG("No cmdline and no config file!\n");
+        }
+    }
+    parse_cmdline(argc, argv);
 
 #ifdef USE_XUE
     if (g_enable_xue) {
