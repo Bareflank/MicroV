@@ -181,6 +181,7 @@ struct crt_info_t {
 #define BF_REQUEST_UEFI_BOOT 8
 #define BF_REQUEST_WINPV 9
 #define BF_REQUEST_NO_PCI_PT 10
+#define BF_REQUEST_PCI_PT_CLASS 11
 #define BF_REQUEST_END 0xFFFF
 
 /* @endcond */

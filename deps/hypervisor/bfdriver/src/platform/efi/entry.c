@@ -55,8 +55,13 @@ struct pmodule_t pmodules[MAX_NUM_MODULES] = {{0}};
 static const CHAR16 *opt_disable_xen_pfd = L"--disable-xen-pfd";
 static const CHAR16 *opt_enable_winpv = L"--enable-winpv";
 static const CHAR16 *opt_disable_winpv = L"--disable-winpv";
+static const CHAR16 *opt_pci_pt_class = L"--pci-pt-class";
 static const CHAR16 *opt_no_pci_pt = L"--no-pci-pt";
 static const CHAR16 *opt_enable_xue = L"--enable-xue";
+
+#define PCI_PT_CLASS_LIST_SIZE 14
+extern uint64_t pci_pt_class_list[PCI_PT_CLASS_LIST_SIZE];
+extern uint64_t pci_pt_class_count;
 
 #define NO_PCI_PT_LIST_SIZE 256
 extern uint64_t no_pci_pt_list[NO_PCI_PT_LIST_SIZE];
@@ -279,6 +284,29 @@ void parse_cmdline(INTN argc, CHAR16 **argv)
         if (!StrnCmp(opt_disable_xen_pfd, argv[i], StrLen(opt_disable_xen_pfd))) {
             BFINFO("Disabling Xen Platform PCI device\n");
             g_disable_xen_pfd = 1;
+        }
+
+        if (!StrnCmp(opt_pci_pt_class, argv[i], StrLen(opt_pci_pt_class))) {
+            if (i >= argc - 1) {
+                BFALERT("Missing class value\n");
+                BFALERT("  usage: --pci-pt-class n\n");
+                continue;
+            }
+
+            CHAR16 *class_str = argv[i + 1];
+            UINTN class_len = StrLen(class_str);
+
+            if (class_len != 1 && class_len != 2) {
+                BFALERT("Invalid class string size: %u\n", class_len);
+                BFALERT("  usage: --pci-pt-class n\n");
+                continue;
+            }
+
+            UINTN pci_class = Atoi((CHAR16 *) argv[i+1]);
+            pci_pt_class_list[pci_pt_class_count] = pci_class;
+            pci_pt_class_count++;
+
+            BFINFO("Enabling passthrough for PCI class %ld\n", pci_class);
         }
 
         if (!StrnCmp(opt_no_pci_pt, argv[i], StrLen(opt_no_pci_pt))) {
