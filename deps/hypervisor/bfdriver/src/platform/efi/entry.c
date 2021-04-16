@@ -305,28 +305,36 @@ void parse_cmdline(INTN argc, CHAR16 **argv)
 {
     INTN i;
 
-    for (i = 0; i < argc; i++) {
-        if (!StrnCmp(opt_enable_xue, argv[i], StrLen(opt_enable_xue))) {
+    if (argc <= 1) {
+        return;
+    }
+
+    for (i = 1; i < argc; i++) {
+        if (!StrnCmp(opt_enable_xue, argv[i], StrLen(opt_enable_xue) + 1)) {
             BFINFO("Enabling Xue USB Debugger\n");
             g_enable_xue = 1;
+            continue;
         }
 
-        if (!StrnCmp(opt_enable_winpv, argv[i], StrLen(opt_enable_winpv))) {
+        if (!StrnCmp(opt_enable_winpv, argv[i], StrLen(opt_enable_winpv) + 1)) {
             BFINFO("Enabling Windows PV\n");
             g_enable_winpv = 1;
+            continue;
         }
 
-        if (!StrnCmp(opt_disable_winpv, argv[i], StrLen(opt_disable_winpv))) {
+        if (!StrnCmp(opt_disable_winpv, argv[i], StrLen(opt_disable_winpv) + 1)) {
             BFINFO("Disabling Windows PV\n");
             g_enable_winpv = 0;
+            continue;
         }
 
-        if (!StrnCmp(opt_disable_xen_pfd, argv[i], StrLen(opt_disable_xen_pfd))) {
+        if (!StrnCmp(opt_disable_xen_pfd, argv[i], StrLen(opt_disable_xen_pfd) + 1)) {
             BFINFO("Disabling Xen Platform PCI device\n");
             g_disable_xen_pfd = 1;
+            continue;
         }
 
-        if (!StrnCmp(opt_pci_pt_class, argv[i], StrLen(opt_pci_pt_class))) {
+        if (!StrnCmp(opt_pci_pt_class, argv[i], StrLen(opt_pci_pt_class) + 1)) {
             if (i >= argc - 1) {
                 BFALERT("Missing class value\n");
                 BFALERT("  usage: --pci-pt-class n\n");
@@ -347,9 +355,12 @@ void parse_cmdline(INTN argc, CHAR16 **argv)
             pci_pt_class_count++;
 
             BFINFO("Enabling passthrough for PCI class %ld\n", pci_class);
+
+            i++;
+            continue;
         }
 
-        if (!StrnCmp(opt_no_pci_pt, argv[i], StrLen(opt_no_pci_pt))) {
+        if (!StrnCmp(opt_no_pci_pt, argv[i], StrLen(opt_no_pci_pt) + 1)) {
             if (i >= argc - 1) {
                 continue;
             }
@@ -366,6 +377,9 @@ void parse_cmdline(INTN argc, CHAR16 **argv)
                 (bdf & 0x00FF0000) >> 16,
                 (bdf & 0x0000F800) >> 11,
                 (bdf & 0x00000700) >> 8);
+
+            i++;
+            continue;
         }
 
         if (!StrnCmp(opt_pci_pt, argv[i], StrLen(opt_pci_pt) + 1)) {
@@ -385,7 +399,13 @@ void parse_cmdline(INTN argc, CHAR16 **argv)
                 (bdf & 0x00FF0000) >> 16,
                 (bdf & 0x0000F800) >> 11,
                 (bdf & 0x00000700) >> 8);
+
+            i++;
+            continue;
         }
+
+        BFALERT("Ignoring unknown argument: ");
+        Print(L"%s\n", argv[i]);
     }
 }
 
