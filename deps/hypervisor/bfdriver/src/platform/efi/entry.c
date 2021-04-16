@@ -57,6 +57,7 @@ static const CHAR16 *opt_enable_winpv = L"--enable-winpv";
 static const CHAR16 *opt_disable_winpv = L"--disable-winpv";
 static const CHAR16 *opt_pci_pt_class = L"--pci-pt-class";
 static const CHAR16 *opt_no_pci_pt = L"--no-pci-pt";
+static const CHAR16 *opt_pci_pt = L"--pci-pt";
 static const CHAR16 *opt_enable_xue = L"--enable-xue";
 
 #define PCI_PT_CLASS_LIST_SIZE 14
@@ -66,6 +67,10 @@ extern uint64_t pci_pt_class_count;
 #define NO_PCI_PT_LIST_SIZE 256
 extern uint64_t no_pci_pt_list[NO_PCI_PT_LIST_SIZE];
 extern uint64_t no_pci_pt_count;
+
+#define PCI_PT_LIST_SIZE 256
+extern uint64_t pci_pt_list[PCI_PT_LIST_SIZE];
+extern uint64_t pci_pt_count;
 
 #ifndef EFI_BOOT_NEXT
 #define EFI_BOOT_NEXT L"\\EFI\\boot\\bootx64.efi"
@@ -261,6 +266,41 @@ load_start_vm(EFI_HANDLE ParentImage)
     return EFI_ABORTED;
 }
 
+static uint64_t bdf_str_to_uint(const CHAR16 *bdf_str)
+{
+    UINTN bdf_len = StrLen(bdf_str);
+
+    if (bdf_len != 7) {
+        BFALERT("Invalid BDF string size: %u\n", bdf_len);
+        BFALERT("  usage: --no-pci-pt BB:DD.F\n");
+        return -1ULL;
+    }
+
+    CHAR8 bus_str[16];
+    CHAR8 dev_str[16];
+    CHAR8 fun_str[16];
+
+    ZeroMem(bus_str, 16);
+    ZeroMem(dev_str, 16);
+    ZeroMem(fun_str, 16);
+
+    CopyMem(bus_str, bdf_str, 4);
+    CopyMem(dev_str, (char *)bdf_str + 6, 4);
+    CopyMem(fun_str, (char *)bdf_str + 12, 2);
+
+    UINTN bus = xtoi((CHAR16 *)bus_str);
+    UINTN dev = xtoi((CHAR16 *)dev_str);
+    UINTN fun = xtoi((CHAR16 *)fun_str);
+
+    if (bus > 255 || dev > 31 || fun > 7) {
+        BFALERT("BDF out of range: bus=%lx, dev=%lx, fun=%lx\n",
+                bus, dev, fun);
+        return -1ULL;
+    }
+
+    return (bus << 16) | (dev << 11) | (fun << 8);
+}
+
 void parse_cmdline(INTN argc, CHAR16 **argv)
 {
     INTN i;
@@ -314,42 +354,37 @@ void parse_cmdline(INTN argc, CHAR16 **argv)
                 continue;
             }
 
-            CHAR16 *bdf_str = argv[i + 1];
-            UINTN bdf_len = StrLen(bdf_str);
-
-            if (bdf_len != 7) {
-                BFALERT("Invalid BDF string size: %u\n", bdf_len);
-                BFALERT("  usage: --no-pci-pt BB:DD.F\n");
+            uint64_t bdf = bdf_str_to_uint(argv[i + 1]);
+            if (bdf == -1ULL) {
                 continue;
             }
 
-            CHAR8 bus_str[16];
-            CHAR8 dev_str[16];
-            CHAR8 fun_str[16];
-
-            ZeroMem(bus_str, 16);
-            ZeroMem(dev_str, 16);
-            ZeroMem(fun_str, 16);
-
-            CopyMem(bus_str, bdf_str, 4);
-            CopyMem(dev_str, (char *)bdf_str + 6, 4);
-            CopyMem(fun_str, (char *)bdf_str + 12, 2);
-
-            UINTN bus = xtoi((CHAR16 *)bus_str);
-            UINTN dev = xtoi((CHAR16 *)dev_str);
-            UINTN fun = xtoi((CHAR16 *)fun_str);
-
-            if (bus > 255 || dev > 31 || fun > 7) {
-                BFALERT("BDF out of range: bus=%lx, dev=%lx, fun=%lx\n",
-                      bus, dev, fun);
-                continue;
-            }
-
-            no_pci_pt_list[no_pci_pt_count] =
-                (bus << 16) | (dev << 11) | (fun << 8);
+            no_pci_pt_list[no_pci_pt_count] = bdf;
             no_pci_pt_count++;
 
-            BFINFO("Disabling passthrough for %02x:%02x.%02x\n", bus, dev, fun);
+            BFINFO("Disabling passthrough for %02x:%02x.%02x\n",
+                (bdf & 0x00FF0000) >> 16,
+                (bdf & 0x0000F800) >> 11,
+                (bdf & 0x00000700) >> 8);
+        }
+
+        if (!StrnCmp(opt_pci_pt, argv[i], StrLen(opt_pci_pt) + 1)) {
+            if (i >= argc - 1) {
+                continue;
+            }
+
+            uint64_t bdf = bdf_str_to_uint(argv[i + 1]);
+            if (bdf == -1ULL) {
+                continue;
+            }
+
+            pci_pt_list[pci_pt_count] = bdf;
+            pci_pt_count++;
+
+            BFINFO("Enabling passthrough for %02x:%02x.%02x\n",
+                (bdf & 0x00FF0000) >> 16,
+                (bdf & 0x0000F800) >> 11,
+                (bdf & 0x00000700) >> 8);
         }
     }
 }
