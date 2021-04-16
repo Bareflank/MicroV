@@ -174,7 +174,8 @@ static void probe_bus(uint32_t b, struct pci_dev *bridge)
                 for (auto next = secondary; next <= subordinate; next++) {
                     probe_bus(next, pdev);
                 }
-            } else if (pdev->is_netdev()) {
+            } else if (pdev->is_netdev()
+                && g_pci_pt_class.count(pci_cc_network)) {
                 if (g_no_pci_pt.count(addr)) {
                     printv("pci: %s: passthrough disabled via boot option\n",
                            pdev->bdf_str());
