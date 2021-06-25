@@ -20,7 +20,7 @@
   </PropertyGroup>
   <ItemDefinitionGroup>
     <ClCompile>
-      <PreprocessorDefinitions>PROJECT=$(ProjectName);POOL_NX_OPTIN=1;NT_PROCESSOR_GROUPS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_NO_CRT_STDIO_INLINE;PROJECT=$(ProjectName);POOL_NX_OPTIN=1;NT_PROCESSOR_GROUPS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <AdditionalIncludeDirectories>$(WindowsSdkDir)\include\km;..\..\include;..\..\include\xen;..\..\src\common;..\..\..\..\..\include;..\..\..\..\..\deps\hypervisor\bfsdk\include;</AdditionalIncludeDirectories>
       <WarningLevel>EnableAllWarnings</WarningLevel>

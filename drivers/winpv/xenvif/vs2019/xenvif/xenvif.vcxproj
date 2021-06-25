@@ -21,7 +21,7 @@
   <ItemDefinitionGroup>
     <ClCompile>
       <AdditionalIncludeDirectories>$(WindowsSdkDir)\include\km;..\..\include;..\..\include\xen;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>PROJECT=$(ProjectName);POOL_NX_OPTIN=1;NT_PROCESSOR_GROUPS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_NO_CRT_STDIO_INLINE;PROJECT=$(ProjectName);POOL_NX_OPTIN=1;NT_PROCESSOR_GROUPS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <WarningLevel>EnableAllWarnings</WarningLevel>
       <DisableSpecificWarnings>4464;4711;4770;4548;4820;4668;4255;5045;6001;6054;26451;28196;30030;30029;%(DisableSpecificWarnings)</DisableSpecificWarnings>
