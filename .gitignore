@@ -67,6 +67,7 @@ deploy/windows/images
 *.sqlite
 *.manifest
 
+drivers/builder/windows/version.h
 drivers/builder/windows/x64
 drivers/builder/windows/.build_number
 drivers/builder/windows/builder/
@@ -83,13 +84,16 @@ drivers/builder/windows/vs2019/builder/smvexecute-NormalBuild.log
 drivers/builder/windows/vs2019/builder/smvstats.txt
 drivers/builder/windows/vs2019/package/Windows10Debug/
 drivers/builder/windows/vs2019/package/Windows10Release/
+drivers/builder/windows/vs2019/version/.revision
 
+drivers/visr/windows/version.h
 drivers/visr/windows/x64
 drivers/visr/windows/.build_number
 drivers/visr/windows/visr/
 drivers/visr/windows/vs2019/Windows10Release/
 drivers/visr/windows/vs2019/package/Windows10Debug/
 drivers/visr/windows/vs2019/package/Windows10Release/
+drivers/visr/windows/vs2019/version/.revision
 drivers/visr/windows/vs2019/visr.DVL.XML
 drivers/visr/windows/vs2019/visr/Windows10Debug/
 drivers/visr/windows/vs2019/visr/Windows10Release/

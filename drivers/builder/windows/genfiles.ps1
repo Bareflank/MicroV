@@ -1,8 +1,9 @@
 #
-# Generate visr.inf
+# Generate builder.inf
 #
 param(
-	[string]$SolutionDir = "vs2019"
+	[string]$SolutionDir = "vs2019",
+	[string]$Platform = "x64"
 )
 
 # Copy $InFileName -> $OutFileName replacing $Token$_.Key$Token with $_.Value from
@@ -39,15 +40,39 @@ Function Copy-FileWithReplacements {
 #
 # Script Body
 #
+$TheYear = [int](Get-Date -UFormat "%Y")
+$TheMonth = [int](Get-Date -UFormat "%m")
+$TheDay = [int](Get-Date -UFormat "%d")
+$InfArch = @{ "Win32" = "x86"; "x64" = "amd64" }
 $InfDate = Get-Date -UFormat "%m/%d/%Y"
+
+# if GitRevision is $null, GIT_REVISION will be excluded from the Copy-FileWithReplacements
+$GitRevision = & "git.exe" "rev-list" "--max-count=1" "HEAD"
+if ($GitRevision) {
+	Set-Content -Path ".revision" -Value $GitRevision
+}
 
 # [ordered] makes output easier to parse by humans
 $Replacements = [ordered]@{
+	# values determined from the build environment
+	'VENDOR_NAME' = $Env:VENDOR_NAME;
+	'PRODUCT_NAME' = $Env:PRODUCT_NAME;
+	'VENDOR_DEVICE_ID' = $Env:VENDOR_DEVICE_ID;
+	'VENDOR_PREFIX' = $Env:VENDOR_PREFIX;
+
 	'MAJOR_VERSION' = $Env:MAJOR_VERSION;
 	'MINOR_VERSION' = $Env:MINOR_VERSION;
 	'MICRO_VERSION' = $Env:MICRO_VERSION;
 	'BUILD_NUMBER' = $Env:BUILD_NUMBER;
+
+	# generated values
+	'GIT_REVISION' = $GitRevision;
+
 	'INF_DATE' = $InfDate;
+	'INF_ARCH' = $InfArch[$Platform];
+	'YEAR' = $TheYear;
+	'MONTH' = $TheMonth;
+	'DAY' = $TheDay
 }
 
 $Replacements | Out-String | Write-Host
@@ -57,4 +82,8 @@ $slnpath | Out-String | Write-Host
 
 $src = "$PSScriptRoot\builder.inf"
 $dst = Join-Path -Path $slnpath -ChildPath "builder\builder.inf"
+Copy-FileWithReplacements $src $dst -Replacements $Replacements
+
+$src = "$PSScriptRoot\version.tmpl"
+$dst = "$PSScriptRoot\version.h"
 Copy-FileWithReplacements $src $dst -Replacements $Replacements

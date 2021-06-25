@@ -53,7 +53,9 @@
 // part of an enumeration and the #ifdef test thus fails.
 // Override the enumeration value here with a #define.
 
+#ifndef EINVAL
 #define EINVAL  XEN_EINVAL
+#endif
 
 #include <public/io/xs_wire.h>
 #include <public/io/console.h>

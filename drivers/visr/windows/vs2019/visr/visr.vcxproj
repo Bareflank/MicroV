@@ -46,6 +46,9 @@
       <OutDir>..\$(ConfigurationName)\$(Platform)\</OutDir>
       <IncludePath>..\..\..\..\..\deps\hypervisor\bfsdk\include;..\..\..\..\..\deps\hypervisor\bfelf_loader\include;..\..\..\..\..\include;..\..\;$(IncludePath)</IncludePath>
   </PropertyGroup>
+  <PropertyGroup>
+    <SignMode>Off</SignMode>
+  </PropertyGroup>
   <ItemDefinitionGroup>
     <ClCompile>
       <WarningLevel>EnableAllWarnings</WarningLevel>
@@ -80,6 +83,9 @@
   </ItemGroup>
   <ItemGroup>
     <MASM Include="..\..\intrinsics.asm" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="..\..\visr.rc" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
 </Project>
