@@ -31,7 +31,9 @@ inline bool g_uefi_boot = false;
 inline bool g_enable_winpv = false;
 inline bool g_disable_xen_pfd = false;
 inline bool g_enable_xue = false;
+inline std::unordered_set<uint8_t> g_pci_pt_class;
 inline std::unordered_set<uint32_t> g_no_pci_pt;
+inline std::unordered_set<uint32_t> g_pci_pt;
 
 #ifdef BF_X64
 #include <arch/x64/cache.h>

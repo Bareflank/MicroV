@@ -43,9 +43,17 @@ int g_enable_winpv = 0;
 int g_disable_xen_pfd = 0;
 int g_enable_xue = 0;
 
+#define PCI_PT_CLASS_LIST_SIZE 14
+uint64_t pci_pt_class_list[PCI_PT_CLASS_LIST_SIZE];
+uint64_t pci_pt_class_count = 0;
+
 #define NO_PCI_PT_LIST_SIZE 256
 uint64_t no_pci_pt_list[NO_PCI_PT_LIST_SIZE];
 uint64_t no_pci_pt_count = 0;
+
+#define PCI_PT_LIST_SIZE 256
+uint64_t pci_pt_list[PCI_PT_LIST_SIZE];
+uint64_t pci_pt_count = 0;
 
 #ifdef USE_XUE
 struct xue g_xue;
@@ -525,10 +533,30 @@ common_load_vmm(void)
         goto failure;
     }
 
+    for (i = 0; i < pci_pt_class_count; i++) {
+        ret = platform_call_vmm_on_core(0,
+                                        BF_REQUEST_PCI_PT_CLASS,
+                                        pci_pt_class_list[i],
+                                        0);
+        if (ret != BF_SUCCESS) {
+            goto failure;
+        }
+    }
+
     for (i = 0; i < no_pci_pt_count; i++) {
         ret = platform_call_vmm_on_core(0,
                                         BF_REQUEST_NO_PCI_PT,
                                         no_pci_pt_list[i],
+                                        0);
+        if (ret != BF_SUCCESS) {
+            goto failure;
+        }
+    }
+
+    for (i = 0; i < pci_pt_class_count; i++) {
+        ret = platform_call_vmm_on_core(0,
+                                        BF_REQUEST_PCI_PT,
+                                        pci_pt_list[i],
                                         0);
         if (ret != BF_SUCCESS) {
             goto failure;

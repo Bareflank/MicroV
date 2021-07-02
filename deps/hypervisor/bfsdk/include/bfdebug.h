@@ -1244,10 +1244,11 @@ bfdebug_exception(const std::exception &e)
 #if defined(KERNEL) && defined(EFI)
 #include "efi.h"
 #include "efilib.h"
-#define BFINFO(...) Print(L__VA_ARGS__)
-#define BFDEBUG(...) Print(L"[BAREFLANK DEBUG]: " __VA_ARGS__)
-#define BFALERT(...) Print(L"[BAREFLANK ALERT]: " __VA_ARGS__)
-#define BFERROR(...) Print(L"[BAREFLANK ERROR]: " __VA_ARGS__)
+
+#define BFINFO(...) APrint((const CHAR8 *) __VA_ARGS__)
+#define BFDEBUG(...) APrint((const CHAR8 *) "[BAREFLANK DEBUG]: " __VA_ARGS__)
+#define BFALERT(...) APrint((const CHAR8 *) "[BAREFLANK ALERT]: " __VA_ARGS__)
+#define BFERROR(...) APrint((const CHAR8 *) "[BAREFLANK ERROR]: " __VA_ARGS__)
 #endif
 
 /** @endcond */
