@@ -260,22 +260,22 @@ void parse_cmdline(EFI_HANDLE image)
 
     for (i = 0; i < argc; i++) {
         if (!StrnCmp(opt_enable_xue, argv[i], StrLen(opt_enable_xue))) {
-            Print(L"Enabling Xue USB Debugger\n");
+            BFINFO("Enabling Xue USB Debugger\n");
             g_enable_xue = 1;
         }
 
         if (!StrnCmp(opt_enable_winpv, argv[i], StrLen(opt_enable_winpv))) {
-            Print(L"Enabling Windows PV\n");
+            BFINFO("Enabling Windows PV\n");
             g_enable_winpv = 1;
         }
 
         if (!StrnCmp(opt_disable_winpv, argv[i], StrLen(opt_disable_winpv))) {
-            Print(L"Disabling Windows PV\n");
+            BFINFO("Disabling Windows PV\n");
             g_enable_winpv = 0;
         }
 
         if (!StrnCmp(opt_disable_xen_pfd, argv[i], StrLen(opt_disable_xen_pfd))) {
-            Print(L"Disabling Xen Platform PCI device\n");
+            BFINFO("Disabling Xen Platform PCI device\n");
             g_disable_xen_pfd = 1;
         }
 
@@ -288,8 +288,8 @@ void parse_cmdline(EFI_HANDLE image)
             UINTN bdf_len = StrLen(bdf_str);
 
             if (bdf_len != 7) {
-                Print(L"Invalid BDF string size: %u\n", bdf_len);
-                Print(L"  usage: --no-pci-pt BB:DD.F\n");
+                BFALERT("Invalid BDF string size: %u\n", bdf_len);
+                BFALERT("  usage: --no-pci-pt BB:DD.F\n");
                 continue;
             }
 
@@ -310,7 +310,7 @@ void parse_cmdline(EFI_HANDLE image)
             UINTN fun = xtoi((CHAR16 *)fun_str);
 
             if (bus > 255 || dev > 31 || fun > 7) {
-                Print(L"BDF out of range: bus=%lx, dev=%lx, fun=%lx\n",
+                BFALERT("BDF out of range: bus=%lx, dev=%lx, fun=%lx\n",
                       bus, dev, fun);
                 continue;
             }
@@ -319,7 +319,7 @@ void parse_cmdline(EFI_HANDLE image)
                 (bus << 16) | (dev << 11) | (fun << 8);
             no_pci_pt_count++;
 
-            Print(L"Disabling passthrough for %02x:%02x.%02x\n", bus, dev, fun);
+            BFINFO("Disabling passthrough for %02x:%02x.%02x\n", bus, dev, fun);
         }
     }
 }
