@@ -30,6 +30,10 @@
     - [2.2.10. CPUID_4000_XX02_EBX](#2210-cpuid_4000_xx02_ebx)
     - [2.2.11. CPUID_4000_XX02_ECX](#2211-cpuid_4000_xx02_ecx)
     - [2.2.12. CPUID_4000_XX02_EDX](#2212-cpuid_4000_xx02_edx)
+    - [2.2.9. CPUID_4000_XX03_EAX](#229-cpuid_4000_xx03_eax)
+    - [2.2.9. CPUID_4000_XX03_EBX](#229-cpuid_4000_xx03_ebx)
+    - [2.2.11. CPUID_4000_XX03_ECX](#2211-cpuid_4000_xx03_ecx)
+    - [2.2.11. CPUID_4000_XX03_EDX](#2211-cpuid_4000_xx03_edx)
 - [3. Virtual Machines](#3-virtual-machines)
   - [3.1. Virtual Machine ID (VMID)](#31-virtual-machine-id-vmid)
 - [4. Virtual Processors](#4-virtual-processors)
@@ -51,6 +55,7 @@
   - [6.7. Hypercall Opcodes](#67-hypercall-opcodes)
     - [6.7.1. Debug Support](#671-debug-support)
     - [6.7.2. Handle Support](#672-handle-support)
+    - [6.7.2. Physical Processors](#672-physical-processors)
     - [6.7.3. Virtual Machines](#673-virtual-machines)
     - [6.7.4. Virtual Processors](#674-virtual-processors)
     - [6.7.5. Virtual Processor State](#675-virtual-processor-state)
@@ -59,25 +64,70 @@
   - [6.9. Handle Hypercalls](#69-handle-hypercalls)
     - [6.9.1. mv_handle_op_open_handle, OP=0x1, IDX=0x0](#691-mv_handle_op_open_handle-op0x1-idx0x0)
     - [6.9.2. mv_handle_op_close_handle, OP=0x1, IDX=0x1](#692-mv_handle_op_close_handle-op0x1-idx0x1)
-    - [6.9.2. mv_handle_op_shared_page, OP=0x1, IDX=0x2](#692-mv_handle_op_shared_page-op0x1-idx0x2)
-  - [6.10. VM Hypercalls](#610-vm-hypercalls)
-    - [6.10.1. mv_vm_op_create_vm, OP=0x2, IDX=0x0](#6101-mv_vm_op_create_vm-op0x2-idx0x0)
-    - [6.10.2. mv_vm_op_destroy_vm, OP=0x2, IDX=0x1](#6102-mv_vm_op_destroy_vm-op0x2-idx0x1)
-    - [6.10.3. mv_vm_op_vmid, OP=0x2, IDX=0x2](#6103-mv_vm_op_vmid-op0x2-idx0x2)
-    - [6.10.4. mv_vm_op_map, OP=0x2, IDX=0x3](#6104-mv_vm_op_map-op0x2-idx0x3)
-    - [6.10.5. mv_vm_op_unmap, OP=0x2, IDX=0x4](#6105-mv_vm_op_unmap-op0x2-idx0x4)
+  - [6.9. PP Hypercalls](#69-pp-hypercalls)
+    - [6.9.2. mv_pp_op_set_shared_page, OP=0x1, IDX=0x2](#692-mv_pp_op_set_shared_page-op0x1-idx0x2)
+    - [6.11.4. mv_pp_op_get_supported_cpuids, OP=0x4, IDX=0x4](#6114-mv_pp_op_get_supported_cpuids-op0x4-idx0x4)
+    - [6.11.4. mv_pp_op_get_supported_cpuids, OP=0x4, IDX=0x4](#6114-mv_pp_op_get_supported_cpuids-op0x4-idx0x4-1)
+    - [6.11.4. mv_pp_op_get_permissable_cpuids, OP=0x4, IDX=0x4](#6114-mv_pp_op_get_permissable_cpuids-op0x4-idx0x4)
+    - [6.11.4. mv_pp_op_get_emulated_cpuids, OP=0x4, IDX=0x4](#6114-mv_pp_op_get_emulated_cpuids-op0x4-idx0x4)
+    - [6.11.4. mv_pp_op_get_supported_regs, OP=0x4, IDX=0x4](#6114-mv_pp_op_get_supported_regs-op0x4-idx0x4)
+    - [6.11.4. mv_pp_op_get_permissable_regs, OP=0x4, IDX=0x4](#6114-mv_pp_op_get_permissable_regs-op0x4-idx0x4)
+    - [6.11.4. mv_pp_op_get_emulated_regs, OP=0x4, IDX=0x4](#6114-mv_pp_op_get_emulated_regs-op0x4-idx0x4)
+    - [6.11.4. mv_pp_op_get_tsc_khz, OP=0x4, IDX=0x11](#6114-mv_pp_op_get_tsc_khz-op0x4-idx0x11)
+    - [6.11.4. mv_pp_op_set_tsc_khz, OP=0x4, IDX=0x12](#6114-mv_pp_op_set_tsc_khz-op0x4-idx0x12)
     - [6.11.4. mv_vm_op_supported_regs, OP=0x2, IDX=0x5](#6114-mv_vm_op_supported_regs-op0x2-idx0x5)
     - [6.11.4. mv_vm_op_supported_regs_get, OP=0x2, IDX=0x6](#6114-mv_vm_op_supported_regs_get-op0x2-idx0x6)
     - [6.11.4. mv_vm_op_supported_regs_set, OP=0x2, IDX=0x7](#6114-mv_vm_op_supported_regs_set-op0x2-idx0x7)
     - [6.11.4. mv_vm_op_supported_msrs, OP=0x2, IDX=0x8](#6114-mv_vm_op_supported_msrs-op0x2-idx0x8)
     - [6.11.4. mv_vm_op_supported_msrs_get, OP=0x2, IDX=0x9](#6114-mv_vm_op_supported_msrs_get-op0x2-idx0x9)
     - [6.11.4. mv_vm_op_supported_msrs_set, OP=0x2, IDX=0xA](#6114-mv_vm_op_supported_msrs_set-op0x2-idx0xa)
+  - [6.10. VM Hypercalls](#610-vm-hypercalls)
+    - [6.10.1. mv_vm_op_create_vm, OP=0x2, IDX=0x0](#6101-mv_vm_op_create_vm-op0x2-idx0x0)
+    - [6.10.2. mv_vm_op_destroy_vm, OP=0x2, IDX=0x1](#6102-mv_vm_op_destroy_vm-op0x2-idx0x1)
+    - [6.10.3. mv_vm_op_vmid, OP=0x2, IDX=0x2](#6103-mv_vm_op_vmid-op0x2-idx0x2)
+    - [6.10.4. mv_vm_op_mmio_map, OP=0x2, IDX=0x3](#6104-mv_vm_op_mmio_map-op0x2-idx0x3)
+    - [6.10.5. mv_vm_op_mmio_unmap, OP=0x2, IDX=0x4](#6105-mv_vm_op_mmio_unmap-op0x2-idx0x4)
+    - [6.10.5. mv_vm_op_mmio_trap, OP=0x2, IDX=0x4](#6105-mv_vm_op_mmio_trap-op0x2-idx0x4)
+    - [6.11.4. mv_vm_op_create_irqchip, OP=0x2, IDX=0xA](#6114-mv_vm_op_create_irqchip-op0x2-idx0xa)
+    - [6.11.4. mv_vm_op_get_irqchip, OP=0x2, IDX=0xA](#6114-mv_vm_op_get_irqchip-op0x2-idx0xa)
+    - [6.11.4. mv_vm_op_set_irqchip, OP=0x2, IDX=0xA](#6114-mv_vm_op_set_irqchip-op0x2-idx0xa)
+    - [6.11.4. mv_vm_op_get_irq_mode, OP=0x2, IDX=0xA](#6114-mv_vm_op_get_irq_mode-op0x2-idx0xa)
+    - [6.11.4. mv_vm_op_set_irq_mode, OP=0x2, IDX=0xA](#6114-mv_vm_op_set_irq_mode-op0x2-idx0xa)
+    - [6.11.4. mv_vm_op_get_irq_routing, OP=0x2, IDX=0xA](#6114-mv_vm_op_get_irq_routing-op0x2-idx0xa)
+    - [6.11.4. mv_vm_op_set_irq_routing, OP=0x2, IDX=0xA](#6114-mv_vm_op_set_irq_routing-op0x2-idx0xa)
+    - [6.11.4. mv_vm_op_queue_irq, OP=0x2, IDX=0xA](#6114-mv_vm_op_queue_irq-op0x2-idx0xa)
   - [6.11. VP Hypercalls](#611-vp-hypercalls)
     - [6.11.1. mv_vp_op_create_vp, OP=0x3, IDX=0x0](#6111-mv_vp_op_create_vp-op0x3-idx0x0)
     - [6.11.2. mv_vp_op_destroy_vp, OP=0x3, IDX=0x1](#6112-mv_vp_op_destroy_vp-op0x3-idx0x1)
     - [6.11.3. mv_vp_op_vmid, OP=0x3, IDX=0x2](#6113-mv_vp_op_vmid-op0x3-idx0x2)
     - [6.11.4. mv_vp_op_vpid, OP=0x3, IDX=0x3](#6114-mv_vp_op_vpid-op0x3-idx0x3)
   - [6.12. VPS Hypercalls](#612-vps-hypercalls)
+    - [6.11.4. mv_vps_op_cpuid_get, OP=0x4, IDX=0x4](#6114-mv_vps_op_cpuid_get-op0x4-idx0x4)
+    - [6.11.4. mv_vps_op_cpuid_set, OP=0x4, IDX=0x5](#6114-mv_vps_op_cpuid_set-op0x4-idx0x5)
+    - [6.11.4. mv_vps_op_reg_get, OP=0x4, IDX=0x6](#6114-mv_vps_op_reg_get-op0x4-idx0x6)
+    - [6.11.4. mv_vps_op_reg_set, OP=0x4, IDX=0x7](#6114-mv_vps_op_reg_set-op0x4-idx0x7)
+    - [6.11.4. mv_vps_op_reg_trap, OP=0x4, IDX=0x6](#6114-mv_vps_op_reg_trap-op0x4-idx0x6)
+    - [6.11.4. mv_vps_op_regs_general_get, OP=0x4, IDX=0x6](#6114-mv_vps_op_regs_general_get-op0x4-idx0x6)
+    - [6.11.4. mv_vps_op_regs_general_set, OP=0x4, IDX=0x6](#6114-mv_vps_op_regs_general_set-op0x4-idx0x6)
+    - [6.11.4. mv_vps_op_regs_system_get, OP=0x4, IDX=0x6](#6114-mv_vps_op_regs_system_get-op0x4-idx0x6)
+    - [6.11.4. mv_vps_op_regs_system_set, OP=0x4, IDX=0x6](#6114-mv_vps_op_regs_system_set-op0x4-idx0x6)
+    - [6.11.4. mv_vps_op_regs_debug_get, OP=0x4, IDX=0x6](#6114-mv_vps_op_regs_debug_get-op0x4-idx0x6)
+    - [6.11.4. mv_vps_op_regs_debug_set, OP=0x4, IDX=0x6](#6114-mv_vps_op_regs_debug_set-op0x4-idx0x6)
+    - [6.11.4. mv_vps_op_fpu_get, OP=0x4, IDX=0xA](#6114-mv_vps_op_fpu_get-op0x4-idx0xa)
+    - [6.11.4. mv_vps_op_fpu_set, OP=0x4, IDX=0xB](#6114-mv_vps_op_fpu_set-op0x4-idx0xb)
+    - [6.11.4. mv_vps_op_xsave_get, OP=0x4, IDX=0xC](#6114-mv_vps_op_xsave_get-op0x4-idx0xc)
+    - [6.11.4. mv_vps_op_xsave_set, OP=0x4, IDX=0xD](#6114-mv_vps_op_xsave_set-op0x4-idx0xd)
+    - [6.11.4. mv_vps_op_lapic_get_all, OP=0x4, IDX=0xC](#6114-mv_vps_op_lapic_get_all-op0x4-idx0xc)
+    - [6.11.4. mv_vps_op_lapic_set_all, OP=0x4, IDX=0xD](#6114-mv_vps_op_lapic_set_all-op0x4-idx0xd)
+    - [6.11.4. mv_vps_op_lapic_get_reg, OP=0x4, IDX=0xC](#6114-mv_vps_op_lapic_get_reg-op0x4-idx0xc)
+    - [6.11.4. mv_vps_op_lapic_set_reg, OP=0x4, IDX=0xD](#6114-mv_vps_op_lapic_set_reg-op0x4-idx0xd)
+    - [6.11.4. mv_vps_op_lapic_add, OP=0x4, IDX=0xC](#6114-mv_vps_op_lapic_add-op0x4-idx0xc)
+    - [6.11.4. mv_vps_op_lapic_top, OP=0x4, IDX=0xD](#6114-mv_vps_op_lapic_top-op0x4-idx0xd)
+    - [6.11.4. mv_vps_op_lapic_eoi, OP=0x4, IDX=0xD](#6114-mv_vps_op_lapic_eoi-op0x4-idx0xd)
+    - [6.11.4. mv_vps_op_status_get, OP=0x4, IDX=0x12](#6114-mv_vps_op_status_get-op0x4-idx0x12)
+    - [6.11.4. mv_vps_op_status_set, OP=0x4, IDX=0x12](#6114-mv_vps_op_status_set-op0x4-idx0x12)
+    - [6.11.4. mv_vps_op_status_set, OP=0x4, IDX=0x12](#6114-mv_vps_op_status_set-op0x4-idx0x12-1)
+    - [6.12.1. mv_vps_op_run, OP=0x8, IDX=0x2](#6121-mv_vps_op_run-op0x8-idx0x2)
     - [6.11.1. mv_vps_op_create_vps, OP=0x4, IDX=0x0](#6111-mv_vps_op_create_vps-op0x4-idx0x0)
     - [6.11.2. mv_vps_op_destroy_vps, OP=0x4, IDX=0x1](#6112-mv_vps_op_destroy_vps-op0x4-idx0x1)
     - [6.11.3. mv_vps_op_vpid, OP=0x4, IDX=0x2](#6113-mv_vps_op_vpid-op0x4-idx0x2)
@@ -86,18 +136,31 @@
     - [6.11.4. mv_vps_op_set_cpuid, OP=0x4, IDX=0x5](#6114-mv_vps_op_set_cpuid-op0x4-idx0x5)
     - [6.11.4. mv_vps_op_get_reg, OP=0x4, IDX=0x6](#6114-mv_vps_op_get_reg-op0x4-idx0x6)
     - [6.11.4. mv_vps_op_set_reg, OP=0x4, IDX=0x7](#6114-mv_vps_op_set_reg-op0x4-idx0x7)
+    - [6.11.4. mv_vps_op_get_general_regs, OP=0x4, IDX=0x6](#6114-mv_vps_op_get_general_regs-op0x4-idx0x6)
+    - [6.11.4. mv_vps_op_set_general_regs, OP=0x4, IDX=0x6](#6114-mv_vps_op_set_general_regs-op0x4-idx0x6)
+    - [6.11.4. mv_vps_op_get_system_regs, OP=0x4, IDX=0x6](#6114-mv_vps_op_get_system_regs-op0x4-idx0x6)
+    - [6.11.4. mv_vps_op_set_system_regs, OP=0x4, IDX=0x6](#6114-mv_vps_op_set_system_regs-op0x4-idx0x6)
+    - [6.11.4. mv_vps_op_get_debug_regs, OP=0x4, IDX=0x6](#6114-mv_vps_op_get_debug_regs-op0x4-idx0x6)
+    - [6.11.4. mv_vps_op_set_debug_regs, OP=0x4, IDX=0x6](#6114-mv_vps_op_set_debug_regs-op0x4-idx0x6)
     - [6.11.4. mv_vps_op_get_msr, OP=0x4, IDX=0x8](#6114-mv_vps_op_get_msr-op0x4-idx0x8)
     - [6.11.4. mv_vps_op_set_msr, OP=0x4, IDX=0x9](#6114-mv_vps_op_set_msr-op0x4-idx0x9)
+    - [6.11.4. mv_vps_op_get_msrs, OP=0x4, IDX=0x8](#6114-mv_vps_op_get_msrs-op0x4-idx0x8)
+    - [6.11.4. mv_vps_op_set_msrs, OP=0x4, IDX=0x8](#6114-mv_vps_op_set_msrs-op0x4-idx0x8)
+    - [6.11.4. mv_vps_op_trap_reg, OP=0x4, IDX=0x6](#6114-mv_vps_op_trap_reg-op0x4-idx0x6)
+    - [6.11.4. mv_vps_op_trap_msr, OP=0x4, IDX=0x6](#6114-mv_vps_op_trap_msr-op0x4-idx0x6)
+    - [6.11.4. mv_vps_op_trap_io, OP=0x4, IDX=0x6](#6114-mv_vps_op_trap_io-op0x4-idx0x6)
     - [6.11.4. mv_vps_op_get_fpu, OP=0x4, IDX=0xA](#6114-mv_vps_op_get_fpu-op0x4-idx0xa)
     - [6.11.4. mv_vps_op_set_fpu, OP=0x4, IDX=0xB](#6114-mv_vps_op_set_fpu-op0x4-idx0xb)
     - [6.11.4. mv_vps_op_get_xsave, OP=0x4, IDX=0xC](#6114-mv_vps_op_get_xsave-op0x4-idx0xc)
     - [6.11.4. mv_vps_op_set_xsave, OP=0x4, IDX=0xD](#6114-mv_vps_op_set_xsave-op0x4-idx0xd)
-    - [6.11.4. mv_vps_op_gva_to_gpa, OP=0x4, IDX=0xE](#6114-mv_vps_op_gva_to_gpa-op0x4-idx0xe)
-    - [6.11.4. mv_vps_op_gva_to_spa, OP=0x4, IDX=0xF](#6114-mv_vps_op_gva_to_spa-op0x4-idx0xf)
     - [6.11.4. mv_vps_op_queue_interrupt, OP=0x4, IDX=0x10](#6114-mv_vps_op_queue_interrupt-op0x4-idx0x10)
     - [6.11.4. mv_vps_op_get_tsc_khz, OP=0x4, IDX=0x11](#6114-mv_vps_op_get_tsc_khz-op0x4-idx0x11)
     - [6.11.4. mv_vps_op_set_tsc_khz, OP=0x4, IDX=0x12](#6114-mv_vps_op_set_tsc_khz-op0x4-idx0x12)
-    - [6.12.1. mv_vps_run_vp, OP=0x8, IDX=0x2](#6121-mv_vps_run_vp-op0x8-idx0x2)
+    - [6.11.4. mv_vps_op_get_mp_state, OP=0x4, IDX=0x12](#6114-mv_vps_op_get_mp_state-op0x4-idx0x12)
+    - [6.11.4. mv_vps_op_set_mp_state, OP=0x4, IDX=0x12](#6114-mv_vps_op_set_mp_state-op0x4-idx0x12)
+    - [6.11.4. mv_vps_op_get_lapic, OP=0x4, IDX=0x12](#6114-mv_vps_op_get_lapic-op0x4-idx0x12)
+    - [6.11.4. mv_vps_op_set_lapic, OP=0x4, IDX=0x12](#6114-mv_vps_op_set_lapic-op0x4-idx0x12)
+    - [6.12.1. mv_vps_op_run, OP=0x8, IDX=0x2](#6121-mv_vps_op_run-op0x8-idx0x2-1)
 
 # 1. Introduction
 
@@ -405,6 +468,40 @@ This CPUID query returns MicroV's incremental build number. Typically, this CPUI
 | :--- | :--- | :---------- |
 | 31:0 | MV_BUILD_NUM | Returns the incremental build number for MicroV |
 
+### 2.2.9. CPUID_4000_XX03_EAX
+
+This CPUID query returns MicroV's PP and VM limits. These can be used by software to create static arrays for each resource is desired as MicroV will not be capable of handling more than what is reported.
+
+| Bits | Name | Description |
+| :--- | :--- | :---------- |
+| 15:0 | MICROV_MAX_PPS | Returns HYPERVISOR_MAX_PPS |
+| 31:16 | MICROV_MAX_VMS | Returns HYPERVISOR_MAX_VMS |
+
+### 2.2.9. CPUID_4000_XX03_EBX
+
+This CPUID query returns MicroV's VP and VPS limits. These can be used by software to create static arrays for each resource is desired as MicroV will not be capable of handling more than what is reported.
+
+| Bits | Name | Description |
+| :--- | :--- | :---------- |
+| 15:0 | MICROV_MAX_VPS | Returns HYPERVISOR_MAX_VPS |
+| 31:16 | MICROV_MAX_VPSS | Returns HYPERVISOR_MAX_VPSS |
+
+### 2.2.11. CPUID_4000_XX03_ECX
+
+Reserved
+
+| Bits | Name | Description |
+| :--- | :--- | :---------- |
+| 31:0 | REVZ | Returns 0 |
+
+### 2.2.11. CPUID_4000_XX03_EDX
+
+Reserved
+
+| Bits | Name | Description |
+| :--- | :--- | :---------- |
+| 31:0 | REVZ | Returns 0 |
+
 # 3. Virtual Machines
 
 A Virtual Machine or VM virtually represents a physical computer and stores the resources that are shared between one or more Virtual Processors called the Virtual Machine State or VMS. MicroV is capable of executing multiple VMs simultaneously on the same physical machine. In some configurations these VMs might share the same physical cores/threads and in other configurations, each VM is given dedicated access to one or more physical cores/threads, and either share the rest of hardware, or the rest of hardware is divided up between VMs using something like an IOMMU (or some combination of the two).
@@ -667,41 +764,53 @@ The following sections define the different opcodes that are supported by this s
 | :---- | :---------- |
 | 0x000000000010000 | Defines the hypercall opcode for mv_handle_op hypercalls with no signature |
 
+### 6.7.2. Physical Processors
+
+**const, uint64_t: MV_PP_OP_VAL**
+| Value | Description |
+| :---- | :---------- |
+| 0x764D000000020000 | Defines the hypercall opcode for mv_pp_op hypercalls |
+
+**const, uint64_t: MV_PP_OP_NOSIG_VAL**
+| Value | Description |
+| :---- | :---------- |
+| 0x000000000020000 | Defines the hypercall opcode for mv_pp_op hypercalls with no signature |
+
 ### 6.7.3. Virtual Machines
 
 **const, uint64_t: MV_VM_OP**
 | Value | Description |
 | :---- | :---------- |
-| 0x764D000000020000 | Defines the hypercall opcode for mv_vm_op hypercalls |
+| 0x764D000000030000 | Defines the hypercall opcode for mv_vm_op hypercalls |
 
 **const, uint64_t: MV_VM_OP_NOSIG_VAL**
 | Value | Description |
 | :---- | :---------- |
-| 0x0000000000020000 | Defines the hypercall opcode for mv_vm_op hypercalls with no signature |
+| 0x0000000000030000 | Defines the hypercall opcode for mv_vm_op hypercalls with no signature |
 
 ### 6.7.4. Virtual Processors
 
 **const, uint64_t: MV_VP_OP_VAL**
 | Value | Description |
 | :---- | :---------- |
-| 0x764D000000030000 | Defines the hypercall opcode for mv_vp_op hypercalls |
+| 0x764D000000040000 | Defines the hypercall opcode for mv_vp_op hypercalls |
 
 **const, uint64_t: MV_VP_OP_NOSIG_VAL**
 | Value | Description |
 | :---- | :---------- |
-| 0x0000000000030000 | Defines the hypercall opcode for mv_vp_op hypercalls with no signature |
+| 0x0000000000040000 | Defines the hypercall opcode for mv_vp_op hypercalls with no signature |
 
 ### 6.7.5. Virtual Processor State
 
 **const, uint64_t: MV_VPS_OP_VAL**
 | Value | Description |
 | :---- | :---------- |
-| 0x764D000000040000 | Defines the hypercall opcode for mv_vps_op hypercalls |
+| 0x764D000000050000 | Defines the hypercall opcode for mv_vps_op hypercalls |
 
 **const, uint64_t: MV_VPS_OP_NOSIG_VAL**
 | Value | Description |
 | :---- | :---------- |
-| 0x0000000000040000 | Defines the hypercall opcode for mv_vps_op hypercalls with no signature |
+| 0x0000000000050000 | Defines the hypercall opcode for mv_vps_op hypercalls with no signature |
 
 ## 6.8. Debug Hypercalls
 
@@ -758,7 +867,9 @@ This hypercall closes a previously opened handle.
 | :---- | :---------- |
 | 0x0000000000000001 | Defines the hypercall index for mv_handle_op_close_handle |
 
-### 6.9.2. mv_handle_op_shared_page, OP=0x1, IDX=0x2
+## 6.9. PP Hypercalls
+
+### 6.9.2. mv_pp_op_set_shared_page, OP=0x1, IDX=0x2
 
 This hypercall assigns a provided shared page to the provided physical processor (PP). All hypercalls made on any given PP must be made using the shared page assigned to the PP. Note that this shared page is only needed when a hypercall cannot be executed using registers only. All structures mapped into this page must start at offset 0 of the page, meaning each structure must be page aligned.
 
@@ -773,142 +884,48 @@ This hypercall assigns a provided shared page to the provided physical processor
 **const, uint64_t: MV_HANDLE_OP_SHARED_PAGE_IDX_VAL**
 | Value | Description |
 | :---- | :---------- |
-| 0x0000000000000002 | Defines the hypercall index for mv_handle_op_shared_page |
+| 0x0000000000000002 | Defines the hypercall index for mv_pp_op_set_shared_page |
 
-## 6.10. VM Hypercalls
+### 6.11.4. mv_pp_op_get_supported_cpuids, OP=0x4, IDX=0x4
 
-### 6.10.1. mv_vm_op_create_vm, OP=0x2, IDX=0x0
+Given the initial leaf (EAX) and subleaf (ECX), this hypercall will return the resulting values of EAX, EBX, ECX and EDX from the point of view of the requested VPS.
 
-This hypercall tells MicroV to create a VM and return its ID.
+In addition to the input registers, the caller must also fill out an mv_cpuid_t located in the shared page associated with the PP the caller is calling from.
 
-**Input:**
-| Register Name | Bits | Description |
-| :------------ | :--- | :---------- |
-| REG0 | 63:0 | Set to the result of mv_handle_op_open_handle |
-
-**Output:**
-| Register Name | Bits | Description |
-| :------------ | :--- | :---------- |
-| REG0 | 15:0 | The resulting VMID of the newly created VM |
-| REG0 | 63:16 | REVI |
-
-**const, uint64_t: MV_VM_OP_CREATE_VM_IDX_VAL**
-| Value | Description |
-| :---- | :---------- |
-| 0x0000000000000000 | Defines the hypercall index for mv_vm_op_create_vm |
-
-### 6.10.2. mv_vm_op_destroy_vm, OP=0x2, IDX=0x1
-
-This hypercall tells MicroV to destroy a VM given an ID.
+**struct: mv_cpuid_t**
+| Name | Type | Offset | Size | Description |
+| :--- | :--- | :----- | :--- | :---------- |
+| leaf | uint32_t | 0x0 | 4 bytes | The value of EAX before calling cpuid |
+| subleaf | uint32_t | 0x4 | 4 bytes | The value of ECX before calling cpuid |
+| eax | uint32_t | 0x8 | 4 bytes | The value of EAX after calling cpuid |
+| ebx | uint32_t | 0xC | 4 bytes | The value of EBX after calling cpuid |
+| ecx | uint32_t | 0x10 | 4 bytes | The value of ECX after calling cpuid |
+| edx | uint32_t | 0x14 | 4 bytes | The value of EDX after calling cpuid |
 
 **Input:**
 | Register Name | Bits | Description |
 | :------------ | :--- | :---------- |
 | REG0 | 63:0 | Set to the result of mv_handle_op_open_handle |
-| REG1 | 15:0 | The VMID of the VM to destroy |
+| REG1 | 15:0 | The ID of the VPS to query |
 | REG1 | 63:16 | REVI |
 
-**const, uint64_t: MV_VM_OP_DESTROY_VM_IDX_VAL**
+**const, uint64_t: MV_VPS_OP_GET_CPUID_IDX_VAL**
 | Value | Description |
 | :---- | :---------- |
-| 0x0000000000000001 | Defines the hypercall index for mv_vm_op_destroy_vm |
+| 0x0000000000000004 | Defines the hypercall index for mv_pp_op_get_supported_cpuid |
 
-### 6.10.3. mv_vm_op_vmid, OP=0x2, IDX=0x2
+### 6.11.4. mv_pp_op_get_supported_cpuids, OP=0x4, IDX=0x4
+### 6.11.4. mv_pp_op_get_permissable_cpuids, OP=0x4, IDX=0x4
+### 6.11.4. mv_pp_op_get_emulated_cpuids, OP=0x4, IDX=0x4
 
-This hypercall returns the ID of the VM that executed this hypercall.
+### 6.11.4. mv_pp_op_get_supported_regs, OP=0x4, IDX=0x4
+### 6.11.4. mv_pp_op_get_permissable_regs, OP=0x4, IDX=0x4
+### 6.11.4. mv_pp_op_get_emulated_regs, OP=0x4, IDX=0x4
 
-**Input:**
-| Register Name | Bits | Description |
-| :------------ | :--- | :---------- |
-| REG0 | 63:0 | Set to the result of mv_handle_op_open_handle |
+### 6.11.4. mv_pp_op_get_tsc_khz, OP=0x4, IDX=0x11
+### 6.11.4. mv_pp_op_set_tsc_khz, OP=0x4, IDX=0x12
 
-**Output:**
-| Register Name | Bits | Description |
-| :------------ | :--- | :---------- |
-| REG0 | 63:0 | The resulting VMID |
 
-**const, uint64_t: MV_VM_OP_VMID_IDX_VAL**
-| Value | Description |
-| :---- | :---------- |
-| 0x0000000000000002 | Defines the hypercall index for mv_vm_op_vmid |
-
-### 6.10.4. mv_vm_op_map, OP=0x2, IDX=0x3
-
-This hypercall is used to map a range of physically discontiguous guest memory from one VM to another. The caller must provide the ID of the source VM and an MDL describing the memory to map from, and the ID of the destination VM and an MDL describing the memory to map to. MicroV will convert the GPAs described by the source MDL to SPAs. MicroV will then map these SPAs into the GPAs described by the destination MDL. This hypercall only modifies the destination's view of physical memory (meaning the destination's view of guest virtual memory is not modified by this hypercall). The source VM's view of guest physical and guest virtual memory is not modified.
-
-By default, this hypercall maps memory into the destination as read-only, MV_GPA_FLAG_WRITE_BACK unless flags are added to the destination MDL entries. Source MDL entry flags are ignored.
-
-In addition to the input registers, the caller must also fill out an mv_map_t located in the shared page associated with the PP the caller is calling from.
-
-**const, uint64_t: MV_MAP_T_MAX_MDL_ENTRIES_SRC**
-| Value | Description |
-| :---- | :---------- |
-| 63 | Defines the max number of entries in the src's MDL |
-
-**const, uint64_t: MV_MAP_T_MAX_MDL_ENTRIES_DST**
-| Value | Description |
-| :---- | :---------- |
-| 63 | Defines the max number of entries in the dst's MDL |
-
-**struct: mv_map_t**
-| Name | Type | Offset | Size | Description |
-| :--- | :--- | :----- | :--- | :---------- |
-| num_entries_src | uint64_t | 0x0 | 8 bytes | The number src entires |
-| reserved1 | uint64_t | 0x8 | 8 bytes | REVI |
-| reserved2 | uint64_t | 0x10 | 8 bytes | REVI |
-| reserved3 | uint64_t | 0x18 | 8 bytes | REVI |
-| entries_src | mv_mdl_entry_t[MV_MAP_T_MAX_MDL_ENTRIES_SRC] | 0x20 | 0x7E0 | Each entry in the MDL |
-| num_entries_dst | uint64_t | 0x800 | 8 bytes | The number dst entires |
-| reserved1 | uint64_t | 0x808 | 8 bytes | REVI |
-| reserved2 | uint64_t | 0x810 | 8 bytes | REVI |
-| reserved3 | uint64_t | 0x818 | 8 bytes | REVI |
-| entries_dst | mv_mdl_entry_t[MV_MAP_T_MAX_MDL_ENTRIES_DST] | 0x820 | 0x7E0 | Each entry in the MDL |
-
-**Input:**
-| Register Name | Bits | Description |
-| :------------ | :--- | :---------- |
-| REG0 | 63:0 | Set to the result of mv_handle_op_open_handle |
-| REG1 | 15:0 | The ID of the source VM |
-| REG1 | 63:16 | REVZ |
-| REG2 | 15:0 | The ID of the destination VM |
-| REG2 | 63:16 | REVZ |
-
-**const, uint64_t: MV_VM_OP_MAP_IDX_VAL**
-| Value | Description |
-| :---- | :---------- |
-| 0x00000000000000003 | Defines the hypercall index for mv_vm_op_map |
-
-### 6.10.5. mv_vm_op_unmap, OP=0x2, IDX=0x4
-
-This hypercall is used to unmap a range of physically discontiguous guest memory. The caller must provide the ID of the VM and an MDL describing the memory to unmap. This hypercall only modifies the VM's view of physical memory (meaning the VM's view of guest virtual memory is not modified by this hypercall). MDL entry flags are ignored.
-
-In addition to the input registers, the caller must also fill out an mv_unmap_t located in the shared page associated with the PP the caller is calling from.
-
-**const, uint64_t: MV_UNMAP_T_MAX_MDL_ENTRIES**
-| Value | Description |
-| :---- | :---------- |
-| 127 | Defines the max number of entries in the src's MDL |
-
-**struct: mv_unmap_t**
-| Name | Type | Offset | Size | Description |
-| :--- | :--- | :----- | :--- | :---------- |
-| num_entries | uint64_t | 0x0 | 8 bytes | The number entires |
-| reserved1 | uint64_t | 0x8 | 8 bytes | REVI |
-| reserved2 | uint64_t | 0x10 | 8 bytes | REVI |
-| reserved3 | uint64_t | 0x18 | 8 bytes | REVI |
-| entries | mv_mdl_entry_t[MV_UNMAP_T_MAX_MDL_ENTRIES] | 0x20 | 0xFE0 | Each entry in the MDL |
-
-**Input:**
-| Register Name | Bits | Description |
-| :------------ | :--- | :---------- |
-| REG0 | 63:0 | Set to the result of mv_handle_op_open_handle |
-| REG1 | 15:0 | The ID of the VM whose memory to unmap |
-| REG1 | 63:16 | REVZ |
-
-**const, uint64_t: MV_VM_OP_UNMAP_IDX_VAL**
-| Value | Description |
-| :---- | :---------- |
-| 0x00000000000000004 | Defines the hypercall index for mv_vm_op_unmap |
 
 ### 6.11.4. mv_vm_op_supported_regs, OP=0x2, IDX=0x5
 
@@ -1096,6 +1113,168 @@ Each bit in the mv_supported_msrs_t corresponds with an MSR. If the MSR is suppo
 | :---- | :---------- |
 | 0x000000000000000A | Defines the hypercall index for mv_vm_op_supported_msrs_set |
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+## 6.10. VM Hypercalls
+
+### 6.10.1. mv_vm_op_create_vm, OP=0x2, IDX=0x0
+
+This hypercall tells MicroV to create a VM and return its ID.
+
+**Input:**
+| Register Name | Bits | Description |
+| :------------ | :--- | :---------- |
+| REG0 | 63:0 | Set to the result of mv_handle_op_open_handle |
+
+**Output:**
+| Register Name | Bits | Description |
+| :------------ | :--- | :---------- |
+| REG0 | 15:0 | The resulting VMID of the newly created VM |
+| REG0 | 63:16 | REVI |
+
+**const, uint64_t: MV_VM_OP_CREATE_VM_IDX_VAL**
+| Value | Description |
+| :---- | :---------- |
+| 0x0000000000000000 | Defines the hypercall index for mv_vm_op_create_vm |
+
+### 6.10.2. mv_vm_op_destroy_vm, OP=0x2, IDX=0x1
+
+This hypercall tells MicroV to destroy a VM given an ID.
+
+**Input:**
+| Register Name | Bits | Description |
+| :------------ | :--- | :---------- |
+| REG0 | 63:0 | Set to the result of mv_handle_op_open_handle |
+| REG1 | 15:0 | The VMID of the VM to destroy |
+| REG1 | 63:16 | REVI |
+
+**const, uint64_t: MV_VM_OP_DESTROY_VM_IDX_VAL**
+| Value | Description |
+| :---- | :---------- |
+| 0x0000000000000001 | Defines the hypercall index for mv_vm_op_destroy_vm |
+
+### 6.10.3. mv_vm_op_vmid, OP=0x2, IDX=0x2
+
+This hypercall returns the ID of the VM that executed this hypercall.
+
+**Input:**
+| Register Name | Bits | Description |
+| :------------ | :--- | :---------- |
+| REG0 | 63:0 | Set to the result of mv_handle_op_open_handle |
+
+**Output:**
+| Register Name | Bits | Description |
+| :------------ | :--- | :---------- |
+| REG0 | 63:0 | The resulting VMID |
+
+**const, uint64_t: MV_VM_OP_VMID_IDX_VAL**
+| Value | Description |
+| :---- | :---------- |
+| 0x0000000000000002 | Defines the hypercall index for mv_vm_op_vmid |
+
+### 6.10.4. mv_vm_op_mmio_map, OP=0x2, IDX=0x3
+
+This hypercall is used to map a range of physically discontiguous guest memory from one VM to another. The caller must provide the ID of the source VM and an MDL describing the memory to map from, and the ID of the destination VM and an MDL describing the memory to map to. MicroV will convert the GPAs described by the source MDL to SPAs. MicroV will then map these SPAs into the GPAs described by the destination MDL. This hypercall only modifies the destination's view of physical memory (meaning the destination's view of guest virtual memory is not modified by this hypercall). The source VM's view of guest physical and guest virtual memory is not modified.
+
+By default, this hypercall maps memory into the destination as read-only, MV_GPA_FLAG_WRITE_BACK unless flags are added to the destination MDL entries. Source MDL entry flags are ignored.
+
+In addition to the input registers, the caller must also fill out an mv_map_t located in the shared page associated with the PP the caller is calling from.
+
+**const, uint64_t: MV_MAP_T_MAX_MDL_ENTRIES_SRC**
+| Value | Description |
+| :---- | :---------- |
+| 63 | Defines the max number of entries in the src's MDL |
+
+**const, uint64_t: MV_MAP_T_MAX_MDL_ENTRIES_DST**
+| Value | Description |
+| :---- | :---------- |
+| 63 | Defines the max number of entries in the dst's MDL |
+
+**struct: mv_map_t**
+| Name | Type | Offset | Size | Description |
+| :--- | :--- | :----- | :--- | :---------- |
+| num_entries_src | uint64_t | 0x0 | 8 bytes | The number src entires |
+| reserved1 | uint64_t | 0x8 | 8 bytes | REVI |
+| reserved2 | uint64_t | 0x10 | 8 bytes | REVI |
+| reserved3 | uint64_t | 0x18 | 8 bytes | REVI |
+| entries_src | mv_mdl_entry_t[MV_MAP_T_MAX_MDL_ENTRIES_SRC] | 0x20 | 0x7E0 | Each entry in the MDL |
+| num_entries_dst | uint64_t | 0x800 | 8 bytes | The number dst entires |
+| reserved1 | uint64_t | 0x808 | 8 bytes | REVI |
+| reserved2 | uint64_t | 0x810 | 8 bytes | REVI |
+| reserved3 | uint64_t | 0x818 | 8 bytes | REVI |
+| entries_dst | mv_mdl_entry_t[MV_MAP_T_MAX_MDL_ENTRIES_DST] | 0x820 | 0x7E0 | Each entry in the MDL |
+
+**Input:**
+| Register Name | Bits | Description |
+| :------------ | :--- | :---------- |
+| REG0 | 63:0 | Set to the result of mv_handle_op_open_handle |
+| REG1 | 15:0 | The ID of the source VM |
+| REG1 | 63:16 | REVZ |
+| REG2 | 15:0 | The ID of the destination VM |
+| REG2 | 63:16 | REVZ |
+
+**const, uint64_t: MV_VM_OP_MAP_IDX_VAL**
+| Value | Description |
+| :---- | :---------- |
+| 0x00000000000000003 | Defines the hypercall index for mv_vm_op_mmio_map |
+
+### 6.10.5. mv_vm_op_mmio_unmap, OP=0x2, IDX=0x4
+
+This hypercall is used to unmap a range of physically discontiguous guest memory. The caller must provide the ID of the VM and an MDL describing the memory to unmap. This hypercall only modifies the VM's view of physical memory (meaning the VM's view of guest virtual memory is not modified by this hypercall). MDL entry flags are ignored.
+
+In addition to the input registers, the caller must also fill out an mv_unmap_t located in the shared page associated with the PP the caller is calling from.
+
+**const, uint64_t: MV_UNMAP_T_MAX_MDL_ENTRIES**
+| Value | Description |
+| :---- | :---------- |
+| 127 | Defines the max number of entries in the src's MDL |
+
+**struct: mv_unmap_t**
+| Name | Type | Offset | Size | Description |
+| :--- | :--- | :----- | :--- | :---------- |
+| num_entries | uint64_t | 0x0 | 8 bytes | The number entires |
+| reserved1 | uint64_t | 0x8 | 8 bytes | REVI |
+| reserved2 | uint64_t | 0x10 | 8 bytes | REVI |
+| reserved3 | uint64_t | 0x18 | 8 bytes | REVI |
+| entries | mv_mdl_entry_t[MV_UNMAP_T_MAX_MDL_ENTRIES] | 0x20 | 0xFE0 | Each entry in the MDL |
+
+**Input:**
+| Register Name | Bits | Description |
+| :------------ | :--- | :---------- |
+| REG0 | 63:0 | Set to the result of mv_handle_op_open_handle |
+| REG1 | 15:0 | The ID of the VM whose memory to unmap |
+| REG1 | 63:16 | REVZ |
+
+**const, uint64_t: MV_VM_OP_UNMAP_IDX_VAL**
+| Value | Description |
+| :---- | :---------- |
+| 0x00000000000000004 | Defines the hypercall index for mv_vm_op_mmio_unmap |
+
+### 6.10.5. mv_vm_op_mmio_trap, OP=0x2, IDX=0x4
+
+
+
+### 6.11.4. mv_vm_op_create_irqchip, OP=0x2, IDX=0xA
+### 6.11.4. mv_vm_op_get_irqchip, OP=0x2, IDX=0xA
+### 6.11.4. mv_vm_op_set_irqchip, OP=0x2, IDX=0xA
+### 6.11.4. mv_vm_op_get_irq_mode, OP=0x2, IDX=0xA
+### 6.11.4. mv_vm_op_set_irq_mode, OP=0x2, IDX=0xA
+### 6.11.4. mv_vm_op_get_irq_routing, OP=0x2, IDX=0xA
+### 6.11.4. mv_vm_op_set_irq_routing, OP=0x2, IDX=0xA
+### 6.11.4. mv_vm_op_queue_irq, OP=0x2, IDX=0xA
+
 ## 6.11. VP Hypercalls
 
 ### 6.11.1. mv_vp_op_create_vp, OP=0x3, IDX=0x0
@@ -1177,6 +1356,61 @@ This hypercall returns the ID of the VP that executed this hypercall.
 | 0x0000000000000003 | Defines the hypercall index for mv_vp_op_vpid |
 
 ## 6.12. VPS Hypercalls
+
+### 6.11.4. mv_vps_op_cpuid_get, OP=0x4, IDX=0x4
+### 6.11.4. mv_vps_op_cpuid_set, OP=0x4, IDX=0x5
+### 6.11.4. mv_vps_op_reg_get, OP=0x4, IDX=0x6
+### 6.11.4. mv_vps_op_reg_set, OP=0x4, IDX=0x7
+### 6.11.4. mv_vps_op_reg_trap, OP=0x4, IDX=0x6
+### 6.11.4. mv_vps_op_regs_general_get, OP=0x4, IDX=0x6
+### 6.11.4. mv_vps_op_regs_general_set, OP=0x4, IDX=0x6
+### 6.11.4. mv_vps_op_regs_system_get, OP=0x4, IDX=0x6
+### 6.11.4. mv_vps_op_regs_system_set, OP=0x4, IDX=0x6
+### 6.11.4. mv_vps_op_regs_debug_get, OP=0x4, IDX=0x6
+### 6.11.4. mv_vps_op_regs_debug_set, OP=0x4, IDX=0x6
+### 6.11.4. mv_vps_op_fpu_get, OP=0x4, IDX=0xA
+### 6.11.4. mv_vps_op_fpu_set, OP=0x4, IDX=0xB
+### 6.11.4. mv_vps_op_xsave_get, OP=0x4, IDX=0xC
+### 6.11.4. mv_vps_op_xsave_set, OP=0x4, IDX=0xD
+### 6.11.4. mv_vps_op_lapic_get_all, OP=0x4, IDX=0xC
+### 6.11.4. mv_vps_op_lapic_set_all, OP=0x4, IDX=0xD
+### 6.11.4. mv_vps_op_lapic_get_reg, OP=0x4, IDX=0xC
+### 6.11.4. mv_vps_op_lapic_set_reg, OP=0x4, IDX=0xD
+### 6.11.4. mv_vps_op_lapic_add, OP=0x4, IDX=0xC
+### 6.11.4. mv_vps_op_lapic_top, OP=0x4, IDX=0xD
+### 6.11.4. mv_vps_op_lapic_eoi, OP=0x4, IDX=0xD
+### 6.11.4. mv_vps_op_status_get, OP=0x4, IDX=0x12
+### 6.11.4. mv_vps_op_status_set, OP=0x4, IDX=0x12
+### 6.11.4. mv_vps_op_status_set, OP=0x4, IDX=0x12
+### 6.12.1. mv_vps_op_run, OP=0x8, IDX=0x2
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 ### 6.11.1. mv_vps_op_create_vps, OP=0x4, IDX=0x0
 
@@ -1352,6 +1586,14 @@ Given an mv_reg_t, this hypercall will set the value of the requested register. 
 | :---- | :---------- |
 | 0x0000000000000007 | Defines the hypercall index for mv_vps_op_set_reg |
 
+
+### 6.11.4. mv_vps_op_get_general_regs, OP=0x4, IDX=0x6
+### 6.11.4. mv_vps_op_set_general_regs, OP=0x4, IDX=0x6
+### 6.11.4. mv_vps_op_get_system_regs, OP=0x4, IDX=0x6
+### 6.11.4. mv_vps_op_set_system_regs, OP=0x4, IDX=0x6
+### 6.11.4. mv_vps_op_get_debug_regs, OP=0x4, IDX=0x6
+### 6.11.4. mv_vps_op_set_debug_regs, OP=0x4, IDX=0x6
+
 ### 6.11.4. mv_vps_op_get_msr, OP=0x4, IDX=0x8
 
 Given an MSR index, this hypercall will return the value of the requested MSR. Use mv_vm_op_supported_msrs_get to determine which MSRs are allowed by the calling VM.
@@ -1393,6 +1635,14 @@ Given an MSR index, this hypercall will set the value of the requested MSR. Use 
 | Value | Description |
 | :---- | :---------- |
 | 0x0000000000000009 | Defines the hypercall index for mv_vps_op_set_msr |
+
+### 6.11.4. mv_vps_op_get_msrs, OP=0x4, IDX=0x8
+### 6.11.4. mv_vps_op_set_msrs, OP=0x4, IDX=0x8
+
+### 6.11.4. mv_vps_op_trap_reg, OP=0x4, IDX=0x6
+### 6.11.4. mv_vps_op_trap_msr, OP=0x4, IDX=0x6
+### 6.11.4. mv_vps_op_trap_io, OP=0x4, IDX=0x6
+
 
 ### 6.11.4. mv_vps_op_get_fpu, OP=0x4, IDX=0xA
 
@@ -1458,50 +1708,6 @@ This hypercall will set VPS's XSAVE region located in the shared page associated
 | :---- | :---------- |
 | 0x000000000000000D | Defines the hypercall index for mv_vps_op_set_xsave |
 
-### 6.11.4. mv_vps_op_gva_to_gpa, OP=0x4, IDX=0xE
-
-Given a guest virtual address (GVA), this hypercall will return the associated guest physical address (GPA). MicroV will use the VPS's current register state to perform the translation. So for example, on Intel, MicroV will use the current values of CR0, CR3 and CR4 to determine what GPA to return.
-
-**Input:**
-| Register Name | Bits | Description |
-| :------------ | :--- | :---------- |
-| REG0 | 63:0 | Set to the result of mv_handle_op_open_handle |
-| REG1 | 15:0 | The ID of the VPS to query |
-| REG1 | 63:16 | REVI |
-| REG2 | 63:0 | The GVA to translate |
-
-**Output:**
-| Register Name | Bits | Description |
-| :------------ | :--- | :---------- |
-| REG0 | 63:0 | The resulting GPA from the VPS's point of view |
-
-**const, uint64_t: MV_VPS_OP_GVA_TO_GPA_IDX_VAL**
-| Value | Description |
-| :---- | :---------- |
-| 0x000000000000000E | Defines the hypercall index for mv_vps_op_gva_to_gpa |
-
-### 6.11.4. mv_vps_op_gva_to_spa, OP=0x4, IDX=0xF
-
-Given a guest virtual address (GVA), this hypercall will return the associated system physical address (SPA). MicroV will use the VPS's current register state to perform the translation. So for example, on Intel, MicroV will use the current values of CR0, CR3 and CR4 to determine what SPA to return.
-
-**Input:**
-| Register Name | Bits | Description |
-| :------------ | :--- | :---------- |
-| REG0 | 63:0 | Set to the result of mv_handle_op_open_handle |
-| REG1 | 15:0 | The ID of the VPS to query |
-| REG1 | 63:16 | REVI |
-| REG2 | 63:0 | The GVA to translate |
-
-**Output:**
-| Register Name | Bits | Description |
-| :------------ | :--- | :---------- |
-| REG0 | 63:0 | The resulting SPA from the VPS's point of view |
-
-**const, uint64_t: MV_VPS_OP_GVA_TO_SPA_IDX_VAL**
-| Value | Description |
-| :---- | :---------- |
-| 0x000000000000000F | Defines the hypercall index for mv_vps_op_gva_to_spa |
-
 ### 6.11.4. mv_vps_op_queue_interrupt, OP=0x4, IDX=0x10
 
 Queues an interrupt to be injected into the VPS when possible.
@@ -1557,7 +1763,12 @@ Set the VPS's TSC frequency in KHz.
 | :---- | :---------- |
 | 0x0000000000000012 | Defines the hypercall index for mv_vps_op_set_tsc_khz |
 
-### 6.12.1. mv_vps_run_vp, OP=0x8, IDX=0x2
+### 6.11.4. mv_vps_op_get_mp_state, OP=0x4, IDX=0x12
+### 6.11.4. mv_vps_op_set_mp_state, OP=0x4, IDX=0x12
+### 6.11.4. mv_vps_op_get_lapic, OP=0x4, IDX=0x12
+### 6.11.4. mv_vps_op_set_lapic, OP=0x4, IDX=0x12
+
+### 6.12.1. mv_vps_op_run, OP=0x8, IDX=0x2
 
 This hypercall is used to run a guest VPS. The only VM that is allowed to execute this hypercall is the root VM.
 
@@ -1570,6 +1781,9 @@ In addition to the input registers, the caller must also fill out an mv_run_t lo
 | reserved1 | uint8_t[15] | 0x1 | 15 bytes | REVI |
 | exit_reason | uint64_t | 0x10 | 8 bytes | stores the reason for returning |
 | rflags | uint64_t | 0x18 | 8 byte | the value of rflags |
+
+
+
 
 
 
