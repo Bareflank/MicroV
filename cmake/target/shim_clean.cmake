@@ -19,7 +19,15 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-include(${bsl_SOURCE_DIR}/cmake/function/bf_add_config.cmake)
-
-option(MICROV_BUILD_SHIM "Turns on/off building the shim" ON)
-option(MICROV_BUILD_VMM "Turns on/off building the vmm" ON)
+if(MICROV_BUILD_SHIM AND NOT MICROV_TARGET_ARCH STREQUAL "aarch64")
+    if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+        add_custom_target(shim_clean
+            COMMAND ${CMAKE_COMMAND} --build . --target shim_unload
+            COMMAND ${CMAKE_COMMAND} -E chdir ${CMAKE_CURRENT_LIST_DIR}/../../shim/linux make clean CMAKE_BINARY_DIR='${CMAKE_BINARY_DIR}'
+            COMMAND sync
+            VERBATIM
+        )
+    else()
+        message(FATAL_ERROR "Unsupported CMAKE_SYSTEM_NAME: ${CMAKE_SYSTEM_NAME}")
+    endif()
+endif()

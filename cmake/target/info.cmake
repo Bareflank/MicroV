@@ -19,7 +19,11 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-include(${bsl_SOURCE_DIR}/cmake/function/bf_add_config.cmake)
+include(${bsl_SOURCE_DIR}/cmake/function/bf_add_info.cmake)
+include(${hypervisor_SOURCE_DIR}/cmake/function/hypervisor_add_info.cmake)
+include(${CMAKE_CURRENT_LIST_DIR}/../function/microv_add_info.cmake)
 
-option(MICROV_BUILD_SHIM "Turns on/off building the shim" ON)
-option(MICROV_BUILD_VMM "Turns on/off building the vmm" ON)
+if(NOT HYPERVISOR_INCLUDE_INFO_OVERRIDE)
+    bf_add_info(hypervisor)
+    hypervisor_add_info()
+endif()

@@ -29,5 +29,12 @@ include(${bsl_SOURCE_DIR}/cmake/config/cmake.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/config/default.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/validate.cmake)
 
+include(${CMAKE_CURRENT_LIST_DIR}/target/info.cmake)
+include(${CMAKE_CURRENT_LIST_DIR}/target/shim_build.cmake)
+include(${CMAKE_CURRENT_LIST_DIR}/target/shim_load.cmake)
+include(${CMAKE_CURRENT_LIST_DIR}/target/shim_unload.cmake)
+include(${CMAKE_CURRENT_LIST_DIR}/target/shim_clean.cmake)
+include(${CMAKE_CURRENT_LIST_DIR}/target/shim_quick.cmake)
+
 include(${bsl_SOURCE_DIR}/cmake/build_types.cmake)
 include(${bsl_SOURCE_DIR}/cmake/find_programs.cmake)

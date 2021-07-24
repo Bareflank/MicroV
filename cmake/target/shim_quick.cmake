@@ -19,7 +19,10 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-include(${bsl_SOURCE_DIR}/cmake/function/bf_add_config.cmake)
-
-option(MICROV_BUILD_SHIM "Turns on/off building the shim" ON)
-option(MICROV_BUILD_VMM "Turns on/off building the vmm" ON)
+if(MICROV_BUILD_SHIM AND NOT MICROV_TARGET_ARCH STREQUAL "aarch64")
+    add_custom_target(shim_quick
+        COMMAND ${CMAKE_COMMAND} --build . --target shim_clean
+        COMMAND ${CMAKE_COMMAND} --build . --target shim_load
+        VERBATIM
+    )
+endif()
