@@ -57,3 +57,20 @@
 build/
 site/
 doxygen_output/
+genhtml/
+
+# Linux Shim
+shim/**/*.symvers
+shim/**/*.order
+shim/**/*.ko
+shim/**/*.ko.cmd
+shim/**/*.mod
+shim/**/*.mod.c
+shim/**/*.mod.o
+shim/**/*.mod.cmd
+shim/**/*.o
+shim/**/*.o.cmd
+shim/**/*.cmd
+
+# Windows Shim
+shim/windows/x64/

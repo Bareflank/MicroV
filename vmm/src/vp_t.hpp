@@ -25,6 +25,7 @@
 #ifndef VP_T_HPP
 #define VP_T_HPP
 
+#include <allocated_status_t.hpp>
 #include <bf_constants.hpp>
 #include <bf_syscall_t.hpp>
 #include <gs_t.hpp>
@@ -34,19 +35,23 @@
 #include <bsl/discard.hpp>
 #include <bsl/errc_type.hpp>
 #include <bsl/safe_integral.hpp>
+#include <bsl/touch.hpp>
+#include <bsl/unlikely.hpp>
 #include <bsl/unlikely_assert.hpp>
 
-namespace example
+namespace microv
 {
-    /// @class example::vp_t
+    /// @class microv::vp_t
     ///
     /// <!-- description -->
-    ///   @brief Defines the extension's notion of a VP
+    ///   @brief Defines Microv's virtual processor.
     ///
     class vp_t final
     {
         /// @brief stores the ID associated with this vp_t
         bsl::safe_uint16 m_id{bsl::safe_uint16::failure()};
+        /// @brief stores whether or not this vp_t is allocated.
+        allocated_status_t m_allocated{allocated_status_t::deallocated};
         /// @brief stores the ID of the VM this vp_t is assigned to
         bsl::safe_uint16 m_assigned_vmid{syscall::BF_INVALID_ID};
         /// @brief stores the ID of the PP this vp_t is assigned to
@@ -78,29 +83,10 @@ namespace example
             bsl::discard(sys);
             bsl::discard(intrinsic);
 
-            /// NOTE:
-            /// - The following is a pedantic check to make sure we have
-            ///   not already initialized ourselves. In larger extensions,
-            ///   this is useful as it helps to weed out hard to find bugs.
-            ///   In a small example like this, it is completely overkill,
-            ///   but is added for completeness.
-            ///
-
             if (bsl::unlikely_assert(m_id)) {
                 bsl::error() << "vp_t already initialized\n" << bsl::here();
                 return bsl::errc_precondition;
             }
-
-            /// NOTE:
-            /// - The following are some pedantic checks on the input. In
-            ///   larger extensions, this is useful as it helps to weed
-            ///   out hard to find bugs. In a small example like this, it
-            ///   is completely overkill, but is added for completeness.
-            /// - We check to to make sure that we were given a valid ID,
-            ///   meaning the safe integral is not storing an error, and we
-            ///   also check to make sure the ID itself is not the reserved
-            ///   syscall::BF_INVALID_ID as that is also not allowed.
-            ///
 
             if (bsl::unlikely_assert(!i)) {
                 bsl::error() << "invalid id\n" << bsl::here();
@@ -116,11 +102,6 @@ namespace example
 
                 return bsl::errc_invalid_argument;
             }
-
-            /// NOTE:
-            /// - Finally, store the ID assigned to this vp_t and report
-            ///   success.
-            ///
 
             m_id = i;
             return bsl::errc_success;
@@ -142,23 +123,37 @@ namespace example
             syscall::bf_syscall_t const &sys,
             intrinsic_t const &intrinsic) noexcept
         {
-            bsl::discard(gs);
-            bsl::discard(tls);
-            bsl::discard(sys);
-            bsl::discard(intrinsic);
+            if (this->is_allocated()) {
+                auto const ret{this->deallocate(gs, tls, sys, intrinsic)};
+                if (bsl::unlikely(!ret)) {
+                    bsl::print<bsl::V>() << bsl::here();
+                    this->zombify();
+                    return;
+                }
 
-            /// NOTE:
-            /// - Release functions are usually only needed in the event of
-            ///   an error, or during unit testing.
-            ///
+                bsl::touch();
+            }
+            else {
+                bsl::touch();
+            }
 
-            m_assigned_ppid = syscall::BF_INVALID_ID;
-            m_assigned_vmid = syscall::BF_INVALID_ID;
             m_id = bsl::safe_uint16::failure();
         }
 
         /// <!-- description -->
-        ///   @brief Allocates a vp_t and returns it's ID
+        ///   @brief Returns the ID of this vp_t
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @return Returns the ID of this vp_t
+        ///
+        [[nodiscard]] constexpr auto
+        id() const noexcept -> bsl::safe_uint16 const &
+        {
+            return m_id;
+        }
+
+        /// <!-- description -->
+        ///   @brief Allocates a vp_t.
         ///
         /// <!-- inputs/outputs -->
         ///   @param gs the gs_t to use
@@ -184,28 +179,22 @@ namespace example
             bsl::discard(sys);
             bsl::discard(intrinsic);
 
-            /// NOTE:
-            /// - The following is a pedantic check to make sure we have
-            ///   been initialized by the vp_pool_t. In larger extensions,
-            ///   this is useful as it helps to weed out hard to find bugs.
-            ///   In a small example like this, it is completely overkill,
-            ///   but is added for completeness.
-            ///
-
             if (bsl::unlikely_assert(!m_id)) {
                 bsl::error() << "vp_t not initialized\n" << bsl::here();
                 return bsl::errc_precondition;
             }
 
-            /// NOTE:
-            /// - The following is a pedantic check to make sure we have
-            ///   not already allocated this vp_t. In larger extensions,
-            ///   this is useful as it helps to weed out hard to find bugs.
-            ///   In a small example like this, it is completely overkill,
-            ///   but is added for completeness.
-            ///
+            if (bsl::unlikely(m_allocated == allocated_status_t::zombie)) {
+                bsl::error() << "vp "                                     // --
+                             << bsl::hex(m_id)                            // --
+                             << " is a zombie and cannot be allocated"    // --
+                             << bsl::endl                                 // --
+                             << bsl::here();                              // --
 
-            if (bsl::unlikely_assert(syscall::BF_INVALID_ID != m_assigned_ppid)) {
+                return bsl::errc_precondition;
+            }
+
+            if (bsl::unlikely(m_allocated == allocated_status_t::allocated)) {
                 bsl::error() << "vp "                                            // --
                              << bsl::hex(m_id)                                   // --
                              << " is already allocated and cannot be created"    // --
@@ -214,17 +203,6 @@ namespace example
 
                 return bsl::errc_precondition;
             }
-
-            /// NOTE:
-            /// - The following are some pedantic checks on the input. In
-            ///   larger extensions, this is useful as it helps to weed
-            ///   out hard to find bugs. In a small example like this, it
-            ///   is completely overkill, but is added for completeness.
-            /// - We check to to make sure that we were given a valid ID,
-            ///   meaning the safe integral is not storing an error, and we
-            ///   also check to make sure the ID itself is not the reserved
-            ///   syscall::BF_INVALID_ID as that is also not allowed.
-            ///
 
             if (bsl::unlikely_assert(!vmid)) {
                 bsl::error() << "invalid vmid\n" << bsl::here();
@@ -256,15 +234,125 @@ namespace example
                 return bsl::errc_invalid_argument;
             }
 
-            /// NOTE:
-            /// - Finally, store the IDs of the VM and PP that this vp_t is
-            ///   assigned to and reprot success.
-            ///
-
             m_assigned_vmid = vmid;
             m_assigned_ppid = ppid;
 
+            m_allocated = allocated_status_t::allocated;
             return bsl::errc_success;
+        }
+
+        /// <!-- description -->
+        ///   @brief Deallocates a vp_t.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param gs the gs_t to use
+        ///   @param tls the tls_t to use
+        ///   @param sys the bf_syscall_t to use
+        ///   @param intrinsic the intrinsic_t to use
+        ///   @return Returns bsl::errc_success on success, bsl::errc_failure
+        ///     and friends otherwise
+        ///
+        [[nodiscard]] constexpr auto
+        deallocate(
+            gs_t const &gs,
+            tls_t const &tls,
+            syscall::bf_syscall_t const &sys,
+            intrinsic_t const &intrinsic) noexcept -> bsl::errc_type
+        {
+            bsl::discard(gs);
+            bsl::discard(tls);
+            bsl::discard(sys);
+            bsl::discard(intrinsic);
+
+            if (bsl::unlikely_assert(!m_id)) {
+                bsl::error() << "vp_t not initialized\n" << bsl::here();
+                return bsl::errc_precondition;
+            }
+
+            if (bsl::unlikely(m_allocated == allocated_status_t::zombie)) {
+                bsl::error() << "vp "                                     // --
+                             << bsl::hex(m_id)                            // --
+                             << " is a zombie and cannot be destroyed"    // --
+                             << bsl::endl                                 // --
+                             << bsl::here();                              // --
+
+                return bsl::errc_precondition;
+            }
+
+            if (bsl::unlikely(m_allocated != allocated_status_t::allocated)) {
+                bsl::error() << "vp "                                                // --
+                             << bsl::hex(m_id)                                       // --
+                             << " is already deallocated and cannot be destroyed"    // --
+                             << bsl::endl                                            // --
+                             << bsl::here();                                         // --
+
+                return bsl::errc_precondition;
+            }
+
+            m_assigned_ppid = syscall::BF_INVALID_ID;
+            m_assigned_vmid = syscall::BF_INVALID_ID;
+
+            m_allocated = allocated_status_t::deallocated;
+            return bsl::errc_success;
+        }
+
+        /// <!-- description -->
+        ///   @brief Sets this vp_t's status as zombified, meaning it is no
+        ///     longer usable.
+        ///
+        constexpr void
+        zombify() noexcept
+        {
+            if (bsl::unlikely_assert(!m_id)) {
+                return;
+            }
+
+            if (allocated_status_t::zombie == m_allocated) {
+                return;
+            }
+
+            bsl::alert() << "vp "                    // --
+                         << bsl::hex(m_id)           // --
+                         << " has been zombified"    // --
+                         << bsl::endl;               // --
+
+            m_allocated = allocated_status_t::zombie;
+        }
+
+        /// <!-- description -->
+        ///   @brief Returns true if this vp_t is deallocated, false otherwise
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @return Returns true if this vp_t is deallocated, false otherwise
+        ///
+        [[nodiscard]] constexpr auto
+        is_deallocated() const noexcept -> bool
+        {
+            return m_allocated == allocated_status_t::deallocated;
+        }
+
+        /// <!-- description -->
+        ///   @brief Returns true if this vp_t is allocated, false otherwise
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @return Returns true if this vp_t is allocated, false otherwise
+        ///
+        [[nodiscard]] constexpr auto
+        is_allocated() const noexcept -> bool
+        {
+            return m_allocated == allocated_status_t::allocated;
+        }
+
+        /// <!-- description -->
+        ///   @brief Returns true if this vp_t is a zombie, false otherwise
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @return Returns true if this vp_t is a zombie, false otherwise
+        ///
+        [[nodiscard]] constexpr auto
+        is_zombie() const noexcept -> bool
+        {
+            return m_allocated == allocated_status_t::zombie;
         }
     };
 }
