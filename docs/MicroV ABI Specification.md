@@ -1784,9 +1784,6 @@ In addition to the input registers, the caller must also fill out an mv_run_t lo
 
 
 
-
-
-
 **Input:**
 | Register Name | Bits | Description |
 | :------------ | :--- | :---------- |
