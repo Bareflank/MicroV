@@ -28,31 +28,16 @@
 #include <bsl/convert.hpp>
 #include <bsl/safe_integral.hpp>
 
-namespace example
+namespace microv
 {
-    /// @class example::tls_t
+    /// @class microv::tls_t
     ///
     /// <!-- description -->
-    ///   @brief Defines the extension's Thread Local Storage (TLS).
-    ///     Extensions can use this to store data specific to a PP as needed.
-    ///     The tls_t can also be used during unit testing to store testing
-    ///     specific logic and data to ensure tests can support constexpr
-    ///     style unit testing. Also note that this is stored in the arch
-    ///     specific folders as it usually needs to store arch specific
-    ///     resources. In this simple example, we leave this empty.
-    ///
-    /// <!-- notes -->
-    ///   @note IMPORTANT: Extensions are limited to a single 4k page for the
-    ///     TLS data. Technically, extensions are given 2 4k pages, but one of
-    ///     the pages is dedicated to TLS data defined by the specification
-    ///     and populated by the microkernel (e.g., the general purpose
-    ///     registers and ID information). For this reason, if more than a
-    ///     page is needed, the TLS block should store pointers to memory that
-    ///     is allocated.
+    ///   @brief Defines MicroV's Thread Local Storage (TLS).
     ///
     struct tls_t final
     {
-        /// @brief dummy data for example purposes only.
+        /// @brief dummy data for microv purposes only.
         bsl::safe_uintmax dummy;
     };
 

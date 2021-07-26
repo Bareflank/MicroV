@@ -29,7 +29,7 @@
 
 #include <bsl/cstdint.hpp>
 
-namespace example
+namespace microv
 {
     /// <!-- description -->
     ///   @brief Executes the CPUID instruction given the provided EAX and ECX

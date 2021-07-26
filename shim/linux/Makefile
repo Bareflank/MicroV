@@ -54,6 +54,8 @@ ifneq ($(KERNELRELEASE),)
 	endif
 
 	ifneq (,$(findstring GenuineIntel,$(VENDOR_ID)))
+        $(TARGET_MODULE)-objs += src/x64/intrinsic_inb.o
+        $(TARGET_MODULE)-objs += src/x64/intrinsic_outb.o
         $(TARGET_MODULE)-objs += src/x64/serial_write_c.o
         $(TARGET_MODULE)-objs += src/x64/vmcall.o
 

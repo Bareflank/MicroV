@@ -27,18 +27,12 @@
 
 #include <bsl/safe_integral.hpp>
 
-namespace example
+namespace microv
 {
-    /// @class example::gs_t
+    /// @class microv::gs_t
     ///
     /// <!-- description -->
-    ///   @brief Defines the extension's Global Storage (GS).
-    ///     Extensions can use this to store global variables as needed.
-    ///     The gs_t can also be used during unit testing to store testing
-    ///     specific logic and data to ensure tests can support constexpr
-    ///     style unit testing. Also note that this is stored in the arch
-    ///     specific folders as it usually needs to store arch specific
-    ///     resources.
+    ///   @brief Defines MicroV's Global Storage (GS).
     ///
     struct gs_t final
     {

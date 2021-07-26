@@ -33,14 +33,12 @@
 #include <bsl/errc_type.hpp>
 #include <bsl/safe_integral.hpp>
 
-namespace example
+namespace microv
 {
-    /// @class example::intrinsic_t
+    /// @class microv::intrinsic_t
     ///
     /// <!-- description -->
-    ///   @brief Provides raw access to intrinsics. Instead of using global
-    ///     functions, the intrinsics class provides a means for the rest of
-    ///     the extension to mock the intrinsics when needed during testing.
+    ///   @brief Provides raw access to intrinsics.
     ///
     class intrinsic_t final
     {
@@ -60,11 +58,6 @@ namespace example
             bsl::discard(gs);
             bsl::discard(tls);
 
-            /// NOTE:
-            /// - Add initialization code here if needed. Otherwise, this
-            ///   function can be removed if it is not needed.
-            ///
-
             return bsl::errc_success;
         }
 
@@ -80,11 +73,6 @@ namespace example
         {
             bsl::discard(gs);
             bsl::discard(tls);
-
-            /// NOTE:
-            /// - Release functions are usually only needed in the event of
-            ///   an error, or during unit testing.
-            ///
         }
 
         /// <!-- description -->
@@ -93,7 +81,6 @@ namespace example
         ///
         /// <!-- inputs/outputs -->
         ///   @param gs the gs_t to use
-        ///   @param tls the tls_t to use
         ///   @param mut_rax the index used by CPUID, returns resulting rax
         ///   @param mut_rbx returns resulting rbx
         ///   @param mut_rcx the subindex used by CPUID, returns the resulting rcx
@@ -102,13 +89,11 @@ namespace example
         static constexpr void
         cpuid(
             gs_t const &gs,
-            tls_t const &tls,
             bsl::safe_uint64 &mut_rax,
             bsl::safe_uint64 &mut_rbx,
             bsl::safe_uint64 &mut_rcx,
             bsl::safe_uint64 &mut_rdx) noexcept
         {
-            bsl::discard(tls);
             intrinsic_cpuid_impl(
                 &gs, mut_rax.data(), mut_rbx.data(), mut_rcx.data(), mut_rdx.data());
         }

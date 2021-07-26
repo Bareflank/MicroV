@@ -1,1 +1,0 @@
-cmd_/home/user/working/microv/shim/linux/microv_shim.ko := ld -r -m elf_x86_64  -z max-page-size=0x200000  --build-id  -T ./scripts/module-common.lds -o /home/user/working/microv/shim/linux/microv_shim.ko /home/user/working/microv/shim/linux/microv_shim.o /home/user/working/microv/shim/linux/microv_shim.mod.o;  true
