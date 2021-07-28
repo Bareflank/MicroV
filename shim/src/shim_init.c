@@ -25,6 +25,8 @@
  */
 
 #include <debug.h>
+#include <g_hndl.h>
+#include <mv_hypercall.h>
 #include <platform.h>
 #include <types.h>
 
@@ -41,5 +43,17 @@
 int64_t
 shim_init(void)
 {
+    uint32_t const version = mv_id_op_version();
+    if (mv_is_spec1_supported(version)) {
+        bferror_x32("unsupported version of MicroV", version);
+        return SHIM_FAILURE;
+    }
+
+    g_hndl = mv_handle_op_open_handle(MV_SPEC_ID1_VAL);
+    if (MV_INVALID_HANDLE == g_hndl) {
+        bferror("mv_handle_op_open_handle failed");
+        return SHIM_FAILURE;
+    }
+
     return SHIM_SUCCESS;
 }

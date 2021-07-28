@@ -77,7 +77,7 @@ namespace microv
     ///   @param ppid the physical process to bootstrap
     ///
     extern "C" void
-    bootstrap_entry(syscall::bf_uint16_t::value_type const ppid) noexcept
+    bootstrap_entry(bsl::safe_uint16::value_type const ppid) noexcept
     {
         auto const ret{dispatch_bootstrap(    // --
             g_mut_gs,                         // --
@@ -106,7 +106,7 @@ namespace microv
     ///
     extern "C" void
     fail_entry(
-        syscall::bf_uint16_t::value_type const vpsid,
+        bsl::safe_uint16::value_type const vpsid,
         syscall::bf_status_t::value_type const fail_reason) noexcept
     {
         auto const ret{dispatch_fail(    // --
@@ -139,8 +139,8 @@ namespace microv
     ///
     extern "C" void
     vmexit_entry(
-        syscall::bf_uint16_t::value_type const vpsid,
-        syscall::bf_uint64_t::value_type const exit_reason) noexcept
+        bsl::safe_uint16::value_type const vpsid,
+        bsl::safe_uint64::value_type const exit_reason) noexcept
     {
         auto const ret{dispatch_vmexit(    // --
             g_mut_gs,                      // --

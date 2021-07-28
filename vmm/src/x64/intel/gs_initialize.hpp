@@ -38,20 +38,24 @@ namespace microv
     ///   @brief Initializes the Global Storage (GS).
     ///
     /// <!-- inputs/outputs -->
-    ///   @param gs the gs_t to use
-    ///   @param sys the bf_syscall_t to use
+    ///   @param mut_gs the gs_t to use
+    ///   @param mut_sys the bf_syscall_t to use
     ///   @param intrinsic the intrinsic_t to use
     ///   @return Returns bsl::errc_success on success, bsl::errc_failure
     ///     and friends otherwise
     ///
     [[nodiscard]] constexpr auto
     gs_initialize(
-        gs_t const &gs, syscall::bf_syscall_t const &sys, intrinsic_t const &intrinsic) noexcept
+        gs_t &mut_gs, syscall::bf_syscall_t &mut_sys, intrinsic_t const &intrinsic) noexcept
         -> bsl::errc_type
     {
-        bsl::discard(gs);
-        bsl::discard(sys);
         bsl::discard(intrinsic);
+
+        mut_gs.msr_bitmap = mut_sys.bf_mem_op_alloc_page(mut_gs.msr_bitmap_phys);
+        if (bsl::unlikely_assert(nullptr == mut_gs.msr_bitmap)) {
+            bsl::print<bsl::V>() << bsl::here();
+            return bsl::errc_failure;
+        }
 
         return bsl::errc_success;
     }

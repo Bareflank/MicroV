@@ -19,20 +19,14 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+include(${CMAKE_CURRENT_LIST_DIR}/../cmake/config/default.cmake)
+include(${CMAKE_CURRENT_LIST_DIR}/../cmake/function/microv_target_source.cmake)
+
 # ------------------------------------------------------------------------------
 # Executable
 # ------------------------------------------------------------------------------
 
 add_executable(vmm)
-
-# ------------------------------------------------------------------------------
-# Macros
-# ------------------------------------------------------------------------------
-
-macro(microv_target_source NAME SOURCE_FILE)
-    target_sources(${NAME} PRIVATE ${SOURCE_FILE})
-    set_property(SOURCE ${SOURCE_FILE} APPEND PROPERTY OBJECT_DEPENDS ${ARGN})
-endmacro(microv_target_source)
 
 # ------------------------------------------------------------------------------
 # Includes
@@ -62,6 +56,7 @@ endif()
 target_include_directories(vmm PRIVATE
     include
     src
+    ../hypercall/include/cpp
 )
 
 # ------------------------------------------------------------------------------
@@ -107,6 +102,14 @@ microv_target_source(vmm src/main.cpp ${HEADERS})
 if(HYPERVISOR_TARGET_ARCH STREQUAL "AuthenticAMD" OR HYPERVISOR_TARGET_ARCH STREQUAL "GenuineIntel")
     microv_target_source(vmm src/x64/intrinsic_cpuid_impl.S ${HEADERS})
 endif()
+
+# ------------------------------------------------------------------------------
+# Definitions
+# ------------------------------------------------------------------------------
+
+target_compile_definitions(hypervisor INTERFACE
+    MICROV_MAX_PP_MAPS=${MICROV_MAX_PP_MAPS}_umax
+)
 
 # ------------------------------------------------------------------------------
 # Libraries

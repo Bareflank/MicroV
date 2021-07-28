@@ -32,6 +32,18 @@ macro(microv_add_info)
         VERBATIM
     )
 
+    if(MICROV_BUILD_HYPERCALL)
+        add_custom_command(TARGET info
+            COMMAND ${CMAKE_COMMAND} -E echo "${BF_COLOR_YLW}   MICROV_BUILD_HYPERCALL         ${BF_COLOR_GRN}enabled${BF_COLOR_RST}"
+            VERBATIM
+        )
+    else()
+        add_custom_command(TARGET info
+            COMMAND ${CMAKE_COMMAND} -E echo "${BF_COLOR_YLW}   MICROV_BUILD_HYPERCALL         ${BF_COLOR_RED}disabled${BF_COLOR_RST}"
+            VERBATIM
+        )
+    endif()
+
     if(MICROV_BUILD_SHIM)
         add_custom_command(TARGET info
             COMMAND ${CMAKE_COMMAND} -E echo "${BF_COLOR_YLW}   MICROV_BUILD_SHIM              ${BF_COLOR_GRN}enabled${BF_COLOR_RST}"
@@ -55,4 +67,14 @@ macro(microv_add_info)
             VERBATIM
         )
     endif()
+
+    add_custom_command(TARGET info
+        COMMAND ${CMAKE_COMMAND} -E echo "${BF_COLOR_YLW}   MICROV_MAX_PP_MAPS             ${BF_COLOR_CYN}${MICROV_MAX_PP_MAPS}${BF_COLOR_RST}"
+        VERBATIM
+    )
+
+    add_custom_command(TARGET info
+        COMMAND ${CMAKE_COMMAND} -E echo " "
+        VERBATIM
+    )
 endmacro(microv_add_info)
