@@ -119,7 +119,8 @@ namespace microv
         ///   @param mut_sys the bf_syscall_t to use
         ///   @param intrinsic the intrinsic_t to use
         ///   @return Returns bsl::errc_success on success, bsl::errc_failure
-        ///     and friends otherwise
+        ///     and friends otherwise. If the PP was asked to promote the VPS,
+        ///     vmexit_success_promote is returned.
         ///
         [[nodiscard]] static constexpr auto
         get(gs_t const &gs, syscall::bf_syscall_t &mut_sys, intrinsic_t const &intrinsic) noexcept
@@ -131,6 +132,14 @@ namespace microv
             auto mut_rdx{mut_sys.bf_tls_rdx()};
 
             if (loader::CPUID_COMMAND_EAX == bsl::to_u32_unsafe(mut_rax)) {
+
+                /// NOTE:
+                /// - This CPUID code is only for the root VM loader. It does
+                ///   not adhere to the MicroV ABI as it is a loader specific
+                ///   ABI. If we have a loader specific CPUID command, we can
+                ///   only touch EAX, we either report success or failure.
+                ///
+
                 switch (bsl::to_u32_unsafe(mut_rcx).get()) {
                     case loader::CPUID_COMMAND_ECX_STOP.get(): {
                         bsl::debug() << bsl::rst << "about to"                         // --
@@ -138,6 +147,13 @@ namespace microv
                                      << bsl::rst << "root OS on pp "                   // --
                                      << bsl::cyn << bsl::hex(mut_sys.bf_tls_ppid())    // --
                                      << bsl::rst << bsl::endl;                         // --
+
+                        /// NOTE:
+                        /// - Normally we would only return an BSL errc_type
+                        ///   for consistency, but in this case, we need to
+                        ///   know if we should be promoting or not, so this
+                        ///   emulation returns vmexit_success_promote.
+                        ///
 
                         mut_sys.bf_tls_set_rax(loader::CPUID_COMMAND_RAX_SUCCESS);
                         return vmexit_success_promote;
@@ -153,12 +169,12 @@ namespace microv
                                      << bsl::rst << bsl::endl;                         // --
 
                         mut_sys.bf_tls_set_rax(loader::CPUID_COMMAND_RAX_SUCCESS);
-                        return vmexit_success_advance_ip_and_run;
+                        return bsl::errc_success;
                     }
 
                     case loader::CPUID_COMMAND_ECX_REPORT_OFF.get(): {
                         mut_sys.bf_tls_set_rax(loader::CPUID_COMMAND_RAX_SUCCESS);
-                        return vmexit_success_advance_ip_and_run;
+                        return bsl::errc_success;
                     }
 
                     default: {
@@ -172,7 +188,7 @@ namespace microv
                              << bsl::here();                    // --
 
                 mut_sys.bf_tls_set_rax(loader::CPUID_COMMAND_RAX_FAILURE);
-                return vmexit_failure_advance_ip_and_run;
+                return bsl::errc_failure;
             }
 
             intrinsic.cpuid(gs, mut_rax, mut_rbx, mut_rcx, mut_rdx);
@@ -181,7 +197,7 @@ namespace microv
             mut_sys.bf_tls_set_rcx(mut_rcx);
             mut_sys.bf_tls_set_rdx(mut_rdx);
 
-            return vmexit_success_advance_ip_and_run;
+            return bsl::errc_success;
         }
     };
 }

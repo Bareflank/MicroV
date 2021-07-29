@@ -28,11 +28,14 @@
 #include <bf_syscall_t.hpp>
 #include <gs_t.hpp>
 #include <intrinsic_t.hpp>
+#include <pp_unique_map_t.hpp>
 #include <tls_t.hpp>
 
 #include <bsl/debug.hpp>
 #include <bsl/discard.hpp>
 #include <bsl/errc_type.hpp>
+#include <bsl/is_pod.hpp>
+#include <bsl/touch.hpp>
 #include <bsl/unlikely_assert.hpp>
 
 namespace microv
@@ -49,6 +52,8 @@ namespace microv
     {
         /// @brief stores the initialization state of pp_mmio_t.
         bool m_initialized{};
+        /// @brief stores the SPAs that have yet to be unmapped.
+        bsl::array<bsl::safe_uint64, MICROV_MAX_PP_MAPS.get()> m_mapped_spas{};
 
     public:
         /// <!-- description -->
@@ -105,6 +110,103 @@ namespace microv
             bsl::discard(intrinsic);
 
             m_initialized = false;
+        }
+
+        /// <!-- description -->
+        ///   @brief Given an SPA, maps the SPA to a T *. T must be a pod type.
+        ///     Actually, T could be a trivially copyable type for this map to
+        ///     work without invoking UB at runtime, but we only use POD types
+        ///     anyways, which adds an additional layer of sanity. T must also
+        ///     be a page in size or less, otherwise the SPA would have to be
+        ///     physically contiguous, which would be a dangerous assumption.
+        ///     If an error occurs, this function will return a nullptr.
+        ///
+        /// <!-- notes -->
+        ///   @note All this function does is return a T * using a reinterpret
+        ///     cast. This is because the "first use" of the T * will actually
+        ///     perform the map since the microkernel uses on-demand paging.
+        ///
+        ///   @note This function is clearly not constexpr friendly. This is
+        ///     one of the few examples of where we cannot test using a
+        ///     constexpr. Specifically, any virt to phys or phys to virt
+        ///     translations have this issue. This function however does not
+        ///     perform anything other than a reinterpret cast. So, the only
+        ///     thing we have to do is ensure that UB is not invoked. We can
+        ///     safely take any memory and map it to a POD type (really just a
+        ///     trivially copyable type). Furthermore, we are mapping an SPA,
+        ///     so the only other forms of UB that could occur would be a page
+        ///     fault if the SPA is invalid. Anything that uses this code will
+        ///     use a mocked version of it that actually performs an allocation
+        ///     when the memory is mapped, and then a deallocation when the
+        ///     memory is unmapped, so any code that uses this can still be
+        ///     tested using a constexpr.
+        ///
+        ///   @note The reason that we keep a list of all of the SPAs that
+        ///     have been mapped is you cannot map the same SPA twice. If you
+        ///     do, you would be violating the strict aliasing rules. We also
+        ///     don't want to allow millions of maps as that would pollute
+        ///     the extensions direct map. So, we keep track of our maps so
+        ///     that we can protect the direct map and prevent UB. If you need
+        ///     a lot of maps all at the same time, you probably need to
+        ///     rethink what you are doing.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @tparam T the type to map and return
+        ///   @param mut_sys the bf_syscall_t to use
+        ///   @param spa the system physical address of the T * to return.
+        ///   @return Returns the resulting T * given the SPA, or a nullptr
+        ///     on error.
+        ///
+        template<typename T>
+        [[nodiscard]] constexpr auto
+        map(syscall::bf_syscall_t &mut_sys, bsl::safe_uintmax const &spa) noexcept
+            -> pp_unique_map_t<T>
+        {
+            if (bsl::unlikely_assert(!spa)) {
+                bsl::error() << "invalid spa\n" << bsl::here();
+                return pp_unique_map_t<T>{};
+            }
+
+            if (bsl::unlikely_assert(spa.is_zero())) {
+                bsl::error() << "invalid spa\n" << bsl::here();
+                return pp_unique_map_t<T>{};
+            }
+
+            auto mut_i{MICROV_MAX_PP_MAPS};
+            for (auto const elem : m_mapped_spas) {
+                if (*elem.data == spa) {
+                    bsl::error() << "spa " << bsl::hex(spa) << " already mapped" << bsl::endl
+                                 << bsl::here();
+
+                    return pp_unique_map_t<T>{};
+                }
+
+                if (elem.data->is_zero()) {
+                    mut_i = elem.index;
+                }
+                else {
+                    bsl::touch();
+                }
+            }
+
+            auto *const pmut_spa{m_mapped_spas.at_if(mut_i)};
+            if (bsl::unlikely(nullptr == pmut_spa)) {
+                bsl::error() << "pp_mmio_t is out of available maps\n" << bsl::here();
+                return pp_unique_map_t<T>{};
+            }
+
+            auto const hva{spa + HYPERVISOR_EXT_DIRECT_MAP_ADDR};
+            if (bsl::unlikely_assert(!hva)) {
+                bsl::error() << "map failed due to invalid spa "    // --
+                             << bsl::hex(spa)                       // --
+                             << bsl::endl                           // --
+                             << bsl::here();
+
+                return pp_unique_map_t<T>{};
+            }
+
+            *pmut_spa = spa;
+            return pp_unique_map_t<T>{reinterpret_cast<T *>(hva.get()), &mut_sys, pmut_spa};
         }
     };
 }

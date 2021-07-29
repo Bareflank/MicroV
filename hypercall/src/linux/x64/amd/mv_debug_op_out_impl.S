@@ -24,7 +24,19 @@
  * SOFTWARE.
  */
 
-#ifndef MICROV_INTERFACE_H
-#define MICROV_INTERFACE_H
+    .code64
+    .intel_syntax noprefix
 
-#endif
+    .globl  mv_debug_op_out_impl
+    .type   mv_debug_op_out_impl, @function
+mv_debug_op_out_impl:
+
+    mov rax, 0x764D000000020000
+    mov r10, rdi
+    mov r11, rsi
+    vmmcall
+
+    ret
+    int 3
+
+    .size mv_debug_op_out_impl, .-mv_debug_op_out_impl

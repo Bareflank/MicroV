@@ -56,7 +56,9 @@
 namespace microv
 {
     /// @brief defines the CPUID exit reason code
-    constexpr auto EXIT_REASON_CPUID{0x72_u64};
+    constexpr auto EXIT_REASON_CPUID{10_u64};
+    /// @brief defines the VMCALL exit reason code
+    constexpr auto EXIT_REASON_VMCALL{18_u64};
 
     /// <!-- description -->
     ///   @brief Dispatches the VMExit.
@@ -75,7 +77,7 @@ namespace microv
     ///   @return Returns bsl::errc_success on success, bsl::errc_failure
     ///     and friends otherwise
     ///
-    [[nodiscard]] static constexpr auto
+    [[nodiscard]] constexpr auto
     dispatch_vmexit(
         gs_t const &gs,
         tls_t const &tls,
@@ -96,7 +98,14 @@ namespace microv
 
         switch (exit_reason.get()) {
             case EXIT_REASON_CPUID.get(): {
-                mut_ret = dispatch_vmexit_cpuid(gs, mut_sys, intrinsic, pp_pool, vps_pool, vpsid);
+                mut_ret = dispatch_vmexit_cpuid(
+                    gs, tls, mut_sys, intrinsic, pp_pool, vm_pool, vp_pool, vps_pool, vpsid);
+                break;
+            }
+
+            case EXIT_REASON_VMCALL.get(): {
+                mut_ret = dispatch_vmexit_vmcall(
+                    gs, tls, mut_sys, intrinsic, pp_pool, vm_pool, vp_pool, vps_pool, vpsid);
                 break;
             }
 

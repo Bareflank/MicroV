@@ -29,6 +29,7 @@ ifneq ($(KERNELRELEASE),)
     $(TARGET_MODULE)-objs += src/entry.o
     $(TARGET_MODULE)-objs += src/platform.o
     $(TARGET_MODULE)-objs += ../src/x64/serial_init.o
+    $(TARGET_MODULE)-objs += ../src/g_hndl.o
     $(TARGET_MODULE)-objs += ../src/serial_write.o
     $(TARGET_MODULE)-objs += ../src/shim_fini.o
     $(TARGET_MODULE)-objs += ../src/shim_init.o
@@ -37,6 +38,8 @@ ifneq ($(KERNELRELEASE),)
 	EXTRA_CFLAGS += -I$(src)/include/std
 	EXTRA_CFLAGS += -I$(src)/include/platform_interface
 	EXTRA_CFLAGS += -I$(src)/../include
+	EXTRA_CFLAGS += -I$(src)/../../hypercall/include/c
+	EXTRA_CFLAGS += -I$(src)/../../hypercall/src/c
 	EXTRA_CFLAGS += -I$(CMAKE_BINARY_DIR)/include
 
     EXTRA_AFLAGS += -I$(CMAKE_BINARY_DIR)/include
@@ -46,11 +49,19 @@ ifneq ($(KERNELRELEASE),)
         $(TARGET_MODULE)-objs += src/x64/intrinsic_outb.o
         $(TARGET_MODULE)-objs += src/x64/serial_write_c.o
         $(TARGET_MODULE)-objs += src/x64/vmcall.o
+		$(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_debug_op_out_impl.o
+		$(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_handle_op_close_handle_impl.o
+		$(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_handle_op_open_handle_impl.o
+		$(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_id_op_version_impl.o
+		$(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_vps_op_gla_to_gpa_impl.o
+		$(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_vps_op_gva_to_gla_impl.o
 
     	EXTRA_CFLAGS += -I$(src)/include/x64
 		EXTRA_CFLAGS += -I$(src)/include/x64/amd
     	EXTRA_CFLAGS += -I$(src)/../include/x64
 		EXTRA_CFLAGS += -I$(src)/../include/x64/amd
+		EXTRA_CFLAGS += -I$(src)/../../hypercall/include/c/x64
+		EXTRA_CFLAGS += -I$(src)/../../hypercall/include/c/x64/amd
 	endif
 
 	ifneq (,$(findstring GenuineIntel,$(VENDOR_ID)))
@@ -58,11 +69,19 @@ ifneq ($(KERNELRELEASE),)
         $(TARGET_MODULE)-objs += src/x64/intrinsic_outb.o
         $(TARGET_MODULE)-objs += src/x64/serial_write_c.o
         $(TARGET_MODULE)-objs += src/x64/vmcall.o
+		$(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_debug_op_out_impl.o
+		$(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_handle_op_close_handle_impl.o
+		$(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_handle_op_open_handle_impl.o
+		$(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_id_op_version_impl.o
+		$(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_vps_op_gla_to_gpa_impl.o
+		$(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_vps_op_gva_to_gla_impl.o
 
     	EXTRA_CFLAGS += -I$(src)/include/x64
 		EXTRA_CFLAGS += -I$(src)/include/x64/intel
     	EXTRA_CFLAGS += -I$(src)/../include/x64
 		EXTRA_CFLAGS += -I$(src)/../include/x64/intel
+		EXTRA_CFLAGS += -I$(src)/../../hypercall/include/c/x64
+		EXTRA_CFLAGS += -I$(src)/../../hypercall/include/c/x64/intel
 	endif
 
 else

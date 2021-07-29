@@ -211,6 +211,25 @@ namespace microv
         {
             return m_pp_cpuid.get(gs, mut_sys, intrinsic);
         }
+
+        /// <!-- description -->
+        ///   @brief Please see m_pp_mmio.map() for details as there are a
+        ///     lot and they are important to understand.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @tparam T the type to map and return
+        ///   @param mut_sys the bf_syscall_t to use
+        ///   @param spa the system physical address of the T * to return.
+        ///   @return Returns the resulting T * given the SPA, or a nullptr
+        ///     on error.
+        ///
+        template<typename T>
+        [[nodiscard]] constexpr auto
+        map(syscall::bf_syscall_t &mut_sys, bsl::safe_uintmax const &spa) noexcept
+            -> pp_unique_map_t<T>
+        {
+            return m_pp_mmio.map<T>(mut_sys, spa);
+        }
     };
 }
 

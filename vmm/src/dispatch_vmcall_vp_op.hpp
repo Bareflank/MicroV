@@ -25,9 +25,11 @@
 #ifndef DISPATCH_VMCALL_VP_OP_HPP
 #define DISPATCH_VMCALL_VP_OP_HPP
 
+#include <abi_helpers.hpp>
 #include <bf_syscall_t.hpp>
 #include <gs_t.hpp>
 #include <intrinsic_t.hpp>
+#include <mv_constants.hpp>
 #include <pp_pool_t.hpp>
 #include <tls_t.hpp>
 #include <vm_pool_t.hpp>
@@ -57,7 +59,7 @@ namespace microv
     ///   @return Returns bsl::errc_success on success, bsl::errc_failure
     ///     and friends otherwise
     ///
-    [[nodiscard]] static constexpr auto
+    [[nodiscard]] constexpr auto
     dispatch_vmcall_vp_op(
         gs_t const &gs,
         tls_t const &tls,
@@ -79,8 +81,19 @@ namespace microv
         bsl::discard(vps_pool);
         bsl::discard(vpsid);
 
-        bsl::error() << "dispatch_vmcall_vp_op not implemented\n";
-        return bsl::errc_failure;
+        switch (hypercall::mv_hypercall_index(get_reg_hypercall(mut_sys)).get()) {
+            default: {
+                break;
+            }
+        }
+
+        bsl::error() << "unknown hypercall "                    //--
+                     << bsl::hex(get_reg_hypercall(mut_sys))    //--
+                     << bsl::endl                               //--
+                     << bsl::here();                            //--
+
+        set_reg_return(mut_sys, hypercall::MV_STATUS_FAILURE_UNKNOWN);
+        return vmexit_failure_advance_ip_and_run;
     }
 }
 

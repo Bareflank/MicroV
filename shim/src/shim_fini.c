@@ -25,6 +25,8 @@
  */
 
 #include <debug.h>
+#include <g_hndl.h>
+#include <mv_hypercall.h>
 #include <platform.h>
 #include <types.h>
 
@@ -41,5 +43,12 @@
 int64_t
 shim_fini(void)
 {
+    if (MV_INVALID_HANDLE != g_hndl) {
+        if (mv_handle_op_close_handle(g_hndl)) {
+            bferror("mv_handle_op_close_handle failed");
+            return SHIM_FAILURE;
+        }
+    }
+
     return SHIM_SUCCESS;
 }
