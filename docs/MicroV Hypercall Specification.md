@@ -42,9 +42,9 @@
   - [2.8. Hypercall Continuation](#28-hypercall-continuation)
   - [2.9. ID Hypercalls](#29-id-hypercalls)
     - [2.9.1. mv_id_op_version, OP=0x0, IDX=0x0](#291-mv_id_op_version-op0x0-idx0x0)
-    - [2.9.1. mv_id_op_has_capability, OP=0x0, IDX=0x1](#291-mv_id_op_has_capability-op0x0-idx0x1)
-    - [2.9.1. mv_id_op_clr_capability, OP=0x0, IDX=0x2](#291-mv_id_op_clr_capability-op0x0-idx0x2)
-    - [2.9.1. mv_id_op_set_capability, OP=0x0, IDX=0x3](#291-mv_id_op_set_capability-op0x0-idx0x3)
+    - [2.9.2. mv_id_op_has_capability, OP=0x0, IDX=0x1](#292-mv_id_op_has_capability-op0x0-idx0x1)
+    - [2.9.3. mv_id_op_clr_capability, OP=0x0, IDX=0x2](#293-mv_id_op_clr_capability-op0x0-idx0x2)
+    - [2.9.4. mv_id_op_set_capability, OP=0x0, IDX=0x3](#294-mv_id_op_set_capability-op0x0-idx0x3)
   - [2.10. Handle Hypercalls](#210-handle-hypercalls)
     - [2.10.1. mv_handle_op_open_handle, OP=0x1, IDX=0x0](#2101-mv_handle_op_open_handle-op0x1-idx0x0)
     - [2.10.2. mv_handle_op_close_handle, OP=0x1, IDX=0x1](#2102-mv_handle_op_close_handle-op0x1-idx0x1)
@@ -94,35 +94,35 @@
     - [2.15.4. mv_vps_op_vpid, OP=0x6, IDX=0x3](#2154-mv_vps_op_vpid-op0x6-idx0x3)
     - [2.15.5. mv_vps_op_vpsid, OP=0x6, IDX=0x4](#2155-mv_vps_op_vpsid-op0x6-idx0x4)
     - [2.15.6. mv_vps_op_gva_to_gla, OP=0x6, IDX=0x5](#2156-mv_vps_op_gva_to_gla-op0x6-idx0x5)
-    - [2.15.6. mv_vps_op_gla_to_gpa, OP=0x6, IDX=0x6](#2156-mv_vps_op_gla_to_gpa-op0x6-idx0x6)
-    - [2.15.6. mv_vps_op_gva_to_gpa, OP=0x6, IDX=0x7](#2156-mv_vps_op_gva_to_gpa-op0x6-idx0x7)
-    - [2.15.6. mv_vps_op_run, OP=0x6, IDX=0x8](#2156-mv_vps_op_run-op0x6-idx0x8)
-      - [2.15.6.1. mv_vps_op_cpuid_get, OP=0x6, IDX=0x9](#21561-mv_vps_op_cpuid_get-op0x6-idx0x9)
-      - [2.15.6.2. mv_vps_op_cpuid_set, OP=0x6, IDX=0xA](#21562-mv_vps_op_cpuid_set-op0x6-idx0xa)
-      - [2.15.6.3. mv_vps_op_cpuid_get_all, OP=0x6, IDX=0xB](#21563-mv_vps_op_cpuid_get_all-op0x6-idx0xb)
-      - [2.15.6.4. mv_vps_op_cpuid_set_all, OP=0x6, IDX=0xC](#21564-mv_vps_op_cpuid_set_all-op0x6-idx0xc)
-      - [2.15.6.5. mv_vps_op_reg_get, OP=0x6, IDX=0xD](#21565-mv_vps_op_reg_get-op0x6-idx0xd)
-      - [2.15.6.6. mv_vps_op_reg_set, OP=0x6, IDX=0xE](#21566-mv_vps_op_reg_set-op0x6-idx0xe)
-      - [2.15.6.7. mv_vps_op_reg_get_all, OP=0x6, IDX=0xF](#21567-mv_vps_op_reg_get_all-op0x6-idx0xf)
-      - [2.15.6.8. mv_vps_op_reg_set_all, OP=0x6, IDX=0x10](#21568-mv_vps_op_reg_set_all-op0x6-idx0x10)
-      - [2.15.6.9. mv_vps_op_reg_get_general, OP=0x6, IDX=0x11](#21569-mv_vps_op_reg_get_general-op0x6-idx0x11)
-      - [2.15.6.10. mv_vps_op_reg_set_general, OP=0x6, IDX=0x12](#215610-mv_vps_op_reg_set_general-op0x6-idx0x12)
-      - [2.15.6.11. mv_vps_op_reg_get_system, OP=0x6, IDX=0x13](#215611-mv_vps_op_reg_get_system-op0x6-idx0x13)
-      - [2.15.6.12. mv_vps_op_reg_set_system, OP=0x6, IDX=0x14](#215612-mv_vps_op_reg_set_system-op0x6-idx0x14)
-      - [2.15.6.13. mv_vps_op_reg_get_debug, OP=0x6, IDX=0x15](#215613-mv_vps_op_reg_get_debug-op0x6-idx0x15)
-      - [2.15.6.14. mv_vps_op_reg_set_debug, OP=0x6, IDX=0x16](#215614-mv_vps_op_reg_set_debug-op0x6-idx0x16)
-      - [2.15.6.15. mv_vps_op_msr_get, OP=0x6, IDX=0x17](#215615-mv_vps_op_msr_get-op0x6-idx0x17)
-      - [2.15.6.16. mv_vps_op_msr_set, OP=0x6, IDX=0x18](#215616-mv_vps_op_msr_set-op0x6-idx0x18)
-      - [2.15.6.17. mv_vps_op_msr_get_all, OP=0x6, IDX=0x19](#215617-mv_vps_op_msr_get_all-op0x6-idx0x19)
-      - [2.15.6.18. mv_vps_op_msr_set_all, OP=0x6, IDX=0x1A](#215618-mv_vps_op_msr_set_all-op0x6-idx0x1a)
-      - [2.15.6.19. mv_vps_op_fpu_get, OP=0x6, IDX=0x1B](#215619-mv_vps_op_fpu_get-op0x6-idx0x1b)
-      - [2.15.6.20. mv_vps_op_fpu_set, OP=0x6, IDX=0x1C](#215620-mv_vps_op_fpu_set-op0x6-idx0x1c)
-      - [2.15.6.21. mv_vps_op_fpu_get_all, OP=0x6, IDX=0x1D](#215621-mv_vps_op_fpu_get_all-op0x6-idx0x1d)
-      - [2.15.6.22. mv_vps_op_fpu_set_all, OP=0x6, IDX=0x1E](#215622-mv_vps_op_fpu_set_all-op0x6-idx0x1e)
-      - [2.15.6.23. mv_vps_op_xsave_get, OP=0x6, IDX=0x1F](#215623-mv_vps_op_xsave_get-op0x6-idx0x1f)
-      - [2.15.6.24. mv_vps_op_xsave_set, OP=0x6, IDX=0x20](#215624-mv_vps_op_xsave_set-op0x6-idx0x20)
-      - [2.15.6.25. mv_vps_op_xsave_get_all, OP=0x6, IDX=0x21](#215625-mv_vps_op_xsave_get_all-op0x6-idx0x21)
-      - [2.15.6.26. mv_vps_op_xsave_set_all, OP=0x6, IDX=0x22](#215626-mv_vps_op_xsave_set_all-op0x6-idx0x22)
+    - [2.15.7. mv_vps_op_gla_to_gpa, OP=0x6, IDX=0x6](#2157-mv_vps_op_gla_to_gpa-op0x6-idx0x6)
+    - [2.15.8. mv_vps_op_gva_to_gpa, OP=0x6, IDX=0x7](#2158-mv_vps_op_gva_to_gpa-op0x6-idx0x7)
+    - [2.15.9. mv_vps_op_run, OP=0x6, IDX=0x8](#2159-mv_vps_op_run-op0x6-idx0x8)
+    - [2.15.10. mv_vps_op_cpuid_get, OP=0x6, IDX=0x9](#21510-mv_vps_op_cpuid_get-op0x6-idx0x9)
+    - [2.15.11. mv_vps_op_cpuid_set, OP=0x6, IDX=0xA](#21511-mv_vps_op_cpuid_set-op0x6-idx0xa)
+    - [2.15.12. mv_vps_op_cpuid_get_all, OP=0x6, IDX=0xB](#21512-mv_vps_op_cpuid_get_all-op0x6-idx0xb)
+    - [2.15.13. mv_vps_op_cpuid_set_all, OP=0x6, IDX=0xC](#21513-mv_vps_op_cpuid_set_all-op0x6-idx0xc)
+    - [2.15.14. mv_vps_op_reg_get, OP=0x6, IDX=0xD](#21514-mv_vps_op_reg_get-op0x6-idx0xd)
+    - [2.15.15. mv_vps_op_reg_set, OP=0x6, IDX=0xE](#21515-mv_vps_op_reg_set-op0x6-idx0xe)
+    - [2.15.16. mv_vps_op_reg_get_all, OP=0x6, IDX=0xF](#21516-mv_vps_op_reg_get_all-op0x6-idx0xf)
+    - [2.15.17. mv_vps_op_reg_set_all, OP=0x6, IDX=0x10](#21517-mv_vps_op_reg_set_all-op0x6-idx0x10)
+    - [2.15.18. mv_vps_op_reg_get_general, OP=0x6, IDX=0x11](#21518-mv_vps_op_reg_get_general-op0x6-idx0x11)
+    - [2.15.19. mv_vps_op_reg_set_general, OP=0x6, IDX=0x12](#21519-mv_vps_op_reg_set_general-op0x6-idx0x12)
+    - [2.15.20. mv_vps_op_reg_get_system, OP=0x6, IDX=0x13](#21520-mv_vps_op_reg_get_system-op0x6-idx0x13)
+    - [2.15.21. mv_vps_op_reg_set_system, OP=0x6, IDX=0x14](#21521-mv_vps_op_reg_set_system-op0x6-idx0x14)
+    - [2.15.22. mv_vps_op_reg_get_debug, OP=0x6, IDX=0x15](#21522-mv_vps_op_reg_get_debug-op0x6-idx0x15)
+    - [2.15.23. mv_vps_op_reg_set_debug, OP=0x6, IDX=0x16](#21523-mv_vps_op_reg_set_debug-op0x6-idx0x16)
+    - [2.15.24. mv_vps_op_msr_get, OP=0x6, IDX=0x17](#21524-mv_vps_op_msr_get-op0x6-idx0x17)
+    - [2.15.25. mv_vps_op_msr_set, OP=0x6, IDX=0x18](#21525-mv_vps_op_msr_set-op0x6-idx0x18)
+    - [2.15.26. mv_vps_op_msr_get_all, OP=0x6, IDX=0x19](#21526-mv_vps_op_msr_get_all-op0x6-idx0x19)
+    - [2.15.27. mv_vps_op_msr_set_all, OP=0x6, IDX=0x1A](#21527-mv_vps_op_msr_set_all-op0x6-idx0x1a)
+    - [2.15.28. mv_vps_op_fpu_get, OP=0x6, IDX=0x1B](#21528-mv_vps_op_fpu_get-op0x6-idx0x1b)
+    - [2.15.29. mv_vps_op_fpu_set, OP=0x6, IDX=0x1C](#21529-mv_vps_op_fpu_set-op0x6-idx0x1c)
+    - [2.15.30. mv_vps_op_fpu_get_all, OP=0x6, IDX=0x1D](#21530-mv_vps_op_fpu_get_all-op0x6-idx0x1d)
+    - [2.15.31. mv_vps_op_fpu_set_all, OP=0x6, IDX=0x1E](#21531-mv_vps_op_fpu_set_all-op0x6-idx0x1e)
+    - [2.15.32. mv_vps_op_xsave_get, OP=0x6, IDX=0x1F](#21532-mv_vps_op_xsave_get-op0x6-idx0x1f)
+    - [2.15.33. mv_vps_op_xsave_set, OP=0x6, IDX=0x20](#21533-mv_vps_op_xsave_set-op0x6-idx0x20)
+    - [2.15.34. mv_vps_op_xsave_get_all, OP=0x6, IDX=0x21](#21534-mv_vps_op_xsave_get_all-op0x6-idx0x21)
+    - [2.15.35. mv_vps_op_xsave_set_all, OP=0x6, IDX=0x22](#21535-mv_vps_op_xsave_set_all-op0x6-idx0x22)
 
 # 1. Introduction
 
@@ -643,7 +643,7 @@ This hypercall tells MicroV to return the version of the spec that it supports.
 | :---- | :---------- |
 | 0x0000000000000000 | Defines the index for mv_id_op_version |
 
-### 2.9.1. mv_id_op_has_capability, OP=0x0, IDX=0x1
+### 2.9.2. mv_id_op_has_capability, OP=0x0, IDX=0x1
 
 TBD
 
@@ -652,7 +652,7 @@ TBD
 | :---- | :---------- |
 | 0x0000000000000001 | Defines the index for mv_id_op_has_capability |
 
-### 2.9.1. mv_id_op_clr_capability, OP=0x0, IDX=0x2
+### 2.9.3. mv_id_op_clr_capability, OP=0x0, IDX=0x2
 
 TBD
 
@@ -661,7 +661,7 @@ TBD
 | :---- | :---------- |
 | 0x0000000000000002 | Defines the index for mv_id_op_clr_capability |
 
-### 2.9.1. mv_id_op_set_capability, OP=0x0, IDX=0x3
+### 2.9.4. mv_id_op_set_capability, OP=0x0, IDX=0x3
 
 TBD
 
@@ -1273,7 +1273,7 @@ This hypercall tells MicroV to translate the provided guest virtual address (GVA
 | :---- | :---------- |
 | 0x0000000000000005 | Defines the index for mv_vps_op_gva_to_gla |
 
-### 2.15.6. mv_vps_op_gla_to_gpa, OP=0x6, IDX=0x6
+### 2.15.7. mv_vps_op_gla_to_gpa, OP=0x6, IDX=0x6
 
 This hypercall tells MicroV to translate the provided guest linear address (GLA) to a guest physical address (GPA). To perform this translation, MicroV will perform a linear to physical address conversion using the current state of CR0, CR3, and CR4. To perform this translation, software must provide the ID of the VPS whose state will be used during translation and the the GLA to translate. How the translation occurs depends on whether or not the VPS is in 16bit real mode, 32bit protected mode, 32bit protected mode with paging enabled, or 64bit long mode. If the VPS is in 16bit real mode or 32bit protected mode with paging disabled, no translation is performed and the provided GLA is returned as the GPA. If the VPS is in 32bit protected mode with paging enabled or 64bit long mode, MicroV will walk the guest page tables pointed to by CR3 in the VPS and return the resulting GPA and GPA flags used to map the GLA to the GPA (caching flags are not included). If the translation fails for any reason, the resulting GPA is undefined.
 
@@ -1297,7 +1297,7 @@ This hypercall tells MicroV to translate the provided guest linear address (GLA)
 | :---- | :---------- |
 | 0x0000000000000006 | Defines the index for mv_vps_op_gla_to_gpa |
 
-### 2.15.6. mv_vps_op_gva_to_gpa, OP=0x6, IDX=0x7
+### 2.15.8. mv_vps_op_gva_to_gpa, OP=0x6, IDX=0x7
 
 Reserved
 
@@ -1310,7 +1310,7 @@ Internal to MicroV an API like this should never be implemented as a GVA to GLA 
 | :---- | :---------- |
 | 0x0000000000000007 | Defines the index for mv_vps_op_gva_to_gpa |
 
-### 2.15.6. mv_vps_op_run, OP=0x6, IDX=0x8
+### 2.15.9. mv_vps_op_run, OP=0x6, IDX=0x8
 
 TBD
 
@@ -1319,7 +1319,7 @@ TBD
 | :---- | :---------- |
 | 0x0000000000000008 | Defines the index for mv_vps_op_run |
 
-#### 2.15.6.1. mv_vps_op_cpuid_get, OP=0x6, IDX=0x9
+### 2.15.10. mv_vps_op_cpuid_get, OP=0x6, IDX=0x9
 
 TBD
 
@@ -1328,7 +1328,7 @@ TBD
 | :---- | :---------- |
 | 0x0000000000000009 | Defines the index for mv_vps_op_cpuid_get |
 
-#### 2.15.6.2. mv_vps_op_cpuid_set, OP=0x6, IDX=0xA
+### 2.15.11. mv_vps_op_cpuid_set, OP=0x6, IDX=0xA
 
 TBD
 
@@ -1337,7 +1337,7 @@ TBD
 | :---- | :---------- |
 | 0x000000000000000A | Defines the index for mv_vps_op_cpuid_set |
 
-#### 2.15.6.3. mv_vps_op_cpuid_get_all, OP=0x6, IDX=0xB
+### 2.15.12. mv_vps_op_cpuid_get_all, OP=0x6, IDX=0xB
 
 TBD
 
@@ -1346,7 +1346,7 @@ TBD
 | :---- | :---------- |
 | 0x000000000000000B | Defines the index for mv_vps_op_cpuid_get_all |
 
-#### 2.15.6.4. mv_vps_op_cpuid_set_all, OP=0x6, IDX=0xC
+### 2.15.13. mv_vps_op_cpuid_set_all, OP=0x6, IDX=0xC
 
 TBD
 
@@ -1355,7 +1355,7 @@ TBD
 | :---- | :---------- |
 | 0x000000000000000C | Defines the index for mv_vps_op_cpuid_set_all |
 
-#### 2.15.6.5. mv_vps_op_reg_get, OP=0x6, IDX=0xD
+### 2.15.14. mv_vps_op_reg_get, OP=0x6, IDX=0xD
 
 TBD
 
@@ -1364,7 +1364,7 @@ TBD
 | :---- | :---------- |
 | 0x000000000000000D | Defines the index for mv_vps_op_reg_get |
 
-#### 2.15.6.6. mv_vps_op_reg_set, OP=0x6, IDX=0xE
+### 2.15.15. mv_vps_op_reg_set, OP=0x6, IDX=0xE
 
 TBD
 
@@ -1373,7 +1373,7 @@ TBD
 | :---- | :---------- |
 | 0x000000000000000E | Defines the index for mv_vps_op_reg_set |
 
-#### 2.15.6.7. mv_vps_op_reg_get_all, OP=0x6, IDX=0xF
+### 2.15.16. mv_vps_op_reg_get_all, OP=0x6, IDX=0xF
 
 TBD
 
@@ -1382,7 +1382,7 @@ TBD
 | :---- | :---------- |
 | 0x000000000000000F | Defines the index for mv_vps_op_reg_get_all |
 
-#### 2.15.6.8. mv_vps_op_reg_set_all, OP=0x6, IDX=0x10
+### 2.15.17. mv_vps_op_reg_set_all, OP=0x6, IDX=0x10
 
 TBD
 
@@ -1391,7 +1391,7 @@ TBD
 | :---- | :---------- |
 | 0x0000000000000010 | Defines the index for mv_vps_op_reg_set_all |
 
-#### 2.15.6.9. mv_vps_op_reg_get_general, OP=0x6, IDX=0x11
+### 2.15.18. mv_vps_op_reg_get_general, OP=0x6, IDX=0x11
 
 TBD
 
@@ -1400,7 +1400,7 @@ TBD
 | :---- | :---------- |
 | 0x0000000000000011 | Defines the index for mv_vps_op_reg_get_general |
 
-#### 2.15.6.10. mv_vps_op_reg_set_general, OP=0x6, IDX=0x12
+### 2.15.19. mv_vps_op_reg_set_general, OP=0x6, IDX=0x12
 
 TBD
 
@@ -1409,7 +1409,7 @@ TBD
 | :---- | :---------- |
 | 0x0000000000000012 | Defines the index for mv_vps_op_reg_set_general |
 
-#### 2.15.6.11. mv_vps_op_reg_get_system, OP=0x6, IDX=0x13
+### 2.15.20. mv_vps_op_reg_get_system, OP=0x6, IDX=0x13
 
 TBD
 
@@ -1418,7 +1418,7 @@ TBD
 | :---- | :---------- |
 | 0x0000000000000013 | Defines the index for mv_vps_op_reg_get_system |
 
-#### 2.15.6.12. mv_vps_op_reg_set_system, OP=0x6, IDX=0x14
+### 2.15.21. mv_vps_op_reg_set_system, OP=0x6, IDX=0x14
 
 TBD
 
@@ -1427,7 +1427,7 @@ TBD
 | :---- | :---------- |
 | 0x0000000000000014 | Defines the index for mv_vps_op_reg_set_system |
 
-#### 2.15.6.13. mv_vps_op_reg_get_debug, OP=0x6, IDX=0x15
+### 2.15.22. mv_vps_op_reg_get_debug, OP=0x6, IDX=0x15
 
 TBD
 
@@ -1436,7 +1436,7 @@ TBD
 | :---- | :---------- |
 | 0x0000000000000015 | Defines the index for mv_vps_op_reg_get_debug |
 
-#### 2.15.6.14. mv_vps_op_reg_set_debug, OP=0x6, IDX=0x16
+### 2.15.23. mv_vps_op_reg_set_debug, OP=0x6, IDX=0x16
 
 TBD
 
@@ -1445,7 +1445,7 @@ TBD
 | :---- | :---------- |
 | 0x0000000000000016 | Defines the index for mv_vps_op_reg_set_debug |
 
-#### 2.15.6.15. mv_vps_op_msr_get, OP=0x6, IDX=0x17
+### 2.15.24. mv_vps_op_msr_get, OP=0x6, IDX=0x17
 
 TBD
 
@@ -1454,7 +1454,7 @@ TBD
 | :---- | :---------- |
 | 0x0000000000000017 | Defines the index for mv_vps_op_msr_get |
 
-#### 2.15.6.16. mv_vps_op_msr_set, OP=0x6, IDX=0x18
+### 2.15.25. mv_vps_op_msr_set, OP=0x6, IDX=0x18
 
 TBD
 
@@ -1463,7 +1463,7 @@ TBD
 | :---- | :---------- |
 | 0x0000000000000018 | Defines the index for mv_vps_op_msr_set |
 
-#### 2.15.6.17. mv_vps_op_msr_get_all, OP=0x6, IDX=0x19
+### 2.15.26. mv_vps_op_msr_get_all, OP=0x6, IDX=0x19
 
 TBD
 
@@ -1472,7 +1472,7 @@ TBD
 | :---- | :---------- |
 | 0x0000000000000019 | Defines the index for mv_vps_op_msr_get_all |
 
-#### 2.15.6.18. mv_vps_op_msr_set_all, OP=0x6, IDX=0x1A
+### 2.15.27. mv_vps_op_msr_set_all, OP=0x6, IDX=0x1A
 
 TBD
 
@@ -1481,7 +1481,7 @@ TBD
 | :---- | :---------- |
 | 0x000000000000001A | Defines the index for mv_vps_op_msr_set_all |
 
-#### 2.15.6.19. mv_vps_op_fpu_get, OP=0x6, IDX=0x1B
+### 2.15.28. mv_vps_op_fpu_get, OP=0x6, IDX=0x1B
 
 TBD
 
@@ -1490,7 +1490,7 @@ TBD
 | :---- | :---------- |
 | 0x000000000000001B | Defines the index for mv_vps_op_fpu_get |
 
-#### 2.15.6.20. mv_vps_op_fpu_set, OP=0x6, IDX=0x1C
+### 2.15.29. mv_vps_op_fpu_set, OP=0x6, IDX=0x1C
 
 TBD
 
@@ -1499,7 +1499,7 @@ TBD
 | :---- | :---------- |
 | 0x000000000000001C | Defines the index for mv_vps_op_fpu_set |
 
-#### 2.15.6.21. mv_vps_op_fpu_get_all, OP=0x6, IDX=0x1D
+### 2.15.30. mv_vps_op_fpu_get_all, OP=0x6, IDX=0x1D
 
 TBD
 
@@ -1508,7 +1508,7 @@ TBD
 | :---- | :---------- |
 | 0x000000000000001D | Defines the index for mv_vps_op_fpu_get_all |
 
-#### 2.15.6.22. mv_vps_op_fpu_set_all, OP=0x6, IDX=0x1E
+### 2.15.31. mv_vps_op_fpu_set_all, OP=0x6, IDX=0x1E
 
 TBD
 
@@ -1517,7 +1517,7 @@ TBD
 | :---- | :---------- |
 | 0x000000000000001E | Defines the index for mv_vps_op_fpu_set_all |
 
-#### 2.15.6.23. mv_vps_op_xsave_get, OP=0x6, IDX=0x1F
+### 2.15.32. mv_vps_op_xsave_get, OP=0x6, IDX=0x1F
 
 TBD
 
@@ -1526,7 +1526,7 @@ TBD
 | :---- | :---------- |
 | 0x000000000000001F | Defines the index for mv_vps_op_xsave_get |
 
-#### 2.15.6.24. mv_vps_op_xsave_set, OP=0x6, IDX=0x20
+### 2.15.33. mv_vps_op_xsave_set, OP=0x6, IDX=0x20
 
 TBD
 
@@ -1535,7 +1535,7 @@ TBD
 | :---- | :---------- |
 | 0x0000000000000020 | Defines the index for mv_vps_op_xsave_set |
 
-#### 2.15.6.25. mv_vps_op_xsave_get_all, OP=0x6, IDX=0x21
+### 2.15.34. mv_vps_op_xsave_get_all, OP=0x6, IDX=0x21
 
 TBD
 
@@ -1544,7 +1544,7 @@ TBD
 | :---- | :---------- |
 | 0x0000000000000021 | Defines the index for mv_vps_op_xsave_get_all |
 
-#### 2.15.6.26. mv_vps_op_xsave_set_all, OP=0x6, IDX=0x22
+### 2.15.35. mv_vps_op_xsave_set_all, OP=0x6, IDX=0x22
 
 TBD
 
