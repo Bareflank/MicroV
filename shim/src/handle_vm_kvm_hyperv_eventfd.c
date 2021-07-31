@@ -24,7 +24,6 @@
  * SOFTWARE.
  */
 
-#include <debug.h>
 #include <kvm_hyperv_eventfd.h>
 #include <types.h>
 
@@ -33,12 +32,12 @@
  *   @brief Handles the execution of kvm_hyperv_eventfd.
  *
  * <!-- inputs/outputs -->
- *   @param ioctl_args the arguments provided by userspace
+ *   @param pmut_ioctl_args the arguments provided by userspace
  *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
  */
-int64_t
-handle_vm_kvm_hyperv_eventfd(struct kvm_hyperv_eventfd *const ioctl_args)
+NODISCARD int64_t
+handle_vm_kvm_hyperv_eventfd(struct kvm_hyperv_eventfd *const pmut_ioctl_args) NOEXCEPT
 {
-    (void)ioctl_args;
+    (void)pmut_ioctl_args;
     return SHIM_SUCCESS;
 }

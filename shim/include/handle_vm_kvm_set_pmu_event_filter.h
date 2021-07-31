@@ -30,14 +30,24 @@
 #include <kvm_pmu_event_filter.h>
 #include <types.h>
 
-/**
- * <!-- description -->
- *   @brief Handles the execution of kvm_set_pmu_event_filter.
- *
- * <!-- inputs/outputs -->
- *   @param ioctl_args the arguments provided by userspace
- *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
- */
-int64_t handle_vm_kvm_set_pmu_event_filter(struct kvm_pmu_event_filter *const ioctl_args);
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
+    /**
+     * <!-- description -->
+     *   @brief Handles the execution of kvm_set_pmu_event_filter.
+     *
+     * <!-- inputs/outputs -->
+     *   @param pmut_ioctl_args the arguments provided by userspace
+     *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
+     */
+    NODISCARD int64_t
+    handle_vm_kvm_set_pmu_event_filter(struct kvm_pmu_event_filter *const pmut_ioctl_args) NOEXCEPT;
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

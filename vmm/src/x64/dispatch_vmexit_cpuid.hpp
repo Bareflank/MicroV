@@ -33,7 +33,7 @@
 #include <tls_t.hpp>
 #include <vm_pool_t.hpp>
 #include <vp_pool_t.hpp>
-#include <vps_pool_t.hpp>
+#include <vs_pool_t.hpp>
 
 #include <bsl/convert.hpp>
 #include <bsl/debug.hpp>
@@ -52,8 +52,8 @@ namespace microv
     ///   @param pp_pool the pp_pool_t to use
     ///   @param vm_pool the vm_pool_t to use
     ///   @param vp_pool the vp_pool_t to use
-    ///   @param vps_pool the vps_pool_t to use
-    ///   @param vpsid the ID of the VPS that generated the VMExit
+    ///   @param vs_pool the vs_pool_t to use
+    ///   @param vsid the ID of the VS that generated the VMExit
     ///   @return Returns bsl::errc_success on success, bsl::errc_failure
     ///     and friends otherwise
     ///
@@ -66,29 +66,21 @@ namespace microv
         pp_pool_t const &pp_pool,
         vm_pool_t const &vm_pool,
         vp_pool_t const &vp_pool,
-        vps_pool_t const &vps_pool,
-        bsl::safe_uint16 const &vpsid) noexcept -> bsl::errc_type
+        vs_pool_t const &vs_pool,
+        bsl::safe_u16 const &vsid) noexcept -> bsl::errc_type
     {
+        bsl::discard(gs);
         bsl::discard(tls);
+        bsl::discard(pp_pool);
         bsl::discard(vm_pool);
         bsl::discard(vp_pool);
 
-        if (vps_pool.is_root_vps(mut_sys, vpsid)) {
-            auto const ret{pp_pool.cpuid_get(gs, mut_sys, intrinsic)};
-            if (bsl::unlikely(vmexit_success_promote == ret)) {
-                return vmexit_success_promote;
-            }
-
-            if (bsl::unlikely(!ret)) {
-                bsl::print<bsl::V>() << bsl::here();
-                return vmexit_failure_advance_ip_and_run;
-            }
-
-            return vmexit_success_advance_ip_and_run;
+        auto const ret{vs_pool.cpuid_get(mut_sys, intrinsic, vsid)};
+        if (bsl::unlikely(vmexit_success_promote == ret)) {
+            return vmexit_success_promote;
         }
 
-        bsl::error() << "dispatch_vmexit_cpuid for guest VPSs not implemented\n";
-        return bsl::errc_failure;
+        return vmexit_success_advance_ip_and_run;
     }
 }
 

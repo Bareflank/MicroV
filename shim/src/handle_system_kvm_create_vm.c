@@ -25,35 +25,29 @@
  */
 
 #include <debug.h>
-#include <g_hndl.h>
+#include <g_mut_hndl.h>
+#include <mv_constants.h>
 #include <mv_hypercall.h>
 #include <platform.h>
 #include <shim_vm_t.h>
 #include <types.h>
-
-/* Remove me */
-static uint16_t
-mv_vm_op_create_vm(uint64_t const g_hndl)
-{
-    (void)g_hndl;
-    return 1;
-}
 
 /**
  * <!-- description -->
  *   @brief Handles the execution of kvm_create_vm.
  *
  * <!-- inputs/outputs -->
+ *   @param pmut_vm where to store the ID of the newly created VM
  *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
  */
-int64_t
-handle_system_kvm_create_vm(struct shim_vm_t *const vm)
+NODISCARD int64_t
+handle_system_kvm_create_vm(struct shim_vm_t *const pmut_vm) NOEXCEPT
 {
-    platform_expects(MV_INVALID_HANDLE != g_hndl);
-    platform_expects(NULL != vm);
+    platform_expects(MV_INVALID_HANDLE != g_mut_hndl);
+    platform_expects(NULL != pmut_vm);
 
-    vm->vmid = mv_vm_op_create_vm(g_hndl);
-    if (MV_INVALID_ID == vm->vmid) {
+    pmut_vm->vmid = mv_vm_op_create_vm(g_mut_hndl);
+    if (MV_INVALID_ID == (int32_t)pmut_vm->vmid) {
         bferror("mv_vm_op_create_vm failed with invalid vmid");
         return SHIM_FAILURE;
     }

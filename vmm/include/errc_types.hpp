@@ -30,32 +30,32 @@
 
 namespace microv
 {
-    /// @brief Defines success and run current VM, VP and VPS
+    /// @brief Defines success and run current VM, VP and VS
     // NOLINTNEXTLINE(bsl-name-case)
     constexpr bsl::errc_type vmexit_success_run{10001};
-    /// @brief Defines success and run parent VM, VP and VPS
+    /// @brief Defines success and run parent VM, VP and VS
     // NOLINTNEXTLINE(bsl-name-case)
     constexpr bsl::errc_type vmexit_success_run_parent{10002};
-    /// @brief Defines success, advance IP, and run current VM, VP and VPS
+    /// @brief Defines success, advance IP, and run current VM, VP and VS
     // NOLINTNEXTLINE(bsl-name-case)
     constexpr bsl::errc_type vmexit_success_advance_ip_and_run{10003};
-    /// @brief Defines success, advance IP, and run parent VM, VP and VPS
+    /// @brief Defines success, advance IP, and run parent VM, VP and VS
     // NOLINTNEXTLINE(bsl-name-case)
     constexpr bsl::errc_type vmexit_success_advance_ip_and_run_parent{10004};
-    /// @brief Defines success and promote current VM, VP and VPS
+    /// @brief Defines success and promote current VM, VP and VS
     // NOLINTNEXTLINE(bsl-name-case)
     constexpr bsl::errc_type vmexit_success_promote{10005};
 
-    /// @brief Defines failure and run current VM, VP and VPS
+    /// @brief Defines failure and run current VM, VP and VS
     // NOLINTNEXTLINE(bsl-name-case)
     constexpr bsl::errc_type vmexit_failure_run{-10001};
-    /// @brief Defines failure and run parent VM, VP and VPS
+    /// @brief Defines failure and run parent VM, VP and VS
     // NOLINTNEXTLINE(bsl-name-case)
     constexpr bsl::errc_type vmexit_failure_run_parent{-10002};
-    /// @brief Defines failure, advance IP, and run current VM, VP and VPS
+    /// @brief Defines failure, advance IP, and run current VM, VP and VS
     // NOLINTNEXTLINE(bsl-name-case)
     constexpr bsl::errc_type vmexit_failure_advance_ip_and_run{-10003};
-    /// @brief Defines failure, advance IP, and run parent VM, VP and VPS
+    /// @brief Defines failure, advance IP, and run parent VM, VP and VS
     // NOLINTNEXTLINE(bsl-name-case)
     constexpr bsl::errc_type vmexit_failure_advance_ip_and_run_parent{-10004};
 }

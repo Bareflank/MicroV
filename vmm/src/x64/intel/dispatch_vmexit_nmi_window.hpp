@@ -32,7 +32,7 @@
 #include <tls_t.hpp>
 #include <vm_pool_t.hpp>
 #include <vp_pool_t.hpp>
-#include <vps_pool_t.hpp>
+#include <vs_pool_t.hpp>
 
 #include <bsl/convert.hpp>
 #include <bsl/debug.hpp>
@@ -52,8 +52,8 @@ namespace microv
     ///   @param pp_pool the pp_pool_t to use
     ///   @param vm_pool the vm_pool_t to use
     ///   @param vp_pool the vp_pool_t to use
-    ///   @param vps_pool the vps_pool_t to use
-    ///   @param vpsid the ID of the VPS that generated the VMExit
+    ///   @param vs_pool the vs_pool_t to use
+    ///   @param vsid the ID of the VS that generated the VMExit
     ///   @return Returns bsl::errc_success on success, bsl::errc_failure
     ///     and friends otherwise
     ///
@@ -66,8 +66,8 @@ namespace microv
         pp_pool_t const &pp_pool,
         vm_pool_t const &vm_pool,
         vp_pool_t const &vp_pool,
-        vps_pool_t const &vps_pool,
-        bsl::safe_uint16 const &vpsid) noexcept -> bsl::errc_type
+        vs_pool_t const &vs_pool,
+        bsl::safe_u16 const &vsid) noexcept -> bsl::errc_type
     {
         bsl::discard(gs);
         bsl::discard(tls);
@@ -76,8 +76,8 @@ namespace microv
         bsl::discard(pp_pool);
         bsl::discard(vm_pool);
         bsl::discard(vp_pool);
-        bsl::discard(vps_pool);
-        bsl::discard(vpsid);
+        bsl::discard(vs_pool);
+        bsl::discard(vsid);
 
         bsl::error() << "dispatch_vmexit_nmi_window not implemented\n";
         return bsl::errc_failure;

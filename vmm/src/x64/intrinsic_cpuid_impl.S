@@ -35,15 +35,15 @@ intrinsic_cpuid_impl:
     mov r10, rdx
     mov r11, rcx
 
-    mov eax, [rsi]
-    mov ebx, [r10]
-    mov ecx, [r11]
-    mov edx, [r8]
+    mov eax, [rdi]
+    mov ebx, [rsi]
+    mov ecx, [r10]
+    mov edx, [r11]
     cpuid
-    mov [rsi], eax
-    mov [r10], ebx
-    mov [r11], ecx
-    mov [r8], edx
+    mov [rdi], eax
+    mov [rsi], ebx
+    mov [r10], ecx
+    mov [r11], edx
 
     pop rbx
     ret

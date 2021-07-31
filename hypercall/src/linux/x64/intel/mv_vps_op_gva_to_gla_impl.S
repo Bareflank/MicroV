@@ -27,9 +27,9 @@
     .code64
     .intel_syntax noprefix
 
-    .globl  mv_vps_op_gva_to_gla_impl
-    .type   mv_vps_op_gva_to_gla_impl, @function
-mv_vps_op_gva_to_gla_impl:
+    .globl  mv_vs_op_gva_to_gla_impl
+    .type   mv_vs_op_gva_to_gla_impl, @function
+mv_vs_op_gva_to_gla_impl:
 
     mov rax, 0x764D000000060005
     mov r10, rdi
@@ -41,4 +41,4 @@ mv_vps_op_gva_to_gla_impl:
     ret
     int 3
 
-    .size mv_vps_op_gva_to_gla_impl, .-mv_vps_op_gva_to_gla_impl
+    .size mv_vs_op_gva_to_gla_impl, .-mv_vs_op_gva_to_gla_impl

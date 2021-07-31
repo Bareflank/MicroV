@@ -24,7 +24,6 @@
  * SOFTWARE.
  */
 
-#include <debug.h>
 #include <kvm_enable_cap.h>
 #include <types.h>
 
@@ -33,10 +32,12 @@
  *   @brief Handles the execution of kvm_enable_cap.
  *
  * <!-- inputs/outputs -->
+ *   @param pmut_ioctl_args the arguments provided by userspace
  *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
  */
-int64_t
-handle_vcpu_kvm_enable_cap(struct kvm_enable_cap *const ioctl_args)
+NODISCARD int64_t
+handle_vcpu_kvm_enable_cap(struct kvm_enable_cap *const pmut_ioctl_args) NOEXCEPT
 {
+    (void)pmut_ioctl_args;
     return SHIM_SUCCESS;
 }

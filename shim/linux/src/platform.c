@@ -77,19 +77,19 @@ platform_alloc(uint64_t const size)
  *     platform_alloc() function.
  *
  * <!-- inputs/outputs -->
- *   @param ptr the pointer returned by platform_alloc(). If ptr is
+ *   @param pmut_ptr the pointer returned by platform_alloc(). If ptr is
  *     passed a nullptr, it will be ignored. Attempting to free memory
  *     more than once results in UB.
  *   @param size the number of bytes that were allocated. Note that this
  *     may or may not be ignored depending on the platform.
  */
 void
-platform_free(void const *const ptr, uint64_t const size)
+platform_free(void const *const pmut_ptr, uint64_t const size)
 {
     (void)size;
 
-    if (((void *)0) != ptr) {
-        vfree(ptr);
+    if (((void *)0) != pmut_ptr) {
+        vfree(pmut_ptr);
     }
 }
 
@@ -125,40 +125,40 @@ platform_virt_to_phys(void const *const virt)
  *     returns SHIM_FAILURE.
  *
  * <!-- inputs/outputs -->
- *   @param ptr a pointer to the memory to set
+ *   @param pmut_ptr a pointer to the memory to set
  *   @param val the value to set each byte to
- *   @param num the number of bytes in "ptr" to set to "val".
+ *   @param num the number of bytes in "pmut_ptr" to set to "val".
  *   @return If the provided parameters are valid, returns 0, otherwise
  *     returns SHIM_FAILURE.
  */
 int64_t
-platform_memset(void *const ptr, uint8_t const val, uint64_t const num)
+platform_memset(void *const pmut_ptr, uint8_t const val, uint64_t const num)
 {
-    if (!ptr) {
-        bferror("invalid ptr");
+    if (!pmut_ptr) {
+        bferror("invalid pmut_ptr");
         return SHIM_FAILURE;
     }
 
-    memset(ptr, val, num);
+    memset(pmut_ptr, val, num);
     return 0;
 }
 
 /**
  * <!-- description -->
- *   @brief Copies "num" bytes from "src" to "dst". If "src" or "dst" are
+ *   @brief Copies "num" bytes from "src" to "pmut_dst". If "src" or "pmut_dst" are
  *     ((void *)0), returns SHIM_FAILURE, otherwise returns 0.
  *
  * <!-- inputs/outputs -->
- *   @param dst a pointer to the memory to copy to
+ *   @param pmut_dst a pointer to the memory to copy to
  *   @param src a pointer to the memory to copy from
  *   @param num the number of bytes to copy
- *   @return If "src" or "dst" are ((void *)0), returns SHIM_FAILURE, otherwise
+ *   @return If "src" or "pmut_dst" are ((void *)0), returns SHIM_FAILURE, otherwise
  *     returns 0.
  */
 int64_t
-platform_memcpy(void *const dst, void const *const src, uint64_t const num)
+platform_memcpy(void *const pmut_dst, void const *const src, uint64_t const num)
 {
-    if (((void *)0) == dst) {
+    if (((void *)0) == pmut_dst) {
         bferror("invalid pointer");
         return SHIM_FAILURE;
     }
@@ -168,28 +168,28 @@ platform_memcpy(void *const dst, void const *const src, uint64_t const num)
         return SHIM_FAILURE;
     }
 
-    memcpy(dst, src, num);
+    memcpy(pmut_dst, src, num);
     return 0;
 }
 
 /**
  * <!-- description -->
- *   @brief Copies "num" bytes from "src" to "dst". If "src" or "dst" are
+ *   @brief Copies "num" bytes from "src" to "pmut_dst". If "src" or "pmut_dst" are
  *     ((void *)0), returns FAILURE, otherwise returns 0. Note that this function can
  *     be used to copy memory from userspace via an IOCTL.
  *
  * <!-- inputs/outputs -->
- *   @param dst a pointer to the memory to copy to
+ *   @param pmut_dst a pointer to the memory to copy to
  *   @param src a pointer to the memory to copy from
  *   @param num the number of bytes to copy
- *   @return If "src" or "dst" are ((void *)0), returns FAILURE, otherwise
+ *   @return If "src" or "pmut_dst" are ((void *)0), returns FAILURE, otherwise
  *     returns 0.
  */
 int64_t
 platform_copy_from_user(
-    void *const dst, void const *const src, uint64_t const num)
+    void *const pmut_dst, void const *const src, uint64_t const num)
 {
-    if (((void *)0) == dst) {
+    if (((void *)0) == pmut_dst) {
         bferror("invalid pointer");
         return SHIM_FAILURE;
     }
@@ -199,28 +199,28 @@ platform_copy_from_user(
         return SHIM_FAILURE;
     }
 
-    copy_from_user(dst, src, num);
+    copy_from_user(pmut_dst, src, num);
     return 0;
 }
 
 /**
  * <!-- description -->
- *   @brief Copies "num" bytes from "src" to "dst". If "src" or "dst" are
+ *   @brief Copies "num" bytes from "src" to "pmut_dst". If "src" or "pmut_dst" are
  *     ((void *)0), returns FAILURE, otherwise returns 0. Note that this function can
  *     be used to copy memory to userspace via an IOCTL.
  *
  * <!-- inputs/outputs -->
- *   @param dst a pointer to the memory to copy to
+ *   @param pmut_dst a pointer to the memory to copy to
  *   @param src a pointer to the memory to copy from
  *   @param num the number of bytes to copy
- *   @return If "src" or "dst" are ((void *)0), returns FAILURE, otherwise
+ *   @return If "src" or "pmut_dst" are ((void *)0), returns FAILURE, otherwise
  *     returns 0.
  */
 int64_t
 platform_copy_to_user(
-    void *const dst, void const *const src, uint64_t const num)
+    void *const pmut_dst, void const *const src, uint64_t const num)
 {
-    if (((void *)0) == dst) {
+    if (((void *)0) == pmut_dst) {
         bferror("invalid pointer");
         return SHIM_FAILURE;
     }
@@ -230,7 +230,7 @@ platform_copy_to_user(
         return SHIM_FAILURE;
     }
 
-    copy_to_user(dst, src, num);
+    copy_to_user(pmut_dst, src, num);
     return 0;
 }
 
@@ -276,12 +276,12 @@ work_on_cpu_callback(void *const arg)
  *     been called (depends on the platform).
  *
  * <!-- inputs/outputs -->
- *   @param func the function to call on each cpu
+ *   @param pmut_func the function to call on each cpu
  *   @return If each callback returns 0, this function returns 0, otherwise
  *     this function returns a non-0 value
  */
 static int64_t
-platform_on_each_cpu_forward(platform_per_cpu_func const func)
+platform_on_each_cpu_forward(platform_per_cpu_func const pmut_func)
 {
     uint32_t cpu;
 
@@ -314,12 +314,12 @@ work_on_cpu_callback_failed:
  *     been called (depends on the platform).
  *
  * <!-- inputs/outputs -->
- *   @param func the function to call on each cpu
+ *   @param pmut_func the function to call on each cpu
  *   @return If each callback returns 0, this function returns 0, otherwise
  *     this function returns a non-0 value
  */
 static int64_t
-platform_on_each_cpu_reverse(platform_per_cpu_func const func)
+platform_on_each_cpu_reverse(platform_per_cpu_func const pmut_func)
 {
     uint32_t cpu;
 
@@ -352,21 +352,22 @@ work_on_cpu_callback_failed:
  *     (depends on the platform).
  *
  * <!-- inputs/outputs -->
- *   @param func the function to call on each cpu
+ *   @param pmut_func the function to call on each cpu
  *   @param order sets the order the CPUs are called
  *   @return If each callback returns 0, this function returns 0, otherwise
  *     this function returns a non-0 value
  */
 int64_t
-platform_on_each_cpu(platform_per_cpu_func const func, uint32_t const order)
+platform_on_each_cpu(
+    platform_per_cpu_func const pmut_func, uint32_t const order)
 {
     int64_t ret;
 
     if (PLATFORM_FORWARD == order) {
-        ret = platform_on_each_cpu_forward(func);
+        ret = platform_on_each_cpu_forward(pmut_func);
     }
     else {
-        ret = platform_on_each_cpu_reverse(func);
+        ret = platform_on_each_cpu_reverse(pmut_func);
     }
 
     return ret;
@@ -374,15 +375,34 @@ platform_on_each_cpu(platform_per_cpu_func const func, uint32_t const order)
 
 /**
  * <!-- description -->
- *   @brief Given a integer, this function allows diagnostic information to be
-     written to standard error file incase it fails.
+ *   @brief If test is false, a contract violation has occurred. This
+ *     should be used to assert preconditions that if not meet, would
+ *     result in undefined behavior. These should not be tested by a
+ *     unit test, meaning they are contract violations. These asserts
+ *     are simply there as a sanity check during a debug build.
  *
  * <!-- inputs/outputs -->
- *   @param int a valid expression to assert 
- *  
+ *   @param test the contract to check
  */
 void
 platform_expects(int const test)
+{
+    BUG_ON(test);
+}
+
+/**
+ * <!-- description -->
+ *   @brief If test is false, a contract violation has occurred. This
+ *     should be used to assert postconditions that if not meet, would
+ *     result in undefined behavior. These should not be tested by a
+ *     unit test, meaning they are contract violations. These asserts
+ *     are simply there as a sanity check during a debug build.
+ *
+ * <!-- inputs/outputs -->
+ *   @param test the contract to check
+ */
+void
+platform_ensures(int const test)
 {
     BUG_ON(test);
 }

@@ -25,15 +25,15 @@
 #ifndef DISPATCH_VMEXIT_VMCALL_HPP
 #define DISPATCH_VMEXIT_VMCALL_HPP
 
-#include <abi_helpers.hpp>
 #include <bf_syscall_t.hpp>
+#include <dispatch_vmcall_abi_helpers.hpp>
 #include <dispatch_vmcall_debug_op.hpp>
 #include <dispatch_vmcall_handle_op.hpp>
 #include <dispatch_vmcall_id_op.hpp>
 #include <dispatch_vmcall_pp_op.hpp>
 #include <dispatch_vmcall_vm_op.hpp>
 #include <dispatch_vmcall_vp_op.hpp>
-#include <dispatch_vmcall_vps_op.hpp>
+#include <dispatch_vmcall_vs_op.hpp>
 #include <errc_types.hpp>
 #include <gs_t.hpp>
 #include <intrinsic_t.hpp>
@@ -42,7 +42,7 @@
 #include <tls_t.hpp>
 #include <vm_pool_t.hpp>
 #include <vp_pool_t.hpp>
-#include <vps_pool_t.hpp>
+#include <vs_pool_t.hpp>
 
 #include <bsl/convert.hpp>
 #include <bsl/debug.hpp>
@@ -61,8 +61,8 @@ namespace microv
     ///   @param mut_pp_pool the pp_pool_t to use
     ///   @param vm_pool the vm_pool_t to use
     ///   @param vp_pool the vp_pool_t to use
-    ///   @param vps_pool the vps_pool_t to use
-    ///   @param vpsid the ID of the VPS that generated the VMExit
+    ///   @param vs_pool the vs_pool_t to use
+    ///   @param vsid the ID of the VS that generated the VMExit
     ///   @return Returns bsl::errc_success on success, bsl::errc_failure
     ///     and friends otherwise
     ///
@@ -75,13 +75,13 @@ namespace microv
         pp_pool_t &mut_pp_pool,
         vm_pool_t const &vm_pool,
         vp_pool_t const &vp_pool,
-        vps_pool_t const &vps_pool,
-        bsl::safe_uint16 const &vpsid) noexcept -> bsl::errc_type
+        vs_pool_t const &vs_pool,
+        bsl::safe_u16 const &vsid) noexcept -> bsl::errc_type
     {
         switch (hypercall::mv_hypercall_opcode(get_reg_hypercall(mut_sys)).get()) {
             case hypercall::MV_ID_OP_VAL.get(): {
                 auto const ret{dispatch_vmcall_id_op(
-                    gs, tls, mut_sys, intrinsic, mut_pp_pool, vm_pool, vp_pool, vps_pool, vpsid)};
+                    gs, tls, mut_sys, intrinsic, mut_pp_pool, vm_pool, vp_pool, vs_pool, vsid)};
                 if (bsl::unlikely(!ret)) {
                     bsl::print<bsl::V>() << bsl::here();
                     return ret;
@@ -93,7 +93,7 @@ namespace microv
 
             case hypercall::MV_HANDLE_OP_VAL.get(): {
                 auto const ret{dispatch_vmcall_handle_op(
-                    gs, tls, mut_sys, intrinsic, mut_pp_pool, vm_pool, vp_pool, vps_pool, vpsid)};
+                    gs, tls, mut_sys, intrinsic, mut_pp_pool, vm_pool, vp_pool, vs_pool, vsid)};
                 if (bsl::unlikely(!ret)) {
                     bsl::print<bsl::V>() << bsl::here();
                     return ret;
@@ -105,7 +105,7 @@ namespace microv
 
             case hypercall::MV_DEBUG_OP_VAL.get(): {
                 auto const ret{dispatch_vmcall_debug_op(
-                    gs, tls, mut_sys, intrinsic, mut_pp_pool, vm_pool, vp_pool, vps_pool, vpsid)};
+                    gs, tls, mut_sys, intrinsic, mut_pp_pool, vm_pool, vp_pool, vs_pool, vsid)};
                 if (bsl::unlikely(!ret)) {
                     bsl::print<bsl::V>() << bsl::here();
                     return ret;
@@ -117,7 +117,7 @@ namespace microv
 
             case hypercall::MV_PP_OP_VAL.get(): {
                 auto const ret{dispatch_vmcall_pp_op(
-                    gs, tls, mut_sys, intrinsic, mut_pp_pool, vm_pool, vp_pool, vps_pool, vpsid)};
+                    gs, tls, mut_sys, intrinsic, mut_pp_pool, vm_pool, vp_pool, vs_pool, vsid)};
                 if (bsl::unlikely(!ret)) {
                     bsl::print<bsl::V>() << bsl::here();
                     return ret;
@@ -129,7 +129,7 @@ namespace microv
 
             case hypercall::MV_VM_OP_VAL.get(): {
                 auto const ret{dispatch_vmcall_vm_op(
-                    gs, tls, mut_sys, intrinsic, mut_pp_pool, vm_pool, vp_pool, vps_pool, vpsid)};
+                    gs, tls, mut_sys, intrinsic, mut_pp_pool, vm_pool, vp_pool, vs_pool, vsid)};
                 if (bsl::unlikely(!ret)) {
                     bsl::print<bsl::V>() << bsl::here();
                     return ret;
@@ -141,7 +141,7 @@ namespace microv
 
             case hypercall::MV_VP_OP_VAL.get(): {
                 auto const ret{dispatch_vmcall_vp_op(
-                    gs, tls, mut_sys, intrinsic, mut_pp_pool, vm_pool, vp_pool, vps_pool, vpsid)};
+                    gs, tls, mut_sys, intrinsic, mut_pp_pool, vm_pool, vp_pool, vs_pool, vsid)};
                 if (bsl::unlikely(!ret)) {
                     bsl::print<bsl::V>() << bsl::here();
                     return ret;
@@ -151,9 +151,9 @@ namespace microv
                 return ret;
             }
 
-            case hypercall::MV_VPS_OP_VAL.get(): {
-                auto const ret{dispatch_vmcall_vps_op(
-                    gs, tls, mut_sys, intrinsic, mut_pp_pool, vm_pool, vp_pool, vps_pool, vpsid)};
+            case hypercall::MV_VS_OP_VAL.get(): {
+                auto const ret{dispatch_vmcall_vs_op(
+                    gs, tls, mut_sys, intrinsic, mut_pp_pool, vm_pool, vp_pool, vs_pool, vsid)};
                 if (bsl::unlikely(!ret)) {
                     bsl::print<bsl::V>() << bsl::here();
                     return ret;

@@ -24,7 +24,6 @@
  * SOFTWARE.
  */
 
-#include <debug.h>
 #include <kvm_debugregs.h>
 #include <types.h>
 
@@ -33,12 +32,12 @@
  *   @brief Handles the execution of kvm_get_debugregs.
  *
  * <!-- inputs/outputs -->
- *   @param ioctl_args the arguments provided by userspace
+ *   @param pmut_ioctl_args the arguments provided by userspace
  *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
  */
-int64_t
-handle_vm_kvm_get_debugregs(struct kvm_debugregs *const ioctl_args)
+NODISCARD int64_t
+handle_vm_kvm_get_debugregs(struct kvm_debugregs *const pmut_ioctl_args) NOEXCEPT
 {
-    (void)ioctl_args;
+    (void)pmut_ioctl_args;
     return SHIM_SUCCESS;
 }

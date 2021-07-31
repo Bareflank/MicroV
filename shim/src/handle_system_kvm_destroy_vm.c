@@ -24,7 +24,6 @@
  * SOFTWARE.
  */
 
-#include <debug.h>
 #include <types.h>
 /**
  * <!-- description -->
@@ -33,8 +32,8 @@
  * <!-- inputs/outputs -->
  *   @return SHIM_SUCCESS (vmfd) on success, SHIM_FAILURE on failure.
  */
-int64_t
-handle_system_kvm_destroy_vm(void)
+NODISCARD int64_t
+handle_system_kvm_destroy_vm(void) NOEXCEPT
 {
     return SHIM_SUCCESS;
 }

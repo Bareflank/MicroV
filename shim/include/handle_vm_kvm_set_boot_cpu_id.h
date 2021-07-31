@@ -29,13 +29,22 @@
 
 #include <types.h>
 
-/**
- * <!-- description -->
- *   @brief Handles the execution of kvm_set_boot_cpu_id.
- *
- * <!-- inputs/outputs -->
- *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
- */
-int64_t handle_vm_kvm_set_boot_cpu_id(void);
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
+    /**
+     * <!-- description -->
+     *   @brief Handles the execution of kvm_set_boot_cpu_id.
+     *
+     * <!-- inputs/outputs -->
+     *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
+     */
+    NODISCARD int64_t handle_vm_kvm_set_boot_cpu_id(void) NOEXCEPT;
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

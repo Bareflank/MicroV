@@ -33,13 +33,13 @@
  *   @brief Handles the execution of kvm_memory_encrypt_unreg_region.
  *
  * <!-- inputs/outputs -->
- *   @param ioctl_args the arguments provided by userspace
+ *   @param pmut_ioctl_args the arguments provided by userspace
  *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
  */
-int64_t
-handle_system_kvm_memory_encrypt_unreg_region(struct kvm_enc_region *const ioctl_args)
+NODISCARD int64_t
+handle_system_kvm_memory_encrypt_unreg_region(struct kvm_enc_region *const pmut_ioctl_args) NOEXCEPT
 {
-    (void)ioctl_args;
+    (void)pmut_ioctl_args;
 
     bferror("kvm_memory_encrypt_unreg_region ioctl not supported");
     return SHIM_SUCCESS;

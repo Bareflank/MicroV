@@ -30,14 +30,24 @@
 #include <kvm_enc_region.h>
 #include <types.h>
 
-/**
- * <!-- description -->
- *   @brief Handles the execution of kvm_memory_encrypt_reg_region.
- *
- * <!-- inputs/outputs -->
- *   @param ioctl_args the arguments provided by userspace
- *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
- */
-int64_t handle_system_kvm_memory_encrypt_reg_region(struct kvm_enc_region *const ioctl_args);
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
+    /**
+     * <!-- description -->
+     *   @brief Handles the execution of kvm_memory_encrypt_reg_region.
+     *
+     * <!-- inputs/outputs -->
+     *   @param pmut_ioctl_args the arguments provided by userspace
+     *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
+     */
+    NODISCARD int64_t handle_system_kvm_memory_encrypt_reg_region(
+        struct kvm_enc_region *const pmut_ioctl_args) NOEXCEPT;
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

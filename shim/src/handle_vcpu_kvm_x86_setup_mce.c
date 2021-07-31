@@ -24,7 +24,6 @@
  * SOFTWARE.
  */
 
-#include <debug.h>
 #include <types.h>
 
 /**
@@ -35,8 +34,8 @@
  *   @param ioctl_args the arguments provided by userspace
  *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
  */
-int64_t
-handle_vcpu_kvm_x86_setup_mce(uint64_t *const ioctl_args)
+NODISCARD int64_t
+handle_vcpu_kvm_x86_setup_mce(uint64_t const *const ioctl_args) NOEXCEPT
 {
     (void)ioctl_args;
     return SHIM_SUCCESS;

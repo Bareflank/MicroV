@@ -29,13 +29,22 @@
 
 #include <types.h>
 
-/**
- * <!-- description -->
- *   @brief Handles the execution of kvm_check_extension.
- *
- * <!-- inputs/outputs -->
- *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
- */
-int64_t handle_vm_kvm_check_extension(void);
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
+    /**
+     * <!-- description -->
+     *   @brief Handles the execution of kvm_check_extension.
+     *
+     * <!-- inputs/outputs -->
+     *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
+     */
+    NODISCARD int64_t handle_vm_kvm_check_extension(void) NOEXCEPT;
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

@@ -25,7 +25,6 @@
  */
 
 #include <constants.h>
-#include <intrinsic_inb.h>
 #include <intrinsic_outb.h>
 #include <types.h>
 
@@ -59,10 +58,9 @@
  *   @param val the byte to write to the requested serial port register
  */
 static void
-serial_outb(uint16_t reg, uint8_t const val)
+serial_outb(uint16_t const reg, uint8_t const val) NOEXCEPT
 {
-    reg += SERIAL_PORT;
-    intrinsic_outb(reg, val);
+    intrinsic_outb((uint16_t)((int32_t)reg + SERIAL_PORT), val);
 }
 
 /**
@@ -70,18 +68,21 @@ serial_outb(uint16_t reg, uint8_t const val)
  *   @brief Initializes the serial port for use
  */
 void
-serial_init(void)
+serial_init(void) NOEXCEPT
 {
-    uint8_t bits = ((uint8_t)0);
+    uint8_t const data1 = ((uint8_t)0x80);
+    uint8_t const data2 = ((uint8_t)0x01);
+    uint8_t const data3 = ((uint8_t)0x00);
+    uint8_t const data4 = ((uint8_t)0x03);
+    uint8_t const data5 = ((uint8_t)0x00);
 
-    bits |= FCR_ENABLE_FIFO;
-    bits |= FCR_CLEAR_RECEIVE_FIFO;
-    bits |= FCR_CLEAR_TRANSMIT_FIFO;
+    uint8_t const data6 =
+        ((uint8_t)(FCR_ENABLE_FIFO | FCR_CLEAR_RECEIVE_FIFO | FCR_CLEAR_TRANSMIT_FIFO));
 
-    serial_outb(LCR, 0x80);
-    serial_outb(BLR, 0x01);
-    serial_outb(BHR, 0x00);
-    serial_outb(LCR, 0x03);
-    serial_outb(IER, 0x00);
-    serial_outb(FCR, bits);
+    serial_outb(LCR, data1);
+    serial_outb(BLR, data2);
+    serial_outb(BHR, data3);
+    serial_outb(LCR, data4);
+    serial_outb(IER, data5);
+    serial_outb(FCR, data6);
 }

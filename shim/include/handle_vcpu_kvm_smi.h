@@ -29,13 +29,22 @@
 
 #include <types.h>
 
-/**
- * <!-- description -->
- *   @brief Handles the execution of kvm_smi.
- *
- * <!-- inputs/outputs -->
- *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
- */
-int64_t handle_vcpu_kvm_smi(void);
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
+    /**
+     * <!-- description -->
+     *   @brief Handles the execution of kvm_smi.
+     *
+     * <!-- inputs/outputs -->
+     *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
+     */
+    NODISCARD int64_t handle_vcpu_kvm_smi(void) NOEXCEPT;
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

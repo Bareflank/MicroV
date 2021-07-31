@@ -25,9 +25,12 @@ list(APPEND HEADERS
     ${CMAKE_CURRENT_LIST_DIR}/support/integration_utils.hpp
 )
 
-# microv_add_integration(mv_debug_op_out HEADERS)
-# microv_add_integration(mv_handle_op_close_handle HEADERS)
-# microv_add_integration(mv_handle_op_open_handle HEADERS)
-# microv_add_integration(mv_hypercall_t HEADERS)
-# microv_add_integration(mv_vps_op_gla_to_gpa HEADERS)
+microv_add_integration(mv_debug_op_out HEADERS)
+microv_add_integration(mv_handle_op_close_handle HEADERS)
+microv_add_integration(mv_handle_op_open_handle HEADERS)
+microv_add_integration(mv_hypercall_t HEADERS)
+# microv_add_integration(mv_pp_op_clr_shared_page_gpa HEADERS)
+# microv_add_integration(mv_pp_op_get_shared_page_gpa HEADERS)
+# microv_add_integration(mv_pp_op_set_shared_page_gpa HEADERS)
+# microv_add_integration(mv_vs_op_gla_to_gpa HEADERS)
 

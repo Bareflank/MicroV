@@ -25,9 +25,9 @@
  */
 
 #include <debug.h>
-#include <g_hndl.h>
+#include <g_mut_hndl.h>
+#include <mv_constants.h>
 #include <mv_hypercall.h>
-#include <platform.h>
 #include <types.h>
 
 /**
@@ -40,8 +40,8 @@
  * <!-- inputs/outputs -->
  *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
  */
-int64_t
-shim_init(void)
+NODISCARD int64_t
+shim_init(void) NOEXCEPT
 {
     uint32_t const version = mv_id_op_version();
     if (mv_is_spec1_supported(version)) {
@@ -49,8 +49,8 @@ shim_init(void)
         return SHIM_FAILURE;
     }
 
-    g_hndl = mv_handle_op_open_handle(MV_SPEC_ID1_VAL);
-    if (MV_INVALID_HANDLE == g_hndl) {
+    g_mut_hndl = mv_handle_op_open_handle(MV_SPEC_ID1_VAL);
+    if (MV_INVALID_HANDLE == g_mut_hndl) {
         bferror("mv_handle_op_open_handle failed");
         return SHIM_FAILURE;
     }

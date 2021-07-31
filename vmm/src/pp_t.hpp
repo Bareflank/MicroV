@@ -25,11 +25,10 @@
 #ifndef PP_T_HPP
 #define PP_T_HPP
 
-#include <bf_constants.hpp>
+#include <allocated_status_t.hpp>
 #include <bf_syscall_t.hpp>
 #include <gs_t.hpp>
 #include <intrinsic_t.hpp>
-#include <pp_cpuid_t.hpp>
 #include <pp_cr_t.hpp>
 #include <pp_io_t.hpp>
 #include <pp_lapic_t.hpp>
@@ -39,24 +38,22 @@
 #include <tls_t.hpp>
 
 #include <bsl/discard.hpp>
-#include <bsl/errc_type.hpp>
+#include <bsl/ensures.hpp>
+#include <bsl/expects.hpp>
 #include <bsl/safe_integral.hpp>
-#include <bsl/unlikely_assert.hpp>
 
 namespace microv
 {
     /// @class microv::pp_t
     ///
     /// <!-- description -->
-    ///   @brief Defines Microv's physical processor.
+    ///   @brief Defines the extension's notion of a PP
     ///
     class pp_t final
     {
         /// @brief stores the ID associated with this pp_t
-        bsl::safe_uint16 m_id{bsl::safe_uint16::failure()};
+        bsl::safe_u16 m_id{};
 
-        /// @brief stores this pp_t's pp_cpuid_t
-        pp_cpuid_t m_pp_cpuid{};
         /// @brief stores this pp_t's pp_cr_t
         pp_cr_t m_pp_cr{};
         /// @brief stores this pp_t's pp_io_t
@@ -77,93 +74,26 @@ namespace microv
         /// <!-- inputs/outputs -->
         ///   @param gs the gs_t to use
         ///   @param tls the tls_t to use
-        ///   @param sys the bf_syscall_t to use
+        ///   @param mut_sys the bf_syscall_t to use
         ///   @param intrinsic the intrinsic_t to use
-        ///   @param i the ID for this pp_t
-        ///   @return Returns bsl::errc_success on success, bsl::errc_failure
-        ///     and friends otherwise
         ///
-        [[nodiscard]] constexpr auto
+        constexpr void
         initialize(
             gs_t const &gs,
             tls_t const &tls,
-            syscall::bf_syscall_t const &sys,
-            intrinsic_t const &intrinsic,
-            bsl::safe_uint16 const &i) noexcept -> bsl::errc_type
+            syscall::bf_syscall_t &mut_sys,
+            intrinsic_t const &intrinsic) noexcept
         {
-            bsl::errc_type mut_ret{};
+            bsl::expects(this->id() == syscall::BF_INVALID_ID);
 
-            if (bsl::unlikely_assert(m_id)) {
-                bsl::error() << "pp_t already initialized\n" << bsl::here();
-                return bsl::errc_precondition;
-            }
+            m_pp_cr.initialize(gs, tls, mut_sys, intrinsic);
+            m_pp_io.initialize(gs, tls, mut_sys, intrinsic);
+            m_pp_lapic.initialize(gs, tls, mut_sys, intrinsic);
+            m_pp_mmio.initialize(gs, tls, mut_sys, intrinsic);
+            m_pp_msr.initialize(gs, tls, mut_sys, intrinsic);
+            m_pp_mtrrs.initialize(gs, tls, mut_sys, intrinsic);
 
-            if (bsl::unlikely_assert(!i)) {
-                bsl::error() << "invalid id\n" << bsl::here();
-                return bsl::errc_invalid_argument;
-            }
-
-            if (bsl::unlikely_assert(syscall::BF_INVALID_ID == i)) {
-                bsl::error() << "id "                                                  // --
-                             << bsl::hex(i)                                            // --
-                             << " is invalid and cannot be used for initialization"    // --
-                             << bsl::endl                                              // --
-                             << bsl::here();                                           // --
-
-                return bsl::errc_invalid_argument;
-            }
-
-            bsl::finally mut_release_vm_on_error{
-                [this, &gs, &tls, &sys, &intrinsic]() noexcept -> void {
-                    this->release(gs, tls, sys, intrinsic);
-                }};
-
-            mut_ret = m_pp_cpuid.initialize(gs, tls, sys, intrinsic);
-            if (bsl::unlikely(!mut_ret)) {
-                bsl::print<bsl::V>() << bsl::here();
-                return mut_ret;
-            }
-
-            mut_ret = m_pp_cr.initialize(gs, tls, sys, intrinsic);
-            if (bsl::unlikely(!mut_ret)) {
-                bsl::print<bsl::V>() << bsl::here();
-                return mut_ret;
-            }
-
-            mut_ret = m_pp_io.initialize(gs, tls, sys, intrinsic);
-            if (bsl::unlikely(!mut_ret)) {
-                bsl::print<bsl::V>() << bsl::here();
-                return mut_ret;
-            }
-
-            mut_ret = m_pp_lapic.initialize(gs, tls, sys, intrinsic);
-            if (bsl::unlikely(!mut_ret)) {
-                bsl::print<bsl::V>() << bsl::here();
-                return mut_ret;
-            }
-
-            mut_ret = m_pp_mmio.initialize(gs, tls, sys, intrinsic);
-            if (bsl::unlikely(!mut_ret)) {
-                bsl::print<bsl::V>() << bsl::here();
-                return mut_ret;
-            }
-
-            mut_ret = m_pp_msr.initialize(gs, tls, sys, intrinsic);
-            if (bsl::unlikely(!mut_ret)) {
-                bsl::print<bsl::V>() << bsl::here();
-                return mut_ret;
-            }
-
-            mut_ret = m_pp_mtrrs.initialize(gs, tls, sys, intrinsic);
-            if (bsl::unlikely(!mut_ret)) {
-                bsl::print<bsl::V>() << bsl::here();
-                return mut_ret;
-            }
-
-            m_id = i;
-
-            mut_release_vm_on_error.ignore();
-            return bsl::errc_success;
+            m_id = ~mut_sys.bf_tls_ppid();
         }
 
         /// <!-- description -->
@@ -172,49 +102,42 @@ namespace microv
         /// <!-- inputs/outputs -->
         ///   @param gs the gs_t to use
         ///   @param tls the tls_t to use
-        ///   @param sys the bf_syscall_t to use
+        ///   @param mut_sys the bf_syscall_t to use
         ///   @param intrinsic the intrinsic_t to use
         ///
         constexpr void
         release(
             gs_t const &gs,
             tls_t const &tls,
-            syscall::bf_syscall_t const &sys,
+            syscall::bf_syscall_t &mut_sys,
             intrinsic_t const &intrinsic) noexcept
         {
-            m_pp_cpuid.release(gs, tls, sys, intrinsic);
-            m_pp_cr.release(gs, tls, sys, intrinsic);
-            m_pp_io.release(gs, tls, sys, intrinsic);
-            m_pp_lapic.release(gs, tls, sys, intrinsic);
-            m_pp_mmio.release(gs, tls, sys, intrinsic);
-            m_pp_msr.release(gs, tls, sys, intrinsic);
-            m_pp_mtrrs.release(gs, tls, sys, intrinsic);
+            m_pp_mtrrs.release(gs, tls, mut_sys, intrinsic);
+            m_pp_msr.release(gs, tls, mut_sys, intrinsic);
+            m_pp_mmio.release(gs, tls, mut_sys, intrinsic);
+            m_pp_lapic.release(gs, tls, mut_sys, intrinsic);
+            m_pp_io.release(gs, tls, mut_sys, intrinsic);
+            m_pp_cr.release(gs, tls, mut_sys, intrinsic);
 
-            m_id = bsl::safe_uint16::failure();
+            m_id = {};
         }
 
         /// <!-- description -->
-        ///   @brief Reads CPUID on the physical processor using the values
-        ///     stored in the eax, ebx, ecx, and edx registers provided by the
-        ///     syscall layer and stores the results in the same registers.
+        ///   @brief Returns the ID of this pp_t
         ///
         /// <!-- inputs/outputs -->
-        ///   @param gs the gs_t to use
-        ///   @param mut_sys the bf_syscall_t to use
-        ///   @param intrinsic the intrinsic_t to use
-        ///   @return Returns bsl::errc_success on success, bsl::errc_failure
-        ///     and friends otherwise
+        ///   @return Returns the ID of this pp_t
         ///
         [[nodiscard]] constexpr auto
-        cpuid_get(gs_t const &gs, syscall::bf_syscall_t &mut_sys, intrinsic_t const &intrinsic)
-            const noexcept -> bsl::errc_type
+        id() const noexcept -> bsl::safe_u16
         {
-            return m_pp_cpuid.get(gs, mut_sys, intrinsic);
+            bsl::ensures(m_id.is_valid_and_checked());
+            return ~m_id;
         }
 
         /// <!-- description -->
-        ///   @brief Please see m_pp_mmio.map() for details as there are a
-        ///     lot and they are important to understand.
+        ///   @brief Returns a pp_unique_map_t<T> given an SPA to map. If an
+        ///     error occurs, an invalid pp_unique_map_t<T> is returned.
         ///
         /// <!-- inputs/outputs -->
         ///   @tparam T the type to map and return
@@ -225,10 +148,62 @@ namespace microv
         ///
         template<typename T>
         [[nodiscard]] constexpr auto
-        map(syscall::bf_syscall_t &mut_sys, bsl::safe_uintmax const &spa) noexcept
-            -> pp_unique_map_t<T>
+        map(syscall::bf_syscall_t &mut_sys, bsl::safe_umx const &spa) noexcept -> pp_unique_map_t<T>
         {
+            bsl::expects(this->id() != syscall::BF_INVALID_ID);
             return m_pp_mmio.map<T>(mut_sys, spa);
+        }
+
+        /// <!-- description -->
+        ///   @brief Sets the SPA of the shared page. This cause the pp_mmio_t
+        ///     to map in the shared page so that it can be used later.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param mut_sys the bf_syscall_t to use
+        ///
+        constexpr void
+        clr_shared_page_spa(syscall::bf_syscall_t &mut_sys) noexcept
+        {
+            bsl::expects(this->id() != syscall::BF_INVALID_ID);
+            m_pp_mmio.clr_shared_page_spa(mut_sys);
+        }
+
+        /// <!-- description -->
+        ///   @brief Sets the SPA of the shared page. This cause the pp_mmio_t
+        ///     to map in the shared page so that it can be used later.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param mut_sys the bf_syscall_t to use
+        ///   @param spa the system physical address of the shared page
+        ///   @return Returns bsl::errc_success on success, bsl::errc_failure
+        ///     and friends otherwise
+        ///
+        [[nodiscard]] constexpr auto
+        set_shared_page_spa(syscall::bf_syscall_t &mut_sys, bsl::safe_u64 const &spa) noexcept
+            -> bsl::errc_type
+        {
+            bsl::expects(this->id() != syscall::BF_INVALID_ID);
+            return m_pp_mmio.set_shared_page_spa(mut_sys, spa);
+        }
+
+        /// <!-- description -->
+        ///   @brief Returns a pp_unique_shared_page_t<T> if the shared page
+        ///     is not currently in use. If an error occurs, returns an invalid
+        ///     pp_unique_shared_page_t<T>.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @tparam T the type of shared page to return
+        ///   @param sys the bf_syscall_t to use
+        ///   @return Returns a pp_unique_shared_page_t<T> if the shared page
+        ///     is not currently in use. If an error occurs, returns an invalid
+        ///     pp_unique_shared_page_t<T>.
+        ///
+        template<typename T>
+        [[nodiscard]] constexpr auto
+        shared_page(syscall::bf_syscall_t const &sys) noexcept -> pp_unique_shared_page_t<T>
+        {
+            bsl::expects(this->id() != syscall::BF_INVALID_ID);
+            return m_pp_mmio.shared_page<T>(sys);
         }
     };
 }

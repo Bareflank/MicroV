@@ -28,9 +28,12 @@
 #include <bf_syscall_t.hpp>
 #include <gs_t.hpp>
 #include <intrinsic_t.hpp>
+#include <page_4k_t.hpp>
 
 #include <bsl/debug.hpp>
+#include <bsl/discard.hpp>
 #include <bsl/errc_type.hpp>
+#include <bsl/unlikely.hpp>
 
 namespace microv
 {
@@ -51,8 +54,8 @@ namespace microv
     {
         bsl::discard(intrinsic);
 
-        mut_gs.msr_bitmap = mut_sys.bf_mem_op_alloc_page(mut_gs.msr_bitmap_phys);
-        if (bsl::unlikely_assert(nullptr == mut_gs.msr_bitmap)) {
+        mut_gs.msr_bitmap = mut_sys.bf_mem_op_alloc_page<page_4k_t>(mut_gs.msr_bitmap_phys);
+        if (bsl::unlikely(nullptr == mut_gs.msr_bitmap)) {
             bsl::print<bsl::V>() << bsl::here();
             return bsl::errc_failure;
         }

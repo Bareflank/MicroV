@@ -56,7 +56,7 @@ endif()
 target_include_directories(vmm PRIVATE
     include
     src
-    ../hypercall/include/cpp
+    ../hypercall/include
 )
 
 # ------------------------------------------------------------------------------
@@ -66,20 +66,20 @@ target_include_directories(vmm PRIVATE
 list(APPEND HEADERS
     ${CMAKE_CURRENT_LIST_DIR}/src/vp_pool_t.hpp
     ${CMAKE_CURRENT_LIST_DIR}/src/vp_t.hpp
-    ${CMAKE_CURRENT_LIST_DIR}/src/vps_pool_t.hpp
+    ${CMAKE_CURRENT_LIST_DIR}/src/vs_pool_t.hpp
 )
 
 if(HYPERVISOR_TARGET_ARCH STREQUAL "AuthenticAMD" OR HYPERVISOR_TARGET_ARCH STREQUAL "GenuineIntel")
     list(APPEND HEADERS
         ${CMAKE_CURRENT_LIST_DIR}/src/x64/intrinsic_cpuid_impl.hpp
+        ${CMAKE_CURRENT_LIST_DIR}/src/x64/intrinsic_t.hpp
     )
 
     if(HYPERVISOR_TARGET_ARCH STREQUAL "AuthenticAMD")
         list(APPEND HEADERS
             ${CMAKE_CURRENT_LIST_DIR}/src/x64/amd/gs_t.hpp
             ${CMAKE_CURRENT_LIST_DIR}/src/x64/amd/tls_t.hpp
-            ${CMAKE_CURRENT_LIST_DIR}/src/x64/amd/intrinsic_t.hpp
-            ${CMAKE_CURRENT_LIST_DIR}/src/x64/amd/vps_t.hpp
+            ${CMAKE_CURRENT_LIST_DIR}/src/x64/amd/vs_t.hpp
         )
     endif()
 
@@ -87,8 +87,7 @@ if(HYPERVISOR_TARGET_ARCH STREQUAL "AuthenticAMD" OR HYPERVISOR_TARGET_ARCH STRE
         list(APPEND HEADERS
             ${CMAKE_CURRENT_LIST_DIR}/src/x64/intel/gs_t.hpp
             ${CMAKE_CURRENT_LIST_DIR}/src/x64/intel/tls_t.hpp
-            ${CMAKE_CURRENT_LIST_DIR}/src/x64/intel/intrinsic_t.hpp
-            ${CMAKE_CURRENT_LIST_DIR}/src/x64/intel/vps_t.hpp
+            ${CMAKE_CURRENT_LIST_DIR}/src/x64/intel/vs_t.hpp
         )
     endif()
 endif()
@@ -108,7 +107,7 @@ endif()
 # ------------------------------------------------------------------------------
 
 target_compile_definitions(hypervisor INTERFACE
-    MICROV_MAX_PP_MAPS=${MICROV_MAX_PP_MAPS}_umax
+    MICROV_MAX_PP_MAPS=${MICROV_MAX_PP_MAPS}_umx
 )
 
 # ------------------------------------------------------------------------------
@@ -120,6 +119,7 @@ target_link_libraries(vmm PRIVATE
     bsl
     loader
     syscall
+    lib
 )
 
 # ------------------------------------------------------------------------------

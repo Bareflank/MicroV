@@ -30,14 +30,24 @@
 #include <kvm_cpuid2.h>
 #include <types.h>
 
-/**
- * <!-- description -->
- *   @brief Handles the execution of kvm_check_extension.
- *
- * <!-- inputs/outputs -->
- *   @param ioctl_args the arguments provided by userspace
- *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
- */
-int64_t handle_system_kvm_get_supported_cpuid(struct kvm_cpuid2 *const ioctl_args);
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
+    /**
+     * <!-- description -->
+     *   @brief Handles the execution of kvm_check_extension.
+     *
+     * <!-- inputs/outputs -->
+     *   @param pmut_ioctl_args the arguments provided by userspace
+     *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
+     */
+    NODISCARD int64_t
+    handle_system_kvm_get_supported_cpuid(struct kvm_cpuid2 *const pmut_ioctl_args) NOEXCEPT;
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

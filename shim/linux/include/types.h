@@ -29,7 +29,7 @@
 #ifndef TYPES_H
 #define TYPES_H
 
-#include <stdint.h>
+#include <mv_types.h>
 
 /**
  * @brief Returned by a shim function when a function succeeds.

@@ -30,14 +30,23 @@
 #include <kvm_fpu.h>
 #include <types.h>
 
-/**
- * <!-- description -->
- *   @brief Handles the execution of kvm_set_fpu.
- *
- * <!-- inputs/outputs -->
- *   @param ioctl_args the arguments provided by userspace
- *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
- */
-int64_t handle_vcpu_kvm_set_fpu(struct kvm_fpu *const ioctl_args);
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
+    /**
+     * <!-- description -->
+     *   @brief Handles the execution of kvm_set_fpu.
+     *
+     * <!-- inputs/outputs -->
+     *   @param pmut_ioctl_args the arguments provided by userspace
+     *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
+     */
+    NODISCARD int64_t handle_vcpu_kvm_set_fpu(struct kvm_fpu *const pmut_ioctl_args) NOEXCEPT;
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

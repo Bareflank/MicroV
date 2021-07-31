@@ -33,21 +33,23 @@
 #include <bsl/debug.hpp>
 #include <bsl/discard.hpp>
 #include <bsl/errc_type.hpp>
-#include <bsl/unlikely_assert.hpp>
+#include <bsl/unlikely.hpp>
 
 namespace microv
 {
     /// @class microv::emulated_io_t
     ///
     /// <!-- description -->
-    ///   @brief Defines MicroV's emulated IO handler. Emulated resources
-    ///     are owned by guest VPSs and provide an emulated interface for
-    ///     guest VMs.
+    ///   @brief Defines MicroV's emulated IO handler.
+    ///
+    ///   @note IMPORTANT: This class is a per-VS class, and all accesses
+    ///     to Port IO from a VM (root or guest) must come from this class.
+    ///     Note that in most cases, we will not trap on root IO accesses.
     ///
     class emulated_io_t final
     {
-        /// @brief stores the initialization state of emulated_io_t.
-        bool m_initialized{};
+        /// @brief stores the ID of the VS associated with this emulated_io_t
+        bsl::safe_u16 m_assigned_vsid{};
 
     public:
         /// <!-- description -->
@@ -58,28 +60,24 @@ namespace microv
         ///   @param tls the tls_t to use
         ///   @param sys the bf_syscall_t to use
         ///   @param intrinsic the intrinsic_t to use
-        ///   @return Returns bsl::errc_success on success, bsl::errc_failure
-        ///     and friends otherwise
+        ///   @param vsid the ID of the VS associated with this emulated_io_t
         ///
-        [[nodiscard]] constexpr auto
+        constexpr void
         initialize(
             gs_t const &gs,
             tls_t const &tls,
             syscall::bf_syscall_t const &sys,
-            intrinsic_t const &intrinsic) noexcept -> bsl::errc_type
+            intrinsic_t const &intrinsic,
+            bsl::safe_u16 const &vsid) noexcept
         {
+            bsl::expects(this->assigned_vsid() == syscall::BF_INVALID_ID);
+
             bsl::discard(gs);
             bsl::discard(tls);
             bsl::discard(sys);
             bsl::discard(intrinsic);
 
-            if (bsl::unlikely_assert(m_initialized)) {
-                bsl::error() << "emulated_io_t already initialized\n" << bsl::here();
-                return bsl::errc_precondition;
-            }
-
-            m_initialized = true;
-            return bsl::errc_success;
+            m_assigned_vsid = ~vsid;
         }
 
         /// <!-- description -->
@@ -103,7 +101,22 @@ namespace microv
             bsl::discard(sys);
             bsl::discard(intrinsic);
 
-            m_initialized = false;
+            m_assigned_vsid = {};
+        }
+
+        /// <!-- description -->
+        ///   @brief Returns the ID of the PP associated with this
+        ///     emulated_io_t
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @return Returns the ID of the PP associated with this
+        ///     emulated_io_t
+        ///
+        [[nodiscard]] constexpr auto
+        assigned_vsid() const noexcept -> bsl::safe_u16
+        {
+            bsl::ensures(m_assigned_vsid.is_valid_and_checked());
+            return ~m_assigned_vsid;
         }
     };
 }

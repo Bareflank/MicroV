@@ -26,7 +26,6 @@
 
 #include <debug.h>
 #include <types.h>
-#include <yyyyyyyyyyyyyyyy.h>
 
 /**
  * <!-- description -->
@@ -36,8 +35,8 @@
  *   @param ioctl_args the arguments provided by userspace
  *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
  */
-int64_t
-handle_system_kvm_x86_get_mce_cap_supported(uint64_t *const ioctl_args)
+NODISCARD int64_t
+handle_system_kvm_x86_get_mce_cap_supported(uint64_t const *const ioctl_args) NOEXCEPT
 {
     (void)ioctl_args;
 

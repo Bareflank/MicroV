@@ -25,9 +25,10 @@
  */
 
 #include <debug.h>
-#include <g_hndl.h>
+#include <g_mut_hndl.h>
+#include <mv_constants.h>
 #include <mv_hypercall.h>
-#include <platform.h>
+#include <touch.h>
 #include <types.h>
 
 /**
@@ -40,14 +41,19 @@
  * <!-- inputs/outputs -->
  *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
  */
-int64_t
-shim_fini(void)
+NODISCARD int64_t
+shim_fini(void) NOEXCEPT
 {
-    if (MV_INVALID_HANDLE != g_hndl) {
-        if (mv_handle_op_close_handle(g_hndl)) {
+    if (MV_INVALID_HANDLE != g_mut_hndl) {
+        if (mv_handle_op_close_handle(g_mut_hndl)) {
             bferror("mv_handle_op_close_handle failed");
             return SHIM_FAILURE;
         }
+
+        touch();
+    }
+    else {
+        touch();
     }
 
     return SHIM_SUCCESS;

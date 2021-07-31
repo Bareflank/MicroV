@@ -29,13 +29,22 @@
 
 #include <types.h>
 
-/**
- * <!-- description -->
- *   @brief Handles the execution of kvm_destroy_vm.
- *
- * <!-- inputs/outputs -->
- *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
- */
-int64_t handle_system_kvm_destroy_vm(void);
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
+    /**
+     * <!-- description -->
+     *   @brief Handles the execution of kvm_destroy_vm.
+     *
+     * <!-- inputs/outputs -->
+     *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
+     */
+    NODISCARD int64_t handle_system_kvm_destroy_vm(void) NOEXCEPT;
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

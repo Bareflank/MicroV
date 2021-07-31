@@ -27,122 +27,97 @@
 #ifndef KVM_RUN_H
 #define KVM_RUN_H
 
+#include <kvm_run_ex.h>
+#include <kvm_run_fail_entry.h>
+#include <kvm_run_hw.h>
+#include <kvm_run_io.h>
+#include <kvm_run_mmio.h>
+#include <kvm_run_system_event.h>
+#include <kvm_run_tpr_access.h>
 #include <stdint.h>
 #include <types.h>
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 #pragma pack(push, 1)
 /** @brief defines the size of the padding1 field */
-#define PADDING1_SIZE ((int)6)
+#define KVM_RUN_PADDING1_SIZE ((int)6)
 /** @brief defines the size of the padding2 field */
-#define PADDING2_SIZE ((int)256)
+#define KVM_RUN_PADDING2_SIZE ((int)256)
 /** @brief defines the size of the padding3 field */
-#define PADDING3_SIZE ((int)2048)
+#define KVM_RUN_PADDING3_SIZE ((int)2048)
 
-/**
- * @struct kvm_run
- *
- * <!-- description -->
- *   @brief see /include/uapi/linux/kvm.h in Linux for more details.
- *   @var kvm_run::request_interrupt_window
- *   Member request_interrupt_window useful in conjunction with KVM_INTERRUPT
- *   @var kvm_run::immediate_exit
- *   Member immediate_exit is polled once when KVM_RUN starts
- *   @var kvm_run::padding1
- *   Member padding1 is ignored if KVM_CAP_IMMEDIATE_EXIT is not available
- *   @var kvm_run::exit_reason
- *   Member exit_reason informs application code why KVM_RUN has returned
- *   @var kvm_run::ready_for_interrupt_injection 
- *   Member ready_for_interrupt_injection indicates an interrupt can be injected now with KVM_INTERRUPT
- *   @var kvm_run::if_flag
- *   Member if_flag contains value of the current interrupt flag
- *   @var kvm_run::flags
- *   Member flags detailing state of the VCPU that may affect the device's behaviour
- *   @var kvm_run::cr8
- *   Member cr8 contains value of the cr8 Register
- *   @var kvm_run::apic_base
- *   Member apic_base contains value of the APIC BASE msr
- *   @var kvm_run::kvm_valid_regs
- *   Member kvm_valid_regs specifies register classes set by the host
- *   @var kvm_run::kvm_dirty_regs
- *   Member kvm_dirty_regs specifies register classes dirtied by userspace
- *   @var kvm_run::s
- *   Member s union allows userspace to access certain guest registers without having to call GET/SET_REGS
- */
-struct kvm_run
-{
-    uint8_t request_interrupt_window;
-    uint8_t immediate_exit;
-    uint8_t padding1[PADDING1_SIZE];
-
-    uint32_t exit_reason;
-    uint8_t ready_for_interrupt_injection;
-    uint8_t if_flag;
-    uint16_t flags;
-
-    uint64_t cr8;
-    uint64_t apic_base;
-
-    union
+    /**
+     * @struct kvm_run
+     *
+     * <!-- description -->
+     *   @brief see /include/uapi/linux/kvm.h in Linux for more details.
+     */
+    struct kvm_run
     {
-        struct
-        {
-            uint64_t hardware_exit_reason;
-        } hw;
+        /** @brief TODO */
+        uint8_t request_interrupt_window;
+        /** @brief TODO */
+        uint8_t immediate_exit;
+        /** @brief TODO */
+        uint8_t padding1[KVM_RUN_PADDING1_SIZE];
 
-        struct
-        {
-            uint64_t hardware_entry_failure_reason;
-            uint32_t cpu;
-        } fail_entry;
+        /** @brief TODO */
+        uint32_t exit_reason;
+        /** @brief TODO */
+        uint8_t ready_for_interrupt_injection;
+        /** @brief TODO */
+        uint8_t if_flag;
+        /** @brief TODO */
+        uint16_t flags;
 
-        struct
-        {
-            uint32_t exception;
-            uint32_t error_code;
-        } ex;
+        /** @brief TODO */
+        uint64_t cr8;
+        /** @brief TODO */
+        uint64_t apic_base;
 
-        struct
+        /**
+         * <!-- description -->
+         *   @brief TODO
+         */
+        // NOLINTNEXTLINE(bsl-decl-forbidden)
+        union
         {
-            uint8_t direction;
-            uint8_t size;
-            uint16_t port;
-            uint32_t count;
-            uint64_t data_offset;
-        } io;
+            /** @brief TODO */
+            struct kvm_run_hw hw;
+            /** @brief TODO */
+            struct kvm_run_fail_entry fail_entry;
+            /** @brief TODO */
+            struct kvm_run_ex ex;
+            /** @brief TODO */
+            struct kvm_run_io io;
+            /** @brief TODO */
+            struct kvm_run_mmio mmio;
+            /** @brief TODO */
+            struct kvm_run_tpr_access tpr_access;
+            /** @brief TODO */
+            struct kvm_run_system_event system_event;
 
-        struct
-        {
-            uint64_t phys_addr;
-            uint8_t data[8];
-            uint32_t len;
-            uint8_t is_write;
-        } mmio;
+            /** @brief TODO */
+            char padding2[KVM_RUN_PADDING2_SIZE];
+        };
 
-        struct
-        {
-            uint64_t rip;
-            uint32_t is_write;
-            uint32_t pad;
-        } tpr_access;
+        /** @brief TODO */
+        uint64_t kvm_valid_regs;
+        /** @brief TODO */
+        uint64_t kvm_dirty_regs;
 
-        struct
-        {
-            uint32_t type;
-            uint64_t flags;
-        } system_event;
-
-        char padding2[PADDING2_SIZE];
+        /** @brief TODO */
+        char padding3[KVM_RUN_PADDING3_SIZE];
     };
 
-    uint64_t kvm_valid_regs;
-    uint64_t kvm_dirty_regs;
-
-    union
-    {
-        char padding3[PADDING3_SIZE];
-    } s;
-};
-
 #pragma pack(pop)
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

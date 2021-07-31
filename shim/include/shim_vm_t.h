@@ -30,21 +30,31 @@
 #include <stdint.h>
 #include <types.h>
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 #pragma pack(push, 1)
 
-/**
- * @struct shim_vm_t
- *
- * <!-- description -->
- *   @brief see /include/uapi/linux/kvm.h in Linux for more details.
- *   @var shim_vm_t::vmid
- *   Member vmid holds the current vmid
-*/
-struct shim_vm_t
-{
-    uint16_t vmid;
-};
+    /**
+     * @struct shim_vm_t
+     *
+     * <!-- description -->
+     *   @brief Represents the shim's version of a VM, and stores all of the
+     *     state that the shim needs to convert between KVM and MicroV
+     *     with respect to a VM.
+     */
+    struct shim_vm_t
+    {
+        /** @brief stores the ID of the VM associated with this shim_vm_t */
+        uint16_t vmid;
+    };
 
 #pragma pack(pop)
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

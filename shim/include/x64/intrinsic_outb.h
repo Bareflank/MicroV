@@ -38,6 +38,6 @@
  *   @param port the port to write to
  *   @param val the value to write to the given Port
  */
-void intrinsic_outb(uint16_t const port, uint8_t val);
+void intrinsic_outb(uint16_t const port, uint8_t const val);
 
 #endif

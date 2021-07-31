@@ -33,21 +33,23 @@
 #include <bsl/debug.hpp>
 #include <bsl/discard.hpp>
 #include <bsl/errc_type.hpp>
-#include <bsl/unlikely_assert.hpp>
+#include <bsl/unlikely.hpp>
 
 namespace microv
 {
     /// @class microv::emulated_pit_t
     ///
     /// <!-- description -->
-    ///   @brief Defines MicroV's emulated PIT handler. Emulated resources
-    ///     are owned by guest VPSs and provide an emulated interface for
+    ///   @brief Defines MicroV's emulated PIC handler.
+    ///
+    ///   @note IMPORTANT: This class is a per-VM class. Any IO/MMIO accesses
+    ///     to the PIC must come through here. This is only needed by for
     ///     guest VMs.
     ///
     class emulated_pit_t final
     {
-        /// @brief stores the initialization state of emulated_pit_t.
-        bool m_initialized{};
+        /// @brief stores the ID of the VM associated with this emulated_pit_t
+        bsl::safe_u16 m_assigned_vmid{};
 
     public:
         /// <!-- description -->
@@ -58,28 +60,24 @@ namespace microv
         ///   @param tls the tls_t to use
         ///   @param sys the bf_syscall_t to use
         ///   @param intrinsic the intrinsic_t to use
-        ///   @return Returns bsl::errc_success on success, bsl::errc_failure
-        ///     and friends otherwise
+        ///   @param vmid the ID of the VM associated with this emulated_pit_t
         ///
-        [[nodiscard]] constexpr auto
+        constexpr void
         initialize(
             gs_t const &gs,
             tls_t const &tls,
             syscall::bf_syscall_t const &sys,
-            intrinsic_t const &intrinsic) noexcept -> bsl::errc_type
+            intrinsic_t const &intrinsic,
+            bsl::safe_u16 const &vmid) noexcept
         {
+            bsl::expects(this->assigned_vmid() == syscall::BF_INVALID_ID);
+
             bsl::discard(gs);
             bsl::discard(tls);
             bsl::discard(sys);
             bsl::discard(intrinsic);
 
-            if (bsl::unlikely_assert(m_initialized)) {
-                bsl::error() << "emulated_pit_t already initialized\n" << bsl::here();
-                return bsl::errc_precondition;
-            }
-
-            m_initialized = true;
-            return bsl::errc_success;
+            m_assigned_vmid = ~vmid;
         }
 
         /// <!-- description -->
@@ -103,7 +101,22 @@ namespace microv
             bsl::discard(sys);
             bsl::discard(intrinsic);
 
-            m_initialized = false;
+            m_assigned_vmid = {};
+        }
+
+        /// <!-- description -->
+        ///   @brief Returns the ID of the PP associated with this
+        ///     emulated_pit_t
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @return Returns the ID of the PP associated with this
+        ///     emulated_pit_t
+        ///
+        [[nodiscard]] constexpr auto
+        assigned_vmid() const noexcept -> bsl::safe_u16
+        {
+            bsl::ensures(m_assigned_vmid.is_valid_and_checked());
+            return ~m_assigned_vmid;
         }
     };
 }
