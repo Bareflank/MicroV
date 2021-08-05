@@ -679,30 +679,28 @@ namespace microv
         }
 
         /// <!-- description -->
-        ///   @brief Translates a guest GVA to a guest GPA using the paging
-        ///     configuration of the guest stored in CR0 and CR4. Translation
-        ///     occurs using whatever CR3 the VPS has as the root page table
-        ///     to parse, and the pp_pool it uses to map in guest page tables
-        ///     during translation.
+        ///   @brief Translates a guest GLA to a guest GPA using the paging
+        ///     configuration of the guest stored in CR0, CR3 and CR4.
         ///
         /// <!-- notes -->
         ///   @note This function is slow. It has to map in guest page tables
         ///     so that it can walk these tables and perform the translation.
         ///     Once the translation is done, these translations are unmapped.
         ///     If we didn't do this, the direct map would become polluted with
-        ///     maps that are no longer needed.
+        ///     maps that are no longer needed, and these maps may eventually
+        ///     point to memory used by the guest to store a secret.
         ///
         ///   @note IMPORTANT: One way to improve performance of code that
         ///     uses this function is to cache these translations. This would
         ///     implement a virtual TLB. You might not call it that, but that
-        ///     is what it is. If you store ANY translations, you must clear
+        ///     is what it is. If we store ANY translations, we must clear
         ///     them when the guest attempts to perform any TLB invalidations,
         ///     as the translation might not be valid any more. This is made
         ///     even worse with remote TLB invalidations that the guest
         ///     performs because the hypervisor has to mimic the same behaviour
-        ///     that any race conditions introduce. For example, if you are in
+        ///     that any race conditions introduce. For example, if we are in
         ///     the middle of emulating an instruction on one CPU, and another
-        ///     performs a race condition, emulation needs to complete before
+        ///     performs an invalidation, emulation needs to complete before
         ///     the invalidation takes place. Otherwise, a use-after-free
         ///     bug could occur. This only applies to the decoding portion of
         ///     emulation as the CPU is pipelined. Reads/writes to memory
@@ -710,67 +708,64 @@ namespace microv
         ///     is what the CPU would do. To simplify this, all translations
         ///     should ALWAYS come from this function. Meaning, if a translation
         ///     must be stored, it should be stored here in a virtual TLB. This
-        ///     way, any invalidations to a VP can be flushed in the VPS. If
+        ///     way, any invalidations to a VPS can be flushed in the VPS. If
         ///     all functions always have to call this function, it will simply
         ///     return a cached translation. If the cache is flushed because
-        ///     the guest performed a flush, the translation process will
-        ///     automatically happen. This way, software always does the GVA
+        ///     the guest performed a flush, the required TLB update will
+        ///     automatically happen. This way, software always does the GLA
         ///     to GPA conversion when it is needed, and only when it is needed
-        ///     the same way the hardware would, and then uses this GPA to
-        ///     determine what the SPA is. If the SPA is the same, it can use a
-        ///     cached map that it already has. If not, it must release the
-        ///     previous map and ask the PP for a new one with the new SPA.
-        ///     This will ensure there are no issues with TLB flushing and
-        ///     caching, and still be performant. For now, we don't use a cache.
+        ///     the same way the hardware would. DO NOT CACHE THE RESULTS OF
+        ///     THIS FUNCTION. YOU MUST ALWAYS CALL THIS FUNCTION EVERYTIME
+        ///     A TRANSLATION IS NEEDED.
         ///
         /// <!-- inputs/outputs -->
         ///   @param mut_sys the bf_syscall_t to use
         ///   @param mut_pp_pool the pp_pool_t to use
-        ///   @param gva the GVA to translate to a GPA
-        ///   @return Returns the GPA associated with the provided GVA on
-        ///     success, or bsl::safe_uint64::failure() on failure.
+        ///   @param gla the GLA to translate to a GPA
+        ///   @return Returns mv_translation_t containing the results of the
+        ///     translation.
         ///
         [[nodiscard]] constexpr auto
-        gva_to_gpa(
+        gla_to_gpa(
             syscall::bf_syscall_t &mut_sys,
             pp_pool_t &mut_pp_pool,
-            bsl::safe_uint64 const &gva) noexcept -> bsl::safe_uint64
+            bsl::safe_uint64 const &gla) const noexcept -> hypercall::mv_translation_t
         {
             if (bsl::unlikely_assert(!m_id)) {
                 bsl::error() << "vps_t not initialized\n" << bsl::here();
-                return bsl::safe_uint64::failure();
+                return {{}, {}, {}, {}, false};
             }
 
-            if (bsl::unlikely_assert(!gva)) {
-                bsl::error() << "invalid gva\n" << bsl::here();
-                return bsl::safe_uint64::failure();
+            if (bsl::unlikely_assert(!gla)) {
+                bsl::error() << "invalid gla\n" << bsl::here();
+                return {{}, {}, {}, {}, false};
             }
 
             auto const cr0{mut_sys.bf_vps_op_read(m_id, syscall::bf_reg_t::bf_reg_t_guest_cr0)};
             if (bsl::unlikely_assert(!cr0)) {
                 bsl::print<bsl::V>() << bsl::here();
-                return bsl::safe_uint64::failure();
+                return {{}, {}, {}, {}, false};
             }
 
             auto const cr3{mut_sys.bf_vps_op_read(m_id, syscall::bf_reg_t::bf_reg_t_guest_cr3)};
             if (bsl::unlikely_assert(!cr0)) {
                 bsl::print<bsl::V>() << bsl::here();
-                return bsl::safe_uint64::failure();
+                return {{}, {}, {}, {}, false};
             }
 
             auto const cr4{mut_sys.bf_vps_op_read(m_id, syscall::bf_reg_t::bf_reg_t_guest_cr4)};
             if (bsl::unlikely_assert(!cr0)) {
                 bsl::print<bsl::V>() << bsl::here();
-                return bsl::safe_uint64::failure();
+                return {{}, {}, {}, {}, false};
             }
 
             auto const pml4t{mut_pp_pool.map<pml4t_t const *>(mut_sys, cr3)};
             if (bsl::unlikely_assert(!pml4t)) {
                 bsl::print<bsl::V>() << bsl::here();
-                return bsl::safe_uint64::failure();
+                return {{}, {}, {}, {}, false};
             }
 
-            return bsl::safe_uint64::failure();
+            return {{}, gla, 0x1234567890ABC000_u64, 0xDEF_u64, true};
         }
     };
 }
