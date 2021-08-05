@@ -12,13 +12,9 @@
   - [1.5. ID Constants](#15-id-constants)
   - [1.6. Endianness](#16-endianness)
   - [1.7. Physical Processor (PP)](#17-physical-processor-pp)
-    - [1.7.1. Physical Processor ID (PPID)](#171-physical-processor-id-ppid)
   - [1.8. Virtual Machine (VM)](#18-virtual-machine-vm)
-    - [1.8.1. Virtual Machine ID (VMID)](#181-virtual-machine-id-vmid)
   - [1.9. Virtual Processor](#19-virtual-processor)
-    - [1.9.1. Virtual Processor ID (VPID)](#191-virtual-processor-id-vpid)
   - [1.10. Virtual Processor State](#110-virtual-processor-state)
-    - [1.10.1. Virtual Processor State ID (VPSID)](#1101-virtual-processor-state-id-vpsid)
 - [2. Hypercall Interface](#2-hypercall-interface)
   - [2.1. Legal Hypercall Environments](#21-legal-hypercall-environments)
   - [2.2. Alignment Requirements](#22-alignment-requirements)
@@ -52,18 +48,19 @@
     - [2.11.1. mv_debug_op_out, OP=0x2, IDX=0x0](#2111-mv_debug_op_out-op0x2-idx0x0)
   - [2.12. Physical Processor Hypercalls](#212-physical-processor-hypercalls)
     - [2.12.1. mv_pp_op_get_shared_page_gpa, OP=0x3, IDX=0x0](#2121-mv_pp_op_get_shared_page_gpa-op0x3-idx0x0)
-    - [2.12.2. mv_pp_op_set_shared_page_gpa, OP=0x3, IDX=0x1](#2122-mv_pp_op_set_shared_page_gpa-op0x3-idx0x1)
-    - [2.12.3. mv_pp_op_cpuid_get_supported, OP=0x3, IDX=0x2](#2123-mv_pp_op_cpuid_get_supported-op0x3-idx0x2)
-    - [2.12.4. mv_pp_op_cpuid_get_permissable, OP=0x3, IDX=0x3](#2124-mv_pp_op_cpuid_get_permissable-op0x3-idx0x3)
-    - [2.12.5. mv_pp_op_cpuid_get_emulated, OP=0x3, IDX=0x4](#2125-mv_pp_op_cpuid_get_emulated-op0x3-idx0x4)
-    - [2.12.6. mv_pp_op_reg_get_supported, OP=0x3, IDX=0x5](#2126-mv_pp_op_reg_get_supported-op0x3-idx0x5)
-    - [2.12.7. mv_pp_op_reg_get_permissable, OP=0x3, IDX=0x6](#2127-mv_pp_op_reg_get_permissable-op0x3-idx0x6)
-    - [2.12.8. mv_pp_op_reg_get_emulated, OP=0x3, IDX=0x7](#2128-mv_pp_op_reg_get_emulated-op0x3-idx0x7)
-    - [2.12.9. mv_pp_op_msr_get_supported, OP=0x3, IDX=0x8](#2129-mv_pp_op_msr_get_supported-op0x3-idx0x8)
-    - [2.12.10. mv_pp_op_msr_get_permissable, OP=0x3, IDX=0x9](#21210-mv_pp_op_msr_get_permissable-op0x3-idx0x9)
-    - [2.12.11. mv_pp_op_msr_get_emulated, OP=0x3, IDX=0xA](#21211-mv_pp_op_msr_get_emulated-op0x3-idx0xa)
-    - [2.12.12. mv_pp_op_tsc_get_khz, OP=0x3, IDX=0xB](#21212-mv_pp_op_tsc_get_khz-op0x3-idx0xb)
-    - [2.12.13. mv_pp_op_tsc_set_khz, OP=0x3, IDX=0xC](#21213-mv_pp_op_tsc_set_khz-op0x3-idx0xc)
+    - [2.12.1. mv_pp_op_clr_shared_page_gpa, OP=0x3, IDX=0x1](#2121-mv_pp_op_clr_shared_page_gpa-op0x3-idx0x1)
+    - [2.12.2. mv_pp_op_set_shared_page_gpa, OP=0x3, IDX=0x2](#2122-mv_pp_op_set_shared_page_gpa-op0x3-idx0x2)
+    - [2.12.3. mv_pp_op_cpuid_get_supported, OP=0x3, IDX=0x3](#2123-mv_pp_op_cpuid_get_supported-op0x3-idx0x3)
+    - [2.12.4. mv_pp_op_cpuid_get_permissable, OP=0x3, IDX=0x4](#2124-mv_pp_op_cpuid_get_permissable-op0x3-idx0x4)
+    - [2.12.5. mv_pp_op_cpuid_get_emulated, OP=0x3, IDX=0x5](#2125-mv_pp_op_cpuid_get_emulated-op0x3-idx0x5)
+    - [2.12.6. mv_pp_op_reg_get_supported, OP=0x3, IDX=0x6](#2126-mv_pp_op_reg_get_supported-op0x3-idx0x6)
+    - [2.12.7. mv_pp_op_reg_get_permissable, OP=0x3, IDX=0x7](#2127-mv_pp_op_reg_get_permissable-op0x3-idx0x7)
+    - [2.12.8. mv_pp_op_reg_get_emulated, OP=0x3, IDX=0x8](#2128-mv_pp_op_reg_get_emulated-op0x3-idx0x8)
+    - [2.12.9. mv_pp_op_msr_get_supported, OP=0x3, IDX=0x9](#2129-mv_pp_op_msr_get_supported-op0x3-idx0x9)
+    - [2.12.10. mv_pp_op_msr_get_permissable, OP=0x3, IDX=0xA](#21210-mv_pp_op_msr_get_permissable-op0x3-idx0xa)
+    - [2.12.11. mv_pp_op_msr_get_emulated, OP=0x3, IDX=0xB](#21211-mv_pp_op_msr_get_emulated-op0x3-idx0xb)
+    - [2.12.12. mv_pp_op_tsc_get_khz, OP=0x3, IDX=0xC](#21212-mv_pp_op_tsc_get_khz-op0x3-idx0xc)
+    - [2.12.13. mv_pp_op_tsc_set_khz, OP=0x3, IDX=0xD](#21213-mv_pp_op_tsc_set_khz-op0x3-idx0xd)
   - [2.13. Virtual Machine Hypercalls](#213-virtual-machine-hypercalls)
     - [2.13.1. mv_vm_op_create_vm, OP=0x4, IDX=0x0](#2131-mv_vm_op_create_vm-op0x4-idx0x0)
     - [2.13.2. mv_vm_op_destroy_vm, OP=0x4, IDX=0x1](#2132-mv_vm_op_destroy_vm-op0x4-idx0x1)
@@ -99,12 +96,12 @@
     - [2.15.9. mv_vps_op_run, OP=0x6, IDX=0x8](#2159-mv_vps_op_run-op0x6-idx0x8)
     - [2.15.10. mv_vps_op_cpuid_get, OP=0x6, IDX=0x9](#21510-mv_vps_op_cpuid_get-op0x6-idx0x9)
     - [2.15.11. mv_vps_op_cpuid_set, OP=0x6, IDX=0xA](#21511-mv_vps_op_cpuid_set-op0x6-idx0xa)
-    - [2.15.12. mv_vps_op_cpuid_get_all, OP=0x6, IDX=0xB](#21512-mv_vps_op_cpuid_get_all-op0x6-idx0xb)
-    - [2.15.13. mv_vps_op_cpuid_set_all, OP=0x6, IDX=0xC](#21513-mv_vps_op_cpuid_set_all-op0x6-idx0xc)
+    - [2.15.12. mv_vps_op_cpuid_get_list, OP=0x6, IDX=0xB](#21512-mv_vps_op_cpuid_get_list-op0x6-idx0xb)
+    - [2.15.13. mv_vps_op_cpuid_set_list, OP=0x6, IDX=0xC](#21513-mv_vps_op_cpuid_set_list-op0x6-idx0xc)
     - [2.15.14. mv_vps_op_reg_get, OP=0x6, IDX=0xD](#21514-mv_vps_op_reg_get-op0x6-idx0xd)
     - [2.15.15. mv_vps_op_reg_set, OP=0x6, IDX=0xE](#21515-mv_vps_op_reg_set-op0x6-idx0xe)
-    - [2.15.16. mv_vps_op_reg_get_all, OP=0x6, IDX=0xF](#21516-mv_vps_op_reg_get_all-op0x6-idx0xf)
-    - [2.15.17. mv_vps_op_reg_set_all, OP=0x6, IDX=0x10](#21517-mv_vps_op_reg_set_all-op0x6-idx0x10)
+    - [2.15.16. mv_vps_op_reg_get_list, OP=0x6, IDX=0xF](#21516-mv_vps_op_reg_get_list-op0x6-idx0xf)
+    - [2.15.17. mv_vps_op_reg_set_list, OP=0x6, IDX=0x10](#21517-mv_vps_op_reg_set_list-op0x6-idx0x10)
     - [2.15.18. mv_vps_op_reg_get_general, OP=0x6, IDX=0x11](#21518-mv_vps_op_reg_get_general-op0x6-idx0x11)
     - [2.15.19. mv_vps_op_reg_set_general, OP=0x6, IDX=0x12](#21519-mv_vps_op_reg_set_general-op0x6-idx0x12)
     - [2.15.20. mv_vps_op_reg_get_system, OP=0x6, IDX=0x13](#21520-mv_vps_op_reg_get_system-op0x6-idx0x13)
@@ -113,8 +110,8 @@
     - [2.15.23. mv_vps_op_reg_set_debug, OP=0x6, IDX=0x16](#21523-mv_vps_op_reg_set_debug-op0x6-idx0x16)
     - [2.15.24. mv_vps_op_msr_get, OP=0x6, IDX=0x17](#21524-mv_vps_op_msr_get-op0x6-idx0x17)
     - [2.15.25. mv_vps_op_msr_set, OP=0x6, IDX=0x18](#21525-mv_vps_op_msr_set-op0x6-idx0x18)
-    - [2.15.26. mv_vps_op_msr_get_all, OP=0x6, IDX=0x19](#21526-mv_vps_op_msr_get_all-op0x6-idx0x19)
-    - [2.15.27. mv_vps_op_msr_set_all, OP=0x6, IDX=0x1A](#21527-mv_vps_op_msr_set_all-op0x6-idx0x1a)
+    - [2.15.26. mv_vps_op_msr_get_list, OP=0x6, IDX=0x19](#21526-mv_vps_op_msr_get_list-op0x6-idx0x19)
+    - [2.15.27. mv_vps_op_msr_set_list, OP=0x6, IDX=0x1A](#21527-mv_vps_op_msr_set_list-op0x6-idx0x1a)
     - [2.15.28. mv_vps_op_fpu_get, OP=0x6, IDX=0x1B](#21528-mv_vps_op_fpu_get-op0x6-idx0x1b)
     - [2.15.29. mv_vps_op_fpu_set, OP=0x6, IDX=0x1C](#21529-mv_vps_op_fpu_set-op0x6-idx0x1c)
     - [2.15.30. mv_vps_op_fpu_get_all, OP=0x6, IDX=0x1D](#21530-mv_vps_op_fpu_get_all-op0x6-idx0x1d)
@@ -123,6 +120,9 @@
     - [2.15.33. mv_vps_op_xsave_set, OP=0x6, IDX=0x20](#21533-mv_vps_op_xsave_set-op0x6-idx0x20)
     - [2.15.34. mv_vps_op_xsave_get_all, OP=0x6, IDX=0x21](#21534-mv_vps_op_xsave_get_all-op0x6-idx0x21)
     - [2.15.35. mv_vps_op_xsave_set_all, OP=0x6, IDX=0x22](#21535-mv_vps_op_xsave_set_all-op0x6-idx0x22)
+    - [2.15.32. mv_vps_op_mp_state_get, OP=0x6, IDX=0x23](#21532-mv_vps_op_mp_state_get-op0x6-idx0x23)
+    - [2.15.32. mv_vps_op_mp_state_set, OP=0x6, IDX=0x24](#21532-mv_vps_op_mp_state_set-op0x6-idx0x24)
+    - [2.15.35. mv_vps_op_interrupt, OP=0x6, IDX=0x23](#21535-mv_vps_op_interrupt-op0x6-idx0x23)
 
 # 1. Introduction
 
@@ -278,7 +278,7 @@ This document only applies to 64bit Intel and AMD systems conforming to the amd6
 
 ## 1.7. Physical Processor (PP)
 
-### 1.7.1. Physical Processor ID (PPID)
+TBD
 
 ## 1.8. Virtual Machine (VM)
 
@@ -290,10 +290,6 @@ The early boot configuration of MicroV provides better security as well as early
 
 All additional VMs that are created from the root VM are called guest VMs. Guest VMs are not capable of creating additional guest VMs (VMs can only be created by the root VM). That is, MicroV uses a breath of many, depth of one approach.
 
-### 1.8.1. Virtual Machine ID (VMID)
-
-The Virtual Machine ID (VMID) is a 16bit number that uniquely identifies a VM.
-
 ## 1.9. Virtual Processor
 
 A Virtual Processor or VP virtually represents a physical core/thread on the system. It is the "thing" that is scheduled to execute code and contains one or more Virtual Processor States or VPSs that store the actual state of the VP and execute the actual code on behalf of a VP. Each time a VP is scheduled for execution, it replaces the state on the physical core/thread with one of the VPSs it owns. Once the VP is done executing, the current state of the physical core/thread is saved back to the VPS in use, allowing another VP to execute as needed.
@@ -304,17 +300,9 @@ Any additional VPs that are created are called guest VPs which are owned and exe
 
 Unlike guest VMs who only have a single owning root VM, guest VPs can be owned by a single but different root VP at any given time. When a root VP executes a guest VP, the root VP becomes the parent VP and the guest VP becomes the child VP. During execution of a guest VP the parent/child relationship does not change. Once the guest VP's execution is complete the parent/child relationship is released and the scheduler is free to transfer ownership of a guest VP from one root VP to another. This transfer of ownership usually occurs during VP migration and is due to the fact that a guest VM is not required to have the same number of guest VPs compared to the number of root VPs which reflects the physical number of cores/threads on the system. As a result, the scheduler is free to move guest VPs to different root VPs as needed to optimize performance, resulting in a VP migration.
 
-### 1.9.1. Virtual Processor ID (VPID)
-
-The Virtual Processor ID (VPID) is a 16bit number that uniquely identifies a VP.
-
 ## 1.10. Virtual Processor State
 
 TBD
-
-### 1.10.1. Virtual Processor State ID (VPSID)
-
-The Virtual Processor State ID (VPSID) is a 16bit number that uniquely identifies a VPS.
 
 # 2. Hypercall Interface
 
@@ -734,36 +722,48 @@ TBD
 
 ### 2.12.1. mv_pp_op_get_shared_page_gpa, OP=0x3, IDX=0x0
 
-This hypercall tells MicroV to return the GPA of the requested PP's shared page.
+This hypercall tells MicroV to return the GPA of the current PP's shared page.
 
 **Input:**
 | Register Name | Bits | Description |
 | :------------ | :--- | :---------- |
 | REG0 | 63:0 | Set to the result of mv_handle_op_open_handle |
-| REG1 | 15:0 | The PPID of the PP to query |
-| REG1 | 63:16 | REVI |
 
 **Output:**
 | Register Name | Bits | Description |
 | :------------ | :--- | :---------- |
-| REG0 | 63:0 | The GPA of the requested PP's shared page |
+| REG0 | 11:0 | REVZ |
+| REG0 | 63:12 | The GPA of the requested PP's shared page |
 
 **const, uint64_t: MV_PP_OP_GET_SHARED_PAGE_GPA_IDX_VAL**
 | Value | Description |
 | :---- | :---------- |
 | 0x0000000000000000 | Defines the index for mv_pp_op_get_shared_page_gpa |
 
-### 2.12.2. mv_pp_op_set_shared_page_gpa, OP=0x3, IDX=0x1
+### 2.12.1. mv_pp_op_clr_shared_page_gpa, OP=0x3, IDX=0x1
 
-This hypercall tells MicroV to set the GPA of the requested PP's shared page.
+This hypercall tells MicroV to clear the GPA of the current PP's shared page.
 
 **Input:**
 | Register Name | Bits | Description |
 | :------------ | :--- | :---------- |
 | REG0 | 63:0 | Set to the result of mv_handle_op_open_handle |
-| REG1 | 15:0 | The PPID of the PP to set |
-| REG1 | 63:16 | REVI |
-| REG0 | 63:0 | The GPA to set the requested PP's shared page to |
+
+**const, uint64_t: MV_PP_OP_CLR_SHARED_PAGE_GPA_IDX_VAL**
+| Value | Description |
+| :---- | :---------- |
+| 0x0000000000000001 | Defines the index for mv_pp_op_clr_shared_page_gpa |
+
+### 2.12.2. mv_pp_op_set_shared_page_gpa, OP=0x3, IDX=0x2
+
+This hypercall tells MicroV to set the GPA of the current PP's shared page.
+
+**Input:**
+| Register Name | Bits | Description |
+| :------------ | :--- | :---------- |
+| REG0 | 63:0 | Set to the result of mv_handle_op_open_handle |
+| REG1 | 11:0 | REVI |
+| REG1 | 63:12 | The GPA to set the requested PP's shared page to |
 
 **Output:**
 | Register Name | Bits | Description |
@@ -772,106 +772,106 @@ This hypercall tells MicroV to set the GPA of the requested PP's shared page.
 **const, uint64_t: MV_PP_OP_SET_SHARED_PAGE_GPA_IDX_VAL**
 | Value | Description |
 | :---- | :---------- |
-| 0x0000000000000001 | Defines the index for mv_pp_op_set_shared_page_gpa |
+| 0x0000000000000002 | Defines the index for mv_pp_op_set_shared_page_gpa |
 
-### 2.12.3. mv_pp_op_cpuid_get_supported, OP=0x3, IDX=0x2
+### 2.12.3. mv_pp_op_cpuid_get_supported, OP=0x3, IDX=0x3
 
 TBD
 
 **const, uint64_t: MV_PP_OP_CPUID_GET_SUPPORTED_IDX_VAL**
 | Value | Description |
 | :---- | :---------- |
-| 0x0000000000000002 | Defines the index for mv_pp_op_cpuid_get_supported |
+| 0x0000000000000003 | Defines the index for mv_pp_op_cpuid_get_supported |
 
-### 2.12.4. mv_pp_op_cpuid_get_permissable, OP=0x3, IDX=0x3
+### 2.12.4. mv_pp_op_cpuid_get_permissable, OP=0x3, IDX=0x4
 
 TBD
 
 **const, uint64_t: MV_PP_OP_CPUID_GET_PERMISSABLE_IDX_VAL**
 | Value | Description |
 | :---- | :---------- |
-| 0x0000000000000003 | Defines the index for mv_pp_op_cpuid_get_permissable |
+| 0x0000000000000004 | Defines the index for mv_pp_op_cpuid_get_permissable |
 
-### 2.12.5. mv_pp_op_cpuid_get_emulated, OP=0x3, IDX=0x4
+### 2.12.5. mv_pp_op_cpuid_get_emulated, OP=0x3, IDX=0x5
 
 TBD
 
 **const, uint64_t: MV_PP_OP_CPUID_GET_EMULATED_IDX_VAL**
 | Value | Description |
 | :---- | :---------- |
-| 0x0000000000000004 | Defines the index for mv_pp_op_cpuid_get_emulated |
+| 0x0000000000000005 | Defines the index for mv_pp_op_cpuid_get_emulated |
 
-### 2.12.6. mv_pp_op_reg_get_supported, OP=0x3, IDX=0x5
+### 2.12.6. mv_pp_op_reg_get_supported, OP=0x3, IDX=0x6
 
 TBD
 
 **const, uint64_t: MV_PP_OP_REG_GET_SUPPORTED_IDX_VAL**
 | Value | Description |
 | :---- | :---------- |
-| 0x0000000000000005 | Defines the index for mv_pp_op_reg_get_supported |
+| 0x0000000000000006 | Defines the index for mv_pp_op_reg_get_supported |
 
-### 2.12.7. mv_pp_op_reg_get_permissable, OP=0x3, IDX=0x6
+### 2.12.7. mv_pp_op_reg_get_permissable, OP=0x3, IDX=0x7
 
 TBD
 
 **const, uint64_t: MV_PP_OP_REG_GET_PERMISSABLE_IDX_VAL**
 | Value | Description |
 | :---- | :---------- |
-| 0x0000000000000006 | Defines the index for mv_pp_op_reg_get_permissable |
+| 0x0000000000000007 | Defines the index for mv_pp_op_reg_get_permissable |
 
-### 2.12.8. mv_pp_op_reg_get_emulated, OP=0x3, IDX=0x7
+### 2.12.8. mv_pp_op_reg_get_emulated, OP=0x3, IDX=0x8
 
 TBD
 
 **const, uint64_t: MV_PP_OP_REG_GET_EMULATED_IDX_VAL**
 | Value | Description |
 | :---- | :---------- |
-| 0x0000000000000007 | Defines the index for mv_pp_op_reg_get_emulated |
+| 0x0000000000000008 | Defines the index for mv_pp_op_reg_get_emulated |
 
-### 2.12.9. mv_pp_op_msr_get_supported, OP=0x3, IDX=0x8
+### 2.12.9. mv_pp_op_msr_get_supported, OP=0x3, IDX=0x9
 
 TBD
 
 **const, uint64_t: MV_PP_OP_MSR_GET_SUPPORTED_IDX_VAL**
 | Value | Description |
 | :---- | :---------- |
-| 0x0000000000000008 | Defines the index for mv_pp_op_msr_get_supported |
+| 0x0000000000000009 | Defines the index for mv_pp_op_msr_get_supported |
 
-### 2.12.10. mv_pp_op_msr_get_permissable, OP=0x3, IDX=0x9
+### 2.12.10. mv_pp_op_msr_get_permissable, OP=0x3, IDX=0xA
 
 TBD
 
 **const, uint64_t: MV_PP_OP_MSR_GET_PERMISSABLE_IDX_VAL**
 | Value | Description |
 | :---- | :---------- |
-| 0x0000000000000009 | Defines the index for mv_pp_op_msr_get_permissable |
+| 0x000000000000000A | Defines the index for mv_pp_op_msr_get_permissable |
 
-### 2.12.11. mv_pp_op_msr_get_emulated, OP=0x3, IDX=0xA
+### 2.12.11. mv_pp_op_msr_get_emulated, OP=0x3, IDX=0xB
 
 TBD
 
 **const, uint64_t: MV_PP_OP_MSR_GET_EMULATED_IDX_VAL**
 | Value | Description |
 | :---- | :---------- |
-| 0x000000000000000A | Defines the index for mv_pp_op_msr_get_emulated |
+| 0x000000000000000B | Defines the index for mv_pp_op_msr_get_emulated |
 
-### 2.12.12. mv_pp_op_tsc_get_khz, OP=0x3, IDX=0xB
+### 2.12.12. mv_pp_op_tsc_get_khz, OP=0x3, IDX=0xC
 
 TBD
 
 **const, uint64_t: MV_PP_OP_TSC_GET_KHZ_IDX_VAL**
 | Value | Description |
 | :---- | :---------- |
-| 0x000000000000000B | Defines the index for mv_pp_op_tsc_get_khz |
+| 0x000000000000000C | Defines the index for mv_pp_op_tsc_get_khz |
 
-### 2.12.13. mv_pp_op_tsc_set_khz, OP=0x3, IDX=0xC
+### 2.12.13. mv_pp_op_tsc_set_khz, OP=0x3, IDX=0xD
 
 TBD
 
 **const, uint64_t: MV_PP_OP_TSC_SET_KHZ_IDX_VAL**
 | Value | Description |
 | :---- | :---------- |
-| 0x000000000000000C | Defines the index for mv_pp_op_tsc_set_khz |
+| 0x000000000000000D | Defines the index for mv_pp_op_tsc_set_khz |
 
 ## 2.13. Virtual Machine Hypercalls
 
@@ -1337,23 +1337,23 @@ TBD
 | :---- | :---------- |
 | 0x000000000000000A | Defines the index for mv_vps_op_cpuid_set |
 
-### 2.15.12. mv_vps_op_cpuid_get_all, OP=0x6, IDX=0xB
+### 2.15.12. mv_vps_op_cpuid_get_list, OP=0x6, IDX=0xB
 
 TBD
 
-**const, uint64_t: MV_VPS_OP_CPUID_GET_ALL_IDX_VAL**
+**const, uint64_t: MV_VPS_OP_CPUID_GET_LIST_IDX_VAL**
 | Value | Description |
 | :---- | :---------- |
-| 0x000000000000000B | Defines the index for mv_vps_op_cpuid_get_all |
+| 0x000000000000000B | Defines the index for mv_vps_op_cpuid_get_list |
 
-### 2.15.13. mv_vps_op_cpuid_set_all, OP=0x6, IDX=0xC
+### 2.15.13. mv_vps_op_cpuid_set_list, OP=0x6, IDX=0xC
 
 TBD
 
-**const, uint64_t: MV_VPS_OP_CPUID_SET_ALL_IDX_VAL**
+**const, uint64_t: MV_VPS_OP_CPUID_SET_LIST_IDX_VAL**
 | Value | Description |
 | :---- | :---------- |
-| 0x000000000000000C | Defines the index for mv_vps_op_cpuid_set_all |
+| 0x000000000000000C | Defines the index for mv_vps_op_cpuid_set_list |
 
 ### 2.15.14. mv_vps_op_reg_get, OP=0x6, IDX=0xD
 
@@ -1373,23 +1373,23 @@ TBD
 | :---- | :---------- |
 | 0x000000000000000E | Defines the index for mv_vps_op_reg_set |
 
-### 2.15.16. mv_vps_op_reg_get_all, OP=0x6, IDX=0xF
+### 2.15.16. mv_vps_op_reg_get_list, OP=0x6, IDX=0xF
 
 TBD
 
-**const, uint64_t: MV_VPS_OP_REG_GET_ALL_IDX_VAL**
+**const, uint64_t: MV_VPS_OP_REG_GET_LIST_IDX_VAL**
 | Value | Description |
 | :---- | :---------- |
-| 0x000000000000000F | Defines the index for mv_vps_op_reg_get_all |
+| 0x000000000000000F | Defines the index for mv_vps_op_reg_get_list |
 
-### 2.15.17. mv_vps_op_reg_set_all, OP=0x6, IDX=0x10
+### 2.15.17. mv_vps_op_reg_set_list, OP=0x6, IDX=0x10
 
 TBD
 
-**const, uint64_t: MV_VPS_OP_REG_SET_ALL_IDX_VAL**
+**const, uint64_t: MV_VPS_OP_REG_SET_LIST_IDX_VAL**
 | Value | Description |
 | :---- | :---------- |
-| 0x0000000000000010 | Defines the index for mv_vps_op_reg_set_all |
+| 0x0000000000000010 | Defines the index for mv_vps_op_reg_set_list |
 
 ### 2.15.18. mv_vps_op_reg_get_general, OP=0x6, IDX=0x11
 
@@ -1463,23 +1463,23 @@ TBD
 | :---- | :---------- |
 | 0x0000000000000018 | Defines the index for mv_vps_op_msr_set |
 
-### 2.15.26. mv_vps_op_msr_get_all, OP=0x6, IDX=0x19
+### 2.15.26. mv_vps_op_msr_get_list, OP=0x6, IDX=0x19
 
 TBD
 
-**const, uint64_t: MV_VPS_OP_MSR_GET_ALL_IDX_VAL**
+**const, uint64_t: MV_VPS_OP_MSR_GET_LIST_IDX_VAL**
 | Value | Description |
 | :---- | :---------- |
-| 0x0000000000000019 | Defines the index for mv_vps_op_msr_get_all |
+| 0x0000000000000019 | Defines the index for mv_vps_op_msr_get_list |
 
-### 2.15.27. mv_vps_op_msr_set_all, OP=0x6, IDX=0x1A
+### 2.15.27. mv_vps_op_msr_set_list, OP=0x6, IDX=0x1A
 
 TBD
 
-**const, uint64_t: MV_VPS_OP_MSR_SET_ALL_IDX_VAL**
+**const, uint64_t: MV_VPS_OP_MSR_SET_LIST_IDX_VAL**
 | Value | Description |
 | :---- | :---------- |
-| 0x000000000000001A | Defines the index for mv_vps_op_msr_set_all |
+| 0x000000000000001A | Defines the index for mv_vps_op_msr_set_list |
 
 ### 2.15.28. mv_vps_op_fpu_get, OP=0x6, IDX=0x1B
 
@@ -1553,3 +1553,29 @@ TBD
 | :---- | :---------- |
 | 0x0000000000000022 | Defines the index for mv_vps_op_xsave_set_all |
 
+### 2.15.32. mv_vps_op_mp_state_get, OP=0x6, IDX=0x23
+
+TBD
+
+**const, uint64_t: MV_VPS_OP_MP_STATE_GET_IDX_VAL**
+| Value | Description |
+| :---- | :---------- |
+| 0x0000000000000023 | Defines the index for mv_vps_op_mp_state_get |
+
+### 2.15.32. mv_vps_op_mp_state_set, OP=0x6, IDX=0x24
+
+TBD
+
+**const, uint64_t: MV_VPS_OP_MP_STATE_SET_IDX_VAL**
+| Value | Description |
+| :---- | :---------- |
+| 0x0000000000000024 | Defines the index for mv_vps_op_mp_state_set |
+
+### 2.15.35. mv_vps_op_interrupt, OP=0x6, IDX=0x23
+
+TBD
+
+**const, uint64_t: MV_VPS_OP_INTERRUPT_IDX_VAL**
+| Value | Description |
+| :---- | :---------- |
+| 0x0000000000000023 | Defines the index for mv_vps_op_interrupt |
