@@ -168,11 +168,11 @@ This specification is specific to 64bit Intel and AMD processors conforming to t
 | Guest VP | A virtual processor assigned to a guest VM |
 | Root VS | A virtual processor state assigned to a root VP |
 | Guest VS | A virtual processor state assigned to a guest VP |
-| Parent VS | A virtual processor who calls mv_vs_op_run to run a child VS. A parent VS is always a root VS |
-| Child VS | A virtual processor who is executed by a parent VS using mv_vs_op_run. A child VS is always a guest VS |
+| Parent VS | The VS that was active prior to mv_vs_op_run being called (if they are different) |
+| Child VS | The VS that was made active by the call to mv_vs_op_run (if they are different) |
 | SPA | A System Physical Address (SPA) refers to a physical address as seen by the system without paging, second level paging or segmentation |
 | GPA | A Guest Physical Address (GPA) refers to a physical address as seen by a VM. For the Root VM, most GPA == SPA. For a Guest VM, converting from a GPA to an SPA required translating second level paging structures |
-| GLA | A Guest Virtual Address (GLA) refers to a linear address as seen by a VM. GLAs require guest paging structures to convert from a GLA to a GPA  |
+| GLA | A Guest Linear Address (GLA) refers to a linear address as seen by a VM. GLAs require guest paging structures to convert from a GLA to a GPA  |
 | GVA | A Guest Virtual Address (GVA) refers to a virtual address as seen by a VM. GVAs require guest segmentation to convert from a GVA to a GLA. On architectures that do not support segmentation, a GVA is a GLA |
 | Page Aligned | A region of memory whose address is divisible by 0x1000 |
 | Page | A page aligned region of memory that is 0x1000 bytes in size |
