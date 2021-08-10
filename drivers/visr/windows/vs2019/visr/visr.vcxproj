@@ -47,7 +47,7 @@
       <IncludePath>..\..\..\..\..\deps\hypervisor\bfsdk\include;..\..\..\..\..\deps\hypervisor\bfelf_loader\include;..\..\..\..\..\include;..\..\;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup>
-    <SignMode>Off</SignMode>
+    <SignMode>TestSign</SignMode>
   </PropertyGroup>
   <ItemDefinitionGroup>
     <ClCompile>
