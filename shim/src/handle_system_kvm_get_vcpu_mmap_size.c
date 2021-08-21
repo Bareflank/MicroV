@@ -25,8 +25,9 @@
  */
 
 #include <debug.h>
+#include <kvm_run.h>
+#include <platform.h>
 #include <types.h>
-
 /**
  * <!-- description -->
  *   @brief Handles the execution of kvm_check_extension.
@@ -35,7 +36,9 @@
  *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
  */
 int64_t
-handle_system_kvm_get_vcpu_mmap_size(void)
+handle_system_kvm_get_vcpu_mmap_size(uint32_t *const size)
 {
+    platform_expects(NULL != size);
+    *size = sizeof(struct kvm_run);
     return SHIM_SUCCESS;
 }

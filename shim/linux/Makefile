@@ -32,6 +32,7 @@ ifneq ($(KERNELRELEASE),)
     $(TARGET_MODULE)-objs += ../src/serial_write.o
     $(TARGET_MODULE)-objs += ../src/shim_fini.o
     $(TARGET_MODULE)-objs += ../src/shim_init.o
+    $(TARGET_MODULE)-objs += ../src/handle_system_kvm_get_vcpu_mmap_size.o
 
 	EXTRA_CFLAGS += -I$(src)/include
 	EXTRA_CFLAGS += -I$(src)/include/std

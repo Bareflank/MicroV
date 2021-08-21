@@ -167,4 +167,15 @@ typedef int64_t (*platform_per_cpu_func)(uint32_t const);
  */
 int64_t platform_on_each_cpu(platform_per_cpu_func const func, uint32_t const reverse);
 
+/**
+ * <!-- description -->
+ *   @brief Given a integer, this function allows diagnostic information to be
+     written to standard error file incase it fails.
+ *
+ * <!-- inputs/outputs -->
+ *   @param int a valid expression as an input
+ *  
+ */
+void platform_expects(int const test);
+
 #endif
