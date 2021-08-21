@@ -58,7 +58,7 @@ namespace microv
     ///   @return Returns bsl::errc_success on success, bsl::errc_failure
     ///     and friends otherwise
     ///
-    [[nodiscard]] static constexpr auto
+    [[nodiscard]] constexpr auto
     dispatch_fail(
         gs_t const &gs,
         tls_t const &tls,

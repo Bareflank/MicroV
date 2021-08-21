@@ -24,7 +24,21 @@
  * SOFTWARE.
  */
 
-#ifndef MICROV_INTERFACE_H
-#define MICROV_INTERFACE_H
+    .code64
+    .intel_syntax noprefix
 
-#endif
+    .globl  mv_vps_op_gla_to_gpa_impl
+    .type   mv_vps_op_gla_to_gpa_impl, @function
+mv_vps_op_gla_to_gpa_impl:
+
+    mov rax, 0x764D000000060006
+    mov r10, rdi
+    mov r11, rsi
+    mov r12, rdx
+    vmcall
+    mov [rcx], r10
+
+    ret
+    int 3
+
+    .size mv_vps_op_gla_to_gpa_impl, .-mv_vps_op_gla_to_gpa_impl

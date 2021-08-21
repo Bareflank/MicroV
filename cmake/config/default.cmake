@@ -21,5 +21,14 @@
 
 include(${bsl_SOURCE_DIR}/cmake/function/bf_add_config.cmake)
 
+option(MICROV_BUILD_HYPERCALL "Turns on/off building the hypercall library" ON)
 option(MICROV_BUILD_SHIM "Turns on/off building the shim" ON)
 option(MICROV_BUILD_VMM "Turns on/off building the vmm" ON)
+
+bf_add_config(
+    CONFIG_NAME MICROV_MAX_PP_MAPS
+    CONFIG_TYPE STRING
+    DEFAULT_VAL "10"
+    DESCRIPTION "Defines MicroV's max number of maps each PP can have open at any given time"
+    SKIP_VALIDATION
+)

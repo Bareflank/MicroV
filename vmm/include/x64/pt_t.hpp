@@ -22,10 +22,34 @@
 /// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 /// SOFTWARE.
 
-#ifndef MICROV_INTERFACE_HPP
-#define MICROV_INTERFACE_HPP
+#ifndef PT_T_HPP
+#define PT_T_HPP
+
+#include "pte_t.hpp"
+
+#include <bsl/array.hpp>
+#include <bsl/convert.hpp>
+#include <bsl/safe_integral.hpp>
+
+#pragma pack(push, 1)
 
 namespace microv
-{}
+{
+    /// @brief defines total number of entries in the pt
+    constexpr auto NUM_PT_ENTRIES{512_umax};
+
+    /// @struct microv::pt_t
+    ///
+    /// <!-- description -->
+    ///   @brief Defines the layout of a page table (pt).
+    ///
+    struct pt_t final
+    {
+        /// @brief stores the entries for this page table
+        bsl::array<pte_t, NUM_PT_ENTRIES.get()> entries;
+    };
+}
+
+#pragma pack(pop)
 
 #endif

@@ -26,6 +26,7 @@
 #define DISPATCH_VMEXIT_CPUID_HPP
 
 #include <bf_syscall_t.hpp>
+#include <errc_types.hpp>
 #include <gs_t.hpp>
 #include <intrinsic_t.hpp>
 #include <pp_pool_t.hpp>
@@ -37,7 +38,6 @@
 #include <bsl/convert.hpp>
 #include <bsl/debug.hpp>
 #include <bsl/discard.hpp>
-#include <bsl/errc_type.hpp>
 
 namespace microv
 {
@@ -46,25 +46,45 @@ namespace microv
     ///
     /// <!-- inputs/outputs -->
     ///   @param gs the gs_t to use
+    ///   @param tls the tls_t to use
     ///   @param mut_sys the bf_syscall_t to use
     ///   @param intrinsic the intrinsic_t to use
     ///   @param pp_pool the pp_pool_t to use
+    ///   @param vm_pool the vm_pool_t to use
+    ///   @param vp_pool the vp_pool_t to use
     ///   @param vps_pool the vps_pool_t to use
     ///   @param vpsid the ID of the VPS that generated the VMExit
     ///   @return Returns bsl::errc_success on success, bsl::errc_failure
     ///     and friends otherwise
     ///
-    [[nodiscard]] static constexpr auto
+    [[nodiscard]] constexpr auto
     dispatch_vmexit_cpuid(
         gs_t const &gs,
+        tls_t const &tls,
         syscall::bf_syscall_t &mut_sys,
         intrinsic_t const &intrinsic,
         pp_pool_t const &pp_pool,
+        vm_pool_t const &vm_pool,
+        vp_pool_t const &vp_pool,
         vps_pool_t const &vps_pool,
         bsl::safe_uint16 const &vpsid) noexcept -> bsl::errc_type
     {
-        if (vps_pool.is_root_vps(vpsid)) {
-            return pp_pool.cpuid_get(gs, mut_sys, intrinsic);
+        bsl::discard(tls);
+        bsl::discard(vm_pool);
+        bsl::discard(vp_pool);
+
+        if (vps_pool.is_root_vps(mut_sys, vpsid)) {
+            auto const ret{pp_pool.cpuid_get(gs, mut_sys, intrinsic)};
+            if (bsl::unlikely(vmexit_success_promote == ret)) {
+                return vmexit_success_promote;
+            }
+
+            if (bsl::unlikely(!ret)) {
+                bsl::print<bsl::V>() << bsl::here();
+                return vmexit_failure_advance_ip_and_run;
+            }
+
+            return vmexit_success_advance_ip_and_run;
         }
 
         bsl::error() << "dispatch_vmexit_cpuid for guest VPSs not implemented\n";

@@ -143,6 +143,35 @@ namespace microv
 
             return pp->cpuid_get(gs, mut_sys, intrinsic);
         }
+
+        /// <!-- description -->
+        ///   @brief Please see m_pp_mmio.map() for details as there are a
+        ///     lot and they are important to understand.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @tparam T the type to map and return
+        ///   @param mut_sys the bf_syscall_t to use
+        ///   @param spa the system physical address of the T * to return.
+        ///   @return Returns the resulting T * given the SPA, or a nullptr
+        ///     on error.
+        ///
+        template<typename T>
+        [[nodiscard]] constexpr auto
+        map(syscall::bf_syscall_t &mut_sys, bsl::safe_uintmax const &spa) noexcept
+            -> pp_unique_map_t<T>
+        {
+            auto *const pmut_pp{m_pool.at_if(bsl::to_umax(mut_sys.bf_tls_ppid()))};
+            if (bsl::unlikely(nullptr == pmut_pp)) {
+                bsl::error() << "the syscall layer returned an invalid ppid of "    // --
+                             << bsl::hex(mut_sys.bf_tls_ppid())                     // --
+                             << bsl::endl                                           // --
+                             << bsl::here();                                        // --
+
+                return pp_unique_map_t<T>{};
+            }
+
+            return pmut_pp->map<T>(mut_sys, spa);
+        }
     };
 }
 

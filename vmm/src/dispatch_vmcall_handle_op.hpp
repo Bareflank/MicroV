@@ -25,9 +25,11 @@
 #ifndef DISPATCH_VMCALL_HANDLE_OP_HPP
 #define DISPATCH_VMCALL_HANDLE_OP_HPP
 
+#include <abi_helpers.hpp>
 #include <bf_syscall_t.hpp>
 #include <gs_t.hpp>
 #include <intrinsic_t.hpp>
+#include <mv_constants.hpp>
 #include <pp_pool_t.hpp>
 #include <tls_t.hpp>
 #include <vm_pool_t.hpp>
@@ -41,6 +43,55 @@
 
 namespace microv
 {
+    /// <!-- description -->
+    ///   @brief Implements the mv_handle_op_open_handle hypercall
+    ///
+    /// <!-- inputs/outputs -->
+    ///   @param mut_sys the bf_syscall_t to use
+    ///   @return Returns bsl::errc_success on success, bsl::errc_failure
+    ///     and friends otherwise
+    ///
+    [[nodiscard]] constexpr auto
+    hypercall_handle_op_open_handle(syscall::bf_syscall_t &mut_sys) noexcept -> bsl::errc_type
+    {
+        if (bsl::unlikely(bsl::to_u32(get_reg0(mut_sys)) != hypercall::MV_SPEC_ID1_VAL)) {
+            bsl::error() << "unsupported hypercall ABI "                //--
+                         << bsl::hex(bsl::to_u32(get_reg0(mut_sys)))    //--
+                         << bsl::endl                                   //--
+                         << bsl::here();                                //--
+
+            set_reg_return(mut_sys, hypercall::MV_STATUS_FAILURE_UNKNOWN);
+            return vmexit_failure_advance_ip_and_run;
+        }
+
+        set_reg0(mut_sys, hypercall::MV_HANDLE_VAL);
+        return vmexit_success_advance_ip_and_run;
+    }
+
+    /// <!-- description -->
+    ///   @brief Implements the mv_handle_op_close_handle hypercall
+    ///
+    /// <!-- inputs/outputs -->
+    ///   @param mut_sys the bf_syscall_t to use
+    ///   @return Returns bsl::errc_success on success, bsl::errc_failure
+    ///     and friends otherwise
+    ///
+    [[nodiscard]] constexpr auto
+    hypercall_handle_op_close_handle(syscall::bf_syscall_t &mut_sys) noexcept -> bsl::errc_type
+    {
+        if (bsl::unlikely(get_reg0(mut_sys) != hypercall::MV_HANDLE_VAL)) {
+            bsl::error() << "invalid handle "              // --
+                         << bsl::hex(get_reg0(mut_sys))    //--
+                         << bsl::endl                      //--
+                         << bsl::here();                   //--
+
+            set_reg_return(mut_sys, hypercall::MV_STATUS_FAILURE_UNKNOWN);
+            return vmexit_failure_advance_ip_and_run;
+        }
+
+        return vmexit_success_advance_ip_and_run;
+    }
+
     /// <!-- description -->
     ///   @brief Dispatches handle VMCalls.
     ///
@@ -57,7 +108,7 @@ namespace microv
     ///   @return Returns bsl::errc_success on success, bsl::errc_failure
     ///     and friends otherwise
     ///
-    [[nodiscard]] static constexpr auto
+    [[nodiscard]] constexpr auto
     dispatch_vmcall_handle_op(
         gs_t const &gs,
         tls_t const &tls,
@@ -71,7 +122,6 @@ namespace microv
     {
         bsl::discard(gs);
         bsl::discard(tls);
-        bsl::discard(mut_sys);
         bsl::discard(intrinsic);
         bsl::discard(pp_pool);
         bsl::discard(vm_pool);
@@ -79,8 +129,39 @@ namespace microv
         bsl::discard(vps_pool);
         bsl::discard(vpsid);
 
-        bsl::error() << "dispatch_vmcall_handle_op not implemented\n";
-        return bsl::errc_failure;
+        switch (hypercall::mv_hypercall_index(get_reg_hypercall(mut_sys)).get()) {
+            case hypercall::MV_HANDLE_OP_OPEN_HANDLE_IDX_VAL.get(): {
+                auto const ret{hypercall_handle_op_open_handle(mut_sys)};
+                if (bsl::unlikely(!ret)) {
+                    bsl::print<bsl::V>() << bsl::here();
+                    return ret;
+                }
+
+                return ret;
+            }
+
+            case hypercall::MV_HANDLE_OP_CLOSE_HANDLE_IDX_VAL.get(): {
+                auto const ret{hypercall_handle_op_close_handle(mut_sys)};
+                if (bsl::unlikely(!ret)) {
+                    bsl::print<bsl::V>() << bsl::here();
+                    return ret;
+                }
+
+                return ret;
+            }
+
+            default: {
+                break;
+            }
+        }
+
+        bsl::error() << "unknown hypercall "                    //--
+                     << bsl::hex(get_reg_hypercall(mut_sys))    //--
+                     << bsl::endl                               //--
+                     << bsl::here();                            //--
+
+        set_reg_return(mut_sys, hypercall::MV_STATUS_FAILURE_UNKNOWN);
+        return vmexit_failure_advance_ip_and_run;
     }
 }
 

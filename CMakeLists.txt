@@ -20,6 +20,16 @@
 # SOFTWARE.
 
 cmake_minimum_required(VERSION 3.13)
-project(microv CXX)
+project(microv C CXX ASM)
 
 include(${CMAKE_CURRENT_LIST_DIR}/cmake/init_build.cmake)
+
+if(NOT CMAKE_BUILD_TYPE STREQUAL CODECOV)
+    if(MICROV_BUILD_HYPERCALL)
+        add_subdirectory(hypercall)
+    endif()
+
+    if(BUILD_TESTS AND NOT MICROV_BUILD_TESTS_OVERRIDE)
+        include(vmm/integration/CMakeLists.txt)
+    endif()
+endif()

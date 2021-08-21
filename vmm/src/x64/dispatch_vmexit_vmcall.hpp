@@ -25,15 +25,19 @@
 #ifndef DISPATCH_VMEXIT_VMCALL_HPP
 #define DISPATCH_VMEXIT_VMCALL_HPP
 
+#include <abi_helpers.hpp>
 #include <bf_syscall_t.hpp>
 #include <dispatch_vmcall_debug_op.hpp>
 #include <dispatch_vmcall_handle_op.hpp>
+#include <dispatch_vmcall_id_op.hpp>
 #include <dispatch_vmcall_pp_op.hpp>
 #include <dispatch_vmcall_vm_op.hpp>
 #include <dispatch_vmcall_vp_op.hpp>
 #include <dispatch_vmcall_vps_op.hpp>
+#include <errc_types.hpp>
 #include <gs_t.hpp>
 #include <intrinsic_t.hpp>
+#include <mv_constants.hpp>
 #include <pp_pool_t.hpp>
 #include <tls_t.hpp>
 #include <vm_pool_t.hpp>
@@ -43,7 +47,6 @@
 #include <bsl/convert.hpp>
 #include <bsl/debug.hpp>
 #include <bsl/discard.hpp>
-#include <bsl/errc_type.hpp>
 
 namespace microv
 {
@@ -55,7 +58,7 @@ namespace microv
     ///   @param tls the tls_t to use
     ///   @param mut_sys the bf_syscall_t to use
     ///   @param intrinsic the intrinsic_t to use
-    ///   @param pp_pool the pp_pool_t to use
+    ///   @param mut_pp_pool the pp_pool_t to use
     ///   @param vm_pool the vm_pool_t to use
     ///   @param vp_pool the vp_pool_t to use
     ///   @param vps_pool the vps_pool_t to use
@@ -63,30 +66,115 @@ namespace microv
     ///   @return Returns bsl::errc_success on success, bsl::errc_failure
     ///     and friends otherwise
     ///
-    [[nodiscard]] static constexpr auto
+    [[nodiscard]] constexpr auto
     dispatch_vmexit_vmcall(
         gs_t const &gs,
         tls_t const &tls,
         syscall::bf_syscall_t &mut_sys,
         intrinsic_t const &intrinsic,
-        pp_pool_t const &pp_pool,
+        pp_pool_t &mut_pp_pool,
         vm_pool_t const &vm_pool,
         vp_pool_t const &vp_pool,
         vps_pool_t const &vps_pool,
         bsl::safe_uint16 const &vpsid) noexcept -> bsl::errc_type
     {
-        bsl::discard(gs);
-        bsl::discard(tls);
-        bsl::discard(mut_sys);
-        bsl::discard(intrinsic);
-        bsl::discard(pp_pool);
-        bsl::discard(vm_pool);
-        bsl::discard(vp_pool);
-        bsl::discard(vps_pool);
-        bsl::discard(vpsid);
+        switch (hypercall::mv_hypercall_opcode(get_reg_hypercall(mut_sys)).get()) {
+            case hypercall::MV_ID_OP_VAL.get(): {
+                auto const ret{dispatch_vmcall_id_op(
+                    gs, tls, mut_sys, intrinsic, mut_pp_pool, vm_pool, vp_pool, vps_pool, vpsid)};
+                if (bsl::unlikely(!ret)) {
+                    bsl::print<bsl::V>() << bsl::here();
+                    return ret;
+                }
 
-        bsl::error() << "dispatch_vmexit_vmcall not implemented\n";
-        return bsl::errc_failure;
+                set_reg_return(mut_sys, hypercall::MV_STATUS_SUCCESS);
+                return ret;
+            }
+
+            case hypercall::MV_HANDLE_OP_VAL.get(): {
+                auto const ret{dispatch_vmcall_handle_op(
+                    gs, tls, mut_sys, intrinsic, mut_pp_pool, vm_pool, vp_pool, vps_pool, vpsid)};
+                if (bsl::unlikely(!ret)) {
+                    bsl::print<bsl::V>() << bsl::here();
+                    return ret;
+                }
+
+                set_reg_return(mut_sys, hypercall::MV_STATUS_SUCCESS);
+                return ret;
+            }
+
+            case hypercall::MV_DEBUG_OP_VAL.get(): {
+                auto const ret{dispatch_vmcall_debug_op(
+                    gs, tls, mut_sys, intrinsic, mut_pp_pool, vm_pool, vp_pool, vps_pool, vpsid)};
+                if (bsl::unlikely(!ret)) {
+                    bsl::print<bsl::V>() << bsl::here();
+                    return ret;
+                }
+
+                set_reg_return(mut_sys, hypercall::MV_STATUS_SUCCESS);
+                return ret;
+            }
+
+            case hypercall::MV_PP_OP_VAL.get(): {
+                auto const ret{dispatch_vmcall_pp_op(
+                    gs, tls, mut_sys, intrinsic, mut_pp_pool, vm_pool, vp_pool, vps_pool, vpsid)};
+                if (bsl::unlikely(!ret)) {
+                    bsl::print<bsl::V>() << bsl::here();
+                    return ret;
+                }
+
+                set_reg_return(mut_sys, hypercall::MV_STATUS_SUCCESS);
+                return ret;
+            }
+
+            case hypercall::MV_VM_OP_VAL.get(): {
+                auto const ret{dispatch_vmcall_vm_op(
+                    gs, tls, mut_sys, intrinsic, mut_pp_pool, vm_pool, vp_pool, vps_pool, vpsid)};
+                if (bsl::unlikely(!ret)) {
+                    bsl::print<bsl::V>() << bsl::here();
+                    return ret;
+                }
+
+                set_reg_return(mut_sys, hypercall::MV_STATUS_SUCCESS);
+                return ret;
+            }
+
+            case hypercall::MV_VP_OP_VAL.get(): {
+                auto const ret{dispatch_vmcall_vp_op(
+                    gs, tls, mut_sys, intrinsic, mut_pp_pool, vm_pool, vp_pool, vps_pool, vpsid)};
+                if (bsl::unlikely(!ret)) {
+                    bsl::print<bsl::V>() << bsl::here();
+                    return ret;
+                }
+
+                set_reg_return(mut_sys, hypercall::MV_STATUS_SUCCESS);
+                return ret;
+            }
+
+            case hypercall::MV_VPS_OP_VAL.get(): {
+                auto const ret{dispatch_vmcall_vps_op(
+                    gs, tls, mut_sys, intrinsic, mut_pp_pool, vm_pool, vp_pool, vps_pool, vpsid)};
+                if (bsl::unlikely(!ret)) {
+                    bsl::print<bsl::V>() << bsl::here();
+                    return ret;
+                }
+
+                set_reg_return(mut_sys, hypercall::MV_STATUS_SUCCESS);
+                return ret;
+            }
+
+            default: {
+                break;
+            }
+        }
+
+        bsl::error() << "unknown hypercall "                    //--
+                     << bsl::hex(get_reg_hypercall(mut_sys))    //--
+                     << bsl::endl                               //--
+                     << bsl::here();                            //--
+
+        set_reg_return(mut_sys, hypercall::MV_STATUS_FAILURE_UNKNOWN);
+        return vmexit_failure_advance_ip_and_run;
     }
 }
 
