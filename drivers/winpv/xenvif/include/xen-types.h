@@ -46,9 +46,7 @@ typedef USHORT  uint16_t;
 typedef ULONG   uint32_t;
 typedef ULONG64 uint64_t;
 
-#ifndef offsetof
 #define offsetof(_type, _field) FIELD_OFFSET(_type, _field)
-#endif
 
 #define xen_mb()    KeMemoryBarrier()
 #define xen_wmb()   KeMemoryBarrier()
