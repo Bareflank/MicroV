@@ -27,6 +27,7 @@
  */
 
 #include <debug.h>
+#include <handle_system_kvm_get_vcpu_mmap_size.h>
 #include <linux/kernel.h>
 #include <linux/miscdevice.h>
 #include <linux/module.h>
@@ -113,7 +114,9 @@ dispatch_system_kvm_get_supported_cpuid(struct kvm_cpuid2 *const ioctl_args)
 static long
 dispatch_system_kvm_get_vcpu_mmap_size(void)
 {
-    return -EINVAL;
+    uint32_t const size;
+    handle_system_kvm_get_vcpu_mmap_size(&size);
+    return (long)size;
 }
 
 static long
