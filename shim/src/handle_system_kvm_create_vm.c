@@ -31,9 +31,10 @@
 #include <types.h>
 
 /* Remove me */
-uint16_t
+static uint16_t
 mv_vm_op_create_vm(uint64_t const g_hndl)
 {
+    (void)g_hndl;
     return 1;
 }
 
