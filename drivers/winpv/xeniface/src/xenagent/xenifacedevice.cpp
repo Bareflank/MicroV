@@ -152,7 +152,7 @@ bool CXenIfaceDevice::SuspendGetCount(DWORD *count)
 // sharedinfo interface
 bool CXenIfaceDevice::SharedInfoGetTime(FILETIME* time, bool* local)
 {
-    XENIFACE_SHAREDINFO_GET_TIME_OUT out = { NULL };
+    XENIFACE_SHAREDINFO_GET_TIME_OUT out {};
     if (!Ioctl(IOCTL_XENIFACE_SHAREDINFO_GET_TIME,
                NULL, 0,
                &out, sizeof(out)))

@@ -22,7 +22,7 @@
   </PropertyGroup>
   <ItemDefinitionGroup>
     <ClCompile>
-      <PreprocessorDefinitions>_NO_CRT_STDIO_INLINE;PROJECT=$(ProjectName);NDIS_MINIPORT_DRIVER;NDIS_WDM=1;NDIS61_MINIPORT=1;POOL_NX_OPTIN=1;NT_PROCESSOR_GROUPS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>PROJECT=$(ProjectName);NDIS_MINIPORT_DRIVER;NDIS_WDM=1;NDIS61_MINIPORT=1;POOL_NX_OPTIN=1;NT_PROCESSOR_GROUPS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <AdditionalIncludeDirectories>$(WindowsSdkDir)\include\km;..\..\include;..\..\include\xen;</AdditionalIncludeDirectories>
       <WarningLevel>EnableAllWarnings</WarningLevel>

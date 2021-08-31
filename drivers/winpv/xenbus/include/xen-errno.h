@@ -38,10 +38,7 @@
 
 #define EISDIR      21
 #define EROFS       30
-
-#ifndef ENOTEMPTY
 #define ENOTEMPTY   39
-#endif
 
 #pragma warning(disable:4127)   // conditional expression is constant
 
