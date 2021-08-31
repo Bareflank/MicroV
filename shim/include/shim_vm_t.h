@@ -42,7 +42,7 @@
 */
 struct shim_vm_t
 {
-   uint16_t vmid;
+    uint16_t vmid;
 };
 
 #pragma pack(pop)

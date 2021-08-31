@@ -103,7 +103,7 @@ dispatch_system_kvm_create_vm(void)
     }
     snprintf(vmname, sizeof(vmname), "kvm-vm:%d", vm->vmid);
     fd = anon_inode_getfd(vmname, &fops_vm, vm, O_RDWR | O_CLOEXEC);
-    if (fd < MV_SHIM_INVALID_ID) {
+    if (fd < MV_INVALID_ID) {
         bferror("dispatch_system_kvm_create_vm : anon_inode_getfd failed");
         goto vm_destroy;
     }

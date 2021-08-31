@@ -36,5 +36,5 @@
 int64_t
 handle_system_kvm_destroy_vm(void)
 {
-	return SHIM_SUCCESS;
+    return SHIM_SUCCESS;
 }
