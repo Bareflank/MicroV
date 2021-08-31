@@ -84,6 +84,9 @@ mv_is_page_aligned(uint64_t const addr)
 /** @brief Defines the root virtual machine ID */
 #define MV_ROOT_VMID ((uint16_t)0x0)
 
+/** @brief Defines the shim invalid ID */
+#define MV_SHIM_INVALID_ID ((uint16_t)0x0)
+
 /* -------------------------------------------------------------------------- */
 /* Hypercall Status Codes                                                     */
 /* -------------------------------------------------------------------------- */
