@@ -43,7 +43,6 @@
 #include <shim_fini.h>
 #include <shim_init.h>
 #include <shim_platform_interface.h>
-#include <shim_vcpu_t.h>
 #include <shim_vm_t.h>
 #include <types.h>
 
