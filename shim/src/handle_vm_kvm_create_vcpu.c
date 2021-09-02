@@ -63,14 +63,15 @@ handle_vm_kvm_create_vcpu(struct shim_vm_t *const vm, struct shim_vcpu_t *const 
 
     vcpu->vpid = mv_vp_op_create_vp(vm->vmid);
     if (MV_INVALID_ID == vcpu->vpid) {
-        bferror("handle_vm_kvm_create_vcpu :: mv_vp_op_create_vp failed");
+        bferror("mv_vp_op_create_vp failed");
         return SHIM_FAILURE;
     }
 
     vcpu->vsid = mv_vs_op_create_vs(vcpu->vpid);
     if (MV_INVALID_ID == vcpu->vsid) {
-        bferror("handle_vm_kvm_create_vcpu :: mv_vs_op_create_vs failed");
+        bferror("mv_vs_op_create_vs failed");
         return SHIM_FAILURE;
     }
+
     return SHIM_SUCCESS;
 }

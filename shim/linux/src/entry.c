@@ -107,20 +107,22 @@ dispatch_system_kvm_create_vm(void)
     int32_t fd;
     struct shim_vm_t *vm =
         (struct shim_vm_t *)vmalloc(sizeof(struct shim_vm_t));
+
     if (NULL == vm) {
-        bferror("dispatch_system_kvm_create_vm : vm vmalloc failed");
+        bferror("vm vmalloc failed");
         goto vm_free;
     }
+
     if (handle_system_kvm_create_vm(vm)) {
-        bferror(
-            "dispatch_system_kvm_create_vm : handle_system_kvm_create_vm "
-            "failed");
+        bferror("handle_system_kvm_create_vm failed");
         goto vm_free;
     }
+
     snprintf(vmname, sizeof(vmname), "kvm-vm:%d", vm->vmid);
+
     fd = anon_inode_getfd(vmname, &fops_vm, vm, O_RDWR | O_CLOEXEC);
     if (fd < MV_INVALID_ID) {
-        bferror("dispatch_system_kvm_create_vm : anon_inode_getfd failed");
+        bferror("anon_inode_getfd failed");
         goto vm_destroy;
     }
 
@@ -330,23 +332,27 @@ dispatch_vm_kvm_create_vcpu(struct shim_vm_t *vm)
 {
     char vcpuname[22];
     int32_t fd;
+
     struct shim_vcpu_t *vcpu =
         (struct shim_vcpu_t *)vmalloc(sizeof(struct shim_vcpu_t));
     if (NULL == vcpu) {
-        bferror("dispatch_vm_kvm_create_vcpu : vcpu vmalloc failed");
+        bferror("vcpu vmalloc failed");
         goto vcpu_free;
     }
+
     if (handle_vm_kvm_create_vcpu(vm, vcpu)) {
-        bferror(
-            "dispatch_vm_kvm_create_vcpu:: handle_vm_kvm_create_vcpu failed");
+        bferror("handle_vm_kvm_create_vcpu failed");
         goto vcpu_free;
     }
+
     snprintf(vcpuname, sizeof(vcpuname), "kvm-vcpu:%d", vcpu->vsid);
+
     fd = anon_inode_getfd(vcpuname, &fops_vcpu, vcpu, O_RDWR | O_CLOEXEC);
     if (fd < MV_INVALID_ID) {
-        bferror("dispatch_vm_kvm_create_vcpu: anon_inode_getfd failed");
+        bferror("anon_inode_getfd failed");
         goto vcpu_free;
     }
+
     return (long)fd;
 
 vcpu_free:
