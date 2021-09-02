@@ -30,6 +30,7 @@
 #include <handle_system_kvm_create_vm.h>
 #include <handle_system_kvm_destroy_vm.h>
 #include <handle_system_kvm_get_vcpu_mmap_size.h>
+#include <handle_vm_kvm_create_vcpu.h>
 #include <linux/anon_inodes.h>
 #include <linux/kernel.h>
 #include <linux/miscdevice.h>
@@ -72,7 +73,22 @@ vm_release(struct inode *inode, struct file *file)
     return 0;
 }
 
+static int
+vcpu_open(struct inode *inode, struct file *file)
+{
+    bfdebug("vcpu_open function called ");
+    return 0;
+}
+
+static int
+vcpu_release(struct inode *inode, struct file *file)
+{
+    bfdebug("vcpu_release function called ");
+    return 0;
+}
+
 static struct file_operations fops_vm;
+static struct file_operations fops_vcpu;
 
 /* -------------------------------------------------------------------------- */
 /* System IOCTLs                                                              */
@@ -163,7 +179,7 @@ dispatch_system_kvm_get_supported_cpuid(struct kvm_cpuid2 *const ioctl_args)
 static long
 dispatch_system_kvm_get_vcpu_mmap_size(void)
 {
-    uint32_t const size;
+    uint32_t size;
     handle_system_kvm_get_vcpu_mmap_size(&size);
     return (long)size;
 }
@@ -310,8 +326,32 @@ dispatch_vm_kvm_create_pit2(struct kvm_pit_config *const ioctl_args)
 }
 
 static long
-dispatch_vm_kvm_create_vcpu(void)
+dispatch_vm_kvm_create_vcpu(struct shim_vm_t *vm)
 {
+    char vcpuname[22];
+    int32_t fd;
+    struct shim_vcpu_t *vcpu =
+        (struct shim_vcpu_t *)vmalloc(sizeof(struct shim_vcpu_t));
+    if (NULL == vcpu) {
+        bferror("dispatch_vm_kvm_create_vcpu : vcpu vmalloc failed");
+        goto vcpu_free;
+    }
+    if (handle_vm_kvm_create_vcpu(vm, vcpu)) {
+        bferror(
+            "dispatch_vm_kvm_create_vcpu:: handle_vm_kvm_create_vcpu failed");
+        goto vcpu_free;
+    }
+    snprintf(vcpuname,sizeof(vcpuname),"kvm-vcpu:%d",vcpu->vsid);
+    fd = anon_inode_getfd(vcpuname, &fops_vcpu, vcpu, O_RDWR | O_CLOEXEC);
+    if (fd < MV_INVALID_ID) {
+	bferror("dispatch_vm_kvm_create_vcpu: anon_inode_getfd failed");
+	goto vcpu_free;
+    }
+    return (long)fd;
+    
+    vcpu_free:
+      vfree(vcpu);
+    	
     return -EINVAL;
 }
 
@@ -507,8 +547,11 @@ dispatch_vm_kvm_xen_hvm_config(struct kvm_xen_hvm_config *const ioctl_args)
 
 static long
 dev_unlocked_ioctl_vm(
-    struct file *file, unsigned int cmd, unsigned long ioctl_args)
+    struct file *filep, unsigned int cmd, unsigned long ioctl_args)
 {
+    
+    struct shim_vm_t *vm = (struct shim_vm_t *)filep->private_data;
+
     switch (cmd) {
         case KVM_CHECK_EXTENSION: {
             return dispatch_vm_kvm_check_extension();
@@ -534,7 +577,7 @@ dev_unlocked_ioctl_vm(
         }
 
         case KVM_CREATE_VCPU: {
-            return dispatch_vm_kvm_create_vcpu();
+		return dispatch_vm_kvm_create_vcpu(vm);
         }
 
         case KVM_GET_CLOCK: {
@@ -1205,6 +1248,10 @@ static struct file_operations fops_vm = {
     .release = vm_release,
     .unlocked_ioctl = dev_unlocked_ioctl_vm};
 
+static struct file_operations fops_vcpu = {
+    .open = vcpu_open,
+    .release = vcpu_release,
+    .unlocked_ioctl = dev_unlocked_ioctl_vcpu};
 /* -------------------------------------------------------------------------- */
 /* Entry / Exit                                                               */
 /* -------------------------------------------------------------------------- */

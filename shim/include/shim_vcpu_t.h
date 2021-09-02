@@ -24,50 +24,31 @@
  * SOFTWARE.
  */
 
-#include <debug.h>
-#include <mv_hypercall.h>
-#include <platform.h>
-#include <shim_vcpu_t.h>
+#ifndef SHIM_VCPU_T_H
+#define SHIM_VCPU_T_H
+
+#include <stdint.h>
 #include <types.h>
 
-/*Remove me */
-
-static uint16_t
-mv_vp_op_create_vp(uint16_t const vmid)
-{
-    (void)vmid;
-    return 1;
-}
-
-/* Remove me */
-static uint16_t
-mv_vs_op_create_vs(uint16_t const vpid)
-{
-    (void)vpid;
-    return 1;
-}
+#pragma pack(push, 1)
 
 /**
- * <!-- description -->
- *   @brief Handles the execution of kvm_create_vcpu.
+ * @struct shim_vcpu_t
  *
- * <!-- inputs/outputs -->
- *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
- */
-int64_t
-handle_vm_kvm_create_vcpu(uint16_t const vmid, struct shim_vcpu_t *const vcpu)
+ * <!-- description -->
+ *   @brief see /include/uapi/linux/kvm.h in Linux for more details.
+ *   @var shim_vcpu_t::vpid
+ *   Member vpid holds the current vpid
+ *   @var shim_vcpu_t::vsid
+ *   Member vsid holds the current vsid
+*/
+
+struct shim_vcpu_t
 {
-    platform_expects(MV_INVALID_HANDLE != vcpu);
-    platform_expects(NULL != vmid);
+    uint16_t vpid;
+    uint16_t vsid;
+};
 
-    vcpu->vpid = mv_vp_op_create_vp(vmid);
-    if (MV_INVALID_ID == vcpu->vpid) {
-        return SHIM_FAILURE;
-    }
+#pragma pack(pop)
 
-    vcpu->vsid = mv_vs_op_create_vs(vcpu->vpid);
-    if (MV_INVALID_ID == vcpu->vsid) {
-        return SHIM_FAILURE;
-    }
-    return SHIM_SUCCESS;
-}
+#endif

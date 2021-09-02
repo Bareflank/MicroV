@@ -36,7 +36,7 @@ ifneq ($(KERNELRELEASE),)
     $(TARGET_MODULE)-objs += ../src/handle_system_kvm_get_vcpu_mmap_size.o
     $(TARGET_MODULE)-objs += ../src/handle_system_kvm_create_vm.o
     $(TARGET_MODULE)-objs += ../src/handle_system_kvm_destroy_vm.o
-
+    $(TARGET_MODULE)-objs += ../src/handle_vm_kvm_create_vcpu.o
 	
 	EXTRA_CFLAGS += -I$(src)/include
 	EXTRA_CFLAGS += -I$(src)/include/std
