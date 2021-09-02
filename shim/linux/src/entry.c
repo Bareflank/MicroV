@@ -89,22 +89,24 @@ dispatch_system_kvm_create_vm(void)
 {
     char vmname[22];
     int32_t fd;
+
     struct shim_vm_t *vm =
         (struct shim_vm_t *)vmalloc(sizeof(struct shim_vm_t));
     if (NULL == vm) {
-        bferror("dispatch_system_kvm_create_vm : vm vmalloc failed");
+        bferror("vm vmalloc failed");
         goto vm_free;
     }
+    
     if (handle_system_kvm_create_vm(vm)) {
-        bferror(
-            "dispatch_system_kvm_create_vm : handle_system_kvm_create_vm "
-            "failed");
+        bferror("handle_system_kvm_create_vm failed");
         goto vm_free;
     }
+    
     snprintf(vmname, sizeof(vmname), "kvm-vm:%d", vm->vmid);
+    
     fd = anon_inode_getfd(vmname, &fops_vm, vm, O_RDWR | O_CLOEXEC);
     if (fd < MV_INVALID_ID) {
-        bferror("dispatch_system_kvm_create_vm : anon_inode_getfd failed");
+        bferror("anon_inode_getfd failed");
         goto vm_destroy;
     }
 
