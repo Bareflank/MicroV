@@ -341,17 +341,17 @@ dispatch_vm_kvm_create_vcpu(struct shim_vm_t *vm)
             "dispatch_vm_kvm_create_vcpu:: handle_vm_kvm_create_vcpu failed");
         goto vcpu_free;
     }
-    snprintf(vcpuname,sizeof(vcpuname),"kvm-vcpu:%d",vcpu->vsid);
+    snprintf(vcpuname, sizeof(vcpuname), "kvm-vcpu:%d", vcpu->vsid);
     fd = anon_inode_getfd(vcpuname, &fops_vcpu, vcpu, O_RDWR | O_CLOEXEC);
     if (fd < MV_INVALID_ID) {
-	bferror("dispatch_vm_kvm_create_vcpu: anon_inode_getfd failed");
-	goto vcpu_free;
+        bferror("dispatch_vm_kvm_create_vcpu: anon_inode_getfd failed");
+        goto vcpu_free;
     }
     return (long)fd;
-    
-    vcpu_free:
-      vfree(vcpu);
-    	
+
+vcpu_free:
+    vfree(vcpu);
+
     return -EINVAL;
 }
 
@@ -549,7 +549,7 @@ static long
 dev_unlocked_ioctl_vm(
     struct file *filep, unsigned int cmd, unsigned long ioctl_args)
 {
-    
+
     struct shim_vm_t *vm = (struct shim_vm_t *)filep->private_data;
 
     switch (cmd) {
@@ -577,7 +577,7 @@ dev_unlocked_ioctl_vm(
         }
 
         case KVM_CREATE_VCPU: {
-		return dispatch_vm_kvm_create_vcpu(vm);
+            return dispatch_vm_kvm_create_vcpu(vm);
         }
 
         case KVM_GET_CLOCK: {

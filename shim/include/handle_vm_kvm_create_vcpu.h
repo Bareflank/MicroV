@@ -27,8 +27,8 @@
 #ifndef HANDLE_VM_KVM_CREATE_VCPU_H
 #define HANDLE_VM_KVM_CREATE_VCPU_H
 
-#include <shim_vm_t.h>
 #include <shim_vcpu_t.h>
+#include <shim_vm_t.h>
 #include <types.h>
 
 /**
@@ -38,6 +38,6 @@
  * <!-- inputs/outputs -->
  *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
  */
-int64_t handle_vm_kvm_create_vcpu(struct shim_vm_t *const vm,struct shim_vcpu_t *const vcpu);
+int64_t handle_vm_kvm_create_vcpu(struct shim_vm_t *const vm, struct shim_vcpu_t *const vcpu);
 
 #endif
