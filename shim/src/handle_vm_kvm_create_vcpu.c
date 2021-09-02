@@ -28,6 +28,7 @@
 #include <mv_hypercall.h>
 #include <platform.h>
 #include <shim_vcpu_t.h>
+#include <shim_vm_t.h>
 #include <types.h>
 
 /*Remove me */
@@ -55,18 +56,20 @@ mv_vs_op_create_vs(uint16_t const vpid)
  *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
  */
 int64_t
-handle_vm_kvm_create_vcpu(uint16_t const vmid, struct shim_vcpu_t *const vcpu)
+handle_vm_kvm_create_vcpu(struct shim_vm_t *const vm, struct shim_vcpu_t *const vcpu)
 {
-    platform_expects(MV_INVALID_HANDLE != vcpu);
-    platform_expects(NULL != vmid);
+    platform_expects(NULL != vcpu);
+    platform_expects(NULL != vm);
 
-    vcpu->vpid = mv_vp_op_create_vp(vmid);
+    vcpu->vpid = mv_vp_op_create_vp(vm->vmid);
     if (MV_INVALID_ID == vcpu->vpid) {
+        bferror("handle_vm_kvm_create_vcpu :: mv_vp_op_create_vp failed");
         return SHIM_FAILURE;
     }
 
     vcpu->vsid = mv_vs_op_create_vs(vcpu->vpid);
     if (MV_INVALID_ID == vcpu->vsid) {
+        bferror("handle_vm_kvm_create_vcpu :: mv_vs_op_create_vs failed");
         return SHIM_FAILURE;
     }
     return SHIM_SUCCESS;
