@@ -24,19 +24,27 @@
  * SOFTWARE.
  */
 
-#ifndef HANDLE_SYSTEM_KVM_CREATE_VM_H
-#define HANDLE_SYSTEM_KVM_CREATE_VM_H
+#ifndef SHIM_VM_T_H
+#define SHIM_VM_T_H
 
-#include <shim_vm_t.h>
+#include <stdint.h>
 #include <types.h>
 
+#pragma pack(push, 1)
+
 /**
- * <!-- description -->
- *   @brief Handles the execution of kvm_create_vm.
+ * @struct shim_vm_t
  *
- * <!-- inputs/outputs -->
- *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
- */
-int64_t handle_system_kvm_create_vm(struct shim_vm_t *vm);
+ * <!-- description -->
+ *   @brief see /include/uapi/linux/kvm.h in Linux for more details.
+ *   @var shim_vm_t::vmid
+ *   Member vmid holds the current vmid
+*/
+struct shim_vm_t
+{
+    uint16_t vmid;
+};
+
+#pragma pack(pop)
 
 #endif

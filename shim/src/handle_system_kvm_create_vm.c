@@ -25,17 +25,38 @@
  */
 
 #include <debug.h>
+#include <g_hndl.h>
+#include <mv_hypercall.h>
+#include <platform.h>
+#include <shim_vm_t.h>
 #include <types.h>
+
+/* Remove me */
+static uint16_t
+mv_vm_op_create_vm(uint64_t const g_hndl)
+{
+    (void)g_hndl;
+    return 1;
+}
 
 /**
  * <!-- description -->
- *   @brief Handles the execution of kvm_check_extension.
+ *   @brief Handles the execution of kvm_create_vm.
  *
  * <!-- inputs/outputs -->
  *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
  */
 int64_t
-handle_system_kvm_create_vm(void)
+handle_system_kvm_create_vm(struct shim_vm_t *const vm)
 {
+    platform_expects(MV_INVALID_HANDLE != g_hndl);
+    platform_expects(NULL != vm);
+    
+    vm->vmid = mv_vm_op_create_vm(g_hndl);
+    if (MV_INVALID_ID == vm->vmid) {
+        bferror("mv_vm_op_create_vm failed with invalid vmid");
+        return SHIM_FAILURE;
+    }
+    
     return SHIM_SUCCESS;
 }

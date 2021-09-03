@@ -24,19 +24,17 @@
  * SOFTWARE.
  */
 
-#ifndef HANDLE_SYSTEM_KVM_CREATE_VM_H
-#define HANDLE_SYSTEM_KVM_CREATE_VM_H
-
-#include <shim_vm_t.h>
+#include <debug.h>
 #include <types.h>
-
 /**
  * <!-- description -->
- *   @brief Handles the execution of kvm_create_vm.
+ *   @brief Handles the execution of kvm_destroy_vm.
  *
  * <!-- inputs/outputs -->
- *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
+ *   @return SHIM_SUCCESS (vmfd) on success, SHIM_FAILURE on failure.
  */
-int64_t handle_system_kvm_create_vm(struct shim_vm_t *vm);
-
-#endif
+int64_t
+handle_system_kvm_destroy_vm(void)
+{
+    return SHIM_SUCCESS;
+}

@@ -27,18 +27,23 @@
  */
 
 #include <debug.h>
+#include <handle_system_kvm_create_vm.h>
+#include <handle_system_kvm_destroy_vm.h>
 #include <handle_system_kvm_get_vcpu_mmap_size.h>
+#include <linux/anon_inodes.h>
 #include <linux/kernel.h>
 #include <linux/miscdevice.h>
 #include <linux/module.h>
 #include <linux/notifier.h>
 #include <linux/reboot.h>
 #include <linux/suspend.h>
+#include <mv_constants.h>
 #include <platform.h>
 #include <serial_init.h>
 #include <shim_fini.h>
 #include <shim_init.h>
 #include <shim_platform_interface.h>
+#include <shim_vm_t.h>
 #include <types.h>
 
 static int
@@ -53,6 +58,22 @@ dev_release(struct inode *inode, struct file *file)
     return 0;
 }
 
+static int
+vm_open(struct inode *inode, struct file *file)
+{
+    bfdebug("vm_open function called ");
+    return 0;
+}
+
+static int
+vm_release(struct inode *inode, struct file *file)
+{
+    bfdebug("vm_release function called ");
+    return 0;
+}
+
+static struct file_operations fops_vm;
+
 /* -------------------------------------------------------------------------- */
 /* System IOCTLs                                                              */
 /* -------------------------------------------------------------------------- */
@@ -66,6 +87,36 @@ dispatch_system_kvm_check_extension(void)
 static long
 dispatch_system_kvm_create_vm(void)
 {
+    char vmname[22];
+    int32_t fd;
+
+    struct shim_vm_t *vm =
+        (struct shim_vm_t *)vmalloc(sizeof(struct shim_vm_t));
+    if (NULL == vm) {
+        bferror("vm vmalloc failed");
+        goto vm_free;
+    }
+    
+    if (handle_system_kvm_create_vm(vm)) {
+        bferror("handle_system_kvm_create_vm failed");
+        goto vm_free;
+    }
+    
+    snprintf(vmname, sizeof(vmname), "kvm-vm:%d", vm->vmid);
+    
+    fd = anon_inode_getfd(vmname, &fops_vm, vm, O_RDWR | O_CLOEXEC);
+    if (fd < MV_INVALID_ID) {
+        bferror("anon_inode_getfd failed");
+        goto vm_destroy;
+    }
+
+    return (long)fd;
+
+vm_free:
+    vfree(vm);
+vm_destroy:
+    handle_system_kvm_destroy_vm();
+
     return -EINVAL;
 }
 
@@ -1150,6 +1201,11 @@ static struct miscdevice shim_dev = {
     .name = SHIM_NAME,
     .fops = &fops,
     .mode = 0666};
+
+static struct file_operations fops_vm = {
+    .open = vm_open,
+    .release = vm_release,
+    .unlocked_ioctl = dev_unlocked_ioctl_vm};
 
 /* -------------------------------------------------------------------------- */
 /* Entry / Exit                                                               */
