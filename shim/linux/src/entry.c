@@ -558,7 +558,7 @@ dev_unlocked_ioctl_vm(
 
     struct shim_vm_t const *const vm = (struct shim_vm_t *)filep->private_data;
     platform_expects(NULL != vm);
-	
+
     switch (cmd) {
         case KVM_CHECK_EXTENSION: {
             return dispatch_vm_kvm_check_extension();
