@@ -56,7 +56,7 @@ mv_vs_op_create_vs(uint16_t const vpid)
  *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
  */
 int64_t
-handle_vm_kvm_create_vcpu(struct shim_vm_t *const vm, struct shim_vcpu_t *const vcpu)
+handle_vm_kvm_create_vcpu(struct shim_vm_t const *const vm, struct shim_vcpu_t *const vcpu)
 {
     platform_expects(NULL != vcpu);
     platform_expects(NULL != vm);

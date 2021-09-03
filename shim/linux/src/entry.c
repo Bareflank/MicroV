@@ -328,7 +328,7 @@ dispatch_vm_kvm_create_pit2(struct kvm_pit_config *const ioctl_args)
 }
 
 static long
-dispatch_vm_kvm_create_vcpu(struct shim_vm_t *vm)
+dispatch_vm_kvm_create_vcpu(struct shim_vm_t const *const vm)
 {
     char vcpuname[22];
     int32_t fd;
@@ -556,8 +556,9 @@ dev_unlocked_ioctl_vm(
     struct file *filep, unsigned int cmd, unsigned long ioctl_args)
 {
 
-    struct shim_vm_t *vm = (struct shim_vm_t *)filep->private_data;
-
+    struct shim_vm_t const *const vm = (struct shim_vm_t *)filep->private_data;
+    platform_expects(NULL != vm);
+	
     switch (cmd) {
         case KVM_CHECK_EXTENSION: {
             return dispatch_vm_kvm_check_extension();
