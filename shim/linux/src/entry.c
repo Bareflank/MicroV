@@ -556,7 +556,8 @@ dev_unlocked_ioctl_vm(
     struct file *filep, unsigned int cmd, unsigned long ioctl_args)
 {
 
-    struct shim_vm_t const *const vm = (struct shim_vm_t *)filep->private_data;
+    struct shim_vm_t const *const vm =
+        (struct shim_vm_t *const)filep->private_data;
     platform_expects(NULL != vm);
 
     switch (cmd) {
