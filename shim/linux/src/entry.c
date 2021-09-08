@@ -105,6 +105,7 @@ dispatch_system_kvm_create_vm(void)
 {
     char vmname[22];
     int32_t fd;
+
     struct shim_vm_t *vm =
         (struct shim_vm_t *)vmalloc(sizeof(struct shim_vm_t));
 
