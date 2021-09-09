@@ -24,20 +24,31 @@
  * SOFTWARE.
  */
 
-#ifndef HANDLE_VM_KVM_CREATE_VCPU_H
-#define HANDLE_VM_KVM_CREATE_VCPU_H
+#ifndef SHIM_VCPU_T_H
+#define SHIM_VCPU_T_H
 
-#include <shim_vcpu_t.h>
-#include <shim_vm_t.h>
+#include <stdint.h>
 #include <types.h>
 
+#pragma pack(push, 1)
+
 /**
- * <!-- description -->
- *   @brief Handles the execution of kvm_create_vcpu.
+ * @struct shim_vcpu_t
  *
- * <!-- inputs/outputs -->
- *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
- */
-int64_t handle_vm_kvm_create_vcpu(struct shim_vm_t const *const vm, struct shim_vcpu_t *const vcpu);
+ * <!-- description -->
+ *   @brief see /include/uapi/linux/kvm.h in Linux for more details.
+ *   @var shim_vcpu_t::vpid
+ *   Member vpid holds the current vpid
+ *   @var shim_vcpu_t::vsid
+ *   Member vsid holds the current vsid
+*/
+
+struct shim_vcpu_t
+{
+    uint16_t vpid;
+    uint16_t vsid;
+};
+
+#pragma pack(pop)
 
 #endif
