@@ -28,6 +28,7 @@
 #define HANDLE_VCPU_KVM_GET_REGS_H
 
 #include <kvm_regs.h>
+#include <shim_vcpu_t.h>
 #include <types.h>
 
 /**
@@ -38,6 +39,6 @@
  *   @param ioctl_args the arguments provided by userspace
  *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
  */
-int64_t handle_vcpu_kvm_get_regs(struct kvm_regs *const ioctl_args);
+int64_t handle_vcpu_kvm_get_regs(struct shim_vcpu_t const *const vcpu, struct kvm_regs *const regs);
 
 #endif

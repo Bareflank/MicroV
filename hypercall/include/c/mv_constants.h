@@ -470,5 +470,7 @@ mv_is_spec1_supported(uint32_t const version)
 #define MV_VPS_OP_XSAVE_GET_ALL_IDX_VAL ((uint64_t)0x0000000000000021)
 /** @brief Defines the index for mv_vps_op_xsave_set_all */
 #define MV_VPS_OP_XSAVE_SET_ALL_IDX_VAL ((uint64_t)0x0000000000000022)
+/** @brief Defines the index for MV_RDL_MAX_ENTRIES */
+#define MV_RDL_MAX_ENTRIES ((uint64_t)0x00000000000000FA)
 
 #endif

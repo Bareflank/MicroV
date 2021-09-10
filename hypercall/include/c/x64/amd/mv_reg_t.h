@@ -33,7 +33,25 @@
  */
 enum mv_reg_t
 {
-    mv_reg_t_dummy = 0
+    mv_reg_t_dummy = 0,
+    mv_reg_t_rax = 1,
+    mv_reg_t_rbx = 2,
+    mv_reg_t_rcx = 3,
+    mv_reg_t_rdx = 4,
+    mv_reg_t_rbp = 5,
+    mv_reg_t_rsi = 6,
+    mv_reg_t_rdi = 7,
+    mv_reg_t_r8 = 8,
+    mv_reg_t_r9 = 9,
+    mv_reg_t_r10 = 10,
+    mv_reg_t_r11 = 11,
+    mv_reg_t_r12 = 12,
+    mv_reg_t_r13 = 13,
+    mv_reg_t_r14 = 14,
+    mv_reg_t_r15 = 15,
+    mv_reg_t_rsp = 16,
+    mv_reg_t_rip = 17,
+    mv_reg_t_rflags = 18
 };
 
 #endif

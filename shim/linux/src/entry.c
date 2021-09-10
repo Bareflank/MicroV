@@ -30,6 +30,7 @@
 #include <handle_system_kvm_create_vm.h>
 #include <handle_system_kvm_destroy_vm.h>
 #include <handle_system_kvm_get_vcpu_mmap_size.h>
+#include <handle_vcpu_kvm_get_regs.h>
 #include <handle_vm_kvm_create_vcpu.h>
 #include <linux/anon_inodes.h>
 #include <linux/kernel.h>
@@ -788,10 +789,24 @@ dispatch_vcpu_kvm_get_one_reg(struct kvm_one_reg *const ioctl_args)
 }
 
 static long
-dispatch_vcpu_kvm_get_regs(struct kvm_regs *const ioctl_args)
+dispatch_vcpu_kvm_get_regs(
+    struct shim_vcpu_t const *const vcpu, struct kvm_regs *const regs)
 {
-    (void)ioctl_args;
-    return -EINVAL;
+    int64_t ret;
+    struct kvm_regs i_kvm_regs;
+
+    if (handle_vcpu_kvm_get_regs(vcpu, &i_kvm_regs)) {
+        bferror("handle_vcpu_kvm_get_regs failed");
+        return -EINVAL;
+    }
+
+    ret = platform_copy_to_user(regs, &i_kvm_regs, sizeof(struct kvm_regs));
+    if (ret) {
+        bferror("platform_copy_to_user failed");
+        return -EINVAL;
+    }
+
+    return ret;
 }
 
 static long
@@ -1000,8 +1015,13 @@ dispatch_vcpu_kvm_x86_setup_mce(uint64_t *const ioctl_args)
 
 static long
 dev_unlocked_ioctl_vcpu(
-    struct file *file, unsigned int cmd, unsigned long ioctl_args)
+    struct file *filep, unsigned int cmd, unsigned long ioctl_args)
 {
+
+    struct shim_vcpu_t const *const vcpu =
+        (struct shim_vcpu_t *const)filep->private_data;
+    platform_expects(NULL != vcpu);
+
     switch (cmd) {
         case KVM_ENABLE_CAP: {
             return dispatch_vcpu_kvm_enable_cap(
@@ -1042,7 +1062,8 @@ dev_unlocked_ioctl_vcpu(
         }
 
         case KVM_GET_REGS: {
-            return dispatch_vcpu_kvm_get_regs((struct kvm_regs *)ioctl_args);
+            return dispatch_vcpu_kvm_get_regs(
+                vcpu, (struct kvm_regs *)ioctl_args);
         }
 
         case KVM_GET_SREGS: {

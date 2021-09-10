@@ -37,12 +37,14 @@ ifneq ($(KERNELRELEASE),)
     $(TARGET_MODULE)-objs += ../src/handle_system_kvm_create_vm.o
     $(TARGET_MODULE)-objs += ../src/handle_system_kvm_destroy_vm.o
     $(TARGET_MODULE)-objs += ../src/handle_vm_kvm_create_vcpu.o
+    $(TARGET_MODULE)-objs += ../src/handle_vcpu_kvm_get_regs.o
 	
 	EXTRA_CFLAGS += -I$(src)/include
 	EXTRA_CFLAGS += -I$(src)/include/std
 	EXTRA_CFLAGS += -I$(src)/include/platform_interface
 	EXTRA_CFLAGS += -I$(src)/../include
 	EXTRA_CFLAGS += -I$(src)/../../hypercall/include/c
+	EXTRA_CFLAGS += -I$(src)/../../hypercall/include/c/x64/amd
 	EXTRA_CFLAGS += -I$(src)/../../hypercall/src/c
 	EXTRA_CFLAGS += -I$(CMAKE_BINARY_DIR)/include
 
