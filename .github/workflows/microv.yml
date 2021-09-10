@@ -76,6 +76,38 @@ jobs:
         path: |
           build/prefixes/x86_64-efi-pe/bin/bareflank.efi
 
+  build-efi-debug:
+    runs-on: ubuntu-20.04
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        path: microv
+
+    - name: Setup
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y python build-essential linux-headers-$(uname -r) nasm clang cmake libelf-dev
+      shell: bash
+
+    - name: Build EFI
+      run: |
+        mkdir build && cd build
+        cp ../microv/scripts/cmake/config/config.cmake ..
+        echo 'set(ENABLE_BUILD_USERSPACE OFF)' >> ../config.cmake
+        echo 'set(ENABLE_BUILD_VMM ON)' >> ../config.cmake
+        echo 'set(ENABLE_BUILD_EFI ON)' >> ../config.cmake
+        echo 'set(XEN_REGISTER_BASED_ABI ON)' >> ../config.cmake
+        echo 'set(XEN_READCONSOLE_ROOTVM ON)' >> ../config.cmake
+        cmake ../microv/deps/hypervisor -DCONFIG=../config.cmake -DCMAKE_CXX_FLAGS="--verbose "
+        make
+      shell: bash
+
+    - uses: actions/upload-artifact@v2
+      with:
+        name: microv_efi_debug
+        path: |
+          build/prefixes/x86_64-efi-pe/bin/bareflank.efi
+
   build-userpace:
     runs-on: windows-2019
     steps:
@@ -109,6 +141,43 @@ jobs:
     - uses: actions/upload-artifact@v2
       with:
         name: microv_userspace
+        path: |
+          build/prefixes/x86_64-userspace-pe/bin/uvctl.exe
+
+  build-userpace-debug:
+    runs-on: windows-2019
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        path: microv
+
+    - name: Setup MSBuild (PATH)
+      id: setup_msbuild_path
+      uses: microsoft/setup-msbuild@v1.0.2
+
+    - name: Setup
+      run: |
+        $MSBUILD_PATH = "${{steps.setup_msbuild_path.outputs.msbuildPath}}"
+        echo msbuild path: $MSBUILD_PATH
+        echo $MSBUILD_PATH | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        choco install nasm
+        echo "C:\Program Files\NASM" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+      shell: pwsh
+
+    - name: Build Userspace
+      run: |
+        mkdir build && cd build
+        cp ..\microv\scripts\cmake\config\config.cmake ..
+        Add-Content -Path ..\config.cmake -Value "set(ENABLE_BUILD_USERSPACE ON)"
+        Add-Content -Path ..\config.cmake -Value "set(ENABLE_BUILD_VMM OFF)"
+        Add-Content -Path ..\config.cmake -Value "set(XEN_READCONSOLE_ROOTVM ON)"
+        cmake ../microv/deps/hypervisor -DCONFIG=..\config.cmake -G "Visual Studio 16 2019" -A x64
+        & msbuild /p:Configuration=Release /p:Platform=x64 /p:TargetVersion=Windows10 hypervisor.sln
+      shell: pwsh
+
+    - uses: actions/upload-artifact@v2
+      with:
+        name: microv_userspace_debug
         path: |
           build/prefixes/x86_64-userspace-pe/bin/uvctl.exe
 
