@@ -72,3 +72,10 @@ add_config(
     DEFAULT_VAL OFF
     DESCRIPTION "Use a register-based EVTCHNOP_send. Note this requires guest modifications"
 )
+
+add_config(
+    CONFIG_NAME XEN_READCONSOLE_ROOTVM
+    CONFIG_TYPE BOOL
+    DEFAULT_VAL OFF
+    DESCRIPTION "Allow to read the hypervisor debug output from the root vm"
+)

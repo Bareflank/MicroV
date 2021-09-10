@@ -43,5 +43,6 @@ target_sources(uvvmm_xen PRIVATE
     $<${X64}:version.cpp>
     $<${X64}:vcpu.cpp>
 )
+target_compile_definitions(uvvmm_xen PRIVATE $<$<BOOL:${XEN_READCONSOLE_ROOTVM}>:XEN_READCONSOLE_ROOTVM>)
 
 install(TARGETS uvvmm_xen DESTINATION lib EXPORT uvvmm-vmm-targets)

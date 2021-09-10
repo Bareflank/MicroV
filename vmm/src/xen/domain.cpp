@@ -1700,10 +1700,12 @@ bool xen_domain::readconsole(xen_vcpu *v, struct xen_sysctl *ctl)
 {
     auto uvv = v->m_uv_vcpu;
 
+#ifndef XEN_READCONSOLE_ROOTVM
     if (!v->is_xenstore()) {
         uvv->set_rax(-EINVAL);
         return true;
     }
+#endif
 
     auto op = &ctl->u.readconsole;
 
@@ -1757,11 +1759,7 @@ bool xen_domain::readconsole(xen_vcpu *v, struct xen_sysctl *ctl)
     }
     op->index = idx;
 
-    printf(" - new count=%lu idx=%lu", count, idx);
-
 end:
-    /* TODO: implement clearing the debug ring buffer. i.e. `xl dmesg -c` */
-    printf(" - eof=%s\n", m_is_console_eof ? "true" : "false");
     uvv->set_rax(0);
     return true;
 }
