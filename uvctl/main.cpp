@@ -26,6 +26,7 @@
 #include <fstream>
 #include <iostream>
 #include <signal.h>
+#include <stdlib.h>
 
 #include <bfack.h>
 #include <bfgsl.h>
@@ -60,6 +61,87 @@ uint64_t nuke_vm = 0;
 #ifdef _WIN64
 HANDLE uvctl_ioctl_open(const GUID *guid);
 int64_t uvctl_rw_ioctl(HANDLE fd, DWORD request, void *data, DWORD size);
+#endif
+
+#ifdef XEN_READCONSOLE_ROOTVM
+extern "C" uint64_t _xen_hypercall(uint64_t r1,
+                                   uint64_t r2,
+                                   uint64_t r3,
+                                   uint64_t r4,
+                                   uint64_t r5,
+                                   uint64_t r6);
+
+/* defined in "../deps/xen/xen/include/public/sysctl.h" */
+#define XEN_SYSCTL_INTERFACE_VERSION 0x00000012
+#define __HYPERVISOR_sysctl 35
+/*
+ * Read console content from Xen buffer ring.
+ */
+/* XEN_SYSCTL_readconsole */
+struct xen_sysctl_readconsole {
+    /* IN: Non-zero -> clear after reading. */
+    uint8_t clear;
+    /* IN: Non-zero -> start index specified by @index field. */
+    uint8_t incremental;
+    uint8_t pad0, pad1;
+    /*
+     * IN:  Start index for consuming from ring buffer (if @incremental);
+     * OUT: End index after consuming from ring buffer.
+     */
+    uint32_t index;
+    /* IN: Virtual address to write console data. */
+    char *buffer;
+    /* IN: Size of buffer; OUT: Bytes written to buffer. */
+    uint32_t count;
+};
+struct xen_sysctl {
+    uint32_t cmd;
+#define XEN_SYSCTL_readconsole 1
+    uint32_t interface_version; /* XEN_SYSCTL_INTERFACE_VERSION */
+    union
+    {
+        struct xen_sysctl_readconsole readconsole;
+        uint8_t pad[128];
+    } u;
+};
+typedef struct xen_sysctl xen_sysctl_t;
+
+void do_dmesg()
+{
+    status_t ret;
+    xen_sysctl_t sysctl{};
+    sysctl.cmd = XEN_SYSCTL_readconsole;
+    sysctl.interface_version = XEN_SYSCTL_INTERFACE_VERSION;
+
+    auto &cr = sysctl.u.readconsole;
+
+    const unsigned int size = 16384;
+
+#ifdef _MSC_VER
+    cr.buffer = (char *)_aligned_malloc(size, BAREFLANK_PAGE_SIZE);
+#else
+    cr.buffer = (char *)aligned_alloc(BAREFLANK_PAGE_SIZE, size);
+#endif
+    cr.count = size;
+    cr.clear = 0;
+    cr.incremental = 1;
+
+    memset(cr.buffer, 0, size);
+
+    while ((ret = _xen_hypercall(
+                __HYPERVISOR_sysctl, (uint64_t)&sysctl, 0, 0, 0, 0)) == 0 &&
+           cr.count != 0) {
+        // printf("%s: ret %lld idx %x count %x buffer %p\n", __func__, ret, cr.index, cr.count, cr.buffer);
+        printf("%s", cr.buffer);
+    }
+
+    if (ret < 0) {
+        log_msg(
+            "%s: reading console ring buffer failed (%lld)\n", __func__, ret);
+    }
+
+    free(cr.buffer);
+}
 #endif
 
 /*
@@ -313,6 +395,12 @@ int main(int argc, char *argv[])
         ctl = std::make_unique<ioctl>();
         return protected_main(args);
 #else
+#ifdef XEN_READCONSOLE_ROOTVM
+        if (args.count("dmesg")) {
+            do_dmesg();
+            return EXIT_SUCCESS;
+        }
+#endif
         if (args.count("windows-svc")) {
             log_set_mode(UVCTL_LOG_WINDOWS_SVC);
 

@@ -1179,6 +1179,22 @@ bool xen_vcpu::root_hypercall(microv_vcpu *vcpu)
         default:
             return false;
         }
+#ifdef XEN_READCONSOLE_ROOTVM
+    case __HYPERVISOR_sysctl: {
+        auto ctl = m_uv_vcpu->map_arg<xen_sysctl_t>(m_uv_vcpu->rdi());
+        if (ctl->interface_version != XEN_SYSCTL_INTERFACE_VERSION) {
+            m_uv_vcpu->set_rax(-EACCES);
+            return true;
+        }
+
+        switch (ctl->cmd) {
+        case XEN_SYSCTL_readconsole:
+            return m_xen_dom->readconsole(this, ctl.get());
+        default:
+            return false;
+        }
+    }
+#endif
     default:
         return false;
     }

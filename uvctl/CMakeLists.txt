@@ -45,6 +45,8 @@ target_sources(uvctl PRIVATE
     ${OS}/ioctl.cpp
     ${OS}/ioctl_private.cpp
     $<$<BOOL:${WIN32}>:${OS}/service.cpp>
+    $<$<BOOL:${XEN_READCONSOLE_ROOTVM}>:${OS}/xen_hypercall.asm>
 )
+target_compile_definitions(uvctl PRIVATE $<$<BOOL:${XEN_READCONSOLE_ROOTVM}>:XEN_READCONSOLE_ROOTVM>)
 
 fini_project()

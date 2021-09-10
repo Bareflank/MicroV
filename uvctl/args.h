@@ -70,6 +70,9 @@ inline args_type parse_args(int argc, char *argv[])
 #ifdef _WIN64
     ("windows-svc", "Run uvctl as a Windows service")
 #endif
+#ifdef XEN_READCONSOLE_ROOTVM
+    ("dmesg", "Read the hypervisor console")
+#endif
     ("high-priority", "Run VM threads at high priority");
     // clang-format on
 
