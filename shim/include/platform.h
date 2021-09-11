@@ -41,6 +41,32 @@ extern "C"
 
     /**
      * <!-- description -->
+     *   @brief If test is false, a contract violation has occurred. This
+     *     should be used to assert preconditions that if not meet, would
+     *     result in undefined behavior. These should not be tested by a
+     *     unit test, meaning they are contract violations. These asserts
+     *     are simply there as a sanity check during a debug build.
+     *
+     * <!-- inputs/outputs -->
+     *   @param test the contract to check
+     */
+    void platform_expects(int const test) NOEXCEPT;
+
+    /**
+     * <!-- description -->
+     *   @brief If test is false, a contract violation has occurred. This
+     *     should be used to assert postconditions that if not meet, would
+     *     result in undefined behavior. These should not be tested by a
+     *     unit test, meaning they are contract violations. These asserts
+     *     are simply there as a sanity check during a debug build.
+     *
+     * <!-- inputs/outputs -->
+     *   @param test the contract to check
+     */
+    void platform_ensures(int const test) NOEXCEPT;
+
+    /**
+     * <!-- description -->
      *   @brief This function allocates read/write virtual memory from the
      *     kernel. This memory is not physically contiguous. The resulting
      *     pointer is at least 4k aligned, so use this function sparingly
@@ -92,11 +118,8 @@ extern "C"
      *   @param pmut_ptr a pointer to the memory to set
      *   @param val the value to set each byte to
      *   @param num the number of bytes in "pmut_ptr" to set to "val".
-     *   @return If the provided parameters are valid, returns 0, otherwise
-     *     returns SHIM_FAILURE.
      */
-    NODISCARD int64_t
-    platform_memset(void *const pmut_ptr, uint8_t const val, uint64_t const num) NOEXCEPT;
+    void platform_memset(void *const pmut_ptr, uint8_t const val, uint64_t const num) NOEXCEPT;
 
     /**
      * <!-- description -->
@@ -107,11 +130,8 @@ extern "C"
      *   @param pmut_dst a pointer to the memory to copy to
      *   @param src a pointer to the memory to copy from
      *   @param num the number of bytes to copy
-     *   @return If "src" or "pmut_dst" are ((void *)0), returns SHIM_FAILURE, otherwise
-     *     returns 0.
      */
-    NODISCARD int64_t
-    platform_memcpy(void *const pmut_dst, void const *const src, uint64_t const num) NOEXCEPT;
+    void platform_memcpy(void *const pmut_dst, void const *const src, uint64_t const num) NOEXCEPT;
 
     /**
      * <!-- description -->
@@ -123,10 +143,8 @@ extern "C"
      *   @param pmut_dst a pointer to the memory to copy to
      *   @param src a pointer to the memory to copy from
      *   @param num the number of bytes to copy
-     *   @return If "src" or "pmut_dst" are ((void *)0), returns SHIM_FAILURE, otherwise
-     *     returns 0.
      */
-    NODISCARD int64_t platform_copy_from_user(
+    void platform_copy_from_user(
         void *const pmut_dst, void const *const src, uint64_t const num) NOEXCEPT;
 
     /**
@@ -139,10 +157,8 @@ extern "C"
      *   @param pmut_dst a pointer to the memory to copy to
      *   @param src a pointer to the memory to copy from
      *   @param num the number of bytes to copy
-     *   @return If "src" or "pmut_dst" are ((void *)0), returns SHIM_FAILURE, otherwise
-     *     returns 0.
      */
-    NODISCARD int64_t
+    void
     platform_copy_to_user(void *const pmut_dst, void const *const src, uint64_t const num) NOEXCEPT;
 
     /**
@@ -153,6 +169,15 @@ extern "C"
      *   @return Returns the total number of online CPUs (i.e. PPs)
      */
     NODISCARD uint32_t platform_num_online_cpus(void) NOEXCEPT;
+
+    /**
+     * <!-- description -->
+     *   @brief Returns the current CPU (i.e. PP)
+     *
+     * <!-- inputs/outputs -->
+     *   @return Returns the current CPU (i.e. PP)
+     */
+    NODISCARD uint32_t platform_current_cpu(void) NOEXCEPT;
 
     /**
      * @brief The callback signature for platform_on_each_cpu
@@ -176,32 +201,6 @@ extern "C"
      */
     NODISCARD int64_t platform_on_each_cpu(
         platform_per_cpu_func const pmut_func, uint32_t const reverse) NOEXCEPT;    // NOLINT
-
-    /**
-     * <!-- description -->
-     *   @brief If test is false, a contract violation has occurred. This
-     *     should be used to assert preconditions that if not meet, would
-     *     result in undefined behavior. These should not be tested by a
-     *     unit test, meaning they are contract violations. These asserts
-     *     are simply there as a sanity check during a debug build.
-     *
-     * <!-- inputs/outputs -->
-     *   @param test the contract to check
-     */
-    void platform_expects(int const test) NOEXCEPT;
-
-    /**
-     * <!-- description -->
-     *   @brief If test is false, a contract violation has occurred. This
-     *     should be used to assert postconditions that if not meet, would
-     *     result in undefined behavior. These should not be tested by a
-     *     unit test, meaning they are contract violations. These asserts
-     *     are simply there as a sanity check during a debug build.
-     *
-     * <!-- inputs/outputs -->
-     *   @param test the contract to check
-     */
-    void platform_ensures(int const test) NOEXCEPT;
 
 #ifdef __cplusplus
 }

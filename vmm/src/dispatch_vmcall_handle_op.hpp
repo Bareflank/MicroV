@@ -62,6 +62,8 @@ namespace microv
             return vmexit_failure_advance_ip_and_run;
         }
 
+        bsl::debug<bsl::V>() << "handle " << bsl::grn << "opened\n" << bsl::rst;
+
         set_reg0(mut_sys, hypercall::MV_HANDLE_VAL);
         return vmexit_success_advance_ip_and_run;
     }
@@ -83,6 +85,7 @@ namespace microv
             return vmexit_failure_advance_ip_and_run;
         }
 
+        bsl::debug<bsl::V>() << "handle " << bsl::red << "closed\n" << bsl::rst;
         return vmexit_success_advance_ip_and_run;
     }
 
@@ -122,6 +125,12 @@ namespace microv
         bsl::discard(vp_pool);
         bsl::discard(vs_pool);
         bsl::discard(vsid);
+
+        if (bsl::unlikely(!verify_root_vm(mut_sys))) {
+            bsl::print<bsl::V>() << bsl::here();
+            set_reg_return(mut_sys, hypercall::MV_STATUS_FAILURE_UNKNOWN);
+            return vmexit_failure_advance_ip_and_run;
+        }
 
         switch (hypercall::mv_hypercall_index(get_reg_hypercall(mut_sys)).get()) {
             case hypercall::MV_HANDLE_OP_OPEN_HANDLE_IDX_VAL.get(): {

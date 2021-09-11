@@ -22,6 +22,8 @@
 include(${CMAKE_CURRENT_LIST_DIR}/../cmake/config/default.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/../cmake/function/microv_target_source.cmake)
 
+include(${CMAKE_CURRENT_LIST_DIR}/../cmake/write_constants.cmake)
+
 # ------------------------------------------------------------------------------
 # Executable
 # ------------------------------------------------------------------------------
@@ -64,30 +66,19 @@ target_include_directories(vmm PRIVATE
 # ------------------------------------------------------------------------------
 
 list(APPEND HEADERS
-    ${CMAKE_CURRENT_LIST_DIR}/src/vp_pool_t.hpp
-    ${CMAKE_CURRENT_LIST_DIR}/src/vp_t.hpp
-    ${CMAKE_CURRENT_LIST_DIR}/src/vs_pool_t.hpp
 )
 
 if(HYPERVISOR_TARGET_ARCH STREQUAL "AuthenticAMD" OR HYPERVISOR_TARGET_ARCH STREQUAL "GenuineIntel")
     list(APPEND HEADERS
-        ${CMAKE_CURRENT_LIST_DIR}/src/x64/intrinsic_cpuid_impl.hpp
-        ${CMAKE_CURRENT_LIST_DIR}/src/x64/intrinsic_t.hpp
     )
 
     if(HYPERVISOR_TARGET_ARCH STREQUAL "AuthenticAMD")
         list(APPEND HEADERS
-            ${CMAKE_CURRENT_LIST_DIR}/src/x64/amd/gs_t.hpp
-            ${CMAKE_CURRENT_LIST_DIR}/src/x64/amd/tls_t.hpp
-            ${CMAKE_CURRENT_LIST_DIR}/src/x64/amd/vs_t.hpp
         )
     endif()
 
     if(HYPERVISOR_TARGET_ARCH STREQUAL "GenuineIntel")
         list(APPEND HEADERS
-            ${CMAKE_CURRENT_LIST_DIR}/src/x64/intel/gs_t.hpp
-            ${CMAKE_CURRENT_LIST_DIR}/src/x64/intel/tls_t.hpp
-            ${CMAKE_CURRENT_LIST_DIR}/src/x64/intel/vs_t.hpp
         )
     endif()
 endif()
@@ -100,6 +91,7 @@ microv_target_source(vmm src/main.cpp ${HEADERS})
 
 if(HYPERVISOR_TARGET_ARCH STREQUAL "AuthenticAMD" OR HYPERVISOR_TARGET_ARCH STREQUAL "GenuineIntel")
     microv_target_source(vmm src/x64/intrinsic_cpuid_impl.S ${HEADERS})
+    microv_target_source(vmm src/x64/pause.S ${HEADERS})
 endif()
 
 # ------------------------------------------------------------------------------
@@ -107,6 +99,7 @@ endif()
 # ------------------------------------------------------------------------------
 
 target_compile_definitions(hypervisor INTERFACE
+    MICROV_MAX_VCPUS=${MICROV_MAX_VCPUS}_umx
     MICROV_MAX_PP_MAPS=${MICROV_MAX_PP_MAPS}_umx
 )
 

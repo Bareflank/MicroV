@@ -41,12 +41,12 @@ extern "C"
      *   @brief Handles the execution of kvm_create_vcpu.
      *
      * <!-- inputs/outputs -->
-     *   @param vm the shim_vm_t representing the VM to operate on
-     *   @param pmut_vcpu where to store the ID of the newly created VP/VS
+     *   @param pmut_vm the VM to add the VCPU to
+     *   @param pmut_vcpu returns the resulting VCPU
      *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
      */
     NODISCARD int64_t handle_vm_kvm_create_vcpu(
-        struct shim_vm_t const *const vm, struct shim_vcpu_t *const pmut_vcpu) NOEXCEPT;
+        struct shim_vm_t *const pmut_vm, struct shim_vcpu_t **const pmut_vcpu) NOEXCEPT;
 
 #ifdef __cplusplus
 }

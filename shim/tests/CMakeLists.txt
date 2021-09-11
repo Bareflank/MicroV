@@ -77,8 +77,17 @@ list(APPEND INTEL_SYSTEM_INCLUDES
 # Definitions
 # ------------------------------------------------------------------------------
 
-list(APPEND COMMON_DEFINES
-)
+if (WIN32)
+    list(APPEND COMMON_DEFINES
+        MICROV_MAX_VCPUS=2ULL
+        MICROV_MAX_PP_MAPS=2ULL
+    )
+else()
+    list(APPEND COMMON_DEFINES
+        MICROV_MAX_VCPUS=2UL
+        MICROV_MAX_PP_MAPS=2UL
+    )
+endif()
 
 list(APPEND X64_DEFINES
     ${COMMON_DEFINES}

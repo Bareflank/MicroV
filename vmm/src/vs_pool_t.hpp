@@ -28,7 +28,9 @@
 #include <bf_syscall_t.hpp>
 #include <gs_t.hpp>
 #include <intrinsic_t.hpp>
+#include <lock_guard_t.hpp>
 #include <pp_pool_t.hpp>
+#include <spinlock_t.hpp>
 #include <tls_t.hpp>
 #include <vs_t.hpp>
 
@@ -52,6 +54,8 @@ namespace microv
     {
         /// @brief stores the pool of vs_t objects
         bsl::array<vs_t, HYPERVISOR_MAX_VSS.get()> m_pool{};
+        /// @brief safe guards operations on the pool.
+        mutable spinlock_t m_lock{};
 
         /// <!-- description -->
         ///   @brief Returns the vs_t associated with the provided vsid.
@@ -150,6 +154,8 @@ namespace microv
             bsl::safe_u16 const &vpid,
             bsl::safe_u16 const &ppid) noexcept -> bsl::safe_u16
         {
+            lock_guard_t mut_lock{tls, m_lock};
+
             auto const vsid{mut_sys.bf_vs_op_create_vs(vpid, ppid)};
             if (bsl::unlikely(vsid.is_invalid())) {
                 bsl::print<bsl::V>() << bsl::here();
@@ -177,6 +183,8 @@ namespace microv
             intrinsic_t const &intrinsic,
             bsl::safe_u16 const &vsid) noexcept
         {
+            lock_guard_t mut_lock{tls, m_lock};
+
             auto *const pmut_vs{this->get_vs(vsid)};
             if (pmut_vs->is_allocated()) {
                 bsl::expects(mut_sys.bf_vs_op_destroy_vs(vsid));
@@ -215,6 +223,67 @@ namespace microv
         is_deallocated(bsl::safe_u16 const &vsid) const noexcept -> bool
         {
             return this->get_vs(vsid)->is_deallocated();
+        }
+
+        /// <!-- description -->
+        ///   @brief Sets the requested vs_t as active
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param mut_tls the current TLS block
+        ///   @param vsid the ID of the vs_t to set as active
+        ///
+        constexpr void
+        set_active(tls_t &mut_tls, bsl::safe_u16 const &vsid) noexcept
+        {
+            this->get_vs(vsid)->set_active(mut_tls);
+        }
+
+        /// <!-- description -->
+        ///   @brief Sets the requested vs_t as inactive
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param mut_tls the current TLS block
+        ///   @param vsid the ID of the vs_t to set as inactive
+        ///
+        constexpr void
+        set_inactive(tls_t &mut_tls, bsl::safe_u16 const &vsid) noexcept
+        {
+            if (bsl::unlikely(vsid == syscall::BF_INVALID_ID)) {
+                return;
+            }
+
+            this->get_vs(vsid)->set_inactive(mut_tls);
+        }
+
+        /// <!-- description -->
+        ///   @brief Returns the ID of the PP the requested vs_t is active on.
+        ///     If the vs_t is not active, bsl::safe_u16::failure() is returned.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param vsid the ID of the vs_t to query
+        ///   @return Returns the ID of the PP the requested vs_t is active on.
+        ///     If the vs_t is not active, bsl::safe_u16::failure() is returned.
+        ///
+        [[nodiscard]] constexpr auto
+        is_active(bsl::safe_u16 const &vsid) const noexcept -> bsl::safe_u16
+        {
+            return this->get_vs(vsid)->is_active();
+        }
+
+        /// <!-- description -->
+        ///   @brief Returns true if the requested vs_t is active on the
+        ///     current PP, false otherwise
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param tls the current TLS block
+        ///   @param vsid the ID of the vs_t to query
+        ///   @return Returns true if the requested vs_t is active on the
+        ///     current PP, false otherwise
+        ///
+        [[nodiscard]] constexpr auto
+        is_active_on_this_pp(tls_t const &tls, bsl::safe_u16 const &vsid) const noexcept -> bool
+        {
+            return this->get_vs(vsid)->is_active_on_this_pp(tls);
         }
 
         /// <!-- description -->
@@ -266,6 +335,34 @@ namespace microv
         assigned_pp(bsl::safe_u16 const &vsid) const noexcept -> bsl::safe_u16
         {
             return this->get_vs(vsid)->assigned_pp();
+        }
+
+        /// <!-- description -->
+        ///   @brief If the requested VP is assigned to a vs_t in the pool,
+        ///     the ID of the first vs_t found is returned. Otherwise, this
+        ///     function will return bsl::safe_u16::failure()
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param vpid the ID fo the VP to query
+        ///   @return If the requested VP is assigned to a vs_t in the pool,
+        ///     the ID of the first vs_t found is returned. Otherwise, this
+        ///     function will return bsl::safe_u16::failure()
+        ///
+        [[nodiscard]] constexpr auto
+        vs_assigned_to_vp(bsl::safe_u16 const &vpid) const noexcept -> bsl::safe_u16
+        {
+            bsl::expects(vpid.is_valid_and_checked());
+            bsl::expects(vpid != syscall::BF_INVALID_ID);
+
+            for (auto const &vs : m_pool) {
+                if (vs.assigned_vp() == vpid) {
+                    return vs.id();
+                }
+
+                bsl::touch();
+            }
+
+            return bsl::safe_u16::failure();
         }
 
         /// <!-- description -->

@@ -40,7 +40,7 @@
  *   @param str the string to output
  */
 static inline void
-bfdebug(char const *const str)
+bfdebug(char const *const str) NOEXCEPT
 {
     printf("[BAREFLANK DEBUG] %s\n", str);
 }
@@ -54,7 +54,7 @@ bfdebug(char const *const str)
  *   @param val the 8bit hex value to output
  */
 static inline void
-bfdebug_x8(char const *const str, uint8_t const val)
+bfdebug_x8(char const *const str, uint8_t const val) NOEXCEPT
 {
     printf("[BAREFLANK DEBUG] %s: 0x%" PRIx8 "\n", str, (int32_t)val);
 }
@@ -68,7 +68,7 @@ bfdebug_x8(char const *const str, uint8_t const val)
  *   @param val the 16bit hex value to output
  */
 static inline void
-bfdebug_x16(char const *const str, uint16_t const val)
+bfdebug_x16(char const *const str, uint16_t const val) NOEXCEPT
 {
     printf("[BAREFLANK DEBUG] %s: 0x%" PRIx16 "\n", str, (int32_t)val);
 }
@@ -82,7 +82,7 @@ bfdebug_x16(char const *const str, uint16_t const val)
  *   @param val the 32bit hex value to output
  */
 static inline void
-bfdebug_x32(char const *const str, uint32_t const val)
+bfdebug_x32(char const *const str, uint32_t const val) NOEXCEPT
 {
     printf("[BAREFLANK DEBUG] %s: 0x%" PRIx32 "\n", str, val);
 }
@@ -96,7 +96,7 @@ bfdebug_x32(char const *const str, uint32_t const val)
  *   @param val the 64bit hex value to output
  */
 static inline void
-bfdebug_x64(char const *const str, uint64_t const val)
+bfdebug_x64(char const *const str, uint64_t const val) NOEXCEPT
 {
     printf("[BAREFLANK DEBUG] %s: 0x%" PRIx64 "\n", str, val);
 }
@@ -110,7 +110,7 @@ bfdebug_x64(char const *const str, uint64_t const val)
  *   @param val the 8bit dec value to output
  */
 static inline void
-bfdebug_d8(char const *const str, uint8_t const val)
+bfdebug_d8(char const *const str, uint8_t const val) NOEXCEPT
 {
     printf("[BAREFLANK DEBUG] %s: %" PRId8 "\n", str, (int32_t)val);
 }
@@ -124,7 +124,7 @@ bfdebug_d8(char const *const str, uint8_t const val)
  *   @param val the 16bit dec value to output
  */
 static inline void
-bfdebug_d16(char const *const str, uint16_t const val)
+bfdebug_d16(char const *const str, uint16_t const val) NOEXCEPT
 {
     printf("[BAREFLANK DEBUG] %s: %" PRId16 "\n", str, (int32_t)val);
 }
@@ -138,7 +138,7 @@ bfdebug_d16(char const *const str, uint16_t const val)
  *   @param val the 32bit dec value to output
  */
 static inline void
-bfdebug_d32(char const *const str, uint32_t const val)
+bfdebug_d32(char const *const str, uint32_t const val) NOEXCEPT
 {
     printf("[BAREFLANK DEBUG] %s: %" PRId32 "\n", str, val);
 }
@@ -152,7 +152,7 @@ bfdebug_d32(char const *const str, uint32_t const val)
  *   @param val the 64bit dec value to output
  */
 static inline void
-bfdebug_d64(char const *const str, uint64_t const val)
+bfdebug_d64(char const *const str, uint64_t const val) NOEXCEPT
 {
     printf("[BAREFLANK DEBUG] %s: %" PRId64 "\n", str, val);
 }
@@ -166,7 +166,7 @@ bfdebug_d64(char const *const str, uint64_t const val)
  *   @param p the pointer to output
  */
 static inline void
-bfdebug_ptr(char const *const str, void const *const p)
+bfdebug_ptr(char const *const str, void const *const p) NOEXCEPT
 {
     printf("[BAREFLANK DEBUG] %s: 0x%p\n", str, p);
 }
@@ -179,7 +179,7 @@ bfdebug_ptr(char const *const str, void const *const p)
  *   @param str the string to output
  */
 static inline void
-bferror(char const *const str)
+bferror(char const *const str) NOEXCEPT
 {
     printf("[BAREFLANK ERROR] %s", str);
 }
@@ -193,7 +193,7 @@ bferror(char const *const str)
  *   @param val the 8bit hex value to output
  */
 static inline void
-bferror_x8(char const *const str, uint8_t const val)
+bferror_x8(char const *const str, uint8_t const val) NOEXCEPT
 {
     printf("[BAREFLANK ERROR] %s: 0x%" PRIx8 "\n", str, (int32_t)val);
 }
@@ -207,7 +207,7 @@ bferror_x8(char const *const str, uint8_t const val)
  *   @param val the 16bit hex value to output
  */
 static inline void
-bferror_x16(char const *const str, uint16_t const val)
+bferror_x16(char const *const str, uint16_t const val) NOEXCEPT
 {
     printf("[BAREFLANK ERROR] %s: 0x%" PRIx16 "\n", str, (int32_t)val);
 }
@@ -221,7 +221,7 @@ bferror_x16(char const *const str, uint16_t const val)
  *   @param val the 32bit hex value to output
  */
 static inline void
-bferror_x32(char const *const str, uint32_t const val)
+bferror_x32(char const *const str, uint32_t const val) NOEXCEPT
 {
     printf("[BAREFLANK ERROR] %s: 0x%" PRIx32 "\n", str, val);
 }
@@ -235,7 +235,7 @@ bferror_x32(char const *const str, uint32_t const val)
  *   @param val the 64bit hex value to output
  */
 static inline void
-bferror_x64(char const *const str, uint64_t const val)
+bferror_x64(char const *const str, uint64_t const val) NOEXCEPT
 {
     printf("[BAREFLANK ERROR] %s: 0x%" PRIx64 "\n", str, val);
 }
@@ -249,7 +249,7 @@ bferror_x64(char const *const str, uint64_t const val)
  *   @param val the 8bit dec value to output
  */
 static inline void
-bferror_d8(char const *const str, uint8_t const val)
+bferror_d8(char const *const str, uint8_t const val) NOEXCEPT
 {
     printf("[BAREFLANK ERROR] %s: %" PRId8 "\n", str, (int32_t)val);
 }
@@ -263,7 +263,7 @@ bferror_d8(char const *const str, uint8_t const val)
  *   @param val the 16bit dec value to output
  */
 static inline void
-bferror_d16(char const *const str, uint16_t const val)
+bferror_d16(char const *const str, uint16_t const val) NOEXCEPT
 {
     printf("[BAREFLANK ERROR] %s: %" PRId16 "\n", str, (int32_t)val);
 }
@@ -277,7 +277,7 @@ bferror_d16(char const *const str, uint16_t const val)
  *   @param val the 32bit dec value to output
  */
 static inline void
-bferror_d32(char const *const str, uint32_t const val)
+bferror_d32(char const *const str, uint32_t const val) NOEXCEPT
 {
     printf("[BAREFLANK ERROR] %s: %" PRId32 "\n", str, val);
 }
@@ -291,7 +291,7 @@ bferror_d32(char const *const str, uint32_t const val)
  *   @param val the 64bit dec value to output
  */
 static inline void
-bferror_d64(char const *const str, uint64_t const val)
+bferror_d64(char const *const str, uint64_t const val) NOEXCEPT
 {
     printf("[BAREFLANK ERROR] %s: %" PRId64 "\n", str, val);
 }
@@ -305,7 +305,7 @@ bferror_d64(char const *const str, uint64_t const val)
  *   @param p the pointer value to output
  */
 static inline void
-bferror_ptr(char const *const str, void const *const p)
+bferror_ptr(char const *const str, void const *const p) NOEXCEPT
 {
     printf("[BAREFLANK ERROR] %s: 0x%p\n", str, p);
 }

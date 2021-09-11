@@ -41,6 +41,6 @@ handle_system_kvm_get_vcpu_mmap_size(uint32_t *const pmut_size) NOEXCEPT
 {
     platform_expects(NULL != pmut_size);
 
-    *pmut_size = ((uint32_t)sizeof(struct kvm_run));
+    *pmut_size = (uint32_t)sizeof(struct kvm_run);
     return SHIM_SUCCESS;
 }

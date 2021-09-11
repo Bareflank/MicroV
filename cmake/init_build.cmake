@@ -19,6 +19,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+add_custom_target(run_all_integration_tests)
+
 include(FetchContent)
 set(FETCHCONTENT_BASE_DIR ${CMAKE_BINARY_DIR}/depend)
 
@@ -35,6 +37,8 @@ include(${CMAKE_CURRENT_LIST_DIR}/target/shim_load.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/target/shim_unload.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/target/shim_clean.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/target/shim_quick.cmake)
+
+include(${CMAKE_CURRENT_LIST_DIR}/write_constants.cmake)
 
 include(${bsl_SOURCE_DIR}/cmake/build_types.cmake)
 include(${bsl_SOURCE_DIR}/cmake/find_programs.cmake)

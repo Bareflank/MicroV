@@ -374,8 +374,6 @@ namespace hypercall
     /// @brief Defines the index for mv_debug_op_out
     constexpr auto MV_DEBUG_OP_OUT_IDX_VAL{0x0000000000000000_u64};
 
-    /// @brief Defines the index for mv_pp_op_get_shared_page_gpa
-    constexpr auto MV_PP_OP_GET_SHARED_PAGE_GPA_IDX_VAL{0x0000000000000000_u64};
     /// @brief Defines the index for mv_pp_op_clr_shared_page_gpa
     constexpr auto MV_PP_OP_CLR_SHARED_PAGE_GPA_IDX_VAL{0x0000000000000001_u64};
     /// @brief Defines the index for mv_pp_op_set_shared_page_gpa

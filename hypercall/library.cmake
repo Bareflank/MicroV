@@ -67,17 +67,9 @@ list(APPEND HEADERS
 )
 
 if(HYPERVISOR_TARGET_ARCH STREQUAL "AuthenticAMD" OR HYPERVISOR_TARGET_ARCH STREQUAL "GenuineIntel")
-    if(HYPERVISOR_TARGET_ARCH STREQUAL "AuthenticAMD")
-        list(APPEND HEADERS
-            ${CMAKE_CURRENT_LIST_DIR}/include/x64/amd/mv_reg_t.hpp
-        )
-    endif()
-
-    if(HYPERVISOR_TARGET_ARCH STREQUAL "GenuineIntel")
-        list(APPEND HEADERS
-            ${CMAKE_CURRENT_LIST_DIR}/include/x64/intel/mv_reg_t.hpp
-        )
-    endif()
+    list(APPEND HEADERS
+        ${CMAKE_CURRENT_LIST_DIR}/include/x64/mv_reg_t.hpp
+    )
 endif()
 
 # ------------------------------------------------------------------------------
@@ -90,8 +82,20 @@ if(HYPERVISOR_TARGET_ARCH STREQUAL "AuthenticAMD" OR HYPERVISOR_TARGET_ARCH STRE
         microv_target_source(hypercall src/linux/x64/amd/mv_handle_op_close_handle_impl.S ${HEADERS})
         microv_target_source(hypercall src/linux/x64/amd/mv_handle_op_open_handle_impl.S ${HEADERS})
         microv_target_source(hypercall src/linux/x64/amd/mv_id_op_version_impl.S ${HEADERS})
-        # microv_target_source(hypercall src/linux/x64/amd/mv_vs_op_gla_to_gpa_impl.S ${HEADERS})
-        # microv_target_source(hypercall src/linux/x64/amd/mv_vs_op_gva_to_gla_impl.S ${HEADERS})
+        microv_target_source(hypercall src/linux/x64/amd/mv_pp_op_clr_shared_page_gpa_impl.S ${HEADERS})
+        microv_target_source(hypercall src/linux/x64/amd/mv_pp_op_set_shared_page_gpa_impl.S ${HEADERS})
+        microv_target_source(hypercall src/linux/x64/amd/mv_vm_op_create_vm_impl.S ${HEADERS})
+        microv_target_source(hypercall src/linux/x64/amd/mv_vm_op_destroy_vm_impl.S ${HEADERS})
+        microv_target_source(hypercall src/linux/x64/amd/mv_vm_op_mmio_map_impl.S ${HEADERS})
+        microv_target_source(hypercall src/linux/x64/amd/mv_vm_op_mmio_unmap_impl.S ${HEADERS})
+        microv_target_source(hypercall src/linux/x64/amd/mv_vp_op_create_vp_impl.S ${HEADERS})
+        microv_target_source(hypercall src/linux/x64/amd/mv_vp_op_destroy_vp_impl.S ${HEADERS})
+        microv_target_source(hypercall src/linux/x64/amd/mv_vs_op_create_vs_impl.S ${HEADERS})
+        microv_target_source(hypercall src/linux/x64/amd/mv_vs_op_destroy_vs_impl.S ${HEADERS})
+        microv_target_source(hypercall src/linux/x64/amd/mv_vs_op_gla_to_gpa_impl.S ${HEADERS})
+        microv_target_source(hypercall src/linux/x64/amd/mv_vs_op_gva_to_gla_impl.S ${HEADERS})
+        microv_target_source(hypercall src/linux/x64/amd/mv_vs_op_reg_get_list_impl.S ${HEADERS})
+        microv_target_source(hypercall src/linux/x64/amd/mv_vs_op_reg_set_list_impl.S ${HEADERS})
     endif()
 
     if(HYPERVISOR_TARGET_ARCH STREQUAL "GenuineIntel")
@@ -99,8 +103,20 @@ if(HYPERVISOR_TARGET_ARCH STREQUAL "AuthenticAMD" OR HYPERVISOR_TARGET_ARCH STRE
         microv_target_source(hypercall src/linux/x64/intel/mv_handle_op_close_handle_impl.S ${HEADERS})
         microv_target_source(hypercall src/linux/x64/intel/mv_handle_op_open_handle_impl.S ${HEADERS})
         microv_target_source(hypercall src/linux/x64/intel/mv_id_op_version_impl.S ${HEADERS})
-        # microv_target_source(hypercall src/linux/x64/intel/mv_vs_op_gla_to_gpa_impl.S ${HEADERS})
-        # microv_target_source(hypercall src/linux/x64/intel/mv_vs_op_gva_to_gla_impl.S ${HEADERS})
+        microv_target_source(hypercall src/linux/x64/intel/mv_pp_op_clr_shared_page_gpa_impl.S ${HEADERS})
+        microv_target_source(hypercall src/linux/x64/intel/mv_pp_op_set_shared_page_gpa_impl.S ${HEADERS})
+        microv_target_source(hypercall src/linux/x64/intel/mv_vm_op_create_vm_impl.S ${HEADERS})
+        microv_target_source(hypercall src/linux/x64/intel/mv_vm_op_destroy_vm_impl.S ${HEADERS})
+        microv_target_source(hypercall src/linux/x64/intel/mv_vm_op_mmio_map_impl.S ${HEADERS})
+        microv_target_source(hypercall src/linux/x64/intel/mv_vm_op_mmio_unmap_impl.S ${HEADERS})
+        microv_target_source(hypercall src/linux/x64/intel/mv_vp_op_create_vp_impl.S ${HEADERS})
+        microv_target_source(hypercall src/linux/x64/intel/mv_vp_op_destroy_vp_impl.S ${HEADERS})
+        microv_target_source(hypercall src/linux/x64/intel/mv_vs_op_create_vs_impl.S ${HEADERS})
+        microv_target_source(hypercall src/linux/x64/intel/mv_vs_op_destroy_vs_impl.S ${HEADERS})
+        microv_target_source(hypercall src/linux/x64/intel/mv_vs_op_gla_to_gpa_impl.S ${HEADERS})
+        microv_target_source(hypercall src/linux/x64/intel/mv_vs_op_gva_to_gla_impl.S ${HEADERS})
+        microv_target_source(hypercall src/linux/x64/intel/mv_vs_op_reg_get_list_impl.S ${HEADERS})
+        microv_target_source(hypercall src/linux/x64/intel/mv_vs_op_reg_set_list_impl.S ${HEADERS})
     endif()
 endif()
 

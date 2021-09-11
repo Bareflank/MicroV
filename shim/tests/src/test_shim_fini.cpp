@@ -24,17 +24,12 @@
 
 #include "../../include/shim_fini.h"
 
-#include <mv_constants.h>
-#include <types.h>
+#include <helpers.hpp>
 
-#include <bsl/cstdint.hpp>
 #include <bsl/ut.hpp>
 
 namespace shim
 {
-    extern "C" bsl::uint64 g_mut_hndl{};
-    extern "C" bsl::uint64 g_mut_mv_handle_op_close_handle{};
-
     /// <!-- description -->
     ///   @brief Used to execute the actual checks. We put the checks in this
     ///     function so that we can validate the tests both at compile-time

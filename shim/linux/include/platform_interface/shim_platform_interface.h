@@ -76,7 +76,7 @@
 /** @brief defines the name of the shim */
 #define SHIM_NAME "microv_shim"
 /** @brief defines the /dev name of the shim */
-#define SHIM_DEVICE_NAME "/dev/kvm"
+#define SHIM_DEVICE_NAME "/dev/microv_shim"
 
 /** @brief defines KVM's KVM_GET_API_VERSION IOCTL */
 #define KVM_GET_API_VERSION _IO(SHIMIO, 0x00)

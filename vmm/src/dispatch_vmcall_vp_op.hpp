@@ -45,6 +45,86 @@
 namespace microv
 {
     /// <!-- description -->
+    ///   @brief Implements the mv_vp_op_create_vp hypercall
+    ///
+    /// <!-- inputs/outputs -->
+    ///   @param gs the gs_t to use
+    ///   @param tls the tls_t to use
+    ///   @param mut_sys the bf_syscall_t to use
+    ///   @param intrinsic the intrinsic_t to use
+    ///   @param vm_pool the vm_pool_t to use
+    ///   @param mut_vp_pool the vp_pool_t to use
+    ///   @return Returns bsl::errc_success on success, bsl::errc_failure
+    ///     and friends otherwise
+    ///
+    [[nodiscard]] constexpr auto
+    hypercall_vp_op_create_vp(
+        gs_t const &gs,
+        tls_t const &tls,
+        syscall::bf_syscall_t &mut_sys,
+        intrinsic_t const &intrinsic,
+        vm_pool_t const &vm_pool,
+        vp_pool_t &mut_vp_pool) noexcept -> bsl::errc_type
+    {
+        auto const vmid{get_allocated_vmid(get_reg1(mut_sys), vm_pool)};
+        if (bsl::unlikely(vmid.is_invalid())) {
+            bsl::print<bsl::V>() << bsl::here();
+            set_reg_return(mut_sys, hypercall::MV_STATUS_INVALID_INPUT_REG1);
+            return vmexit_failure_advance_ip_and_run;
+        }
+
+        auto const vpid{mut_vp_pool.allocate(gs, tls, mut_sys, intrinsic, vmid, tls.ppid)};
+        if (bsl::unlikely(vpid.is_invalid())) {
+            bsl::print<bsl::V>() << bsl::here();
+            set_reg_return(mut_sys, hypercall::MV_STATUS_FAILURE_UNKNOWN);
+            return vmexit_failure_advance_ip_and_run;
+        }
+
+        set_reg0(mut_sys, bsl::merge_umx_with_u16(get_reg0(mut_sys), vpid));
+        return vmexit_success_advance_ip_and_run;
+    }
+
+    /// <!-- description -->
+    ///   @brief Implements the mv_vp_op_destroy_vp hypercall
+    ///
+    /// <!-- inputs/outputs -->
+    ///   @param gs the gs_t to use
+    ///   @param tls the tls_t to use
+    ///   @param mut_sys the bf_syscall_t to use
+    ///   @param intrinsic the intrinsic_t to use
+    ///   @param mut_vp_pool the vp_pool_t to use
+    ///   @param vs_pool the vs_pool_t to use
+    ///   @return Returns bsl::errc_success on success, bsl::errc_failure
+    ///     and friends otherwise
+    ///
+    [[nodiscard]] constexpr auto
+    hypercall_vp_op_destroy_vp(
+        gs_t const &gs,
+        tls_t const &tls,
+        syscall::bf_syscall_t &mut_sys,
+        intrinsic_t const &intrinsic,
+        vp_pool_t &mut_vp_pool,
+        vs_pool_t const &vs_pool) noexcept -> bsl::errc_type
+    {
+        auto const vpid{get_allocated_vpid(get_reg1(mut_sys), mut_vp_pool)};
+        if (bsl::unlikely(vpid.is_invalid())) {
+            bsl::print<bsl::V>() << bsl::here();
+            set_reg_return(mut_sys, hypercall::MV_STATUS_INVALID_INPUT_REG1);
+            return vmexit_failure_advance_ip_and_run;
+        }
+
+        bool const vp_destroyable{is_vp_destroyable(mut_sys, mut_vp_pool, vs_pool, vpid)};
+        if (bsl::unlikely(!vp_destroyable)) {
+            bsl::print<bsl::V>() << bsl::here();
+            set_reg_return(mut_sys, hypercall::MV_STATUS_FAILURE_UNKNOWN);
+            return vmexit_failure_advance_ip_and_run;
+        }
+
+        mut_vp_pool.deallocate(gs, tls, mut_sys, intrinsic, vpid);
+        return vmexit_success_advance_ip_and_run;
+    }
+
+    /// <!-- description -->
     ///   @brief Dispatches virtual processor VMCalls.
     ///
     /// <!-- inputs/outputs -->
@@ -54,7 +134,7 @@ namespace microv
     ///   @param intrinsic the intrinsic_t to use
     ///   @param pp_pool the pp_pool_t to use
     ///   @param vm_pool the vm_pool_t to use
-    ///   @param vp_pool the vp_pool_t to use
+    ///   @param mut_vp_pool the vp_pool_t to use
     ///   @param vs_pool the vs_pool_t to use
     ///   @param vsid the ID of the VS that generated the VMExit
     ///   @return Returns bsl::errc_success on success, bsl::errc_failure
@@ -68,21 +148,48 @@ namespace microv
         intrinsic_t const &intrinsic,
         pp_pool_t const &pp_pool,
         vm_pool_t const &vm_pool,
-        vp_pool_t const &vp_pool,
+        vp_pool_t &mut_vp_pool,
         vs_pool_t const &vs_pool,
         bsl::safe_u16 const &vsid) noexcept -> bsl::errc_type
     {
-        bsl::discard(gs);
-        bsl::discard(tls);
-        bsl::discard(mut_sys);
-        bsl::discard(intrinsic);
         bsl::discard(pp_pool);
-        bsl::discard(vm_pool);
-        bsl::discard(vp_pool);
-        bsl::discard(vs_pool);
         bsl::discard(vsid);
 
+        if (bsl::unlikely(!verify_handle(mut_sys))) {
+            bsl::print<bsl::V>() << bsl::here();
+            set_reg_return(mut_sys, hypercall::MV_STATUS_FAILURE_UNKNOWN);
+            return vmexit_failure_advance_ip_and_run;
+        }
+
+        if (bsl::unlikely(!verify_root_vm(mut_sys))) {
+            bsl::print<bsl::V>() << bsl::here();
+            set_reg_return(mut_sys, hypercall::MV_STATUS_FAILURE_UNKNOWN);
+            return vmexit_failure_advance_ip_and_run;
+        }
+
         switch (hypercall::mv_hypercall_index(get_reg_hypercall(mut_sys)).get()) {
+            case hypercall::MV_VP_OP_CREATE_VP_IDX_VAL.get(): {
+                auto const ret{
+                    hypercall_vp_op_create_vp(gs, tls, mut_sys, intrinsic, vm_pool, mut_vp_pool)};
+                if (bsl::unlikely(!ret)) {
+                    bsl::print<bsl::V>() << bsl::here();
+                    return ret;
+                }
+
+                return ret;
+            }
+
+            case hypercall::MV_VP_OP_DESTROY_VP_IDX_VAL.get(): {
+                auto const ret{
+                    hypercall_vp_op_destroy_vp(gs, tls, mut_sys, intrinsic, mut_vp_pool, vs_pool)};
+                if (bsl::unlikely(!ret)) {
+                    bsl::print<bsl::V>() << bsl::here();
+                    return ret;
+                }
+
+                return ret;
+            }
+
             default: {
                 break;
             }

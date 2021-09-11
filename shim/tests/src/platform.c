@@ -27,11 +27,15 @@
  */
 
 #include <assert.h>
-#include <debug.h>
 #include <platform.h>
 #include <stdlib.h>
 #include <string.h>
 #include <types.h>
+
+/** @brief if non zero, platform_alloc fails after count hits zero */
+int32_t g_mut_platform_alloc_fails = 0;
+/** @brief number of online cpus */
+uint32_t g_mut_platform_num_online_cpus = 1U;
 
 /**
  * <!-- description -->
@@ -45,7 +49,7 @@
  *   @param test the contract to check
  */
 void
-platform_expects(int const test)
+platform_expects(int const test) NOEXCEPT
 {
     assert(test);    // NOLINT // GRCOV_EXCLUDE_BR
 }
@@ -62,7 +66,7 @@ platform_expects(int const test)
  *   @param test the contract to check
  */
 void
-platform_ensures(int const test)
+platform_ensures(int const test) NOEXCEPT
 {
     assert(test);    // NOLINT // GRCOV_EXCLUDE_BR
 }
@@ -82,18 +86,21 @@ platform_ensures(int const test)
  *   @return Returns a pointer to the newly allocated memory on success.
  *     Returns a nullptr on failure.
  */
-void *
-platform_alloc(uint64_t const size)
+NODISCARD void *
+platform_alloc(uint64_t const size) NOEXCEPT
 {
     void *pmut_mut_ret;
+    platform_expects(((uint64_t)0) != size);
 
-    if (((uint64_t)0) == size) {
-        bferror("invalid number of bytes (i.e., size)");
-        return ((void *)0);
+    if (g_mut_platform_alloc_fails > 0) {
+        --g_mut_platform_alloc_fails;
+        if (0 == g_mut_platform_alloc_fails) {
+            return ((void *)0);
+        }
     }
 
     pmut_mut_ret = malloc(size);
-    platform_expects(NULL != pmut_mut_ret);
+    platform_expects(((void *)0) != pmut_mut_ret);
 
     return memset(pmut_mut_ret, 0, size);    // NOLINT
 }
@@ -111,7 +118,7 @@ platform_alloc(uint64_t const size)
  *     may or may not be ignored depending on the platform.
  */
 void
-platform_free(void *const pmut_ptr, uint64_t const size)
+platform_free(void *const pmut_ptr, uint64_t const size) NOEXCEPT
 {
     (void)size;
 
@@ -130,8 +137,8 @@ platform_free(void *const pmut_ptr, uint64_t const size)
  *   @return Given a virtual address, this function returns the virtual
  *     address's physical address. Returns ((void *)0) if the conversion failed.
  */
-uintptr_t
-platform_virt_to_phys(void const *const virt)
+NODISCARD uintptr_t
+platform_virt_to_phys(void const *const virt) NOEXCEPT
 {
     return (uintptr_t)virt;
 }
@@ -146,19 +153,12 @@ platform_virt_to_phys(void const *const virt)
  *   @param pmut_ptr a pointer to the memory to set
  *   @param val the value to set each byte to
  *   @param num the number of bytes in "pmut_ptr" to set to "val".
- *   @return If the provided parameters are valid, returns 0, otherwise
- *     returns SHIM_FAILURE.
  */
-int64_t
-platform_memset(void *const pmut_ptr, uint8_t const val, uint64_t const num)
+void
+platform_memset(void *const pmut_ptr, uint8_t const val, uint64_t const num) NOEXCEPT
 {
-    if (!pmut_ptr) {
-        bferror("invalid pmut_ptr");
-        return SHIM_FAILURE;
-    }
-
+    platform_expects(NULL != pmut_ptr);
     memset(pmut_ptr, (int32_t)val, num);    // NOLINT
-    return SHIM_SUCCESS;
 }
 
 /**
@@ -170,24 +170,14 @@ platform_memset(void *const pmut_ptr, uint8_t const val, uint64_t const num)
  *   @param pmut_dst a pointer to the memory to copy to
  *   @param src a pointer to the memory to copy from
  *   @param num the number of bytes to copy
- *   @return If "src" or "pmut_dst" are ((void *)0), returns SHIM_FAILURE, otherwise
- *     returns 0.
  */
-int64_t
-platform_memcpy(void *const pmut_dst, void const *const src, uint64_t const num)
+void
+platform_memcpy(void *const pmut_dst, void const *const src, uint64_t const num) NOEXCEPT
 {
-    if (((void *)0) == pmut_dst) {
-        bferror("invalid pointer");
-        return SHIM_FAILURE;
-    }
-
-    if (((void *)0) == src) {
-        bferror("invalid pointer");
-        return SHIM_FAILURE;
-    }
+    platform_expects(NULL != pmut_dst);
+    platform_expects(NULL != src);
 
     memcpy(pmut_dst, src, num);    // NOLINT
-    return SHIM_SUCCESS;
 }
 
 /**
@@ -200,24 +190,14 @@ platform_memcpy(void *const pmut_dst, void const *const src, uint64_t const num)
  *   @param pmut_dst a pointer to the memory to copy to
  *   @param src a pointer to the memory to copy from
  *   @param num the number of bytes to copy
- *   @return If "src" or "pmut_dst" are ((void *)0), returns FAILURE, otherwise
- *     returns 0.
  */
-int64_t
-platform_copy_from_user(void *const pmut_dst, void const *const src, uint64_t const num)
+void
+platform_copy_from_user(void *const pmut_dst, void const *const src, uint64_t const num) NOEXCEPT
 {
-    if (((void *)0) == pmut_dst) {
-        bferror("invalid pointer");
-        return SHIM_FAILURE;
-    }
-
-    if (((void *)0) == src) {
-        bferror("invalid pointer");
-        return SHIM_FAILURE;
-    }
+    platform_expects(NULL != pmut_dst);
+    platform_expects(NULL != src);
 
     memcpy(pmut_dst, src, num);    // NOLINT
-    return SHIM_SUCCESS;
 }
 
 /**
@@ -230,24 +210,14 @@ platform_copy_from_user(void *const pmut_dst, void const *const src, uint64_t co
  *   @param pmut_dst a pointer to the memory to copy to
  *   @param src a pointer to the memory to copy from
  *   @param num the number of bytes to copy
- *   @return If "src" or "pmut_dst" are ((void *)0), returns FAILURE, otherwise
- *     returns 0.
  */
-int64_t
-platform_copy_to_user(void *const pmut_dst, void const *const src, uint64_t const num)
+void
+platform_copy_to_user(void *const pmut_dst, void const *const src, uint64_t const num) NOEXCEPT
 {
-    if (((void *)0) == pmut_dst) {
-        bferror("invalid pointer");
-        return SHIM_FAILURE;
-    }
-
-    if (((void *)0) == src) {
-        bferror("invalid pointer");
-        return SHIM_FAILURE;
-    }
+    platform_expects(NULL != pmut_dst);
+    platform_expects(NULL != src);
 
     memcpy(pmut_dst, src, num);    // NOLINT
-    return SHIM_SUCCESS;
 }
 
 /**
@@ -257,10 +227,23 @@ platform_copy_to_user(void *const pmut_dst, void const *const src, uint64_t cons
  * <!-- inputs/outputs -->
  *   @return Returns the total number of online CPUs (i.e. PPs)
  */
-uint32_t
-platform_num_online_cpus(void)
+NODISCARD uint32_t
+platform_num_online_cpus(void) NOEXCEPT
 {
-    return 1U;
+    return g_mut_platform_num_online_cpus;
+}
+
+/**
+ * <!-- description -->
+ *   @brief Returns the current CPU (i.e. PP)
+ *
+ * <!-- inputs/outputs -->
+ *   @return Returns the current CPU (i.e. PP)
+ */
+NODISCARD uint32_t
+platform_current_cpu(void) NOEXCEPT
+{
+    return 0U;
 }
 
 /**
@@ -278,8 +261,8 @@ platform_num_online_cpus(void)
  *   @return If each callback returns 0, this function returns 0, otherwise
  *     this function returns a non-0 value
  */
-int64_t
-platform_on_each_cpu(platform_per_cpu_func const pmut_func, uint32_t const order)
+NODISCARD int64_t
+platform_on_each_cpu(platform_per_cpu_func const pmut_func, uint32_t const order) NOEXCEPT
 {
     (void)order;
     return pmut_func(0U);
