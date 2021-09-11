@@ -28,7 +28,10 @@
 #include <bf_syscall_t.hpp>
 #include <gs_t.hpp>
 #include <intrinsic_t.hpp>
+#include <mv_constants.hpp>
+#include <page_4k_t.hpp>
 #include <pp_unique_map_t.hpp>
+#include <pp_unique_shared_page_t.hpp>
 #include <tls_t.hpp>
 
 #include <bsl/debug.hpp>
@@ -36,24 +39,94 @@
 #include <bsl/errc_type.hpp>
 #include <bsl/is_pod.hpp>
 #include <bsl/touch.hpp>
-#include <bsl/unlikely_assert.hpp>
+#include <bsl/unlikely.hpp>
 
 namespace microv
 {
+    /// @brief defines the list of possible maps for this PP/VM combo
+    using pp_map_list_t = bsl::array<bsl::safe_u64, MICROV_MAX_PP_MAPS.get()>;
+    /// @brief defines the list of possible maps for all VMs
+    using vm_map_list_t = bsl::array<pp_map_list_t, HYPERVISOR_MAX_VMS.get()>;
+
     /// @class microv::pp_mmio_t
     ///
     /// <!-- description -->
     ///   @brief Defines MicroV's physical processor MMIO handler. Physical
     ///     processor resources are owned by the physical processors and
-    ///     are used by the VM, VP and VPSs to directly access the hardware
+    ///     are used by the VM, VP and VSs to directly access the hardware
     ///     and provide emulated responses to VMExits from the root VM.
+    ///
+    /// <!-- notes -->
+    ///   @note IMPORTANT: The most important aspect of this class is it
+    ///     gives out T*s (both from the map() and shared_page() functions).
+    ///     Each map has to have a unique SPA which is why we have a max number
+    ///     of maps and track these maps using the SPA that is provided. This
+    ///     is because YOU CANNOT HAVE MORE THAN ONE T* FOR THE SAME ADDRESS.
+    ///     If you do, you will violate strict aliasing rules. That's why you
+    ///     have to checkout the shared page and then return it. It is also
+    ///     why you can only have one map for each SPA. Any code that is
+    ///     added to this has to enforce the same rules. Any T* that is given
+    ///     needs to be unique. If you need to change T, that is fine, so
+    ///     long as T is a POD type, but whoever is using T* for the old T has
+    ///     to stop using it (meaning it needs to be released) so that a new
+    ///     T* can be created for that same address. Again, if this is not done
+    ///     right, strict aliasing rules will be violated. It will also prevent
+    ///     constexpr from working as you cannot have the same address point
+    ///     to two different types in a constexpr, for the same reasons.
+    ///
+    ///   @note IMPORTANT: The PP can only handle SPAs. It makes no sense for
+    ///     a PP to store or handle a GPA because it has no guest VM to work
+    ///     with.
+    ///
+    ///   @note IMPORTANT: You might be asking, why do we have a unique map
+    ///     and a unique shared page. Why not just make them the same thing.
+    ///     This is because maps will be created and released, and when they
+    ///     are released, the memory is no longer needed. The shared page
+    ///     however will be created, and then remapped to different T *s
+    ///     all the time, but the memory itself is not actually released until
+    ///     clr_shared_page_spa is called. So the unique map frees the
+    ///     memory and then tells the m_maps that the SPA it owned is now
+    ///     free. The unique shared page simply flips m_shared_page_in_use
+    ///     and the memory stays mapped until clr_shared_page_spa is called.
+    ///
+    ///   @note IMPORTANT: You might also be asking, why not just make all
+    ///     maps global? Why do we have a per-VM, per-PP map. The reason each
+    ///     map is per-VM, is because the extension (in this case MicroV)
+    ///     has a different direct map per VM. This is to deal with
+    ///     speculative execution attacks, and ensures that the direct map
+    ///     for MicroV is isolated between VMs. The reason maps are also
+    ///     on a per-PP is actually for two different reasons. Each PP is
+    ///     symmetric, which means that they can execute at the same time,
+    ///     with independence. Using a global map would require locks to
+    ///     handle this safely. Global maps would also require that when the
+    ///     unmap occurres, all PPs are flushed, which would be slow not
+    ///     just from the locks that would be required, but the IPIs that
+    ///     would also be required to flush all PPs. Per-PP maps means that
+    ///     they can map whatever memory they need without an issue, and
+    ///     they don't need to notify other PPs when an unmap occurs.
+    ///
+    ///   @note IMPORTANT: The map function should not be used to map the
+    ///     shared page (use set_shared_page_spa for that), or the LAPIC.
+    ///     This is because the shared page and LAPIC have different map
+    ///     functions. The shared page needs to be handled differently (see
+    ///     above for more details), and the LAPIC needs to actually have
+    ///     the same address, so this is a global map (that is never unmapped
+    ///     so there is no issue here with IPIs), and that is because the
+    ///     LAPIC is mapped to the same virtual address on all PPs, even
+    ///     though that virtual address talks to the LAPIC associated with
+    ///     the PP making the calls. Any attempt to use map() for these
+    ///     will result in UB. You have been warned.
     ///
     class pp_mmio_t final
     {
-        /// @brief stores the initialization state of pp_mmio_t.
-        bool m_initialized{};
-        /// @brief stores the SPAs that have yet to be unmapped.
-        bsl::array<bsl::safe_uint64, MICROV_MAX_PP_MAPS.get()> m_mapped_spas{};
+        /// @brief stores the ID of the PP associated with this pp_mmio_t
+        bsl::safe_u16 m_assigned_ppid{};
+        /// @brief stores the shared page associated with this pp_mmio_t
+        page_4k_t *m_shared_page{};
+        /// @brief stores whether or not the shared page is in use.
+        bool m_shared_page_in_use{};
+        /// @brief stores the SPAs that have been mapped.
+        vm_map_list_t m_maps{};
 
     public:
         /// <!-- description -->
@@ -64,28 +137,22 @@ namespace microv
         ///   @param tls the tls_t to use
         ///   @param sys the bf_syscall_t to use
         ///   @param intrinsic the intrinsic_t to use
-        ///   @return Returns bsl::errc_success on success, bsl::errc_failure
-        ///     and friends otherwise
         ///
-        [[nodiscard]] constexpr auto
+        constexpr void
         initialize(
             gs_t const &gs,
             tls_t const &tls,
             syscall::bf_syscall_t const &sys,
-            intrinsic_t const &intrinsic) noexcept -> bsl::errc_type
+            intrinsic_t const &intrinsic) noexcept
         {
+            bsl::expects(this->assigned_ppid() == syscall::BF_INVALID_ID);
+
             bsl::discard(gs);
             bsl::discard(tls);
             bsl::discard(sys);
             bsl::discard(intrinsic);
 
-            if (bsl::unlikely_assert(m_initialized)) {
-                bsl::error() << "pp_mmio_t already initialized\n" << bsl::here();
-                return bsl::errc_precondition;
-            }
-
-            m_initialized = true;
-            return bsl::errc_success;
+            m_assigned_ppid = ~sys.bf_tls_ppid();
         }
 
         /// <!-- description -->
@@ -94,53 +161,44 @@ namespace microv
         /// <!-- inputs/outputs -->
         ///   @param gs the gs_t to use
         ///   @param tls the tls_t to use
-        ///   @param sys the bf_syscall_t to use
+        ///   @param mut_sys the bf_syscall_t to use
         ///   @param intrinsic the intrinsic_t to use
         ///
         constexpr void
         release(
             gs_t const &gs,
             tls_t const &tls,
-            syscall::bf_syscall_t const &sys,
+            syscall::bf_syscall_t &mut_sys,
             intrinsic_t const &intrinsic) noexcept
         {
             bsl::discard(gs);
             bsl::discard(tls);
-            bsl::discard(sys);
             bsl::discard(intrinsic);
 
-            m_initialized = false;
+            this->clr_shared_page_spa(mut_sys);
+            m_assigned_ppid = {};
         }
 
         /// <!-- description -->
-        ///   @brief Given an SPA, maps the SPA to a T *. T must be a pod type.
-        ///     Actually, T could be a trivially copyable type for this map to
-        ///     work without invoking UB at runtime, but we only use POD types
-        ///     anyways, which adds an additional layer of sanity. T must also
-        ///     be a page in size or less, otherwise the SPA would have to be
-        ///     physically contiguous, which would be a dangerous assumption.
-        ///     If an error occurs, this function will return a nullptr.
+        ///   @brief Returns the ID of the PP associated with this
+        ///     pp_mmio_t
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @return Returns the ID of the PP associated with this
+        ///     pp_mmio_t
+        ///
+        [[nodiscard]] constexpr auto
+        assigned_ppid() const noexcept -> bsl::safe_u16
+        {
+            bsl::ensures(m_assigned_ppid.is_valid_and_checked());
+            return ~m_assigned_ppid;
+        }
+
+        /// <!-- description -->
+        ///   @brief Returns a pp_unique_map_t<T> given an SPA to map. If an
+        ///     error occurs, an invalid pp_unique_map_t<T> is returned.
         ///
         /// <!-- notes -->
-        ///   @note All this function does is return a T * using a reinterpret
-        ///     cast. This is because the "first use" of the T * will actually
-        ///     perform the map since the microkernel uses on-demand paging.
-        ///
-        ///   @note This function is clearly not constexpr friendly. This is
-        ///     one of the few examples of where we cannot test using a
-        ///     constexpr. Specifically, any virt to phys or phys to virt
-        ///     translations have this issue. This function however does not
-        ///     perform anything other than a reinterpret cast. So, the only
-        ///     thing we have to do is ensure that UB is not invoked. We can
-        ///     safely take any memory and map it to a POD type (really just a
-        ///     trivially copyable type). Furthermore, we are mapping an SPA,
-        ///     so the only other forms of UB that could occur would be a page
-        ///     fault if the SPA is invalid. Anything that uses this code will
-        ///     use a mocked version of it that actually performs an allocation
-        ///     when the memory is mapped, and then a deallocation when the
-        ///     memory is unmapped, so any code that uses this can still be
-        ///     tested using a constexpr.
-        ///
         ///   @note The reason that we keep a list of all of the SPAs that
         ///     have been mapped is you cannot map the same SPA twice. If you
         ///     do, you would be violating the strict aliasing rules. We also
@@ -151,62 +209,144 @@ namespace microv
         ///     rethink what you are doing.
         ///
         /// <!-- inputs/outputs -->
-        ///   @tparam T the type to map and return
+        ///   @tparam T the type of map to return
         ///   @param mut_sys the bf_syscall_t to use
-        ///   @param spa the system physical address of the T * to return.
-        ///   @return Returns the resulting T * given the SPA, or a nullptr
-        ///     on error.
+        ///   @param spa the system physical address of the pp_unique_map_t<T>
+        ///     to return.
+        ///   @return Returns a pp_unique_map_t<T> given an SPA to map. If an
+        ///     error occurs, an invalid pp_unique_map_t<T> is returned.
         ///
         template<typename T>
         [[nodiscard]] constexpr auto
-        map(syscall::bf_syscall_t &mut_sys, bsl::safe_uintmax const &spa) noexcept
-            -> pp_unique_map_t<T>
+        map(syscall::bf_syscall_t &mut_sys, bsl::safe_umx const &spa) noexcept -> pp_unique_map_t<T>
         {
-            if (bsl::unlikely_assert(!spa)) {
-                bsl::error() << "invalid spa\n" << bsl::here();
-                return pp_unique_map_t<T>{};
+            static_assert(bsl::is_pod<T>::value);
+            static_assert(sizeof(T) <= HYPERVISOR_PAGE_SIZE);
+
+            bsl::expects(this->assigned_ppid() == mut_sys.bf_tls_ppid());
+
+            bsl::expects(spa.is_valid_and_checked());
+            bsl::expects(spa.is_pos());
+
+            /// TODO:
+            /// - In the future, we should change this to a linked list to
+            ///   make maps faster. The challenge will be in debug mode,
+            ///   and ensuring that we are not mapping the same SPA more
+            ///   than once, which the list approach does well, and is
+            ///   optimized out in release mode.
+            ///
+
+            auto *const pmut_maps_for_current_vm{m_maps.at_if(bsl::to_idx(mut_sys.bf_tls_vmid()))};
+            bsl::expects(nullptr != pmut_maps_for_current_vm);
+
+            for (bsl::safe_idx mut_i{}; mut_i < pmut_maps_for_current_vm->size(); ++mut_i) {
+                bsl::expects(spa != *pmut_maps_for_current_vm->at_if(mut_i));
             }
 
-            if (bsl::unlikely_assert(spa.is_zero())) {
-                bsl::error() << "invalid spa\n" << bsl::here();
-                return pp_unique_map_t<T>{};
-            }
-
-            auto mut_i{MICROV_MAX_PP_MAPS};
-            for (auto const elem : m_mapped_spas) {
-                if (*elem.data == spa) {
-                    bsl::error() << "spa " << bsl::hex(spa) << " already mapped" << bsl::endl
-                                 << bsl::here();
-
-                    return pp_unique_map_t<T>{};
+            bsl::safe_u64 *pmut_mut_spa{};
+            for (bsl::safe_idx mut_i{}; mut_i < pmut_maps_for_current_vm->size(); ++mut_i) {
+                pmut_mut_spa = pmut_maps_for_current_vm->at_if(mut_i);
+                if (pmut_mut_spa->is_zero()) {
+                    break;
                 }
 
-                if (elem.data->is_zero()) {
-                    mut_i = elem.index;
-                }
-                else {
-                    bsl::touch();
-                }
+                bsl::touch();
             }
 
-            auto *const pmut_spa{m_mapped_spas.at_if(mut_i)};
-            if (bsl::unlikely(nullptr == pmut_spa)) {
-                bsl::error() << "pp_mmio_t is out of available maps\n" << bsl::here();
+            bsl::expects(nullptr != pmut_mut_spa);
+            *pmut_mut_spa = spa;
+
+            auto *const hva{mut_sys.bf_vm_op_map_direct<T>(mut_sys.bf_tls_vmid(), spa)};
+            if (bsl::unlikely(nullptr == hva)) {
+                bsl::print<bsl::V>() << bsl::here();
                 return pp_unique_map_t<T>{};
             }
 
-            auto const hva{spa + HYPERVISOR_EXT_DIRECT_MAP_ADDR};
-            if (bsl::unlikely_assert(!hva)) {
-                bsl::error() << "map failed due to invalid spa "    // --
-                             << bsl::hex(spa)                       // --
-                             << bsl::endl                           // --
-                             << bsl::here();
+            return pp_unique_map_t<T>{hva, &mut_sys, pmut_mut_spa};
+        }
 
-                return pp_unique_map_t<T>{};
+        /// <!-- description -->
+        ///   @brief Clears the SPA of the shared page.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param mut_sys the bf_syscall_t to use
+        ///
+        constexpr void
+        clr_shared_page_spa(syscall::bf_syscall_t &mut_sys) noexcept
+        {
+            constexpr auto vmid{hypercall::MV_ROOT_VMID};
+
+            bsl::expects(this->assigned_ppid() == mut_sys.bf_tls_ppid());
+            bsl::expects(mut_sys.is_the_active_vm_the_root_vm());
+
+            if (nullptr != m_shared_page) {
+                bsl::expects(mut_sys.bf_vm_op_unmap_direct(vmid, m_shared_page));
+                m_shared_page = {};
+                m_shared_page_in_use = {};
+            }
+            else {
+                bsl::touch();
+            }
+        }
+
+        /// <!-- description -->
+        ///   @brief Sets the SPA of the shared page.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param mut_sys the bf_syscall_t to use
+        ///   @param spa the system physical address of the shared page
+        ///   @return Returns bsl::errc_success on success, bsl::errc_failure
+        ///     and friends otherwise
+        ///
+        [[nodiscard]] constexpr auto
+        set_shared_page_spa(syscall::bf_syscall_t &mut_sys, bsl::safe_u64 const &spa) noexcept
+            -> bsl::errc_type
+        {
+            constexpr auto vmid{hypercall::MV_ROOT_VMID};
+
+            bsl::expects(this->assigned_ppid() == mut_sys.bf_tls_ppid());
+            bsl::expects(mut_sys.is_the_active_vm_the_root_vm());
+
+            bsl::expects(spa.is_valid_and_checked());
+            bsl::expects(spa.is_pos());
+
+            bsl::expects(nullptr == m_shared_page);
+            bsl::expects(!m_shared_page_in_use);
+
+            m_shared_page = mut_sys.bf_vm_op_map_direct<page_4k_t>(vmid, spa);
+            if (bsl::unlikely(nullptr == m_shared_page)) {
+                bsl::print<bsl::V>() << bsl::here();
+                return bsl::errc_failure;
             }
 
-            *pmut_spa = spa;
-            return pp_unique_map_t<T>{reinterpret_cast<T *>(hva.get()), &mut_sys, pmut_spa};
+            return bsl::errc_success;
+        }
+
+        /// <!-- description -->
+        ///   @brief Returns a pp_unique_shared_page_t<T> if the shared page
+        ///     is not currently in use. If an error occurs, returns an invalid
+        ///     pp_unique_shared_page_t<T>.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @tparam T the type of shared page to return
+        ///   @param sys the bf_syscall_t to use
+        ///   @return Returns a pp_unique_shared_page_t<T> if the shared page
+        ///     is not currently in use. If an error occurs, returns an invalid
+        ///     pp_unique_shared_page_t<T>.
+        ///
+        template<typename T>
+        [[nodiscard]] constexpr auto
+        shared_page(syscall::bf_syscall_t const &sys) noexcept -> pp_unique_shared_page_t<T>
+        {
+            static_assert(bsl::is_pod<T>::value);
+            static_assert(sizeof(T) <= HYPERVISOR_PAGE_SIZE);
+
+            bsl::expects(this->assigned_ppid() == sys.bf_tls_ppid());
+            bsl::expects(sys.is_the_active_vm_the_root_vm());
+
+            bsl::expects(!m_shared_page_in_use);
+            // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
+            return {reinterpret_cast<T *>(m_shared_page), sys, &m_shared_page_in_use};
         }
     };
 }

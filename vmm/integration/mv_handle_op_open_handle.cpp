@@ -25,13 +25,12 @@
 #include <integration_utils.hpp>
 #include <mv_constants.hpp>
 #include <mv_hypercall_impl.hpp>
+#include <mv_types.hpp>
 
 #include <bsl/convert.hpp>
-#include <bsl/cstdint.hpp>
-#include <bsl/cstr_type.hpp>
-#include <bsl/debug.hpp>
 #include <bsl/enable_color.hpp>
 #include <bsl/exit_code.hpp>
+#include <bsl/safe_integral.hpp>
 
 namespace hypercall
 {
@@ -47,7 +46,7 @@ namespace hypercall
     tests() noexcept -> bsl::exit_code
     {
         mv_status_t mut_ret{};
-        bsl::safe_uint64 mut_hndl{};
+        bsl::safe_u64 mut_hndl{};
         constexpr auto invalid_version{0x80000000_u32};
 
         mut_ret = mv_handle_op_open_handle_impl(invalid_version.get(), mut_hndl.data());

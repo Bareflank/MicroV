@@ -29,16 +29,25 @@
 
 #include <types.h>
 
-/**
- * <!-- description -->
- *   @brief This function contains all of the code that is common between
- *     all archiectures and all platforms that is needed for finalizing
- *     the shim. This function will call platform and architecture specific
- *     functions as needed.
- *
- * <!-- inputs/outputs -->
- *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
- */
-int64_t shim_fini(void);
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
+    /**
+     * <!-- description -->
+     *   @brief This function contains all of the code that is common between
+     *     all archiectures and all platforms that is needed for finalizing
+     *     the shim. This function will call platform and architecture specific
+     *     functions as needed.
+     *
+     * <!-- inputs/outputs -->
+     *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
+     */
+    NODISCARD int64_t shim_fini(void) NOEXCEPT;
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

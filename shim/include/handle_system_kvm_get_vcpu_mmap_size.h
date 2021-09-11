@@ -28,12 +28,24 @@
 #define HANDLE_SYSTEM_KVM_GET_VCPU_MMAP_SIZE_H
 
 #include <types.h>
-/**
- * <!-- description -->
- *   @brief Handles the execution of kvm_get_vcpu_mmap_size.
- *
- * <!-- inputs/outputs -->
- *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
- */
-int64_t handle_system_kvm_get_vcpu_mmap_size(uint32_t *const size);
+
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
+    /**
+     * <!-- description -->
+     *   @brief Handles the execution of kvm_get_vcpu_mmap_size.
+     *
+     * <!-- inputs/outputs -->
+     *   @param pmut_size returns sizeof(kvm_run)
+     *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
+     */
+    NODISCARD int64_t handle_system_kvm_get_vcpu_mmap_size(uint32_t *const pmut_size) NOEXCEPT;
+
+#ifdef __cplusplus
+}
+#endif
+
 #endif

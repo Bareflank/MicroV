@@ -30,14 +30,23 @@
 #include <kvm_xcrs.h>
 #include <types.h>
 
-/**
- * <!-- description -->
- *   @brief Handles the execution of kvm_get_xcrs.
- *
- * <!-- inputs/outputs -->
- *   @param ioctl_args the arguments provided by userspace
- *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
- */
-int64_t handle_vcpu_kvm_get_xcrs(struct kvm_xcrs *const ioctl_args);
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
+    /**
+     * <!-- description -->
+     *   @brief Handles the execution of kvm_get_xcrs.
+     *
+     * <!-- inputs/outputs -->
+     *   @param pmut_ioctl_args the arguments provided by userspace
+     *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
+     */
+    NODISCARD int64_t handle_vcpu_kvm_get_xcrs(struct kvm_xcrs *const pmut_ioctl_args) NOEXCEPT;
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

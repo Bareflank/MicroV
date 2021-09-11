@@ -24,7 +24,6 @@
  * SOFTWARE.
  */
 
-#include <debug.h>
 #include <types.h>
 
 /**
@@ -34,8 +33,8 @@
  * <!-- inputs/outputs -->
  *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
  */
-int64_t
-handle_vm_kvm_check_extension(void)
+NODISCARD int64_t
+handle_vm_kvm_check_extension(void) NOEXCEPT
 {
     return SHIM_SUCCESS;
 }

@@ -67,6 +67,28 @@ jobs:
         ninja
       shell: bash
 
+  IWYU:
+    runs-on: ubuntu-20.04
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        path: microv
+    - name: Setup
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y clang cmake ninja-build
+      shell: bash
+    - name: Validate Compliance
+      run: |
+        sudo tar -xzvf microv/utils/linux/llvm-bareflank.tar.gz -C /usr/lib/
+        chmod +x microv/utils/linux/include-what-you-use
+        sudo cp microv/utils/linux/include-what-you-use /usr/lib/llvm-bareflank/bin/
+        export PATH="/usr/lib/llvm-bareflank/bin:$PATH"
+        mkdir build && cd build
+        cmake -GNinja -DCMAKE_CXX_COMPILER="clang++" -DCMAKE_BUILD_TYPE=DEBUG -DBUILD_EXAMPLES=ON -DBUILD_TESTS=ON -DMICROV_BUILD_HYPERCALL=OFF -DBSL_DEBUG_LEVEL=bsl::VVV ../microv
+        ninja iwyu
+      shell: bash
+
   ASAN:
     runs-on: ubuntu-20.04
     steps:
@@ -142,30 +164,30 @@ jobs:
         ninja unittest
       shell: bash
 
-  # Codecov:
-  #   runs-on: ubuntu-20.04
-  #   steps:
-  #   - uses: actions/checkout@v2
-  #     with:
-  #       path: microv
-  #   - name: Setup
-  #     run: |
-  #       sudo apt-get update
-  #       sudo apt-get install -y clang cmake ninja-build llvm
-  #       wget https://github.com/mozilla/grcov/releases/download/v0.8.0/grcov-linux-x86_64.tar.bz2
-  #       tar xvf grcov-linux-x86_64.tar.bz2
-  #       sudo mv grcov /usr/bin/
-  #       sudo rm /usr/bin/gcov
-  #       sudo ln -s /usr/bin/llvm-cov-10 /usr/bin/gcov
-  #     shell: bash
-  #   - name: Gather Codecov Info
-  #     run: |
-  #       mkdir build && cd build
-  #       cmake -GNinja -DCMAKE_CXX_COMPILER="clang++" -DCMAKE_BUILD_TYPE=CODECOV -DBUILD_TESTS=ON -DBSL_DEBUG_LEVEL=bsl::VVV ../microv
-  #       ninja
-  #     shell: bash
-  #   - name: Upload Codecov Info
-  #     run: |
-  #       cd build
-  #       ninja codecov-upload-ci
-  #     shell: bash
+  Codecov:
+    runs-on: ubuntu-20.04
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        path: microv
+    - name: Setup
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y clang cmake ninja-build llvm
+        wget https://github.com/mozilla/grcov/releases/download/v0.8.0/grcov-linux-x86_64.tar.bz2
+        tar xvf grcov-linux-x86_64.tar.bz2
+        sudo mv grcov /usr/bin/
+        sudo rm /usr/bin/gcov
+        sudo ln -s /usr/bin/llvm-cov-10 /usr/bin/gcov
+      shell: bash
+    - name: Gather Codecov Info
+      run: |
+        mkdir build && cd build
+        cmake -GNinja -DCMAKE_CXX_COMPILER="clang++" -DCMAKE_BUILD_TYPE=CODECOV -DBUILD_TESTS=ON -DBSL_DEBUG_LEVEL=bsl::VVV ../microv
+        ninja
+      shell: bash
+    - name: Upload Codecov Info
+      run: |
+        cd build
+        ninja codecov-upload-ci
+      shell: bash

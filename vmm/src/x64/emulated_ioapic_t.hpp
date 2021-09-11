@@ -33,21 +33,25 @@
 #include <bsl/debug.hpp>
 #include <bsl/discard.hpp>
 #include <bsl/errc_type.hpp>
-#include <bsl/unlikely_assert.hpp>
+#include <bsl/unlikely.hpp>
 
 namespace microv
 {
     /// @class microv::emulated_ioapic_t
     ///
     /// <!-- description -->
-    ///   @brief Defines MicroV's emulated IOAPIC handler. Emulated resources
-    ///     are owned by guest VPSs and provide an emulated interface for
-    ///     guest VMs.
+    ///   @brief Defines MicroV's emulated IOAPIC handler.
+    ///
+    ///   @note IMPORTANT: This class is a per-VM class. Any IO/MMIO accesses
+    ///     to the IOAPIC must come through here. This may/may not be needed
+    ///     for the root VM, but almost certainly is needed for guest VMs.
+    ///     If this is needed for the root VM, it is because of PCI
+    ///     pass-through.
     ///
     class emulated_ioapic_t final
     {
-        /// @brief stores the initialization state of emulated_ioapic_t.
-        bool m_initialized{};
+        /// @brief stores the ID of the VM associated with this emulated_ioapic_t
+        bsl::safe_u16 m_assigned_vmid{};
 
     public:
         /// <!-- description -->
@@ -58,28 +62,24 @@ namespace microv
         ///   @param tls the tls_t to use
         ///   @param sys the bf_syscall_t to use
         ///   @param intrinsic the intrinsic_t to use
-        ///   @return Returns bsl::errc_success on success, bsl::errc_failure
-        ///     and friends otherwise
+        ///   @param vmid the ID of the VM associated with this emulated_ioapic_t
         ///
-        [[nodiscard]] constexpr auto
+        constexpr void
         initialize(
             gs_t const &gs,
             tls_t const &tls,
             syscall::bf_syscall_t const &sys,
-            intrinsic_t const &intrinsic) noexcept -> bsl::errc_type
+            intrinsic_t const &intrinsic,
+            bsl::safe_u16 const &vmid) noexcept
         {
+            bsl::expects(this->assigned_vmid() == syscall::BF_INVALID_ID);
+
             bsl::discard(gs);
             bsl::discard(tls);
             bsl::discard(sys);
             bsl::discard(intrinsic);
 
-            if (bsl::unlikely_assert(m_initialized)) {
-                bsl::error() << "emulated_ioapic_t already initialized\n" << bsl::here();
-                return bsl::errc_precondition;
-            }
-
-            m_initialized = true;
-            return bsl::errc_success;
+            m_assigned_vmid = ~vmid;
         }
 
         /// <!-- description -->
@@ -103,7 +103,22 @@ namespace microv
             bsl::discard(sys);
             bsl::discard(intrinsic);
 
-            m_initialized = false;
+            m_assigned_vmid = {};
+        }
+
+        /// <!-- description -->
+        ///   @brief Returns the ID of the PP associated with this
+        ///     emulated_ioapic_t
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @return Returns the ID of the PP associated with this
+        ///     emulated_ioapic_t
+        ///
+        [[nodiscard]] constexpr auto
+        assigned_vmid() const noexcept -> bsl::safe_u16
+        {
+            bsl::ensures(m_assigned_vmid.is_valid_and_checked());
+            return ~m_assigned_vmid;
         }
     };
 }

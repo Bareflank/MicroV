@@ -24,7 +24,6 @@
  * SOFTWARE.
  */
 
-#include <debug.h>
 #include <kvm_vcpu_events.h>
 #include <types.h>
 
@@ -33,12 +32,12 @@
  *   @brief Handles the execution of kvm_set_vcpu_events.
  *
  * <!-- inputs/outputs -->
- *   @param ioctl_args the arguments provided by userspace
+ *   @param pmut_ioctl_args the arguments provided by userspace
  *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
  */
-int64_t
-handle_vcpu_kvm_set_vcpu_events(struct kvm_vcpu_events *const ioctl_args)
+NODISCARD int64_t
+handle_vcpu_kvm_set_vcpu_events(struct kvm_vcpu_events *const pmut_ioctl_args) NOEXCEPT
 {
-    (void)ioctl_args;
+    (void)pmut_ioctl_args;
     return SHIM_SUCCESS;
 }

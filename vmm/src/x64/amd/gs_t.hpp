@@ -37,7 +37,7 @@ namespace microv
     struct gs_t final
     {
         /// @brief dummy data for microv purposes only.
-        bsl::safe_uintmax dummy;
+        bsl::safe_umx dummy;
     };
 }
 

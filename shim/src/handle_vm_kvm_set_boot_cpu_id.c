@@ -24,7 +24,6 @@
  * SOFTWARE.
  */
 
-#include <debug.h>
 #include <types.h>
 
 /**
@@ -34,8 +33,8 @@
  * <!-- inputs/outputs -->
  *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
  */
-int64_t
-handle_vm_kvm_set_boot_cpu_id(void)
+NODISCARD int64_t
+handle_vm_kvm_set_boot_cpu_id(void) NOEXCEPT
 {
     return SHIM_SUCCESS;
 }

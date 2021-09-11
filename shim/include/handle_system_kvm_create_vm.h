@@ -30,13 +30,23 @@
 #include <shim_vm_t.h>
 #include <types.h>
 
-/**
- * <!-- description -->
- *   @brief Handles the execution of kvm_create_vm.
- *
- * <!-- inputs/outputs -->
- *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
- */
-int64_t handle_system_kvm_create_vm(struct shim_vm_t *vm);
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
+    /**
+     * <!-- description -->
+     *   @brief Handles the execution of kvm_create_vm.
+     *
+     * <!-- inputs/outputs -->
+     *   @param pmut_vm where to store the ID of the newly created VM
+     *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
+     */
+    NODISCARD int64_t handle_system_kvm_create_vm(struct shim_vm_t *const pmut_vm) NOEXCEPT;
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

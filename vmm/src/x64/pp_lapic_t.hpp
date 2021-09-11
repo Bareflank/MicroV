@@ -33,7 +33,7 @@
 #include <bsl/debug.hpp>
 #include <bsl/discard.hpp>
 #include <bsl/errc_type.hpp>
-#include <bsl/unlikely_assert.hpp>
+#include <bsl/unlikely.hpp>
 
 namespace microv
 {
@@ -42,13 +42,13 @@ namespace microv
     /// <!-- description -->
     ///   @brief Defines MicroV's physical processor LAPIC handler. Physical
     ///     processor resources are owned by the physical processors and
-    ///     are used by the VM, VP and VPSs to directly access the hardware
+    ///     are used by the VM, VP and VSs to directly access the hardware
     ///     and provide emulated responses to VMExits from the root VM.
     ///
     class pp_lapic_t final
     {
-        /// @brief stores the initialization state of pp_lapic_t.
-        bool m_initialized{};
+        /// @brief stores the ID of the PP associated with this pp_lapic_t
+        bsl::safe_u16 m_assigned_ppid{};
 
     public:
         /// <!-- description -->
@@ -59,28 +59,22 @@ namespace microv
         ///   @param tls the tls_t to use
         ///   @param sys the bf_syscall_t to use
         ///   @param intrinsic the intrinsic_t to use
-        ///   @return Returns bsl::errc_success on success, bsl::errc_failure
-        ///     and friends otherwise
         ///
-        [[nodiscard]] constexpr auto
+        constexpr void
         initialize(
             gs_t const &gs,
             tls_t const &tls,
             syscall::bf_syscall_t const &sys,
-            intrinsic_t const &intrinsic) noexcept -> bsl::errc_type
+            intrinsic_t const &intrinsic) noexcept
         {
+            bsl::expects(this->assigned_ppid() == syscall::BF_INVALID_ID);
+
             bsl::discard(gs);
             bsl::discard(tls);
             bsl::discard(sys);
             bsl::discard(intrinsic);
 
-            if (bsl::unlikely_assert(m_initialized)) {
-                bsl::error() << "pp_lapic_t already initialized\n" << bsl::here();
-                return bsl::errc_precondition;
-            }
-
-            m_initialized = true;
-            return bsl::errc_success;
+            m_assigned_ppid = ~sys.bf_tls_ppid();
         }
 
         /// <!-- description -->
@@ -104,7 +98,22 @@ namespace microv
             bsl::discard(sys);
             bsl::discard(intrinsic);
 
-            m_initialized = false;
+            m_assigned_ppid = {};
+        }
+
+        /// <!-- description -->
+        ///   @brief Returns the ID of the PP associated with this
+        ///     pp_lapic_t
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @return Returns the ID of the PP associated with this
+        ///     pp_lapic_t
+        ///
+        [[nodiscard]] constexpr auto
+        assigned_ppid() const noexcept -> bsl::safe_u16
+        {
+            bsl::ensures(m_assigned_ppid.is_valid_and_checked());
+            return ~m_assigned_ppid;
         }
     };
 }

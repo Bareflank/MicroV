@@ -24,21 +24,23 @@
  * SOFTWARE.
  */
 
-#include <debug.h>
 #include <kvm_run.h>
 #include <platform.h>
 #include <types.h>
+
 /**
  * <!-- description -->
  *   @brief Handles the execution of kvm_check_extension.
  *
  * <!-- inputs/outputs -->
+ *   @param pmut_size returns sizeof(kvm_run)
  *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
  */
-int64_t
-handle_system_kvm_get_vcpu_mmap_size(uint32_t *const size)
+NODISCARD int64_t
+handle_system_kvm_get_vcpu_mmap_size(uint32_t *const pmut_size) NOEXCEPT
 {
-    platform_expects(NULL != size);
-    *size = sizeof(struct kvm_run);
+    platform_expects(NULL != pmut_size);
+
+    *pmut_size = ((uint32_t)sizeof(struct kvm_run));
     return SHIM_SUCCESS;
 }

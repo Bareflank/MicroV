@@ -29,17 +29,29 @@
 
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 #pragma pack(push, 1)
 
-/**
- * @struct kvm_vcpu_events
- *
- * <!-- description -->
- *   @brief see /include/uapi/linux/kvm.h in Linux for more details.
- */
-struct kvm_vcpu_events
-{};
+    /**
+     * @struct kvm_vcpu_events
+     *
+     * <!-- description -->
+     *   @brief see /include/uapi/linux/kvm.h in Linux for more details.
+     */
+    struct kvm_vcpu_events
+    {
+        /** @brief replace me with contents from KVM API */
+        int32_t dummy;
+    };
 
 #pragma pack(pop)
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

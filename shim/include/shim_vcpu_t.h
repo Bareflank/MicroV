@@ -30,25 +30,33 @@
 #include <stdint.h>
 #include <types.h>
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 #pragma pack(push, 1)
 
-/**
- * @struct shim_vcpu_t
- *
- * <!-- description -->
- *   @brief see /include/uapi/linux/kvm.h in Linux for more details.
- *   @var shim_vcpu_t::vpid
- *   Member vpid holds the current vpid
- *   @var shim_vcpu_t::vsid
- *   Member vsid holds the current vsid
-*/
-
-struct shim_vcpu_t
-{
-    uint16_t vpid;
-    uint16_t vsid;
-};
+    /**
+     * @struct shim_vcpu_t
+     *
+     * <!-- description -->
+     *   @brief Represents the shim's version of a VCPU, and stores all of the
+     *     state that the shim needs to convert between KVM and MicroV
+     *     with respect to a VCPU.
+     */
+    struct shim_vcpu_t
+    {
+        /** @brief stores the ID of the VP associated with this shim_vcpu_t */
+        uint16_t vpid;
+        /** @brief stores the ID of the VS associated with this shim_vcpu_t */
+        uint16_t vsid;
+    };
 
 #pragma pack(pop)
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

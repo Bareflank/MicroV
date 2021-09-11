@@ -32,26 +32,55 @@
 #include <vm_t.hpp>
 
 #include <bsl/array.hpp>
+#include <bsl/convert.hpp>
 #include <bsl/debug.hpp>
-#include <bsl/discard.hpp>
-#include <bsl/errc_type.hpp>
-#include <bsl/finally.hpp>
-#include <bsl/finally_assert.hpp>
+#include <bsl/expects.hpp>
+#include <bsl/safe_idx.hpp>
 #include <bsl/safe_integral.hpp>
+#include <bsl/touch.hpp>
 #include <bsl/unlikely.hpp>
-#include <bsl/unlikely_assert.hpp>
 
 namespace microv
 {
     /// @class microv::vm_pool_t
     ///
     /// <!-- description -->
-    ///   @brief Defines Microv's virtual machine pool.
+    ///   @brief Defines the extension's VM pool
     ///
     class vm_pool_t final
     {
-        /// @brief stores the pool of VMs
+        /// @brief stores the pool of vm_t objects
         bsl::array<vm_t, HYPERVISOR_MAX_VMS.get()> m_pool{};
+
+        /// <!-- description -->
+        ///   @brief Returns the vm_t associated with the provided vmid.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param vmid the ID of the vm_t to get
+        ///   @return Returns the vm_t associated with the provided vmid.
+        ///
+        [[nodiscard]] constexpr auto
+        get_vm(bsl::safe_u16 const &vmid) noexcept -> vm_t *
+        {
+            bsl::expects(vmid.is_valid_and_checked());
+            bsl::expects(vmid < bsl::to_u16(m_pool.size()));
+            return m_pool.at_if(bsl::to_idx(vmid));
+        }
+
+        /// <!-- description -->
+        ///   @brief Returns the vm_t associated with the provided vmid.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param vmid the ID of the vm_t to get
+        ///   @return Returns the vm_t associated with the provided vmid.
+        ///
+        [[nodiscard]] constexpr auto
+        get_vm(bsl::safe_u16 const &vmid) const noexcept -> vm_t const *
+        {
+            bsl::expects(vmid.is_valid_and_checked());
+            bsl::expects(vmid < bsl::to_u16(m_pool.size()));
+            return m_pool.at_if(bsl::to_idx(vmid));
+        }
 
     public:
         /// <!-- description -->
@@ -60,36 +89,25 @@ namespace microv
         /// <!-- inputs/outputs -->
         ///   @param gs the gs_t to use
         ///   @param tls the tls_t to use
-        ///   @param sys the bf_syscall_t to use
+        ///   @param mut_sys the bf_syscall_t to use
         ///   @param intrinsic the intrinsic_t to use
-        ///   @return Returns bsl::errc_success on success, bsl::errc_failure
-        ///     and friends otherwise
         ///
-        [[nodiscard]] constexpr auto
+        constexpr void
         initialize(
             gs_t const &gs,
             tls_t const &tls,
-            syscall::bf_syscall_t const &sys,
-            intrinsic_t const &intrinsic) noexcept -> bsl::errc_type
+            syscall::bf_syscall_t &mut_sys,
+            intrinsic_t const &intrinsic) noexcept
         {
-            bsl::finally_assert mut_release_on_error{
-                [this, &gs, &tls, &sys, &intrinsic]() noexcept -> void {
-                    this->release(gs, tls, sys, intrinsic);
-                }};
-
-            for (bsl::safe_uintmax mut_i{}; mut_i < m_pool.size(); ++mut_i) {
-                auto const ret{
-                    m_pool.at_if(mut_i)->initialize(gs, tls, sys, intrinsic, bsl::to_u16(mut_i))};
-                if (bsl::unlikely(!ret)) {
-                    bsl::print<bsl::V>() << bsl::here();
-                    return ret;
-                }
-
-                bsl::touch();
+            for (bsl::safe_idx mut_i{}; mut_i < m_pool.size(); ++mut_i) {
+                m_pool.at_if(mut_i)->initialize(gs, tls, mut_sys, intrinsic, bsl::to_u16(mut_i));
             }
 
-            mut_release_on_error.ignore();
-            return bsl::errc_success;
+            auto const root_vmid{
+                this->get_vm(hypercall::MV_ROOT_VMID)->allocate(gs, tls, mut_sys, intrinsic)};
+
+            bsl::expects(root_vmid.is_valid_and_checked());
+            bsl::expects(root_vmid == hypercall::MV_ROOT_VMID);
         }
 
         /// <!-- description -->
@@ -108,115 +126,94 @@ namespace microv
             syscall::bf_syscall_t const &sys,
             intrinsic_t const &intrinsic) noexcept
         {
-            for (bsl::safe_uintmax mut_i{}; mut_i < m_pool.size(); ++mut_i) {
-                m_pool.at_if(mut_i)->release(gs, tls, sys, intrinsic);
+            for (auto &mut_vm : m_pool) {
+                mut_vm.release(gs, tls, sys, intrinsic);
             }
         }
 
         /// <!-- description -->
-        ///   @brief Allocates a vm_t and returns it's ID.
+        ///   @brief Allocates a VM and returns it's ID
         ///
         /// <!-- inputs/outputs -->
         ///   @param gs the gs_t to use
         ///   @param tls the tls_t to use
         ///   @param mut_sys the bf_syscall_t to use
         ///   @param intrinsic the intrinsic_t to use
-        ///   @return Returns the ID of the newly created VM on
-        ///     success, or bsl::safe_uint16::failure() on failure.
+        ///   @return Returns ID of the newly allocated vm_t. Returns
+        ///     bsl::safe_u16::failure() on failure.
         ///
         [[nodiscard]] constexpr auto
         allocate(
             gs_t const &gs,
             tls_t const &tls,
             syscall::bf_syscall_t &mut_sys,
-            intrinsic_t const &intrinsic) noexcept -> bsl::safe_uint16
+            intrinsic_t const &intrinsic) noexcept -> bsl::safe_u16
         {
             auto const vmid{mut_sys.bf_vm_op_create_vm()};
-            if (bsl::unlikely(!vmid)) {
+            if (bsl::unlikely(vmid.is_invalid())) {
                 bsl::print<bsl::V>() << bsl::here();
-                return bsl::safe_uint16::failure();
+                return bsl::safe_u16::failure();
             }
 
-            bsl::finally mut_destroy_vm_on_error{[&mut_sys, &vmid]() noexcept -> void {
-                bsl::discard(mut_sys.bf_vm_op_destroy_vm(vmid));
-            }};
-
-            auto *const pmut_vm{m_pool.at_if(bsl::to_umax(vmid))};
-            if (bsl::unlikely(nullptr == pmut_vm)) {
-                bsl::error() << "vmid "                                                   // --
-                             << bsl::hex(vmid)                                            // --
-                             << " provided by the microkernel is invalid"                 // --
-                             << " or greater than or equal to the HYPERVISOR_MAX_VMS "    // --
-                             << bsl::hex(HYPERVISOR_MAX_VMS)                              // --
-                             << bsl::endl                                                 // --
-                             << bsl::here();                                              // --
-
-                return bsl::safe_uint16::failure();
-            }
-
-            auto const ret{pmut_vm->allocate(gs, tls, mut_sys, intrinsic)};
-            if (bsl::unlikely(!ret)) {
-                bsl::print<bsl::V>() << bsl::here();
-                return bsl::safe_uint16::failure();
-            }
-
-            mut_destroy_vm_on_error.ignore();
-            return vmid;
+            return this->get_vm(vmid)->allocate(gs, tls, mut_sys, intrinsic);
         }
 
         /// <!-- description -->
-        ///   @brief Deallocates a vm_t.
+        ///   @brief Deallocates the requested vm_t
         ///
         /// <!-- inputs/outputs -->
         ///   @param gs the gs_t to use
         ///   @param tls the tls_t to use
         ///   @param mut_sys the bf_syscall_t to use
         ///   @param intrinsic the intrinsic_t to use
-        ///   @param vmid the ID of the VM to deallocate
-        ///   @return Returns bsl::errc_success on success, bsl::errc_failure
-        ///     and friends otherwise
+        ///   @param vmid the ID of the vm_t to deallocate
         ///
-        [[nodiscard]] constexpr auto
+        constexpr void
         deallocate(
             gs_t const &gs,
             tls_t const &tls,
             syscall::bf_syscall_t &mut_sys,
             intrinsic_t const &intrinsic,
-            bsl::safe_uint16 const &vmid) noexcept -> bsl::errc_type
+            bsl::safe_u16 const &vmid) noexcept
         {
-            bsl::errc_type mut_ret{};
-
-            auto *const pmut_vm{m_pool.at_if(bsl::to_umax(vmid))};
-            if (bsl::unlikely(nullptr == pmut_vm)) {
-                bsl::error()
-                    << "vmid "                                                              // --
-                    << bsl::hex(vmid)                                                       // --
-                    << " is invalid or greater than or equal to the HYPERVISOR_MAX_VMS "    // --
-                    << bsl::hex(HYPERVISOR_MAX_VMS)                                         // --
-                    << bsl::endl                                                            // --
-                    << bsl::here();                                                         // --
-
-                return bsl::errc_failure;
+            auto *const pmut_vm{this->get_vm(vmid)};
+            if (pmut_vm->is_allocated()) {
+                bsl::expects(mut_sys.bf_vm_op_destroy_vm(vmid));
+                pmut_vm->deallocate(gs, tls, mut_sys, intrinsic);
             }
-
-            bsl::finally mut_zombify_vm_on_error{[&pmut_vm]() noexcept -> void {
-                pmut_vm->zombify();
-            }};
-
-            mut_ret = pmut_vm->deallocate(gs, tls, mut_sys, intrinsic);
-            if (bsl::unlikely(!mut_ret)) {
-                bsl::print<bsl::V>() << bsl::here();
-                return mut_ret;
+            else {
+                bsl::touch();
             }
+        }
 
-            mut_ret = mut_sys.bf_vm_op_destroy_vm(vmid);
-            if (bsl::unlikely(!mut_ret)) {
-                bsl::print<bsl::V>() << bsl::here();
-                return mut_ret;
-            }
+        /// <!-- description -->
+        ///   @brief Returns true if the requested vm_t is allocated,
+        ///     false otherwise
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param vmid the ID of the vm_t to query
+        ///   @return Returns true if the requested vm_t is allocated,
+        ///     false otherwise
+        ///
+        [[nodiscard]] constexpr auto
+        is_allocated(bsl::safe_u16 const &vmid) const noexcept -> bool
+        {
+            return this->get_vm(vmid)->is_allocated();
+        }
 
-            mut_zombify_vm_on_error.ignore();
-            return bsl::errc_success;
+        /// <!-- description -->
+        ///   @brief Returns true if the requested vm_t is deallocated,
+        ///     false otherwise
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param vmid the ID of the vm_t to query
+        ///   @return Returns true if the requested vm_t is deallocated,
+        ///     false otherwise
+        ///
+        [[nodiscard]] constexpr auto
+        is_deallocated(bsl::safe_u16 const &vmid) const noexcept -> bool
+        {
+            return this->get_vm(vmid)->is_deallocated();
         }
     };
 }

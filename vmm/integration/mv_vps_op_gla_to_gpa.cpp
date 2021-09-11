@@ -60,35 +60,35 @@ namespace hypercall
         mv_hypercall_t mut_hvc{};
         integration::verify(mut_hvc.initialize());
 
-        mut_ret = mut_hvc.mv_vps_op_gla_to_gpa(MV_INVALID_ID, &g_test);
+        mut_ret = mut_hvc.mv_vs_op_gla_to_gpa(MV_INVALID_ID, &g_test);
         integration::verify(!mut_ret.is_valid);
 
-        constexpr auto out_of_bounds_vpsid{0xFFF0_u16};
-        mut_ret = mut_hvc.mv_vps_op_gla_to_gpa(out_of_bounds_vpsid, &g_test);
+        constexpr auto out_of_bounds_vsid{0xFFF0_u16};
+        mut_ret = mut_hvc.mv_vs_op_gla_to_gpa(out_of_bounds_vsid, &g_test);
         integration::verify(!mut_ret.is_valid);
 
-        constexpr auto not_yet_created_vpsid{128_u16};
-        mut_ret = mut_hvc.mv_vps_op_gla_to_gpa(not_yet_created_vpsid, &g_test);
+        constexpr auto not_yet_created_vsid{128_u16};
+        mut_ret = mut_hvc.mv_vs_op_gla_to_gpa(not_yet_created_vsid, &g_test);
         integration::verify(!mut_ret.is_valid);
 
         constexpr auto unaligned_gla{42_u64};
-        mut_ret = mut_hvc.mv_vps_op_gla_to_gpa(MV_SELF_ID, unaligned_gla);
+        mut_ret = mut_hvc.mv_vs_op_gla_to_gpa(MV_SELF_ID, unaligned_gla);
         integration::verify(!mut_ret.is_valid);
 
         constexpr auto null_gla{0x0_u64};
-        mut_ret = mut_hvc.mv_vps_op_gla_to_gpa(MV_SELF_ID, null_gla);
+        mut_ret = mut_hvc.mv_vs_op_gla_to_gpa(MV_SELF_ID, null_gla);
         integration::verify(!mut_ret.is_valid);
 
         constexpr auto not_present_gla{0x1000_u64};
-        mut_ret = mut_hvc.mv_vps_op_gla_to_gpa(MV_SELF_ID, not_present_gla);
+        mut_ret = mut_hvc.mv_vs_op_gla_to_gpa(MV_SELF_ID, not_present_gla);
         integration::verify(!mut_ret.is_valid);
 
         /// TODO:
-        /// - Create a VPS and do a translation before it has been used.
-        /// - Create a VPS, zombify it and do a translation
+        /// - Create a VS and do a translation before it has been used.
+        /// - Create a VS, zombify it and do a translation
         ///
 
-        mut_ret = mut_hvc.mv_vps_op_gla_to_gpa(MV_SELF_ID, &g_test);
+        mut_ret = mut_hvc.mv_vs_op_gla_to_gpa(MV_SELF_ID, &g_test);
         integration::verify(mut_ret.is_valid);
 
         bsl::error() << "the result is:\n"

@@ -48,7 +48,7 @@
 #include <tls_t.hpp>
 #include <vm_pool_t.hpp>
 #include <vp_pool_t.hpp>
-#include <vps_pool_t.hpp>
+#include <vs_pool_t.hpp>
 
 #include <bsl/convert.hpp>
 #include <bsl/debug.hpp>
@@ -71,8 +71,8 @@ namespace microv
     ///   @param mut_pp_pool the pp_pool_t to use
     ///   @param vm_pool the vm_pool_t to use
     ///   @param vp_pool the vp_pool_t to use
-    ///   @param vps_pool the vps_pool_t to use
-    ///   @param vpsid the ID of the VPS that generated the VMExit
+    ///   @param vs_pool the vs_pool_t to use
+    ///   @param vsid the ID of the VS that generated the VMExit
     ///   @param exit_reason the exit reason associated with the VMExit
     ///   @return Returns bsl::errc_success on success, bsl::errc_failure
     ///     and friends otherwise
@@ -86,9 +86,9 @@ namespace microv
         pp_pool_t &mut_pp_pool,
         vm_pool_t const &vm_pool,
         vp_pool_t const &vp_pool,
-        vps_pool_t const &vps_pool,
-        bsl::safe_uint16 const &vpsid,
-        bsl::safe_uint64 const &exit_reason) noexcept -> bsl::errc_type
+        vs_pool_t const &vs_pool,
+        bsl::safe_u16 const &vsid,
+        bsl::safe_u64 const &exit_reason) noexcept -> bsl::errc_type
     {
         bsl::errc_type mut_ret{};
 
@@ -99,13 +99,13 @@ namespace microv
         switch (exit_reason.get()) {
             case EXIT_REASON_CPUID.get(): {
                 mut_ret = dispatch_vmexit_cpuid(
-                    gs, tls, mut_sys, intrinsic, mut_pp_pool, vm_pool, vp_pool, vps_pool, vpsid);
+                    gs, tls, mut_sys, intrinsic, mut_pp_pool, vm_pool, vp_pool, vs_pool, vsid);
                 break;
             }
 
             case EXIT_REASON_VMCALL.get(): {
                 mut_ret = dispatch_vmexit_vmcall(
-                    gs, tls, mut_sys, intrinsic, mut_pp_pool, vm_pool, vp_pool, vps_pool, vpsid);
+                    gs, tls, mut_sys, intrinsic, mut_pp_pool, vm_pool, vp_pool, vs_pool, vsid);
                 break;
             }
 
@@ -122,7 +122,7 @@ namespace microv
 
         switch (mut_ret.get()) {
             case vmexit_success_run.get(): {
-                return mut_sys.bf_vps_op_run_current();
+                return mut_sys.bf_vs_op_run_current();
             }
 
             case vmexit_success_run_parent.get(): {
@@ -131,7 +131,7 @@ namespace microv
             }
 
             case vmexit_success_advance_ip_and_run.get(): {
-                return mut_sys.bf_vps_op_advance_ip_and_run_current();
+                return mut_sys.bf_vs_op_advance_ip_and_run_current();
             }
 
             case vmexit_success_advance_ip_and_run_parent.get(): {
@@ -140,18 +140,18 @@ namespace microv
             }
 
             case vmexit_success_promote.get(): {
-                mut_ret = mut_sys.bf_vps_op_advance_ip(vpsid);
+                mut_ret = mut_sys.bf_vs_op_advance_ip(vsid);
                 if (bsl::unlikely(!mut_ret)) {
                     bsl::print<bsl::V>() << bsl::here();
                     return mut_ret;
                 }
 
-                return mut_sys.bf_vps_op_promote(vpsid);
+                return mut_sys.bf_vs_op_promote(vsid);
             }
 
             case vmexit_failure_run.get(): {
                 bsl::print<bsl::V>() << bsl::here();
-                return mut_sys.bf_vps_op_run_current();
+                return mut_sys.bf_vs_op_run_current();
             }
 
             case vmexit_failure_run_parent.get(): {
@@ -161,7 +161,7 @@ namespace microv
 
             case vmexit_failure_advance_ip_and_run.get(): {
                 bsl::print<bsl::V>() << bsl::here();
-                return mut_sys.bf_vps_op_advance_ip_and_run_current();
+                return mut_sys.bf_vs_op_advance_ip_and_run_current();
             }
 
             case vmexit_failure_advance_ip_and_run_parent.get(): {

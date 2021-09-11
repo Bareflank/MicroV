@@ -25,8 +25,6 @@
 #ifndef INTRINSIC_IMPL_PROTOTYPES_HPP
 #define INTRINSIC_IMPL_PROTOTYPES_HPP
 
-#include <gs_t.hpp>
-
 #include <bsl/cstdint.hpp>
 
 namespace microv
@@ -36,14 +34,12 @@ namespace microv
     ///     and returns the results
     ///
     /// <!-- inputs/outputs -->
-    ///   @param gs ignored
     ///   @param pmut_rax the index used by CPUID, returns resulting rax
     ///   @param pmut_rbx returns resulting rbx
     ///   @param pmut_rcx the subindex used by CPUID, returns the resulting rcx
     ///   @param pmut_rdx returns resulting rdx
     ///
     extern "C" void intrinsic_cpuid_impl(
-        gs_t const *const gs,
         bsl::uint64 *const pmut_rax,
         bsl::uint64 *const pmut_rbx,
         bsl::uint64 *const pmut_rcx,

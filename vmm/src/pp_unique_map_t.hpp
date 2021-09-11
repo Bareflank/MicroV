@@ -27,8 +27,8 @@
 
 #include <bf_syscall_t.hpp>
 
+#include <bsl/add_lvalue_reference.hpp>
 #include <bsl/debug.hpp>
-#include <bsl/discard.hpp>
 #include <bsl/errc_type.hpp>
 #include <bsl/is_pod.hpp>
 #include <bsl/safe_integral.hpp>
@@ -40,16 +40,9 @@ namespace microv
     ///
     /// <!-- description -->
     ///   @brief Similar to a std::unique_ptr, stores a pointer to memory.
-    ///     This memory is released when it loses scope. The pp_unique_map_t
-    ///     specifically uses mapped memory from a pp_t, and uses the syscall
-    ///     interface to unmap the memory using the microkernel when complete.
-    ///     A pp_unique_map_t does not support copies, meaning this is a
-    ///     move-only class. The pp_unique_map_t can only be used on the PP
-    ///     that it was created on. The TLS block that is required for all
-    ///     functions is used to ensure the PP is correct and that no mistakes
-    ///     are made. This is because the pp_unique_map_t will unmap the
-    ///     address using a local unmap (meaning no remote TLB flush is
-    ///     required).
+    ///     This memory is released when it loses scope. Unlike the
+    ///     std::unique_ptr, the pp_unique_map_t can only be used on a specifc
+    ///     PP, and can only hold a POD type.
     ///
     /// <!-- template parameters -->
     ///   @tparam T the type of pointer the pp_unique_map_t stores.
@@ -62,59 +55,50 @@ namespace microv
 
         /// @brief stores the pointer that is held by pp_unique_map_t.
         T *m_ptr;
-        /// @brief stores the bf_syscall_t used to unmap the pointer.
+        /// @brief stores the bf_syscall_t to use.
         syscall::bf_syscall_t *m_sys;
         /// @brief stores the spa associated with this map.
-        bsl::safe_uint64 *m_spa;
+        bsl::safe_u64 *m_spa;
         /// @brief stores the ppid associated with this map.
-        bsl::safe_uint16 m_ppid;
+        bsl::safe_u16 m_assigned_ppid;
+        /// @brief stores the vmid associated with this map.
+        bsl::safe_u16 m_assigned_vmid;
 
     public:
         /// <!-- description -->
         ///   @brief Creates a default constructed invalid pp_unique_map_t
         ///
-        constexpr pp_unique_map_t() noexcept
-            : m_ptr{}, m_sys{}, m_spa{}, m_ppid{syscall::BF_INVALID_ID}
+        constexpr pp_unique_map_t() noexcept    // --
+            : m_ptr{}, m_sys{}, m_spa{}, m_assigned_ppid{}, m_assigned_vmid{}
         {}
 
         /// <!-- description -->
-        ///   @brief Creates a pp_unique_map_t given a pointer to hold, a
-        ///     reference to the a bf_syscall_t which will be used to unmap
-        ///     the pointer when the pp_unique_map_t loses scope, and a
-        ///     reference to the spa that is associated with this map. When
-        ///     the pp_unique_map_t is unmapped, this spa will be set to zero
-        ///     indicated that the spa has been unmapped.
+        ///   @brief Creates a valid pp_unique_map_t. When the pp_unique_map_t
+        ///     loses scope, it will unmap the provided pointer and set the
+        ///     spa associated with the pointer to 0, telling the MMIO handler
+        ///     that the spa is no longer in use.
         ///
         /// <!-- inputs/outputs -->
-        ///   @param umut_ptr the pointer to hold
+        ///   @param pudm_ptr the pointer to hold
         ///   @param pmut_sys the bf_syscall_t to use
         ///   @param pmut_spa the SPA associated with this map
         ///
         constexpr pp_unique_map_t(
-            T *const umut_ptr,
+            T *const pudm_ptr,
             syscall::bf_syscall_t *const pmut_sys,
-            bsl::safe_uint64 *const pmut_spa) noexcept
-            : m_ptr{umut_ptr}, m_sys{pmut_sys}, m_spa{pmut_spa}, m_ppid{syscall::BF_INVALID_ID}
+            bsl::safe_u64 *const pmut_spa) noexcept
+            : m_ptr{pudm_ptr}
+            , m_sys{pmut_sys}
+            , m_spa{pmut_spa}
+            , m_assigned_ppid{}
+            , m_assigned_vmid{}
         {
-            if (bsl::unlikely_assert(nullptr == umut_ptr)) {
-                bsl::error() << "invalid umut_ptr\n" << bsl::here();
-                *this = pp_unique_map_t<T>{};
-                return;
-            }
+            bsl::expects(nullptr != pudm_ptr);
+            bsl::expects(nullptr != pmut_sys);
+            bsl::expects(nullptr != pmut_spa);
 
-            if (bsl::unlikely_assert(nullptr == pmut_sys)) {
-                bsl::error() << "invalid pmut_sys\n" << bsl::here();
-                *this = pp_unique_map_t<T>{};
-                return;
-            }
-
-            if (bsl::unlikely_assert(nullptr == pmut_spa)) {
-                bsl::error() << "invalid pmut_spa\n" << bsl::here();
-                *this = pp_unique_map_t<T>{};
-                return;
-            }
-
-            m_ppid = pmut_sys->bf_tls_ppid();
+            m_assigned_ppid = ~pmut_sys->bf_tls_ppid();
+            m_assigned_vmid = ~pmut_sys->bf_tls_vmid();
         }
 
         /// <!-- description -->
@@ -126,30 +110,16 @@ namespace microv
         ///
         constexpr ~pp_unique_map_t() noexcept
         {
-            if (bsl::unlikely(nullptr == m_ptr)) {
-                return;
+            bsl::expects(this->assigned_ppid() == m_sys->bf_tls_ppid());
+            bsl::expects(this->assigned_vmid() == m_sys->bf_tls_vmid());
+
+            if (nullptr != m_ptr) {
+                bsl::expects(m_sys->bf_vm_op_unmap_direct(m_sys->bf_tls_vmid(), m_ptr));
+                *m_spa = {};
             }
-
-            if (m_ppid != m_sys->bf_tls_ppid()) {
-                bsl::error() << "pp_unique_map_t was created on " << bsl::hex(m_ppid)
-                             << " but it's destructor was run on pp "
-                             << bsl::hex(m_sys->bf_tls_ppid()) << " which is not allowed"
-                             << bsl::endl
-                             << bsl::here();
-
-                /// NOTE:
-                /// - If this happens, the map will be leaked.
-                ///
-
-                return;
+            else {
+                bsl::touch();
             }
-
-            /// TODO:
-            /// - We need to actually unmap memory using a microkernel ABI.
-            ///
-
-            bsl::alert() << "~pp_unique_map_t no implemented\n";
-            *m_spa = {};
         }
 
         /// <!-- description -->
@@ -189,31 +159,95 @@ namespace microv
             -> pp_unique_map_t & = default;
 
         /// <!-- description -->
-        ///   @brief Returns the pointer being held by the pp_unique_map_t.
-        ///     If the PP is not the same PP the pp_unique_map_t was created
-        ///     on, a nullptr is returned. If the pp_unique_map_t was created
-        ///     with a nullptr, a nullptr is returned.
+        ///   @brief Returns the ID of the PP associated with this
+        ///     pp_unique_map_t
         ///
         /// <!-- inputs/outputs -->
-        ///   @param sys the bf_syscall_t to use
-        ///   @return Returns the pointer being held by the pp_unique_map_t.
-        ///     If the PP is not the same PP the pp_unique_map_t was created
-        ///     on, a nullptr is returned. If the pp_unique_map_t was created
-        ///     with a nullptr, a nullptr is returned.
+        ///   @return Returns the ID of the PP associated with this
+        ///     pp_unique_map_t
         ///
         [[nodiscard]] constexpr auto
-        get(syscall::bf_syscall_t const &sys) const noexcept -> T *
+        assigned_ppid() const noexcept -> bsl::safe_u16
         {
-            if (m_ppid != sys.bf_tls_ppid()) {
-                bsl::error() << "pp_unique_map_t was created on " << bsl::hex(m_ppid)
-                             << " but get was run on pp " << bsl::hex(sys.bf_tls_ppid())
-                             << " which is not allowed" << bsl::endl
-                             << bsl::here();
+            bsl::ensures(m_assigned_ppid.is_valid_and_checked());
+            return ~m_assigned_ppid;
+        }
 
-                return nullptr;
-            }
+        /// <!-- description -->
+        ///   @brief Returns the ID of the VM associated with this
+        ///     pp_unique_map_t
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @return Returns the ID of the VM associated with this
+        ///     pp_unique_map_t
+        ///
+        [[nodiscard]] constexpr auto
+        assigned_vmid() const noexcept -> bsl::safe_u16
+        {
+            bsl::ensures(m_assigned_vmid.is_valid_and_checked());
+            return ~m_assigned_vmid;
+        }
 
+        /// <!-- description -->
+        ///   @brief Returns a pointer to the data being mapped by the
+        ///     pp_unique_map_t.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @return Returns a pointer to the data being mapped by the
+        ///     pp_unique_map_t.
+        ///
+        [[nodiscard]] constexpr auto
+        get() const noexcept -> T *
+        {
+            bsl::expects(this->assigned_ppid() == m_sys->bf_tls_ppid());
+            bsl::expects(this->assigned_vmid() == m_sys->bf_tls_vmid());
             return m_ptr;
+        }
+
+        /// <!-- description -->
+        ///   @brief Returns a reference to the data being mapped by the
+        ///     pp_unique_map_t.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @return Returns a reference to the data being mapped by the
+        ///     pp_unique_map_t.
+        ///
+        [[nodiscard]] constexpr auto
+        operator*() const noexcept -> bsl::add_lvalue_reference_t<T>
+        {
+            bsl::expects(this->assigned_ppid() == m_sys->bf_tls_ppid());
+            bsl::expects(this->assigned_vmid() == m_sys->bf_tls_vmid());
+            return *m_ptr;
+        }
+
+        /// <!-- description -->
+        ///   @brief Returns a pointer to the data being mapped by the
+        ///     pp_unique_map_t.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @return Returns a pointer to the data being mapped by the
+        ///     pp_unique_map_t.
+        ///
+        [[nodiscard]] constexpr auto
+        operator->() const noexcept -> T *
+        {
+            bsl::expects(this->assigned_ppid() == m_sys->bf_tls_ppid());
+            bsl::expects(this->assigned_vmid() == m_sys->bf_tls_vmid());
+            return m_ptr;
+        }
+
+        /// <!-- description -->
+        ///   @brief Returns nullptr == this->get().
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @return Returns nullptr == this->get().
+        ///
+        [[nodiscard]] constexpr auto
+        is_invalid() const noexcept -> bool
+        {
+            bsl::expects(this->assigned_ppid() == m_sys->bf_tls_ppid());
+            bsl::expects(this->assigned_vmid() == m_sys->bf_tls_vmid());
+            return nullptr == m_ptr;
         }
 
         /// <!-- description -->
@@ -222,8 +256,11 @@ namespace microv
         /// <!-- inputs/outputs -->
         ///   @return Returns nullptr != this->get().
         ///
-        [[nodiscard]] explicit constexpr operator bool() const noexcept
+        [[nodiscard]] constexpr auto
+        is_valid() const noexcept -> bool
         {
+            bsl::expects(this->assigned_ppid() == m_sys->bf_tls_ppid());
+            bsl::expects(this->assigned_vmid() == m_sys->bf_tls_vmid());
             return nullptr != m_ptr;
         }
     };

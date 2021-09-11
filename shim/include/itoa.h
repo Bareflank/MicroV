@@ -29,47 +29,56 @@
 
 #include <types.h>
 
-/**
- * <!-- description -->
- *   @brief Implements itoa
- *
- * <!-- inputs/outputs -->
- *   @param value the value to convert to a string
- *   @param str where to store the results
- *   @param base the base for conversion, which should only be 10 or 16
- *   @return returns str
- */
-static inline char *
-bfitoa(uint64_t value, char *const str, uint64_t const base)
+#ifdef __cplusplus
+extern "C"
 {
+#endif
+
     /**
-     * TODO:
-     * - Rework this code to be compliant with MISRA/AUTOSAR. Specifically,
-     *   this needs bounds checks, the result of increment should not be
-     *   used directly, make sure base is only 10 or 16, get rid of the
-     *   do/while loop, etc...
+     * <!-- description -->
+     *   @brief Implements itoa
+     *
+     * <!-- inputs/outputs -->
+     *   @param value the value to convert to a string
+     *   @param str where to store the results
+     *   @param base the base for conversion, which should only be 10 or 16
+     *   @return returns str
      */
+    NODISCARD static inline char *
+    bfitoa(uint64_t value, char *const str, uint64_t const base) NOEXCEPT
+    {
+        /**
+         * TODO:
+         * - Rework this code to be compliant with MISRA/AUTOSAR. Specifically,
+         *   this needs bounds checks, the result of increment should not be
+         *   used directly, make sure base is only 10 or 16, get rid of the
+         *   do/while loop, etc...
+         */
 
-    char const digits[] = "0123456789abcdefghijklmnopqrstuvwxyz";
-    uint64_t i = 0;
-    uint64_t j = 0;
-    uint64_t remainder;
+        char const digits[] = "0123456789abcdefghijklmnopqrstuvwxyz";
+        uint64_t i = 0;
+        uint64_t j = 0;
+        uint64_t remainder;
 
-    do {
-        remainder = value % base;
-        str[i++] = digits[remainder];
-        value = value / base;
-    } while (value != 0);
+        do {
+            remainder = value % base;
+            str[i++] = digits[remainder];
+            value = value / base;
+        } while (value != 0);
 
-    str[i] = '\0';
+        str[i] = '\0';
 
-    for (j = 0, i--; j < i; j++, i--) {
-        char c = str[j];
-        str[j] = str[i];
-        str[i] = c;
+        for (j = 0, i--; j < i; j++, i--) {
+            char c = str[j];
+            str[j] = str[i];
+            str[i] = c;
+        }
+
+        return str;
     }
 
-    return str;
+#ifdef __cplusplus
 }
+#endif
 
 #endif

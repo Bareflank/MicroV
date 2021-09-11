@@ -22,8 +22,8 @@
 /// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 /// SOFTWARE.
 
-#ifndef DISPATCH_FAIL_HPP
-#define DISPATCH_FAIL_HPP
+#ifndef DISPATCH_FAIL
+#define DISPATCH_FAIL
 
 #include <bf_syscall_t.hpp>
 #include <gs_t.hpp>
@@ -32,10 +32,11 @@
 #include <tls_t.hpp>
 #include <vm_pool_t.hpp>
 #include <vp_pool_t.hpp>
-#include <vps_pool_t.hpp>
+#include <vs_pool_t.hpp>
 
 #include <bsl/discard.hpp>
 #include <bsl/errc_type.hpp>
+#include <bsl/expects.hpp>
 #include <bsl/safe_integral.hpp>
 
 namespace microv
@@ -52,13 +53,13 @@ namespace microv
     ///   @param pp_pool the pp_pool_t to use
     ///   @param vm_pool the vm_pool_t to use
     ///   @param vp_pool the vp_pool_t to use
-    ///   @param vps_pool the vps_pool_t to use
-    ///   @param vpsid the ID of the VPS that generated the fail
+    ///   @param vs_pool the vs_pool_t to use
+    ///   @param vsid the ID of the VS that generated the fail
     ///   @param fail_reason the exit reason associated with the fail
     ///   @return Returns bsl::errc_success on success, bsl::errc_failure
     ///     and friends otherwise
     ///
-    [[nodiscard]] constexpr auto
+    [[nodiscard]] static constexpr auto
     dispatch_fail(
         gs_t const &gs,
         tls_t const &tls,
@@ -67,10 +68,13 @@ namespace microv
         pp_pool_t const &pp_pool,
         vm_pool_t const &vm_pool,
         vp_pool_t const &vp_pool,
-        vps_pool_t const &vps_pool,
-        bsl::safe_uint16 const &vpsid,
-        bsl::safe_uint64 const &fail_reason) noexcept -> bsl::errc_type
+        vs_pool_t const &vs_pool,
+        bsl::safe_u16 const &vsid,
+        bsl::safe_u64 const &fail_reason) noexcept -> bsl::errc_type
     {
+        bsl::expects(vsid.is_valid_and_checked());
+        bsl::expects(fail_reason.is_valid_and_checked());
+
         bsl::discard(gs);
         bsl::discard(tls);
         bsl::discard(sys);
@@ -78,9 +82,7 @@ namespace microv
         bsl::discard(pp_pool);
         bsl::discard(vm_pool);
         bsl::discard(vp_pool);
-        bsl::discard(vps_pool);
-        bsl::discard(vpsid);
-        bsl::discard(fail_reason);
+        bsl::discard(vs_pool);
 
         return bsl::errc_failure;
     }
