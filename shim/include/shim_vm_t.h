@@ -27,6 +27,8 @@
 #ifndef SHIM_VM_T_H
 #define SHIM_VM_T_H
 
+#include <constants.h>
+#include <shim_vcpu_t.h>
 #include <stdint.h>
 #include <types.h>
 
@@ -47,8 +49,18 @@ extern "C"
      */
     struct shim_vm_t
     {
-        /** @brief stores the ID of the VM associated with this shim_vm_t */
+        /** @brief stores the ID of this VM */
+        uint16_t id;
+        /** @brief stores file descriptor for this VM */
+        uint64_t fd;
+
+        /** @brief stores the ID of the MicroV VM associated with this VCPU */
         uint16_t vmid;
+
+        /** @brief stores the total number of VCPUs the VM contains */
+        uint16_t num_vcpus;
+        /** @brief stores the VCPUs associated with this VM */
+        struct shim_vcpu_t vcpus[MICROV_MAX_VCPUS];
     };
 
 #pragma pack(pop)

@@ -19,14 +19,23 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+# ------------------------------------------------------------------------------
+# Macros For This Directory
+# ------------------------------------------------------------------------------
+
 macro(mv_add_test_x64 NAME SOURCES)
     bf_add_test(
         test_${NAME}
-        SOURCES ${SOURCES} ${CURRENT_FUNCTION_LIST_DIR}/platform.c
+        SOURCES ${SOURCES}
         INCLUDES ${X64_INCLUDES}
         SYSTEM_INCLUDES ${X64_SYSTEM_INCLUDES}
         DEFINES ${X64_DEFINES}
+        LIBRARIES shim_tests_common
     )
 endmacro(mv_add_test_x64)
+
+# ------------------------------------------------------------------------------
+# Tests
+# ------------------------------------------------------------------------------
 
 mv_add_test_x64(serial_init ${CMAKE_CURRENT_LIST_DIR}/../../../src/x64/serial_init.c)

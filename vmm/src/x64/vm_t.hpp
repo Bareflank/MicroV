@@ -52,6 +52,8 @@ namespace microv
         bsl::safe_u16 m_id{};
         /// @brief stores whether or not this vm_t is allocated.
         allocated_status_t m_allocated{};
+        /// @brief stores whether or not this vm_t is active.
+        bsl::array<bool, HYPERVISOR_MAX_PPS.get()> m_active{};
 
         /// @brief stores this vs_t's emulated_ioapic_t
         emulated_ioapic_t m_emulated_ioapic{};
@@ -80,7 +82,6 @@ namespace microv
             bsl::safe_u16 const &i) noexcept
         {
             bsl::expects(this->id() == syscall::BF_INVALID_ID);
-            bsl::expects(m_allocated == allocated_status_t::deallocated);
 
             bsl::expects(i.is_valid_and_checked());
             bsl::expects(i != syscall::BF_INVALID_ID);
@@ -152,10 +153,21 @@ namespace microv
 
             bsl::discard(gs);
             bsl::discard(tls);
-            bsl::discard(sys);
             bsl::discard(intrinsic);
 
             m_allocated = allocated_status_t::allocated;
+
+            if (!sys.is_vm_the_root_vm(this->id())) {
+                bsl::debug<bsl::V>()                                   // --
+                    << "vm "                                           // --
+                    << bsl::grn << bsl::hex(this->id()) << bsl::rst    // --
+                    << " was created"                                  // --
+                    << bsl::endl;                                      // --
+            }
+            else {
+                bsl::touch();
+            }
+
             return this->id();
         }
 
@@ -175,12 +187,23 @@ namespace microv
             syscall::bf_syscall_t const &sys,
             intrinsic_t const &intrinsic) noexcept
         {
+            bsl::expects(this->is_active(tls).is_invalid());
+
             bsl::discard(gs);
-            bsl::discard(tls);
-            bsl::discard(sys);
             bsl::discard(intrinsic);
 
             m_allocated = allocated_status_t::deallocated;
+
+            if (!sys.is_vm_the_root_vm(this->id())) {
+                bsl::debug<bsl::V>()                                   // --
+                    << "vm "                                           // --
+                    << bsl::red << bsl::hex(this->id()) << bsl::rst    // --
+                    << " was destroyed"                                // --
+                    << bsl::endl;                                      // --
+            }
+            else {
+                bsl::touch();
+            }
         }
 
         /// <!-- description -->
@@ -205,6 +228,88 @@ namespace microv
         is_deallocated() const noexcept -> bool
         {
             return m_allocated == allocated_status_t::deallocated;
+        }
+
+        /// <!-- description -->
+        ///   @brief Sets this vm_t as active.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param mut_tls the current TLS block
+        ///
+        constexpr void
+        set_active(tls_t &mut_tls) noexcept
+        {
+            auto const ppid{bsl::to_idx(mut_tls.ppid)};
+
+            bsl::expects(allocated_status_t::allocated == m_allocated);
+            bsl::expects(syscall::BF_INVALID_ID == mut_tls.active_vpid);
+            bsl::expects(ppid < m_active.size());
+
+            *m_active.at_if(ppid) = true;
+            mut_tls.active_vmid = this->id().get();
+        }
+
+        /// <!-- description -->
+        ///   @brief Sets this vm_t as inactive.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param mut_tls the current TLS block
+        ///
+        constexpr void
+        set_inactive(tls_t &mut_tls) noexcept
+        {
+            auto const ppid{bsl::to_idx(mut_tls.ppid)};
+
+            bsl::expects(allocated_status_t::allocated == m_allocated);
+            bsl::expects(this->id() == mut_tls.active_vpid);
+            bsl::expects(ppid < m_active.size());
+
+            *m_active.at_if(ppid) = false;
+            mut_tls.active_vmid = syscall::BF_INVALID_ID.get();
+        }
+
+        /// <!-- description -->
+        ///   @brief Returns the ID of the first identified PP this vm_t is
+        ///     active on. If the vm_t is not active, bsl::safe_u16::failure()
+        ///     is returned.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param tls the current TLS block
+        ///   @return Returns the ID of the first identified PP this vm_t is
+        ///     active on. If the vm_t is not active, bsl::safe_u16::failure()
+        ///     is returned.
+        ///
+        [[nodiscard]] constexpr auto
+        is_active(tls_t const &tls) const noexcept -> bsl::safe_u16
+        {
+            auto const online_pps{bsl::to_umx(tls.online_pps)};
+            bsl::expects(online_pps <= m_active.size());
+
+            for (bsl::safe_idx mut_i{}; mut_i < online_pps; ++mut_i) {
+                if (*m_active.at_if(mut_i)) {
+                    return bsl::to_u16(mut_i);
+                }
+
+                bsl::touch();
+            }
+
+            return bsl::safe_u16::failure();
+        }
+
+        /// <!-- description -->
+        ///   @brief Returns true if this vm_t is active on the current PP,
+        ///     false otherwise
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param tls the current TLS block
+        ///   @return Returns true if this vm_t is active on the current PP,
+        ///     false otherwise
+        ///
+        [[nodiscard]] constexpr auto
+        is_active_on_this_pp(tls_t const &tls) const noexcept -> bool
+        {
+            bsl::expects(bsl::to_umx(tls.ppid) < m_active.size());
+            return *m_active.at_if(bsl::to_idx(tls.ppid));
         }
     };
 }

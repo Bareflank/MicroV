@@ -24,16 +24,25 @@
  * SOFTWARE.
  */
 
+#include <g_mut_hndl.h>
+#include <mv_constants.h>
+#include <mv_hypercall.h>
+#include <platform.h>
+#include <shim_vm_t.h>
 #include <types.h>
+
 /**
  * <!-- description -->
  *   @brief Handles the execution of kvm_destroy_vm.
  *
  * <!-- inputs/outputs -->
- *   @return SHIM_SUCCESS (vmfd) on success, SHIM_FAILURE on failure.
+ *   @param pmut_vm the VM to destroy
  */
-NODISCARD int64_t
-handle_system_kvm_destroy_vm(void) NOEXCEPT
+void
+handle_system_kvm_destroy_vm(struct shim_vm_t *const pmut_vm) NOEXCEPT
 {
-    return SHIM_SUCCESS;
+    platform_expects(MV_INVALID_HANDLE != g_mut_hndl);
+    platform_expects(NULL != pmut_vm);
+
+    platform_expects(MV_STATUS_SUCCESS == mv_vm_op_destroy_vm(g_mut_hndl, pmut_vm->vmid));
 }

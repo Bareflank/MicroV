@@ -39,9 +39,9 @@ extern "C"
      *   @brief Handles the execution of kvm_destroy_vm.
      *
      * <!-- inputs/outputs -->
-     *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
+     *   @param pmut_vm the VM to destroy
      */
-    NODISCARD int64_t handle_system_kvm_destroy_vm(void) NOEXCEPT;
+    void handle_system_kvm_destroy_vm(struct shim_vm_t *const pmut_vm) NOEXCEPT;
 
 #ifdef __cplusplus
 }

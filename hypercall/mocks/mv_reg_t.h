@@ -24,21 +24,30 @@
  * SOFTWARE.
  */
 
-#ifndef MOCKS_MV_REG_T_HP
-#define MOCKS_MV_REG_T_HP
+#ifndef MOCKS_MV_REG_T_H
+#define MOCKS_MV_REG_T_H
 
 #ifdef __cplusplus
 extern "C"
 {
 #endif
 
+#ifdef __cplusplus
     /**
      * <!-- description -->
-     *   @brief Defines which register to use for read/write
+     *   @brief Defines which register to use for certain hypercalls
      */
-    enum mv_reg_t
+    enum mv_reg_t : int32_t
+#else
+/**
+     * <!-- description -->
+     *   @brief Defines which register to use for certain hypercalls
+     */
+enum mv_reg_t
+#endif
     {
-        mv_reg_t_dummy
+        /** @brief defines a dummy register */
+        mv_reg_t_dummy = 1,
     };
 
 #ifdef __cplusplus

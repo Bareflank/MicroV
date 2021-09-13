@@ -40,7 +40,7 @@ extern "C"
      *   @brief Handles the execution of kvm_create_vm.
      *
      * <!-- inputs/outputs -->
-     *   @param pmut_vm where to store the ID of the newly created VM
+     *   @param pmut_vm returns the resulting VM
      *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
      */
     NODISCARD int64_t handle_system_kvm_create_vm(struct shim_vm_t *const pmut_vm) NOEXCEPT;

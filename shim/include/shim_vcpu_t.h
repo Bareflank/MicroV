@@ -37,6 +37,9 @@ extern "C"
 
 #pragma pack(push, 1)
 
+    /** prototype */
+    struct shim_vm_t;
+
     /**
      * @struct shim_vcpu_t
      *
@@ -47,10 +50,18 @@ extern "C"
      */
     struct shim_vcpu_t
     {
-        /** @brief stores the ID of the VP associated with this shim_vcpu_t */
+        /** @brief stores the ID of this VCPU */
+        uint16_t id;
+        /** @brief stores file descriptor for this VCPU */
+        uint64_t fd;
+
+        /** @brief stores the ID of the MicroV VP associated with this VCPU */
         uint16_t vpid;
-        /** @brief stores the ID of the VS associated with this shim_vcpu_t */
+        /** @brief stores the ID of the MicroV VS associated with this VCPU */
         uint16_t vsid;
+
+        /** @brief stores a pointer to the parent VM */
+        struct shim_vm_t *vm;
     };
 
 #pragma pack(pop)

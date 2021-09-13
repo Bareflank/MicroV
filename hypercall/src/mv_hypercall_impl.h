@@ -95,17 +95,6 @@ extern "C"
 
     /**
      * <!-- description -->
-     *   @brief Implements the ABI for mv_pp_op_get_shared_page_gpa.
-     *
-     * <!-- inputs/outputs -->
-     *   @param reg0_in n/a
-     *   @param pmut_reg0_out n/a
-     */
-    NODISCARD mv_status_t mv_pp_op_get_shared_page_gpa_impl(
-        uint64_t const reg0_in, uint64_t *const pmut_reg0_out) NOEXCEPT;
-
-    /**
-     * <!-- description -->
      *   @brief Implements the ABI for mv_pp_op_clr_shared_page_gpa.
      *
      * <!-- inputs/outputs -->
@@ -140,6 +129,40 @@ extern "C"
     NODISCARD mv_status_t
     mv_vm_op_create_vm_impl(uint64_t const reg0_in, uint16_t *const pmut_reg0_out) NOEXCEPT;
 
+    /**
+     * <!-- description -->
+     *   @brief Implements the ABI for mv_vm_op_destroy_vm.
+     *
+     * <!-- inputs/outputs -->
+     *   @param reg0_in n/a
+     *   @param reg1_in n/a
+     */
+    NODISCARD mv_status_t
+    mv_vm_op_destroy_vm_impl(uint64_t const reg0_in, uint16_t const reg1_in) NOEXCEPT;
+
+    /**
+     * <!-- description -->
+     *   @brief Implements the ABI for mv_vm_op_mmio_map.
+     *
+     * <!-- inputs/outputs -->
+     *   @param reg0_in n/a
+     *   @param reg1_in n/a
+     *   @param reg2_in n/a
+     */
+    NODISCARD mv_status_t mv_vm_op_mmio_map_impl(
+        uint64_t const reg0_in, uint16_t const reg1_in, uint16_t const reg2_in) NOEXCEPT;
+
+    /**
+     * <!-- description -->
+     *   @brief Implements the ABI for mv_vm_op_mmio_unmap.
+     *
+     * <!-- inputs/outputs -->
+     *   @param reg0_in n/a
+     *   @param reg1_in n/a
+     */
+    NODISCARD mv_status_t
+    mv_vm_op_mmio_unmap_impl(uint64_t const reg0_in, uint16_t const reg1_in) NOEXCEPT;
+
     /* -------------------------------------------------------------------------- */
     /* mv_vp_ops                                                               */
     /* -------------------------------------------------------------------------- */
@@ -156,6 +179,17 @@ extern "C"
     NODISCARD mv_status_t mv_vp_op_create_vp_impl(
         uint64_t const reg0_in, uint16_t const reg1_in, uint16_t *const pmut_reg0_out) NOEXCEPT;
 
+    /**
+     * <!-- description -->
+     *   @brief Implements the ABI for mv_vp_op_destroy_vp.
+     *
+     * <!-- inputs/outputs -->
+     *   @param reg0_in n/a
+     *   @param reg1_in n/a
+     */
+    NODISCARD mv_status_t
+    mv_vp_op_destroy_vp_impl(uint64_t const reg0_in, uint16_t const reg1_in) NOEXCEPT;
+
     /* -------------------------------------------------------------------------- */
     /* mv_vs_ops                                                               */
     /* -------------------------------------------------------------------------- */
@@ -171,6 +205,39 @@ extern "C"
      */
     NODISCARD mv_status_t mv_vs_op_create_vs_impl(
         uint64_t const reg0_in, uint16_t const reg1_in, uint16_t *const pmut_reg0_out) NOEXCEPT;
+
+    /**
+     * <!-- description -->
+     *   @brief Implements the ABI for mv_vs_op_destroy_vs.
+     *
+     * <!-- inputs/outputs -->
+     *   @param reg0_in n/a
+     *   @param reg1_in n/a
+     */
+    NODISCARD mv_status_t
+    mv_vs_op_destroy_vs_impl(uint64_t const reg0_in, uint16_t const reg1_in) NOEXCEPT;
+
+    /**
+     * <!-- description -->
+     *   @brief Implements the ABI for mv_vs_op_reg_get_list.
+     *
+     * <!-- inputs/outputs -->
+     *   @param reg0_in n/a
+     *   @param reg1_in n/a
+     */
+    NODISCARD mv_status_t
+    mv_vs_op_reg_get_list_impl(uint64_t const reg0_in, uint16_t const reg1_in) NOEXCEPT;
+
+    /**
+     * <!-- description -->
+     *   @brief Implements the ABI for mv_vs_op_reg_set_list.
+     *
+     * <!-- inputs/outputs -->
+     *   @param reg0_in n/a
+     *   @param reg1_in n/a
+     */
+    NODISCARD mv_status_t
+    mv_vs_op_reg_set_list_impl(uint64_t const reg0_in, uint16_t const reg1_in) NOEXCEPT;
 
     /**
      * <!-- description -->

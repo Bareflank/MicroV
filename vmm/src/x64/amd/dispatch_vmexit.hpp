@@ -69,9 +69,9 @@ namespace microv
     ///   @param mut_sys the bf_syscall_t to use
     ///   @param intrinsic the intrinsic_t to use
     ///   @param mut_pp_pool the pp_pool_t to use
-    ///   @param vm_pool the vm_pool_t to use
-    ///   @param vp_pool the vp_pool_t to use
-    ///   @param vs_pool the vs_pool_t to use
+    ///   @param mut_vm_pool the vm_pool_t to use
+    ///   @param mut_vp_pool the vp_pool_t to use
+    ///   @param mut_vs_pool the vs_pool_t to use
     ///   @param vsid the ID of the VS that generated the VMExit
     ///   @param exit_reason the exit reason associated with the VMExit
     ///   @return Returns bsl::errc_success on success, bsl::errc_failure
@@ -84,28 +84,44 @@ namespace microv
         syscall::bf_syscall_t &mut_sys,
         intrinsic_t const &intrinsic,
         pp_pool_t &mut_pp_pool,
-        vm_pool_t const &vm_pool,
-        vp_pool_t const &vp_pool,
-        vs_pool_t const &vs_pool,
+        vm_pool_t &mut_vm_pool,
+        vp_pool_t &mut_vp_pool,
+        vs_pool_t &mut_vs_pool,
         bsl::safe_u16 const &vsid,
         bsl::safe_u64 const &exit_reason) noexcept -> bsl::errc_type
     {
         bsl::errc_type mut_ret{};
 
         bsl::discard(tls);
-        bsl::discard(vm_pool);
-        bsl::discard(vp_pool);
+        bsl::discard(mut_vm_pool);
+        bsl::discard(mut_vp_pool);
 
         switch (exit_reason.get()) {
             case EXIT_REASON_CPUID.get(): {
                 mut_ret = dispatch_vmexit_cpuid(
-                    gs, tls, mut_sys, intrinsic, mut_pp_pool, vm_pool, vp_pool, vs_pool, vsid);
+                    gs,
+                    tls,
+                    mut_sys,
+                    intrinsic,
+                    mut_pp_pool,
+                    mut_vm_pool,
+                    mut_vp_pool,
+                    mut_vs_pool,
+                    vsid);
                 break;
             }
 
             case EXIT_REASON_VMCALL.get(): {
                 mut_ret = dispatch_vmexit_vmcall(
-                    gs, tls, mut_sys, intrinsic, mut_pp_pool, vm_pool, vp_pool, vs_pool, vsid);
+                    gs,
+                    tls,
+                    mut_sys,
+                    intrinsic,
+                    mut_pp_pool,
+                    mut_vm_pool,
+                    mut_vp_pool,
+                    mut_vs_pool,
+                    vsid);
                 break;
             }
 

@@ -383,8 +383,6 @@ extern "C"
 /** @brief Defines the index for mv_debug_op_out */
 #define MV_DEBUG_OP_OUT_IDX_VAL ((uint64_t)0x0000000000000000)
 
-/** @brief Defines the index for mv_pp_op_get_shared_page_gpa */
-#define MV_PP_OP_GET_SHARED_PAGE_GPA_IDX_VAL ((uint64_t)0x0000000000000000)
 /** @brief Defines the index for mv_pp_op_clr_shared_page_gpa */
 #define MV_PP_OP_CLR_SHARED_PAGE_GPA_IDX_VAL ((uint64_t)0x0000000000000001)
 /** @brief Defines the index for mv_pp_op_set_shared_page_gpa */

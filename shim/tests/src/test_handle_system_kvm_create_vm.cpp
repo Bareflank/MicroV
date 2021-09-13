@@ -24,9 +24,7 @@
 
 #include "../../include/handle_system_kvm_create_vm.h"
 
-#include <mv_constants.h>
-#include <shim_vm_t.h>
-#include <types.h>
+#include <helpers.hpp>
 
 #include <bsl/convert.hpp>
 #include <bsl/safe_integral.hpp>
@@ -34,9 +32,6 @@
 
 namespace shim
 {
-    extern "C" bsl::uint64 g_mut_hndl{};
-    extern "C" bsl::uint16 g_mut_mv_vm_op_create_vm{};
-
     /// <!-- description -->
     ///   @brief Used to execute the actual checks. We put the checks in this
     ///     function so that we can validate the tests both at compile-time
@@ -58,6 +53,7 @@ namespace shim
                     bsl::ut_then{} = [&]() noexcept {
                         bsl::ut_check(SHIM_SUCCESS == handle_system_kvm_create_vm(&mut_vm));
                         bsl::ut_check(vmid == mut_vm.vmid);
+                        bsl::ut_check(vmid == mut_vm.id);
                     };
                 };
             };

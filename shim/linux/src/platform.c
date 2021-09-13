@@ -39,6 +39,40 @@
 
 /**
  * <!-- description -->
+ *   @brief If test is false, a contract violation has occurred. This
+ *     should be used to assert preconditions that if not meet, would
+ *     result in undefined behavior. These should not be tested by a
+ *     unit test, meaning they are contract violations. These asserts
+ *     are simply there as a sanity check during a debug build.
+ *
+ * <!-- inputs/outputs -->
+ *   @param test the contract to check
+ */
+void
+platform_expects(int const test)
+{
+    BUG_ON(!test);
+}
+
+/**
+ * <!-- description -->
+ *   @brief If test is false, a contract violation has occurred. This
+ *     should be used to assert postconditions that if not meet, would
+ *     result in undefined behavior. These should not be tested by a
+ *     unit test, meaning they are contract violations. These asserts
+ *     are simply there as a sanity check during a debug build.
+ *
+ * <!-- inputs/outputs -->
+ *   @param test the contract to check
+ */
+void
+platform_ensures(int const test)
+{
+    BUG_ON(!test);
+}
+
+/**
+ * <!-- description -->
  *   @brief This function allocates read/write virtual memory from the
  *     kernel. This memory is not physically contiguous. The resulting
  *     pointer is at least 4k aligned, so use this function sparingly
@@ -56,11 +90,7 @@ void *
 platform_alloc(uint64_t const size)
 {
     void *ret;
-
-    if (0 == size) {
-        bferror("invalid number of bytes (i.e., size)");
-        return ((void *)0);
-    }
+    platform_expects(0 != size);
 
     ret = vmalloc(size);
     if (((void *)0) == ret) {
@@ -84,7 +114,7 @@ platform_alloc(uint64_t const size)
  *     may or may not be ignored depending on the platform.
  */
 void
-platform_free(void const *const pmut_ptr, uint64_t const size)
+platform_free(void *const pmut_ptr, uint64_t const size)
 {
     (void)size;
 
@@ -128,19 +158,12 @@ platform_virt_to_phys(void const *const virt)
  *   @param pmut_ptr a pointer to the memory to set
  *   @param val the value to set each byte to
  *   @param num the number of bytes in "pmut_ptr" to set to "val".
- *   @return If the provided parameters are valid, returns 0, otherwise
- *     returns SHIM_FAILURE.
  */
-int64_t
+void
 platform_memset(void *const pmut_ptr, uint8_t const val, uint64_t const num)
 {
-    if (!pmut_ptr) {
-        bferror("invalid pmut_ptr");
-        return SHIM_FAILURE;
-    }
-
+    platform_expects(((void *)0) != pmut_ptr);
     memset(pmut_ptr, val, num);
-    return 0;
 }
 
 /**
@@ -152,24 +175,14 @@ platform_memset(void *const pmut_ptr, uint8_t const val, uint64_t const num)
  *   @param pmut_dst a pointer to the memory to copy to
  *   @param src a pointer to the memory to copy from
  *   @param num the number of bytes to copy
- *   @return If "src" or "pmut_dst" are ((void *)0), returns SHIM_FAILURE, otherwise
- *     returns 0.
  */
-int64_t
+void
 platform_memcpy(void *const pmut_dst, void const *const src, uint64_t const num)
 {
-    if (((void *)0) == pmut_dst) {
-        bferror("invalid pointer");
-        return SHIM_FAILURE;
-    }
-
-    if (((void *)0) == src) {
-        bferror("invalid pointer");
-        return SHIM_FAILURE;
-    }
+    platform_expects(((void *)0) != pmut_dst);
+    platform_expects(((void *)0) != src);
 
     memcpy(pmut_dst, src, num);
-    return 0;
 }
 
 /**
@@ -185,22 +198,14 @@ platform_memcpy(void *const pmut_dst, void const *const src, uint64_t const num)
  *   @return If "src" or "pmut_dst" are ((void *)0), returns FAILURE, otherwise
  *     returns 0.
  */
-int64_t
+void
 platform_copy_from_user(
     void *const pmut_dst, void const *const src, uint64_t const num)
 {
-    if (((void *)0) == pmut_dst) {
-        bferror("invalid pointer");
-        return SHIM_FAILURE;
-    }
-
-    if (((void *)0) == src) {
-        bferror("invalid pointer");
-        return SHIM_FAILURE;
-    }
+    platform_expects(((void *)0) != pmut_dst);
+    platform_expects(((void *)0) != src);
 
     copy_from_user(pmut_dst, src, num);
-    return 0;
 }
 
 /**
@@ -216,22 +221,14 @@ platform_copy_from_user(
  *   @return If "src" or "pmut_dst" are ((void *)0), returns FAILURE, otherwise
  *     returns 0.
  */
-int64_t
+void
 platform_copy_to_user(
     void *const pmut_dst, void const *const src, uint64_t const num)
 {
-    if (((void *)0) == pmut_dst) {
-        bferror("invalid pointer");
-        return SHIM_FAILURE;
-    }
-
-    if (((void *)0) == src) {
-        bferror("invalid pointer");
-        return SHIM_FAILURE;
-    }
+    platform_expects(((void *)0) != pmut_dst);
+    platform_expects(((void *)0) != src);
 
     copy_to_user(pmut_dst, src, num);
-    return 0;
 }
 
 /**
@@ -245,6 +242,19 @@ uint32_t
 platform_num_online_cpus(void)
 {
     return num_online_cpus();
+}
+
+/**
+ * <!-- description -->
+ *   @brief Returns the current CPU (i.e. PP)
+ *
+ * <!-- inputs/outputs -->
+ *   @return Returns the current CPU (i.e. PP)
+ */
+uint32_t
+platform_current_cpu(void)
+{
+    return (uint32_t)raw_smp_processor_id();
 }
 
 /**
@@ -287,7 +297,7 @@ platform_on_each_cpu_forward(platform_per_cpu_func const pmut_func)
 
     get_online_cpus();
     for (cpu = 0; cpu < platform_num_online_cpus(); ++cpu) {
-        struct work_on_cpu_callback_args args = {func, cpu, 0, 0};
+        struct work_on_cpu_callback_args args = {pmut_func, cpu, 0, 0};
 
         work_on_cpu(cpu, work_on_cpu_callback, &args);
         if (args.ret) {
@@ -325,7 +335,7 @@ platform_on_each_cpu_reverse(platform_per_cpu_func const pmut_func)
 
     get_online_cpus();
     for (cpu = platform_num_online_cpus(); cpu > 0; --cpu) {
-        struct work_on_cpu_callback_args args = {func, cpu - 1, 0, 0};
+        struct work_on_cpu_callback_args args = {pmut_func, cpu - 1, 0, 0};
 
         work_on_cpu(cpu - 1, work_on_cpu_callback, &args);
         if (args.ret) {
@@ -371,38 +381,4 @@ platform_on_each_cpu(
     }
 
     return ret;
-}
-
-/**
- * <!-- description -->
- *   @brief If test is false, a contract violation has occurred. This
- *     should be used to assert preconditions that if not meet, would
- *     result in undefined behavior. These should not be tested by a
- *     unit test, meaning they are contract violations. These asserts
- *     are simply there as a sanity check during a debug build.
- *
- * <!-- inputs/outputs -->
- *   @param test the contract to check
- */
-void
-platform_expects(int const test)
-{
-    BUG_ON(test);
-}
-
-/**
- * <!-- description -->
- *   @brief If test is false, a contract violation has occurred. This
- *     should be used to assert postconditions that if not meet, would
- *     result in undefined behavior. These should not be tested by a
- *     unit test, meaning they are contract violations. These asserts
- *     are simply there as a sanity check during a debug build.
- *
- * <!-- inputs/outputs -->
- *   @param test the contract to check
- */
-void
-platform_ensures(int const test)
-{
-    BUG_ON(test);
 }

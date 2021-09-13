@@ -24,7 +24,7 @@
 
 #include "../../include/handle_system_kvm_destroy_vm.h"
 
-#include <types.h>
+#include <helpers.hpp>
 
 #include <bsl/ut.hpp>
 
@@ -42,12 +42,13 @@ namespace shim
     [[nodiscard]] constexpr auto
     tests() noexcept -> bsl::exit_code
     {
-        bsl::ut_scenario{"description"} = []() noexcept {
+        bsl::ut_scenario{"success doesn't crash"} = []() noexcept {
             bsl::ut_given{} = [&]() noexcept {
-                bsl::ut_when{} = [&]() noexcept {
-                    bsl::ut_then{} = [&]() noexcept {
-                        bsl::ut_check(SHIM_SUCCESS == handle_system_kvm_destroy_vm());
-                    };
+                shim_vm_t mut_vm{};
+                bsl::ut_then{} = [&]() noexcept {
+                    handle_system_kvm_destroy_vm(&mut_vm);
+                    handle_system_kvm_destroy_vm(&mut_vm);
+                    handle_system_kvm_destroy_vm(&mut_vm);
                 };
             };
         };

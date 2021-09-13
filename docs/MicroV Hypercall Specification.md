@@ -181,15 +181,6 @@ This specification is specific to 64bit Intel and AMD processors conforming to t
 
 ## 1.4. Constants, Structures, Enumerations and Bit Fields
 
-### 1.4.1. Handle Type
-
-The mv_handle_t structure is an opaque structure containing the handle used by most of the hypercalls in this specification.
-
-**struct: mv_handle_t**
-| Name | Type | Offset | Size | Description |
-| :--- | :--- | :----- | :--- | :---------- |
-| hndl | uint64_t | 0x0 | 8 bytes | The handle returned by mv_handle_op_open_handle |
-
 ### 1.4.2. Register Type
 
 Defines which register a hypercall is requesting.
@@ -286,7 +277,7 @@ Defines different bit sizes for address, operands, etc.
 
 A register descriptor list (RDL) describes a list of registers that either need to be read or written. Each RDL consists of a list of entries with each entry describing one register to read/write. Like all structures used in this ABI, the RDL must be placed inside the shared page. Not all registers require 64 bits for either the register index or the value itself. In all cases, unused bits are considered REVI. The meaning of the register and value fields is ABI dependent. For some ABIs, the reg field refers to a mv_reg_t while in other cases it refers to an architecture specific register like MSRs on x86 which have it's index type. The value field for some ABIs is the value read or the value to be written to the requested register. In other cases, it is a boolean, enum or bit field describing attributes about the register such as whether the register is supported, emulated or permissable. Registers 0-7 in the mv_rdl_t are NOT entries, but instead input/output registers for the ABIs that need additional input and output registers. If any of these registers is not used by a specific ABI, it is REVI.
 
-**const, uint16_t: MV_RDL_MAX_ENTRIES**
+**const, uint64_t: MV_RDL_MAX_ENTRIES**
 | Value | Description |
 | :---- | :---------- |
 | 250 | Defines the max number of entires in the RDL |
@@ -320,7 +311,7 @@ The format of the RDL as follows:
 
 A memory descriptor list (MDL) describes a discontiguous region of guest physical memory. Each MDL consists of a list of entries with each entry describing one contiguous region of guest physical memory. By combining multiple entries into a list, software is capable of describing both contiguous and discontiguous regions of guest physical memory. Like all structures used in this ABI, the MDL must be placed inside the shared page. The meaning of the dst and src fields is ABI dependent. Both the dst and src fields could be GVAs, GLAs or GPAs (virtual, linear or physical). The bytes field describes the total number of bytes in the contiguous memory region. For some ABIs, this field must be page aligned. The flags field is also ABI dependent. For example, for map hypercalls, this field refers to map flags. Registers 0-7 in the mv_mdl_t are NOT entries, but instead input/output registers for the ABIs that need additional input and output registers. If any of these registers is not used by a specific ABI, it is REVI.
 
-**const, uint16_t: MV_MDL_MAX_ENTRIES**
+**const, uint64_t: MV_MDL_MAX_ENTRIES**
 | Value | Description |
 | :---- | :---------- |
 | 125 | Defines the max number of entires in the MDL |
@@ -328,10 +319,10 @@ A memory descriptor list (MDL) describes a discontiguous region of guest physica
 **struct: mv_mdl_entry_t**
 | Name | Type | Offset | Size | Description |
 | :--- | :--- | :----- | :--- | :---------- |
-| dst | uint64_t | 0x0 | 8 bytes | An mv_reg_t or MSR index |
-| src | uint64_t | 0x8 | 8 bytes | The value read or to be written |
-| bytes | uint64_t | 0x8 | 8 bytes | The value read or to be written |
-| flags | uint64_t | 0x8 | 8 bytes | The value read or to be written |
+| dst | uint64_t | 0x0 | 8 bytes | The GPA to map the memory to |
+| src | uint64_t | 0x8 | 8 bytes | The GPA to map the memory from |
+| bytes | uint64_t | 0x8 | 8 bytes | The total number of bytes  |
+| flags | uint64_t | 0x8 | 8 bytes | How to map dst to src |
 
 The format of the MDL as follows:
 
@@ -880,26 +871,6 @@ This hypercall tells MicroV to output reg0 and reg1 to the console device MicroV
 
 TBD
 
-### 2.12.1. mv_pp_op_get_shared_page_gpa, OP=0x3, IDX=0x0
-
-This hypercall tells MicroV to return the GPA of the current PP's shared page.
-
-**Input:**
-| Register Name | Bits | Description |
-| :------------ | :--- | :---------- |
-| REG0 | 63:0 | Set to the result of mv_handle_op_open_handle |
-
-**Output:**
-| Register Name | Bits | Description |
-| :------------ | :--- | :---------- |
-| REG0 | 11:0 | REVZ |
-| REG0 | 63:12 | The GPA of the requested PP's shared page |
-
-**const, uint64_t: MV_PP_OP_GET_SHARED_PAGE_GPA_IDX_VAL**
-| Value | Description |
-| :---- | :---------- |
-| 0x0000000000000000 | Defines the index for mv_pp_op_get_shared_page_gpa |
-
 ### 2.12.2. mv_pp_op_clr_shared_page_gpa, OP=0x3, IDX=0x1
 
 This hypercall tells MicroV to clear the GPA of the current PP's shared page.
@@ -1065,7 +1036,7 @@ This hypercall tells MicroV to destroy a VM given an ID.
 | Register Name | Bits | Description |
 | :------------ | :--- | :---------- |
 | REG0 | 63:0 | Set to the result of mv_handle_op_open_handle |
-| REG1 | 15:0 | The VMID of the VM to destroy |
+| REG1 | 15:0 | The ID of the VM to destroy |
 | REG1 | 63:16 | REVI |
 
 **const, uint64_t: MV_VM_OP_DESTROY_VM_IDX_VAL**
@@ -1142,8 +1113,8 @@ This hypercall is slow and may require a Hypercall Continuation. See Hypercall C
 | REG0 | 63:0 | Set to the result of mv_handle_op_open_handle |
 | REG1 | 15:0 | The VMID of the dst VM to map memory to |
 | REG1 | 63:16 | REVI |
-| REG1 | 15:0 | The VMID of the src VM to map memory from |
-| REG1 | 63:16 | REVI |
+| REG2 | 15:0 | The VMID of the src VM to map memory from |
+| REG2 | 63:16 | REVI |
 
 **const, uint64_t: MV_VM_OP_MMIO_MAP_IDX_VAL**
 | Value | Description |
@@ -1275,7 +1246,7 @@ This hypercall tells MicroV to destroy a VP given an ID.
 | Register Name | Bits | Description |
 | :------------ | :--- | :---------- |
 | REG0 | 63:0 | Set to the result of mv_handle_op_open_handle |
-| REG1 | 15:0 | The VPID of the VP to destroy |
+| REG1 | 15:0 | The ID of the VP to destroy |
 | REG1 | 63:16 | REVI |
 
 **const, uint64_t: MV_VP_OP_DESTROY_VP_IDX_VAL**
@@ -1360,7 +1331,7 @@ This hypercall tells MicroV to destroy a VS given an ID.
 | Register Name | Bits | Description |
 | :------------ | :--- | :---------- |
 | REG0 | 63:0 | Set to the result of mv_handle_op_open_handle |
-| REG1 | 15:0 | The VSID of the VS to destroy |
+| REG1 | 15:0 | The ID of the VS to destroy |
 | REG1 | 63:16 | REVI |
 
 **const, uint64_t: MV_VS_OP_DESTROY_VS_IDX_VAL**

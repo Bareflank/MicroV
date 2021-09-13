@@ -43,12 +43,13 @@ extern "C"
 #endif
 
 #pragma pack(push, 1)
+
 /** @brief defines the size of the padding1 field */
-#define KVM_RUN_PADDING1_SIZE ((int)6)
+#define KVM_RUN_PADDING1_SIZE ((uint64_t)6)
 /** @brief defines the size of the padding2 field */
-#define KVM_RUN_PADDING2_SIZE ((int)256)
+#define KVM_RUN_PADDING2_SIZE ((uint64_t)256)
 /** @brief defines the size of the padding3 field */
-#define KVM_RUN_PADDING3_SIZE ((int)2048)
+#define KVM_RUN_PADDING3_SIZE ((uint64_t)2048)
 
     /**
      * @struct kvm_run

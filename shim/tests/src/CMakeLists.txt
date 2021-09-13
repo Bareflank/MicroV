@@ -21,15 +21,51 @@
 
 set(CURRENT_FUNCTION_LIST_DIR ${CMAKE_CURRENT_LIST_DIR})
 
+# ------------------------------------------------------------------------------
+# Sources Needed By All Tests
+# ------------------------------------------------------------------------------
+
+add_library(shim_tests_common)
+
+target_include_directories(shim_tests_common PRIVATE
+    ${COMMON_INCLUDES}
+)
+
+target_include_directories(shim_tests_common PRIVATE SYSTEM
+    ${COMMON_SYSTEM_INCLUDES}
+)
+
+target_sources(shim_tests_common PRIVATE
+    ${CURRENT_FUNCTION_LIST_DIR}/platform.c
+    ${CURRENT_FUNCTION_LIST_DIR}/../../src/g_mut_hndl.c
+    ${CURRENT_FUNCTION_LIST_DIR}/../../src/g_mut_shared_pages.c
+    ${CURRENT_FUNCTION_LIST_DIR}/../../src/shared_page_for_current_pp.c
+    ${CURRENT_FUNCTION_LIST_DIR}/../../src/shim_fini.c
+    ${CURRENT_FUNCTION_LIST_DIR}/../../src/shim_init.c
+)
+
+target_compile_definitions(shim_tests_common PRIVATE
+    ${COMMON_DEFINES}
+)
+
+# ------------------------------------------------------------------------------
+# Macros For This Directory
+# ------------------------------------------------------------------------------
+
 macro(mv_add_test NAME SOURCES)
     bf_add_test(
         test_${NAME}
-        SOURCES ${SOURCES} ${CURRENT_FUNCTION_LIST_DIR}/platform.c
+        SOURCES ${SOURCES}
         INCLUDES ${COMMON_INCLUDES}
         SYSTEM_INCLUDES ${COMMON_SYSTEM_INCLUDES}
         DEFINES ${COMMON_DEFINES}
+        LIBRARIES shim_tests_common
     )
 endmacro(mv_add_test)
+
+# ------------------------------------------------------------------------------
+# Tests
+# ------------------------------------------------------------------------------
 
 mv_add_test(handle_device_kvm_get_device_attr ${CMAKE_CURRENT_LIST_DIR}/../../src/handle_device_kvm_get_device_attr.c)
 mv_add_test(handle_device_kvm_has_device_attr ${CMAKE_CURRENT_LIST_DIR}/../../src/handle_device_kvm_has_device_attr.c)
@@ -93,6 +129,7 @@ mv_add_test(handle_vm_kvm_create_device ${CMAKE_CURRENT_LIST_DIR}/../../src/hand
 mv_add_test(handle_vm_kvm_create_irqchip ${CMAKE_CURRENT_LIST_DIR}/../../src/handle_vm_kvm_create_irqchip.c)
 mv_add_test(handle_vm_kvm_create_pit2 ${CMAKE_CURRENT_LIST_DIR}/../../src/handle_vm_kvm_create_pit2.c)
 mv_add_test(handle_vm_kvm_create_vcpu ${CMAKE_CURRENT_LIST_DIR}/../../src/handle_vm_kvm_create_vcpu.c)
+mv_add_test(handle_vm_kvm_destroy_vcpu ${CMAKE_CURRENT_LIST_DIR}/../../src/handle_vm_kvm_destroy_vcpu.c)
 mv_add_test(handle_vm_kvm_get_clock ${CMAKE_CURRENT_LIST_DIR}/../../src/handle_vm_kvm_get_clock.c)
 mv_add_test(handle_vm_kvm_get_debugregs ${CMAKE_CURRENT_LIST_DIR}/../../src/handle_vm_kvm_get_debugregs.c)
 mv_add_test(handle_vm_kvm_get_device_attr ${CMAKE_CURRENT_LIST_DIR}/../../src/handle_vm_kvm_get_device_attr.c)
@@ -122,6 +159,7 @@ mv_add_test(handle_vm_kvm_unregister_coalesced_mmio ${CMAKE_CURRENT_LIST_DIR}/..
 mv_add_test(handle_vm_kvm_xen_hvm_config ${CMAKE_CURRENT_LIST_DIR}/../../src/handle_vm_kvm_xen_hvm_config.c)
 mv_add_test(platform ${CMAKE_CURRENT_LIST_DIR}/platform.c)
 mv_add_test(serial_write ${CMAKE_CURRENT_LIST_DIR}/../../src/serial_write.c)
+mv_add_test(shared_page_for_current_pp ${CMAKE_CURRENT_LIST_DIR}/../../src/shared_page_for_current_pp.c)
 mv_add_test(shim_fini ${CMAKE_CURRENT_LIST_DIR}/../../src/shim_fini.c)
 mv_add_test(shim_init ${CMAKE_CURRENT_LIST_DIR}/../../src/shim_init.c)
 

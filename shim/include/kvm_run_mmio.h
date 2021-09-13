@@ -35,8 +35,9 @@ extern "C"
 #endif
 
 #pragma pack(push, 1)
+
 /** @brief defines the size of the padding1 field */
-#define KVM_RUN_MMIO_DATA_SIZE ((int)8)
+#define KVM_RUN_MMIO_DATA_SIZE ((uint64_t)8)
 
     /**
      * <!-- description -->

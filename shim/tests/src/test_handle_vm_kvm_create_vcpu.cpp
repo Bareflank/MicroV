@@ -24,10 +24,7 @@
 
 #include "../../include/handle_vm_kvm_create_vcpu.h"
 
-#include <mv_constants.h>
-#include <shim_vcpu_t.h>
-#include <shim_vm_t.h>
-#include <types.h>
+#include <helpers.hpp>
 
 #include <bsl/convert.hpp>
 #include <bsl/safe_integral.hpp>
@@ -35,10 +32,6 @@
 
 namespace shim
 {
-    extern "C" bsl::uint64 g_mut_hndl{};
-    extern "C" bsl::uint16 g_mut_mv_vp_op_create_vp{};
-    extern "C" bsl::uint16 g_mut_mv_vs_op_create_vs{};
-
     /// <!-- description -->
     ///   @brief Used to execute the actual checks. We put the checks in this
     ///     function so that we can validate the tests both at compile-time
@@ -53,17 +46,18 @@ namespace shim
     {
         bsl::ut_scenario{"success"} = []() noexcept {
             bsl::ut_given{} = [&]() noexcept {
-                shim_vm_t const vm{};
-                shim_vcpu_t mut_vcpu{};
+                shim_vm_t mut_vm{};
+                shim_vcpu_t *pmut_mut_vcpu{};
                 constexpr auto vpid{23_u16};
                 constexpr auto vsid{42_u16};
                 bsl::ut_when{} = [&]() noexcept {
                     g_mut_mv_vp_op_create_vp = vpid.get();
                     g_mut_mv_vs_op_create_vs = vsid.get();
                     bsl::ut_then{} = [&]() noexcept {
-                        bsl::ut_check(SHIM_SUCCESS == handle_vm_kvm_create_vcpu(&vm, &mut_vcpu));
-                        bsl::ut_check(vpid == mut_vcpu.vpid);
-                        bsl::ut_check(vsid == mut_vcpu.vsid);
+                        bsl::ut_check(
+                            SHIM_SUCCESS == handle_vm_kvm_create_vcpu(&mut_vm, &pmut_mut_vcpu));
+                        bsl::ut_check(vpid == pmut_mut_vcpu->vpid);
+                        bsl::ut_check(vsid == pmut_mut_vcpu->vsid);
                     };
                 };
             };
@@ -71,13 +65,14 @@ namespace shim
 
         bsl::ut_scenario{"mv_vp_op_create_vp fails"} = []() noexcept {
             bsl::ut_given{} = [&]() noexcept {
-                shim_vm_t const vm{};
-                shim_vcpu_t mut_vcpu{};
+                shim_vm_t mut_vm{};
+                shim_vcpu_t *pmut_mut_vcpu{};
                 bsl::ut_when{} = [&]() noexcept {
                     g_mut_mv_vp_op_create_vp = MV_INVALID_ID;
                     g_mut_mv_vs_op_create_vs = {};
                     bsl::ut_then{} = [&]() noexcept {
-                        bsl::ut_check(SHIM_FAILURE == handle_vm_kvm_create_vcpu(&vm, &mut_vcpu));
+                        bsl::ut_check(
+                            SHIM_FAILURE == handle_vm_kvm_create_vcpu(&mut_vm, &pmut_mut_vcpu));
                     };
                 };
             };
@@ -85,13 +80,33 @@ namespace shim
 
         bsl::ut_scenario{"mv_vs_op_create_vs fails"} = []() noexcept {
             bsl::ut_given{} = [&]() noexcept {
-                shim_vm_t const vm{};
-                shim_vcpu_t mut_vcpu{};
+                shim_vm_t mut_vm{};
+                shim_vcpu_t *pmut_mut_vcpu{};
                 bsl::ut_when{} = [&]() noexcept {
                     g_mut_mv_vp_op_create_vp = {};
                     g_mut_mv_vs_op_create_vs = MV_INVALID_ID;
                     bsl::ut_then{} = [&]() noexcept {
-                        bsl::ut_check(SHIM_FAILURE == handle_vm_kvm_create_vcpu(&vm, &mut_vcpu));
+                        bsl::ut_check(
+                            SHIM_FAILURE == handle_vm_kvm_create_vcpu(&mut_vm, &pmut_mut_vcpu));
+                    };
+                };
+            };
+        };
+
+        bsl::ut_scenario{"out of vms"} = []() noexcept {
+            bsl::ut_given{} = [&]() noexcept {
+                shim_vm_t mut_vm{};
+                shim_vcpu_t *pmut_mut_vcpu{};
+                bsl::ut_when{} = [&]() noexcept {
+                    g_mut_mv_vp_op_create_vp = {};
+                    g_mut_mv_vs_op_create_vs = {};
+                    bsl::ut_then{} = [&]() noexcept {
+                        bsl::ut_check(
+                            SHIM_SUCCESS == handle_vm_kvm_create_vcpu(&mut_vm, &pmut_mut_vcpu));
+                        bsl::ut_check(
+                            SHIM_SUCCESS == handle_vm_kvm_create_vcpu(&mut_vm, &pmut_mut_vcpu));
+                        bsl::ut_check(
+                            SHIM_FAILURE == handle_vm_kvm_create_vcpu(&mut_vm, &pmut_mut_vcpu));
                     };
                 };
             };

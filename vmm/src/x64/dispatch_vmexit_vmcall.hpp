@@ -59,9 +59,9 @@ namespace microv
     ///   @param mut_sys the bf_syscall_t to use
     ///   @param intrinsic the intrinsic_t to use
     ///   @param mut_pp_pool the pp_pool_t to use
-    ///   @param vm_pool the vm_pool_t to use
-    ///   @param vp_pool the vp_pool_t to use
-    ///   @param vs_pool the vs_pool_t to use
+    ///   @param mut_vm_pool the vm_pool_t to use
+    ///   @param mut_vp_pool the vp_pool_t to use
+    ///   @param mut_vs_pool the vs_pool_t to use
     ///   @param vsid the ID of the VS that generated the VMExit
     ///   @return Returns bsl::errc_success on success, bsl::errc_failure
     ///     and friends otherwise
@@ -73,15 +73,24 @@ namespace microv
         syscall::bf_syscall_t &mut_sys,
         intrinsic_t const &intrinsic,
         pp_pool_t &mut_pp_pool,
-        vm_pool_t const &vm_pool,
-        vp_pool_t const &vp_pool,
-        vs_pool_t const &vs_pool,
+        vm_pool_t &mut_vm_pool,
+        vp_pool_t &mut_vp_pool,
+        vs_pool_t &mut_vs_pool,
         bsl::safe_u16 const &vsid) noexcept -> bsl::errc_type
     {
         switch (hypercall::mv_hypercall_opcode(get_reg_hypercall(mut_sys)).get()) {
             case hypercall::MV_ID_OP_VAL.get(): {
                 auto const ret{dispatch_vmcall_id_op(
-                    gs, tls, mut_sys, intrinsic, mut_pp_pool, vm_pool, vp_pool, vs_pool, vsid)};
+                    gs,
+                    tls,
+                    mut_sys,
+                    intrinsic,
+                    mut_pp_pool,
+                    mut_vm_pool,
+                    mut_vp_pool,
+                    mut_vs_pool,
+                    vsid)};
+
                 if (bsl::unlikely(!ret)) {
                     bsl::print<bsl::V>() << bsl::here();
                     return ret;
@@ -93,7 +102,16 @@ namespace microv
 
             case hypercall::MV_HANDLE_OP_VAL.get(): {
                 auto const ret{dispatch_vmcall_handle_op(
-                    gs, tls, mut_sys, intrinsic, mut_pp_pool, vm_pool, vp_pool, vs_pool, vsid)};
+                    gs,
+                    tls,
+                    mut_sys,
+                    intrinsic,
+                    mut_pp_pool,
+                    mut_vm_pool,
+                    mut_vp_pool,
+                    mut_vs_pool,
+                    vsid)};
+
                 if (bsl::unlikely(!ret)) {
                     bsl::print<bsl::V>() << bsl::here();
                     return ret;
@@ -105,7 +123,16 @@ namespace microv
 
             case hypercall::MV_DEBUG_OP_VAL.get(): {
                 auto const ret{dispatch_vmcall_debug_op(
-                    gs, tls, mut_sys, intrinsic, mut_pp_pool, vm_pool, vp_pool, vs_pool, vsid)};
+                    gs,
+                    tls,
+                    mut_sys,
+                    intrinsic,
+                    mut_pp_pool,
+                    mut_vm_pool,
+                    mut_vp_pool,
+                    mut_vs_pool,
+                    vsid)};
+
                 if (bsl::unlikely(!ret)) {
                     bsl::print<bsl::V>() << bsl::here();
                     return ret;
@@ -117,7 +144,16 @@ namespace microv
 
             case hypercall::MV_PP_OP_VAL.get(): {
                 auto const ret{dispatch_vmcall_pp_op(
-                    gs, tls, mut_sys, intrinsic, mut_pp_pool, vm_pool, vp_pool, vs_pool, vsid)};
+                    gs,
+                    tls,
+                    mut_sys,
+                    intrinsic,
+                    mut_pp_pool,
+                    mut_vm_pool,
+                    mut_vp_pool,
+                    mut_vs_pool,
+                    vsid)};
+
                 if (bsl::unlikely(!ret)) {
                     bsl::print<bsl::V>() << bsl::here();
                     return ret;
@@ -129,7 +165,16 @@ namespace microv
 
             case hypercall::MV_VM_OP_VAL.get(): {
                 auto const ret{dispatch_vmcall_vm_op(
-                    gs, tls, mut_sys, intrinsic, mut_pp_pool, vm_pool, vp_pool, vs_pool, vsid)};
+                    gs,
+                    tls,
+                    mut_sys,
+                    intrinsic,
+                    mut_pp_pool,
+                    mut_vm_pool,
+                    mut_vp_pool,
+                    mut_vs_pool,
+                    vsid)};
+
                 if (bsl::unlikely(!ret)) {
                     bsl::print<bsl::V>() << bsl::here();
                     return ret;
@@ -141,7 +186,16 @@ namespace microv
 
             case hypercall::MV_VP_OP_VAL.get(): {
                 auto const ret{dispatch_vmcall_vp_op(
-                    gs, tls, mut_sys, intrinsic, mut_pp_pool, vm_pool, vp_pool, vs_pool, vsid)};
+                    gs,
+                    tls,
+                    mut_sys,
+                    intrinsic,
+                    mut_pp_pool,
+                    mut_vm_pool,
+                    mut_vp_pool,
+                    mut_vs_pool,
+                    vsid)};
+
                 if (bsl::unlikely(!ret)) {
                     bsl::print<bsl::V>() << bsl::here();
                     return ret;
@@ -153,7 +207,16 @@ namespace microv
 
             case hypercall::MV_VS_OP_VAL.get(): {
                 auto const ret{dispatch_vmcall_vs_op(
-                    gs, tls, mut_sys, intrinsic, mut_pp_pool, vm_pool, vp_pool, vs_pool, vsid)};
+                    gs,
+                    tls,
+                    mut_sys,
+                    intrinsic,
+                    mut_pp_pool,
+                    mut_vm_pool,
+                    mut_vp_pool,
+                    mut_vs_pool,
+                    vsid)};
+
                 if (bsl::unlikely(!ret)) {
                     bsl::print<bsl::V>() << bsl::here();
                     return ret;
@@ -168,13 +231,7 @@ namespace microv
             }
         }
 
-        bsl::error() << "unknown hypercall "                    //--
-                     << bsl::hex(get_reg_hypercall(mut_sys))    //--
-                     << bsl::endl                               //--
-                     << bsl::here();                            //--
-
-        set_reg_return(mut_sys, hypercall::MV_STATUS_FAILURE_UNKNOWN);
-        return vmexit_failure_advance_ip_and_run;
+        return report_hypercall_unknown_unsupported(mut_sys);
     }
 }
 

@@ -82,10 +82,10 @@ namespace microv
 
         switch (hypercall::mv_hypercall_index(get_reg_hypercall(mut_sys)).get()) {
             case hypercall::MV_DEBUG_OP_OUT_IDX_VAL.get(): {
-                bsl::print() << bsl::hex(get_reg0(mut_sys))    //--
-                             << " "                            //--
-                             << bsl::hex(get_reg1(mut_sys))    //--
-                             << bsl::endl;                     //--
+                bsl::print() << bsl::hex(get_reg0(mut_sys))    // --
+                             << " "                            // --
+                             << bsl::hex(get_reg1(mut_sys))    // --
+                             << bsl::endl;                     // --
 
                 return vmexit_success_advance_ip_and_run;
             }

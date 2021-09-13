@@ -23,19 +23,14 @@
 /// SOFTWARE.
 
 #include "../../include/shim_init.h"
+#include "shim_fini.h"
 
-#include <mv_constants.h>
-#include <types.h>
+#include <helpers.hpp>
 
-#include <bsl/cstdint.hpp>
 #include <bsl/ut.hpp>
 
 namespace shim
 {
-    extern "C" bsl::uint64 g_mut_hndl{};
-    extern "C" bsl::uint32 g_mut_mv_id_op_version{};
-    extern "C" bsl::uint64 g_mut_mv_handle_op_open_handle{};
-
     /// <!-- description -->
     ///   @brief Used to execute the actual checks. We put the checks in this
     ///     function so that we can validate the tests both at compile-time
@@ -56,6 +51,23 @@ namespace shim
                     bsl::ut_then{} = [&]() noexcept {
                         bsl::ut_check(SHIM_SUCCESS == shim_init());
                     };
+                    bsl::ut_cleanup{} = [&]() noexcept {
+                        bsl::ut_required_step(SHIM_SUCCESS == shim_fini());
+                    };
+                };
+            };
+        };
+
+        bsl::ut_scenario{"too many cpus"} = []() noexcept {
+            bsl::ut_given{} = [&]() noexcept {
+                bsl::ut_when{} = [&]() noexcept {
+                    g_mut_platform_num_online_cpus = 0xFFFFFFFFU;
+                    bsl::ut_then{} = [&]() noexcept {
+                        bsl::ut_check(SHIM_FAILURE == shim_init());
+                    };
+                    bsl::ut_cleanup{} = [&]() noexcept {
+                        g_mut_platform_num_online_cpus = 1U;
+                    };
                 };
             };
         };
@@ -64,6 +76,7 @@ namespace shim
             bsl::ut_given{} = [&]() noexcept {
                 bsl::ut_when{} = [&]() noexcept {
                     g_mut_mv_id_op_version = 0U;
+                    g_mut_mv_handle_op_open_handle = MV_HANDLE_VAL;
                     bsl::ut_then{} = [&]() noexcept {
                         bsl::ut_check(SHIM_FAILURE == shim_init());
                     };
@@ -76,6 +89,19 @@ namespace shim
                 bsl::ut_when{} = [&]() noexcept {
                     g_mut_mv_id_op_version = MV_ALL_SPECS_SUPPORTED_VAL;
                     g_mut_mv_handle_op_open_handle = MV_INVALID_HANDLE;
+                    bsl::ut_then{} = [&]() noexcept {
+                        bsl::ut_check(SHIM_FAILURE == shim_init());
+                    };
+                };
+            };
+        };
+
+        bsl::ut_scenario{"platform_alloc fails"} = []() noexcept {
+            bsl::ut_given{} = [&]() noexcept {
+                bsl::ut_when{} = [&]() noexcept {
+                    g_mut_mv_id_op_version = MV_ALL_SPECS_SUPPORTED_VAL;
+                    g_mut_mv_handle_op_open_handle = MV_HANDLE_VAL;
+                    g_mut_platform_alloc_fails = 1;
                     bsl::ut_then{} = [&]() noexcept {
                         bsl::ut_check(SHIM_FAILURE == shim_init());
                     };

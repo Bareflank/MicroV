@@ -19,14 +19,13 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-add_custom_target(run_all_integration_tests)
-
 # Add's An Integration Test Target
 #
 macro(microv_add_integration NAME HEADERS)
     add_executable(integration_${NAME})
 
     target_include_directories(integration_${NAME} PRIVATE
+        ${CMAKE_CURRENT_LIST_DIR}/../include/
         ${CMAKE_CURRENT_LIST_DIR}/support
     )
 
@@ -53,6 +52,8 @@ macro(microv_add_integration NAME HEADERS)
     target_link_libraries(integration_${NAME} PRIVATE
         bsl
         hypercall
+        lib
+        shim
     )
 
     if(CMAKE_BUILD_TYPE STREQUAL RELEASE OR CMAKE_BUILD_TYPE STREQUAL MINSIZEREL)
