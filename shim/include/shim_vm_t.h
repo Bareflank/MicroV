@@ -28,6 +28,7 @@
 #define SHIM_VM_T_H
 
 #include <constants.h>
+#include <platform.h>
 #include <shim_vcpu_t.h>
 #include <stdint.h>
 #include <types.h>
@@ -53,12 +54,12 @@ extern "C"
         uint16_t id;
         /** @brief stores file descriptor for this VM */
         uint64_t fd;
+        /** @brief stores the mutex lock used to operate on this VM */
+        platform_mutex mutex;
 
         /** @brief stores the ID of the MicroV VM associated with this VCPU */
         uint16_t vmid;
 
-        /** @brief stores the total number of VCPUs the VM contains */
-        uint16_t num_vcpus;
         /** @brief stores the VCPUs associated with this VM */
         struct shim_vcpu_t vcpus[MICROV_MAX_VCPUS];
     };

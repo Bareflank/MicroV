@@ -267,3 +267,48 @@ platform_on_each_cpu(platform_per_cpu_func const pmut_func, uint32_t const order
     (void)order;
     return pmut_func(0U);
 }
+
+/**
+ * <!-- description -->
+ *   @brief Initializes a mutex lock. This must be called before a
+ *     mutex can be used.
+ *
+ * <!-- inputs/outputs -->
+ *   @param pmut_mutex the mutex to lock
+ */
+void
+// NOLINTNEXTLINE(readability-non-const-parameter)
+platform_mutex_init(platform_mutex *const pmut_mutex) NOEXCEPT
+{
+    (void)pmut_mutex;
+}
+
+/**
+ * <!-- description -->
+ *   @brief Locks a mutex object. The mutex object must be initialized
+ *     using platform_mutex_init before it is used.
+ *
+ * <!-- inputs/outputs -->
+ *   @param pmut_mutex the mutex to lock
+ */
+void
+// NOLINTNEXTLINE(readability-non-const-parameter)
+platform_mutex_lock(platform_mutex *const pmut_mutex) NOEXCEPT
+{
+    (void)pmut_mutex;
+}
+
+/**
+ * <!-- description -->
+ *   @brief Unlocks a mutex object. The mutex object must be initialized
+ *     using platform_mutex_init before it is used.
+ *
+ * <!-- inputs/outputs -->
+ *   @param pmut_mutex the mutex to unlock
+ */
+void
+// NOLINTNEXTLINE(readability-non-const-parameter)
+platform_mutex_unlock(platform_mutex *const pmut_mutex) NOEXCEPT
+{
+    (void)pmut_mutex;
+}

@@ -109,8 +109,92 @@ namespace hypercall
         -> bsl::uint64;
 
     // -------------------------------------------------------------------------
+    // mv_vm_ops
+    // -------------------------------------------------------------------------
+
+    /// <!-- description -->
+    ///   @brief Implements the ABI for mv_vm_op_create_vm.
+    ///
+    /// <!-- inputs/outputs -->
+    ///   @param reg0_in n/a
+    ///   @param pmut_reg0_out n/a
+    ///   @return n/a
+    ////
+    extern "C" [[nodiscard]] auto
+    mv_vm_op_create_vm_impl(bsl::uint64 const reg0_in, bsl::uint16 *const pmut_reg0_out) noexcept
+        -> bsl::uint64;
+
+    /// <!-- description -->
+    ///   @brief Implements the ABI for mv_vm_op_destroy_vm.
+    ///
+    /// <!-- inputs/outputs -->
+    ///   @param reg0_in n/a
+    ///   @param reg1_in n/a
+    ///   @return n/a
+    ////
+    extern "C" [[nodiscard]] auto
+    mv_vm_op_destroy_vm_impl(bsl::uint64 const reg0_in, bsl::uint16 const reg1_in) noexcept
+        -> bsl::uint64;
+
+    // -------------------------------------------------------------------------
+    // mv_vp_ops
+    // -------------------------------------------------------------------------
+
+    /// <!-- description -->
+    ///   @brief Implements the ABI for mv_vp_op_create_vp.
+    ///
+    /// <!-- inputs/outputs -->
+    ///   @param reg0_in n/a
+    ///   @param reg1_in n/a
+    ///   @param pmut_reg0_out n/a
+    ///   @return n/a
+    ///
+    extern "C" [[nodiscard]] auto mv_vp_op_create_vp_impl(
+        bsl::uint64 const reg0_in,
+        bsl::uint16 const reg1_in,
+        bsl::uint16 *const pmut_reg0_out) noexcept -> bsl::uint64;
+
+    /// <!-- description -->
+    ///   @brief Implements the ABI for mv_vp_op_destroy_vp.
+    ///
+    /// <!-- inputs/outputs -->
+    ///   @param reg0_in n/a
+    ///   @param reg1_in n/a
+    ///   @return n/a
+    ///
+    extern "C" [[nodiscard]] auto
+    mv_vp_op_destroy_vp_impl(bsl::uint64 const reg0_in, bsl::uint16 const reg1_in) noexcept
+        -> bsl::uint64;
+
+    // -------------------------------------------------------------------------
     // mv_vs_ops
     // -------------------------------------------------------------------------
+
+    /// <!-- description -->
+    ///   @brief Implements the ABI for mv_vs_op_create_vs.
+    ///
+    /// <!-- inputs/outputs -->
+    ///   @param reg0_in n/a
+    ///   @param reg1_in n/a
+    ///   @param pmut_reg0_out n/a
+    ///   @return n/a
+    ///
+    extern "C" [[nodiscard]] auto mv_vs_op_create_vs_impl(
+        bsl::uint64 const reg0_in,
+        bsl::uint16 const reg1_in,
+        bsl::uint16 *const pmut_reg0_out) noexcept -> bsl::uint64;
+
+    /// <!-- description -->
+    ///   @brief Implements the ABI for mv_vs_op_destroy_vs.
+    ///
+    /// <!-- inputs/outputs -->
+    ///   @param reg0_in n/a
+    ///   @param reg1_in n/a
+    ///   @return n/a
+    ///
+    extern "C" [[nodiscard]] auto
+    mv_vs_op_destroy_vs_impl(bsl::uint64 const reg0_in, bsl::uint16 const reg1_in) noexcept
+        -> bsl::uint64;
 
     /// <!-- description -->
     ///   @brief Implements the ABI for mv_vs_op_gva_to_gla.

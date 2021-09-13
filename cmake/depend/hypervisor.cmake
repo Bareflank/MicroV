@@ -22,7 +22,7 @@
 FetchContent_Declare(
     hypervisor
     GIT_REPOSITORY  https://github.com/bareflank/hypervisor.git
-    GIT_TAG         2472495b61db7c2e57db37efab74e8f52a8283ae
+    GIT_TAG         4e42d5e26b9651bda98c8ba0a066e834a69e7be5
 )
 
 FetchContent_GetProperties(hypervisor)

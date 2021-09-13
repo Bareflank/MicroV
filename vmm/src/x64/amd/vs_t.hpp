@@ -310,10 +310,9 @@ namespace microv
         ///
         /// <!-- inputs/outputs -->
         ///   @param mut_tls the current TLS block
-        ///   @param mut_intrinsic the intrinsic_t to use
         ///
         constexpr void
-        set_active(tls_t &mut_tls, intrinsic_t &mut_intrinsic) noexcept
+        set_active(tls_t &mut_tls) noexcept
         {
             bsl::expects(allocated_status_t::allocated == m_allocated);
             bsl::expects(syscall::BF_INVALID_ID == mut_tls.active_vsid);
@@ -327,10 +326,9 @@ namespace microv
         ///
         /// <!-- inputs/outputs -->
         ///   @param mut_tls the current TLS block
-        ///   @param intrinsic the intrinsic_t to use
         ///
         constexpr void
-        set_inactive(tls_t &mut_tls, intrinsic_t const &intrinsic) noexcept
+        set_inactive(tls_t &mut_tls) noexcept
         {
             bsl::expects(allocated_status_t::allocated == m_allocated);
             bsl::expects(this->id() == mut_tls.active_vsid);

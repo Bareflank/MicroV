@@ -209,6 +209,17 @@ namespace shim
             bsl::ut_check(SHIM_FAILURE == platform_on_each_cpu(&foo_failure, {}));
         };
 
+        bsl::ut_scenario{"platform_mutex does nothing under test"} = []() noexcept {
+            bsl::ut_given{} = [&]() noexcept {
+                platform_mutex mut_mutex{};    // NOLINT
+                bsl::ut_when{} = [&]() noexcept {
+                    platform_mutex_init(&mut_mutex);      // NOLINT
+                    platform_mutex_lock(&mut_mutex);      // NOLINT
+                    platform_mutex_unlock(&mut_mutex);    // NOLINT
+                };
+            };
+        };
+
         return bsl::ut_success();
     }
 }

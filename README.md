@@ -3,7 +3,7 @@
 ## Description
 
 **warning**: MicroV is currently a work in progress. If you need support now,
-please see the [Mono](https://github.com/Bareflank/MicroV/tree/mono) branch until MicroV is more complete which is expected to be some time Q3-Q4 of 2021.
+please see the [Mono](https://github.com/Bareflank/MicroV/tree/mono) branch until MicroV is more complete which is expected to be some time Q1 of 2022.
 
 The MicroV Hypervisor is an open source, micro-hypervisor led by [Assured
 Information Security, Inc.](https://www.ainfosec.com/), designed specifically
@@ -76,7 +76,7 @@ Unlike existing hypervisors, MicroV's design has some unique advantages includin
   take a similar approach to Xen, keeping the code in the host as small as
   possible, and instead, delegating the guest operating system to manage the
   physical devices it is given. All virtual device backend drivers run in Ring
-  0 or Ring 3 of the guest root VM, which is the main virtual machine on the
+  0 or Ring 3 of the root VM, which is the main virtual machine on the
   system.
 
   <img src="https://github.com/Bareflank/MicroV/raw/master/.github/images/scheduler.png" alt="cross-platform" align="right" height="300" />
@@ -127,22 +127,6 @@ Unlike existing hypervisors, MicroV's design has some unique advantages includin
 
 ## Disadvantages:
 No design is without its disadvantages:
-- **Limited Guest VM Support**: As stated above, on Intel, the CPU is divided
-  into the host and the guest. The hypervisor runs in the host, and the
-  operating system runs in the guest. The root operating system, which Xen
-  would call Dom 0 can be any operating system. The initial version of MicroV
-  will support Windows and Linux, with limited support for UEFI. From there,
-  MicroV will let you create additional, very small guest virtual machines.
-  MicroV will only have support for enlightened operating systems running
-  in these guest VMs. Because they are enlightened, we can keep their size
-  really small, and in some cases, remove the need for emulation entirely,
-  which is where the term MicroVM comes from (i.e., a really small VM that
-  requires little to no emulation). This ultimately means MicroV will support
-  Linux, unikernels and enlightened applications, with no support for more
-  complicated operating systems like Windows and macOS. Support for these
-  types of operating systems is possible, but that is a bridge we will cross
-  in the future.
-
 - **VM DoS Attacks**:
   Since the main operating system is responsible for scheduling micro VMs for
   execution, it is possible that an attack in this operating system could
@@ -234,7 +218,61 @@ make
 TBD
 
 ## Usage Instructions
-TBD
+MicroV is designed to use existing KVM userspace software to execute guest virtual machines from the root VM. To execute our integration tests that leverage the KVM API, do the following:
+
+First, you need to place your current OS into a VM called the root VM. This is done by hoisting your current OS into a VM (often times called a VMX rootkit, but in our case, this is defensive, not offensive). To do this run the following:
+```
+make loader_quick
+make -j<num cores>
+make start
+```
+
+You can run the following to verify that your OS is not in the root VM:
+```
+make dump
+```
+
+And you should see something like:
+```
+ ___                __ _           _
+| _ ) __ _ _ _ ___ / _| |__ _ _ _ | |__
+| _ \/ _` | '_/ -_)  _| / _` | ' \| / /
+|___/\__,_|_| \___|_| |_\__,_|_||_|_\_\
+
+Please give us a star on: https://github.com/Bareflank/hypervisor
+==================================================================
+
+DEBUG [0000:0000:0000:0000:0000:US]: root OS had been demoted to vm 0x0000 on pp 0x0000
+DEBUG [0000:0000:0001:0001:0001:US]: root OS had been demoted to vm 0x0000 on pp 0x0001
+DEBUG [0000:0000:0002:0002:0002:US]: root OS had been demoted to vm 0x0000 on pp 0x0002
+DEBUG [0000:0000:0003:0003:0003:US]: root OS had been demoted to vm 0x0000 on pp 0x0003
+DEBUG [0000:0000:0004:0004:0004:US]: root OS had been demoted to vm 0x0000 on pp 0x0004
+```
+
+To be able to run KVM APIs, you must load the shim driver, which acts like KVM. To do this, run:
+```
+make shim_quick
+```
+
+You can only run the shim driver AFTER MicroV has started. Otherwise you will get a failure. If you look at `dmesg`, you will see that the shim driver will have complained that MicroV's is not running, which likely means that you need to rerun `make start`.
+
+If `make start` fails, it means that Bareflank's loader is not running, which is why we can `make loader_quick`.
+
+From here, you can run whatever integration test you want. For example:
+```
+make kvm_create_vm
+make kvm_create_vcpu
+```
+
+You can see the results of the integration test by either looking at the resulting console output, or looking at what MicroV's debug buffer contains by using `make dump`.
+
+You can also run MicroV's integration tests as well. These are tests designed to talk directly to MicroV instead of using the KVM APIs. For example:
+```
+make mv_handle_op_open_handle
+make mv_handle_op_close_handle
+```
+
+You do not need the shim driver to run these integration tests, and yes, you can use the MicroV ABIs to write your own VMM without the need for the KVM shim, or any of the KVM APIs if you would like. This removes the need for the additional kernel calls and overhead of the shim driver, but requires that you write your own VMM software as things like QEMU and rust-vmm will not work without modifications to talk directly to MicroV instead of to MicroV via the KVM APIs.
 
 ## **Resources**
 [![Join the chat](https://img.shields.io/badge/chat-on%20Slack-brightgreen.svg)](https://bareflank.herokuapp.com/)

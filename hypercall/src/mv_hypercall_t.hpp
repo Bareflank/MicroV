@@ -29,9 +29,11 @@
 #include <mv_hypercall_impl.hpp>
 #include <mv_types.hpp>
 
+#include <bsl/convert.hpp>
 #include <bsl/debug.hpp>
 #include <bsl/discard.hpp>
 #include <bsl/errc_type.hpp>
+#include <bsl/expects.hpp>
 #include <bsl/safe_integral.hpp>
 #include <bsl/unlikely.hpp>
 
@@ -104,6 +106,269 @@ namespace hypercall
         {
             bsl::discard(mv_handle_op_close_handle_impl(m_hndl.get()));
             m_hndl = {};
+        }
+
+        /// <!-- description -->
+        ///   @brief Returns the handle that is used for hypercalls. If this
+        ///     class has not been initialized, a default (likely 0) handle
+        ///     is returned.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @return Returns the handle that is used for hypercalls. If this
+        ///     class has not been initialized, a default (likely 0) handle
+        ///     is returned.
+        ///
+        [[nodiscard]] constexpr auto
+        handle() noexcept -> bsl::safe_u64
+        {
+            return m_hndl;
+        }
+
+        // ---------------------------------------------------------------------
+        // mv_vm_ops
+        // ---------------------------------------------------------------------
+
+        /// <!-- description -->
+        ///   @brief This hypercall tells MicroV to create a VM and return its ID.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @return Returns the resulting ID, or bsl::safe_u16::failure()
+        ///     on failure.
+        ///
+        [[nodiscard]] constexpr auto
+        mv_vm_op_create_vm() noexcept -> bsl::safe_u16
+        {
+            bsl::safe_u16 mut_vmid{};
+
+            mv_status_t const ret{mv_vm_op_create_vm_impl(m_hndl.get(), mut_vmid.data())};
+            if (bsl::unlikely(ret != MV_STATUS_SUCCESS)) {
+                bsl::error() << "mv_vm_op_create_vm failed with status "    // --
+                             << bsl::hex(ret)                               // --
+                             << bsl::endl                                   // --
+                             << bsl::here();
+
+                return bsl::safe_u16::failure();
+            }
+
+            if (bsl::unlikely(mut_vmid == MV_INVALID_ID)) {
+                bsl::error() << "the VMID "                                                  // --
+                             << bsl::hex(mut_vmid)                                           // --
+                             << " returned by mv_vm_op_create_vm is invalid" << bsl::endl    // --
+                             << bsl::here();
+
+                return bsl::safe_u16::failure();
+            }
+
+            if (bsl::unlikely(bsl::to_umx(mut_vmid) >= HYPERVISOR_MAX_VMS)) {
+                bsl::error() << "the VMID "           // --
+                             << bsl::hex(mut_vmid)    // --
+                             << " returned by mv_vm_op_create_vm is out of range"
+                             << bsl::endl    // --
+                             << bsl::here();
+
+                return bsl::safe_u16::failure();
+            }
+
+            return mut_vmid;
+        }
+
+        /// <!-- description -->
+        ///   @brief This hypercall tells MicroV to destroy a VM given an ID.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param vmid The ID of the VM to destroy
+        ///   @return Returns bsl::errc_success on success, bsl::errc_failure
+        ///     otherwise
+        ///
+        [[nodiscard]] constexpr auto
+        mv_vm_op_destroy_vm(bsl::safe_u16 const &vmid) noexcept -> bsl::errc_type
+        {
+            bsl::expects(vmid.is_valid_and_checked());
+            bsl::expects(vmid != MV_INVALID_ID);
+            bsl::expects(bsl::to_umx(vmid) < HYPERVISOR_MAX_VMS);
+
+            mv_status_t const ret{mv_vm_op_destroy_vm_impl(m_hndl.get(), vmid.get())};
+            if (bsl::unlikely(ret != MV_STATUS_SUCCESS)) {
+                bsl::error() << "mv_vm_op_destroy_vm failed with status "    // --
+                             << bsl::hex(ret)                                // --
+                             << bsl::endl                                    // --
+                             << bsl::here();
+
+                return bsl::errc_failure;
+            }
+
+            return bsl::errc_success;
+        }
+
+        // ---------------------------------------------------------------------
+        // mv_vp_ops
+        // ---------------------------------------------------------------------
+
+        /// <!-- description -->
+        ///   @brief This syscall tells the microkernel to create a VP given the
+        ///     IDs of the VM and PP the VP will be assigned to. Upon success,
+        ///     this syscall returns the ID of the newly created VP.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param vmid The ID of the VM to assign the newly created VP to
+        ///   @return Returns the resulting ID, or bsl::safe_u16::failure()
+        ///     on failure.
+        ///
+        ///
+        [[nodiscard]] constexpr auto
+        mv_vp_op_create_vp(bsl::safe_u16 const &vmid) noexcept -> bsl::safe_u16
+        {
+            bsl::expects(vmid.is_valid_and_checked());
+            bsl::expects(vmid != MV_INVALID_ID);
+            bsl::expects(bsl::to_umx(vmid) < HYPERVISOR_MAX_VMS);
+
+            bsl::safe_u16 mut_vpid{};
+
+            mv_status_t const ret{
+                mv_vp_op_create_vp_impl(m_hndl.get(), vmid.get(), mut_vpid.data())};
+            if (bsl::unlikely(ret != MV_STATUS_SUCCESS)) {
+                bsl::error() << "mv_vp_op_create_vp failed with status "    // --
+                             << bsl::hex(ret)                               // --
+                             << bsl::endl                                   // --
+                             << bsl::here();
+
+                return bsl::safe_u16::failure();
+            }
+
+            if (bsl::unlikely(mut_vpid == MV_INVALID_ID)) {
+                bsl::error() << "the VPID "                                                  // --
+                             << bsl::hex(mut_vpid)                                           // --
+                             << " returned by mv_vm_op_create_vm is invalid" << bsl::endl    // --
+                             << bsl::here();
+
+                return bsl::safe_u16::failure();
+            }
+
+            if (bsl::unlikely(bsl::to_umx(mut_vpid) >= HYPERVISOR_MAX_VPS)) {
+                bsl::error() << "the VPID "           // --
+                             << bsl::hex(mut_vpid)    // --
+                             << " returned by mv_vm_op_create_vm is out of range"
+                             << bsl::endl    // --
+                             << bsl::here();
+
+                return bsl::safe_u16::failure();
+            }
+
+            return mut_vpid;
+        }
+
+        /// <!-- description -->
+        ///   @brief This syscall tells the microkernel to destroy a VP
+        ///     given an ID.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param vpid The VPID of the VP to destroy
+        ///   @return Returns bsl::errc_success on success, bsl::errc_failure
+        ///     otherwise
+        ///
+        [[nodiscard]] constexpr auto
+        mv_vp_op_destroy_vp(bsl::safe_u16 const &vpid) noexcept -> bsl::errc_type
+        {
+            bsl::expects(vpid.is_valid_and_checked());
+            bsl::expects(vpid != MV_INVALID_ID);
+            bsl::expects(bsl::to_umx(vpid) < HYPERVISOR_MAX_VPS);
+
+            mv_status_t const ret{mv_vp_op_destroy_vp_impl(m_hndl.get(), vpid.get())};
+            if (bsl::unlikely(ret != MV_STATUS_SUCCESS)) {
+                bsl::error() << "mv_vp_op_destroy_vp failed with status "    // --
+                             << bsl::hex(ret)                                // --
+                             << bsl::endl                                    // --
+                             << bsl::here();
+
+                return bsl::errc_failure;
+            }
+
+            return bsl::errc_success;
+        }
+
+        // ---------------------------------------------------------------------
+        // mv_vm_ops
+        // ---------------------------------------------------------------------
+
+        /// <!-- description -->
+        ///   @brief This syscall tells the microkernel to create a VS
+        ///     and return it's ID.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param vpid The ID of the VP to assign the newly created VS to
+        ///   @return Returns the resulting ID, or bsl::safe_u16::failure()
+        ///     on failure.
+        ///
+        ///
+        [[nodiscard]] constexpr auto
+        mv_vs_op_create_vs(bsl::safe_u16 const &vpid) noexcept -> bsl::safe_u16
+        {
+            bsl::expects(vpid.is_valid_and_checked());
+            bsl::expects(vpid != MV_INVALID_ID);
+            bsl::expects(bsl::to_umx(vpid) < HYPERVISOR_MAX_VPS);
+
+            bsl::safe_u16 mut_vsid{};
+
+            mv_status_t const ret{
+                mv_vs_op_create_vs_impl(m_hndl.get(), vpid.get(), mut_vsid.data())};
+            if (bsl::unlikely(ret != MV_STATUS_SUCCESS)) {
+                bsl::error() << "mv_vs_op_create_vs failed with status "    // --
+                             << bsl::hex(ret)                               // --
+                             << bsl::endl                                   // --
+                             << bsl::here();
+
+                return bsl::safe_u16::failure();
+            }
+
+            if (bsl::unlikely(mut_vsid == MV_INVALID_ID)) {
+                bsl::error() << "the VSID "                                                  // --
+                             << bsl::hex(mut_vsid)                                           // --
+                             << " returned by mv_vm_op_create_vm is invalid" << bsl::endl    // --
+                             << bsl::here();
+
+                return bsl::safe_u16::failure();
+            }
+
+            if (bsl::unlikely(bsl::to_umx(mut_vsid) >= HYPERVISOR_MAX_VSS)) {
+                bsl::error() << "the VSID "           // --
+                             << bsl::hex(mut_vsid)    // --
+                             << " returned by mv_vm_op_create_vm is out of range"
+                             << bsl::endl    // --
+                             << bsl::here();
+
+                return bsl::safe_u16::failure();
+            }
+
+            return mut_vsid;
+        }
+
+        /// <!-- description -->
+        ///   @brief This syscall tells the microkernel to destroy a VS
+        ///     given an ID.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param vsid The VSID of the VS to destroy
+        ///   @return Returns bsl::errc_success on success, bsl::errc_failure
+        ///     otherwise
+        ///
+        [[nodiscard]] constexpr auto
+        mv_vs_op_destroy_vs(bsl::safe_u16 const &vsid) noexcept -> bsl::errc_type
+        {
+            bsl::expects(vsid.is_valid_and_checked());
+            bsl::expects(vsid != MV_INVALID_ID);
+            bsl::expects(bsl::to_umx(vsid) < HYPERVISOR_MAX_VSS);
+
+            mv_status_t const ret{mv_vs_op_destroy_vs_impl(m_hndl.get(), vsid.get())};
+            if (bsl::unlikely(ret != MV_STATUS_SUCCESS)) {
+                bsl::error() << "mv_vs_op_destroy_vs failed with status "    // --
+                             << bsl::hex(ret)                                // --
+                             << bsl::endl                                    // --
+                             << bsl::here();
+
+                return bsl::errc_failure;
+            }
+
+            return bsl::errc_success;
         }
 
         // ---------------------------------------------------------------------

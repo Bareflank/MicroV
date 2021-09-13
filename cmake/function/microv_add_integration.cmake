@@ -47,6 +47,13 @@ macro(microv_add_integration NAME HEADERS)
         ${CMAKE_CURRENT_LIST_DIR}/${NAME}.cpp
     )
 
+    target_compile_definitions(integration_${NAME} PRIVATE
+        MICROV_MAX_VCPUS=${MICROV_MAX_VCPUS}_umx
+        MICROV_MAX_PP_MAPS=${MICROV_MAX_PP_MAPS}_umx
+    )
+
+    target_compile_options(integration_${NAME} PRIVATE -Wframe-larger-than=4294967295)
+
     set_property(SOURCE ${NAME} APPEND PROPERTY OBJECT_DEPENDS ${${HEADERS}})
 
     target_link_libraries(integration_${NAME} PRIVATE
