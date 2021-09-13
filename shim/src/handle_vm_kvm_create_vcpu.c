@@ -31,7 +31,11 @@
 #include <platform.h>
 #include <shim_vcpu_t.h>
 #include <shim_vm_t.h>
+#include <touch.h>
 #include <types.h>
+
+/** just need any value to mark a VCPU as taken. will be overridden */
+#define FD_USED ((uint64_t)1)
 
 /**
  * <!-- description -->
@@ -46,16 +50,30 @@ NODISCARD int64_t
 handle_vm_kvm_create_vcpu(
     struct shim_vm_t *const pmut_vm, struct shim_vcpu_t **const pmut_vcpu) NOEXCEPT
 {
+    uint64_t mut_i;
+
     platform_expects(MV_INVALID_HANDLE != g_mut_hndl);
     platform_expects(NULL != pmut_vm);
     platform_expects(NULL != pmut_vcpu);
 
-    if ((uint64_t)pmut_vm->num_vcpus >= MICROV_MAX_VCPUS) {
-        bferror("the vm's max vcpu count has been reached");
+    platform_mutex_lock(&pmut_vm->mutex);
+    for (mut_i = ((uint64_t)0); mut_i < MICROV_MAX_VCPUS; ++mut_i) {
+        *pmut_vcpu = &pmut_vm->vcpus[mut_i];
+        if (((uint64_t)0) == (*pmut_vcpu)->fd) {
+            break;
+        }
+
+        touch();
+    }
+
+    if (mut_i >= MICROV_MAX_VCPUS) {
+        bferror("unable to create vcpu as the vm's max vcpu count has been reached");
+        platform_mutex_unlock(&pmut_vm->mutex);
         return SHIM_FAILURE;
     }
 
-    *pmut_vcpu = &pmut_vm->vcpus[pmut_vm->num_vcpus];
+    (*pmut_vcpu)->fd = FD_USED;
+    platform_mutex_unlock(&pmut_vm->mutex);
 
     (*pmut_vcpu)->vpid = mv_vp_op_create_vp(g_mut_hndl, pmut_vm->vmid);
     if (MV_INVALID_ID == (int32_t)(*pmut_vcpu)->vpid) {
@@ -70,7 +88,5 @@ handle_vm_kvm_create_vcpu(
     }
 
     (*pmut_vcpu)->id = (*pmut_vcpu)->vsid;
-    ++pmut_vm->num_vcpus;
-
     return SHIM_SUCCESS;
 }

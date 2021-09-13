@@ -148,6 +148,16 @@ namespace microv
             return false;
         }
 
+        if (bsl::unlikely(sys.is_vm_the_root_vm(vmid))) {
+            bsl::error() << "vm "                                         // --
+                         << bsl::hex(vmid)                                // --
+                         << " is the root vm and cannot be destroyed "    // --
+                         << bsl::endl                                     // --
+                         << bsl::here();                                  // --
+
+            return false;
+        }
+
         auto const vpid{vp_pool.vp_assigned_to_vm(vmid)};
         if (bsl::unlikely(vpid.is_valid())) {
             bsl::error() << "vm "                                 // --
@@ -157,16 +167,6 @@ namespace microv
                          << " is still assigned to this vm"       // --
                          << bsl::endl                             // --
                          << bsl::here();                          // --
-
-            return false;
-        }
-
-        if (bsl::unlikely(sys.is_vm_the_root_vm(vmid))) {
-            bsl::error() << "vm "                                         // --
-                         << bsl::hex(vmid)                                // --
-                         << " is the root vm and cannot be destroyed "    // --
-                         << bsl::endl                                     // --
-                         << bsl::here();                                  // --
 
             return false;
         }
@@ -206,6 +206,16 @@ namespace microv
             return false;
         }
 
+        if (bsl::unlikely(sys.is_vp_a_root_vp(vpid))) {
+            bsl::error() << "vp "                                       // --
+                         << bsl::hex(vpid)                              // --
+                         << " is a root vp and cannot be destroyed "    // --
+                         << bsl::endl                                   // --
+                         << bsl::here();                                // --
+
+            return false;
+        }
+
         auto const vsid{vs_pool.vs_assigned_to_vp(vpid)};
         if (bsl::unlikely(vsid.is_valid())) {
             bsl::error() << "vp "                                 // --
@@ -215,16 +225,6 @@ namespace microv
                          << " is still assigned to this vp"       // --
                          << bsl::endl                             // --
                          << bsl::here();                          // --
-
-            return false;
-        }
-
-        if (bsl::unlikely(sys.is_vp_a_root_vp(vpid))) {
-            bsl::error() << "vp "                                       // --
-                         << bsl::hex(vpid)                              // --
-                         << " is a root vp and cannot be destroyed "    // --
-                         << bsl::endl                                   // --
-                         << bsl::here();                                // --
 
             return false;
         }

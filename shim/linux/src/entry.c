@@ -63,13 +63,13 @@ dev_release(struct inode *inode, struct file *file)
 static int
 vm_release_impl(struct shim_vm_t *const pmut_vm)
 {
-    uint16_t mut_i;
+    uint64_t mut_i;
 
     platform_expects(NULL != pmut_vm);
     pmut_vm->fd = 0;
 
-    for (mut_i = ((uint16_t)0); mut_i < pmut_vm->num_vcpus; ++mut_i) {
-        if (pmut_vm->vcpus[mut_i].fd != 0) {
+    for (mut_i = ((uint64_t)0); mut_i < MICROV_MAX_VCPUS; ++mut_i) {
+        if (0 != (int32_t)pmut_vm->vcpus[mut_i].fd) {
             return 0;
         }
     }
@@ -149,6 +149,8 @@ dispatch_system_kvm_create_vm(void)
         bferror("vmalloc failed");
         return -EINVAL;
     }
+
+    platform_mutex_init(&pmut_vm->mutex);
 
     if (handle_system_kvm_create_vm(pmut_vm)) {
         bferror("handle_system_kvm_create_vm failed");

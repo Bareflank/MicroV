@@ -202,6 +202,56 @@ extern "C"
     NODISCARD int64_t platform_on_each_cpu(
         platform_per_cpu_func const pmut_func, uint32_t const reverse) NOEXCEPT;    // NOLINT
 
+    /**
+     * <!-- description -->
+     *   @brief Defines a macro for creating a mutex object. This is needed
+     *     because most mutex objects need to be initialized to some default
+     *     state using macro in C and each OS has it's own fancy way of doing
+     *     this, so the logic must be placed here. To add another OS, simply
+     *     create a new definition, and then define it in the makefile used
+     *     by the OS to compile the shim.
+     */
+
+#if defined(WINDOWS_KERNEL)
+#include <wdm.h>
+    typedef FAST_MUTEX platform_mutex;
+#elif defined(LINUX_KERNEL)
+#include <linux/mutex.h>
+typedef struct mutex platform_mutex;
+#else
+typedef uint64_t platform_mutex;
+#endif
+
+    /**
+     * <!-- description -->
+     *   @brief Initializes a mutex lock. This must be called before a
+     *     mutex can be used.
+     *
+     * <!-- inputs/outputs -->
+     *   @param pmut_mutex the mutex to lock
+     */
+    void platform_mutex_init(platform_mutex *const pmut_mutex) NOEXCEPT;
+
+    /**
+     * <!-- description -->
+     *   @brief Locks a mutex object. The mutex object must be initialized
+     *     using platform_mutex_init before it is used.
+     *
+     * <!-- inputs/outputs -->
+     *   @param pmut_mutex the mutex to lock
+     */
+    void platform_mutex_lock(platform_mutex *const pmut_mutex) NOEXCEPT;
+
+    /**
+     * <!-- description -->
+     *   @brief Unlocks a mutex object. The mutex object must be initialized
+     *     using platform_mutex_init before it is used.
+     *
+     * <!-- inputs/outputs -->
+     *   @param pmut_mutex the mutex to unlock
+     */
+    void platform_mutex_unlock(platform_mutex *const pmut_mutex) NOEXCEPT;
+
 #ifdef __cplusplus
 }
 #endif

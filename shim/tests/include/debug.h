@@ -181,7 +181,7 @@ bfdebug_ptr(char const *const str, void const *const p) NOEXCEPT
 static inline void
 bferror(char const *const str) NOEXCEPT
 {
-    printf("[BAREFLANK ERROR] %s", str);
+    printf("[BAREFLANK ERROR] %s\n", str);
 }
 
 /**

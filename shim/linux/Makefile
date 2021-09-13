@@ -25,6 +25,7 @@ VENDOR_ID := $(shell lscpu | grep 'Vendor ID')
 
 ifneq ($(KERNELRELEASE),)
 	obj-m := $(TARGET_MODULE).o
+	EXTRA_CFLAGS += -DLINUX_KERNEL
 
     $(TARGET_MODULE)-objs += src/entry.o
     $(TARGET_MODULE)-objs += src/platform.o

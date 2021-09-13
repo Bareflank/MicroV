@@ -382,3 +382,45 @@ platform_on_each_cpu(
 
     return ret;
 }
+
+/**
+ * <!-- description -->
+ *   @brief Initializes a mutex lock. This must be called before a
+ *     mutex can be used.
+ *
+ * <!-- inputs/outputs -->
+ *   @param pmut_mutex the mutex to lock
+ */
+void
+platform_mutex_init(platform_mutex *const pmut_mutex)
+{
+    mutex_init(pmut_mutex);
+}
+
+/**
+ * <!-- description -->
+ *   @brief Locks a mutex object. The mutex object must be initialized
+ *     using platform_mutex_init before it is used.
+ *
+ * <!-- inputs/outputs -->
+ *   @param pmut_mutex the mutex to lock
+ */
+void
+platform_mutex_lock(platform_mutex *const pmut_mutex)
+{
+    mutex_lock(pmut_mutex);
+}
+
+/**
+ * <!-- description -->
+ *   @brief Unlocks a mutex object. The mutex object must be initialized
+ *     using platform_mutex_init before it is used.
+ *
+ * <!-- inputs/outputs -->
+ *   @param pmut_mutex the mutex to unlock
+ */
+void
+platform_mutex_unlock(platform_mutex *const pmut_mutex)
+{
+    mutex_unlock(pmut_mutex);
+}
