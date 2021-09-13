@@ -29,6 +29,7 @@
 
 #include <g_mut_shared_pages.h>
 #include <mv_constants.h>
+#include <mv_exit_reason_t.h>
 #include <mv_mdl_t.h>
 #include <mv_rdl_t.h>
 #include <mv_reg_t.h>
@@ -40,8 +41,8 @@ extern "C"
 {
 #endif
 
-    /** @brief used to set the value of mv_rdl_entry_t.val */
-    extern uint64_t g_mut_rdl_entry_val;
+    /** @brief stores a value that can be returned by certain hypercalls */
+    extern uint64_t g_mut_val;
 
     /* ---------------------------------------------------------------------- */
     /* mv_id_ops                                                              */
@@ -106,6 +107,70 @@ extern "C"
         return g_mut_mv_handle_op_close_handle;
     }
 
+    /* ---------------------------------------------------------------------- */
+    /* mv_pp_ops                                                              */
+    /* ---------------------------------------------------------------------- */
+
+    /** @brief stores the return value for mv_pp_op_ppid */
+    extern uint16_t g_mut_mv_pp_op_ppid;
+    /** @brief stores the return value for mv_pp_op_clr_shared_page_gpa */
+    extern mv_status_t g_mut_mv_pp_op_clr_shared_page_gpa;
+    /** @brief stores the return value for mv_pp_op_set_shared_page_gpa */
+    extern mv_status_t g_mut_mv_pp_op_set_shared_page_gpa;
+
+    /**
+     * <!-- description -->
+     *   @brief This hypercall returns the ID of the PP that executed this
+     *     hypercall.
+     *
+     * <!-- inputs/outputs -->
+     *   @param hndl Set to the result of mv_handle_op_open_handle
+     *   @return Returns the ID of the PP that executed this hypercall.
+     */
+    NODISCARD static inline uint16_t
+    mv_pp_op_ppid(uint64_t const hndl) NOEXCEPT
+    {
+        (void)hndl;
+        return g_mut_mv_pp_op_ppid;
+    }
+
+    /**
+     * <!-- description -->
+     *   @brief This hypercall tells MicroV to clear the GPA of the
+     *     current PP's shared page.
+     *
+     * <!-- inputs/outputs -->
+     *   @param hndl Set to the result of mv_handle_op_open_handle
+     *   @return Returns MV_STATUS_SUCCESS on success, MV_FAILURE_UNKNOWN
+     *     and friends on failure.
+     */
+    NODISCARD static inline mv_status_t
+    mv_pp_op_clr_shared_page_gpa(uint64_t const hndl) NOEXCEPT
+    {
+        (void)hndl;
+        return g_mut_mv_pp_op_clr_shared_page_gpa;
+    }
+
+    /**
+     * <!-- description -->
+     *   @brief This hypercall tells MicroV to set the GPA of the current PP's
+     *     shared page.
+     *
+     * <!-- inputs/outputs -->
+     *   @param hndl Set to the result of mv_handle_op_open_handle
+     *   @param gpa The GPA to set the requested PP's shared page to
+     *   @return Returns MV_STATUS_SUCCESS on success, MV_FAILURE_UNKNOWN
+     *     and friends on failure.
+     */
+    NODISCARD static inline mv_status_t
+    mv_pp_op_set_shared_page_gpa(uint64_t const hndl, uint64_t const gpa) NOEXCEPT
+    {
+        (void)hndl;
+        (void)gpa;
+
+        return g_mut_mv_pp_op_set_shared_page_gpa;
+    }
+
     /* -------------------------------------------------------------------------- */
     /* mv_vm_ops                                                                  */
     /* -------------------------------------------------------------------------- */
@@ -114,6 +179,8 @@ extern "C"
     extern uint16_t g_mut_mv_vm_op_create_vm;
     /** @brief stores the return value for mv_vm_op_destroy_vm */
     extern mv_status_t g_mut_mv_vm_op_destroy_vm;
+    /** @brief stores the return value for mv_vm_op_vmid */
+    extern uint16_t g_mut_mv_vm_op_vmid;
     /** @brief stores the return value for mv_vm_op_mmio_map */
     extern mv_status_t g_mut_mv_vm_op_mmio_map;
     /** @brief stores the return value for mv_vm_op_mmio_unmap */
@@ -151,6 +218,22 @@ extern "C"
         (void)vmid;
 
         return g_mut_mv_vm_op_destroy_vm;
+    }
+
+    /**
+     * <!-- description -->
+     *   @brief This hypercall returns the ID of the VM that executed this
+     *     hypercall.
+     *
+     * <!-- inputs/outputs -->
+     *   @param hndl Set to the result of mv_handle_op_open_handle
+     *   @return Returns the ID of the VM that executed this hypercall.
+     */
+    NODISCARD static inline uint16_t
+    mv_vm_op_vmid(uint64_t const hndl) NOEXCEPT
+    {
+        (void)hndl;
+        return g_mut_mv_vm_op_vmid;
     }
 
     /**
@@ -239,6 +322,10 @@ extern "C"
     extern uint16_t g_mut_mv_vp_op_create_vp;
     /** @brief stores the return value for mv_vp_op_destroy_vp */
     extern mv_status_t g_mut_mv_vp_op_destroy_vp;
+    /** @brief stores the return value for mv_vp_op_vmid */
+    extern uint16_t g_mut_mv_vp_op_vmid;
+    /** @brief stores the return value for mv_vp_op_vpid */
+    extern uint16_t g_mut_mv_vp_op_vpid;
 
     /**
      * <!-- description -->
@@ -279,6 +366,41 @@ extern "C"
         return g_mut_mv_vp_op_destroy_vp;
     }
 
+    /**
+     * <!-- description -->
+     *   @brief This hypercall returns the ID of the VM the requested VP is
+     *     assigned to.
+     *
+     * <!-- inputs/outputs -->
+     *   @param hndl Set to the result of mv_handle_op_open_handle
+     *   @param vpid The ID of the VP to query
+     *   @return Returns the ID of the VP the requested VP is assigned to.
+     */
+    NODISCARD static inline uint16_t
+    mv_vp_op_vmid(uint64_t const hndl, uint16_t const vpid) NOEXCEPT
+    {
+        (void)hndl;
+        (void)vpid;
+
+        return g_mut_mv_vp_op_vmid;
+    }
+
+    /**
+     * <!-- description -->
+     *   @brief This hypercall returns the ID of the VP that executed this
+     *     hypercall.
+     *
+     * <!-- inputs/outputs -->
+     *   @param hndl Set to the result of mv_handle_op_open_handle
+     *   @return Returns the ID of the VP that executed this hypercall.
+     */
+    NODISCARD static inline uint16_t
+    mv_vp_op_vpid(uint64_t const hndl) NOEXCEPT
+    {
+        (void)hndl;
+        return g_mut_mv_vp_op_vpid;
+    }
+
     /* -------------------------------------------------------------------------- */
     /* mv_vs_ops                                                                  */
     /* -------------------------------------------------------------------------- */
@@ -287,10 +409,32 @@ extern "C"
     extern uint16_t g_mut_mv_vs_op_create_vs;
     /** @brief stores the return value for mv_vs_op_destroy_vs */
     extern mv_status_t g_mut_mv_vs_op_destroy_vs;
+    /** @brief stores the return value for mv_vs_op_vmid */
+    extern uint16_t g_mut_mv_vs_op_vmid;
+    /** @brief stores the return value for mv_vs_op_vpid */
+    extern uint16_t g_mut_mv_vs_op_vpid;
+    /** @brief stores the return value for mv_vs_op_vsid */
+    extern uint16_t g_mut_mv_vs_op_vsid;
+    /** @brief stores the return value for mv_vs_op_gla_to_gpa */
+    extern struct mv_translation_t g_mut_mv_vs_op_gla_to_gpa;
+    /** @brief stores the return value for mv_vs_op_run */
+    extern enum mv_exit_reason_t g_mut_mv_vs_op_run;
+    /** @brief stores the return value for mv_vs_op_reg_get */
+    extern mv_status_t g_mut_mv_vs_op_reg_get;
+    /** @brief stores the return value for mv_vs_op_reg_set */
+    extern mv_status_t g_mut_mv_vs_op_reg_set;
     /** @brief stores the return value for mv_vs_op_reg_get_list */
     extern mv_status_t g_mut_mv_vs_op_reg_get_list;
     /** @brief stores the return value for mv_vs_op_reg_set_list */
     extern mv_status_t g_mut_mv_vs_op_reg_set_list;
+    /** @brief stores the return value for mv_vs_op_msr_get */
+    extern mv_status_t g_mut_mv_vs_op_msr_get;
+    /** @brief stores the return value for mv_vs_op_msr_set */
+    extern mv_status_t g_mut_mv_vs_op_msr_set;
+    /** @brief stores the return value for mv_vs_op_msr_get_list */
+    extern mv_status_t g_mut_mv_vs_op_msr_get_list;
+    /** @brief stores the return value for mv_vs_op_msr_set_list */
+    extern mv_status_t g_mut_mv_vs_op_msr_set_list;
 
     /**
      * <!-- description -->
@@ -333,6 +477,185 @@ extern "C"
 
     /**
      * <!-- description -->
+     *   @brief This hypercall returns the ID of the VM the requested VS is
+     *     assigned to.
+     *
+     * <!-- inputs/outputs -->
+     *   @param hndl Set to the result of mv_handle_op_open_handle
+     *   @param vsid The ID of the VS to query
+     *   @return Returns the ID of the VM the requested VS is assigned to.
+     */
+    NODISCARD static inline uint16_t
+    mv_vs_op_vmid(uint64_t const hndl, uint16_t const vsid) NOEXCEPT
+    {
+        (void)hndl;
+        (void)vsid;
+
+        return g_mut_mv_vs_op_vmid;
+    }
+
+    /**
+     * <!-- description -->
+     *   @brief This hypercall returns the ID of the VP the requested VS is
+     *     assigned to.
+     *
+     * <!-- inputs/outputs -->
+     *   @param hndl Set to the result of mv_handle_op_open_handle
+     *   @param vsid The ID of the VS to query
+     *   @return Returns the ID of the VP the requested VS is assigned to.
+     */
+    NODISCARD static inline uint16_t
+    mv_vs_op_vpid(uint64_t const hndl, uint16_t const vsid) NOEXCEPT
+    {
+        (void)hndl;
+        (void)vsid;
+
+        return g_mut_mv_vs_op_vpid;
+    }
+
+    /**
+     * <!-- description -->
+     *   @brief This hypercall returns the ID of the VS that executed this
+     *     hypercall.
+     *
+     * <!-- inputs/outputs -->
+     *   @param hndl Set to the result of mv_handle_op_open_handle
+     *   @return Returns the ID of the VS that executed this hypercall.
+     */
+    NODISCARD static inline uint16_t
+    mv_vs_op_vsid(uint64_t const hndl) NOEXCEPT
+    {
+        (void)hndl;
+        return g_mut_mv_vs_op_vsid;
+    }
+
+    /**
+     * <!-- description -->
+     *   @brief This hypercall tells MicroV to translate the provided
+     *     guest linear address (GLA) to a guest physical address (GPA).
+     *     To perform this translation, MicroV will perform a linear to
+     *     physical address conversion using the current state of CR0,
+     *     CR3, and CR4. To perform this translation, software must
+     *     provide the ID of the VS whose state will be used during
+     *     translation and the the GLA to translate. How the translation
+     *     occurs depends on whether or not the VS is in 16bit real mode,
+     *     32bit protected mode, 32bit protected mode with paging enabled,
+     *     or 64bit long mode. If the VS is in 16bit real mode or 32bit
+     *     protected mode with paging disabled, no translation is
+     *     performed and the provided GLA is returned as the GPA. If the
+     *     VS is in 32bit protected mode with paging enabled or 64bit
+     *     long mode, MicroV will walk the guest page tables pointed to by
+     *     CR3 in the VS and return the resulting GPA and GPA flags used
+     *     to map the GLA to the GPA (caching flags are not included). If
+     *     the translation fails for any reason, the resulting GPA is
+     *     undefined.
+     *
+     * <!-- inputs/outputs -->
+     *   @param hndl Set to the result of mv_handle_op_open_handle
+     *   @param vsid The ID of the VS to use for the translation
+     *   @param gla The GLA to translate
+     *   @return Returns an mv_translation_t containing the results of
+     *     the translation.
+     */
+    NODISCARD static inline struct mv_translation_t
+    mv_vs_op_gla_to_gpa(uint64_t const hndl, uint16_t const vsid, uint64_t const gla) NOEXCEPT
+    {
+        (void)hndl;
+        (void)vsid;
+        (void)gla;
+
+        return g_mut_mv_vs_op_gla_to_gpa;
+    }
+
+    /**
+     * <!-- description -->
+     *   @brief This hypercall executes a VM's VP using the requested VS.
+     *     The VM and VP that are executed is determined by which VM and VP
+     *     were assigned during the creation of the VP and VS. This hypercall
+     *     does not return until an exit condition occurs, or an error is
+     *     encountered. The exit condition can be identified using the output
+     *     REG0 which defines the "exit reason". Whenever mv_vs_op_run is
+     *     executed, MicroV reads the shared page using a mv_run_t as input.
+     *     When mv_vs_op_run returns, and no error has occurred, the shared
+     *     page's contents depends on the exit condition. For some exit
+     *     conditions, the shared page is ignored. In other cases, a structure
+     *     specific to the exit condition is returned providing software with
+     *     the information that it needs to handle the exit.
+     *
+     * <!-- inputs/outputs -->s
+     *   @param hndl Set to the result of mv_handle_op_open_handle
+     *   @param vsid The ID of the VS to run
+     *   @return Returns a mv_exit_reason_t describing the reason for the exit
+     */
+    NODISCARD static inline enum mv_exit_reason_t
+    mv_vs_op_run(uint64_t const hndl, uint16_t const vsid) NOEXCEPT
+    {
+        (void)hndl;
+        (void)vsid;
+
+        return g_mut_mv_vs_op_run;
+    }
+
+    /**
+     * <!-- description -->
+     *   @brief This hypercall tells MicroV to return the value of a requested
+     *     register. Not all registers values require 64 bits. Any unused bits
+     *     are REVI.
+     *
+     * <!-- inputs/outputs -->
+     *   @param hndl Set to the result of mv_handle_op_open_handle
+     *   @param vsid The ID of the VS to query
+     *   @param reg The register to get
+     *   @param pmut_val The value read from the requested register
+     *   @return Returns MV_STATUS_SUCCESS on success, MV_FAILURE_UNKNOWN
+     *     and friends on failure.
+     */
+    NODISCARD static inline mv_status_t
+    mv_vs_op_reg_get(
+        uint64_t const hndl,
+        uint16_t const vsid,
+        enum mv_reg_t const reg,
+        uint64_t *const pmut_val) NOEXCEPT
+    {
+        (void)hndl;
+        (void)vsid;
+        (void)reg;
+
+        *pmut_val = g_mut_val;
+        return g_mut_mv_vs_op_reg_get;
+    }
+
+    /**
+     * <!-- description -->
+     *   @brief This hypercall tells MicroV to set the value of a requested
+     *     register. Not all registers values require 64 bits. Any unused bits
+     *     are REVI.
+     *
+     * <!-- inputs/outputs -->
+     *   @param hndl Set to the result of mv_handle_op_open_handle
+     *   @param vsid The ID of the VS to set
+     *   @param reg The register to set
+     *   @param val The value to write to the requested register
+     *   @return Returns MV_STATUS_SUCCESS on success, MV_FAILURE_UNKNOWN
+     *     and friends on failure.
+     */
+    NODISCARD static inline mv_status_t
+    mv_vs_op_reg_set(
+        uint64_t const hndl,
+        uint16_t const vsid,
+        enum mv_reg_t const reg,
+        uint64_t const val) NOEXCEPT
+    {
+        (void)hndl;
+        (void)vsid;
+        (void)reg;
+        (void)val;
+
+        return g_mut_mv_vs_op_reg_set;
+    }
+
+    /**
+     * <!-- description -->
      *   @brief This hypercall tells MicroV to return the values of multiple
      *     requested registers using a Register Descriptor List (RDL) in the
      *     shared page. For this ABI, the reg field of each mv_rdl_entry_t
@@ -343,7 +666,7 @@ extern "C"
      *
      * <!-- inputs/outputs -->
      *   @param hndl Set to the result of mv_handle_op_open_handle
-     *   @param vsid The VSID of the VS to query
+     *   @param vsid The ID of the VS to query
      *   @return Returns MV_STATUS_SUCCESS on success, MV_FAILURE_UNKNOWN
      *     and friends on failure.
      */
@@ -357,7 +680,7 @@ extern "C"
 
         struct mv_rdl_t *const pmut_mdl = (struct mv_rdl_t *)g_mut_shared_pages[0];
         for (mut_i = ((uint64_t)0); mut_i < pmut_mdl->num_entries; ++mut_i) {
-            pmut_mdl->entries[mut_i].val = g_mut_rdl_entry_val;
+            pmut_mdl->entries[mut_i].val = g_mut_val;
         }
 
         return g_mut_mv_vs_op_reg_get_list;
@@ -375,7 +698,7 @@ extern "C"
      *
      * <!-- inputs/outputs -->
      *   @param hndl Set to the result of mv_handle_op_open_handle
-     *   @param vsid The VSID of the VS to set
+     *   @param vsid The ID of the VS to set
      *   @return Returns MV_STATUS_SUCCESS on success, MV_FAILURE_UNKNOWN
      *     and friends on failure.
      */
@@ -386,6 +709,114 @@ extern "C"
         (void)vsid;
 
         return g_mut_mv_vs_op_reg_set_list;
+    }
+
+    /**
+     * <!-- description -->
+     *   @brief This hypercall tells MicroV to return the value of a
+     *     requested MSR.
+     *
+     * <!-- inputs/outputs -->
+     *   @param hndl Set to the result of mv_handle_op_open_handle
+     *   @param vsid The ID of the VS to query
+     *   @param msr The index of the MSR to get
+     *   @param pmut_val The value read from the MSR
+     *   @return Returns MV_STATUS_SUCCESS on success, MV_FAILURE_UNKNOWN
+     *     and friends on failure.
+     */
+    NODISCARD static inline mv_status_t
+    mv_vs_op_msr_get(
+        uint64_t const hndl,
+        uint16_t const vsid,
+        uint32_t const msr,
+        uint64_t *const pmut_val) NOEXCEPT
+    {
+        (void)hndl;
+        (void)vsid;
+        (void)msr;
+
+        *pmut_val = g_mut_val;
+        return g_mut_mv_vs_op_msr_get;
+    }
+
+    /**
+     * <!-- description -->
+     *   @brief This hypercall tells MicroV to set the value of a
+     *     requested MSR.
+     *
+     * <!-- inputs/outputs -->
+     *   @param hndl Set to the result of mv_handle_op_open_handle
+     *   @param vsid The ID of the VS to set
+     *   @param msr The index of the MSR to set
+     *   @param val The value to write to the requested MSR
+     *   @return Returns MV_STATUS_SUCCESS on success, MV_FAILURE_UNKNOWN
+     *     and friends on failure.
+     */
+    NODISCARD static inline mv_status_t
+    mv_vs_op_msr_set(
+        uint64_t const hndl, uint16_t const vsid, uint32_t const msr, uint64_t const val) NOEXCEPT
+    {
+        (void)hndl;
+        (void)vsid;
+        (void)msr;
+        (void)val;
+
+        return g_mut_mv_vs_op_msr_set;
+    }
+
+    /**
+     * <!-- description -->
+     *   @brief This hypercall tells MicroV to return the values of multiple
+     *     requested MSRs using a Register Descriptor List (RDL) in the shared
+     *     page. For this ABI, the reg field of each mv_rdl_entry_t refers to
+     *     the index of the MSR. The val field refers to the returned value of
+     *     the requested MSR in that entry. This ABI does not use any of the
+     *     reg 0-7 fields in the mv_rdl_t.
+     *
+     * <!-- inputs/outputs -->
+     *   @param hndl Set to the result of mv_handle_op_open_handle
+     *   @param vsid The ID of the VS to query
+     *   @return Returns MV_STATUS_SUCCESS on success, MV_FAILURE_UNKNOWN
+     *     and friends on failure.
+     */
+    NODISCARD static inline mv_status_t
+    mv_vs_op_msr_get_list(uint64_t const hndl, uint16_t const vsid) NOEXCEPT
+    {
+        uint64_t mut_i;
+
+        (void)hndl;
+        (void)vsid;
+
+        struct mv_rdl_t *const pmut_mdl = (struct mv_rdl_t *)g_mut_shared_pages[0];
+        for (mut_i = ((uint64_t)0); mut_i < pmut_mdl->num_entries; ++mut_i) {
+            pmut_mdl->entries[mut_i].val = g_mut_val;
+        }
+
+        return g_mut_mv_vs_op_msr_get_list;
+    }
+
+    /**
+     * <!-- description -->
+     *   @brief This hypercall tells MicroV to set the values of multiple
+     *     requested MSRs using a Register Descriptor List (RDL) in the shared
+     *     page. For this ABI, the reg field of each mv_rdl_entry_t refers to
+     *     the index of the MSR. The val field refers to the value to set the
+     *     requested MSR in that entry to. This ABI does not use any of the
+     *     reg 0-7 fields in the mv_rdl_t.
+     *
+     * <!-- inputs/outputs -->
+     *   @param hndl Set to the result of mv_handle_op_open_handle
+     *   @param vsid The ID of the VS to set
+     *   @return Returns MV_STATUS_SUCCESS on success, MV_FAILURE_UNKNOWN
+     *     and friends on failure.
+     */
+    NODISCARD static inline mv_status_t
+    mv_vs_op_msr_set_list(uint64_t const hndl, uint16_t const vsid) NOEXCEPT
+    {
+        (void)hndl;
+        (void)vsid;
+
+        return g_mut_mv_vs_op_msr_set_list;
     }
 
 #ifdef __cplusplus

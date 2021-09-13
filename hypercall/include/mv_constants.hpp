@@ -374,6 +374,8 @@ namespace hypercall
     /// @brief Defines the index for mv_debug_op_out
     constexpr auto MV_DEBUG_OP_OUT_IDX_VAL{0x0000000000000000_u64};
 
+    /// @brief Defines the index for mv_pp_op_ppid
+    constexpr auto MV_PP_OP_PPID_IDX_VAL{0x0000000000000000_u64};
     /// @brief Defines the index for mv_pp_op_clr_shared_page_gpa
     constexpr auto MV_PP_OP_CLR_SHARED_PAGE_GPA_IDX_VAL{0x0000000000000001_u64};
     /// @brief Defines the index for mv_pp_op_set_shared_page_gpa
@@ -475,30 +477,18 @@ namespace hypercall
     constexpr auto MV_VS_OP_REG_GET_IDX_VAL{0x000000000000000D_u64};
     /// @brief Defines the index for mv_vs_op_reg_set
     constexpr auto MV_VS_OP_REG_SET_IDX_VAL{0x000000000000000E_u64};
-    /// @brief Defines the index for mv_vs_op_reg_get_all
-    constexpr auto MV_VS_OP_REG_GET_ALL_IDX_VAL{0x000000000000000F_u64};
-    /// @brief Defines the index for mv_vs_op_reg_set_all
-    constexpr auto MV_VS_OP_REG_SET_ALL_IDX_VAL{0x0000000000000010_u64};
-    /// @brief Defines the index for mv_vs_op_reg_get_general
-    constexpr auto MV_VS_OP_REG_GET_GENERAL_IDX_VAL{0x0000000000000011_u64};
-    /// @brief Defines the index for mv_vs_op_reg_set_general
-    constexpr auto MV_VS_OP_REG_SET_GENERAL_IDX_VAL{0x0000000000000012_u64};
-    /// @brief Defines the index for mv_vs_op_reg_get_system
-    constexpr auto MV_VS_OP_REG_GET_SYSTEM_IDX_VAL{0x0000000000000013_u64};
-    /// @brief Defines the index for mv_vs_op_reg_set_system
-    constexpr auto MV_VS_OP_REG_SET_SYSTEM_IDX_VAL{0x0000000000000014_u64};
-    /// @brief Defines the index for mv_vs_op_reg_get_debug
-    constexpr auto MV_VS_OP_REG_GET_DEBUG_IDX_VAL{0x0000000000000015_u64};
-    /// @brief Defines the index for mv_vs_op_reg_set_debug
-    constexpr auto MV_VS_OP_REG_SET_DEBUG_IDX_VAL{0x0000000000000016_u64};
+    /// @brief Defines the index for mv_vs_op_reg_get_list
+    constexpr auto MV_VS_OP_REG_GET_LIST_IDX_VAL{0x000000000000000F_u64};
+    /// @brief Defines the index for mv_vs_op_reg_set_list
+    constexpr auto MV_VS_OP_REG_SET_LIST_IDX_VAL{0x0000000000000010_u64};
     /// @brief Defines the index for mv_vs_op_msr_get
     constexpr auto MV_VS_OP_MSR_GET_IDX_VAL{0x0000000000000017_u64};
     /// @brief Defines the index for mv_vs_op_msr_set
     constexpr auto MV_VS_OP_MSR_SET_IDX_VAL{0x0000000000000018_u64};
-    /// @brief Defines the index for mv_vs_op_msr_get_all
-    constexpr auto MV_VS_OP_MSR_GET_ALL_IDX_VAL{0x0000000000000019_u64};
-    /// @brief Defines the index for mv_vs_op_msr_set_all
-    constexpr auto MV_VS_OP_MSR_SET_ALL_IDX_VAL{0x000000000000001A_u64};
+    /// @brief Defines the index for mv_vs_op_msr_get_list
+    constexpr auto MV_VS_OP_MSR_GET_LIST_IDX_VAL{0x0000000000000019_u64};
+    /// @brief Defines the index for mv_vs_op_msr_set_list
+    constexpr auto MV_VS_OP_MSR_SET_LIST_IDX_VAL{0x000000000000001A_u64};
     /// @brief Defines the index for mv_vs_op_fpu_get
     constexpr auto MV_VS_OP_FPU_GET_IDX_VAL{0x000000000000001B_u64};
     /// @brief Defines the index for mv_vs_op_fpu_set

@@ -23,19 +23,23 @@
 /// SOFTWARE.
 
 #include <integration_utils.hpp>
+#include <mv_constants.hpp>
+#include <mv_hypercall_impl.hpp>
 #include <mv_hypercall_t.hpp>
+#include <mv_translation_t.hpp>
+#include <mv_types.hpp>
 
 #include <bsl/convert.hpp>
-#include <bsl/cstdint.hpp>
-#include <bsl/cstr_type.hpp>
 #include <bsl/debug.hpp>
 #include <bsl/enable_color.hpp>
 #include <bsl/exit_code.hpp>
+#include <bsl/safe_integral.hpp>
 
 namespace hypercall
 {
     /// @brief provides a variable to get the GPA of
-    alignas(HYPERVISOR_PAGE_SIZE.get()) bool g_test{};
+    // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
+    alignas(HYPERVISOR_PAGE_SIZE.get()) bool g_mut_test{};
 
     /// <!-- description -->
     ///   @brief Always returns bsl::exit_success. If a failure occurs,
@@ -48,8 +52,19 @@ namespace hypercall
     [[nodiscard]] constexpr auto
     tests() noexcept -> bsl::exit_code
     {
-        mv_translation_t mut_ret{};
-        g_test = true;
+        mv_status_t mut_ret{};
+        mv_translation_t mut_trn{};
+        mv_hypercall_t mut_hvc{};
+
+        bsl::safe_umx const gla{to_umx(&g_mut_test)};
+        bsl::safe_umx mut_gpa{};
+
+        /// NOTE:
+        /// - Touch g_mut_test. This ensures that g_mut_test is paged in. On Linux,
+        ///   if g_mut_test has not yet been used, it would not be paged in.
+        ///
+
+        g_mut_test = true;
 
         /// NOTE:
         /// - Since we only support 64bit, a global variable's GVA will always
@@ -57,47 +72,75 @@ namespace hypercall
         ///   use a variable from thread local storage.
         ///
 
-        mv_hypercall_t mut_hvc{};
         integration::verify(mut_hvc.initialize());
+        auto const hndl{mut_hvc.handle()};
 
-        mut_ret = mut_hvc.mv_vs_op_gla_to_gpa(MV_INVALID_ID, &g_test);
-        integration::verify(!mut_ret.is_valid);
+        // invalid VSID
+        mut_ret =
+            mv_vs_op_gla_to_gpa_impl(hndl.get(), MV_INVALID_ID.get(), gla.get(), mut_gpa.data());
+        integration::verify(mut_ret != MV_STATUS_SUCCESS);
 
-        constexpr auto out_of_bounds_vsid{0xFFF0_u16};
-        mut_ret = mut_hvc.mv_vs_op_gla_to_gpa(out_of_bounds_vsid, &g_test);
-        integration::verify(!mut_ret.is_valid);
+        // VSID out of range
+        auto const oor{bsl::to_u16(HYPERVISOR_MAX_VMS + bsl::safe_u64::magic_1()).checked()};
+        mut_ret = mv_vs_op_gla_to_gpa_impl(hndl.get(), oor.get(), gla.get(), mut_gpa.data());
+        integration::verify(mut_ret != MV_STATUS_SUCCESS);
 
-        constexpr auto not_yet_created_vsid{128_u16};
-        mut_ret = mut_hvc.mv_vs_op_gla_to_gpa(not_yet_created_vsid, &g_test);
-        integration::verify(!mut_ret.is_valid);
+        // VSID not yet created
+        auto const nyc{bsl::to_u16(HYPERVISOR_MAX_VMS - bsl::safe_u64::magic_1()).checked()};
+        mut_ret = mv_vs_op_gla_to_gpa_impl(hndl.get(), nyc.get(), gla.get(), mut_gpa.data());
+        integration::verify(mut_ret != MV_STATUS_SUCCESS);
 
-        constexpr auto unaligned_gla{42_u64};
-        mut_ret = mut_hvc.mv_vs_op_gla_to_gpa(MV_SELF_ID, unaligned_gla);
-        integration::verify(!mut_ret.is_valid);
+        // GLA that is not paged aligned
+        constexpr auto ugla{42_u64};
+        mut_ret =
+            mv_vs_op_gla_to_gpa_impl(hndl.get(), MV_SELF_ID.get(), ugla.get(), mut_gpa.data());
+        integration::verify(mut_ret != MV_STATUS_SUCCESS);
 
-        constexpr auto null_gla{0x0_u64};
-        mut_ret = mut_hvc.mv_vs_op_gla_to_gpa(MV_SELF_ID, null_gla);
-        integration::verify(!mut_ret.is_valid);
+        // NULL GLA
+        constexpr auto ngla{0_u64};
+        mut_ret =
+            mv_vs_op_gla_to_gpa_impl(hndl.get(), MV_SELF_ID.get(), ngla.get(), mut_gpa.data());
+        integration::verify(mut_ret != MV_STATUS_SUCCESS);
 
-        constexpr auto not_present_gla{0x1000_u64};
-        mut_ret = mut_hvc.mv_vs_op_gla_to_gpa(MV_SELF_ID, not_present_gla);
-        integration::verify(!mut_ret.is_valid);
+        // GLA that is not present (i.e. not paged in)
+        constexpr auto npgla{0x1000_u64};
+        mut_ret =
+            mv_vs_op_gla_to_gpa_impl(hndl.get(), MV_SELF_ID.get(), npgla.get(), mut_gpa.data());
+        integration::verify(mut_ret != MV_STATUS_SUCCESS);
 
-        /// TODO:
-        /// - Create a VS and do a translation before it has been used.
-        /// - Create a VS, zombify it and do a translation
-        ///
+        // VSID that has been created, but has not been initialized
+        {
+            auto const vsid{mut_hvc.mv_vs_op_create_vs(MV_SELF_ID)};
+            integration::verify(vsid.is_valid_and_checked());
 
-        mut_ret = mut_hvc.mv_vs_op_gla_to_gpa(MV_SELF_ID, &g_test);
-        integration::verify(mut_ret.is_valid);
+            mut_trn = mut_hvc.mv_vs_op_gla_to_gpa(vsid, to_umx(&g_mut_test));
+            integration::verify(!mut_trn.is_valid);
 
-        bsl::error() << "the result is:\n"
-                     << "  - vaddr: " << bsl::hex(mut_ret.vaddr) << bsl::endl
-                     << "  - laddr: " << bsl::hex(mut_ret.laddr) << bsl::endl
-                     << "  - paddr: " << bsl::hex(mut_ret.paddr) << bsl::endl
-                     << "  - flags: " << bsl::hex(mut_ret.flags) << bsl::endl
-                     << "  - is_valid: " << mut_ret.is_valid << bsl::endl
-                     << bsl::endl;
+            integration::verify(mut_hvc.mv_vs_op_destroy_vs(vsid));
+        }
+
+        // // Get a valid GPA a lot to make sure mapping/unmapping works
+        // {
+        //     constexpr auto num_loops{0x1000_umx};
+        //     for (bsl::safe_idx mut_i{}; mut_i < num_loops; ++mut_i) {
+        //         mut_trn = mut_hvc.mv_vs_op_gla_to_gpa(MV_SELF_ID, to_umx(&g_mut_test));
+        //         integration::verify(mut_trn.is_valid);
+        //     }
+        // }
+
+        // Get the gpa and print the results for manual inspection
+        {
+            mut_trn = mut_hvc.mv_vs_op_gla_to_gpa(MV_SELF_ID, to_umx(&g_mut_test));
+            integration::verify(mut_trn.is_valid);
+
+            bsl::debug() << "the result is:\n"
+                         << "  - vaddr: " << bsl::hex(mut_trn.vaddr) << bsl::endl
+                         << "  - laddr: " << bsl::hex(mut_trn.laddr) << bsl::endl
+                         << "  - paddr: " << bsl::hex(mut_trn.paddr) << bsl::endl
+                         << "  - flags: " << bsl::hex(mut_trn.flags) << bsl::endl
+                         << "  - is_valid: " << mut_trn.is_valid << bsl::endl
+                         << bsl::endl;
+        }
 
         return bsl::exit_success;
     }

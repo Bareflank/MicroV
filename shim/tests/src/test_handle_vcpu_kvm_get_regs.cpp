@@ -52,7 +52,7 @@ namespace shim
                 kvm_regs mut_args{};
                 constexpr auto entryval{42_u64};
                 bsl::ut_when{} = [&]() noexcept {
-                    g_mut_rdl_entry_val = entryval.get();
+                    g_mut_val = entryval.get();
                     bsl::ut_then{} = [&]() noexcept {
                         bsl::ut_check(
                             SHIM_SUCCESS == handle_vcpu_kvm_get_regs(&mut_vcpu, &mut_args));

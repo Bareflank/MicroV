@@ -335,6 +335,7 @@ namespace microv
     ///     bsl::safe_u16::failure().
     ///
     /// <!-- inputs/outputs -->
+    ///   @param sys the bf_syscall_t to use
     ///   @param reg the register to get the vmid from.
     ///   @return Given an input register, returns a vmid if the provided
     ///     register contains a valid vmid. Otherwise, this function returns
@@ -342,9 +343,13 @@ namespace microv
     ///
     [[nodiscard]] constexpr auto
     // NOLINTNEXTLINE(bsl-non-safe-integral-types-are-forbidden)
-    get_vmid(bsl::safe_u64 const &reg) noexcept -> bsl::safe_u16
+    get_vmid(syscall::bf_syscall_t const &sys, bsl::safe_u64 const &reg) noexcept -> bsl::safe_u16
     {
         auto const vmid{bsl::to_u16_unsafe(reg)};
+        if (vmid == hypercall::MV_SELF_ID) {
+            return sys.bf_tls_vmid();
+        }
+
         if (bsl::unlikely(hypercall::MV_INVALID_ID == vmid)) {
             bsl::error() << "the provided vmid "                      // --
                          << bsl::hex(vmid)                            // --
@@ -375,6 +380,7 @@ namespace microv
     ///     bsl::safe_u16::failure().
     ///
     /// <!-- inputs/outputs -->
+    ///   @param sys the bf_syscall_t to use
     ///   @param reg the register to get the vmid from.
     ///   @param vm_pool the vm_pool_t to use
     ///   @return Given an input register, returns a vmid if the provided
@@ -384,9 +390,12 @@ namespace microv
     ///
     [[nodiscard]] constexpr auto
     // NOLINTNEXTLINE(bsl-non-safe-integral-types-are-forbidden)
-    get_allocated_vmid(bsl::safe_u64 const &reg, vm_pool_t const &vm_pool) noexcept -> bsl::safe_u16
+    get_allocated_vmid(
+        syscall::bf_syscall_t const &sys,
+        bsl::safe_u64 const &reg,
+        vm_pool_t const &vm_pool) noexcept -> bsl::safe_u16
     {
-        auto const vmid{get_vmid(reg)};
+        auto const vmid{get_vmid(sys, reg)};
         if (bsl::unlikely(vmid.is_invalid())) {
             bsl::print<bsl::V>() << bsl::here();
             return bsl::safe_u16::failure();
@@ -412,6 +421,7 @@ namespace microv
     ///     bsl::safe_u16::failure().
     ///
     /// <!-- inputs/outputs -->
+    ///   @param sys the bf_syscall_t to use
     ///   @param reg the register to get the vpid from.
     ///   @return Given an input register, returns a vpid if the provided
     ///     register contains a valid vpid. Otherwise, this function returns
@@ -419,9 +429,13 @@ namespace microv
     ///
     [[nodiscard]] constexpr auto
     // NOLINTNEXTLINE(bsl-non-safe-integral-types-are-forbidden)
-    get_vpid(bsl::safe_u64 const &reg) noexcept -> bsl::safe_u16
+    get_vpid(syscall::bf_syscall_t const &sys, bsl::safe_u64 const &reg) noexcept -> bsl::safe_u16
     {
         auto const vpid{bsl::to_u16_unsafe(reg)};
+        if (vpid == hypercall::MV_SELF_ID) {
+            return sys.bf_tls_vpid();
+        }
+
         if (bsl::unlikely(syscall::BF_INVALID_ID == vpid)) {
             bsl::error() << "the provided vpid "                      // --
                          << bsl::hex(vpid)                            // --
@@ -452,6 +466,7 @@ namespace microv
     ///     bsl::safe_u16::failure().
     ///
     /// <!-- inputs/outputs -->
+    ///   @param sys the bf_syscall_t to use
     ///   @param reg the register to get the vpid from.
     ///   @param vp_pool the vp_pool_t to use
     ///   @return Given an input register, returns a vpid if the provided
@@ -461,9 +476,12 @@ namespace microv
     ///
     [[nodiscard]] constexpr auto
     // NOLINTNEXTLINE(bsl-non-safe-integral-types-are-forbidden)
-    get_allocated_vpid(bsl::safe_u64 const &reg, vp_pool_t const &vp_pool) noexcept -> bsl::safe_u16
+    get_allocated_vpid(
+        syscall::bf_syscall_t const &sys,
+        bsl::safe_u64 const &reg,
+        vp_pool_t const &vp_pool) noexcept -> bsl::safe_u16
     {
-        auto const vpid{get_vpid(reg)};
+        auto const vpid{get_vpid(sys, reg)};
         if (bsl::unlikely(vpid.is_invalid())) {
             bsl::print<bsl::V>() << bsl::here();
             return bsl::safe_u16::failure();
@@ -489,6 +507,7 @@ namespace microv
     ///     bsl::safe_u16::failure().
     ///
     /// <!-- inputs/outputs -->
+    ///   @param sys the bf_syscall_t to use
     ///   @param reg the register to get the vsid from.
     ///   @return Given an input register, returns a vsid if the provided
     ///     register contains a valid vsid. Otherwise, this function returns
@@ -496,9 +515,13 @@ namespace microv
     ///
     [[nodiscard]] constexpr auto
     // NOLINTNEXTLINE(bsl-non-safe-integral-types-are-forbidden)
-    get_vsid(bsl::safe_u64 const &reg) noexcept -> bsl::safe_u16
+    get_vsid(syscall::bf_syscall_t const &sys, bsl::safe_u64 const &reg) noexcept -> bsl::safe_u16
     {
         auto const vsid{bsl::to_u16_unsafe(reg)};
+        if (vsid == hypercall::MV_SELF_ID) {
+            return sys.bf_tls_vsid();
+        }
+
         if (bsl::unlikely(syscall::BF_INVALID_ID == vsid)) {
             bsl::error() << "the provided vsid "                      // --
                          << bsl::hex(vsid)                            // --
@@ -529,6 +552,7 @@ namespace microv
     ///     bsl::safe_u16::failure().
     ///
     /// <!-- inputs/outputs -->
+    ///   @param sys the bf_syscall_t to use
     ///   @param reg the register to get the vsid from.
     ///   @param vs_pool the vs_pool_t to use
     ///   @return Given an input register, returns a vsid if the provided
@@ -538,9 +562,12 @@ namespace microv
     ///
     [[nodiscard]] constexpr auto
     // NOLINTNEXTLINE(bsl-non-safe-integral-types-are-forbidden)
-    get_allocated_vsid(bsl::safe_u64 const &reg, vs_pool_t const &vs_pool) noexcept -> bsl::safe_u16
+    get_allocated_vsid(
+        syscall::bf_syscall_t const &sys,
+        bsl::safe_u64 const &reg,
+        vs_pool_t const &vs_pool) noexcept -> bsl::safe_u16
     {
-        auto const vsid{get_vsid(reg)};
+        auto const vsid{get_vsid(sys, reg)};
         if (bsl::unlikely(vsid.is_invalid())) {
             bsl::print<bsl::V>() << bsl::here();
             return bsl::safe_u16::failure();
@@ -558,6 +585,55 @@ namespace microv
         }
 
         return vsid;
+    }
+
+    /// <!-- description -->
+    ///   @brief Given an input register, returns a guest linear address if
+    ///     the provided register contains a valid guest linear address.
+    ///     Otherwise, this function returns bsl::safe_umx::failure().
+    ///
+    /// <!-- inputs/outputs -->
+    ///   @param reg the register to get the guest linear address from.
+    ///   @return Given an input register, returns a guest linear address if
+    ///     the provided register contains a valid guest linear address.
+    ///     Otherwise, this function returns bsl::safe_umx::failure().
+    ///
+    [[nodiscard]] constexpr auto
+    // NOLINTNEXTLINE(bsl-non-safe-integral-types-are-forbidden)
+    get_gla(bsl::safe_u64 const &reg) noexcept -> bsl::safe_umx
+    {
+        /// TODO:
+        /// - Add a canonical address check here. This also needs to be added
+        ///   to the hypervisor's get_virt function.
+        /// - Add a physical address check that uses CPUID to determine if a
+        ///   physical address is valid. The max physical address should be
+        ///   cached in the TLS so that it can be used. This should be added
+        ///   to a get_gpa, and get_phys function in the hypervisor.
+        ///
+
+        auto const gla{bsl::to_umx(reg)};
+        if (bsl::unlikely(gla.is_zero())) {
+            bsl::error() << "the guest linear address "                // --
+                         << bsl::hex(gla)                              // --
+                         << " is a NULL address and cannot be used"    // --
+                         << bsl::endl                                  // --
+                         << bsl::here();                               // --
+
+            return bsl::safe_umx::failure();
+        }
+
+        bool const aligned{hypercall::mv_is_page_aligned(gla)};
+        if (bsl::unlikely(!aligned)) {
+            bsl::error() << "the guest linear address "                  // --
+                         << bsl::hex(gla)                                // --
+                         << " is not page aligned and cannot be used"    // --
+                         << bsl::endl                                    // --
+                         << bsl::here();                                 // --
+
+            return bsl::safe_umx::failure();
+        }
+
+        return gla;
     }
 
     /// ------------------------------------------------------------------------

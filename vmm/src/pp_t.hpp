@@ -76,24 +76,26 @@ namespace microv
         ///   @param tls the tls_t to use
         ///   @param mut_sys the bf_syscall_t to use
         ///   @param intrinsic the intrinsic_t to use
+        ///   @param i the ID for this pp_t
         ///
         constexpr void
         initialize(
             gs_t const &gs,
             tls_t const &tls,
             syscall::bf_syscall_t &mut_sys,
-            intrinsic_t const &intrinsic) noexcept
+            intrinsic_t const &intrinsic,
+            bsl::safe_u16 const &i) noexcept
         {
             bsl::expects(this->id() == syscall::BF_INVALID_ID);
 
-            m_pp_cr.initialize(gs, tls, mut_sys, intrinsic);
-            m_pp_io.initialize(gs, tls, mut_sys, intrinsic);
-            m_pp_lapic.initialize(gs, tls, mut_sys, intrinsic);
-            m_pp_mmio.initialize(gs, tls, mut_sys, intrinsic);
-            m_pp_msr.initialize(gs, tls, mut_sys, intrinsic);
-            m_pp_mtrrs.initialize(gs, tls, mut_sys, intrinsic);
+            m_pp_cr.initialize(gs, tls, mut_sys, intrinsic, i);
+            m_pp_io.initialize(gs, tls, mut_sys, intrinsic, i);
+            m_pp_lapic.initialize(gs, tls, mut_sys, intrinsic, i);
+            m_pp_mmio.initialize(gs, tls, mut_sys, intrinsic, i);
+            m_pp_msr.initialize(gs, tls, mut_sys, intrinsic, i);
+            m_pp_mtrrs.initialize(gs, tls, mut_sys, intrinsic, i);
 
-            m_id = ~mut_sys.bf_tls_ppid();
+            m_id = ~i;
         }
 
         /// <!-- description -->

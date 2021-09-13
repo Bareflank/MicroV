@@ -59,7 +59,7 @@ namespace microv
     ///     and friends otherwise
     ///
     [[nodiscard]] constexpr auto
-    hypercall_vm_op_create_vm(
+    hypercall_mv_vm_op_create_vm(
         gs_t const &gs,
         tls_t const &tls,
         syscall::bf_syscall_t &mut_sys,
@@ -91,7 +91,7 @@ namespace microv
     ///     and friends otherwise
     ///
     [[nodiscard]] constexpr auto
-    hypercall_vm_op_destroy_vm(
+    hypercall_mv_vm_op_destroy_vm(
         gs_t const &gs,
         tls_t const &tls,
         syscall::bf_syscall_t &mut_sys,
@@ -99,7 +99,7 @@ namespace microv
         vm_pool_t &mut_vm_pool,
         vp_pool_t const &vp_pool) noexcept -> bsl::errc_type
     {
-        auto const vmid{get_allocated_vmid(get_reg1(mut_sys), mut_vm_pool)};
+        auto const vmid{get_allocated_vmid(mut_sys, get_reg1(mut_sys), mut_vm_pool)};
         if (bsl::unlikely(vmid.is_invalid())) {
             bsl::print<bsl::V>() << bsl::here();
             set_reg_return(mut_sys, hypercall::MV_STATUS_INVALID_INPUT_REG1);
@@ -114,6 +114,21 @@ namespace microv
         }
 
         mut_vm_pool.deallocate(gs, tls, mut_sys, intrinsic, vmid);
+        return vmexit_success_advance_ip_and_run;
+    }
+
+    /// <!-- description -->
+    ///   @brief Implements the mv_vm_op_vmid hypercall
+    ///
+    /// <!-- inputs/outputs -->
+    ///   @param mut_sys the bf_syscall_t to use
+    ///   @return Returns bsl::errc_success on success, bsl::errc_failure
+    ///     and friends otherwise
+    ///
+    [[nodiscard]] constexpr auto
+    hypercall_mv_vm_op_vmid(syscall::bf_syscall_t &mut_sys) noexcept -> bsl::errc_type
+    {
+        set_reg0(mut_sys, bsl::merge_umx_with_u16(get_reg0(mut_sys), mut_sys.bf_tls_vmid()));
         return vmexit_success_advance_ip_and_run;
     }
 
@@ -163,7 +178,8 @@ namespace microv
 
         switch (hypercall::mv_hypercall_index(get_reg_hypercall(mut_sys)).get()) {
             case hypercall::MV_VM_OP_CREATE_VM_IDX_VAL.get(): {
-                auto const ret{hypercall_vm_op_create_vm(gs, tls, mut_sys, intrinsic, mut_vm_pool)};
+                auto const ret{
+                    hypercall_mv_vm_op_create_vm(gs, tls, mut_sys, intrinsic, mut_vm_pool)};
                 if (bsl::unlikely(!ret)) {
                     bsl::print<bsl::V>() << bsl::here();
                     return ret;
@@ -173,8 +189,18 @@ namespace microv
             }
 
             case hypercall::MV_VM_OP_DESTROY_VM_IDX_VAL.get(): {
-                auto const ret{
-                    hypercall_vm_op_destroy_vm(gs, tls, mut_sys, intrinsic, mut_vm_pool, vp_pool)};
+                auto const ret{hypercall_mv_vm_op_destroy_vm(
+                    gs, tls, mut_sys, intrinsic, mut_vm_pool, vp_pool)};
+                if (bsl::unlikely(!ret)) {
+                    bsl::print<bsl::V>() << bsl::here();
+                    return ret;
+                }
+
+                return ret;
+            }
+
+            case hypercall::MV_VM_OP_VMID_IDX_VAL.get(): {
+                auto const ret{hypercall_mv_vm_op_vmid(mut_sys)};
                 if (bsl::unlikely(!ret)) {
                     bsl::print<bsl::V>() << bsl::here();
                     return ret;

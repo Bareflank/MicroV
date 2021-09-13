@@ -53,7 +53,7 @@ namespace microv
     ///     and friends otherwise
     ///
     [[nodiscard]] constexpr auto
-    hypercall_id_op_version(syscall::bf_syscall_t &mut_sys) noexcept -> bsl::errc_type
+    hypercall_mv_id_op_version(syscall::bf_syscall_t &mut_sys) noexcept -> bsl::errc_type
     {
         set_reg0(mut_sys, bsl::to_u64(hypercall::MV_ALL_SPECS_SUPPORTED_VAL));
         return vmexit_success_advance_ip_and_run;
@@ -98,7 +98,7 @@ namespace microv
 
         switch (hypercall::mv_hypercall_index(get_reg_hypercall(mut_sys)).get()) {
             case hypercall::MV_ID_OP_VERSION_IDX_VAL.get(): {
-                auto const ret{hypercall_id_op_version(mut_sys)};
+                auto const ret{hypercall_mv_id_op_version(mut_sys)};
                 if (bsl::unlikely(!ret)) {
                     bsl::print<bsl::V>() << bsl::here();
                     return ret;

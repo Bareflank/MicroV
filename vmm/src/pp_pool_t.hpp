@@ -96,7 +96,7 @@ namespace microv
             intrinsic_t const &intrinsic) noexcept
         {
             for (bsl::safe_idx mut_i{}; mut_i < m_pool.size(); ++mut_i) {
-                m_pool.at_if(mut_i)->initialize(gs, tls, mut_sys, intrinsic);
+                m_pool.at_if(mut_i)->initialize(gs, tls, mut_sys, intrinsic, bsl::to_u16(mut_i));
             }
         }
 

@@ -438,68 +438,70 @@ namespace microv
             return m_emulated_cpuid.get_guest(mut_sys, intrinsic);
         }
 
-        // /// <!-- description -->
-        // ///   @brief Translates a guest GLA to a guest GPA using the paging
-        // ///     configuration of the guest stored in CR0, CR3 and CR4.
-        // ///
-        // /// <!-- inputs/outputs -->
-        // ///   @param mut_sys the bf_syscall_t to use
-        // ///   @param mut_pp_pool the pp_pool_t to use
-        // ///   @param gla the GLA to translate to a GPA
-        // ///   @return Returns mv_translation_t containing the results of the
-        // ///     translation.
-        // ///
-        // [[nodiscard]] constexpr auto
-        // gla_to_gpa(
-        //     syscall::bf_syscall_t &mut_sys,
-        //     pp_pool_t &mut_pp_pool,
-        //     bsl::safe_u64 const &gla) const noexcept -> hypercall::mv_translation_t
-        // {
-        //     if (bsl::unlikely(!m_id)) {
-        //         bsl::error() << "vs_t not initialized\n" << bsl::here();
-        //         return {{}, {}, {}, {}, false};
-        //     }
+        /// <!-- description -->
+        ///   @brief Translates a GLA to a GPA using the paging configuration
+        ///     of this vs_t stored in CR0, CR3 and CR4.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param mut_sys the bf_syscall_t to use
+        ///   @param mut_pp_pool the pp_pool_t to use
+        ///   @param gla the GLA to translate to a GPA
+        ///   @return Returns mv_translation_t containing the results of the
+        ///     translation.
+        ///
+        [[nodiscard]] constexpr auto
+        gla_to_gpa(syscall::bf_syscall_t &mut_sys, pp_pool_t &mut_pp_pool, bsl::safe_u64 const &gla)
+            const noexcept -> hypercall::mv_translation_t
+        {
+            auto const vsid{this->id()};
+            bsl::expects(allocated_status_t::allocated == m_allocated);
 
-        //     if (bsl::unlikely(m_allocated == allocated_status_t::zombie)) {
-        //         bsl::error() << "vs "                               // --
-        //                      << bsl::hex(m_id)                       // --
-        //                      << " is a zombie and cannot be used"    // --
-        //                      << bsl::endl                            // --
-        //                      << bsl::here();                         // --
+            auto const cr0{mut_sys.bf_vs_op_read(vsid, syscall::bf_reg_t::bf_reg_t_cr0)};
+            bsl::expects(cr0.is_valid_and_checked());
 
-        //         return {{}, {}, {}, {}, false};
-        //     }
+            if (bsl::unlikely(cr0.is_zero())) {
+                bsl::error() << "gla_to_gpa failed for gla "                // --
+                             << bsl::hex(gla)                               // --
+                             << " because the value of cr0 is invalid: "    // --
+                             << bsl::hex(cr0)                               // --
+                             << bsl::endl                                   // --
+                             << bsl::here();                                // --
 
-        //     if (bsl::unlikely(m_allocated != allocated_status_t::allocated)) {
-        //         bsl::error() << "vs "                                           // --
-        //                      << bsl::hex(m_id)                                   // --
-        //                      << " is has not been created and cannot be used"    // --
-        //                      << bsl::endl                                        // --
-        //                      << bsl::here();                                     // --
+                return {};
+            }
 
-        //         return {{}, {}, {}, {}, false};
-        //     }
+            auto const cr3{mut_sys.bf_vs_op_read(vsid, syscall::bf_reg_t::bf_reg_t_cr3)};
+            bsl::expects(cr3.is_valid_and_checked());
+            bsl::expects(cr3.is_pos());
 
-        //     auto const cr0{mut_sys.bf_vs_op_read(m_id, syscall::bf_reg_t::bf_reg_t_cr0)};
-        //     if (bsl::unlikely(!cr0)) {
-        //         bsl::print<bsl::V>() << bsl::here();
-        //         return {{}, {}, {}, {}, false};
-        //     }
+            if (bsl::unlikely(cr3.is_zero())) {
+                bsl::error() << "gla_to_gpa failed for gla "                // --
+                             << bsl::hex(gla)                               // --
+                             << " because the value of cr3 is invalid: "    // --
+                             << bsl::hex(cr3)                               // --
+                             << bsl::endl                                   // --
+                             << bsl::here();                                // --
 
-        //     auto const cr3{mut_sys.bf_vs_op_read(m_id, syscall::bf_reg_t::bf_reg_t_cr3)};
-        //     if (bsl::unlikely(!cr0)) {
-        //         bsl::print<bsl::V>() << bsl::here();
-        //         return {{}, {}, {}, {}, false};
-        //     }
+                return {};
+            }
 
-        //     auto const cr4{mut_sys.bf_vs_op_read(m_id, syscall::bf_reg_t::bf_reg_t_cr4)};
-        //     if (bsl::unlikely(!cr0)) {
-        //         bsl::print<bsl::V>() << bsl::here();
-        //         return {{}, {}, {}, {}, false};
-        //     }
+            auto const cr4{mut_sys.bf_vs_op_read(vsid, syscall::bf_reg_t::bf_reg_t_cr4)};
+            bsl::expects(cr4.is_valid_and_checked());
+            bsl::expects(cr4.is_pos());
 
-        //     return m_emulated_tlb.gla_to_gpa(mut_sys, mut_pp_pool, gla, cr0, cr3, cr4);
-        // }
+            if (bsl::unlikely(cr4.is_zero())) {
+                bsl::error() << "gla_to_gpa failed for gla "                // --
+                             << bsl::hex(gla)                               // --
+                             << " because the value of cr4 is invalid: "    // --
+                             << bsl::hex(cr4)                               // --
+                             << bsl::endl                                   // --
+                             << bsl::here();                                // --
+
+                return {};
+            }
+
+            return m_emulated_tlb.gla_to_gpa(mut_sys, mut_pp_pool, gla, cr0, cr3, cr4);
+        }
     };
 }
 

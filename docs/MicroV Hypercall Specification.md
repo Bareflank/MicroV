@@ -5,13 +5,12 @@
   - [1.2. Document Revision](#12-document-revision)
   - [1.3. Glossary](#13-glossary)
   - [1.4. Constants, Structures, Enumerations and Bit Fields](#14-constants-structures-enumerations-and-bit-fields)
-    - [1.4.1. Handle Type](#141-handle-type)
+    - [1.4.1. Register Type](#141-register-type)
+      - [1.4.1.1. Intel/AMD](#1411-intelamd)
     - [1.4.2. Register Type](#142-register-type)
-      - [1.4.2.1. Intel/AMD](#1421-intelamd)
-    - [1.4.3. Register Type](#143-register-type)
-    - [1.4.4. Register Descriptor Lists](#144-register-descriptor-lists)
-    - [1.4.5. Memory Descriptor Lists](#145-memory-descriptor-lists)
-    - [1.4.6. Map Flags](#146-map-flags)
+    - [1.4.3. Register Descriptor Lists](#143-register-descriptor-lists)
+    - [1.4.4. Memory Descriptor Lists](#144-memory-descriptor-lists)
+    - [1.4.5. Map Flags](#145-map-flags)
   - [1.5. ID Constants](#15-id-constants)
   - [1.6. Endianness](#16-endianness)
   - [1.7. Physical Processor (PP)](#17-physical-processor-pp)
@@ -45,13 +44,14 @@
     - [2.9.2. mv_id_op_get_capability, OP=0x0, IDX=0x1](#292-mv_id_op_get_capability-op0x0-idx0x1)
     - [2.9.3. mv_id_op_clr_capability, OP=0x0, IDX=0x2](#293-mv_id_op_clr_capability-op0x0-idx0x2)
     - [2.9.4. mv_id_op_set_capability, OP=0x0, IDX=0x3](#294-mv_id_op_set_capability-op0x0-idx0x3)
+    - [2.9.5. mv_id_op_has_capability, OP=0x0, IDX=0x4](#295-mv_id_op_has_capability-op0x0-idx0x4)
   - [2.10. Handle Hypercalls](#210-handle-hypercalls)
     - [2.10.1. mv_handle_op_open_handle, OP=0x1, IDX=0x0](#2101-mv_handle_op_open_handle-op0x1-idx0x0)
     - [2.10.2. mv_handle_op_close_handle, OP=0x1, IDX=0x1](#2102-mv_handle_op_close_handle-op0x1-idx0x1)
   - [2.11. Debug Hypercalls](#211-debug-hypercalls)
     - [2.11.1. mv_debug_op_out, OP=0x2, IDX=0x0](#2111-mv_debug_op_out-op0x2-idx0x0)
   - [2.12. Physical Processor Hypercalls](#212-physical-processor-hypercalls)
-    - [2.12.1. mv_pp_op_get_shared_page_gpa, OP=0x3, IDX=0x0](#2121-mv_pp_op_get_shared_page_gpa-op0x3-idx0x0)
+    - [2.12.1. mv_pp_op_ppid, OP=0x3, IDX=0x0](#2121-mv_pp_op_ppid-op0x3-idx0x0)
     - [2.12.2. mv_pp_op_clr_shared_page_gpa, OP=0x3, IDX=0x1](#2122-mv_pp_op_clr_shared_page_gpa-op0x3-idx0x1)
     - [2.12.3. mv_pp_op_set_shared_page_gpa, OP=0x3, IDX=0x2](#2123-mv_pp_op_set_shared_page_gpa-op0x3-idx0x2)
     - [2.12.4. mv_pp_op_cpuid_get_supported, OP=0x3, IDX=0x3](#2124-mv_pp_op_cpuid_get_supported-op0x3-idx0x3)
@@ -181,13 +181,13 @@ This specification is specific to 64bit Intel and AMD processors conforming to t
 
 ## 1.4. Constants, Structures, Enumerations and Bit Fields
 
-### 1.4.2. Register Type
+### 1.4.1. Register Type
 
 Defines which register a hypercall is requesting.
 
-#### 1.4.2.1. Intel/AMD
+#### 1.4.1.1. Intel/AMD
 
-**enum, uint64_t: mv_reg_t**
+**enum, int32_t: mv_reg_t**
 | Name | Value | Description |
 | :--- | :---- | :---------- |
 | mv_reg_t_rax | 1 | defines the rax register |
@@ -261,11 +261,11 @@ Defines which register a hypercall is requesting.
 | mv_reg_t_cr8 | 69 | defines the cr8 register |
 | mv_reg_t_xcr0 | 70 | defines the xcr0 register (Intel Only) |
 
-### 1.4.3. Register Type
+### 1.4.2. Register Type
 
 Defines different bit sizes for address, operands, etc.
 
-**enum, uint8_t: mv_bit_size_t**
+**enum, int32_t: mv_bit_size_t**
 | Name | Value | Description |
 | :--- | :---- | :---------- |
 | mv_bit_size_t_8 | 0 | indicates 8 bits |
@@ -273,7 +273,7 @@ Defines different bit sizes for address, operands, etc.
 | mv_bit_size_t_32 | 2 | indicates 32 bits |
 | mv_bit_size_t_64 | 3 | indicates 64 bits |
 
-### 1.4.4. Register Descriptor Lists
+### 1.4.3. Register Descriptor Lists
 
 A register descriptor list (RDL) describes a list of registers that either need to be read or written. Each RDL consists of a list of entries with each entry describing one register to read/write. Like all structures used in this ABI, the RDL must be placed inside the shared page. Not all registers require 64 bits for either the register index or the value itself. In all cases, unused bits are considered REVI. The meaning of the register and value fields is ABI dependent. For some ABIs, the reg field refers to a mv_reg_t while in other cases it refers to an architecture specific register like MSRs on x86 which have it's index type. The value field for some ABIs is the value read or the value to be written to the requested register. In other cases, it is a boolean, enum or bit field describing attributes about the register such as whether the register is supported, emulated or permissable. Registers 0-7 in the mv_rdl_t are NOT entries, but instead input/output registers for the ABIs that need additional input and output registers. If any of these registers is not used by a specific ABI, it is REVI.
 
@@ -307,7 +307,7 @@ The format of the RDL as follows:
 | num_entries | uint64_t | 0x58 | 8 bytes | The number of entries in the RDL |
 | entries | mv_rdl_entry_t[MV_RDL_MAX_ENTRIES] | 0x60 | ABI dependent | Each entry in the RDL |
 
-### 1.4.5. Memory Descriptor Lists
+### 1.4.4. Memory Descriptor Lists
 
 A memory descriptor list (MDL) describes a discontiguous region of guest physical memory. Each MDL consists of a list of entries with each entry describing one contiguous region of guest physical memory. By combining multiple entries into a list, software is capable of describing both contiguous and discontiguous regions of guest physical memory. Like all structures used in this ABI, the MDL must be placed inside the shared page. The meaning of the dst and src fields is ABI dependent. Both the dst and src fields could be GVAs, GLAs or GPAs (virtual, linear or physical). The bytes field describes the total number of bytes in the contiguous memory region. For some ABIs, this field must be page aligned. The flags field is also ABI dependent. For example, for map hypercalls, this field refers to map flags. Registers 0-7 in the mv_mdl_t are NOT entries, but instead input/output registers for the ABIs that need additional input and output registers. If any of these registers is not used by a specific ABI, it is REVI.
 
@@ -343,7 +343,7 @@ The format of the MDL as follows:
 | num_entries | uint64_t | 0x58 | 8 bytes | The number of entries in the MDL |
 | entries | mv_mdl_entry_t[MV_MDL_MAX_ENTRIES] | 0x60 | ABI dependent | Each entry in the MDL |
 
-### 1.4.6. Map Flags
+### 1.4.5. Map Flags
 
 The map flags are used by some of the hypercalls as both inputs to a hypercall as well as outputs from a hypercall to provide information about how a memory is or should be mapped.
 
@@ -809,6 +809,20 @@ TBD
 | :---- | :---------- |
 | 0x0000000000000003 | Defines the index for mv_id_op_set_capability |
 
+### 2.9.5. mv_id_op_has_capability, OP=0x0, IDX=0x4
+
+Returns MV_STATUS_SUCCESS if the capability is supported. Returns MV_STATUS_FAILURE_UNSUPPORTED if the capability is not supported.
+
+**Input:**
+| Register Name | Bits | Description |
+| :------------ | :--- | :---------- |
+| REG0 | 63:0 | The capability to query |
+
+**const, uint64_t: MV_ID_OP_HAS_CAPABILITY_IDX_VAL**
+| Value | Description |
+| :---- | :---------- |
+| 0x0000000000000004 | Defines the index for mv_id_op_has_capability |
+
 ## 2.10. Handle Hypercalls
 
 ### 2.10.1. mv_handle_op_open_handle, OP=0x1, IDX=0x0
@@ -871,6 +885,26 @@ This hypercall tells MicroV to output reg0 and reg1 to the console device MicroV
 
 TBD
 
+### 2.12.1. mv_pp_op_ppid, OP=0x3, IDX=0x0
+
+This hypercall returns the ID of the PP that executed this hypercall.
+
+**Input:**
+| Register Name | Bits | Description |
+| :------------ | :--- | :---------- |
+| REG0 | 63:0 | Set to the result of mv_handle_op_open_handle |
+
+**Output:**
+| Register Name | Bits | Description |
+| :------------ | :--- | :---------- |
+| REG0 | 15:0 | The resulting PPID |
+| REG0 | 63:16 | REVI |
+
+**const, uint64_t: MV_PP_OP_PPID_IDX_VAL**
+| Value | Description |
+| :---- | :---------- |
+| 0x0000000000000000 | Defines the index for mv_pp_op_ppid |
+
 ### 2.12.2. mv_pp_op_clr_shared_page_gpa, OP=0x3, IDX=0x1
 
 This hypercall tells MicroV to clear the GPA of the current PP's shared page.
@@ -893,7 +927,7 @@ This hypercall tells MicroV to set the GPA of the current PP's shared page.
 | Register Name | Bits | Description |
 | :------------ | :--- | :---------- |
 | REG0 | 63:0 | Set to the result of mv_handle_op_open_handle |
-| REG1 | 11:0 | REVI |
+| REG1 | 11:0 | REVZ |
 | REG1 | 63:12 | The GPA to set the requested PP's shared page to |
 
 **Output:**
@@ -1020,7 +1054,7 @@ This hypercall tells MicroV to create a VM and return its ID.
 **Output:**
 | Register Name | Bits | Description |
 | :------------ | :--- | :---------- |
-| REG0 | 15:0 | The resulting VMID of the newly created VM |
+| REG0 | 15:0 | The resulting ID of the newly created VM |
 | REG0 | 63:16 | REVI |
 
 **const, uint64_t: MV_VM_OP_CREATE_VM_IDX_VAL**
@@ -1056,7 +1090,7 @@ This hypercall returns the ID of the VM that executed this hypercall.
 **Output:**
 | Register Name | Bits | Description |
 | :------------ | :--- | :---------- |
-| REG0 | 15:0 | The resulting VMID |
+| REG0 | 15:0 | The resulting ID |
 | REG0 | 63:16 | REVI |
 
 **const, uint64_t: MV_VM_OP_VMID_IDX_VAL**
@@ -1111,9 +1145,9 @@ This hypercall is slow and may require a Hypercall Continuation. See Hypercall C
 | Register Name | Bits | Description |
 | :------------ | :--- | :---------- |
 | REG0 | 63:0 | Set to the result of mv_handle_op_open_handle |
-| REG1 | 15:0 | The VMID of the dst VM to map memory to |
+| REG1 | 15:0 | The ID of the dst VM to map memory to |
 | REG1 | 63:16 | REVI |
-| REG2 | 15:0 | The VMID of the src VM to map memory from |
+| REG2 | 15:0 | The ID of the src VM to map memory from |
 | REG2 | 63:16 | REVI |
 
 **const, uint64_t: MV_VM_OP_MMIO_MAP_IDX_VAL**
@@ -1132,7 +1166,7 @@ This hypercall is slow and may require a Hypercall Continuation. See Hypercall C
 | Register Name | Bits | Description |
 | :------------ | :--- | :---------- |
 | REG0 | 63:0 | Set to the result of mv_handle_op_open_handle |
-| REG1 | 15:0 | The VMID of the VM to unmap memory from |
+| REG1 | 15:0 | The ID of the VM to unmap memory from |
 | REG1 | 63:16 | REVI |
 
 **const, uint64_t: MV_VM_OP_MMIO_UNMAP_IDX_VAL**
@@ -1262,13 +1296,13 @@ This hypercall returns the ID of the VM the requested VP is assigned to.
 | Register Name | Bits | Description |
 | :------------ | :--- | :---------- |
 | REG0 | 63:0 | Set to the result of mv_handle_op_open_handle |
-| REG1 | 15:0 | The VPID of the VP to query |
+| REG1 | 15:0 | The ID of the VP to query |
 | REG1 | 63:16 | REVI |
 
 **Output:**
 | Register Name | Bits | Description |
 | :------------ | :--- | :---------- |
-| REG0 | 15:0 | The resulting VMID |
+| REG0 | 15:0 | The resulting ID |
 | REG0 | 63:16 | REVI |
 
 **const, uint64_t: MV_VP_OP_VMID_IDX_VAL**
@@ -1347,13 +1381,13 @@ This hypercall returns the ID of the VM the requested VS is assigned to.
 | Register Name | Bits | Description |
 | :------------ | :--- | :---------- |
 | REG0 | 63:0 | Set to the result of mv_handle_op_open_handle |
-| REG1 | 15:0 | The VSID of the VS to query |
+| REG1 | 15:0 | The ID of the VS to query |
 | REG1 | 63:16 | REVI |
 
 **Output:**
 | Register Name | Bits | Description |
 | :------------ | :--- | :---------- |
-| REG0 | 15:0 | The resulting VMID |
+| REG0 | 15:0 | The resulting ID |
 | REG0 | 63:16 | REVI |
 
 **const, uint64_t: MV_VS_OP_VMID_IDX_VAL**
@@ -1369,13 +1403,13 @@ This hypercall returns the ID of the VP the requested VS is assigned to.
 | Register Name | Bits | Description |
 | :------------ | :--- | :---------- |
 | REG0 | 63:0 | Set to the result of mv_handle_op_open_handle |
-| REG1 | 15:0 | The VSID of the VS to query |
+| REG1 | 15:0 | The ID of the VS to query |
 | REG1 | 63:16 | REVI |
 
 **Output:**
 | Register Name | Bits | Description |
 | :------------ | :--- | :---------- |
-| REG0 | 15:0 | The resulting VPID |
+| REG0 | 15:0 | The resulting ID |
 | REG0 | 63:16 | REVI |
 
 **const, uint64_t: MV_VS_OP_VPID_IDX_VAL**
@@ -1395,7 +1429,7 @@ This hypercall returns the ID of the VS that executed this hypercall.
 **Output:**
 | Register Name | Bits | Description |
 | :------------ | :--- | :---------- |
-| REG0 | 15:0 | The resulting VSID |
+| REG0 | 15:0 | The resulting ID |
 | REG0 | 63:16 | REVI |
 
 **const, uint64_t: MV_VS_OP_VSID_IDX_VAL**
@@ -1405,13 +1439,16 @@ This hypercall returns the ID of the VS that executed this hypercall.
 
 ### 2.15.6. mv_vs_op_gva_to_gla, OP=0x6, IDX=0x5
 
+Reserved
+
+This is reserved but not supported in this version of the MicroV spec.
 This hypercall tells MicroV to translate the provided guest virtual address (GVA) to a guest linear address (GLA). To perform this translation, MicroV will use the current state of CR0, CR4, EFER, the GDT and the segment registers. To perform this translation, software must provide the ID of the VS whose state will be used during translation, the segment register to use, and the the GVA to translate. How the translation occurs depends on whether or not the VS is in 16bit real mode, 32bit protected mode, or 64bit long mode. In 16bit real mode, the segment registers are used for the translation. In 32bit protected mode, the segment registers and the GDT are used for the translation. 64bit long mode is the same as 32bit protected mode with the difference being that certain segments will return an error as they are not supported (e.g., ES and DS). If the translation fails for any reason, the resulting GLA is undefined.
 
 **Input:**
 | Register Name | Bits | Description |
 | :------------ | :--- | :---------- |
 | REG0 | 63:0 | Set to the result of mv_handle_op_open_handle |
-| REG1 | 15:0 | The VSID of the VS to use for the translation |
+| REG1 | 15:0 | The ID of the VS to use for the translation |
 | REG1 | 31:16 | The SSID of the segment to use for the translation |
 | REG1 | 63:32 | REVI |
 | REG2 | 63:0 | The GVA to translate |
@@ -1434,7 +1471,7 @@ This hypercall tells MicroV to translate the provided guest linear address (GLA)
 | Register Name | Bits | Description |
 | :------------ | :--- | :---------- |
 | REG0 | 63:0 | Set to the result of mv_handle_op_open_handle |
-| REG1 | 15:0 | The VSID of the VS to use for the translation |
+| REG1 | 15:0 | The ID of the VS to use for the translation |
 | REG1 | 63:16 | REVI |
 | REG2 | 11:0 | REVZ |
 | REG2 | 63:12 | The GLA to translate |
@@ -1475,20 +1512,20 @@ This hypercall is slow and may require a Hypercall Continuation. See Hypercall C
 | :--- | :--- | :----- | :--- | :---------- |
 | reserved | uint8_t | 0x0 | 4096 bytes | REVI |
 
-**enum, uint64_t: mv_exit_reason_t**
+**enum, int32_t: mv_exit_reason_t**
 | Name | Value | Description |
 | :--- | :---- | :---------- |
-| mv_exit_reason_t_failure | 1 | returned on error  |
-| mv_exit_reason_t_unknown | 2 | an unknown/unsupported VMExit has occurred |
-| mv_exit_reason_t_hlt | 3 | a halt event has occurred |
-| mv_exit_reason_t_io | 4 | defines the rax register |
-| mv_exit_reason_t_mmio | 5 | defines the rax register |
+| mv_exit_reason_t_failure | 0 | returned on error  |
+| mv_exit_reason_t_unknown | 1 | an unknown/unsupported VMExit has occurred |
+| mv_exit_reason_t_hlt | 2 | a halt event has occurred |
+| mv_exit_reason_t_io | 3 | a IO event has occurred |
+| mv_exit_reason_t_mmio | 4 | a MMIO event has occurred |
 
 **Input:**
 | Register Name | Bits | Description |
 | :------------ | :--- | :---------- |
 | REG0 | 63:0 | Set to the result of mv_handle_op_open_handle |
-| REG1 | 15:0 | The VSID of the VS to run |
+| REG1 | 15:0 | The ID of the VS to run |
 | REG1 | 63:16 | REVI |
 
 **Output:**
@@ -1503,7 +1540,7 @@ This hypercall is slow and may require a Hypercall Continuation. See Hypercall C
 
 #### 2.15.9.1. mv_exit_reason_t_failure
 
-If mv_vs_op_run returns an error with an exit reason of mv_exit_reason_t_unknown, mv_exit_failure_t can be used to determine why the error occurred if MV_STATUS_EXIT_FAILURE is returned.
+If mv_vs_op_run returns an error with an exit reason of mv_exit_reason_t_failure, mv_exit_failure_t can be used to determine why the error occurred if MV_STATUS_EXIT_FAILURE is returned.
 
 **struct: mv_exit_failure_t**
 | Name | Type | Offset | Size | Description |
@@ -1527,7 +1564,7 @@ If mv_vs_op_run returns an error with an exit reason of mv_exit_reason_t_unknown
 
 If mv_vs_op_run returns success with an exit reason of mv_exit_reason_t_hlt, it means that the VM has executed a halt event and mv_exit_hlt_t can be used to determine how to handle the event. For example, the VM might have issued a shutdown or reset command. Halt events can also occur when the VM or MicroV encounters a crash. For example, on x86, if a triple fault has occurred, MicroV will return mv_hlt_t_vm_crash. If MicroV itself encounters an error that it cannot recover from, it will return mv_hlt_t_microv_crash.
 
-**enum, uint64_t: mv_hlt_t**
+**enum, int32_t: mv_hlt_t**
 | Name | Value | Description |
 | :--- | :---- | :---------- |
 | mv_hlt_t_shutdown | 0 | shutdown event |
@@ -1614,9 +1651,9 @@ This hypercall tells MicroV to return the value of a requested register. Not all
 | Register Name | Bits | Description |
 | :------------ | :--- | :---------- |
 | REG0 | 63:0 | Set to the result of mv_handle_op_open_handle |
-| REG1 | 15:0 | The VSID of the VS to query |
+| REG1 | 15:0 | The ID of the VS to query |
 | REG1 | 63:16 | REVI |
-| REG2 | 63:0 | An mv_reg_t describing the register to read |
+| REG2 | 63:0 | An mv_reg_t describing the register to get |
 
 **Output:**
 | Register Name | Bits | Description |
@@ -1636,9 +1673,9 @@ This hypercall tells MicroV to set the value of a requested register. Not all re
 | Register Name | Bits | Description |
 | :------------ | :--- | :---------- |
 | REG0 | 63:0 | Set to the result of mv_handle_op_open_handle |
-| REG1 | 15:0 | The VSID of the VS to set |
+| REG1 | 15:0 | The ID of the VS to set |
 | REG1 | 63:16 | REVI |
-| REG2 | 63:0 | An mv_reg_t describing the register to read |
+| REG2 | 63:0 | An mv_reg_t describing the register to set |
 | REG3 | 63:0 | The value to write to the requested register |
 
 **const, uint64_t: MV_VS_OP_REG_SET_IDX_VAL**
@@ -1654,7 +1691,7 @@ This hypercall tells MicroV to return the values of multiple requested registers
 | Register Name | Bits | Description |
 | :------------ | :--- | :---------- |
 | REG0 | 63:0 | Set to the result of mv_handle_op_open_handle |
-| REG1 | 15:0 | The VSID of the VS to query |
+| REG1 | 15:0 | The ID of the VS to query |
 | REG1 | 63:16 | REVI |
 
 **const, uint64_t: MV_VS_OP_REG_GET_LIST_IDX_VAL**
@@ -1670,7 +1707,7 @@ This hypercall tells MicroV to set the values of multiple requested registers us
 | Register Name | Bits | Description |
 | :------------ | :--- | :---------- |
 | REG0 | 63:0 | Set to the result of mv_handle_op_open_handle |
-| REG1 | 15:0 | The VSID of the VS to set |
+| REG1 | 15:0 | The ID of the VS to set |
 | REG1 | 63:16 | REVI |
 
 **const, uint64_t: MV_VS_OP_REG_SET_LIST_IDX_VAL**
@@ -1686,7 +1723,7 @@ This hypercall tells MicroV to return the value of a requested MSR.
 | Register Name | Bits | Description |
 | :------------ | :--- | :---------- |
 | REG0 | 63:0 | Set to the result of mv_handle_op_open_handle |
-| REG1 | 15:0 | The VSID of the VS to query |
+| REG1 | 15:0 | The ID of the VS to query |
 | REG1 | 63:16 | REVI |
 | REG2 | 31:0 | The index of the MSR to get |
 | REG2 | 63:32 | REVI |
@@ -1709,9 +1746,10 @@ This hypercall tells MicroV to set the value of a requested MSR.
 | Register Name | Bits | Description |
 | :------------ | :--- | :---------- |
 | REG0 | 63:0 | Set to the result of mv_handle_op_open_handle |
-| REG1 | 15:0 | The VSID of the VS to set |
+| REG1 | 15:0 | The ID of the VS to set |
 | REG1 | 63:16 | REVI |
-| REG2 | 63:0 | The index of the MSR to set |
+| REG2 | 31:0 | The index of the MSR to set |
+| REG2 | 63:32 | REVI |
 | REG3 | 63:0 | The value to write to the requested MSR |
 
 **const, uint64_t: MV_VS_OP_MSR_SET_IDX_VAL**
@@ -1727,7 +1765,7 @@ This hypercall tells MicroV to return the values of multiple requested MSRs usin
 | Register Name | Bits | Description |
 | :------------ | :--- | :---------- |
 | REG0 | 63:0 | Set to the result of mv_handle_op_open_handle |
-| REG1 | 15:0 | The VSID of the VS to query |
+| REG1 | 15:0 | The ID of the VS to query |
 | REG1 | 63:16 | REVI |
 
 **const, uint64_t: MV_VS_OP_MSR_GET_LIST_IDX_VAL**
@@ -1743,7 +1781,7 @@ This hypercall tells MicroV to set the values of multiple requested MSRs using a
 | Register Name | Bits | Description |
 | :------------ | :--- | :---------- |
 | REG0 | 63:0 | Set to the result of mv_handle_op_open_handle |
-| REG1 | 15:0 | The VSID of the VS to set |
+| REG1 | 15:0 | The ID of the VS to set |
 | REG1 | 63:16 | REVI |
 
 **const, uint64_t: MV_VS_OP_MSR_SET_LIST_IDX_VAL**
