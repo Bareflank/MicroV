@@ -828,21 +828,16 @@ dispatch_vcpu_kvm_get_one_reg(struct kvm_one_reg *const ioctl_args)
 
 static long
 dispatch_vcpu_kvm_get_regs(
-    struct shim_vcpu_t const *const pmut_vcpu,
-    struct kvm_regs *const pmut_ioctl_args)
+    struct shim_vcpu_t const *const vcpu, struct kvm_regs *const user_args)
 {
     struct kvm_regs mut_args;
 
-    if (handle_vcpu_kvm_get_regs(pmut_vcpu, &mut_args)) {
+    if (handle_vcpu_kvm_get_regs(vcpu, &mut_args)) {
         bferror("handle_vcpu_kvm_get_regs failed");
         return -EINVAL;
     }
 
-    platform_copy_to_user(pmut_ioctl_args, &mut_args, sizeof(struct kvm_regs));
-    if (NULL == pmut_ioctl_args) {
-        bferror("platform_copy_to_user failed");
-        return -EINVAL;
-    }
+    platform_copy_to_user(user_args, &mut_args, sizeof(struct kvm_regs));
 
     return (long)1;
 }

@@ -29,7 +29,10 @@
 
 #include <stdint.h>
 
-#pragma pack(push, 1)
+#ifdef __cplusplus
+extern "C"
+{
+#endif
 
 /** @brief index for RAX register */
 #define RAX_IDX ((uint64_t)0)
@@ -68,6 +71,11 @@
 /** @brief index for RFLAGS register */
 #define RFLAGS_IDX ((uint64_t)17)
 
-#pragma pack(pop)
+/** @brief stores the total number of entries for rdl */
+#define TOTAL_NUM_ENTRIES ((uint64_t)18)
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
