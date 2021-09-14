@@ -41,12 +41,12 @@ extern "C"
      *   @brief Handles the execution of kvm_get_regs.
      *
      * <!-- inputs/outputs -->
-     *   @param vcpu to get vsid to pass to hypercall
+     *   @param pmut_vcpu to get vsid to pass to hypercall
      *   @param pmut_args the arguments provided by userspace
      *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
      */
     NODISCARD int64_t handle_vcpu_kvm_get_regs(
-        struct shim_vcpu_t const *const vcpu, struct kvm_regs *const pmut_args) NOEXCEPT;
+        struct shim_vcpu_t *const pmut_vcpu, struct kvm_regs *const pmut_args) NOEXCEPT;
 
 #ifdef __cplusplus
 }

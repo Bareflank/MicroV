@@ -42,13 +42,14 @@
  *   @brief Handles the execution of kvm_get_regs.
  *
  * <!-- inputs/outputs -->
- *   @param pmut_cst_vcpu arguments received from private data	
+ *   @param pmut_vcpu arguments received from private data	
  *   @param pmut_args the arguments provided by userspace
  *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
  */
 NODISCARD int64_t
 handle_vcpu_kvm_get_regs(
-    struct shim_vcpu_t const *const pmut_cst_vcpu, struct kvm_regs *const pmut_args) NOEXCEPT
+    struct shim_vcpu_t *const pmut_vcpu, struct kvm_regs *const pmut_args) NOEXCEPT
+
 {
 
     platform_expects(MV_INVALID_HANDLE != g_mut_hndl);
@@ -76,7 +77,7 @@ handle_vcpu_kvm_get_regs(
     pmut_rdl->entries[RFLAGS_IDX].reg = (uint64_t)mv_reg_t_rflags;
     pmut_rdl->num_entries = TOTAL_NUM_ENTRIES;
 
-    if (mv_vs_op_reg_get_list(g_mut_hndl, pmut_cst_vcpu->vsid)) {
+    if (mv_vs_op_reg_get_list(g_mut_hndl, pmut_vcpu->vsid)) {
         bferror("ms_vs_op_reg_get_list failed");
         return SHIM_FAILURE;
     }
