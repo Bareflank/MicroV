@@ -44,8 +44,42 @@ extern "C"
      */
     struct kvm_regs
     {
-        /** @brief replace me with contents from KVM API */
-        int32_t dummy;
+        /** @brief rax stores register value */
+        uint64_t rax;
+        /** @brief rbx stores register value */
+        uint64_t rbx;
+        /** @brief rcx stores register value */
+        uint64_t rcx;
+        /** @brief rdx stores register value */
+        uint64_t rdx;
+        /** @brief rsi stores register value */
+        uint64_t rsi;
+        /** @brief rdi stores register value */
+        uint64_t rdi;
+        /** @brief rsp stores register value */
+        uint64_t rsp;
+        /** @brief rbp stores register value */
+        uint64_t rbp;
+        /** @brief r8 stores register value */
+        uint64_t r8;
+        /** @brief r9 stores register value */
+        uint64_t r9;
+        /** @brief r10 stores register value */
+        uint64_t r10;
+        /** @brief r11 stores register value */
+        uint64_t r11;
+        /** @brief r12 stores register value */
+        uint64_t r12;
+        /** @brief r13 stores register value */
+        uint64_t r13;
+        /** @brief r14 stores register value */
+        uint64_t r14;
+        /** @brief r15 stores register value */
+        uint64_t r15;
+        /** @brief rip stores register value */
+        uint64_t rip;
+        /** @brief rflags stores register value */
+        uint64_t rflags;
     };
 
 #pragma pack(pop)

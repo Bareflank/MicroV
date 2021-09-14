@@ -72,6 +72,8 @@ namespace shim
         constinit mv_status_t g_mut_mv_vs_op_reg_get_list{};    // NOLINT
         constinit mv_status_t g_mut_mv_vs_op_reg_set_list{};    // NOLINT
 
+        constinit bsl::uint64 g_mut_rdl_entry_val{};    //NOLINT
+
         extern bsl::int32 g_mut_platform_alloc_fails;
         extern bsl::uint32 g_mut_platform_num_online_cpus;
     }
