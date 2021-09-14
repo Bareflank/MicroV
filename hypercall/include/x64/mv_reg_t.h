@@ -131,12 +131,16 @@ enum mv_reg_t
         /** @brief defines the gs_base register */
         mv_reg_t_gs_base = 42,
         /** @brief defines the ldtr_selector register */
+	// NOLINTNEXTLINE(bsl-identifier-typographically-unambiguous)
         mv_reg_t_ldtr_selector = 43,
         /** @brief defines the ldtr_attrib register */
+	// NOLINTNEXTLINE(bsl-identifier-typographically-unambiguous)
         mv_reg_t_ldtr_attrib = 44,
         /** @brief defines the ldtr_limit register */
+	// NOLINTNEXTLINE(bsl-identifier-typographically-unambiguous)
         mv_reg_t_ldtr_limit = 45,
         /** @brief defines the ldtr_base register */
+	// NOLINTNEXTLINE(bsl-identifier-typographically-unambiguous)
         mv_reg_t_ldtr_base = 46,
         /** @brief defines the tr_selector register */
         mv_reg_t_tr_selector = 47,
@@ -155,10 +159,13 @@ enum mv_reg_t
         /** @brief defines the gdtr_base register */
         mv_reg_t_gdtr_base = 54,
         /** @brief defines the idtr_selector register */
+	// NOLINTNEXTLINE(bsl-identifier-typographically-unambiguous)
         mv_reg_t_idtr_selector = 55,
         /** @brief defines the idtr_attrib register */
+	// NOLINTNEXTLINE(bsl-identifier-typographically-unambiguous)
         mv_reg_t_idtr_attrib = 56,
         /** @brief defines the idtr_limit register */
+	// NOLINTNEXTLINE(bsl-identifier-typographically-unambiguous)
         mv_reg_t_idtr_limit = 57,
         /** @brief defines the idtr_base register */
         mv_reg_t_idtr_base = 58,
