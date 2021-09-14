@@ -28,6 +28,7 @@
 #define HANDLE_VCPU_KVM_GET_REGS_H
 
 #include <kvm_regs.h>
+#include <shim_vcpu_t.h>
 #include <types.h>
 
 #ifdef __cplusplus
@@ -43,7 +44,8 @@ extern "C"
      *   @param pmut_ioctl_args the arguments provided by userspace
      *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
      */
-    NODISCARD int64_t handle_vcpu_kvm_get_regs(struct kvm_regs *const pmut_ioctl_args) NOEXCEPT;
+    NODISCARD int64_t handle_vcpu_kvm_get_regs(
+        struct shim_vcpu_t const *const vcpu, struct kvm_regs *const pmut_ioctl_args) NOEXCEPT;
 
 #ifdef __cplusplus
 }

@@ -131,6 +131,7 @@ ifneq ($(KERNELRELEASE),)
 	EXTRA_CFLAGS += -I$(src)/include/platform_interface
 	EXTRA_CFLAGS += -I$(src)/../include
 	EXTRA_CFLAGS += -I$(src)/../../hypercall/include
+	EXTRA_CFLAGS += -I$(src)/../../hypercall/include/x64
 	EXTRA_CFLAGS += -I$(src)/../../hypercall/src
 	EXTRA_CFLAGS += -I$(CMAKE_BINARY_DIR)/include
 
