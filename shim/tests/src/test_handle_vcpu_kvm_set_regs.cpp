@@ -25,6 +25,7 @@
 #include "../../include/handle_vcpu_kvm_set_regs.h"
 
 #include <helpers.hpp>
+#include <kvm_regs.h>
 
 #include <bsl/convert.hpp>
 #include <bsl/safe_integral.hpp>
