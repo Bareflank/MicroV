@@ -59,7 +59,7 @@ namespace microv
     ///     and friends otherwise
     ///
     [[nodiscard]] constexpr auto
-    hypercall_vs_op_create_vs(
+    hypercall_mv_vs_op_create_vs(
         gs_t const &gs,
         tls_t const &tls,
         syscall::bf_syscall_t &mut_sys,
@@ -67,7 +67,7 @@ namespace microv
         vp_pool_t const &vp_pool,
         vs_pool_t &mut_vs_pool) noexcept -> bsl::errc_type
     {
-        auto const vpid{get_allocated_vpid(get_reg1(mut_sys), vp_pool)};
+        auto const vpid{get_allocated_vpid(mut_sys, get_reg1(mut_sys), vp_pool)};
         if (bsl::unlikely(vpid.is_invalid())) {
             bsl::print<bsl::V>() << bsl::here();
             set_reg_return(mut_sys, hypercall::MV_STATUS_INVALID_INPUT_REG1);
@@ -102,14 +102,14 @@ namespace microv
     ///     and friends otherwise
     ///
     [[nodiscard]] constexpr auto
-    hypercall_vs_op_destroy_vs(
+    hypercall_mv_vs_op_destroy_vs(
         gs_t const &gs,
         tls_t const &tls,
         syscall::bf_syscall_t &mut_sys,
         intrinsic_t const &intrinsic,
         vs_pool_t &mut_vs_pool) noexcept -> bsl::errc_type
     {
-        auto const vsid{get_allocated_vsid(get_reg1(mut_sys), mut_vs_pool)};
+        auto const vsid{get_allocated_vsid(mut_sys, get_reg1(mut_sys), mut_vs_pool)};
         if (bsl::unlikely(vsid.is_invalid())) {
             bsl::print<bsl::V>() << bsl::here();
             set_reg_return(mut_sys, hypercall::MV_STATUS_INVALID_INPUT_REG1);
@@ -127,70 +127,266 @@ namespace microv
         return vmexit_success_advance_ip_and_run;
     }
 
-    // /// <!-- description -->
-    // ///   @brief Implements the mv_vs_op_gla_to_gpa hypercall
-    // ///
-    // /// <!-- inputs/outputs -->
-    // ///   @param mut_sys the bf_syscall_t to use
-    // ///   @param mut_pp_pool the pp_pool_t to use
-    // ///   @param vs_pool the vs_pool_t to use
-    // ///   @return Returns bsl::errc_success on success, bsl::errc_failure
-    // ///     and friends otherwise
-    // ///
-    // [[nodiscard]] constexpr auto
-    // hypercall_vs_op_gla_to_gpa(
-    //     syscall::bf_syscall_t &mut_sys, pp_pool_t &mut_pp_pool, vs_pool_t const &vs_pool) noexcept
-    //     -> bsl::errc_type
-    // {
-    //     auto const vsid{get_vsid(get_reg1(mut_sys))};
-    //     if (bsl::unlikely(!vsid)) {
-    //         bsl::print<bsl::V>() << bsl::here();
-    //         set_reg_return(mut_sys, hypercall::MV_STATUS_INVALID_INPUT_REG1);
-    //         return vmexit_failure_advance_ip_and_run;
-    //     }
+    /// <!-- description -->
+    ///   @brief Implements the mv_vs_op_vmid hypercall
+    ///
+    /// <!-- inputs/outputs -->
+    ///   @param mut_sys the bf_syscall_t to use
+    ///   @param mut_vs_pool the vs_pool_t to use
+    ///   @return Returns bsl::errc_success on success, bsl::errc_failure
+    ///     and friends otherwise
+    ///
+    [[nodiscard]] constexpr auto
+    hypercall_mv_vs_op_vmid(syscall::bf_syscall_t &mut_sys, vs_pool_t &mut_vs_pool) noexcept
+        -> bsl::errc_type
+    {
+        auto const vsid{get_allocated_vsid(mut_sys, get_reg1(mut_sys), mut_vs_pool)};
+        if (bsl::unlikely(vsid.is_invalid())) {
+            bsl::print<bsl::V>() << bsl::here();
+            set_reg_return(mut_sys, hypercall::MV_STATUS_INVALID_INPUT_REG1);
+            return vmexit_failure_advance_ip_and_run;
+        }
 
-    //     auto const gla{get_reg2(mut_sys)};
-    //     if (bsl::unlikely(!is_valid_gla(gla))) {
-    //         bsl::print<bsl::V>() << bsl::here();
-    //         set_reg_return(mut_sys, hypercall::MV_STATUS_INVALID_INPUT_REG2);
-    //         return vmexit_failure_advance_ip_and_run;
-    //     }
+        auto const assigned_vmid{mut_vs_pool.assigned_vm(vsid)};
+        if (bsl::unlikely(assigned_vmid.is_invalid())) {
+            bsl::print<bsl::V>() << bsl::here();
+            set_reg_return(mut_sys, hypercall::MV_STATUS_FAILURE_UNKNOWN);
+            return vmexit_failure_advance_ip_and_run;
+        }
 
-    //     auto const translation{vs_pool.gla_to_gpa(mut_sys, mut_pp_pool, gla, vsid)};
-    //     if (bsl::unlikely(!translation.is_valid)) {
-    //         bsl::print<bsl::V>() << bsl::here();
-    //         set_reg_return(mut_sys, hypercall::MV_STATUS_FAILURE_UNKNOWN);
-    //         return vmexit_failure_advance_ip_and_run;
-    //     }
+        set_reg0(mut_sys, bsl::merge_umx_with_u16(get_reg0(mut_sys), assigned_vmid));
+        return vmexit_success_advance_ip_and_run;
+    }
 
-    //     set_reg0(mut_sys, translation.paddr | translation.flags);
-    //     return vmexit_success_advance_ip_and_run;
-    // }
+    /// <!-- description -->
+    ///   @brief Implements the mv_vs_op_vpid hypercall
+    ///
+    /// <!-- inputs/outputs -->
+    ///   @param mut_sys the bf_syscall_t to use
+    ///   @param mut_vs_pool the vs_pool_t to use
+    ///   @return Returns bsl::errc_success on success, bsl::errc_failure
+    ///     and friends otherwise
+    ///
+    [[nodiscard]] constexpr auto
+    hypercall_mv_vs_op_vpid(syscall::bf_syscall_t &mut_sys, vs_pool_t &mut_vs_pool) noexcept
+        -> bsl::errc_type
+    {
+        auto const vsid{get_allocated_vsid(mut_sys, get_reg1(mut_sys), mut_vs_pool)};
+        if (bsl::unlikely(vsid.is_invalid())) {
+            bsl::print<bsl::V>() << bsl::here();
+            set_reg_return(mut_sys, hypercall::MV_STATUS_INVALID_INPUT_REG1);
+            return vmexit_failure_advance_ip_and_run;
+        }
 
-    // /// <!-- description -->
-    // ///   @brief Implements the mv_vs_op_gva_to_gla hypercall
-    // ///
-    // /// <!-- inputs/outputs -->
-    // ///   @param mut_sys the bf_syscall_t to use
-    // ///   @param mut_pp_pool the pp_pool_t to use
-    // ///   @param vs_pool the vs_pool_t to use
-    // ///   @return Returns bsl::errc_success on success, bsl::errc_failure
-    // ///     and friends otherwise
-    // ///
-    // [[nodiscard]] constexpr auto
-    // hypercall_vs_op_gva_to_gla(
-    //     syscall::bf_syscall_t &mut_sys, pp_pool_t &mut_pp_pool, vs_pool_t const &vs_pool) noexcept
-    //     -> bsl::errc_type
-    // {
-    //     bsl::discard(mut_sys);
-    //     bsl::discard(mut_pp_pool);
-    //     bsl::discard(vs_pool);
+        auto const assigned_vpid{mut_vs_pool.assigned_vp(vsid)};
+        if (bsl::unlikely(assigned_vpid.is_invalid())) {
+            bsl::print<bsl::V>() << bsl::here();
+            set_reg_return(mut_sys, hypercall::MV_STATUS_FAILURE_UNKNOWN);
+            return vmexit_failure_advance_ip_and_run;
+        }
 
-    //     bsl::error() << "mv_vs_op_gva_to_gla is reserved and not supported\n" << bsl::here();
+        set_reg0(mut_sys, bsl::merge_umx_with_u16(get_reg0(mut_sys), assigned_vpid));
+        return vmexit_success_advance_ip_and_run;
+    }
 
-    //     set_reg_return(mut_sys, hypercall::MV_STATUS_FAILURE_UNSUPPORTED);
-    //     return vmexit_failure_advance_ip_and_run;
-    // }
+    /// <!-- description -->
+    ///   @brief Implements the mv_vs_op_vsid hypercall
+    ///
+    /// <!-- inputs/outputs -->
+    ///   @param mut_sys the bf_syscall_t to use
+    ///   @return Returns bsl::errc_success on success, bsl::errc_failure
+    ///     and friends otherwise
+    ///
+    [[nodiscard]] constexpr auto
+    hypercall_mv_vs_op_vsid(syscall::bf_syscall_t &mut_sys) noexcept -> bsl::errc_type
+    {
+        set_reg0(mut_sys, bsl::merge_umx_with_u16(get_reg0(mut_sys), mut_sys.bf_tls_vsid()));
+        return vmexit_success_advance_ip_and_run;
+    }
+
+    /// <!-- description -->
+    ///   @brief Implements the mv_vs_op_gla_to_gpa hypercall
+    ///
+    /// <!-- inputs/outputs -->
+    ///   @param mut_sys the bf_syscall_t to use
+    ///   @param mut_pp_pool the pp_pool_t to use
+    ///   @param vs_pool the vs_pool_t to use
+    ///   @return Returns bsl::errc_success on success, bsl::errc_failure
+    ///     and friends otherwise
+    ///
+    [[nodiscard]] constexpr auto
+    hypercall_mv_vs_op_gla_to_gpa(
+        syscall::bf_syscall_t &mut_sys, pp_pool_t &mut_pp_pool, vs_pool_t const &vs_pool) noexcept
+        -> bsl::errc_type
+    {
+        auto const vsid{get_allocated_vsid(mut_sys, get_reg1(mut_sys), vs_pool)};
+        if (bsl::unlikely(vsid.is_invalid())) {
+            bsl::print<bsl::V>() << bsl::here();
+            set_reg_return(mut_sys, hypercall::MV_STATUS_INVALID_INPUT_REG1);
+            return vmexit_failure_advance_ip_and_run;
+        }
+
+        auto const gla{get_gla(get_reg2(mut_sys))};
+        if (bsl::unlikely(gla.is_invalid())) {
+            bsl::print<bsl::V>() << bsl::here();
+            set_reg_return(mut_sys, hypercall::MV_STATUS_INVALID_INPUT_REG2);
+            return vmexit_failure_advance_ip_and_run;
+        }
+
+        auto const translation{vs_pool.gla_to_gpa(mut_sys, mut_pp_pool, gla, vsid)};
+        if (bsl::unlikely(!translation.is_valid)) {
+            bsl::print<bsl::V>() << bsl::here();
+            set_reg_return(mut_sys, hypercall::MV_STATUS_FAILURE_UNKNOWN);
+            return vmexit_failure_advance_ip_and_run;
+        }
+
+        set_reg0(mut_sys, translation.paddr | translation.flags);
+        return vmexit_success_advance_ip_and_run;
+    }
+
+    /// <!-- description -->
+    ///   @brief Implements the mv_vs_op_run hypercall
+    ///
+    /// <!-- inputs/outputs -->
+    ///   @param mut_sys the bf_syscall_t to use
+    ///   @return Returns bsl::errc_success on success, bsl::errc_failure
+    ///     and friends otherwise
+    ///
+    [[nodiscard]] constexpr auto
+    hypercall_mv_vs_op_run(syscall::bf_syscall_t &mut_sys) noexcept -> bsl::errc_type
+    {
+        bsl::error() << "mv_vs_op_run not currently implemented\n";
+        set_reg_return(mut_sys, hypercall::MV_STATUS_FAILURE_UNKNOWN);
+        return vmexit_failure_advance_ip_and_run;
+    }
+
+    /// <!-- description -->
+    ///   @brief Implements the mv_vs_op_reg_get hypercall
+    ///
+    /// <!-- inputs/outputs -->
+    ///   @param mut_sys the bf_syscall_t to use
+    ///   @return Returns bsl::errc_success on success, bsl::errc_failure
+    ///     and friends otherwise
+    ///
+    [[nodiscard]] constexpr auto
+    hypercall_mv_vs_op_reg_get(syscall::bf_syscall_t &mut_sys) noexcept -> bsl::errc_type
+    {
+        bsl::error() << "mv_vs_op_reg_get not currently implemented\n";
+        set_reg_return(mut_sys, hypercall::MV_STATUS_FAILURE_UNKNOWN);
+        return vmexit_failure_advance_ip_and_run;
+    }
+
+    /// <!-- description -->
+    ///   @brief Implements the mv_vs_op_reg_set hypercall
+    ///
+    /// <!-- inputs/outputs -->
+    ///   @param mut_sys the bf_syscall_t to use
+    ///   @return Returns bsl::errc_success on success, bsl::errc_failure
+    ///     and friends otherwise
+    ///
+    [[nodiscard]] constexpr auto
+    hypercall_mv_vs_op_reg_set(syscall::bf_syscall_t &mut_sys) noexcept -> bsl::errc_type
+    {
+        bsl::error() << "mv_vs_op_reg_set not currently implemented\n";
+        set_reg_return(mut_sys, hypercall::MV_STATUS_FAILURE_UNKNOWN);
+        return vmexit_failure_advance_ip_and_run;
+    }
+
+    /// <!-- description -->
+    ///   @brief Implements the mv_vs_op_reg_get_list hypercall
+    ///
+    /// <!-- inputs/outputs -->
+    ///   @param mut_sys the bf_syscall_t to use
+    ///   @return Returns bsl::errc_success on success, bsl::errc_failure
+    ///     and friends otherwise
+    ///
+    [[nodiscard]] constexpr auto
+    hypercall_mv_vs_op_reg_get_list(syscall::bf_syscall_t &mut_sys) noexcept -> bsl::errc_type
+    {
+        bsl::error() << "mv_vs_op_reg_get_list not currently implemented\n";
+        set_reg_return(mut_sys, hypercall::MV_STATUS_FAILURE_UNKNOWN);
+        return vmexit_failure_advance_ip_and_run;
+    }
+
+    /// <!-- description -->
+    ///   @brief Implements the mv_vs_op_reg_set_list hypercall
+    ///
+    /// <!-- inputs/outputs -->
+    ///   @param mut_sys the bf_syscall_t to use
+    ///   @return Returns bsl::errc_success on success, bsl::errc_failure
+    ///     and friends otherwise
+    ///
+    [[nodiscard]] constexpr auto
+    hypercall_mv_vs_op_reg_set_list(syscall::bf_syscall_t &mut_sys) noexcept -> bsl::errc_type
+    {
+        bsl::error() << "mv_vs_op_reg_set_list not currently implemented\n";
+        set_reg_return(mut_sys, hypercall::MV_STATUS_FAILURE_UNKNOWN);
+        return vmexit_failure_advance_ip_and_run;
+    }
+
+    /// <!-- description -->
+    ///   @brief Implements the mv_vs_op_msr_get hypercall
+    ///
+    /// <!-- inputs/outputs -->
+    ///   @param mut_sys the bf_syscall_t to use
+    ///   @return Returns bsl::errc_success on success, bsl::errc_failure
+    ///     and friends otherwise
+    ///
+    [[nodiscard]] constexpr auto
+    hypercall_mv_vs_op_msr_get(syscall::bf_syscall_t &mut_sys) noexcept -> bsl::errc_type
+    {
+        bsl::error() << "mv_vs_op_msr_get not currently implemented\n";
+        set_reg_return(mut_sys, hypercall::MV_STATUS_FAILURE_UNKNOWN);
+        return vmexit_failure_advance_ip_and_run;
+    }
+
+    /// <!-- description -->
+    ///   @brief Implements the mv_vs_op_msr_set hypercall
+    ///
+    /// <!-- inputs/outputs -->
+    ///   @param mut_sys the bf_syscall_t to use
+    ///   @return Returns bsl::errc_success on success, bsl::errc_failure
+    ///     and friends otherwise
+    ///
+    [[nodiscard]] constexpr auto
+    hypercall_mv_vs_op_msr_set(syscall::bf_syscall_t &mut_sys) noexcept -> bsl::errc_type
+    {
+        bsl::error() << "mv_vs_op_msr_set not currently implemented\n";
+        set_reg_return(mut_sys, hypercall::MV_STATUS_FAILURE_UNKNOWN);
+        return vmexit_failure_advance_ip_and_run;
+    }
+
+    /// <!-- description -->
+    ///   @brief Implements the mv_vs_op_msr_get_list hypercall
+    ///
+    /// <!-- inputs/outputs -->
+    ///   @param mut_sys the bf_syscall_t to use
+    ///   @return Returns bsl::errc_success on success, bsl::errc_failure
+    ///     and friends otherwise
+    ///
+    [[nodiscard]] constexpr auto
+    hypercall_mv_vs_op_msr_get_list(syscall::bf_syscall_t &mut_sys) noexcept -> bsl::errc_type
+    {
+        bsl::error() << "mv_vs_op_msr_get_list not currently implemented\n";
+        set_reg_return(mut_sys, hypercall::MV_STATUS_FAILURE_UNKNOWN);
+        return vmexit_failure_advance_ip_and_run;
+    }
+
+    /// <!-- description -->
+    ///   @brief Implements the mv_vs_op_msr_set_list hypercall
+    ///
+    /// <!-- inputs/outputs -->
+    ///   @param mut_sys the bf_syscall_t to use
+    ///   @return Returns bsl::errc_success on success, bsl::errc_failure
+    ///     and friends otherwise
+    ///
+    [[nodiscard]] constexpr auto
+    hypercall_mv_vs_op_msr_set_list(syscall::bf_syscall_t &mut_sys) noexcept -> bsl::errc_type
+    {
+        bsl::error() << "mv_vs_op_msr_set_list not currently implemented\n";
+        set_reg_return(mut_sys, hypercall::MV_STATUS_FAILURE_UNKNOWN);
+        return vmexit_failure_advance_ip_and_run;
+    }
 
     /// <!-- description -->
     ///   @brief Dispatches virtual processor state VMCalls.
@@ -220,7 +416,6 @@ namespace microv
         vs_pool_t &mut_vs_pool,
         bsl::safe_u16 const &vsid) noexcept -> bsl::errc_type
     {
-        bsl::discard(mut_pp_pool);
         bsl::discard(vm_pool);
         bsl::discard(vsid);
 
@@ -238,8 +433,8 @@ namespace microv
 
         switch (hypercall::mv_hypercall_index(get_reg_hypercall(mut_sys)).get()) {
             case hypercall::MV_VS_OP_CREATE_VS_IDX_VAL.get(): {
-                auto const ret{
-                    hypercall_vs_op_create_vs(gs, tls, mut_sys, intrinsic, vp_pool, mut_vs_pool)};
+                auto const ret{hypercall_mv_vs_op_create_vs(
+                    gs, tls, mut_sys, intrinsic, vp_pool, mut_vs_pool)};
                 if (bsl::unlikely(!ret)) {
                     bsl::print<bsl::V>() << bsl::here();
                     return ret;
@@ -250,7 +445,137 @@ namespace microv
 
             case hypercall::MV_VS_OP_DESTROY_VS_IDX_VAL.get(): {
                 auto const ret{
-                    hypercall_vs_op_destroy_vs(gs, tls, mut_sys, intrinsic, mut_vs_pool)};
+                    hypercall_mv_vs_op_destroy_vs(gs, tls, mut_sys, intrinsic, mut_vs_pool)};
+                if (bsl::unlikely(!ret)) {
+                    bsl::print<bsl::V>() << bsl::here();
+                    return ret;
+                }
+
+                return ret;
+            }
+
+            case hypercall::MV_VS_OP_VMID_IDX_VAL.get(): {
+                auto const ret{hypercall_mv_vs_op_vmid(mut_sys, mut_vs_pool)};
+                if (bsl::unlikely(!ret)) {
+                    bsl::print<bsl::V>() << bsl::here();
+                    return ret;
+                }
+
+                return ret;
+            }
+
+            case hypercall::MV_VS_OP_VPID_IDX_VAL.get(): {
+                auto const ret{hypercall_mv_vs_op_vpid(mut_sys, mut_vs_pool)};
+                if (bsl::unlikely(!ret)) {
+                    bsl::print<bsl::V>() << bsl::here();
+                    return ret;
+                }
+
+                return ret;
+            }
+
+            case hypercall::MV_VS_OP_VSID_IDX_VAL.get(): {
+                auto const ret{hypercall_mv_vs_op_vsid(mut_sys)};
+                if (bsl::unlikely(!ret)) {
+                    bsl::print<bsl::V>() << bsl::here();
+                    return ret;
+                }
+
+                return ret;
+            }
+
+            case hypercall::MV_VS_OP_GLA_TO_GPA_IDX_VAL.get(): {
+                auto const ret{hypercall_mv_vs_op_gla_to_gpa(mut_sys, mut_pp_pool, mut_vs_pool)};
+                if (bsl::unlikely(!ret)) {
+                    bsl::print<bsl::V>() << bsl::here();
+                    return ret;
+                }
+
+                return ret;
+            }
+
+            case hypercall::MV_VS_OP_RUN_IDX_VAL.get(): {
+                auto const ret{hypercall_mv_vs_op_run(mut_sys)};
+                if (bsl::unlikely(!ret)) {
+                    bsl::print<bsl::V>() << bsl::here();
+                    return ret;
+                }
+
+                return ret;
+            }
+
+            case hypercall::MV_VS_OP_REG_GET_IDX_VAL.get(): {
+                auto const ret{hypercall_mv_vs_op_reg_get(mut_sys)};
+                if (bsl::unlikely(!ret)) {
+                    bsl::print<bsl::V>() << bsl::here();
+                    return ret;
+                }
+
+                return ret;
+            }
+
+            case hypercall::MV_VS_OP_REG_SET_IDX_VAL.get(): {
+                auto const ret{hypercall_mv_vs_op_reg_set(mut_sys)};
+                if (bsl::unlikely(!ret)) {
+                    bsl::print<bsl::V>() << bsl::here();
+                    return ret;
+                }
+
+                return ret;
+            }
+
+            case hypercall::MV_VS_OP_REG_GET_LIST_IDX_VAL.get(): {
+                auto const ret{hypercall_mv_vs_op_reg_get_list(mut_sys)};
+                if (bsl::unlikely(!ret)) {
+                    bsl::print<bsl::V>() << bsl::here();
+                    return ret;
+                }
+
+                return ret;
+            }
+
+            case hypercall::MV_VS_OP_REG_SET_LIST_IDX_VAL.get(): {
+                auto const ret{hypercall_mv_vs_op_reg_set_list(mut_sys)};
+                if (bsl::unlikely(!ret)) {
+                    bsl::print<bsl::V>() << bsl::here();
+                    return ret;
+                }
+
+                return ret;
+            }
+
+            case hypercall::MV_VS_OP_MSR_GET_IDX_VAL.get(): {
+                auto const ret{hypercall_mv_vs_op_msr_get(mut_sys)};
+                if (bsl::unlikely(!ret)) {
+                    bsl::print<bsl::V>() << bsl::here();
+                    return ret;
+                }
+
+                return ret;
+            }
+
+            case hypercall::MV_VS_OP_MSR_SET_IDX_VAL.get(): {
+                auto const ret{hypercall_mv_vs_op_msr_set(mut_sys)};
+                if (bsl::unlikely(!ret)) {
+                    bsl::print<bsl::V>() << bsl::here();
+                    return ret;
+                }
+
+                return ret;
+            }
+
+            case hypercall::MV_VS_OP_MSR_GET_LIST_IDX_VAL.get(): {
+                auto const ret{hypercall_mv_vs_op_msr_get_list(mut_sys)};
+                if (bsl::unlikely(!ret)) {
+                    bsl::print<bsl::V>() << bsl::here();
+                    return ret;
+                }
+
+                return ret;
+            }
+
+            case hypercall::MV_VS_OP_MSR_SET_LIST_IDX_VAL.get(): {
+                auto const ret{hypercall_mv_vs_op_msr_set_list(mut_sys)};
                 if (bsl::unlikely(!ret)) {
                     bsl::print<bsl::V>() << bsl::here();
                     return ret;

@@ -25,10 +25,16 @@
 #ifndef EMULATED_TLB_T_HPP
 #define EMULATED_TLB_T_HPP
 
+#include <basic_page_table_t.hpp>
 #include <bf_syscall_t.hpp>
 #include <gs_t.hpp>
 #include <intrinsic_t.hpp>
+#include <mv_translation_t.hpp>
+#include <pdpte_t.hpp>
+#include <pdte_t.hpp>
+#include <pml4te_t.hpp>
 #include <pp_pool_t.hpp>
+#include <pte_t.hpp>
 #include <tls_t.hpp>
 
 #include <bsl/debug.hpp>
@@ -64,176 +70,349 @@ namespace microv
         /// @brief stores the ID of the VS associated with this emulated_tlb_t
         bsl::safe_u16 m_assigned_vsid{};
 
-        // /// <!-- description -->
-        // ///   @brief Returns a copy of the requested PML4T entry. We return a
-        // ///     copy because a page table entry is only 64bits, and holding
-        // ///     onto a pointer would require that we hold onto the map. To
-        // ///     prevent this, we simply return a copy, which releases the map
-        // ///     on exit. This ensures that we are only holding one map at any
-        // ///     given time.
-        // ///
-        // /// <!-- inputs/outputs -->
-        // ///   @param mut_sys the bf_syscall_t to use
-        // ///   @param mut_pp_pool the pp_pool_t to use
-        // ///   @param gla the GLA to translate to a GPA
-        // ///   @param gla_pml4t the GLA of the PML4T to get the entry from
-        // ///   @return Returns a copy of the requested PML4T entry
-        // ///
-        // [[nodiscard]] static constexpr auto
-        // get_pml4te(
-        //     syscall::bf_syscall_t &mut_sys,
-        //     pp_pool_t &mut_pp_pool,
-        //     bsl::safe_u64 const &gla,
-        //     bsl::safe_u64 const &gla_pml4t) noexcept -> pml4te_t
-        // {
-        //     auto const pml4t{mut_pp_pool.map<pml4t_t const>(mut_sys, gla_pml4t)};
-        //     bsl::expects(pml4t.is_valid());
+        /// <!-- description -->
+        ///   @brief Returns the pml4t_t offset given a guest
+        ///     linear address.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param gla the guest linear address to get the offset from.
+        ///   @return the resulting offset from the guest linear address
+        ///
+        [[nodiscard]] static constexpr auto
+        gla_to_pml4to(bsl::safe_u64 const &gla) noexcept -> bsl::safe_idx
+        {
+            constexpr auto mask{0x1FF_u64};
+            constexpr auto shft{39_u64};
+            return bsl::to_idx((gla >> shft) & mask);
+        }
 
-        //     return *(pml4t->entries.at_if(gla_to_pml4to(gla)));
-        // }
+        /// <!-- description -->
+        ///   @brief Returns the pdpt_t offset given a guest
+        ///     linear address.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param gla the guest linear address to get the offset from.
+        ///   @return the resulting offset from the guest linear address
+        ///
+        [[nodiscard]] static constexpr auto
+        gla_to_pdpto(bsl::safe_u64 const &gla) noexcept -> bsl::safe_idx
+        {
+            constexpr auto mask{0x1FF_u64};
+            constexpr auto shft{30_u64};
+            return bsl::to_idx((gla >> shft) & mask);
+        }
 
-        // /// <!-- description -->
-        // ///   @brief Returns a copy of the requested PDPT entry. We return a
-        // ///     copy because a page table entry is only 64bits, and holding
-        // ///     onto a pointer would require that we hold onto the map. To
-        // ///     prevent this, we simply return a copy, which releases the map
-        // ///     on exit. This ensures that we are only holding one map at any
-        // ///     given time.
-        // ///
-        // /// <!-- inputs/outputs -->
-        // ///   @param mut_sys the bf_syscall_t to use
-        // ///   @param mut_pp_pool the pp_pool_t to use
-        // ///   @param gla the GLA to translate to a GPA
-        // ///   @param gla_pdpt the GLA of the PDPT to get the entry from
-        // ///   @return Returns a copy of the requested PDPT entry
-        // ///
-        // [[nodiscard]] static constexpr auto
-        // get_pdpte(
-        //     syscall::bf_syscall_t &mut_sys,
-        //     pp_pool_t &mut_pp_pool,
-        //     bsl::safe_u64 const &gla,
-        //     bsl::safe_u64 const &gla_pdpt) noexcept -> pdpte_t
-        // {
-        //     auto const pdpt{mut_pp_pool.map<pdpt_t const>(mut_sys, gla_pdpt)};
-        //     bsl::expects(pdpt.is_valid());
+        /// <!-- description -->
+        ///   @brief Returns the pdt_t offset given a guest
+        ///     linear address.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param gla the guest linear address to get the offset from.
+        ///   @return the resulting offset from the guest linear address
+        ///
+        [[nodiscard]] static constexpr auto
+        gla_to_pdto(bsl::safe_u64 const &gla) noexcept -> bsl::safe_idx
+        {
+            constexpr auto mask{0x1FF_u64};
+            constexpr auto shft{21_u64};
+            return bsl::to_idx((gla >> shft) & mask);
+        }
 
-        //     return *(pdpt->entries.at_if(gla_to_pdpto(gla)));
-        // }
+        /// <!-- description -->
+        ///   @brief Returns the pt_t offset given a guest
+        ///     linear address.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param gla the guest linear address to get the offset from.
+        ///   @return the resulting offset from the guest linear address
+        ///
+        [[nodiscard]] static constexpr auto
+        gla_to_pto(bsl::safe_u64 const &gla) noexcept -> bsl::safe_idx
+        {
+            constexpr auto mask{0x1FF_u64};
+            constexpr auto shft{12_u64};
+            return bsl::to_idx((gla >> shft) & mask);
+        }
 
-        // /// <!-- description -->
-        // ///   @brief Returns a copy of the requested PDT entry. We return a
-        // ///     copy because a page table entry is only 64bits, and holding
-        // ///     onto a pointer would require that we hold onto the map. To
-        // ///     prevent this, we simply return a copy, which releases the map
-        // ///     on exit. This ensures that we are only holding one map at any
-        // ///     given time.
-        // ///
-        // /// <!-- inputs/outputs -->
-        // ///   @param mut_sys the bf_syscall_t to use
-        // ///   @param mut_pp_pool the pp_pool_t to use
-        // ///   @param gla the GLA to translate to a GPA
-        // ///   @param gla_pdt the GLA of the PDT to get the entry from
-        // ///   @return Returns a copy of the requested PDT entry
-        // ///
-        // [[nodiscard]] static constexpr auto
-        // get_pdte(
-        //     syscall::bf_syscall_t &mut_sys,
-        //     pp_pool_t &mut_pp_pool,
-        //     bsl::safe_u64 const &gla,
-        //     bsl::safe_u64 const &gla_pdt) noexcept -> pdte_t
-        // {
-        //     auto const pdt{mut_pp_pool.map<pdt_t const>(mut_sys, gla_pdt)};
-        //     bsl::expects(pdt.is_valid());
+        /// <!-- description -->
+        ///   @brief Returns a copy of the requested pml4t_t entry. We return a
+        ///     copy because a pml4t_t entry is only 64bits, and holding
+        ///     onto a pointer would require that we hold onto the map. To
+        ///     prevent this, we simply return a copy, which releases the map
+        ///     on exit. This ensures that we are only holding one map at any
+        ///     given time, and a copy of 64bits is fast.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param mut_sys the bf_syscall_t to use
+        ///   @param mut_pp_pool the pp_pool_t to use
+        ///   @param gla the GLA to translate to a GPA
+        ///   @param gla_pml4t the GLA of the pml4t_t to get the entry from
+        ///   @return Returns a copy of the requested pml4t_t entry
+        ///
+        [[nodiscard]] static constexpr auto
+        get_pml4te(
+            syscall::bf_syscall_t &mut_sys,
+            pp_pool_t &mut_pp_pool,
+            bsl::safe_u64 const &gla,
+            bsl::safe_u64 const &gla_pml4t) noexcept -> pml4te_t
+        {
+            using table_t = lib::basic_page_table_t<pml4te_t const>;
 
-        //     return *(pdt->entries.at_if(gla_to_pdto(gla)));
-        // }
+            bsl::expects(gla.is_valid_and_checked());
+            bsl::expects(hypercall::mv_is_page_aligned(gla));
+            bsl::expects(gla_pml4t.is_valid_and_checked());
+            bsl::expects(hypercall::mv_is_page_aligned(gla_pml4t));
 
-        // /// <!-- description -->
-        // ///   @brief Returns a copy of the requested PT entry. We return a
-        // ///     copy because a page table entry is only 64bits, and holding
-        // ///     onto a pointer would require that we hold onto the map. To
-        // ///     prevent this, we simply return a copy, which releases the map
-        // ///     on exit. This ensures that we are only holding one map at any
-        // ///     given time.
-        // ///
-        // /// <!-- inputs/outputs -->
-        // ///   @param mut_sys the bf_syscall_t to use
-        // ///   @param mut_pp_pool the pp_pool_t to use
-        // ///   @param gla the GLA to translate to a GPA
-        // ///   @param gla_pt the GLA of the PT to get the entry from
-        // ///   @return Returns a copy of the requested PT entry
-        // ///
-        // [[nodiscard]] static constexpr auto
-        // get_pte(
-        //     syscall::bf_syscall_t &mut_sys,
-        //     pp_pool_t &mut_pp_pool,
-        //     bsl::safe_u64 const &gla,
-        //     bsl::safe_u64 const &gla_pt) noexcept -> pte_t
-        // {
-        //     auto const pt{mut_pp_pool.map<pt_t const>(mut_sys, gla_pt)};
-        //     bsl::expects(pt.is_valid());
+            if (bsl::unlikely(gla_pml4t.is_zero())) {
+                bsl::error() << "get_pml4te for gla "                               // --
+                             << bsl::hex(gla)                                       // --
+                             << " failed because the gpa of the pml4t_t is NULL"    // --
+                             << bsl::endl                                           // --
+                             << bsl::here();                                        // --
 
-        //     return *(pt->entries.at_if(gla_to_pto(gla)));
-        // }
+                return {};
+            }
 
-        // /// <!-- description -->
-        // ///   @brief Returns the paddr field of a mv_translation_t
-        // ///
-        // /// <!-- inputs/outputs -->
-        // ///   @tparam T the type of entry to get the paddr from
-        // ///   @param entry the entry to get the paddr from
-        // ///   @return Returns the paddr field of a mv_translation_t
-        // ///
-        // template<typename T>
-        // [[nodiscard]] static constexpr auto
-        // get_paddr(T const &entry) noexcept -> bsl::safe_u64
-        // {
-        //     return entry.phys << HYPERVISOR_PAGE_SHIFT;
-        // }
+            auto const pml4t{mut_pp_pool.map<table_t const>(mut_sys, gla_pml4t)};
+            if (bsl::unlikely(pml4t.is_invalid())) {
+                bsl::error() << "get_pml4te for gla "                    // --
+                             << bsl::hex(gla)                            // --
+                             << " failed attempting to map the pml4t"    // --
+                             << bsl::endl                                // --
+                             << bsl::here();                             // --
 
-        // /// <!-- description -->
-        // ///   @brief Returns the flags field of a mv_translation_t
-        // ///
-        // /// <!-- inputs/outputs -->
-        // ///   @tparam T the type of entry to get the flags from
-        // ///   @param entry the entry to get the flags from
-        // ///   @return Returns the flags field of a mv_translation_t
-        // ///
-        // template<typename T>
-        // [[nodiscard]] static constexpr auto
-        // get_flags(T const &entry) noexcept -> bsl::safe_u64
-        // {
-        //     bsl::safe_u64 mut_flags{hypercall::MV_MAP_FLAG_READ_ACCESS};
+                return {};
+            }
 
-        //     if constexpr (bsl::is_same<T, pdpte_t>::value) {
-        //         mut_flags |= hypercall::MV_MAP_FLAG_1G_PAGE;
-        //     }
+            return *(pml4t->entries.at_if(gla_to_pml4to(gla)));
+        }
 
-        //     if constexpr (bsl::is_same<T, pdte_t>::value) {
-        //         mut_flags |= hypercall::MV_MAP_FLAG_2M_PAGE;
-        //     }
+        /// <!-- description -->
+        ///   @brief Returns a copy of the requested pdpt_t entry. We return a
+        ///     copy because a pdpt_t entry is only 64bits, and holding
+        ///     onto a pointer would require that we hold onto the map. To
+        ///     prevent this, we simply return a copy, which releases the map
+        ///     on exit. This ensures that we are only holding one map at any
+        ///     given time, and a copy of 64bits is fast.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param mut_sys the bf_syscall_t to use
+        ///   @param mut_pp_pool the pp_pool_t to use
+        ///   @param gla the GLA to translate to a GPA
+        ///   @param gla_pdpt the GLA of the pdpt_t to get the entry from
+        ///   @return Returns a copy of the requested pdpt_t entry
+        ///
+        [[nodiscard]] static constexpr auto
+        get_pdpte(
+            syscall::bf_syscall_t &mut_sys,
+            pp_pool_t &mut_pp_pool,
+            bsl::safe_u64 const &gla,
+            bsl::safe_u64 const &gla_pdpt) noexcept -> pdpte_t
+        {
+            using table_t = lib::basic_page_table_t<pdpte_t const>;
 
-        //     if constexpr (bsl::is_same<T, pte_t>::value) {
-        //         mut_flags |= hypercall::MV_MAP_FLAG_4K_PAGE;
-        //     }
+            bsl::expects(gla.is_valid_and_checked());
+            bsl::expects(hypercall::mv_is_page_aligned(gla));
+            bsl::expects(gla_pdpt.is_valid_and_checked());
+            bsl::expects(hypercall::mv_is_page_aligned(gla_pdpt));
 
-        //     constexpr auto is_writeable{1_u64};
-        //     if (is_writeable == entry.rw) {
-        //         mut_flags |= hypercall::MV_MAP_FLAG_WRITE_ACCESS;
-        //     }
+            if (bsl::unlikely(gla_pdpt.is_zero())) {
+                bsl::error() << "get_pdpte for gla "                               // --
+                             << bsl::hex(gla)                                      // --
+                             << " failed because the gpa of the pdpt_t is NULL"    // --
+                             << bsl::endl                                          // --
+                             << bsl::here();                                       // --
 
-        //     constexpr auto is_executable{0_u64};
-        //     if (is_executable == entry.nx) {
-        //         mut_flags |= hypercall::MV_MAP_FLAG_EXECUTE_ACCESS;
-        //     }
+                return {};
+            }
 
-        //     constexpr auto is_user{1_u64};
-        //     if (is_user == entry.us) {
-        //         mut_flags |= hypercall::MV_MAP_FLAG_USER;
-        //     }
+            auto const pdpt{mut_pp_pool.map<table_t const>(mut_sys, gla_pdpt)};
+            if (bsl::unlikely(pdpt.is_invalid())) {
+                bsl::error() << "get_pdpte for gla "                    // --
+                             << bsl::hex(gla)                           // --
+                             << " failed attempting to map the pdpt"    // --
+                             << bsl::endl                               // --
+                             << bsl::here();                            // --
 
-        //     return mut_flags;
-        // }
+                return {};
+            }
+
+            return *(pdpt->entries.at_if(gla_to_pdpto(gla)));
+        }
+
+        /// <!-- description -->
+        ///   @brief Returns a copy of the requested pdt_t entry. We return a
+        ///     copy because a pdt_t entry is only 64bits, and holding
+        ///     onto a pointer would require that we hold onto the map. To
+        ///     prevent this, we simply return a copy, which releases the map
+        ///     on exit. This ensures that we are only holding one map at any
+        ///     given time, and a copy of 64bits is fast.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param mut_sys the bf_syscall_t to use
+        ///   @param mut_pp_pool the pp_pool_t to use
+        ///   @param gla the GLA to translate to a GPA
+        ///   @param gla_pdt the GLA of the pdt_t to get the entry from
+        ///   @return Returns a copy of the requested pdt_t entry
+        ///
+        [[nodiscard]] static constexpr auto
+        get_pdte(
+            syscall::bf_syscall_t &mut_sys,
+            pp_pool_t &mut_pp_pool,
+            bsl::safe_u64 const &gla,
+            bsl::safe_u64 const &gla_pdt) noexcept -> pdte_t
+        {
+            using table_t = lib::basic_page_table_t<pdte_t const>;
+
+            bsl::expects(gla.is_valid_and_checked());
+            bsl::expects(hypercall::mv_is_page_aligned(gla));
+            bsl::expects(gla_pdt.is_valid_and_checked());
+            bsl::expects(hypercall::mv_is_page_aligned(gla_pdt));
+
+            if (bsl::unlikely(gla_pdt.is_zero())) {
+                bsl::error() << "get_pdte for gla "                               // --
+                             << bsl::hex(gla)                                     // --
+                             << " failed because the gpa of the pdt_t is NULL"    // --
+                             << bsl::endl                                         // --
+                             << bsl::here();                                      // --
+
+                return {};
+            }
+
+            auto const pdt{mut_pp_pool.map<table_t const>(mut_sys, gla_pdt)};
+            if (bsl::unlikely(pdt.is_invalid())) {
+                bsl::error() << "get_pdte for gla "                    // --
+                             << bsl::hex(gla)                          // --
+                             << " failed attempting to map the pdt"    // --
+                             << bsl::endl                              // --
+                             << bsl::here();                           // --
+
+                return {};
+            }
+
+            return *(pdt->entries.at_if(gla_to_pdto(gla)));
+        }
+
+        /// <!-- description -->
+        ///   @brief Returns a copy of the requested pt_t entry. We return a
+        ///     copy because a pt_t entry is only 64bits, and holding
+        ///     onto a pointer would require that we hold onto the map. To
+        ///     prevent this, we simply return a copy, which releases the map
+        ///     on exit. This ensures that we are only holding one map at any
+        ///     given time, and a copy of 64bits is fast.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param mut_sys the bf_syscall_t to use
+        ///   @param mut_pp_pool the pp_pool_t to use
+        ///   @param gla the GLA to translate to a GPA
+        ///   @param gla_pt the GLA of the pt_t to get the entry from
+        ///   @return Returns a copy of the requested pt_t entry
+        ///
+        [[nodiscard]] static constexpr auto
+        get_pte(
+            syscall::bf_syscall_t &mut_sys,
+            pp_pool_t &mut_pp_pool,
+            bsl::safe_u64 const &gla,
+            bsl::safe_u64 const &gla_pt) noexcept -> pte_t
+        {
+            using table_t = lib::basic_page_table_t<pte_t const>;
+
+            bsl::expects(gla.is_valid_and_checked());
+            bsl::expects(hypercall::mv_is_page_aligned(gla));
+            bsl::expects(gla_pt.is_valid_and_checked());
+            bsl::expects(hypercall::mv_is_page_aligned(gla_pt));
+
+            if (bsl::unlikely(gla_pt.is_zero())) {
+                bsl::error() << "get_pte for gla "                               // --
+                             << bsl::hex(gla)                                    // --
+                             << " failed because the gpa of the pt_t is NULL"    // --
+                             << bsl::endl                                        // --
+                             << bsl::here();                                     // --
+
+                return {};
+            }
+
+            auto const pt{mut_pp_pool.map<table_t const>(mut_sys, gla_pt)};
+            if (bsl::unlikely(pt.is_invalid())) {
+                bsl::error() << "get_pte for gla "                    // --
+                             << bsl::hex(gla)                         // --
+                             << " failed attempting to map the pt"    // --
+                             << bsl::endl                             // --
+                             << bsl::here();                          // --
+
+                return {};
+            }
+
+            return *(pt->entries.at_if(gla_to_pto(gla)));
+        }
+
+        /// <!-- description -->
+        ///   @brief Returns the paddr field of a mv_translation_t
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @tparam T the type of entry to get the paddr from
+        ///   @param entry the entry to get the paddr from
+        ///   @return Returns the paddr field of a mv_translation_t
+        ///
+        template<typename T>
+        [[nodiscard]] static constexpr auto
+        get_paddr(T const &entry) noexcept -> bsl::safe_u64
+        {
+            return entry.phys << HYPERVISOR_PAGE_SHIFT;
+        }
+
+        /// <!-- description -->
+        ///   @brief Returns the flags field of a mv_translation_t
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @tparam T the type of entry to get the flags from
+        ///   @param entry the entry to get the flags from
+        ///   @return Returns the flags field of a mv_translation_t
+        ///
+        template<typename T>
+        [[nodiscard]] static constexpr auto
+        get_flags(T const &entry) noexcept -> bsl::safe_u64
+        {
+            bsl::safe_u64 mut_flags{hypercall::MV_MAP_FLAG_READ_ACCESS};
+
+            if constexpr (bsl::is_same<T, pdpte_t>::value) {
+                mut_flags |= hypercall::MV_MAP_FLAG_1G_PAGE;
+            }
+
+            if constexpr (bsl::is_same<T, pdte_t>::value) {
+                mut_flags |= hypercall::MV_MAP_FLAG_2M_PAGE;
+            }
+
+            if constexpr (bsl::is_same<T, pte_t>::value) {
+                mut_flags |= hypercall::MV_MAP_FLAG_4K_PAGE;
+            }
+
+            constexpr auto is_writeable{1_u64};
+            if (is_writeable == entry.rw) {
+                mut_flags |= hypercall::MV_MAP_FLAG_WRITE_ACCESS;
+            }
+            else {
+                bsl::touch();
+            }
+
+            constexpr auto is_executable{0_u64};
+            if (is_executable == entry.nx) {
+                mut_flags |= hypercall::MV_MAP_FLAG_EXECUTE_ACCESS;
+            }
+            else {
+                bsl::touch();
+            }
+
+            constexpr auto is_user{1_u64};
+            if (is_user == entry.us) {
+                mut_flags |= hypercall::MV_MAP_FLAG_USER;
+            }
+            else {
+                bsl::touch();
+            }
+
+            return mut_flags;
+        }
 
     public:
         /// <!-- description -->
@@ -353,91 +532,118 @@ namespace microv
         ///   @return Returns mv_translation_t containing the results of the
         ///     translation.
         ///
-        // [[nodiscard]] constexpr auto
-        // gla_to_gpa(
-        //     syscall::bf_syscall_t &mut_sys,
-        //     pp_pool_t &mut_pp_pool,
-        //     bsl::safe_u64 const &gla,
-        //     bsl::safe_u64 const &cr0,
-        //     bsl::safe_u64 const &cr3,
-        //     bsl::safe_u64 const &cr4) const noexcept -> hypercall::mv_translation_t
-        // {
-        //     bsl::expects(this->assigned_vsid() == mut_sys.bf_tls_assigned_vsid());
+        [[nodiscard]] constexpr auto
+        gla_to_gpa(
+            syscall::bf_syscall_t &mut_sys,
+            pp_pool_t &mut_pp_pool,
+            bsl::safe_u64 const &gla,
+            bsl::safe_u64 const &cr0,
+            bsl::safe_u64 const &cr3,
+            bsl::safe_u64 const &cr4) const noexcept -> hypercall::mv_translation_t
+        {
+            bsl::expects(this->assigned_vsid() == mut_sys.bf_tls_vsid());
 
-        //     bsl::expects(gla.is_valid_and_checked());
-        //     bsl::expects(gla.is_pos());
-        //     bsl::expects(cr0.is_valid_and_checked());
-        //     bsl::expects(cr0.is_pos());
-        //     bsl::expects(cr3.is_valid_and_checked());
-        //     bsl::expects(cr3.is_pos());
-        //     bsl::expects(cr4.is_valid_and_checked());
-        //     bsl::expects(cr4.is_pos());
+            bsl::expects(gla.is_valid_and_checked());
+            bsl::expects(gla.is_pos());
+            bsl::expects(cr0.is_valid_and_checked());
+            bsl::expects(cr0.is_pos());
+            bsl::expects(cr3.is_valid_and_checked());
+            bsl::expects(cr3.is_pos());
+            bsl::expects(cr4.is_valid_and_checked());
+            bsl::expects(cr4.is_pos());
 
-        //     /// TODO:
-        //     /// - Add support for 16bit real mode
-        //     /// - Add support for 32bit protected mode with paging disabled
-        //     /// - Add support for 32bit protected mode with paging, without PAE
-        //     /// - Add support for 32bit protected mode with paging, with PAE
-        //     ///
+            /// NOTE:
+            /// - This function needs a pretty wide contract as inputs to
+            ///   this function will come from any VM (meaning don't use
+            ///   bsl::expects unless you are sure the input has been
+            ///   scrubbed using a wide contract from some other location)
+            ///
 
-        //     auto const pml4t_gpa{hypercall::mv_page_aligned(cr3)};
-        //     auto const pml4te{get_pml4te(mut_sys, mut_pp_pool, gla, pml4t_gpa)};
-        //     if (bsl::unlikely(bsl::safe_umx::magic_1() != pml4te.p)) {
-        //         bsl::error() << "gla_to_gpa failed because the pml4te for gla "    // --
-        //                      << bsl::hex(gla)                                      // --
-        //                      << " is not marked present"                           // --
-        //                      << bsl::endl                                          // --
-        //                      << bsl::here();                                       // --
+            /// TODO:
+            /// - Add support for 16bit real mode
+            /// - Add support for 32bit protected mode with paging disabled
+            /// - Add support for 32bit protected mode with paging, without PAE
+            /// - Add support for 32bit protected mode with paging, with PAE
+            ///
 
-        //         return {{}, {}, {}, {}, false};
-        //     }
+            auto const pml4t_gpa{hypercall::mv_page_aligned(cr3)};
+            auto const pml4te{get_pml4te(mut_sys, mut_pp_pool, gla, pml4t_gpa)};
+            if (bsl::unlikely(bsl::safe_umx::magic_0() == pml4te.phys)) {
+                bsl::print<bsl::V>() << bsl::here();
+                return {};
+            }
 
-        //     auto const pdpt_gpa{pml4te.phys << HYPERVISOR_PAGE_SHIFT};
-        //     auto const pdpte{get_pdpte(mut_sys, mut_pp_pool, gla, pdpt_gpa)};
-        //     if (bsl::unlikely(bsl::safe_umx::magic_1() != pdpte.p)) {
-        //         bsl::error() << "gla_to_gpa failed because the pdpte for gla "    // --
-        //                      << bsl::hex(gla)                                     // --
-        //                      << " is not marked present"                          // --
-        //                      << bsl::endl                                         // --
-        //                      << bsl::here();                                      // --
+            if (bsl::unlikely(bsl::safe_umx::magic_0() == pml4te.p)) {
+                bsl::error() << "gla_to_gpa failed because the pml4te for gla "    // --
+                             << bsl::hex(gla)                                      // --
+                             << " is not marked present"                           // --
+                             << bsl::endl                                          // --
+                             << bsl::here();                                       // --
 
-        //         return {{}, {}, {}, {}, false};
-        //     }
+                return {};
+            }
 
-        //     if (bsl::safe_umx::magic_1() == pdpte.ps) {
-        //         return {{}, gla, get_paddr(pdpte), get_flags(pdpte), true};
-        //     }
+            auto const pdpt_gpa{pml4te.phys << HYPERVISOR_PAGE_SHIFT};
+            auto const pdpte{get_pdpte(mut_sys, mut_pp_pool, gla, pdpt_gpa)};
+            if (bsl::unlikely(bsl::safe_umx::magic_0() == pdpte.phys)) {
+                bsl::print<bsl::V>() << bsl::here();
+                return {};
+            }
 
-        //     auto const pdt_gpa{pdpte.phys << HYPERVISOR_PAGE_SHIFT};
-        //     auto const pdte{get_pdte(mut_sys, mut_pp_pool, gla, pdt_gpa)};
-        //     if (bsl::unlikely(bsl::safe_umx::magic_1() != pdte.p)) {
-        //         bsl::error() << "gla_to_gpa failed because the pdte for gla "    // --
-        //                      << bsl::hex(gla)                                    // --
-        //                      << " is not marked present"                         // --
-        //                      << bsl::endl                                        // --
-        //                      << bsl::here();                                     // --
+            if (bsl::unlikely(bsl::safe_umx::magic_0() == pdpte.p)) {
+                bsl::error() << "gla_to_gpa failed because the pdpte for gla "    // --
+                             << bsl::hex(gla)                                     // --
+                             << " is not marked present"                          // --
+                             << bsl::endl                                         // --
+                             << bsl::here();                                      // --
 
-        //         return {{}, {}, {}, {}, false};
-        //     }
+                return {};
+            }
 
-        //     if (bsl::safe_umx::magic_1() == pdte.ps) {
-        //         return {{}, gla, get_paddr(pdte), get_flags(pdte), true};
-        //     }
+            if (bsl::safe_umx::magic_1() == pdpte.ps) {
+                return {{}, gla, get_paddr(pdpte), get_flags(pdpte), true};
+            }
 
-        //     auto const pt_gpa{pdte.phys << HYPERVISOR_PAGE_SHIFT};
-        //     auto const pte{get_pte(mut_sys, mut_pp_pool, gla, pt_gpa)};
-        //     if (bsl::unlikely(bsl::safe_umx::magic_1() != pte.p)) {
-        //         bsl::error() << "gla_to_gpa failed because the pte for gla "    // --
-        //                      << bsl::hex(gla)                                   // --
-        //                      << " is not marked present"                        // --
-        //                      << bsl::endl                                       // --
-        //                      << bsl::here();                                    // --
+            auto const pdt_gpa{pdpte.phys << HYPERVISOR_PAGE_SHIFT};
+            auto const pdte{get_pdte(mut_sys, mut_pp_pool, gla, pdt_gpa)};
+            if (bsl::unlikely(bsl::safe_umx::magic_0() == pdte.phys)) {
+                bsl::print<bsl::V>() << bsl::here();
+                return {};
+            }
 
-        //         return {{}, {}, {}, {}, false};
-        //     }
+            if (bsl::unlikely(bsl::safe_umx::magic_0() == pdte.p)) {
+                bsl::error() << "gla_to_gpa failed because the pdte for gla "    // --
+                             << bsl::hex(gla)                                    // --
+                             << " is not marked present"                         // --
+                             << bsl::endl                                        // --
+                             << bsl::here();                                     // --
 
-        //     return {{}, gla, get_paddr(pte), get_flags(pte), true};
-        // }
+                return {};
+            }
+
+            if (bsl::safe_umx::magic_1() == pdte.ps) {
+                return {{}, gla, get_paddr(pdte), get_flags(pdte), true};
+            }
+
+            auto const pt_gpa{pdte.phys << HYPERVISOR_PAGE_SHIFT};
+            auto const pte{get_pte(mut_sys, mut_pp_pool, gla, pt_gpa)};
+            if (bsl::unlikely(bsl::safe_umx::magic_0() == pte.phys)) {
+                bsl::print<bsl::V>() << bsl::here();
+                return {};
+            }
+
+            if (bsl::unlikely(bsl::safe_umx::magic_0() == pte.p)) {
+                bsl::error() << "gla_to_gpa failed because the pte for gla "    // --
+                             << bsl::hex(gla)                                   // --
+                             << " is not marked present"                        // --
+                             << bsl::endl                                       // --
+                             << bsl::here();                                    // --
+
+                return {};
+            }
+
+            return {{}, gla, get_paddr(pte), get_flags(pte), true};
+        }
     };
 }
 

@@ -507,6 +507,71 @@ namespace microv
 
             return m_emulated_cpuid.get_guest(mut_sys, intrinsic);
         }
+
+        /// <!-- description -->
+        ///   @brief Translates a GLA to a GPA using the paging configuration
+        ///     of this vs_t stored in CR0, CR3 and CR4.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param mut_sys the bf_syscall_t to use
+        ///   @param mut_pp_pool the pp_pool_t to use
+        ///   @param gla the GLA to translate to a GPA
+        ///   @return Returns mv_translation_t containing the results of the
+        ///     translation.
+        ///
+        [[nodiscard]] constexpr auto
+        gla_to_gpa(syscall::bf_syscall_t &mut_sys, pp_pool_t &mut_pp_pool, bsl::safe_u64 const &gla)
+            const noexcept -> hypercall::mv_translation_t
+        {
+            auto const vsid{this->id()};
+            bsl::expects(allocated_status_t::allocated == m_allocated);
+
+            auto const cr0{mut_sys.bf_vs_op_read(vsid, syscall::bf_reg_t::bf_reg_t_guest_cr0)};
+            bsl::expects(cr0.is_valid_and_checked());
+
+            if (bsl::unlikely(cr0.is_zero())) {
+                bsl::error() << "gla_to_gpa failed for gla "                // --
+                             << bsl::hex(gla)                               // --
+                             << " because the value of cr0 is invalid: "    // --
+                             << bsl::hex(cr0)                               // --
+                             << bsl::endl                                   // --
+                             << bsl::here();                                // --
+
+                return {};
+            }
+
+            auto const cr3{mut_sys.bf_vs_op_read(vsid, syscall::bf_reg_t::bf_reg_t_guest_cr3)};
+            bsl::expects(cr3.is_valid_and_checked());
+            bsl::expects(cr3.is_pos());
+
+            if (bsl::unlikely(cr3.is_zero())) {
+                bsl::error() << "gla_to_gpa failed for gla "                // --
+                             << bsl::hex(gla)                               // --
+                             << " because the value of cr3 is invalid: "    // --
+                             << bsl::hex(cr3)                               // --
+                             << bsl::endl                                   // --
+                             << bsl::here();                                // --
+
+                return {};
+            }
+
+            auto const cr4{mut_sys.bf_vs_op_read(vsid, syscall::bf_reg_t::bf_reg_t_guest_cr4)};
+            bsl::expects(cr4.is_valid_and_checked());
+            bsl::expects(cr4.is_pos());
+
+            if (bsl::unlikely(cr4.is_zero())) {
+                bsl::error() << "gla_to_gpa failed for gla "                // --
+                             << bsl::hex(gla)                               // --
+                             << " because the value of cr4 is invalid: "    // --
+                             << bsl::hex(cr4)                               // --
+                             << bsl::endl                                   // --
+                             << bsl::here();                                // --
+
+                return {};
+            }
+
+            return m_emulated_tlb.gla_to_gpa(mut_sys, mut_pp_pool, gla, cr0, cr3, cr4);
+        }
     };
 }
 

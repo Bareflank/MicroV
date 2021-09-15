@@ -32,16 +32,16 @@ namespace hypercall
     /// <!-- description -->
     ///   @brief Defines different bit sizes for address, operands, etc.
     ///
-    enum class mv_reg_t : uint8_t
+    enum class mv_reg_t : bsl::int32
     {
         /// @brief indicates 8 bits
-        mv_bit_size_t_8 = static_cast<bsl::uint8_t>(0),
+        mv_bit_size_t_8 = 0,
         /// @brief indicates 16 bits
-        mv_bit_size_t_16 = static_cast<bsl::uint8_t>(1),
+        mv_bit_size_t_16 = 1,
         /// @brief indicates 32 bits
-        mv_bit_size_t_32 = static_cast<bsl::uint8_t>(2),
+        mv_bit_size_t_32 = 2,
         /// @brief indicates 64 bits
-        mv_bit_size_t_64 = static_cast<bsl::uint8_t>(3),
+        mv_bit_size_t_64 = 3,
     };
 }
 

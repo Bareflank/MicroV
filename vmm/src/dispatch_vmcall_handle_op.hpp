@@ -53,7 +53,7 @@ namespace microv
     ///     and friends otherwise
     ///
     [[nodiscard]] constexpr auto
-    hypercall_handle_op_open_handle(syscall::bf_syscall_t &mut_sys) noexcept -> bsl::errc_type
+    hypercall_mv_handle_op_open_handle(syscall::bf_syscall_t &mut_sys) noexcept -> bsl::errc_type
     {
         bool const version_supported{is_version_supported(get_reg0(mut_sys))};
         if (bsl::unlikely(!version_supported)) {
@@ -77,7 +77,7 @@ namespace microv
     ///     and friends otherwise
     ///
     [[nodiscard]] constexpr auto
-    hypercall_handle_op_close_handle(syscall::bf_syscall_t &mut_sys) noexcept -> bsl::errc_type
+    hypercall_mv_handle_op_close_handle(syscall::bf_syscall_t &mut_sys) noexcept -> bsl::errc_type
     {
         if (bsl::unlikely(!verify_handle(mut_sys))) {
             bsl::print<bsl::V>() << bsl::here();
@@ -134,7 +134,7 @@ namespace microv
 
         switch (hypercall::mv_hypercall_index(get_reg_hypercall(mut_sys)).get()) {
             case hypercall::MV_HANDLE_OP_OPEN_HANDLE_IDX_VAL.get(): {
-                auto const ret{hypercall_handle_op_open_handle(mut_sys)};
+                auto const ret{hypercall_mv_handle_op_open_handle(mut_sys)};
                 if (bsl::unlikely(!ret)) {
                     bsl::print<bsl::V>() << bsl::here();
                     return ret;
@@ -144,7 +144,7 @@ namespace microv
             }
 
             case hypercall::MV_HANDLE_OP_CLOSE_HANDLE_IDX_VAL.get(): {
-                auto const ret{hypercall_handle_op_close_handle(mut_sys)};
+                auto const ret{hypercall_mv_handle_op_close_handle(mut_sys)};
                 if (bsl::unlikely(!ret)) {
                     bsl::print<bsl::V>() << bsl::here();
                     return ret;

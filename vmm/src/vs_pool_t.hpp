@@ -386,62 +386,26 @@ namespace microv
         }
 
         /// <!-- description -->
-        ///   @brief Translates a guest GLA to a guest GPA using the paging
-        ///     configuration of the guest stored in CR0, CR3 and CR4.
-        ///
-        /// <!-- notes -->
-        ///   @note This function is slow. It has to map in guest page tables
-        ///     so that it can walk these tables and perform the translation.
-        ///     Once the translation is done, these translations are unmapped.
-        ///     If we didn't do this, the direct map would become polluted with
-        ///     maps that are no longer needed, and these maps may eventually
-        ///     point to memory used by the guest to store a secret.
-        ///
-        ///   @note IMPORTANT: One way to improve performance of code that
-        ///     uses this function is to cache these translations. This would
-        ///     implement a virtual TLB. You might not call it that, but that
-        ///     is what it is. If we store ANY translations, we must clear
-        ///     them when the guest attempts to perform any TLB invalidations,
-        ///     as the translation might not be valid any more. This is made
-        ///     even worse with remote TLB invalidations that the guest
-        ///     performs because the hypervisor has to mimic the same behaviour
-        ///     that any race conditions introduce. For microv, if we are in
-        ///     the middle of emulating an instruction on one CPU, and another
-        ///     performs an invalidation, emulation needs to complete before
-        ///     the invalidation takes place. Otherwise, a use-after-free
-        ///     bug could occur. This only applies to the decoding portion of
-        ///     emulation as the CPU is pipelined. Reads/writes to memory
-        ///     during the rest of emulation may still read garbage, and that
-        ///     is what the CPU would do. To simplify this, all translations
-        ///     should ALWAYS come from this function. Meaning, if a translation
-        ///     must be stored, it should be stored here in a virtual TLB. This
-        ///     way, any invalidations to a VS can be flushed in the VS. If
-        ///     all functions always have to call this function, it will simply
-        ///     return a cached translation. If the cache is flushed because
-        ///     the guest performed a flush, the required TLB update will
-        ///     automatically happen. This way, software always does the GLA
-        ///     to GPA conversion when it is needed, and only when it is needed
-        ///     the same way the hardware would. DO NOT CACHE THE RESULTS OF
-        ///     THIS FUNCTION. YOU MUST ALWAYS CALL THIS FUNCTION EVERYTIME
-        ///     A TRANSLATION IS NEEDED.
+        ///   @brief Translates a GLA to a GPA using the paging configuration
+        ///     of the requested vs_t stored in CR0, CR3 and CR4.
         ///
         /// <!-- inputs/outputs -->
         ///   @param mut_sys the bf_syscall_t to use
         ///   @param mut_pp_pool the pp_pool_t to use
         ///   @param gla the GLA to translate to a GPA
-        ///   @param vsid the ID of the VS to perform the translation for
+        ///   @param vsid the ID of the vs_t to use to translate the GLA
         ///   @return Returns mv_translation_t containing the results of the
         ///     translation.
         ///
-        // [[nodiscard]] constexpr auto
-        // gla_to_gpa(
-        //     syscall::bf_syscall_t &mut_sys,
-        //     pp_pool_t &mut_pp_pool,
-        //     bsl::safe_u64 const &gla,
-        //     bsl::safe_u16 const &vsid) const noexcept -> hypercall::mv_translation_t
-        // {
-        //     return this->get_vs(vsid)->gla_to_gpa(mut_sys, mut_pp_pool, gla);
-        // }
+        [[nodiscard]] constexpr auto
+        gla_to_gpa(
+            syscall::bf_syscall_t &mut_sys,
+            pp_pool_t &mut_pp_pool,
+            bsl::safe_u64 const &gla,
+            bsl::safe_u16 const &vsid) const noexcept -> hypercall::mv_translation_t
+        {
+            return this->get_vs(vsid)->gla_to_gpa(mut_sys, mut_pp_pool, gla);
+        }
     };
 }
 

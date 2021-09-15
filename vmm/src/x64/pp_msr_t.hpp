@@ -59,13 +59,15 @@ namespace microv
         ///   @param tls the tls_t to use
         ///   @param sys the bf_syscall_t to use
         ///   @param intrinsic the intrinsic_t to use
+        ///   @param ppid the ID of the PP this pp_msr_t is assigned to
         ///
         constexpr void
         initialize(
             gs_t const &gs,
             tls_t const &tls,
             syscall::bf_syscall_t const &sys,
-            intrinsic_t const &intrinsic) noexcept
+            intrinsic_t const &intrinsic,
+            bsl::safe_u16 const &ppid) noexcept
         {
             bsl::expects(this->assigned_ppid() == syscall::BF_INVALID_ID);
 
@@ -74,7 +76,7 @@ namespace microv
             bsl::discard(sys);
             bsl::discard(intrinsic);
 
-            m_assigned_ppid = ~sys.bf_tls_ppid();
+            m_assigned_ppid = ~ppid;
         }
 
         /// <!-- description -->

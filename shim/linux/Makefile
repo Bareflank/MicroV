@@ -147,19 +147,32 @@ ifneq ($(KERNELRELEASE),)
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_handle_op_open_handle_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_id_op_version_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_pp_op_clr_shared_page_gpa_impl.o
+        $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_pp_op_ppid_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_pp_op_set_shared_page_gpa_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_vm_op_create_vm_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_vm_op_destroy_vm_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_vm_op_mmio_map_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_vm_op_mmio_unmap_impl.o
+        $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_vm_op_vmid_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_vp_op_create_vp_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_vp_op_destroy_vp_impl.o
+        $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_vp_op_vmid_impl.o
+        $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_vp_op_vpid_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_vs_op_create_vs_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_vs_op_destroy_vs_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_vs_op_gla_to_gpa_impl.o
-        $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_vs_op_gva_to_gla_impl.o
+        $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_vs_op_msr_get_impl.o
+        $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_vs_op_msr_get_list_impl.o
+        $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_vs_op_msr_set_impl.o
+        $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_vs_op_msr_set_list_impl.o
+        $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_vs_op_reg_get_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_vs_op_reg_get_list_impl.o
+        $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_vs_op_reg_set_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_vs_op_reg_set_list_impl.o
+        $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_vs_op_run_impl.o
+        $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_vs_op_vmid_impl.o
+        $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_vs_op_vpid_impl.o
+        $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_vs_op_vsid_impl.o
 
     	EXTRA_CFLAGS += -I$(src)/include/x64
 		EXTRA_CFLAGS += -I$(src)/include/x64/amd
@@ -178,19 +191,32 @@ ifneq ($(KERNELRELEASE),)
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_handle_op_open_handle_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_id_op_version_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_pp_op_clr_shared_page_gpa_impl.o
+        $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_pp_op_ppid_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_pp_op_set_shared_page_gpa_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_vm_op_create_vm_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_vm_op_destroy_vm_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_vm_op_mmio_map_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_vm_op_mmio_unmap_impl.o
+        $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_vm_op_vmid_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_vp_op_create_vp_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_vp_op_destroy_vp_impl.o
+        $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_vp_op_vmid_impl.o
+        $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_vp_op_vpid_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_vs_op_create_vs_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_vs_op_destroy_vs_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_vs_op_gla_to_gpa_impl.o
-        $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_vs_op_gva_to_gla_impl.o
+        $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_vs_op_msr_get_impl.o
+        $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_vs_op_msr_get_list_impl.o
+        $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_vs_op_msr_set_impl.o
+        $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_vs_op_msr_set_list_impl.o
+        $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_vs_op_reg_get_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_vs_op_reg_get_list_impl.o
+        $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_vs_op_reg_set_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_vs_op_reg_set_list_impl.o
+        $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_vs_op_run_impl.o
+        $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_vs_op_vmid_impl.o
+        $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_vs_op_vpid_impl.o
+        $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_vs_op_vsid_impl.o
 
     	EXTRA_CFLAGS += -I$(src)/include/x64
 		EXTRA_CFLAGS += -I$(src)/include/x64/intel
@@ -217,6 +243,15 @@ clean:
 	rm -f ../src/x64/amd/.*.o*
 	rm -f ../src/x64/intel/*.o*
 	rm -f ../src/x64/intel/.*.o*
+
+	rm -f ../../hypercall/src/linux/*.o*
+	rm -f ../../hypercall/src/linux/.*.o*
+	rm -f ../../hypercall/src/linux/x64/*.o*
+	rm -f ../../hypercall/src/linux/x64/.*.o*
+	rm -f ../../hypercall/src/linux/x64/amd/*.o*
+	rm -f ../../hypercall/src/linux/x64/amd/.*.o*
+	rm -f ../../hypercall/src/linux/x64/intel/*.o*
+	rm -f ../../hypercall/src/linux/x64/intel/.*.o*
 
 load:
 	@insmod ./$(TARGET_MODULE).ko
