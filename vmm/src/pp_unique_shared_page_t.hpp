@@ -58,6 +58,8 @@ namespace microv
         syscall::bf_syscall_t *m_sys;
         /// @brief stores whether or not the shared page is in use.
         bool *m_use;
+        /// @brief stores the vmid associated with this map.
+        bsl::safe_u16 m_vmid;
         /// @brief stores the ppid associated with this map.
         bsl::safe_u16 m_ppid;
 
@@ -97,10 +99,41 @@ namespace microv
                 return;
             }
 
+            /// NOTE:
+            /// - If you see the following narrow contract fail, it means
+            ///   that you are using the shared page twice without releasing
+            ///   the first one.
+            ///
+            /// - Specifically, if you grab the shared page, you have to
+            ///   release it before using it again. Otherwise, you would
+            ///   end up with the same pointer, pointing two two different
+            ///   objects (and possibly of different types) which breaks
+            ///   strict aliasing rules. You can only have a pointer to one
+            ///   object at a time, and this specific checks enforces that.
+            ///
+            /// - Also, this needs to be the root VM for now. If it is not,
+            ///   you will end up having to map the shared page into the
+            ///   memory space of the extension for each guest VM and not
+            ///   just the root VM. This means there would be a memory map
+            ///   in MicroV that is shared between all of the VMs. From a
+            ///   security point of view, this is not really a problem. But
+            ///   from a TLB point of view, chaning the shared page would
+            ///   almost certainly cause issues. To fix this, the shared
+            ///   page will need a per-VM set of shared pages, and should
+            ///   only actually be needed if device domains require it.
+            ///   But careful attention to the TLB will have to be taken to
+            ///   ensure that if you change the shared page, something
+            ///   horrible happens.
+            ///
+            /// - TL;DR Either fix the bug, or rethink your design!!!
+            ///
+
             bsl::expects(!*pmut_use);
             bsl::expects(pmut_sys->is_the_active_vm_the_root_vm());
 
             *pmut_use = true;
+
+            m_vmid = ~pmut_sys->bf_tls_vmid();
             m_ppid = ~pmut_sys->bf_tls_ppid();
         }
 
@@ -114,6 +147,9 @@ namespace microv
         constexpr ~pp_unique_shared_page_t() noexcept
         {
             if (nullptr != m_use) {
+                bsl::expects(this->assigned_ppid() == m_sys->bf_tls_ppid());
+                bsl::expects(this->assigned_vmid() == m_sys->bf_tls_vmid());
+
                 *m_use = {};
             }
             else {
@@ -183,7 +219,8 @@ namespace microv
         [[nodiscard]] constexpr auto
         assigned_vmid() const noexcept -> bsl::safe_u16
         {
-            return hypercall::MV_ROOT_VMID;
+            bsl::ensures(m_vmid.is_valid_and_checked());
+            return ~m_vmid;
         }
 
         /// <!-- description -->
@@ -206,6 +243,38 @@ namespace microv
                 return nullptr;
             }
 
+            return m_ptr;
+        }
+
+        /// <!-- description -->
+        ///   @brief Returns a reference to the data being mapped by the
+        ///     pp_unique_map_t.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @return Returns a reference to the data being mapped by the
+        ///     pp_unique_map_t.
+        ///
+        [[nodiscard]] constexpr auto
+        operator*() const noexcept -> bsl::add_lvalue_reference_t<T>
+        {
+            bsl::expects(this->assigned_ppid() == m_sys->bf_tls_ppid());
+            bsl::expects(this->assigned_vmid() == m_sys->bf_tls_vmid());
+            return *m_ptr;
+        }
+
+        /// <!-- description -->
+        ///   @brief Returns a pointer to the data being mapped by the
+        ///     pp_unique_map_t.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @return Returns a pointer to the data being mapped by the
+        ///     pp_unique_map_t.
+        ///
+        [[nodiscard]] constexpr auto
+        operator->() const noexcept -> T *
+        {
+            bsl::expects(this->assigned_ppid() == m_sys->bf_tls_ppid());
+            bsl::expects(this->assigned_vmid() == m_sys->bf_tls_vmid());
             return m_ptr;
         }
 

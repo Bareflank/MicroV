@@ -31,11 +31,11 @@
 #include <mv_constants.h>
 #include <mv_hypercall.h>
 #include <mv_mdl_t.h>
+#include <mv_types.h>
 #include <platform.h>
 #include <shared_page_for_current_pp.h>
 #include <shim_vm_t.h>
 #include <touch.h>
-#include <types.h>
 
 /**
  * <!-- description -->
@@ -222,7 +222,12 @@ handle_vm_kvm_set_user_memory_region(
     pmut_mut_mdl->num_entries = ((uint64_t)0);
     for (mut_i = ((int64_t)0); mut_i < mut_size; mut_i += (int64_t)HYPERVISOR_PAGE_SIZE) {
         uint64_t const dst = mut_dst + (uint64_t)mut_i;
-        uint64_t const src = platform_virt_to_phys((void *)(mut_src + (uint64_t)mut_i));
+        uint64_t const src = platform_virt_to_phys_user(mut_src + (uint64_t)mut_i);
+
+        if (((uint64_t)0) == src) {
+            bferror("platform_virt_to_phys_user failed");
+            goto mv_vm_op_mmio_map_failed;
+        }
 
         pmut_mut_mdl->entries[pmut_mut_mdl->num_entries].dst = dst;
         pmut_mut_mdl->entries[pmut_mut_mdl->num_entries].src = src;

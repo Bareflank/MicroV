@@ -25,7 +25,7 @@
  */
 
 #include <kvm_cpuid.h>
-#include <types.h>
+#include <mv_types.h>
 
 /**
  * <!-- description -->

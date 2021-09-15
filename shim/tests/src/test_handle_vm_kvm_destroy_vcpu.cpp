@@ -44,12 +44,13 @@ namespace shim
     tests() noexcept -> bsl::exit_code
     {
         init_tests();
+        constexpr auto handle{&handle_vm_kvm_destroy_vcpu};
 
         bsl::ut_scenario{"success"} = []() noexcept {
             bsl::ut_given{} = [&]() noexcept {
                 shim_vcpu_t mut_vcpu{};
                 bsl::ut_then{} = [&]() noexcept {
-                    handle_vm_kvm_destroy_vcpu(&mut_vcpu);
+                    handle(&mut_vcpu);
                 };
             };
         };
@@ -60,7 +61,7 @@ namespace shim
                 bsl::ut_when{} = [&]() noexcept {
                     g_mut_hypervisor_detected = false;
                     bsl::ut_then{} = [&]() noexcept {
-                        handle_vm_kvm_destroy_vcpu(&mut_vcpu);
+                        handle(&mut_vcpu);
                     };
                     bsl::ut_cleanup{} = [&]() noexcept {
                         g_mut_hypervisor_detected = true;
@@ -73,9 +74,9 @@ namespace shim
             bsl::ut_given{} = [&]() noexcept {
                 shim_vcpu_t mut_vcpu{};
                 bsl::ut_then{} = [&]() noexcept {
-                    handle_vm_kvm_destroy_vcpu(&mut_vcpu);
-                    handle_vm_kvm_destroy_vcpu(&mut_vcpu);
-                    handle_vm_kvm_destroy_vcpu(&mut_vcpu);
+                    handle(&mut_vcpu);
+                    handle(&mut_vcpu);
+                    handle(&mut_vcpu);
                 };
             };
         };

@@ -40,10 +40,7 @@ namespace microv
     /// @class microv::pp_mtrrs_t
     ///
     /// <!-- description -->
-    ///   @brief Defines MicroV's physical processor MTRRS handler. Physical
-    ///     processor resources are owned by the physical processors and
-    ///     are used by the VM, VP and VSs to directly access the hardware
-    ///     and provide emulated responses to VMExits from the root VM.
+    ///   @brief Defines MicroV's physical processor MTRRS handler.
     ///
     class pp_mtrrs_t final
     {

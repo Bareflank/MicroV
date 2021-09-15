@@ -25,7 +25,7 @@
 #include "../../include/handle_system_kvm_memory_encrypt_op.h"
 
 #include <kvm_enc_region.h>
-#include <types.h>
+#include <mv_types.h>
 
 #include <bsl/ut.hpp>
 

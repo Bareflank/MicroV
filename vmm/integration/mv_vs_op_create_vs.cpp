@@ -49,10 +49,7 @@ namespace hypercall
     {
         bsl::safe_u16 mut_id{};
         mv_status_t mut_ret{};
-        mv_hypercall_t mut_hvc{};
-
-        integration::verify(mut_hvc.initialize());
-        auto const hndl{mut_hvc.handle()};
+        integration::initialize_globals();
 
         // invalid VPID
         mut_ret = mv_vs_op_create_vs_impl(hndl.get(), MV_INVALID_ID.get(), mut_id.data());

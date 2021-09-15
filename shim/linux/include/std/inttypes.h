@@ -32,5 +32,12 @@
 #include <linux/types.h>
 
 #define INT64_MAX S64_MAX
+#define INT32_MAX S32_MAX
+#define INT16_MAX S16_MAX
+#define INT8_MAX S8_MAX
+#define UINT64_MAX U64_MAX
+#define UINT32_MAX U32_MAX
+#define UINT16_MAX U16_MAX
+#define UINT8_MAX U8_MAX
 
 #endif

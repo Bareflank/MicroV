@@ -25,6 +25,7 @@
 #ifndef GS_INITIALIZE_HPP
 #define GS_INITIALIZE_HPP
 
+#include <alloc_bitmap.hpp>
 #include <bf_syscall_t.hpp>
 #include <gs_t.hpp>
 #include <intrinsic_t.hpp>
@@ -32,6 +33,7 @@
 
 #include <bsl/debug.hpp>
 #include <bsl/errc_type.hpp>
+#include <bsl/unlikely.hpp>
 
 namespace microv
 {
@@ -39,8 +41,8 @@ namespace microv
     ///   @brief Initializes the Global Storage (GS).
     ///
     /// <!-- inputs/outputs -->
-    ///   @param gs the gs_t to use
-    ///   @param sys the bf_syscall_t to use
+    ///   @param mut_gs the gs_t to use
+    ///   @param mut_sys the bf_syscall_t to use
     ///   @param page_pool the page_pool_t to use
     ///   @param intrinsic the intrinsic_t to use
     ///   @return Returns bsl::errc_success on success, bsl::errc_failure
@@ -48,15 +50,45 @@ namespace microv
     ///
     [[nodiscard]] constexpr auto
     gs_initialize(
-        gs_t const &gs,
-        syscall::bf_syscall_t const &sys,
+        gs_t &mut_gs,
+        syscall::bf_syscall_t &mut_sys,
         page_pool_t const &page_pool,
         intrinsic_t const &intrinsic) noexcept -> bsl::errc_type
     {
-        bsl::discard(gs);
-        bsl::discard(sys);
         bsl::discard(page_pool);
         bsl::discard(intrinsic);
+
+        mut_gs.root_iopm = alloc_bitmap(mut_sys, IOPM_SIZE, mut_gs.root_iopm_spa);
+        if (bsl::unlikely(mut_gs.root_iopm.is_invalid())) {
+            bsl::print<bsl::V>() << bsl::here();
+            return bsl::errc_failure;
+        }
+
+        mut_gs.guest_iopm = alloc_bitmap(mut_sys, IOPM_SIZE, mut_gs.guest_iopm_spa);
+        if (bsl::unlikely(mut_gs.guest_iopm.is_invalid())) {
+            bsl::print<bsl::V>() << bsl::here();
+            return bsl::errc_failure;
+        }
+
+        mut_gs.root_msrpm = alloc_bitmap(mut_sys, MSRPM_SIZE, mut_gs.root_msrpm_spa);
+        if (bsl::unlikely(mut_gs.root_msrpm.is_invalid())) {
+            bsl::print<bsl::V>() << bsl::here();
+            return bsl::errc_failure;
+        }
+
+        mut_gs.guest_msrpm = alloc_bitmap(mut_sys, MSRPM_SIZE, mut_gs.guest_msrpm_spa);
+        if (bsl::unlikely(mut_gs.guest_msrpm.is_invalid())) {
+            bsl::print<bsl::V>() << bsl::here();
+            return bsl::errc_failure;
+        }
+
+        for (auto &elem : mut_gs.guest_iopm) {
+            elem = bsl::safe_u8::max_value().get();
+        }
+
+        for (auto &elem : mut_gs.guest_msrpm) {
+            elem = bsl::safe_u8::max_value().get();
+        }
 
         return bsl::errc_success;
     }

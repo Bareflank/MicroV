@@ -22,9 +22,9 @@
 /// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 /// SOFTWARE.
 
+#include <mv_types.h>
 #include <platform.h>
 #include <string.h>
-#include <types.h>
 
 #include <bsl/ensures.hpp>
 #include <bsl/expects.hpp>
@@ -32,8 +32,10 @@
 
 namespace shim
 {
-    /// @brief if non zero, platform_alloc fails after count hits zero
+    /// @brief tells platform_alloc to fail
     extern "C" bool g_mut_platform_alloc_fails{};    // NOLINT
+    /// @brief tells platform_virt_to_phys_user to fail
+    extern "C" bool g_mut_platform_virt_to_phys_user_fails{};    // NOLINT
     /// @brief number of online cpus
     extern "C" bsl::safe_u32 g_mut_platform_num_online_cpus{1U};    // NOLINT
     /// @brief return value for g_mut_platform_mlock
@@ -133,6 +135,25 @@ namespace shim
     platform_virt_to_phys(void const *const virt) noexcept -> bsl::uintmx
     {
         return reinterpret_cast<bsl::uintmx>(virt);
+    }
+
+    /// <!-- description -->
+    ///   @brief Given a virtual address, this function returns the virtual
+    ///     address's physical address. Returns nullptr if the conversion failed.
+    ///
+    /// <!-- inputs/outputs -->
+    ///   @param virt the virtual address to convert to a physical address
+    ///   @return Given a virtual address, this function returns the virtual
+    ///     address's physical address. Returns nullptr if the conversion failed.
+    ///
+    extern "C" [[nodiscard]] auto
+    platform_virt_to_phys_user(uintptr_t const virt) noexcept -> bsl::uintmx
+    {
+        if (g_mut_platform_virt_to_phys_user_fails) {
+            return {};
+        }
+
+        return virt;
     }
 
     /// <!-- description -->

@@ -25,7 +25,7 @@
  */
 
 #include <kvm_hyperv_eventfd.h>
-#include <types.h>
+#include <mv_types.h>
 
 /**
  * <!-- description -->

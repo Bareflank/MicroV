@@ -142,7 +142,6 @@ namespace microv
         ///   @param page_pool the page_pool_t to use
         ///   @param intrinsic the intrinsic_t to use
         ///   @param vmid the ID of the VM to assign the newly created VP to
-        ///   @param ppid the ID of the PP to assign the newly created VP to
         ///   @return Returns ID of the newly allocated vp_t. Returns
         ///     bsl::safe_u16::failure() on failure.
         ///
@@ -153,18 +152,17 @@ namespace microv
             syscall::bf_syscall_t &mut_sys,
             page_pool_t const &page_pool,
             intrinsic_t const &intrinsic,
-            bsl::safe_u16 const &vmid,
-            bsl::safe_u16 const &ppid) noexcept -> bsl::safe_u16
+            bsl::safe_u16 const &vmid) noexcept -> bsl::safe_u16
         {
             lock_guard_t mut_lock{tls, m_lock};
 
-            auto const vpid{mut_sys.bf_vp_op_create_vp(vmid, ppid)};
+            auto const vpid{mut_sys.bf_vp_op_create_vp(vmid)};
             if (bsl::unlikely(vpid.is_invalid())) {
                 bsl::print<bsl::V>() << bsl::here();
                 return bsl::safe_u16::failure();
             }
 
-            return this->get_vp(vpid)->allocate(gs, tls, mut_sys, page_pool, intrinsic, vmid, ppid);
+            return this->get_vp(vpid)->allocate(gs, tls, mut_sys, page_pool, intrinsic, vmid);
         }
 
         /// <!-- description -->
@@ -305,23 +303,6 @@ namespace microv
         assigned_vm(bsl::safe_u16 const &vpid) const noexcept -> bsl::safe_u16
         {
             return this->get_vp(vpid)->assigned_vm();
-        }
-
-        /// <!-- description -->
-        ///   @brief Returns the ID of the PP the requested vp_t is assigned
-        ///     to. If the vp_t is not assigned, syscall::BF_INVALID_ID is
-        ///     returned.
-        ///
-        /// <!-- inputs/outputs -->
-        ///   @param vpid the ID of the vp_t to query
-        ///   @return Returns the ID of the PP the requested vp_t is assigned
-        ///     to. If the vp_t is not assigned, syscall::BF_INVALID_ID is
-        ///     returned.
-        ///
-        [[nodiscard]] constexpr auto
-        assigned_pp(bsl::safe_u16 const &vpid) const noexcept -> bsl::safe_u16
-        {
-            return this->get_vp(vpid)->assigned_pp();
         }
 
         /// <!-- description -->

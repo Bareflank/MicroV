@@ -46,7 +46,6 @@ namespace hypercall
     [[nodiscard]] constexpr auto
     tests() noexcept -> bsl::exit_code
     {
-        mv_hypercall_t mut_hvc{};
         integration::verify(mut_hvc.initialize());
 
         constexpr auto num_loops{0x1000_umx};

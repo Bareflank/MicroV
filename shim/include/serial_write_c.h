@@ -27,7 +27,7 @@
 #ifndef SERIAL_WRITE_C
 #define SERIAL_WRITE_C
 
-#include <types.h>
+#include <mv_types.h>
 
 #ifdef __cplusplus
 extern "C"

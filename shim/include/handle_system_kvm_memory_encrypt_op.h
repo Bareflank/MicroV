@@ -28,7 +28,7 @@
 #define HANDLE_SYSTEM_KVM_MEMORY_ENCRYPT_OP_H
 
 #include <kvm_enc_region.h>
-#include <types.h>
+#include <mv_types.h>
 
 #ifdef __cplusplus
 extern "C"

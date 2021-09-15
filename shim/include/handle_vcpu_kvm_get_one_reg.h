@@ -28,7 +28,7 @@
 #define HANDLE_VCPU_KVM_GET_ONE_REG_H
 
 #include <kvm_one_reg.h>
-#include <types.h>
+#include <mv_types.h>
 
 #ifdef __cplusplus
 extern "C"

@@ -53,7 +53,7 @@ namespace microv
     ///   @param gs the gs_t to use
     ///   @param mut_tls the tls_t to use
     ///   @param mut_sys the bf_syscall_t to use
-    ///   @param page_pool the page_pool_t to use
+    ///   @param mut_page_pool the page_pool_t to use
     ///   @param intrinsic the intrinsic_t to use
     ///   @param pp_pool the pp_pool_t to use
     ///   @param vm_pool the vm_pool_t to use
@@ -68,7 +68,7 @@ namespace microv
         gs_t const &gs,
         tls_t &mut_tls,
         syscall::bf_syscall_t &mut_sys,
-        page_pool_t const &page_pool,
+        page_pool_t &mut_page_pool,
         intrinsic_t const &intrinsic,
         pp_pool_t const &pp_pool,
         vm_pool_t const &vm_pool,
@@ -83,21 +83,28 @@ namespace microv
         bsl::expects(ppid.is_valid_and_checked());
         bsl::expects(ppid != syscall::BF_INVALID_ID);
 
-        auto const ret{tls_initialize(mut_tls, mut_sys, page_pool, intrinsic)};
+        auto const ret{tls_initialize(mut_tls, mut_sys, mut_page_pool, intrinsic)};
         if (bsl::unlikely(!ret)) {
             bsl::print<bsl::V>() << bsl::here();
             return bsl::errc_failure;
         }
 
-        auto const vpid{
-            mut_vp_pool.allocate(gs, mut_tls, mut_sys, page_pool, intrinsic, vmid, ppid)};
+        auto const vpid{mut_vp_pool.allocate(gs, mut_tls, mut_sys, mut_page_pool, intrinsic, vmid)};
         if (bsl::unlikely(vpid.is_invalid())) {
             bsl::print<bsl::V>() << bsl::here();
             return bsl::errc_failure;
         }
 
         auto const vsid{mut_vs_pool.allocate(
-            gs, mut_tls, mut_sys, page_pool, intrinsic, vmid, vpid, ppid, vm_pool.slpt_spa(vmid))};
+            gs,
+            mut_tls,
+            mut_sys,
+            mut_page_pool,
+            intrinsic,
+            vmid,
+            vpid,
+            ppid,
+            vm_pool.slpt_spa(vmid))};
         if (bsl::unlikely(vsid.is_invalid())) {
             bsl::print<bsl::V>() << bsl::here();
             return bsl::errc_failure;

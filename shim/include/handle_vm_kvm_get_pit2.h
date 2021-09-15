@@ -28,7 +28,7 @@
 #define HANDLE_VM_KVM_GET_PIT2_H
 
 #include <kvm_pit_state2.h>
-#include <types.h>
+#include <mv_types.h>
 
 #ifdef __cplusplus
 extern "C"

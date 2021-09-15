@@ -29,11 +29,11 @@
 #include <g_mut_hndl.h>
 #include <mv_constants.h>
 #include <mv_hypercall.h>
+#include <mv_types.h>
 #include <platform.h>
 #include <shim_vcpu_t.h>
 #include <shim_vm_t.h>
 #include <touch.h>
-#include <types.h>
 
 /** just need any value to mark a VCPU as taken. will be overridden */
 #define FD_USED ((uint64_t)1)

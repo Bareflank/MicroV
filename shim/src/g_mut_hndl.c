@@ -24,7 +24,7 @@
  * SOFTWARE.
  */
 
-#include <types.h>
+#include <mv_types.h>
 
 /** @brief stores the handle used to communicate with MicroV */
 uint64_t g_mut_hndl = ((uint64_t)0);

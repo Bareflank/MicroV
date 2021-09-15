@@ -27,7 +27,7 @@
 #ifndef HANDLE_VCPU_KVM_X86_SETUP_MCE_H
 #define HANDLE_VCPU_KVM_X86_SETUP_MCE_H
 
-#include <types.h>
+#include <mv_types.h>
 
 #ifdef __cplusplus
 extern "C"

@@ -24,7 +24,7 @@
 
 #include "../../include/handle_vm_kvm_set_identity_map_addr.h"
 
-#include <types.h>
+#include <mv_types.h>
 
 #include <bsl/safe_integral.hpp>
 #include <bsl/ut.hpp>

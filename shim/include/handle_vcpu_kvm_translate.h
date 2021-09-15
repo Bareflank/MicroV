@@ -28,7 +28,7 @@
 #define HANDLE_VCPU_KVM_TRANSLATE_H
 
 #include <kvm_translation.h>
-#include <types.h>
+#include <mv_types.h>
 
 #ifdef __cplusplus
 extern "C"

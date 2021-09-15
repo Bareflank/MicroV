@@ -28,7 +28,7 @@
 #define HANDLE_VCPU_KVM_GET_MP_STATE_H
 
 #include <kvm_mp_state.h>
-#include <types.h>
+#include <mv_types.h>
 
 #ifdef __cplusplus
 extern "C"

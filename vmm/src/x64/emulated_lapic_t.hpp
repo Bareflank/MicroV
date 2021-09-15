@@ -52,6 +52,9 @@ namespace microv
         /// @brief stores the ID of the VS associated with this emulated_lapic_t
         bsl::safe_u16 m_assigned_vsid{};
 
+        /// @brief stores the value of MSR_APIC_BASE;
+        bsl::safe_u64 m_apic_base{};
+
     public:
         /// <!-- description -->
         ///   @brief Initializes this emulated_lapic_t.
@@ -102,6 +105,7 @@ namespace microv
             bsl::discard(sys);
             bsl::discard(intrinsic);
 
+            m_apic_base = {};
             m_assigned_vsid = {};
         }
 
@@ -118,6 +122,32 @@ namespace microv
         {
             bsl::ensures(m_assigned_vsid.is_valid_and_checked());
             return ~m_assigned_vsid;
+        }
+
+        /// <!-- description -->
+        ///   @brief Returns the emulated value of MSR_APIC_BASE
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @return Returns the emulated value of MSR_APIC_BASE
+        ///
+        [[nodiscard]] constexpr auto
+        get_apic_base() const noexcept -> bsl::safe_u64 const &
+        {
+            bsl::ensures(m_apic_base.is_valid_and_checked());
+            return m_apic_base;
+        }
+
+        /// <!-- description -->
+        ///   @brief Sets the value of the emulated MSR_APIC_BASE
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param val the value to set MSR_APIC_BASE to
+        ///
+        constexpr void
+        set_apic_base(bsl::safe_u64 const &val) noexcept
+        {
+            bsl::expects(val.is_valid_and_checked());
+            m_apic_base = val;
         }
     };
 }

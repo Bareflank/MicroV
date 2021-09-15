@@ -29,7 +29,7 @@
 #ifndef CONSTANTS_H
 #define CONSTANTS_H
 
-#include <types.h>
+#include <mv_types.h>
 
 #define HYPERVISOR_SERIAL_PORT 0x03F8
 #define HYPERVISOR_PAGE_SIZE ((uint64_t)(0x1000))

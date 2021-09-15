@@ -26,7 +26,7 @@
 #include <mv_hypercall_t.hpp>
 
 #include <bsl/array.hpp>
-#include <bsl/convert.hpp>
+#include <bsl/convert.hpp>    // IWYU pragma: keep
 #include <bsl/enable_color.hpp>
 #include <bsl/exit_code.hpp>
 #include <bsl/safe_integral.hpp>
@@ -94,7 +94,7 @@ namespace hypercall
 
         // Create VMs until we run out. Then destroy them all.
         {
-            bsl::array<bsl::safe_u16, bsl::to_umx(HYPERVISOR_MAX_VMS).get()> mut_vmids{};
+            bsl::array<bsl::safe_u16, HYPERVISOR_MAX_VMS.get()> mut_vmids{};
             for (auto &mut_vmid : mut_vmids) {
                 mut_vmid = mut_hvc.mv_vm_op_create_vm();
             }

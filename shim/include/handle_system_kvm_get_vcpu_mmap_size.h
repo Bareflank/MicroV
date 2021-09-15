@@ -27,7 +27,7 @@
 #ifndef HANDLE_SYSTEM_KVM_GET_VCPU_MMAP_SIZE_H
 #define HANDLE_SYSTEM_KVM_GET_VCPU_MMAP_SIZE_H
 
-#include <types.h>
+#include <mv_types.h>
 
 #ifdef __cplusplus
 extern "C"

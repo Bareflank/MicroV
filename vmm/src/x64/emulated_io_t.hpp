@@ -77,6 +77,14 @@ namespace microv
             bsl::discard(sys);
             bsl::discard(intrinsic);
 
+            /// NOTE:
+            /// - Since the IO permissions map is a global resource due to
+            ///   the limited amount of physically contiguous memory that
+            ///   is required, the initialization of the IO permission maps
+            ///   is done in gs_initialize. Any IO ports that need to be
+            ///   trapped, or passed through should be done there.
+            ///
+
             m_assigned_vsid = ~vsid;
         }
 

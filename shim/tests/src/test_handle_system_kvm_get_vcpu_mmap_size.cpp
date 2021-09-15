@@ -24,8 +24,8 @@
 
 #include "../../include/handle_system_kvm_get_vcpu_mmap_size.h"
 
+#include <helpers.hpp>
 #include <kvm_run.h>
-#include <types.h>
 
 #include <bsl/convert.hpp>
 #include <bsl/safe_integral.hpp>
@@ -45,20 +45,22 @@ namespace shim
     [[nodiscard]] constexpr auto
     tests() noexcept -> bsl::exit_code
     {
+        init_tests();
+        constexpr auto handle{&handle_system_kvm_get_vcpu_mmap_size};
+
         bsl::ut_scenario{"returns sizeof(kvm_run)"} = []() noexcept {
             bsl::ut_given{} = [&]() noexcept {
                 bsl::safe_u32 mut_size{};
                 bsl::ut_when{} = [&]() noexcept {
                     bsl::ut_then{} = [&]() noexcept {
-                        bsl::ut_check(
-                            SHIM_SUCCESS == handle_system_kvm_get_vcpu_mmap_size(mut_size.data()));
+                        bsl::ut_check(SHIM_SUCCESS == handle(mut_size.data()));
                         bsl::ut_check(bsl::to_u64(mut_size) == sizeof(kvm_run));
                     };
                 };
             };
         };
 
-        return bsl::ut_success();
+        return fini_tests();
     }
 }
 

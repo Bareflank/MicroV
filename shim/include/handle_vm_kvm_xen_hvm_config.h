@@ -28,7 +28,7 @@
 #define HANDLE_VM_KVM_XEN_HVM_CONFIG_H
 
 #include <kvm_xen_hvm_config.h>
-#include <types.h>
+#include <mv_types.h>
 
 #ifdef __cplusplus
 extern "C"

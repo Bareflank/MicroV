@@ -27,8 +27,8 @@
 #ifndef G_MUT_SHARED_PAGES_H
 #define G_MUT_SHARED_PAGES_H
 
-#include <constants.h>
-#include <types.h>
+#include <mv_constants.h>
+#include <mv_types.h>
 
 #ifdef __cplusplus
 extern "C"

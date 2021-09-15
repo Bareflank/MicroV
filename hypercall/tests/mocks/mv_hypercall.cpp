@@ -25,6 +25,7 @@
 #include "../../mocks/mv_hypercall.h"
 
 #include <mv_constants.h>
+#include <mv_exit_io_t.h>
 #include <mv_exit_reason_t.h>
 #include <mv_rdl_t.h>
 #include <mv_reg_t.h>
@@ -69,6 +70,7 @@ namespace shim
         constinit bsl::uint16 g_mut_mv_vs_op_vsid{};
         constinit mv_translation_t g_mut_mv_vs_op_gla_to_gpa{};
         constinit mv_exit_reason_t g_mut_mv_vs_op_run{};
+        constinit mv_exit_io_t g_mut_mv_vs_op_run_io{};
         constinit mv_status_t g_mut_mv_vs_op_reg_get{};
         constinit mv_status_t g_mut_mv_vs_op_reg_set{};
         constinit mv_status_t g_mut_mv_vs_op_reg_get_list{};
@@ -388,6 +390,60 @@ namespace shim
         bsl::ut_scenario{"mv_vs_op_run"} = []() noexcept {
             bsl::ut_given{} = [&]() noexcept {
                 constexpr auto hypercall{&mv_vs_op_run};
+                constexpr mv_exit_reason_t expected{mv_exit_reason_t_failure};
+                bsl::ut_when{} = [&]() noexcept {
+                    g_mut_mv_vs_op_run = expected;
+                    bsl::ut_then{} = [&]() noexcept {
+                        bsl::ut_check(expected == hypercall(hndl, {}));
+                    };
+                };
+            };
+        };
+
+        bsl::ut_scenario{"mv_vs_op_run"} = []() noexcept {
+            bsl::ut_given{} = [&]() noexcept {
+                constexpr auto hypercall{&mv_vs_op_run};
+                constexpr mv_exit_reason_t expected{mv_exit_reason_t_unknown};
+                bsl::ut_when{} = [&]() noexcept {
+                    g_mut_mv_vs_op_run = expected;
+                    bsl::ut_then{} = [&]() noexcept {
+                        bsl::ut_check(expected == hypercall(hndl, {}));
+                    };
+                };
+            };
+        };
+
+        bsl::ut_scenario{"mv_vs_op_run"} = []() noexcept {
+            bsl::ut_given{} = [&]() noexcept {
+                constexpr auto hypercall{&mv_vs_op_run};
+                constexpr mv_exit_reason_t expected{mv_exit_reason_t_hlt};
+                bsl::ut_when{} = [&]() noexcept {
+                    g_mut_mv_vs_op_run = expected;
+                    bsl::ut_then{} = [&]() noexcept {
+                        bsl::ut_check(expected == hypercall(hndl, {}));
+                    };
+                };
+            };
+        };
+
+        bsl::ut_scenario{"mv_vs_op_run"} = []() noexcept {
+            bsl::ut_given{} = [&]() noexcept {
+                constexpr auto hypercall{&mv_vs_op_run};
+                constexpr mv_exit_reason_t expected{mv_exit_reason_t_io};
+                mv_exit_io_t mut_exit_io{};
+                bsl::ut_when{} = [&]() noexcept {
+                    g_mut_shared_pages[0] = &mut_exit_io;
+                    g_mut_mv_vs_op_run = expected;
+                    bsl::ut_then{} = [&]() noexcept {
+                        bsl::ut_check(expected == hypercall(hndl, {}));
+                    };
+                };
+            };
+        };
+
+        bsl::ut_scenario{"mv_vs_op_run"} = []() noexcept {
+            bsl::ut_given{} = [&]() noexcept {
+                constexpr auto hypercall{&mv_vs_op_run};
                 constexpr mv_exit_reason_t expected{mv_exit_reason_t_mmio};
                 bsl::ut_when{} = [&]() noexcept {
                     g_mut_mv_vs_op_run = expected;
@@ -433,8 +489,7 @@ namespace shim
             bsl::ut_given{} = [&]() noexcept {
                 constexpr auto hypercall{&mv_vs_op_reg_get_list};
                 constexpr auto expected{42_u64};
-                struct mv_rdl_t mut_rdl
-                {};
+                mv_rdl_t mut_rdl{};
                 bsl::ut_when{} = [&]() noexcept {
                     mut_rdl.num_entries = bsl::safe_u64::magic_2().get();
                     g_mut_shared_pages[0] = &mut_rdl;
@@ -496,8 +551,7 @@ namespace shim
             bsl::ut_given{} = [&]() noexcept {
                 constexpr auto hypercall{&mv_vs_op_msr_get_list};
                 constexpr auto expected{42_u64};
-                struct mv_rdl_t mut_rdl
-                {};
+                mv_rdl_t mut_rdl{};
                 bsl::ut_when{} = [&]() noexcept {
                     mut_rdl.num_entries = bsl::safe_u64::magic_2().get();
                     g_mut_shared_pages[0] = &mut_rdl;

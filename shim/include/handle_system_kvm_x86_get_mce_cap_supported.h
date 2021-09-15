@@ -27,7 +27,7 @@
 #ifndef HANDLE_SYSTEM_SYSTEM_KVM_X86_GET_MCE_CAP_SUPPORTED_H
 #define HANDLE_SYSTEM_SYSTEM_KVM_X86_GET_MCE_CAP_SUPPORTED_H
 
-#include <types.h>
+#include <mv_types.h>
 
 #ifdef __cplusplus
 extern "C"

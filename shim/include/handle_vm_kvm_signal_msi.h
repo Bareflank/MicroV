@@ -28,7 +28,7 @@
 #define HANDLE_VM_KVM_SIGNAL_MSI_H
 
 #include <kvm_msi.h>
-#include <types.h>
+#include <mv_types.h>
 
 #ifdef __cplusplus
 extern "C"

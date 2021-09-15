@@ -25,7 +25,7 @@
 #include "../../include/handle_vcpu_kvm_set_vcpu_events.h"
 
 #include <kvm_vcpu_events.h>
-#include <types.h>
+#include <mv_types.h>
 
 #include <bsl/ut.hpp>
 

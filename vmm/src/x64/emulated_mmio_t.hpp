@@ -142,27 +142,27 @@ namespace microv
                 return mut_ret;
             }
 
-            constexpr auto max_gpa{bsl::to_umx(0x8000000000U)};
-            constexpr auto gpa_inc{bsl::to_idx(PAGE_2M_T_SIZE)};
+            // constexpr auto max_gpa{bsl::to_u64(0x8000000000U)};
+            // constexpr auto gpa_inc{bsl::to_idx(PAGE_2M_T_SIZE)};
 
-            if (mut_sys.is_vm_the_root_vm(this->assigned_vmid())) {
-                for (bsl::safe_idx mut_i{}; mut_i < max_gpa; mut_i += gpa_inc) {
-                    auto const spa{bsl::to_umx(mut_i)};
-                    auto const gpa{bsl::to_umx(mut_i)};
+            // if (mut_sys.is_vm_the_root_vm(this->assigned_vmid())) {
+            //     for (bsl::safe_idx mut_i{}; mut_i < max_gpa; mut_i += gpa_inc) {
+            //         auto const spa{bsl::to_u64(mut_i)};
+            //         auto const gpa{bsl::to_u64(mut_i)};
 
-                    mut_ret = m_slpt.map_page<l1e_t>(
-                        tls, mut_page_pool, gpa, spa, MAP_PAGE_RWE, false, mut_sys);
-                    if (bsl::unlikely(!mut_ret)) {
-                        bsl::print<bsl::V>() << bsl::here();
-                        return mut_ret;
-                    }
+            //         mut_ret = m_slpt.map_page<l1e_t>(
+            //             tls, mut_page_pool, gpa, spa, MAP_PAGE_RWE, false, mut_sys);
+            //         if (bsl::unlikely(!mut_ret)) {
+            //             bsl::print<bsl::V>() << bsl::here();
+            //             return mut_ret;
+            //         }
 
-                    bsl::touch();
-                }
-            }
-            else {
-                bsl::touch();
-            }
+            //         bsl::touch();
+            //     }
+            // }
+            // else {
+            //     bsl::touch();
+            // }
 
             return bsl::errc_success;
         }
@@ -216,13 +216,13 @@ namespace microv
         ///     page tables used by this VM.
         ///
         [[nodiscard]] constexpr auto
-        slpt_spa() const noexcept -> bsl::safe_umx
+        slpt_spa() const noexcept -> bsl::safe_u64
         {
             return m_slpt.phys();
         }
 
         /// <!-- description -->
-        ///   @brief Maps memory into the VM using instructions from the
+        ///   @brief Maps memory into this VM using instructions from the
         ///     provided MDL.
         ///
         /// <!-- inputs/outputs -->
@@ -245,23 +245,88 @@ namespace microv
             for (bsl::safe_idx mut_i{}; mut_i < mdl.num_entries; ++mut_i) {
                 auto const *const entry{mdl.entries.at_if(mut_i)};
 
-                auto const gpa{bsl::to_umx(entry->dst)};
-                auto const spa{this->gpa_to_spa(mut_sys, bsl::to_umx(entry->src))};
+                auto const gpa{bsl::to_u64(entry->dst)};
+                auto const spa{this->gpa_to_spa(mut_sys, bsl::to_u64(entry->src))};
 
                 /// TODO:
                 /// - Add support for entries that have a size greater than
                 ///   4k. For now we only support 4k pages.
                 /// - Add support for the flags field. For now, everything
                 ///   is mapped as RWE.
+                /// - We need to undo the any maps that succeeded on failure.
+                ///   Right now, we do not do that, which is an issue
+                ///   because guest software will not attempt to undo a
+                ///   failed map operation.
                 ///
-
                 auto const ret{
                     m_slpt.map_page(tls, mut_page_pool, gpa, spa, MAP_PAGE_RWE, false, mut_sys)};
+
+                if (bsl::unlikely(ret == bsl::errc_already_exists)) {
+                    bsl::error() << "mdl entry "                   // --
+                                 << mut_i                          // --
+                                 << " for dst "                    // --
+                                 << bsl::hex(gpa)                  // --
+                                 << " has already been mapped "    // --
+                                 << bsl::endl                      // --
+                                 << bsl::here();                   // --
+
+                    return ret;
+                }
 
                 if (bsl::unlikely(!ret)) {
                     bsl::print<bsl::V>() << bsl::here();
                     return ret;
                 }
+
+                bsl::touch();
+            }
+
+            return bsl::errc_success;
+        }
+
+        /// <!-- description -->
+        ///   @brief Unmaps memory from this VM using instructions from the
+        ///     provided MDL.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param tls the tls_t to use
+        ///   @param mut_sys the bf_syscall_t to use
+        ///   @param mut_page_pool the page_pool_t to use
+        ///   @param mdl the MDL containing the memory to map from the VM
+        ///   @return Returns bsl::errc_success on success, bsl::errc_failure
+        ///     and friends otherwise
+        ///
+        [[nodiscard]] constexpr auto
+        unmap(
+            tls_t const &tls,
+            syscall::bf_syscall_t &mut_sys,
+            page_pool_t &mut_page_pool,
+            hypercall::mv_mdl_t const &mdl) noexcept -> bsl::errc_type
+        {
+            bsl::expects(mut_sys.is_the_active_vm_the_root_vm());
+            bsl::expects(!mut_sys.is_vm_the_root_vm(this->assigned_vmid()));
+
+            for (bsl::safe_idx mut_i{}; mut_i < mdl.num_entries; ++mut_i) {
+                auto const *const entry{mdl.entries.at_if(mut_i)};
+
+                /// TODO:
+                /// - Add support for entries that have a size greater than
+                ///   4k. For now we only support 4k pages.
+                ///
+
+                auto const ret{
+                    m_slpt.unmap_page(tls, mut_page_pool, bsl::to_u64(entry->dst), mut_sys)};
+
+                if (bsl::unlikely(!ret)) {
+                    bsl::print<bsl::V>() << bsl::here();
+                    return ret;
+                }
+
+                /// TODO:
+                /// - We need to flush the TLB. Once SMP support is added,
+                ///   we will have to perform a remote TLB flush. For now,
+                ///   a local TLB flush is fine.
+                ///
 
                 bsl::touch();
             }
@@ -286,7 +351,23 @@ namespace microv
             -> bsl::safe_u64
         {
             bsl::expects(this->assigned_vmid() != syscall::BF_INVALID_ID);
-            bsl::discard(sys);
+            bsl::expects(sys.is_the_active_vm_the_root_vm());
+
+            /// TODO:
+            /// - Right now we assume that the only VM that can run this is
+            ///   the root VM. We will have to drop the above check, and
+            ///   actually perform a second-level paging translation. If
+            ///   the root VM remains such that, maps cannot occur, for the
+            ///   root VM, we can continue to return the GPA as an SPA.
+            ///
+            /// - For guest VMs, we will definitely need to perform a
+            ///   translation, which is just running the "entries" function
+            ///   while will do the translation.
+            ///
+            /// - If the root VM eventually supports mapping memory that is
+            ///   not 1:1, we will also need to perform this translation
+            ///   on the root VM as well.
+            ///
 
             return gpa;
         }

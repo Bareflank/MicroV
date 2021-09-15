@@ -28,78 +28,205 @@
 #include <detect_hypervisor.h>
 #include <g_mut_hndl.h>
 #include <kvm_regs.h>
-#include <kvm_regs_idxs.h>
 #include <mv_constants.h>
 #include <mv_hypercall.h>
 #include <mv_rdl_t.h>
 #include <mv_reg_t.h>
+#include <mv_types.h>
 #include <platform.h>
 #include <shared_page_for_current_pp.h>
 #include <shim_vcpu_t.h>
-#include <types.h>
+
+/** @brief stores the structure of the RDL we will send to MicroV */
+static struct mv_rdl_t const g_reg_rdl = {
+    .reg0 = ((uint64_t)0),
+    .reg1 = ((uint64_t)0),
+    .reg2 = ((uint64_t)0),
+    .reg3 = ((uint64_t)0),
+    .reg4 = ((uint64_t)0),
+    .reg5 = ((uint64_t)0),
+    .reg6 = ((uint64_t)0),
+    .reg7 = ((uint64_t)0),
+    .reserved1 = ((uint64_t)0),
+    .reserved2 = ((uint64_t)0),
+    .reserved3 = ((uint64_t)0),
+    .num_entries = ((uint64_t)0),
+
+    {
+        {(uint64_t)mv_reg_t_rax, ((uint64_t)0)},
+        {(uint64_t)mv_reg_t_rbx, ((uint64_t)0)},
+        {(uint64_t)mv_reg_t_rcx, ((uint64_t)0)},
+        {(uint64_t)mv_reg_t_rdx, ((uint64_t)0)},
+        {(uint64_t)mv_reg_t_rsi, ((uint64_t)0)},
+        {(uint64_t)mv_reg_t_rdi, ((uint64_t)0)},
+        {(uint64_t)mv_reg_t_rsp, ((uint64_t)0)},
+        {(uint64_t)mv_reg_t_rbp, ((uint64_t)0)},
+        {(uint64_t)mv_reg_t_r8, ((uint64_t)0)},
+        {(uint64_t)mv_reg_t_r9, ((uint64_t)0)},
+        {(uint64_t)mv_reg_t_r10, ((uint64_t)0)},
+        {(uint64_t)mv_reg_t_r11, ((uint64_t)0)},
+        {(uint64_t)mv_reg_t_r12, ((uint64_t)0)},
+        {(uint64_t)mv_reg_t_r13, ((uint64_t)0)},
+        {(uint64_t)mv_reg_t_r14, ((uint64_t)0)},
+        {(uint64_t)mv_reg_t_r15, ((uint64_t)0)},
+        {(uint64_t)mv_reg_t_rip, ((uint64_t)0)},
+        {(uint64_t)mv_reg_t_rflags, ((uint64_t)0)},
+    }};
 
 /**
  * <!-- description -->
  *   @brief Handles the execution of kvm_set_regs.
  *
  * <!-- inputs/outputs -->
- *   @param vcpu to pass vsid to microv
- *   @param pmut_args the arguments provided by userspace
+ *   @param vcpu arguments received from private data
+ *   @param args the arguments provided by userspace
  *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
  */
 NODISCARD int64_t
 handle_vcpu_kvm_set_regs(
-    struct shim_vcpu_t const *const vcpu, struct kvm_regs *const pmut_args) NOEXCEPT
+    struct shim_vcpu_t const *const vcpu, struct kvm_regs const *const args) NOEXCEPT
 {
     struct mv_rdl_t *pmut_mut_rdl;
+    struct mv_rdl_entry_t const *mut_src_entry;
+    struct mv_rdl_entry_t *pmut_mut_dst_entry;
+
     platform_expects(MV_INVALID_HANDLE != g_mut_hndl);
+    platform_expects(NULL != vcpu);
+    platform_expects(NULL != args);
 
     if (detect_hypervisor()) {
         bferror("The shim is not running in a VM. Did you forget to start MicroV?");
         return SHIM_FAILURE;
     }
 
-    pmut_mut_rdl = (struct mv_rdl_t *const)shared_page_for_current_pp();
+    pmut_mut_rdl = (struct mv_rdl_t *)shared_page_for_current_pp();
     platform_expects(NULL != pmut_mut_rdl);
 
-    pmut_mut_rdl->entries[RAX_IDX].reg = (uint64_t)mv_reg_t_rax;
-    pmut_mut_rdl->entries[RAX_IDX].val = pmut_args->rax;
-    pmut_mut_rdl->entries[RBX_IDX].reg = (uint64_t)mv_reg_t_rbx;
-    pmut_mut_rdl->entries[RBX_IDX].val = pmut_args->rbx;
-    pmut_mut_rdl->entries[RCX_IDX].reg = (uint64_t)mv_reg_t_rcx;
-    pmut_mut_rdl->entries[RCX_IDX].val = pmut_args->rcx;
-    pmut_mut_rdl->entries[RDX_IDX].reg = (uint64_t)mv_reg_t_rdx;
-    pmut_mut_rdl->entries[RDX_IDX].val = pmut_args->rdx;
-    pmut_mut_rdl->entries[RSI_IDX].reg = (uint64_t)mv_reg_t_rsi;
-    pmut_mut_rdl->entries[RSI_IDX].val = pmut_args->rsi;
-    pmut_mut_rdl->entries[RDI_IDX].reg = (uint64_t)mv_reg_t_rdi;
-    pmut_mut_rdl->entries[RDI_IDX].val = pmut_args->rdi;
-    pmut_mut_rdl->entries[RBP_IDX].reg = (uint64_t)mv_reg_t_rbp;
-    pmut_mut_rdl->entries[RBP_IDX].val = pmut_args->rbp;
-    pmut_mut_rdl->entries[R8_IDX].reg = (uint64_t)mv_reg_t_r8;
-    pmut_mut_rdl->entries[R8_IDX].val = pmut_args->r8;
-    pmut_mut_rdl->entries[R9_IDX].reg = (uint64_t)mv_reg_t_r9;
-    pmut_mut_rdl->entries[R9_IDX].val = pmut_args->r9;
-    pmut_mut_rdl->entries[R10_IDX].reg = (uint64_t)mv_reg_t_r10;
-    pmut_mut_rdl->entries[R10_IDX].val = pmut_args->r10;
-    pmut_mut_rdl->entries[R11_IDX].reg = (uint64_t)mv_reg_t_r11;
-    pmut_mut_rdl->entries[R11_IDX].val = pmut_args->r11;
-    pmut_mut_rdl->entries[R12_IDX].reg = (uint64_t)mv_reg_t_r12;
-    pmut_mut_rdl->entries[R12_IDX].val = pmut_args->r12;
-    pmut_mut_rdl->entries[R13_IDX].reg = (uint64_t)mv_reg_t_r13;
-    pmut_mut_rdl->entries[R13_IDX].val = pmut_args->r13;
-    pmut_mut_rdl->entries[R14_IDX].reg = (uint64_t)mv_reg_t_r14;
-    pmut_mut_rdl->entries[R14_IDX].val = pmut_args->r14;
-    pmut_mut_rdl->entries[R15_IDX].reg = (uint64_t)mv_reg_t_r15;
-    pmut_mut_rdl->entries[R15_IDX].val = pmut_args->r15;
-    pmut_mut_rdl->entries[RSP_IDX].reg = (uint64_t)mv_reg_t_rsp;
-    pmut_mut_rdl->entries[RSP_IDX].val = pmut_args->rsp;
-    pmut_mut_rdl->entries[RIP_IDX].reg = (uint64_t)mv_reg_t_rip;
-    pmut_mut_rdl->entries[RIP_IDX].val = pmut_args->rip;
-    pmut_mut_rdl->entries[RFLAGS_IDX].reg = (uint64_t)mv_reg_t_rflags;
-    pmut_mut_rdl->entries[RFLAGS_IDX].val = pmut_args->rflags;
+    pmut_mut_rdl->num_entries = ((uint64_t)0);
+    while (1) {
+        platform_expects(pmut_mut_rdl->num_entries < MV_RDL_MAX_ENTRIES);
 
-    pmut_mut_rdl->num_entries = TOTAL_NUM_ENTRIES;
+        mut_src_entry = &g_reg_rdl.entries[pmut_mut_rdl->num_entries];
+        pmut_mut_dst_entry = &pmut_mut_rdl->entries[pmut_mut_rdl->num_entries];
+
+        pmut_mut_dst_entry->reg = mut_src_entry->reg;
+        switch ((int32_t)pmut_mut_dst_entry->reg) {
+            case mv_reg_t_rax: {
+                pmut_mut_dst_entry->val = args->rax;
+                ++pmut_mut_rdl->num_entries;
+                continue;
+            }
+
+            case mv_reg_t_rbx: {
+                pmut_mut_dst_entry->val = args->rbx;
+                ++pmut_mut_rdl->num_entries;
+                continue;
+            }
+
+            case mv_reg_t_rcx: {
+                pmut_mut_dst_entry->val = args->rcx;
+                ++pmut_mut_rdl->num_entries;
+                continue;
+            }
+
+            case mv_reg_t_rdx: {
+                pmut_mut_dst_entry->val = args->rdx;
+                ++pmut_mut_rdl->num_entries;
+                continue;
+            }
+
+            case mv_reg_t_rsi: {
+                pmut_mut_dst_entry->val = args->rsi;
+                ++pmut_mut_rdl->num_entries;
+                continue;
+            }
+
+            case mv_reg_t_rdi: {
+                pmut_mut_dst_entry->val = args->rdi;
+                ++pmut_mut_rdl->num_entries;
+                continue;
+            }
+
+            case mv_reg_t_rsp: {
+                pmut_mut_dst_entry->val = args->rsp;
+                ++pmut_mut_rdl->num_entries;
+                continue;
+            }
+
+            case mv_reg_t_rbp: {
+                pmut_mut_dst_entry->val = args->rbp;
+                ++pmut_mut_rdl->num_entries;
+                continue;
+            }
+
+            case mv_reg_t_r8: {
+                pmut_mut_dst_entry->val = args->r8;
+                ++pmut_mut_rdl->num_entries;
+                continue;
+            }
+
+            case mv_reg_t_r9: {
+                pmut_mut_dst_entry->val = args->r9;
+                ++pmut_mut_rdl->num_entries;
+                continue;
+            }
+
+            case mv_reg_t_r10: {
+                pmut_mut_dst_entry->val = args->r10;
+                ++pmut_mut_rdl->num_entries;
+                continue;
+            }
+
+            case mv_reg_t_r11: {
+                pmut_mut_dst_entry->val = args->r11;
+                ++pmut_mut_rdl->num_entries;
+                continue;
+            }
+
+            case mv_reg_t_r12: {
+                pmut_mut_dst_entry->val = args->r12;
+                ++pmut_mut_rdl->num_entries;
+                continue;
+            }
+
+            case mv_reg_t_r13: {
+                pmut_mut_dst_entry->val = args->r13;
+                ++pmut_mut_rdl->num_entries;
+                continue;
+            }
+
+            case mv_reg_t_r14: {
+                pmut_mut_dst_entry->val = args->r14;
+                ++pmut_mut_rdl->num_entries;
+                continue;
+            }
+
+            case mv_reg_t_r15: {
+                pmut_mut_dst_entry->val = args->r15;
+                ++pmut_mut_rdl->num_entries;
+                continue;
+            }
+
+            case mv_reg_t_rip: {
+                pmut_mut_dst_entry->val = args->rip;
+                ++pmut_mut_rdl->num_entries;
+                continue;
+            }
+
+            case mv_reg_t_rflags: {
+                pmut_mut_dst_entry->val = args->rflags;
+                ++pmut_mut_rdl->num_entries;
+                continue;
+            }
+
+            default: {
+                break;
+            }
+        }
+
+        break;
+    }
+
     if (mv_vs_op_reg_set_list(g_mut_hndl, vcpu->vsid)) {
         bferror("mv_vs_op_reg_set_list failed");
         return SHIM_FAILURE;

@@ -40,10 +40,7 @@ namespace microv
     /// @class microv::pp_msr_t
     ///
     /// <!-- description -->
-    ///   @brief Defines MicroV's physical processor MSR handler. Physical
-    ///     processor resources are owned by the physical processors and
-    ///     are used by the VM, VP and VSs to directly access the hardware
-    ///     and provide emulated responses to VMExits from the root VM.
+    ///   @brief Defines MicroV's physical processor MSR handler.
     ///
     class pp_msr_t final
     {
@@ -117,6 +114,53 @@ namespace microv
             bsl::ensures(m_assigned_ppid.is_valid_and_checked());
             return ~m_assigned_ppid;
         }
+
+        /// NOTE:
+        /// - supported(): Given the address of an MSR (32bit), returns
+        ///   an mv_rdl_entry_t, with "reg" set to the provided address.
+        ///   If the MSR is supported, "val" is set to 1. If the MSR is
+        ///   not supported, "va1" is set to 0. By supported, if the
+        ///   hardware HAS support for the MSR, and MicroV properly handles
+        ///   the MSR, a 1 is returned. To determine if an MSR is supported,
+        ///   a hardcoded switch statement should be created. A supported
+        ///   MSR has a defined "case", and the MSR is read. If a failure
+        ///   is encountered, which will cause the microkernel to have to
+        ///   safely handle a GPF, an mv_rdl_entry_t with val set to 0 is
+        ///   returned. Any MSR address that is not supported will hit the
+        ///   default case an always return val set to 0. Val is only set
+        ///   to 1 when the MSR is supported, and a read() does not report
+        ///   a failure.
+        ///
+        ///   For now, the only MSRs that should be reported as supported
+        ///   are MSRs that are in AMD's VMCB, and the APIC BASE. We can add
+        ///   more later as needed.
+        ///
+
+        /// NOTE:
+        /// - emulated(): Given the address of an MSR (32bit), returns
+        ///   an mv_rdl_entry_t, with "reg" set to the provided address.
+        ///   If the MSR is emulated, "val" is set to 1. If the MSR is
+        ///   not emulated, "va1" is set to 0. By emulated, if the
+        ///   hardware DOES NOT HAVE support for the MSR, and MicroV properly
+        ///   handles the MSR anyways, a 1 is returned.
+        ///
+        ///   For now, we will always return 0, so no code is needed here
+        ///
+
+        /// NOTE:
+        /// - permissable(): Given the address of an MSR (32bit), returns
+        ///   an mv_rdl_entry_t, with "reg" set to the provided address.
+        ///   If the MSR is allowed to be read by userspace, "val" is set to 1.
+        ///   If the MSR is not allowed to be read by userspace, "va1" is set
+        ///   to 0.
+        ///
+        ///   Ideally we would always return 0. We don't trust the root OS,
+        ///   and therefore we don't want to give it more information about
+        ///   the guest than it needs. To start however, we should simply
+        ///   return whatever supported() returns. If it is supported(),
+        ///   it is permissable(), and in the future we can restrict what
+        ///   QEMU gets with a little research into what it actually needs.
+        ///
     };
 }
 

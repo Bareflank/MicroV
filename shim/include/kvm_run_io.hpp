@@ -25,12 +25,18 @@
 #ifndef KVM_RUN_IO_HPP
 #define KVM_RUN_IO_HPP
 
-#include <bsl/cstdint.hpp>
+#include <bsl/convert.hpp>
+#include <bsl/safe_integral.hpp>
 
 #pragma pack(push, 1)
 
 namespace shim
 {
+    /// @brief n/a
+    constexpr auto KVM_EXIT_IO_IN{0x00_u8};
+    /// @brief n/a
+    constexpr auto KVM_EXIT_IO_OUT{0x01_u8};
+
     /// <!-- description -->
     ///   @brief TODO
     ///
@@ -46,6 +52,13 @@ namespace shim
         bsl::uint32 count;
         /// @brief TODO
         bsl::uint64 data_offset;
+
+        /// @brief stores the data when the size is 1 byte
+        bsl::uint8 data8;
+        /// @brief stores the data when the size is 2 bytes
+        bsl::uint16 data16;
+        /// @brief stores the data when the size is 4 bytes
+        bsl::uint32 data32;
     };
 }
 

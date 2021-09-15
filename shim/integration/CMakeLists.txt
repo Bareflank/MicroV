@@ -28,9 +28,12 @@ list(APPEND HEADERS
 
 microv_add_vm_cross_compile(vms)
 
-microv_add_integration(kvm_create_vcpu HEADERS)
-microv_add_integration(kvm_create_vm HEADERS)
-microv_add_integration(kvm_get_regs HEADERS)
-microv_add_integration(kvm_get_vcpu_mmap_size HEADERS)
-microv_add_integration(kvm_set_regs HEADERS)
-microv_add_integration(kvm_set_user_memory_region HEADERS)
+microv_add_shim_integration(kvm_create_vcpu HEADERS)
+microv_add_shim_integration(kvm_create_vm HEADERS)
+microv_add_shim_integration(kvm_get_regs HEADERS)
+microv_add_shim_integration(kvm_get_sregs HEADERS)
+microv_add_shim_integration(kvm_get_vcpu_mmap_size HEADERS)
+microv_add_shim_integration(kvm_run HEADERS)
+microv_add_shim_integration(kvm_set_regs HEADERS)
+microv_add_shim_integration(kvm_set_sregs HEADERS)
+microv_add_shim_integration(kvm_set_user_memory_region HEADERS)

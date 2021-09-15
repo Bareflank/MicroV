@@ -1,7 +1,4 @@
-/**
- * @copyright
- * Copyright (C) 2020 Assured Information Security, Inc.
- *
+/** 
  * @copyright
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,7 +24,7 @@
 #ifndef DETECT_HYPERVISOR_H
 #define DETECT_HYPERVISOR_H
 
-#include <types.h>
+#include <mv_types.h>
 
 #ifdef __cplusplus
 namespace shim

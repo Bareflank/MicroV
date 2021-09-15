@@ -25,7 +25,7 @@
 #include "../../include/handle_vcpu_kvm_translate.h"
 
 #include <kvm_translation.h>
-#include <types.h>
+#include <mv_types.h>
 
 #include <bsl/ut.hpp>
 

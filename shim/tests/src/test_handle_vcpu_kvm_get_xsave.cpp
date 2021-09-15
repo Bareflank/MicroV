@@ -25,7 +25,7 @@
 #include "../../include/handle_vcpu_kvm_get_xsave.h"
 
 #include <kvm_xsave.h>
-#include <types.h>
+#include <mv_types.h>
 
 #include <bsl/ut.hpp>
 

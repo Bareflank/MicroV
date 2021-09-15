@@ -185,7 +185,7 @@ namespace microv
             }
 
             auto const pml4te{*(pml4t->entries.at_if(gla_to_pml4to(gla)))};
-            if (bsl::unlikely(bsl::safe_umx::magic_0() == pml4te.p)) {
+            if (bsl::unlikely(bsl::safe_u64::magic_0() == pml4te.p)) {
                 bsl::error() << "get_pml4te for gla "                                      // --
                              << bsl::hex(gla)                                              // --
                              << " failed because the pml4t entry is not marked present"    // --
@@ -249,7 +249,7 @@ namespace microv
             }
 
             auto const pdpte{*(pdpt->entries.at_if(gla_to_pdpto(gla)))};
-            if (bsl::unlikely(bsl::safe_umx::magic_0() == pdpte.p)) {
+            if (bsl::unlikely(bsl::safe_u64::magic_0() == pdpte.p)) {
                 bsl::error() << "get_pdpte for gla "                                      // --
                              << bsl::hex(gla)                                             // --
                              << " failed because the pdpt entry is not marked present"    // --
@@ -313,7 +313,7 @@ namespace microv
             }
 
             auto const pdte{*(pdt->entries.at_if(gla_to_pdto(gla)))};
-            if (bsl::unlikely(bsl::safe_umx::magic_0() == pdte.p)) {
+            if (bsl::unlikely(bsl::safe_u64::magic_0() == pdte.p)) {
                 bsl::error() << "get_pdte for gla "                                      // --
                              << bsl::hex(gla)                                            // --
                              << " failed because the pdt entry is not marked present"    // --
@@ -377,7 +377,7 @@ namespace microv
             }
 
             auto const pte{*(pt->entries.at_if(gla_to_pto(gla)))};
-            if (bsl::unlikely(bsl::safe_umx::magic_0() == pte.p)) {
+            if (bsl::unlikely(bsl::safe_u64::magic_0() == pte.p)) {
                 bsl::error() << "get_pte for gla "                                      // --
                              << bsl::hex(gla)                                           // --
                              << " failed because the pt entry is not marked present"    // --
@@ -612,36 +612,36 @@ namespace microv
 
             auto const pml4t_gpa{hypercall::mv_page_aligned(cr3)};
             auto const pml4te{get_pml4te(mut_sys, mut_pp_pool, gla, pml4t_gpa)};
-            if (bsl::unlikely(bsl::safe_umx::magic_0() == pml4te.p)) {
+            if (bsl::unlikely(bsl::safe_u64::magic_0() == pml4te.p)) {
                 bsl::print<bsl::V>() << bsl::here();
                 return {};
             }
 
             auto const pdpt_gpa{pml4te.phys << HYPERVISOR_PAGE_SHIFT};
             auto const pdpte{get_pdpte(mut_sys, mut_pp_pool, gla, pdpt_gpa)};
-            if (bsl::unlikely(bsl::safe_umx::magic_0() == pdpte.p)) {
+            if (bsl::unlikely(bsl::safe_u64::magic_0() == pdpte.p)) {
                 bsl::print<bsl::V>() << bsl::here();
                 return {};
             }
 
-            if (bsl::safe_umx::magic_1() == pdpte.ps) {
+            if (bsl::safe_u64::magic_1() == pdpte.ps) {
                 return {{}, gla, get_paddr(pdpte), get_flags(pdpte), true};
             }
 
             auto const pdt_gpa{pdpte.phys << HYPERVISOR_PAGE_SHIFT};
             auto const pdte{get_pdte(mut_sys, mut_pp_pool, gla, pdt_gpa)};
-            if (bsl::unlikely(bsl::safe_umx::magic_0() == pdte.p)) {
+            if (bsl::unlikely(bsl::safe_u64::magic_0() == pdte.p)) {
                 bsl::print<bsl::V>() << bsl::here();
                 return {};
             }
 
-            if (bsl::safe_umx::magic_1() == pdte.ps) {
+            if (bsl::safe_u64::magic_1() == pdte.ps) {
                 return {{}, gla, get_paddr(pdte), get_flags(pdte), true};
             }
 
             auto const pt_gpa{pdte.phys << HYPERVISOR_PAGE_SHIFT};
             auto const pte{get_pte(mut_sys, mut_pp_pool, gla, pt_gpa)};
-            if (bsl::unlikely(bsl::safe_umx::magic_0() == pte.p)) {
+            if (bsl::unlikely(bsl::safe_u64::magic_0() == pte.p)) {
                 bsl::print<bsl::V>() << bsl::here();
                 return {};
             }

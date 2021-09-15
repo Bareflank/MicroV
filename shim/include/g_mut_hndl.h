@@ -27,7 +27,7 @@
 #ifndef G_MUT_HNDL_H
 #define G_MUT_HNDL_H
 
-#include <types.h>
+#include <mv_types.h>
 
 #ifdef __cplusplus
 extern "C"

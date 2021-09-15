@@ -27,6 +27,8 @@
 
 #include <bsl/safe_integral.hpp>
 
+#pragma pack(push, 1)
+
 namespace hypercall
 {
     /// <!-- description -->
@@ -56,5 +58,7 @@ namespace hypercall
         bool is_valid;
     };
 }
+
+#pragma pack(pop)
 
 #endif

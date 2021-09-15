@@ -26,7 +26,7 @@
 
 #include <debug.h>
 #include <kvm_enc_region.h>
-#include <types.h>
+#include <mv_types.h>
 
 /**
  * <!-- description -->

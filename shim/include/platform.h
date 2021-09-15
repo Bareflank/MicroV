@@ -27,7 +27,7 @@
 #ifndef PLATFORM_H
 #define PLATFORM_H
 
-#include <types.h>
+#include <mv_types.h>
 
 #if defined(WINDOWS_KERNEL)
 #include <wdm.h>
@@ -111,14 +111,30 @@ namespace shim
         /**
          * <!-- description -->
          *   @brief Given a virtual address, this function returns the virtual
-         *     address's physical address. Returns ((void *)0) if the conversion failed.
+         *     address's physical address. Only works with memory allocated using
+         *     platform_alloc. Returns ((void *)0) if the conversion failed.
          *
          * <!-- inputs/outputs -->
          *   @param virt the virtual address to convert to a physical address
          *   @return Given a virtual address, this function returns the virtual
-         *     address's physical address. Returns ((void *)0) if the conversion failed.
+         *     address's physical address. Only works with memory allocated using
+         *     platform_alloc. Returns ((void *)0) if the conversion failed.
          */
         NODISCARD uintptr_t platform_virt_to_phys(void const *const virt) NOEXCEPT;
+
+        /**
+         * <!-- description -->
+         *   @brief Given a virtual address, this function returns the virtual
+         *     address's physical address. Only works on memory owned by userspace.
+         *     Returns ((void *)0) if the conversion failed.
+         *
+         * <!-- inputs/outputs -->
+         *   @param virt the virtual address to convert to a physical address
+         *   @return Given a virtual address, this function returns the virtual
+         *     address's physical address. Only works on memory owned by userspace.
+         *     Returns ((void *)0) if the conversion failed.
+         */
+        NODISCARD uintptr_t platform_virt_to_phys_user(uintptr_t const virt) NOEXCEPT;
 
         /**
          * <!-- description -->

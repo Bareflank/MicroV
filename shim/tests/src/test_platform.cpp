@@ -26,6 +26,7 @@
 #include <helpers.hpp>
 #include <platform.h>
 
+#include <bsl/convert.hpp>
 #include <bsl/discard.hpp>
 #include <bsl/safe_integral.hpp>
 #include <bsl/ut.hpp>
@@ -137,6 +138,31 @@ namespace shim
                 bool const val{};
                 bsl::ut_then{} = [&]() noexcept {
                     bsl::ut_check(platform_virt_to_phys(&val) == (uintptr_t)&val);
+                };
+            };
+        };
+
+        bsl::ut_scenario{"platform_virt_to_phys_user"} = []() noexcept {
+            bsl::ut_given{} = [&]() noexcept {
+                constexpr auto virt{0x1000_u64};
+                bsl::ut_then{} = [&]() noexcept {
+                    bsl::ut_check(platform_virt_to_phys_user(virt.get()) == virt);
+                };
+            };
+        };
+
+        bsl::ut_scenario{"platform_virt_to_phys_user fails"} = []() noexcept {
+            bsl::ut_given{} = [&]() noexcept {
+                constexpr auto virt{0x1000_u64};
+                constexpr auto expected{0_u64};
+                bsl::ut_when{} = [&]() noexcept {
+                    g_mut_platform_virt_to_phys_user_fails = true;
+                    bsl::ut_then{} = [&]() noexcept {
+                        bsl::ut_check(platform_virt_to_phys_user(virt.get()) == expected);
+                    };
+                    bsl::ut_cleanup{} = [&]() noexcept {
+                        g_mut_platform_virt_to_phys_user_fails = false;
+                    };
                 };
             };
         };

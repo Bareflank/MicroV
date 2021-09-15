@@ -25,7 +25,7 @@
 #include "../../include/handle_vm_kvm_signal_msi.h"
 
 #include <kvm_msi.h>
-#include <types.h>
+#include <mv_types.h>
 
 #include <bsl/ut.hpp>
 

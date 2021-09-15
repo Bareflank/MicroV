@@ -25,7 +25,7 @@
 #include "../../include/handle_vcpu_kvm_enable_cap.h"
 
 #include <kvm_enable_cap.h>
-#include <types.h>
+#include <mv_types.h>
 
 #include <bsl/ut.hpp>
 

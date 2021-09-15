@@ -25,8 +25,8 @@
  */
 
 #include <g_mut_shared_pages.h>
+#include <mv_types.h>
 #include <platform.h>
-#include <types.h>
 
 /**
  * <!-- description -->
@@ -40,7 +40,6 @@ NODISCARD void *
 shared_page_for_current_pp(void) NOEXCEPT
 {
     void *const pmut_ptr = g_mut_shared_pages[platform_current_cpu()];
-
     platform_ensures(((void *)0) != pmut_ptr);
     return pmut_ptr;
 }

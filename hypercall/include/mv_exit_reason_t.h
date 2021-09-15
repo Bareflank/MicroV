@@ -58,6 +58,17 @@ enum mv_exit_reason_t
         mv_exit_reason_t_mmio = 4,
     };
 
+/** @brief integer version of mv_exit_reason_t_failure */
+#define EXIT_REASON_FAILURE ((int32_t)mv_exit_reason_t_failure)
+/** @brief integer version of mv_exit_reason_t_unknown */
+#define EXIT_REASON_UNKNOWN ((int32_t)mv_exit_reason_t_unknown)
+/** @brief integer version of mv_exit_reason_t_hlt */
+#define EXIT_REASON_HLT ((int32_t)mv_exit_reason_t_hlt)
+/** @brief integer version of mv_exit_reason_t_io */
+#define EXIT_REASON_IO ((int32_t)mv_exit_reason_t_io)
+/** @brief integer version of mv_exit_reason_t_mmio */
+#define EXIT_REASON_MMIO ((int32_t)mv_exit_reason_t_mmio)
+
 #ifdef __cplusplus
 }
 #endif

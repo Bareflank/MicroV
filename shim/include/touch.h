@@ -27,7 +27,7 @@
 #ifndef TOUCH_H
 #define TOUCH_H
 
-#include <types.h>
+#include <mv_types.h>
 
 #ifdef __cplusplus
 extern "C"

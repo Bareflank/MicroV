@@ -25,7 +25,8 @@
 #ifndef MV_EXIT_REASON_T_HPP
 #define MV_EXIT_REASON_T_HPP
 
-#include <bsl/cstdint.hpp>
+#include <bsl/convert.hpp>
+#include <bsl/safe_integral.hpp>
 
 namespace hypercall
 {
@@ -45,6 +46,30 @@ namespace hypercall
         /// @brief a MMIO event has occurred
         mv_exit_reason_t_mmio = 4,
     };
+
+    /// <!-- description -->
+    ///   @brief return bsl::to_i32(static_cast<bsl::int32>(val))
+    ///
+    /// <!-- inputs/outputs -->
+    ///   @param val the mv_reg_t to convert
+    ///   @return return bsl::to_i32(static_cast<bsl::int32>(val))
+    ///
+    [[nodiscard]] constexpr auto
+    to_i32(mv_exit_reason_t const &val) noexcept -> bsl::safe_i32
+    {
+        return bsl::to_i32(static_cast<bsl::int32>(val));
+    }
+
+    /// @brief integer version of mv_exit_reason_t_failure
+    constexpr auto EXIT_REASON_FAILURE{to_i32(mv_exit_reason_t::mv_exit_reason_t_failure)};
+    /// @brief integer version of mv_exit_reason_t_unknown
+    constexpr auto EXIT_REASON_UNKNOWN{to_i32(mv_exit_reason_t::mv_exit_reason_t_unknown)};
+    /// @brief integer version of mv_exit_reason_t_hlt
+    constexpr auto EXIT_REASON_HLT{to_i32(mv_exit_reason_t::mv_exit_reason_t_hlt)};
+    /// @brief integer version of mv_exit_reason_t_io
+    constexpr auto EXIT_REASON_IO{to_i32(mv_exit_reason_t::mv_exit_reason_t_io)};
+    /// @brief integer version of mv_exit_reason_t_mmio
+    constexpr auto EXIT_REASON_MMIO{to_i32(mv_exit_reason_t::mv_exit_reason_t_mmio)};
 }
 
 #endif

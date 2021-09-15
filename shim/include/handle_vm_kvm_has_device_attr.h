@@ -28,7 +28,7 @@
 #define HANDLE_VM_KVM_HAS_DEVICE_ATTR_H
 
 #include <kvm_device_attr.h>
-#include <types.h>
+#include <mv_types.h>
 
 #ifdef __cplusplus
 extern "C"

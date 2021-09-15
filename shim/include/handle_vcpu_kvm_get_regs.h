@@ -28,8 +28,8 @@
 #define HANDLE_VCPU_KVM_GET_REGS_H
 
 #include <kvm_regs.h>
+#include <mv_types.h>
 #include <shim_vcpu_t.h>
-#include <types.h>
 
 #ifdef __cplusplus
 extern "C"

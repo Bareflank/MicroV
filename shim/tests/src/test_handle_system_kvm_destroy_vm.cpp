@@ -44,12 +44,13 @@ namespace shim
     tests() noexcept -> bsl::exit_code
     {
         init_tests();
+        constexpr auto handle{&handle_system_kvm_destroy_vm};
 
         bsl::ut_scenario{"success"} = []() noexcept {
             bsl::ut_given{} = [&]() noexcept {
                 shim_vm_t mut_vm{};
                 bsl::ut_then{} = [&]() noexcept {
-                    handle_system_kvm_destroy_vm(&mut_vm);
+                    handle(&mut_vm);
                 };
             };
         };
@@ -60,7 +61,7 @@ namespace shim
                 bsl::ut_when{} = [&]() noexcept {
                     g_mut_hypervisor_detected = false;
                     bsl::ut_then{} = [&]() noexcept {
-                        handle_system_kvm_destroy_vm(&mut_vm);
+                        handle(&mut_vm);
                     };
                     bsl::ut_cleanup{} = [&]() noexcept {
                         g_mut_hypervisor_detected = true;
@@ -73,9 +74,9 @@ namespace shim
             bsl::ut_given{} = [&]() noexcept {
                 shim_vm_t mut_vm{};
                 bsl::ut_then{} = [&]() noexcept {
-                    handle_system_kvm_destroy_vm(&mut_vm);
-                    handle_system_kvm_destroy_vm(&mut_vm);
-                    handle_system_kvm_destroy_vm(&mut_vm);
+                    handle(&mut_vm);
+                    handle(&mut_vm);
+                    handle(&mut_vm);
                 };
             };
         };

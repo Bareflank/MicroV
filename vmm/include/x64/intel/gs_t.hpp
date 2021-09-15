@@ -26,6 +26,7 @@
 #define GS_T_HPP
 
 #include <bsl/safe_integral.hpp>
+#include <bsl/span.hpp>
 
 namespace microv
 {
@@ -36,10 +37,33 @@ namespace microv
     ///
     struct gs_t final
     {
-        /// @brief stores the MSR bitmap used by this vs_t
-        void *msr_bitmap{};
-        /// @brief stores the physical address of the MSR bitmap above
-        bsl::safe_umx msr_bitmap_phys{};
+        /// @brief stores the IO permissions map A for the root VM
+        bsl::span<bsl::uint8> root_iopm_a;
+        /// @brief stores the SPA of the IO permissions map A for the root VM
+        bsl::safe_u64 root_iopm_a_spa;
+        /// @brief stores the IO permissions map B for the root VM
+        bsl::span<bsl::uint8> root_iopm_b;
+        /// @brief stores the SPA of the IO permissions map B for the root VM
+        bsl::safe_u64 root_iopm_b_spa;
+
+        /// @brief stores the IO permissions map A for guest VMs
+        bsl::span<bsl::uint8> guest_iopm_a;
+        /// @brief stores the SPA of the IO permissions map A for guest VMs
+        bsl::safe_u64 guest_iopm_a_spa;
+        /// @brief stores the IO permissions map B for guest VMs
+        bsl::span<bsl::uint8> guest_iopm_b;
+        /// @brief stores the SPA of the IO permissions map B for guest VMs
+        bsl::safe_u64 guest_iopm_b_spa;
+
+        /// @brief stores the MSR permissions map for root the VM
+        bsl::span<bsl::uint8> root_msrpm;
+        /// @brief stores the SPA of the MSR permissions map for root the VM
+        bsl::safe_u64 root_msrpm_spa;
+
+        /// @brief stores the MSR permissions map for guest VMs
+        bsl::span<bsl::uint8> guest_msrpm;
+        /// @brief stores the SPA of the MSR permissions map for guest VMs
+        bsl::safe_u64 guest_msrpm_spa;
     };
 }
 

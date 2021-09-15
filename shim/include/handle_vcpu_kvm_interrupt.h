@@ -28,7 +28,7 @@
 #define HANDLE_VCPU_KVM_INTERRUPT_H
 
 #include <kvm_interrupt.h>
-#include <types.h>
+#include <mv_types.h>
 
 #ifdef __cplusplus
 extern "C"

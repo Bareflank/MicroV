@@ -27,7 +27,7 @@
 #ifndef SHIM_FINI_H
 #define SHIM_FINI_H
 
-#include <types.h>
+#include <mv_types.h>
 
 #ifdef __cplusplus
 extern "C"

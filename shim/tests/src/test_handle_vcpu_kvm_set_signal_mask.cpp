@@ -25,7 +25,7 @@
 #include "../../include/handle_vcpu_kvm_set_signal_mask.h"
 
 #include <kvm_signal_mask.h>
-#include <types.h>
+#include <mv_types.h>
 
 #include <bsl/ut.hpp>
 

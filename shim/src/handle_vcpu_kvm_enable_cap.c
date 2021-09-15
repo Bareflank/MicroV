@@ -25,7 +25,7 @@
  */
 
 #include <kvm_enable_cap.h>
-#include <types.h>
+#include <mv_types.h>
 
 /**
  * <!-- description -->

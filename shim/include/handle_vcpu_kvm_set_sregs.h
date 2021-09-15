@@ -28,8 +28,8 @@
 #define HANDLE_VCPU_KVM_SET_SREGS_H
 
 #include <kvm_sregs.h>
+#include <mv_types.h>
 #include <shim_vcpu_t.h>
-#include <types.h>
 
 #ifdef __cplusplus
 extern "C"
@@ -41,12 +41,12 @@ extern "C"
      *   @brief Handles the execution of kvm_set_sregs.
      *
      * <!-- inputs/outputs -->
-     *   @param pmut_vcpu to pass vsid to hypercall 
-     *   @param pmut_args the arguments provided by userspace
+     *   @param vcpu to pass vsid to hypercall
+     *   @param args the arguments provided by userspace
      *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
      */
     NODISCARD int64_t handle_vcpu_kvm_set_sregs(
-        struct shim_vcpu_t *const pmut_vcpu, struct kvm_sregs *const pmut_args) NOEXCEPT;
+        struct shim_vcpu_t const *const vcpu, struct kvm_sregs const *const args) NOEXCEPT;
 
 #ifdef __cplusplus
 }

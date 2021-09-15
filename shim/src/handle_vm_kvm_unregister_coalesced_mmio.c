@@ -25,7 +25,7 @@
  */
 
 #include <kvm_coalesced_mmio_zone.h>
-#include <types.h>
+#include <mv_types.h>
 
 /**
  * <!-- description -->

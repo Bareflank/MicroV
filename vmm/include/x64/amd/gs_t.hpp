@@ -25,10 +25,17 @@
 #ifndef GS_T_HPP
 #define GS_T_HPP
 
+#include <bsl/convert.hpp>
 #include <bsl/safe_integral.hpp>
+#include <bsl/span.hpp>
 
 namespace microv
 {
+    /// @brief stores the size of the IO permissions map
+    constexpr auto IOPM_SIZE{0x3000_umx};
+    /// @brief stores the size of the MSR permissions map
+    constexpr auto MSRPM_SIZE{0x2000_umx};
+
     /// @class microv::gs_t
     ///
     /// <!-- description -->
@@ -36,8 +43,25 @@ namespace microv
     ///
     struct gs_t final
     {
-        /// @brief dummy data for microv purposes only.
-        bsl::safe_umx dummy;
+        /// @brief stores the IO permissions map for the root VM
+        bsl::span<bsl::uint8> root_iopm;
+        /// @brief stores the SPA of the IO permissions map for the root VM
+        bsl::safe_u64 root_iopm_spa;
+
+        /// @brief stores the IO permissions map for guest VMs
+        bsl::span<bsl::uint8> guest_iopm;
+        /// @brief stores the SPA of the IO permissions map for guest VMs
+        bsl::safe_u64 guest_iopm_spa;
+
+        /// @brief stores the MSR permissions map for root the VM
+        bsl::span<bsl::uint8> root_msrpm;
+        /// @brief stores the SPA of the MSR permissions map for root the VM
+        bsl::safe_u64 root_msrpm_spa;
+
+        /// @brief stores the MSR permissions map for guest VMs
+        bsl::span<bsl::uint8> guest_msrpm;
+        /// @brief stores the SPA of the MSR permissions map for guest VMs
+        bsl::safe_u64 guest_msrpm_spa;
     };
 }
 

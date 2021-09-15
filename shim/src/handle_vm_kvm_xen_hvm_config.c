@@ -25,7 +25,7 @@
  */
 
 #include <kvm_xen_hvm_config.h>
-#include <types.h>
+#include <mv_types.h>
 
 /**
  * <!-- description -->

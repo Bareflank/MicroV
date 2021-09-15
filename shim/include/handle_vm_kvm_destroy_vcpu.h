@@ -27,8 +27,8 @@
 #ifndef HANDLE_VM_KVM_DESTROY_VCPU_H
 #define HANDLE_VM_KVM_DESTROY_VCPU_H
 
+#include <mv_types.h>
 #include <shim_vcpu_t.h>
-#include <types.h>
 
 #ifdef __cplusplus
 extern "C"

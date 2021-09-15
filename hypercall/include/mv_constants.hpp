@@ -61,7 +61,7 @@ namespace hypercall
     ///   @return Returns the page aligned version of the addr
     ///
     [[nodiscard]] static constexpr auto
-    mv_page_aligned(bsl::safe_umx const &addr) noexcept -> bsl::safe_umx
+    mv_page_aligned(bsl::safe_u64 const &addr) noexcept -> bsl::safe_u64
     {
         bsl::expects(addr.is_valid_and_checked());
         return (addr & ~(HYPERVISOR_PAGE_SIZE - bsl::safe_u64::magic_1()));
@@ -165,6 +165,10 @@ namespace hypercall
     constexpr auto MV_STATUS_INVALID_OUTPUT_REG3{0xDEAD000000800003_u64};
     /// @brief Indicates software should execute the hypercall again
     constexpr auto MV_STATUS_RETRY_CONTINUATION{0xDEAD000000100004_u64};
+    /// @brief Indicates that mv_exit_failure_t contains more info
+    constexpr auto MV_STATUS_EXIT_FAILURE{0xDEAD000000100005_u64};
+    /// @brief Indicates that mv_exit_unknown_t contains more info
+    constexpr auto MV_STATUS_EXIT_UNKNOWN{0xDEAD000000200005_u64};
 
     // -------------------------------------------------------------------------
     // Hypercall Inputs

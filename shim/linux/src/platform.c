@@ -27,15 +27,19 @@
  */
 
 #include <asm/io.h>
+#include <asm/pgtable.h>
+#include <asm/pgtable_types.h>
 #include <debug.h>
 #include <linux/cpu.h>
 #include <linux/mm.h>
+#include <linux/sched/mm.h>
+#include <linux/sched/task.h>
 #include <linux/slab.h>
 #include <linux/smp.h>
 #include <linux/unistd.h>
 #include <linux/vmalloc.h>
+#include <mv_types.h>
 #include <platform.h>
-#include <types.h>
 #include <work_on_cpu_callback_args.h>
 
 /**
@@ -127,26 +131,101 @@ platform_free(void *const pmut_ptr, uint64_t const size) NOEXCEPT
 /**
  * <!-- description -->
  *   @brief Given a virtual address, this function returns the virtual
- *     address's physical address. Returns ((void *)0) if the conversion failed.
+ *     address's physical address. Only works with memory allocated using
+ *     platform_alloc. Returns ((void *)0) if the conversion failed.
  *
  * <!-- inputs/outputs -->
  *   @param virt the virtual address to convert to a physical address
  *   @return Given a virtual address, this function returns the virtual
- *     address's physical address. Returns ((void *)0) if the conversion failed.
+ *     address's physical address. Only works with memory allocated using
+ *     platform_alloc. Returns ((void *)0) if the conversion failed.
  */
 NODISCARD uintptr_t
 platform_virt_to_phys(void const *const virt) NOEXCEPT
 {
-    uintptr_t ret;
-
     if (is_vmalloc_addr(virt)) {
-        ret = page_to_phys(vmalloc_to_page(virt));
-    }
-    else {
-        ret = virt_to_phys((void *)virt);
+        return page_to_phys(vmalloc_to_page(virt));
     }
 
-    return ret;
+    return virt_to_phys((void *)virt);
+}
+
+/**
+ * <!-- description -->
+ *   @brief Given a virtual address, this function returns the virtual
+ *     address's physical address. Only works on memory owned by userspace.
+ *     Returns ((void *)0) if the conversion failed.
+ *
+ * <!-- inputs/outputs -->
+ *   @param virt the virtual address to convert to a physical address
+ *   @return Given a virtual address, this function returns the virtual
+ *     address's physical address. Only works on memory owned by userspace.
+ *     Returns ((void *)0) if the conversion failed.
+ */
+NODISCARD uintptr_t
+platform_virt_to_phys_user(uintptr_t const virt) NOEXCEPT
+{
+    uintptr_t phys;
+    struct page *page[1];
+
+    pgd_t *pgd;
+    p4d_t *p4d;
+    pud_t *pud;
+    pmd_t *pmd;
+    pte_t *pte;
+
+    struct mm_struct *mm = current->mm;
+
+    /// QUESTION:
+    /// - This states that it pins the memory. Does this mean that there
+    ///   is no need to run mlock? Or does pin mean something else?
+    ///
+    /// - get_user_pages_fast was needed because if the memory was mapped
+    ///   using mmap using MAP_ANONYMOUS, pte_offset_map would fail.
+    ///   It would run great for mmapped files, and memory allocated using
+    ///   malloc and friends. It was only mmap using MAP_ANONYMOUS that
+    ///   seemed to have an issue.
+    ///
+
+    if (get_user_pages_fast(virt, 1, 1, page) == 0) {
+        bferror_x64("get_user_pages_fast failed", virt);
+        return ((uintptr_t)0);
+    }
+
+    pgd = pgd_offset(mm, virt);
+    if (pgd_none(*pgd) || pgd_bad(*pgd)) {
+        bferror_x64("pgd_offset failed", virt);
+        return ((uintptr_t)0);
+    }
+
+    p4d = p4d_offset(pgd, virt);
+    if (p4d_none(*p4d) || p4d_bad(*p4d)) {
+        bferror_x64("p4d_offset failed", virt);
+        return ((uintptr_t)0);
+    }
+
+    pud = pud_offset(p4d, virt);
+    if (pud_none(*pud) || pud_bad(*pud)) {
+        bferror_x64("pud_offset failed", virt);
+        return ((uintptr_t)0);
+    }
+
+    pmd = pmd_offset(pud, virt);
+    if (pmd_none(*pmd) || pmd_bad(*pmd)) {
+        bferror_x64("pmd_offset failed", virt);
+        return ((uintptr_t)0);
+    }
+
+    pte = pte_offset_map(pmd, virt);
+    if (pte_none(*pte)) {
+        bferror_x64("pte_offset_map failed", virt);
+        return ((uintptr_t)0);
+    }
+
+    phys = page_to_phys(pte_page(*pte));
+    pte_unmap(pte);
+
+    return phys;
 }
 
 /**
@@ -219,6 +298,9 @@ platform_mlock(void *const pmut_ptr, uint64_t const num) NOEXCEPT
     ///   do something similar here. Either way, I do not see this being
     ///   and easy function to implement.
     ///
+    /// - also maybe get_user_pages_fast(). See platform_virt_to_phys_user
+    ///   as it uses this, and we might not actually need mlock.
+    ///
 
     return SHIM_SUCCESS;
 }
@@ -253,6 +335,9 @@ platform_munlock(void *const pmut_ptr, uint64_t const num) NOEXCEPT
     ///   implemented. This is what the IOMMU code uses, and it has to
     ///   do something similar here. Either way, I do not see this being
     ///   and easy function to implement.
+    ///
+    /// - also maybe get_user_pages_fast(). See platform_virt_to_phys_user
+    ///   as it uses this, and we might not actually need mlock.
     ///
 
     return SHIM_SUCCESS;

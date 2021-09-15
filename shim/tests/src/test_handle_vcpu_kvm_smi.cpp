@@ -24,7 +24,7 @@
 
 #include "../../include/handle_vcpu_kvm_smi.h"
 
-#include <types.h>
+#include <mv_types.h>
 
 #include <bsl/ut.hpp>
 

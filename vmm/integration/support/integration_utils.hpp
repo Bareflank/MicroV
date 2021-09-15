@@ -25,48 +25,76 @@
 #ifndef INTEGRATION_UTILS_HPP
 #define INTEGRATION_UTILS_HPP
 
-#include <cstdlib>
-#include <mv_reg_t.hpp>
+#ifdef WIN64
+#include <windows.h>
+#else
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
+#include <sched.h>    // IWYU pragma: keep
+#endif
 
+#include <basic_page_4k_t.hpp>
+#include <cstdlib>
+#include <ifmap.hpp>
+#include <mv_constants.hpp>
+#include <mv_hypercall_t.hpp>
+#include <mv_mdl_t.hpp>
+#include <mv_rdl_t.hpp>
+#include <mv_reg_t.hpp>
+#include <mv_translation_t.hpp>
+
+#include <bsl/array.hpp>    // for array
 #include <bsl/convert.hpp>
 #include <bsl/debug.hpp>
 #include <bsl/errc_type.hpp>
+#include <bsl/expects.hpp>     // for expects
+#include <bsl/safe_idx.hpp>    // for safe_idx, operator<
 #include <bsl/safe_integral.hpp>
+#include <bsl/string_view.hpp>    // for string_view
 #include <bsl/touch.hpp>
 #include <bsl/unlikely.hpp>
 
-namespace hypercall
-{
-    /// <!-- description -->
-    ///   @brief Returns bsl::to_umx(reinterpret_cast<bsl::uintmx>(pmut_ptr))
-    ///
-    /// <!-- inputs/outputs -->
-    ///   @param pmut_ptr the pointer to convert to a bsl::safe_umx
-    ///   @return Returns bsl::to_umx(reinterpret_cast<bsl::uintmx>(pmut_ptr))
-    ///
-    [[nodiscard]] constexpr auto
-    to_umx(void *const pmut_ptr) noexcept -> bsl::safe_umx
-    {
-        // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
-        return bsl::to_umx(reinterpret_cast<bsl::uintmx>(pmut_ptr));
-    }
+constexpr auto self{hypercall::MV_SELF_ID};        // NOLINT
+constexpr auto core0{bsl::safe_u64::magic_0()};    // NOLINT
+constexpr auto core1{bsl::safe_u64::magic_1()};    // NOLINT
 
-    /// <!-- description -->
-    ///   @brief Returns bsl::to_u64(static_cast<bsl::uint64>(reg))
-    ///
-    /// <!-- inputs/outputs -->
-    ///   @param reg the mv_reg_t to convert
-    ///   @return Returns bsl::to_u64(static_cast<bsl::uint64>(reg))
-    ///
-    [[nodiscard]] constexpr auto
-    to_u64(mv_reg_t const &reg) noexcept -> bsl::safe_u64
-    {
-        return bsl::to_u64(static_cast<bsl::uint64>(reg));
-    }
-}
+hypercall::mv_hypercall_t mut_hvc{};    // NOLINT
+bsl::safe_u64 hndl{};                   // NOLINT
 
 namespace integration
 {
+#ifdef WIN64
+    /// <!-- description -->
+    ///   @brief Sets the core affinity of the integration test
+    ///
+    /// <!-- inputs/outputs -->
+    ///   @param core the core to run the integration test on.
+    ///
+    inline void
+    set_affinity(bsl::safe_u64 const &core) noexcept
+    {
+        bsl::expects(0 == SetProcessAffinityMask(GetCurrentProcess(), 1ULL << core.get()));
+    }
+#else
+    /// <!-- description -->
+    ///   @brief Sets the core affinity of the integration test
+    ///
+    /// <!-- inputs/outputs -->
+    ///   @param core the core to run the integration test on.
+    ///
+    inline void
+    set_affinity(bsl::safe_u64 const &core) noexcept
+    {
+        cpu_set_t mask;
+
+        CPU_ZERO(&mask);               // NOLINT
+        CPU_SET(core.get(), &mask);    // NOLINT
+
+        bsl::expects(0 == sched_setaffinity(0, sizeof(mask), &mask));
+    }
+#endif
+
     /// <!-- description -->
     ///   @brief Checks to see if "test" is true. If test is false, this
     ///     function will exit fast with a failure code.
@@ -133,6 +161,226 @@ namespace integration
             bsl::print() << bsl::red << "integration test failed";
             bsl::print() << bsl::rst << sloc;
             exit(1);
+        }
+        else {
+            bsl::touch();
+        }
+    }
+}
+
+namespace hypercall
+{
+    /// @brief defines the shared page used for this test for core 0
+    alignas(HYPERVISOR_PAGE_SIZE.get()) lib::basic_page_4k_t g_shared_page0{};    // NOLINT
+    /// @brief defines the shared page used for this test for core 1
+    alignas(HYPERVISOR_PAGE_SIZE.get()) lib::basic_page_4k_t g_shared_page1{};    // NOLINT
+
+    /// <!-- description -->
+    ///   @brief Returns bsl::to_u64(reinterpret_cast<bsl::uintmx>(ptr))
+    ///
+    /// <!-- inputs/outputs -->
+    ///   @param ptr the pointer to convert to a bsl::safe_u64
+    ///   @return Returns bsl::to_u64(reinterpret_cast<bsl::uintmx>(ptr))
+    ///
+    [[nodiscard]] constexpr auto
+    to_u64(void const *const ptr) noexcept -> bsl::safe_u64
+    {
+        // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
+        return bsl::to_u64(reinterpret_cast<bsl::uintmx>(ptr));
+    }
+
+    /// <!-- description -->
+    ///   @brief Returns bsl::to_u64(static_cast<bsl::uint64>(reg))
+    ///
+    /// <!-- inputs/outputs -->
+    ///   @param reg the mv_reg_t to convert
+    ///   @return Returns bsl::to_u64(static_cast<bsl::uint64>(reg))
+    ///
+    [[nodiscard]] constexpr auto
+    to_uint64(mv_reg_t const &reg) noexcept -> bsl::uint64
+    {
+        return bsl::to_u64(static_cast<bsl::uint64>(reg)).get();
+    }
+
+    /// <!-- description -->
+    ///   @brief Returns reinterpret_cast<T *>(&g_shared_page0);
+    ///
+    /// <!-- inputs/outputs -->
+    ///   @tparam T the type to convert the shared page to
+    ///   @return Returns reinterpret_cast<T *>(&g_shared_page0);
+    ///
+    template<typename T>
+    [[nodiscard]] constexpr auto
+    to_0() noexcept -> T *
+    {
+        return reinterpret_cast<T *>(&g_shared_page0);    // NOLINT
+    }
+
+    /// <!-- description -->
+    ///   @brief Returns reinterpret_cast<T *>(&g_shared_page1);
+    ///
+    /// <!-- inputs/outputs -->
+    ///   @tparam T the type to convert the shared page to
+    ///   @return Returns reinterpret_cast<T *>(&g_shared_page1);
+    ///
+    template<typename T>
+    [[nodiscard]] constexpr auto
+    to_1() noexcept -> T *
+    {
+        return reinterpret_cast<T *>(&g_shared_page1);    // NOLINT
+    }
+
+    /// <!-- description -->
+    ///   @brief Returns the GPA of a provided pointer.
+    ///
+    /// <!-- inputs/outputs -->
+    ///   @param ptr the pointer to convert to a GPA
+    ///   @param core the core # to use to perform the translation
+    ///   @return Returns the GPA of a provided pointer.
+    ///
+    [[nodiscard]] constexpr auto
+    to_gpa(void const *const ptr, bsl::safe_u64 const &core) noexcept -> bsl::safe_u64
+    {
+        integration::set_affinity(core);
+
+        auto const trans{mut_hvc.mv_vs_op_gla_to_gpa(self, to_u64(ptr))};
+        integration::verify(trans.is_valid);
+
+        auto const gpa{trans.paddr};
+        integration::verify(gpa.is_valid_and_checked());
+
+        return gpa;
+    }
+}
+
+namespace integration
+{
+    /// <!-- description -->
+    ///   @brief Initializes the integration test's globals
+    ///
+    constexpr void
+    initialize_globals() noexcept
+    {
+        hypercall::g_shared_page0 = {};
+        hypercall::g_shared_page1 = {};
+
+        integration::verify(mut_hvc.initialize());
+        hndl = mut_hvc.handle();
+
+        integration::set_affinity(core0);
+        integration::verify(mut_hvc.mv_pp_op_clr_shared_page_gpa());
+        integration::set_affinity(core1);
+        integration::verify(mut_hvc.mv_pp_op_clr_shared_page_gpa());
+        integration::set_affinity(core0);
+    }
+
+    /// <!-- description -->
+    ///   @brief Initializes the shared pages.
+    ///
+    constexpr void
+    initialize_shared_pages() noexcept
+    {
+        auto const gpa0{hypercall::to_gpa(&hypercall::g_shared_page0, core0)};
+        auto const gpa1{hypercall::to_gpa(&hypercall::g_shared_page1, core1)};
+
+        integration::set_affinity(core0);
+        integration::verify(mut_hvc.mv_pp_op_clr_shared_page_gpa());
+        integration::verify(mut_hvc.mv_pp_op_set_shared_page_gpa(gpa0));
+        integration::set_affinity(core1);
+        integration::verify(mut_hvc.mv_pp_op_clr_shared_page_gpa());
+        integration::verify(mut_hvc.mv_pp_op_set_shared_page_gpa(gpa1));
+        integration::set_affinity(core0);
+    }
+
+    /// <!-- description -->
+    ///   @brief Initializes the register state of a VS to support a
+    ///     16bit VM that starts at address 0.
+    ///
+    /// <!-- inputs/outputs -->
+    ///   @param vsid the ID of the VS to initialize
+    ///
+    constexpr void
+    initialize_register_state_for_16bit_vm(bsl::safe_u16 const &vsid) noexcept
+    {
+        using namespace hypercall;    // NOLINT
+
+        auto *const pmut_rdl{hypercall::to_0<hypercall::mv_rdl_t>()};
+        integration::set_affinity(core0);
+
+        constexpr auto total{3_idx};
+        constexpr auto cs_selector_idx{0_idx};
+        constexpr auto cs_base_idx{1_idx};
+        constexpr auto rip_idx{2_idx};
+
+        pmut_rdl->entries.at_if(cs_selector_idx)->reg = to_uint64(mv_reg_t::mv_reg_t_cs_selector);
+        pmut_rdl->entries.at_if(cs_selector_idx)->val = {};
+        pmut_rdl->entries.at_if(cs_base_idx)->reg = to_uint64(mv_reg_t::mv_reg_t_cs_base);
+        pmut_rdl->entries.at_if(cs_base_idx)->val = {};
+        pmut_rdl->entries.at_if(rip_idx)->reg = to_uint64(mv_reg_t::mv_reg_t_rip);
+        pmut_rdl->entries.at_if(rip_idx)->val = {};
+
+        pmut_rdl->num_entries = total.get();
+        integration::verify(mut_hvc.mv_vs_op_reg_set_list(vsid));
+    }
+
+    /// <!-- description -->
+    ///   @brief Loads a VM image given a file name
+    ///
+    /// <!-- inputs/outputs -->
+    ///   @param filename the name of the VM image's file
+    ///   @return the resulting VM image
+    ///
+    [[nodiscard]] constexpr auto
+    load_vm(bsl::string_view const &filename) noexcept -> lib::ifmap
+    {
+        lib::ifmap mut_vm_image{filename};
+        integration::verify(!mut_vm_image.empty());
+
+        auto const gpa{hypercall::to_gpa(mut_vm_image.data(), core0)};
+        mut_vm_image.set_gpa(gpa);
+
+        return mut_vm_image;
+    }
+
+    /// <!-- description -->
+    ///   @brief Maps a VM image into a VM.
+    ///
+    /// <!-- inputs/outputs -->
+    ///   @param vm_image the VM image to map
+    ///   @param phys the stating GPA when mapping the VM image
+    ///   @param vmid the ID of the VM to map the image to
+    ///
+    constexpr void
+    map_vm(
+        lib::ifmap const &vm_image, bsl::safe_u64 const &phys, bsl::safe_u16 const &vmid) noexcept
+    {
+        constexpr auto inc{bsl::to_idx(HYPERVISOR_PAGE_SIZE)};
+
+        auto *const pmut_mdl{hypercall::to_0<hypercall::mv_mdl_t>()};
+        integration::set_affinity(core0);
+
+        pmut_mdl->num_entries = {};
+        for (bsl::safe_idx mut_i{}; mut_i < vm_image.size(); mut_i += inc) {
+            auto const dst{(phys + bsl::to_u64(mut_i)).checked()};
+            auto const src{(vm_image.gpa() + bsl::to_u64(mut_i)).checked()};
+
+            pmut_mdl->entries.at_if(bsl::to_idx(pmut_mdl->num_entries))->dst = dst.get();
+            pmut_mdl->entries.at_if(bsl::to_idx(pmut_mdl->num_entries))->src = src.get();
+            pmut_mdl->entries.at_if(bsl::to_idx(pmut_mdl->num_entries))->bytes = inc.get();
+            ++pmut_mdl->num_entries;
+
+            if (pmut_mdl->num_entries >= hypercall::MV_MDL_MAX_ENTRIES) {
+                integration::verify(mut_hvc.mv_vm_op_mmio_map(vmid, self));
+                pmut_mdl->num_entries = {};
+            }
+            else {
+                bsl::touch();
+            }
+        }
+
+        if (bsl::safe_u64::magic_0() != pmut_mdl->num_entries) {
+            integration::verify(mut_hvc.mv_vm_op_mmio_map(vmid, self));
+            pmut_mdl->num_entries = {};
         }
         else {
             bsl::touch();

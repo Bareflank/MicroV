@@ -25,7 +25,7 @@
 #include "../../include/handle_vm_kvm_get_clock.h"
 
 #include <kvm_clock_data.h>
-#include <types.h>
+#include <mv_types.h>
 
 #include <bsl/ut.hpp>
 

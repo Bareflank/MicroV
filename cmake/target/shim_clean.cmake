@@ -22,7 +22,6 @@
 if(MICROV_BUILD_SHIM AND NOT MICROV_TARGET_ARCH STREQUAL "aarch64")
     if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
         add_custom_target(shim_clean
-            COMMAND ${CMAKE_COMMAND} --build . --target shim_unload
             COMMAND ${CMAKE_COMMAND} -E chdir ${CMAKE_CURRENT_LIST_DIR}/../../shim/linux make clean CMAKE_BINARY_DIR='${CMAKE_BINARY_DIR}'
             COMMAND sync
             VERBATIM

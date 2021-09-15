@@ -25,7 +25,7 @@
 #include "../../include/handle_vcpu_kvm_get_msrs.h"
 
 #include <kvm_msrs.h>
-#include <types.h>
+#include <mv_types.h>
 
 #include <bsl/ut.hpp>
 

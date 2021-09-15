@@ -28,8 +28,8 @@
 #define HANDLE_VCPU_KVM_SET_REGS_H
 
 #include <kvm_regs.h>
+#include <mv_types.h>
 #include <shim_vcpu_t.h>
-#include <types.h>
 
 #ifdef __cplusplus
 extern "C"
@@ -42,11 +42,11 @@ extern "C"
      *
      * <!-- inputs/outputs -->
      *   @param vcpu to get vsid value to pass to hypercall
-     *   @param pmut_args the arguments provided by userspace
+     *   @param args the arguments provided by userspace
      *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
      */
     NODISCARD int64_t handle_vcpu_kvm_set_regs(
-        struct shim_vcpu_t const *const vcpu, struct kvm_regs *const pmut_args) NOEXCEPT;
+        struct shim_vcpu_t const *const vcpu, struct kvm_regs const *const args) NOEXCEPT;
 
 #ifdef __cplusplus
 }

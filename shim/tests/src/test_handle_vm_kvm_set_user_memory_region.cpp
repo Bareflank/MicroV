@@ -53,9 +53,9 @@ namespace shim
             bsl::ut_given{} = [&]() noexcept {
                 kvm_userspace_memory_region mut_args{};
                 shim_vm_t mut_vm{};
-                constexpr auto gpa{0x0_umx};
+                constexpr auto gpa{0x0_u64};
                 constexpr auto size{0x1000_umx};
-                constexpr auto addr{0x1000_umx};
+                constexpr auto addr{0x1000_u64};
                 bsl::ut_when{} = [&]() noexcept {
                     mut_args.guest_phys_addr = gpa.get();
                     mut_args.memory_size = size.get();
@@ -71,9 +71,9 @@ namespace shim
             bsl::ut_given{} = [&]() noexcept {
                 kvm_userspace_memory_region mut_args{};
                 shim_vm_t mut_vm{};
-                constexpr auto gpa{0x0_umx};
+                constexpr auto gpa{0x0_u64};
                 constexpr auto size{0x8000_umx};
-                constexpr auto addr{0x1000_umx};
+                constexpr auto addr{0x1000_u64};
                 bsl::ut_when{} = [&]() noexcept {
                     mut_args.guest_phys_addr = gpa.get();
                     mut_args.memory_size = size.get();
@@ -89,9 +89,9 @@ namespace shim
             bsl::ut_given{} = [&]() noexcept {
                 kvm_userspace_memory_region mut_args{};
                 shim_vm_t mut_vm{};
-                constexpr auto gpa{0x0_umx};
+                constexpr auto gpa{0x0_u64};
                 constexpr auto size{0x7D000_umx};
-                constexpr auto addr{0x1000_umx};
+                constexpr auto addr{0x1000_u64};
                 bsl::ut_when{} = [&]() noexcept {
                     mut_args.guest_phys_addr = gpa.get();
                     mut_args.memory_size = size.get();
@@ -107,9 +107,9 @@ namespace shim
             bsl::ut_given{} = [&]() noexcept {
                 kvm_userspace_memory_region mut_args{};
                 shim_vm_t mut_vm{};
-                constexpr auto gpa{0x0_umx};
+                constexpr auto gpa{0x0_u64};
                 constexpr auto size{0x80000_umx};
-                constexpr auto addr{0x1000_umx};
+                constexpr auto addr{0x1000_u64};
                 bsl::ut_when{} = [&]() noexcept {
                     mut_args.guest_phys_addr = gpa.get();
                     mut_args.memory_size = size.get();
@@ -125,9 +125,9 @@ namespace shim
             bsl::ut_given{} = [&]() noexcept {
                 kvm_userspace_memory_region mut_args{};
                 shim_vm_t mut_vm{};
-                constexpr auto gpa{0x0_umx};
+                constexpr auto gpa{0x0_u64};
                 constexpr auto size{0x1000_umx};
-                constexpr auto addr{0x1000_umx};
+                constexpr auto addr{0x1000_u64};
                 bsl::ut_when{} = [&]() noexcept {
                     mut_args.guest_phys_addr = gpa.get();
                     mut_args.memory_size = size.get();
@@ -147,9 +147,9 @@ namespace shim
             bsl::ut_given{} = [&]() noexcept {
                 kvm_userspace_memory_region mut_args{};
                 shim_vm_t mut_vm{};
-                constexpr auto gpa{0x0_umx};
+                constexpr auto gpa{0x0_u64};
                 constexpr auto size{42_umx};
-                constexpr auto addr{0x1000_umx};
+                constexpr auto addr{0x1000_u64};
                 bsl::ut_when{} = [&]() noexcept {
                     mut_args.guest_phys_addr = gpa.get();
                     mut_args.memory_size = size.get();
@@ -165,9 +165,9 @@ namespace shim
             bsl::ut_given{} = [&]() noexcept {
                 kvm_userspace_memory_region mut_args{};
                 shim_vm_t mut_vm{};
-                constexpr auto gpa{0x0_umx};
+                constexpr auto gpa{0x0_u64};
                 constexpr auto size{0xFFFFFFFFFFFFF000_umx};
-                constexpr auto addr{0x1000_umx};
+                constexpr auto addr{0x1000_u64};
                 bsl::ut_when{} = [&]() noexcept {
                     mut_args.guest_phys_addr = gpa.get();
                     mut_args.memory_size = size.get();
@@ -183,9 +183,9 @@ namespace shim
             bsl::ut_given{} = [&]() noexcept {
                 kvm_userspace_memory_region mut_args{};
                 shim_vm_t mut_vm{};
-                constexpr auto gpa{0x0_umx};
+                constexpr auto gpa{0x0_u64};
                 constexpr auto size{0x0_umx};
-                constexpr auto addr{0x1000_umx};
+                constexpr auto addr{0x1000_u64};
                 bsl::ut_when{} = [&]() noexcept {
                     mut_args.guest_phys_addr = gpa.get();
                     mut_args.memory_size = size.get();
@@ -201,9 +201,9 @@ namespace shim
             bsl::ut_given{} = [&]() noexcept {
                 kvm_userspace_memory_region mut_args{};
                 shim_vm_t mut_vm{};
-                constexpr auto gpa{42_umx};
+                constexpr auto gpa{42_u64};
                 constexpr auto size{0x1000_umx};
-                constexpr auto addr{0x1000_umx};
+                constexpr auto addr{0x1000_u64};
                 bsl::ut_when{} = [&]() noexcept {
                     mut_args.guest_phys_addr = gpa.get();
                     mut_args.memory_size = size.get();
@@ -219,9 +219,9 @@ namespace shim
             bsl::ut_given{} = [&]() noexcept {
                 kvm_userspace_memory_region mut_args{};
                 shim_vm_t mut_vm{};
-                constexpr auto gpa{0xFFFFFFFFFFFFF000_umx};
+                constexpr auto gpa{0xFFFFFFFFFFFFF000_u64};
                 constexpr auto size{0x1000_umx};
-                constexpr auto addr{0x1000_umx};
+                constexpr auto addr{0x1000_u64};
                 bsl::ut_when{} = [&]() noexcept {
                     mut_args.guest_phys_addr = gpa.get();
                     mut_args.memory_size = size.get();
@@ -237,9 +237,9 @@ namespace shim
             bsl::ut_given{} = [&]() noexcept {
                 kvm_userspace_memory_region mut_args{};
                 shim_vm_t mut_vm{};
-                constexpr auto gpa{0x0_umx};
+                constexpr auto gpa{0x0_u64};
                 constexpr auto size{0x1000_umx};
-                constexpr auto addr{42_umx};
+                constexpr auto addr{42_u64};
                 bsl::ut_when{} = [&]() noexcept {
                     mut_args.guest_phys_addr = gpa.get();
                     mut_args.memory_size = size.get();
@@ -255,9 +255,9 @@ namespace shim
             bsl::ut_given{} = [&]() noexcept {
                 kvm_userspace_memory_region mut_args{};
                 shim_vm_t mut_vm{};
-                constexpr auto gpa{0x0_umx};
+                constexpr auto gpa{0x0_u64};
                 constexpr auto size{0x1000_umx};
-                constexpr auto addr{0x0_umx};
+                constexpr auto addr{0x0_u64};
                 bsl::ut_when{} = [&]() noexcept {
                     mut_args.guest_phys_addr = gpa.get();
                     mut_args.memory_size = size.get();
@@ -290,9 +290,9 @@ namespace shim
                 kvm_userspace_memory_region mut_args{};
                 shim_vm_t mut_vm{};
                 constexpr auto slot{0xFFFF_u32};
-                constexpr auto gpa{0x0_umx};
+                constexpr auto gpa{0x0_u64};
                 constexpr auto size{0x1000_umx};
-                constexpr auto addr{0x1000_umx};
+                constexpr auto addr{0x1000_u64};
                 bsl::ut_when{} = [&]() noexcept {
                     mut_args.slot = slot.get();
                     mut_args.guest_phys_addr = gpa.get();
@@ -309,9 +309,9 @@ namespace shim
             bsl::ut_given{} = [&]() noexcept {
                 kvm_userspace_memory_region mut_args{};
                 shim_vm_t mut_vm{};
-                constexpr auto gpa{0x0_umx};
+                constexpr auto gpa{0x0_u64};
                 constexpr auto size{0x1000_umx};
-                constexpr auto addr{0x1000_umx};
+                constexpr auto addr{0x1000_u64};
                 bsl::ut_when{} = [&]() noexcept {
                     mut_args.guest_phys_addr = gpa.get();
                     mut_args.memory_size = size.get();
@@ -329,9 +329,9 @@ namespace shim
                 kvm_userspace_memory_region mut_args{};
                 shim_vm_t mut_vm{};
                 constexpr auto slot{0x10000_u32};
-                constexpr auto gpa{0x0_umx};
+                constexpr auto gpa{0x0_u64};
                 constexpr auto size{0x1000_umx};
-                constexpr auto addr{0x1000_umx};
+                constexpr auto addr{0x1000_u64};
                 bsl::ut_when{} = [&]() noexcept {
                     mut_args.slot = slot.get();
                     mut_args.guest_phys_addr = gpa.get();
@@ -348,9 +348,9 @@ namespace shim
             bsl::ut_given{} = [&]() noexcept {
                 kvm_userspace_memory_region mut_args{};
                 shim_vm_t mut_vm{};
-                constexpr auto gpa{0x0_umx};
+                constexpr auto gpa{0x0_u64};
                 constexpr auto size{0x1000_umx};
-                constexpr auto addr{0x1000_umx};
+                constexpr auto addr{0x1000_u64};
                 bsl::ut_when{} = [&]() noexcept {
                     mut_args.guest_phys_addr = gpa.get();
                     mut_args.memory_size = size.get();
@@ -366,13 +366,35 @@ namespace shim
             };
         };
 
+        bsl::ut_scenario{"platform_virt_to_phys_user fails"} = []() noexcept {
+            bsl::ut_given{} = [&]() noexcept {
+                kvm_userspace_memory_region mut_args{};
+                shim_vm_t mut_vm{};
+                constexpr auto gpa{0x0_u64};
+                constexpr auto size{0x80000_umx};
+                constexpr auto addr{0x1000_u64};
+                bsl::ut_when{} = [&]() noexcept {
+                    mut_args.guest_phys_addr = gpa.get();
+                    mut_args.memory_size = size.get();
+                    mut_args.userspace_addr = addr.get();
+                    g_mut_platform_virt_to_phys_user_fails = true;
+                    bsl::ut_then{} = [&]() noexcept {
+                        bsl::ut_check(SHIM_FAILURE == handle(&mut_args, &mut_vm));
+                    };
+                    bsl::ut_cleanup{} = [&]() noexcept {
+                        g_mut_platform_virt_to_phys_user_fails = false;
+                    };
+                };
+            };
+        };
+
         bsl::ut_scenario{"mv_vm_op_mmio_map fails"} = []() noexcept {
             bsl::ut_given{} = [&]() noexcept {
                 kvm_userspace_memory_region mut_args{};
                 shim_vm_t mut_vm{};
-                constexpr auto gpa{0x0_umx};
+                constexpr auto gpa{0x0_u64};
                 constexpr auto size{0x80000_umx};
-                constexpr auto addr{0x1000_umx};
+                constexpr auto addr{0x1000_u64};
                 bsl::ut_when{} = [&]() noexcept {
                     mut_args.guest_phys_addr = gpa.get();
                     mut_args.memory_size = size.get();
@@ -389,9 +411,9 @@ namespace shim
             bsl::ut_given{} = [&]() noexcept {
                 kvm_userspace_memory_region mut_args{};
                 shim_vm_t mut_vm{};
-                constexpr auto gpa{0x0_umx};
+                constexpr auto gpa{0x0_u64};
                 constexpr auto size{0x1000_umx};
-                constexpr auto addr{0x1000_umx};
+                constexpr auto addr{0x1000_u64};
                 bsl::ut_when{} = [&]() noexcept {
                     mut_args.guest_phys_addr = gpa.get();
                     mut_args.memory_size = size.get();
@@ -408,9 +430,9 @@ namespace shim
             bsl::ut_given{} = [&]() noexcept {
                 kvm_userspace_memory_region mut_args{};
                 shim_vm_t mut_vm{};
-                constexpr auto gpa{0x0_umx};
+                constexpr auto gpa{0x0_u64};
                 constexpr auto size{0x7D000_umx};
-                constexpr auto addr{0x1000_umx};
+                constexpr auto addr{0x1000_u64};
                 bsl::ut_when{} = [&]() noexcept {
                     mut_args.guest_phys_addr = gpa.get();
                     mut_args.memory_size = size.get();
@@ -427,9 +449,9 @@ namespace shim
             bsl::ut_given{} = [&]() noexcept {
                 kvm_userspace_memory_region mut_args{};
                 shim_vm_t mut_vm{};
-                constexpr auto gpa{0x0_umx};
+                constexpr auto gpa{0x0_u64};
                 constexpr auto size{0x80000_umx};
-                constexpr auto addr{0x1000_umx};
+                constexpr auto addr{0x1000_u64};
                 bsl::ut_when{} = [&]() noexcept {
                     mut_args.guest_phys_addr = gpa.get();
                     mut_args.memory_size = size.get();

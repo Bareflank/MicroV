@@ -34,6 +34,8 @@ extern "C"
 {
 #endif
 
+#pragma pack(push, 1)
+
 /** @brief defines if a mv_translation_t is invalid */
 #define MV_TRANSLATION_T_IS_INVALID ((uint8_t)0)
 /** @brief defines if a mv_translation_t is valid */
@@ -66,6 +68,8 @@ extern "C"
         /** @brief stores whether or not the translation is valid (output) */
         uint8_t is_valid;
     };
+
+#pragma pack(pop)
 
 #ifdef __cplusplus
 }

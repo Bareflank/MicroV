@@ -38,10 +38,6 @@
 
 namespace hypercall
 {
-    /// @brief provides a variable to get the GPA of
-    // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
-    alignas(HYPERVISOR_PAGE_SIZE.get()) bool g_mut_test{};
-
     /// <!-- description -->
     ///   @brief Always returns bsl::exit_success. If a failure occurs,
     ///     this function will exit early.
@@ -54,28 +50,10 @@ namespace hypercall
     tests() noexcept -> bsl::exit_code
     {
         mv_status_t mut_ret{};
-        mv_translation_t mut_trn{};
-        mv_hypercall_t mut_hvc{};
+        integration::initialize_globals();
 
-        bsl::safe_umx const gla{to_umx(&g_mut_test)};
-        bsl::safe_umx mut_gpa{};
-        constexpr auto self{MV_SELF_ID};
-
-        /// NOTE:
-        /// - Touch g_mut_test. This ensures that g_mut_test is paged in.
-        ///
-
-        g_mut_test = true;
-
-        /// TODO:
-        /// - Currently we assume that the GVA and GLA or g_mut_test are the
-        ///   same. In most cases (if not all), this is true, but we really
-        ///   should call gva_to_gla to get the GLA instead of making this
-        ///   assumption.
-        ///
-
-        integration::verify(mut_hvc.initialize());
-        auto const hndl{mut_hvc.handle()};
+        auto const gla{to_u64(&g_shared_page0)};
+        bsl::safe_u64 mut_gpa{};
 
         // invalid VSID
         auto const iid{MV_INVALID_ID};
@@ -112,8 +90,8 @@ namespace hypercall
             auto const vsid{mut_hvc.mv_vs_op_create_vs(self)};
             integration::verify(vsid.is_valid_and_checked());
 
-            mut_trn = mut_hvc.mv_vs_op_gla_to_gpa(vsid, to_umx(&g_mut_test));
-            integration::verify(!mut_trn.is_valid);
+            auto const trns{mut_hvc.mv_vs_op_gla_to_gpa(vsid, gla)};
+            integration::verify(!trns.is_valid);
 
             integration::verify(mut_hvc.mv_vs_op_destroy_vs(vsid));
         }
@@ -135,30 +113,36 @@ namespace hypercall
                 mut_foreign_vsid = (mut_foreign_vsid - bsl::safe_u16::magic_1()).checked();
             }
 
-            mut_trn = mut_hvc.mv_vs_op_gla_to_gpa(mut_foreign_vsid, to_umx(&g_mut_test));
-            integration::verify(!mut_trn.is_valid);
+            auto const trns{mut_hvc.mv_vs_op_gla_to_gpa(mut_foreign_vsid, gla)};
+            integration::verify(!trns.is_valid);
         }
 
         // Get a valid GPA a lot to make sure mapping/unmapping works
         constexpr auto num_loops{0x100_umx};
         for (bsl::safe_idx mut_i{}; mut_i < num_loops; ++mut_i) {
-            mut_trn = mut_hvc.mv_vs_op_gla_to_gpa(self, to_umx(&g_mut_test));
-            integration::verify(mut_trn.is_valid);
+            auto const trns{mut_hvc.mv_vs_op_gla_to_gpa(self, gla)};
+            integration::verify(trns.is_valid);
         }
 
         // Get the gpa and print the results for manual inspection
         {
-            mut_trn = mut_hvc.mv_vs_op_gla_to_gpa(self, to_umx(&g_mut_test));
-            integration::verify(mut_trn.is_valid);
+            auto const trns{mut_hvc.mv_vs_op_gla_to_gpa(self, gla)};
+            integration::verify(trns.is_valid);
 
             bsl::debug() << "the result is:\n"
-                         << "  - vaddr: " << bsl::hex(mut_trn.vaddr) << bsl::endl
-                         << "  - laddr: " << bsl::hex(mut_trn.laddr) << bsl::endl
-                         << "  - paddr: " << bsl::hex(mut_trn.paddr) << bsl::endl
-                         << "  - flags: " << bsl::hex(mut_trn.flags) << bsl::endl
-                         << "  - is_valid: " << mut_trn.is_valid << bsl::endl
+                         << "  - vaddr: " << bsl::hex(trns.vaddr) << bsl::endl
+                         << "  - laddr: " << bsl::hex(trns.laddr) << bsl::endl
+                         << "  - paddr: " << bsl::hex(trns.paddr) << bsl::endl
+                         << "  - flags: " << bsl::hex(trns.flags) << bsl::endl
+                         << "  - is_valid: " << trns.is_valid << bsl::endl
                          << bsl::endl;
         }
+
+        /// TODO:
+        /// - Add a migration test. To do that, we will actually need to
+        ///   start a VS that is running with a functional set of page
+        ///   tables.
+        ///
 
         return bsl::exit_success;
     }

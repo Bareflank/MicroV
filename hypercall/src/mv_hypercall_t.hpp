@@ -395,6 +395,7 @@ namespace hypercall
 
             mv_status_t const ret{
                 mv_vm_op_mmio_map_impl(m_hndl.get(), dst_vmid.get(), src_vmid.get())};
+
             if (bsl::unlikely(ret != MV_STATUS_SUCCESS)) {
                 bsl::error() << "mv_vm_op_mmio_map failed with status "    // --
                              << bsl::hex(ret)                              // --

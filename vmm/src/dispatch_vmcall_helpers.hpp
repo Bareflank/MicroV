@@ -26,7 +26,7 @@
 #define DISPATCH_VMCALL_HELPERS_HPP
 
 #include <bf_syscall_t.hpp>
-#include <dispatch_vmcall_abi_helpers.hpp>
+#include <dispatch_abi_helpers.hpp>
 #include <mv_reg_t.hpp>
 
 #include <bsl/convert.hpp>
@@ -36,6 +36,9 @@
 
 namespace microv
 {
+    /// @brief prototype
+    [[nodiscard]] constexpr auto get_gpa(bsl::safe_u64 const &reg) noexcept -> bsl::safe_u64;
+
     /// ------------------------------------------------------------------------
     /// Validation Functions
     /// ------------------------------------------------------------------------
@@ -324,7 +327,17 @@ namespace microv
     [[nodiscard]] constexpr auto
     is_rdl_safe(hypercall::mv_rdl_t const &rdl) noexcept -> bool
     {
-        if (bsl::unlikely(rdl.num_entries >= rdl.entries.size())) {
+        if (bsl::unlikely(rdl.num_entries == bsl::safe_u64::magic_0())) {
+            bsl::error() << "rdl.num_entries "           // --
+                         << bsl::hex(rdl.num_entries)    // --
+                         << " is empty"                  // --
+                         << bsl::endl                    // --
+                         << bsl::here();                 // --
+
+            return false;
+        }
+
+        if (bsl::unlikely(rdl.num_entries > rdl.entries.size())) {
             bsl::error() << "rdl.num_entries "           // --
                          << bsl::hex(rdl.num_entries)    // --
                          << " is out of range "          // --
@@ -332,6 +345,123 @@ namespace microv
                          << bsl::here();                 // --
 
             return false;
+        }
+
+        return true;
+    }
+
+    /// <!-- description -->
+    ///   @brief Returns true if the MDL is safe to use. Returns
+    ///     false otherwise.
+    ///
+    /// <!-- inputs/outputs -->
+    ///   @param mdl the MDL to verify
+    ///   @param unmap if true, the src gpa and flags are ignored. If false,
+    ///     everything is verified.
+    ///   @return Returns true if the MDL is safe to use. Returns
+    ///     false otherwise.
+    ///
+    [[nodiscard]] constexpr auto
+    is_mdl_safe(hypercall::mv_mdl_t const &mdl, bool const unmap) noexcept -> bool
+    {
+        if (bsl::unlikely(mdl.num_entries == bsl::safe_u64::magic_0())) {
+            bsl::error() << "mdl.num_entries is empty"    // --
+                         << bsl::endl                     // --
+                         << bsl::here();                  // --
+
+            return false;
+        }
+
+        if (bsl::unlikely(mdl.num_entries > mdl.entries.size())) {
+            bsl::error() << "mdl.num_entries "           // --
+                         << bsl::hex(mdl.num_entries)    // --
+                         << " is out of range "          // --
+                         << bsl::endl                    // --
+                         << bsl::here();                 // --
+
+            return false;
+        }
+
+        for (bsl::safe_idx mut_i{}; mut_i < mdl.num_entries; ++mut_i) {
+            auto const *const entry{mdl.entries.at_if(mut_i)};
+
+            auto const dst_gpa{get_gpa(bsl::to_u64(entry->dst))};
+            if (bsl::unlikely(dst_gpa.is_invalid())) {
+                bsl::print<bsl::V>() << bsl::here();
+                return false;
+            }
+
+            if (!unmap) {
+                auto const src_gpa{get_gpa(bsl::to_u64(entry->src))};
+                if (bsl::unlikely(src_gpa.is_invalid())) {
+                    bsl::print<bsl::V>() << bsl::here();
+                    return false;
+                }
+
+                bsl::touch();
+            }
+            else {
+                bsl::touch();
+            }
+
+            auto const bytes{bsl::to_umx(entry->bytes)};
+            if (bsl::unlikely(bytes.is_zero())) {
+                bsl::error() << "mdl entry "                   // --
+                             << mut_i                          // --
+                             << " has an empty bytes field"    // --
+                             << bsl::endl                      // --
+                             << bsl::here();                   // --
+
+                return false;
+            }
+
+            if (bsl::unlikely(!hypercall::mv_is_page_aligned(bytes))) {
+                bsl::error() << "mdl entry "             // --
+                             << mut_i                    // --
+                             << " has a bytes field "    // --
+                             << bsl::hex(bytes)          // --
+                             << " that is unaligned"     // --
+                             << bsl::endl                // --
+                             << bsl::here();             // --
+
+                return false;
+            }
+
+            if (bsl::unlikely(bytes >= MICROV_MAX_GPA_SIZE)) {
+                bsl::error() << "mdl entry "               // --
+                             << mut_i                      // --
+                             << " has a bytes field "      // --
+                             << bsl::hex(bytes)            // --
+                             << " that is out of range"    // --
+                             << bsl::endl                  // --
+                             << bsl::here();               // --
+
+                return false;
+            }
+
+            if (bsl::unlikely(bytes != HYPERVISOR_PAGE_SIZE)) {
+                bsl::error() << "mdl entry "                                              // --
+                             << mut_i                                                     // --
+                             << " has a bytes field "                                     // --
+                             << bsl::hex(bytes)                                           // --
+                             << " that is compressed which is currently not supported"    // --
+                             << bsl::endl                                                 // --
+                             << bsl::here();                                              // --
+
+                return false;
+            }
+
+            if (!unmap) {
+
+                /// TODO:
+                /// - Verify the flags field.
+                ///
+
+                bsl::touch();
+            }
+            else {
+                bsl::touch();
+            }
         }
 
         return true;
@@ -471,6 +601,88 @@ namespace microv
                          << " was never allocated and cannot be used"    // --
                          << bsl::endl                                    // --
                          << bsl::here();                                 // --
+
+            return bsl::safe_u16::failure();
+        }
+
+        return vmid;
+    }
+
+    /// <!-- description -->
+    ///   @brief Given an input register, returns a vmid if the provided
+    ///     register contains a valid vmid and the vm_t associated with the
+    ///     vmid is allocated and is the root vm_t. Otherwise, this function
+    ///     returns bsl::safe_u16::failure().
+    ///
+    /// <!-- inputs/outputs -->
+    ///   @param sys the bf_syscall_t to use
+    ///   @param reg the register to get the vmid from.
+    ///   @param vm_pool the vm_pool_t to use
+    ///   @return Given an input register, returns a vmid if the provided
+    ///     register contains a valid vmid and the vm_t associated with the
+    ///     vmid is allocated and is the root vm_t. Otherwise, this function
+    ///     returns bsl::safe_u16::failure().
+    ///
+    [[nodiscard]] constexpr auto
+    get_allocated_root_vmid(
+        syscall::bf_syscall_t const &sys,
+        bsl::safe_u64 const &reg,
+        vm_pool_t const &vm_pool) noexcept -> bsl::safe_u16
+    {
+        auto const vmid{get_allocated_vmid(sys, reg, vm_pool)};
+        if (bsl::unlikely(vmid.is_invalid())) {
+            bsl::print<bsl::V>() << bsl::here();
+            return bsl::safe_u16::failure();
+        }
+
+        bool const vm_the_root_vm{sys.is_vm_the_root_vm(vmid)};
+        if (bsl::unlikely(!vm_the_root_vm)) {
+            bsl::error() << "the provided vmid "                        // --
+                         << bsl::hex(vmid)                              // --
+                         << " is not the root vm and cannot be used"    // --
+                         << bsl::endl                                   // --
+                         << bsl::here();                                // --
+
+            return bsl::safe_u16::failure();
+        }
+
+        return vmid;
+    }
+
+    /// <!-- description -->
+    ///   @brief Given an input register, returns a vmid if the provided
+    ///     register contains a valid vmid and the vm_t associated with the
+    ///     vmid is allocated and is not the root vm_t. Otherwise, this
+    ///     function returns bsl::safe_u16::failure().
+    ///
+    /// <!-- inputs/outputs -->
+    ///   @param sys the bf_syscall_t to use
+    ///   @param reg the register to get the vmid from.
+    ///   @param vm_pool the vm_pool_t to use
+    ///   @return Given an input register, returns a vmid if the provided
+    ///     register contains a valid vmid and the vm_t associated with the
+    ///     vmid is allocated and is not the root vm_t. Otherwise, this
+    ///     function returns bsl::safe_u16::failure().
+    ///
+    [[nodiscard]] constexpr auto
+    get_allocated_guest_vmid(
+        syscall::bf_syscall_t const &sys,
+        bsl::safe_u64 const &reg,
+        vm_pool_t const &vm_pool) noexcept -> bsl::safe_u16
+    {
+        auto const vmid{get_allocated_vmid(sys, reg, vm_pool)};
+        if (bsl::unlikely(vmid.is_invalid())) {
+            bsl::print<bsl::V>() << bsl::here();
+            return bsl::safe_u16::failure();
+        }
+
+        bool const vm_the_root_vm{sys.is_vm_the_root_vm(vmid)};
+        if (bsl::unlikely(vm_the_root_vm)) {
+            bsl::error() << "the provided vmid "                    // --
+                         << bsl::hex(vmid)                          // --
+                         << " is the root vm and cannot be used"    // --
+                         << bsl::endl                               // --
+                         << bsl::here();                            // --
 
             return bsl::safe_u16::failure();
         }
@@ -649,33 +861,60 @@ namespace microv
     /// <!-- description -->
     ///   @brief Given an input register, returns a vsid if the provided
     ///     register contains a valid vsid and the vs_t associated with the
-    ///     vsid is allocated and assigned to the current PP. Otherwise, this
-    ///     function returns bsl::safe_u16::failure().
+    ///     vsid is allocated and not self. Otherwise, this function returns
+    ///     bsl::safe_u16::failure().
     ///
     /// <!-- inputs/outputs -->
-    ///   @param sys the bf_syscall_t to use
     ///   @param reg the register to get the vsid from.
     ///   @param vs_pool the vs_pool_t to use
     ///   @return Given an input register, returns a vsid if the provided
     ///     register contains a valid vsid and the vs_t associated with the
-    ///     vsid is allocated and assigned to the current PP. Otherwise, this
-    ///     function returns bsl::safe_u16::failure().
+    ///     vsid is allocated and not self. Otherwise, this function returns
+    ///     bsl::safe_u16::failure().
     ///
     [[nodiscard]] constexpr auto
-    get_locally_assigned_vsid(
-        syscall::bf_syscall_t const &sys,
-        bsl::safe_u64 const &reg,
-        vs_pool_t const &vs_pool) noexcept -> bsl::safe_u16
+    get_allocated_remote_vsid(bsl::safe_u64 const &reg, vs_pool_t const &vs_pool) noexcept
+        -> bsl::safe_u16
     {
-        auto const vsid{get_allocated_vsid(sys, reg, vs_pool)};
-        if (bsl::unlikely(vsid.is_invalid())) {
-            bsl::print<bsl::V>() << bsl::here();
+        auto const vsid{bsl::to_u16_unsafe(reg)};
+        if (vsid == hypercall::MV_SELF_ID) {
+            bsl::error() << "the provided vsid "                   // --
+                         << bsl::hex(vsid)                         // --
+                         << " is MV_SELF_ID and cannot be used"    // --
+                         << bsl::endl                              // --
+                         << bsl::here();                           // --
+
             return bsl::safe_u16::failure();
         }
 
-        bool const vs_assigned_to_pp{is_vs_assigned_to_current_pp(sys, vs_pool, vsid)};
-        if (bsl::unlikely(!vs_assigned_to_pp)) {
-            bsl::print<bsl::V>() << bsl::here();
+        if (bsl::unlikely(hypercall::MV_INVALID_ID == vsid)) {
+            bsl::error() << "the provided vsid "                      // --
+                         << bsl::hex(vsid)                            // --
+                         << " is MV_INVALID_ID and cannot be used"    // --
+                         << bsl::endl                                 // --
+                         << bsl::here();                              // --
+
+            return bsl::safe_u16::failure();
+        }
+
+        if (bsl::unlikely(bsl::to_umx(vsid) >= HYPERVISOR_MAX_VSS)) {
+            bsl::error() << "the provided vsid "                      // --
+                         << bsl::hex(vsid)                            // --
+                         << " is out of bounds and cannot be used"    // --
+                         << bsl::endl                                 // --
+                         << bsl::here();                              // --
+
+            return bsl::safe_u16::failure();
+        }
+
+        bool const is_deallocated{vs_pool.is_deallocated(vsid)};
+        if (bsl::unlikely(is_deallocated)) {
+            bsl::error() << "the provided vsid "                         // --
+                         << bsl::hex(vsid)                               // --
+                         << " was never allocated and cannot be used"    // --
+                         << bsl::endl                                    // --
+                         << bsl::here();                                 // --
+
             return bsl::safe_u16::failure();
         }
 
@@ -685,16 +924,16 @@ namespace microv
     /// <!-- description -->
     ///   @brief Given an input register, returns a guest linear address if
     ///     the provided register contains a valid guest linear address.
-    ///     Otherwise, this function returns bsl::safe_umx::failure().
+    ///     Otherwise, this function returns bsl::safe_u64::failure().
     ///
     /// <!-- inputs/outputs -->
     ///   @param reg the register to get the guest linear address from.
     ///   @return Given an input register, returns a guest linear address if
     ///     the provided register contains a valid guest linear address.
-    ///     Otherwise, this function returns bsl::safe_umx::failure().
+    ///     Otherwise, this function returns bsl::safe_u64::failure().
     ///
     [[nodiscard]] constexpr auto
-    get_gla(bsl::safe_u64 const &reg) noexcept -> bsl::safe_umx
+    get_gla(bsl::safe_u64 const &reg) noexcept -> bsl::safe_u64
     {
         /// TODO:
         /// - Add a canonical address check here. This also needs to be added
@@ -705,7 +944,7 @@ namespace microv
         ///   to a get_gpa, and get_phys function in the hypervisor.
         ///
 
-        auto const gla{bsl::to_umx(reg)};
+        auto const gla{bsl::to_u64(reg)};
         if (bsl::unlikely(gla.is_zero())) {
             bsl::error() << "the guest linear address "                // --
                          << bsl::hex(gla)                              // --
@@ -713,7 +952,7 @@ namespace microv
                          << bsl::endl                                  // --
                          << bsl::here();                               // --
 
-            return bsl::safe_umx::failure();
+            return bsl::safe_u64::failure();
         }
 
         bool const aligned{hypercall::mv_is_page_aligned(gla)};
@@ -724,7 +963,7 @@ namespace microv
                          << bsl::endl                                    // --
                          << bsl::here();                                 // --
 
-            return bsl::safe_umx::failure();
+            return bsl::safe_u64::failure();
         }
 
         return gla;
@@ -733,28 +972,18 @@ namespace microv
     /// <!-- description -->
     ///   @brief Given an input register, returns a guest physical address if
     ///     the provided register contains a valid guest physical address.
-    ///     Otherwise, this function returns bsl::safe_umx::failure().
+    ///     Otherwise, this function returns bsl::safe_u64::failure().
     ///
     /// <!-- inputs/outputs -->
     ///   @param reg the register to get the physical address from.
     ///   @return Given an input register, returns a guest physical address if
     ///     the provided register contains a valid guest physical address.
-    ///     Otherwise, this function returns bsl::safe_umx::failure().
+    ///     Otherwise, this function returns bsl::safe_u64::failure().
     ///
     [[nodiscard]] constexpr auto
-    get_gpa(bsl::safe_u64 const &reg) noexcept -> bsl::safe_umx
+    get_gpa(bsl::safe_u64 const &reg) noexcept -> bsl::safe_u64
     {
-        auto const gpa{bsl::to_umx(reg)};
-        if (bsl::unlikely(gpa.is_zero())) {
-            bsl::error() << "the guest physical address "              // --
-                         << bsl::hex(gpa)                              // --
-                         << " is a NULL address and cannot be used"    // --
-                         << bsl::endl                                  // --
-                         << bsl::here();                               // --
-
-            return bsl::safe_umx::failure();
-        }
-
+        auto const gpa{bsl::to_u64(reg)};
         if (bsl::unlikely(gpa >= MICROV_MAX_GPA_SIZE)) {
             bsl::error() << "the guest physical address "            // --
                          << bsl::hex(gpa)                            // --
@@ -762,7 +991,7 @@ namespace microv
                          << bsl::endl                                // --
                          << bsl::here();                             // --
 
-            return bsl::safe_umx::failure();
+            return bsl::safe_u64::failure();
         }
 
         bool const aligned{syscall::bf_is_page_aligned(gpa)};
@@ -773,37 +1002,46 @@ namespace microv
                          << bsl::endl                                    // --
                          << bsl::here();                                 // --
 
-            return bsl::safe_umx::failure();
+            return bsl::safe_u64::failure();
         }
 
         return gpa;
     }
 
-    // /// <!-- description -->
-    // ///   @brief Given an input register, returns an msr index if the provided
-    // ///     register contains a valid msr index. Otherwise, this function
-    // ///     returns bsl::safe_u32::failure().
-    // ///
-    // /// <!-- inputs/outputs -->
-    // ///   @param reg the register to get the msr index from.
-    // ///   @return Given an input register, returns an msr index if the provided
-    // ///     register contains a valid msr index. Otherwise, this function
-    // ///     returns bsl::safe_u32::failure().
-    // ///
-    // [[nodiscard]] constexpr auto
-    // // NOLINTNEXTLINE(bsl-non-safe-integral-types-are-forbidden)
-    // get_msr(bsl::uint64 const reg) noexcept -> bsl::safe_u32
-    // {
-    //     /// TODO:
-    //     /// - We need to compile a whitelist of safe MSRs that an extension
-    //     ///   can read and then check to make sure that "reg" is in the
-    //     ///   list. The easiest way to do this is to see what MicroV needs
-    //     ///   and then limit this to that list. Any additional MSRs can be
-    //     ///   added on demand from the community as needed.
-    //     ///
+    /// <!-- description -->
+    ///   @brief Given an input register, returns a guest physical address if
+    ///     the provided register contains a valid guest physical address
+    ///     that is non-NULL. Otherwise, this function returns
+    ///     bsl::safe_u64::failure().
+    ///
+    /// <!-- inputs/outputs -->
+    ///   @param reg the register to get the physical address from.
+    ///   @return Given an input register, returns a guest physical address if
+    ///     the provided register contains a valid guest physical address
+    ///     that is non-NULL. Otherwise, this function returns
+    ///     bsl::safe_u64::failure().
+    ///
+    [[nodiscard]] constexpr auto
+    get_pos_gpa(bsl::safe_u64 const &reg) noexcept -> bsl::safe_u64
+    {
+        auto const gpa{get_gpa(reg)};
+        if (bsl::unlikely(gpa.is_invalid())) {
+            bsl::print<bsl::V>() << bsl::here();
+            return bsl::safe_u64::failure();
+        }
 
-    //     return bsl::to_u32_unsafe(reg);
-    // }
+        if (bsl::unlikely(gpa.is_zero())) {
+            bsl::error() << "the guest physical address "    // --
+                         << bsl::hex(gpa)                    // --
+                         << " is NULL and cannot be used"    // --
+                         << bsl::endl                        // --
+                         << bsl::here();                     // --
+
+            return bsl::safe_u64::failure();
+        }
+
+        return gpa;
+    }
 
     /// ------------------------------------------------------------------------
     /// Report Unsupported Functions

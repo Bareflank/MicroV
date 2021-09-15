@@ -48,6 +48,13 @@ namespace microv
         bsl::safe_u16 active_vpid;
         /// @brief stores the ID of the VS that is active on this PP
         bsl::safe_u16 active_vsid;
+
+        /// @brief stores the ID of the parent VM
+        bsl::safe_u16 parent_vmid{};
+        /// @brief stores the ID of the parent VP
+        bsl::safe_u16 parent_vpid{};
+        /// @brief stores the ID of the parent VS
+        bsl::safe_u16 parent_vsid{};
     };
 
     /// @brief defines the max size supported for the TLS block

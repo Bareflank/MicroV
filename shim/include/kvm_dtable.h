@@ -1,4 +1,4 @@
-/** 
+/**
  * @copyright
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -31,6 +31,8 @@ extern "C"
 {
 #endif
 
+#pragma pack(push, 1)
+
     /**
      * @struct kvm_dtable
      *
@@ -43,9 +45,15 @@ extern "C"
         uint64_t base;
         /** @brief stores that value of the limit dtable */
         uint16_t limit;
-        /** @brief stores that value of the padding dtable register */
-        uint16_t padding[3];
+        /** @brief padding for alignment */
+        uint16_t padding1;
+        /** @brief padding for alignment */
+        uint16_t padding2;
+        /** @brief padding for alignment */
+        uint16_t padding3;
     };
+
+#pragma pack(pop)
 
 #ifdef __cplusplus
 }

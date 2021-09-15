@@ -25,7 +25,7 @@
 #include "../../include/handle_vm_kvm_create_device.h"
 
 #include <kvm_create_device.h>
-#include <types.h>
+#include <mv_types.h>
 
 #include <bsl/ut.hpp>
 

@@ -29,8 +29,8 @@
 #ifndef DEBUG_H
 #define DEBUG_H
 
+#include <mv_types.h>
 #include <stdio.h>    // IWYU pragma: export
-#include <types.h>
 
 /**
  * <!-- description -->

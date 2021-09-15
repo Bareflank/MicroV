@@ -25,7 +25,7 @@
 #include "../../include/handle_system_kvm_get_emulated_cpuid.h"
 
 #include <kvm_cpuid2.h>
-#include <types.h>
+#include <mv_types.h>
 
 #include <bsl/ut.hpp>
 

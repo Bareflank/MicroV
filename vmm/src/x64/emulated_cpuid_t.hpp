@@ -226,17 +226,44 @@ namespace microv
         ///     vmexit_success_promote is returned.
         ///
         [[nodiscard]] static constexpr auto
-        get_guest(syscall::bf_syscall_t const &sys, intrinsic_t const &intrinsic) noexcept
+        get(syscall::bf_syscall_t const &sys, intrinsic_t const &intrinsic) noexcept
             -> bsl::errc_type
         {
             bsl::discard(sys);
             bsl::discard(intrinsic);
 
-            // constexpr auto fn0000_00001{0x00000001_u32};
-            // if (fn0000_00001 == bsl::to_u32_unsafe(old_rax)) {
-            //     constexpr auto hypervisor_bit{0x0000000080000000_u64};
-            //     mut_rcx |= hypervisor_bit;
-            // }
+            /// NOTE:
+            /// - Create an array: mv_cpuid_leaf_t[max_functions][max_indexes].
+            ///   The reason that this is 2-d is that some require
+            /// - CPUID is actually in the hotpath, so yes, this takes up
+            ///   a bunch of memory that will be wasted, but it is really
+            ///   fast because you can just use a simple array lookup.
+            /// - Initialize this array in the initialize function.
+            ///
+            /// - For get(), you simply return what is in the array.
+            /// - For set(), you change what is in the array, but you are
+            ///   only allowed to reduce capabilities, meaning once the
+            ///   array is initialized, set can only zero out a feature,
+            ///   it cannot add a 1. Set also cannot change certain
+            ///   cpuid leaves. For now, we should only support the
+            ///   ability to set features. Everything else should throw
+            ///   an error. This might be an issue with the APIC topology
+            ///   stuff, but address that if it happens. Keep it simple
+            ///   unless QEMU requires more.
+            ///
+
+            /// NOTE:
+            /// - For supported(), permissable() and emulated(), that code
+            ///   belongs in the PP, but, it needs to be in sync with this
+            ///   code, so any changes that change these functions needs
+            ///   to be keep in sync.
+            ///
+
+            /// NOTE:
+            /// - Don't forget about the hypervisor bit. See root code for
+            ///   example. The hypervisor bit should be initialized, meaning
+            ///   don't calculate it like we do with the root.
+            ///
 
             bsl::error() << "get_guest not implemented\n";
             return bsl::errc_failure;

@@ -25,7 +25,7 @@
 #include "../../include/handle_vm_kvm_irq_line.h"
 
 #include <kvm_irq_level.h>
-#include <types.h>
+#include <mv_types.h>
 
 #include <bsl/ut.hpp>
 

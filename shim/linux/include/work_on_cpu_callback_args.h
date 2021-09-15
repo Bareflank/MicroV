@@ -27,8 +27,8 @@
 #ifndef PLATFORM_ON_EACH_CPU_CALLBACK_ARGS_H
 #define PLATFORM_ON_EACH_CPU_CALLBACK_ARGS_H
 
+#include <mv_types.h>
 #include <platform.h>
-#include <types.h>
 
 /**
  * @struct work_on_cpu_callback_args

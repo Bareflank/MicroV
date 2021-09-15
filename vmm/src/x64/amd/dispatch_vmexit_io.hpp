@@ -26,8 +26,10 @@
 #define DISPATCH_VMEXIT_IO_HPP
 
 #include <bf_syscall_t.hpp>
+#include <dispatch_abi_helpers.hpp>
 #include <gs_t.hpp>
 #include <intrinsic_t.hpp>
+#include <mv_exit_io_t.hpp>
 #include <pp_pool_t.hpp>
 #include <tls_t.hpp>
 #include <vm_pool_t.hpp>
@@ -50,7 +52,7 @@ namespace microv
     ///   @param mut_sys the bf_syscall_t to use
     ///   @param page_pool the page_pool_t to use
     ///   @param intrinsic the intrinsic_t to use
-    ///   @param pp_pool the pp_pool_t to use
+    ///   @param mut_pp_pool the pp_pool_t to use
     ///   @param vm_pool the vm_pool_t to use
     ///   @param vp_pool the vp_pool_t to use
     ///   @param vs_pool the vs_pool_t to use
@@ -65,25 +67,113 @@ namespace microv
         syscall::bf_syscall_t &mut_sys,
         page_pool_t const &page_pool,
         intrinsic_t const &intrinsic,
-        pp_pool_t const &pp_pool,
+        pp_pool_t &mut_pp_pool,
         vm_pool_t const &vm_pool,
         vp_pool_t const &vp_pool,
         vs_pool_t const &vs_pool,
         bsl::safe_u16 const &vsid) noexcept -> bsl::errc_type
     {
+        /// TODO:
+        /// - Need to properly handle string instructions (INS/OUTS)
+        /// - Need to properly handle IN instructions
+        ///
+
+        bsl::expects(!mut_sys.is_the_active_vm_the_root_vm());
+
         bsl::discard(gs);
         bsl::discard(tls);
-        bsl::discard(mut_sys);
         bsl::discard(page_pool);
         bsl::discard(intrinsic);
-        bsl::discard(pp_pool);
         bsl::discard(vm_pool);
         bsl::discard(vp_pool);
         bsl::discard(vs_pool);
         bsl::discard(vsid);
 
-        bsl::error() << "dispatch_vmexit_io not implemented\n";
-        return bsl::errc_failure;
+        // ---------------------------------------------------------------------
+        // Context: Guest VM
+        // ---------------------------------------------------------------------
+
+        auto const exitinfo1{mut_sys.bf_vs_op_read(vsid, syscall::bf_reg_t::bf_reg_t_exitinfo1)};
+        bsl::expects(exitinfo1.is_valid());
+
+        auto const rax{mut_sys.bf_tls_rax()};
+        auto const rcx{mut_sys.bf_tls_rcx()};
+
+        // ---------------------------------------------------------------------
+        // Context: Change To Root VM
+        // ---------------------------------------------------------------------
+
+        advance_ip_and_change_to_parent(mut_sys, tls.parent_vmid, tls.parent_vpid, tls.parent_vsid);
+
+        // ---------------------------------------------------------------------
+        // Context: Root VM
+        // ---------------------------------------------------------------------
+
+        auto mut_exit_io{mut_pp_pool.shared_page<hypercall::mv_exit_io_t>(mut_sys)};
+        bsl::expects(mut_exit_io.is_valid());
+
+        constexpr auto port_mask{0xFFFF0000_u64};
+        constexpr auto port_shft{16_u64};
+        constexpr auto reps_mask{0x00000008_u64};
+        constexpr auto reps_shft{3_u64};
+        constexpr auto type_mask{0x00000001_u64};
+        constexpr auto type_shft{0_u64};
+
+        constexpr auto sz32_mask{0x00000040_u64};
+        constexpr auto sz32_shft{6_u64};
+        constexpr auto sz16_mask{0x00000020_u64};
+        constexpr auto sz16_shft{5_u64};
+        constexpr auto sz08_mask{0x00000010_u64};
+        constexpr auto sz08_shft{4_u64};
+
+        mut_exit_io->addr = ((exitinfo1 & port_mask) >> port_shft).get();
+
+        if (((exitinfo1 & type_mask) >> type_shft).is_zero()) {
+            mut_exit_io->type = hypercall::MV_EXIT_IO_OUT.get();
+        }
+        else {
+            bsl::error() << "MV_EXIT_IO_IN not implemented\n" << bsl::here();
+            return bsl::errc_failure;
+        }
+
+        if (((exitinfo1 & sz32_mask) >> sz32_shft).is_pos()) {
+            constexpr auto data_mask{0x00000000FFFFFFFF_u64};
+            mut_exit_io->size = hypercall::mv_bit_size_t::mv_bit_size_t_32;
+            mut_exit_io->data = (data_mask & rax).get();
+        }
+        else {
+            bsl::touch();
+        }
+
+        if (((exitinfo1 & sz16_mask) >> sz16_shft).is_pos()) {
+            constexpr auto data_mask{0x000000000000FFFF_u64};
+            mut_exit_io->size = hypercall::mv_bit_size_t::mv_bit_size_t_16;
+            mut_exit_io->data = (data_mask & rax).get();
+        }
+        else {
+            bsl::touch();
+        }
+
+        if (((exitinfo1 & sz08_mask) >> sz08_shft).is_pos()) {
+            constexpr auto data_mask{0x00000000000000FF_u64};
+            mut_exit_io->size = hypercall::mv_bit_size_t::mv_bit_size_t_8;
+            mut_exit_io->data = (data_mask & rax).get();
+        }
+        else {
+            bsl::touch();
+        }
+
+        if (((exitinfo1 & reps_mask) >> reps_shft).is_pos()) {
+            mut_exit_io->reps = rcx.get();
+        }
+        else {
+            mut_exit_io->reps = {};
+        }
+
+        set_reg_return(mut_sys, hypercall::MV_STATUS_SUCCESS);
+        set_reg0(mut_sys, bsl::to_u64(hypercall::EXIT_REASON_IO));
+
+        return vmexit_success_advance_ip_and_run;
     }
 }
 

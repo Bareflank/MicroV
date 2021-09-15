@@ -35,6 +35,8 @@ extern "C"
 {
 #endif
 
+#pragma pack(push, 1)
+
 /** @brief defines the max number of entires in the MDL */
 #define MV_MDL_MAX_ENTRIES ((uint64_t)125)
 
@@ -86,6 +88,8 @@ extern "C"
         /** @brief stores each entry in the MDL */
         struct mv_mdl_entry_t entries[MV_MDL_MAX_ENTRIES];
     };
+
+#pragma pack(pop)
 
 #ifdef __cplusplus
 }

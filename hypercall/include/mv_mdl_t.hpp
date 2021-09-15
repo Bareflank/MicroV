@@ -25,11 +25,13 @@
 #ifndef MV_MDL_T_HPP
 #define MV_MDL_T_HPP
 
-#include <mv_mdl_entry_t.hpp>    // IWYU pragma: export
+#include "mv_mdl_entry_t.hpp"    // IWYU pragma: export
 
 #include <bsl/array.hpp>
 #include <bsl/convert.hpp>
 #include <bsl/safe_integral.hpp>
+
+#pragma pack(push, 1)
 
 namespace hypercall
 {
@@ -84,5 +86,7 @@ namespace hypercall
         bsl::array<mv_mdl_entry_t, MV_MDL_MAX_ENTRIES.get()> entries;
     };
 }
+
+#pragma pack(pop)
 
 #endif

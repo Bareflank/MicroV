@@ -26,7 +26,7 @@
 #define DISPATCH_VMCALL_MV_VM_OP_HPP
 
 #include <bf_syscall_t.hpp>
-#include <dispatch_vmcall_abi_helpers.hpp>
+#include <dispatch_abi_helpers.hpp>
 #include <dispatch_vmcall_helpers.hpp>
 #include <errc_types.hpp>
 #include <gs_t.hpp>
@@ -138,6 +138,127 @@ namespace microv
     }
 
     /// <!-- description -->
+    ///   @brief Implements the mv_vm_op_mmio_map hypercall
+    ///
+    /// <!-- inputs/outputs -->
+    ///   @param tls the tls_t to use
+    ///   @param mut_sys the bf_syscall_t to use
+    ///   @param mut_page_pool the page_pool_t to use
+    ///   @param mut_pp_pool the pp_pool_t to use
+    ///   @param mut_vm_pool the vm_pool_t to use
+    ///   @return Returns bsl::errc_success on success, bsl::errc_failure
+    ///     and friends otherwise
+    ///
+    [[nodiscard]] constexpr auto
+    handle_mv_vm_op_mmio_map(
+        tls_t const &tls,
+        syscall::bf_syscall_t &mut_sys,
+        page_pool_t &mut_page_pool,
+        pp_pool_t &mut_pp_pool,
+        vm_pool_t &mut_vm_pool) noexcept -> bsl::errc_type
+    {
+        /// TODO:
+        /// - We need to add support for the dst and src to be any VMID. This
+        ///   will be needed for device domain support in the future.
+        ///
+
+        auto const dst_vmid{get_allocated_guest_vmid(mut_sys, get_reg1(mut_sys), mut_vm_pool)};
+        if (bsl::unlikely(dst_vmid.is_invalid())) {
+            bsl::print<bsl::V>() << bsl::here();
+            set_reg_return(mut_sys, hypercall::MV_STATUS_INVALID_INPUT_REG1);
+            return vmexit_failure_advance_ip_and_run;
+        }
+
+        auto const src_vmid{get_allocated_root_vmid(mut_sys, get_reg2(mut_sys), mut_vm_pool)};
+        if (bsl::unlikely(src_vmid.is_invalid())) {
+            bsl::print<bsl::V>() << bsl::here();
+            set_reg_return(mut_sys, hypercall::MV_STATUS_INVALID_INPUT_REG2);
+            return vmexit_failure_advance_ip_and_run;
+        }
+
+        auto mut_mdl{mut_pp_pool.shared_page<hypercall::mv_mdl_t>(mut_sys)};
+        if (bsl::unlikely(mut_mdl.is_invalid())) {
+            bsl::print<bsl::V>() << bsl::here();
+            set_reg_return(mut_sys, hypercall::MV_STATUS_INVALID_INPUT_REG1);
+            return vmexit_failure_advance_ip_and_run;
+        }
+
+        bool const mdl_safe{is_mdl_safe(*mut_mdl, false)};
+        if (bsl::unlikely(!mdl_safe)) {
+            bsl::print<bsl::V>() << bsl::here();
+            set_reg_return(mut_sys, hypercall::MV_STATUS_INVALID_INPUT_REG1);
+            return vmexit_failure_advance_ip_and_run;
+        }
+
+        auto const ret{mut_vm_pool.mmio_map(tls, mut_sys, mut_page_pool, *mut_mdl, dst_vmid)};
+
+        if (bsl::unlikely(!ret)) {
+            bsl::print<bsl::V>() << bsl::here();
+            set_reg_return(mut_sys, hypercall::MV_STATUS_FAILURE_UNKNOWN);
+            return vmexit_failure_advance_ip_and_run;
+        }
+
+        return vmexit_success_advance_ip_and_run;
+    }
+
+    /// <!-- description -->
+    ///   @brief Implements the mv_vm_op_mmio_unmap hypercall
+    ///
+    /// <!-- inputs/outputs -->
+    ///   @param tls the tls_t to use
+    ///   @param mut_sys the bf_syscall_t to use
+    ///   @param mut_page_pool the page_pool_t to use
+    ///   @param mut_pp_pool the pp_pool_t to use
+    ///   @param mut_vm_pool the vm_pool_t to use
+    ///   @return Returns bsl::errc_success on success, bsl::errc_failure
+    ///     and friends otherwise
+    ///
+    [[nodiscard]] constexpr auto
+    handle_mv_vm_op_mmio_unmap(
+        tls_t const &tls,
+        syscall::bf_syscall_t &mut_sys,
+        page_pool_t &mut_page_pool,
+        pp_pool_t &mut_pp_pool,
+        vm_pool_t &mut_vm_pool) noexcept -> bsl::errc_type
+    {
+        /// TODO:
+        /// - We need to add support for the dst to be any VMID. This
+        ///   will be needed for device domain support in the future.
+        ///
+
+        auto const dst_vmid{get_allocated_guest_vmid(mut_sys, get_reg1(mut_sys), mut_vm_pool)};
+        if (bsl::unlikely(dst_vmid.is_invalid())) {
+            bsl::print<bsl::V>() << bsl::here();
+            set_reg_return(mut_sys, hypercall::MV_STATUS_INVALID_INPUT_REG1);
+            return vmexit_failure_advance_ip_and_run;
+        }
+
+        auto mut_mdl{mut_pp_pool.shared_page<hypercall::mv_mdl_t>(mut_sys)};
+        if (bsl::unlikely(mut_mdl.is_invalid())) {
+            bsl::print<bsl::V>() << bsl::here();
+            set_reg_return(mut_sys, hypercall::MV_STATUS_INVALID_INPUT_REG1);
+            return vmexit_failure_advance_ip_and_run;
+        }
+
+        bool const mdl_safe{is_mdl_safe(*mut_mdl, true)};
+        if (bsl::unlikely(!mdl_safe)) {
+            bsl::print<bsl::V>() << bsl::here();
+            set_reg_return(mut_sys, hypercall::MV_STATUS_INVALID_INPUT_REG1);
+            return vmexit_failure_advance_ip_and_run;
+        }
+
+        auto const ret{mut_vm_pool.mmio_unmap(tls, mut_sys, mut_page_pool, *mut_mdl, dst_vmid)};
+
+        if (bsl::unlikely(!ret)) {
+            bsl::print<bsl::V>() << bsl::here();
+            set_reg_return(mut_sys, hypercall::MV_STATUS_FAILURE_UNKNOWN);
+            return vmexit_failure_advance_ip_and_run;
+        }
+
+        return vmexit_success_advance_ip_and_run;
+    }
+
+    /// <!-- description -->
     ///   @brief Dispatches virtual machine VMCalls.
     ///
     /// <!-- inputs/outputs -->
@@ -146,7 +267,7 @@ namespace microv
     ///   @param mut_sys the bf_syscall_t to use
     ///   @param mut_page_pool the page_pool_t to use
     ///   @param intrinsic the intrinsic_t to use
-    ///   @param pp_pool the pp_pool_t to use
+    ///   @param mut_pp_pool the pp_pool_t to use
     ///   @param mut_vm_pool the vm_pool_t to use
     ///   @param vp_pool the vp_pool_t to use
     ///   @param vs_pool the vs_pool_t to use
@@ -161,13 +282,12 @@ namespace microv
         syscall::bf_syscall_t &mut_sys,
         page_pool_t &mut_page_pool,
         intrinsic_t const &intrinsic,
-        pp_pool_t const &pp_pool,
+        pp_pool_t &mut_pp_pool,
         vm_pool_t &mut_vm_pool,
         vp_pool_t const &vp_pool,
         vs_pool_t const &vs_pool,
         bsl::safe_u16 const &vsid) noexcept -> bsl::errc_type
     {
-        bsl::discard(pp_pool);
         bsl::discard(vs_pool);
         bsl::discard(vsid);
 
@@ -208,6 +328,28 @@ namespace microv
 
             case hypercall::MV_VM_OP_VMID_IDX_VAL.get(): {
                 auto const ret{handle_mv_vm_op_vmid(mut_sys)};
+                if (bsl::unlikely(!ret)) {
+                    bsl::print<bsl::V>() << bsl::here();
+                    return ret;
+                }
+
+                return ret;
+            }
+
+            case hypercall::MV_VM_OP_MMIO_MAP_IDX_VAL.get(): {
+                auto const ret{handle_mv_vm_op_mmio_map(
+                    tls, mut_sys, mut_page_pool, mut_pp_pool, mut_vm_pool)};
+                if (bsl::unlikely(!ret)) {
+                    bsl::print<bsl::V>() << bsl::here();
+                    return ret;
+                }
+
+                return ret;
+            }
+
+            case hypercall::MV_VM_OP_MMIO_UNMAP_IDX_VAL.get(): {
+                auto const ret{handle_mv_vm_op_mmio_unmap(
+                    tls, mut_sys, mut_page_pool, mut_pp_pool, mut_vm_pool)};
                 if (bsl::unlikely(!ret)) {
                     bsl::print<bsl::V>() << bsl::here();
                     return ret;

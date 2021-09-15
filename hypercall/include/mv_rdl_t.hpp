@@ -31,6 +31,8 @@
 #include <bsl/convert.hpp>
 #include <bsl/safe_integral.hpp>
 
+#pragma pack(push, 1)
+
 namespace hypercall
 {
     /// @brief defines the max number of entires in the RDL
@@ -85,5 +87,7 @@ namespace hypercall
         bsl::array<mv_rdl_entry_t, MV_RDL_MAX_ENTRIES.get()> entries;
     };
 }
+
+#pragma pack(pop)
 
 #endif

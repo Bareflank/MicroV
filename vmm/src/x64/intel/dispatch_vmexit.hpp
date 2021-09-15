@@ -25,6 +25,7 @@
 #ifndef DISPATCH_VMEXIT_HPP
 #define DISPATCH_VMEXIT_HPP
 
+#include <bf_debug_ops.hpp>
 #include <bf_syscall_t.hpp>
 #include <dispatch_vmexit_cpuid.hpp>
 #include <dispatch_vmexit_cr.hpp>
@@ -39,6 +40,7 @@
 #include <dispatch_vmexit_rdmsr.hpp>
 #include <dispatch_vmexit_sipi.hpp>
 #include <dispatch_vmexit_triple_fault.hpp>
+#include <dispatch_vmexit_unknown.hpp>
 #include <dispatch_vmexit_vmcall.hpp>
 #include <dispatch_vmexit_wrmsr.hpp>
 #include <errc_types.hpp>
@@ -60,13 +62,15 @@ namespace microv
     constexpr auto EXIT_REASON_CPUID{10_u64};
     /// @brief defines the VMCALL exit reason code
     constexpr auto EXIT_REASON_VMCALL{18_u64};
+    /// @brief defines the IOIO exit reason code
+    constexpr auto EXIT_REASON_IOIO{30_u64};
 
     /// <!-- description -->
     ///   @brief Dispatches the VMExit.
     ///
     /// <!-- inputs/outputs -->
     ///   @param gs the gs_t to use
-    ///   @param tls the tls_t to use
+    ///   @param mut_tls the tls_t to use
     ///   @param mut_sys the bf_syscall_t to use
     ///   @param mut_page_pool the page_pool_t to use
     ///   @param intrinsic the intrinsic_t to use
@@ -82,7 +86,7 @@ namespace microv
     [[nodiscard]] constexpr auto
     dispatch_vmexit(
         gs_t const &gs,
-        tls_t const &tls,
+        tls_t &mut_tls,
         syscall::bf_syscall_t &mut_sys,
         page_pool_t &mut_page_pool,
         intrinsic_t const &intrinsic,
@@ -99,7 +103,22 @@ namespace microv
             case EXIT_REASON_CPUID.get(): {
                 mut_ret = dispatch_vmexit_cpuid(
                     gs,
-                    tls,
+                    mut_tls,
+                    mut_sys,
+                    mut_page_pool,
+                    intrinsic,
+                    mut_pp_pool,
+                    mut_vm_pool,
+                    mut_vp_pool,
+                    mut_vs_pool,
+                    vsid);
+                break;
+            }
+
+            case EXIT_REASON_IOIO.get(): {
+                mut_ret = dispatch_vmexit_io(
+                    gs,
+                    mut_tls,
                     mut_sys,
                     mut_page_pool,
                     intrinsic,
@@ -114,7 +133,7 @@ namespace microv
             case EXIT_REASON_VMCALL.get(): {
                 mut_ret = dispatch_vmexit_vmcall(
                     gs,
-                    tls,
+                    mut_tls,
                     mut_sys,
                     mut_page_pool,
                     intrinsic,
@@ -127,12 +146,18 @@ namespace microv
             }
 
             default: {
-                bsl::error() << "unsupported vmexit "    // --
-                             << bsl::hex(exit_reason)    // --
-                             << bsl::endl                // --
-                             << bsl::here();             // --
-
-                mut_ret = bsl::errc_failure;
+                mut_ret = dispatch_vmexit_unknown(
+                    gs,
+                    mut_tls,
+                    mut_sys,
+                    mut_page_pool,
+                    intrinsic,
+                    mut_pp_pool,
+                    mut_vm_pool,
+                    mut_vp_pool,
+                    mut_vs_pool,
+                    vsid,
+                    exit_reason);
                 break;
             }
         }
@@ -142,27 +167,11 @@ namespace microv
                 return mut_sys.bf_vs_op_run_current();
             }
 
-            case vmexit_success_run_parent.get(): {
-                bsl::error() << "vmexit_success_run_parent not implemented\n";
-                break;
-            }
-
             case vmexit_success_advance_ip_and_run.get(): {
                 return mut_sys.bf_vs_op_advance_ip_and_run_current();
             }
 
-            case vmexit_success_advance_ip_and_run_parent.get(): {
-                bsl::error() << "vmexit_success_advance_ip_and_run_parent not implemented\n";
-                break;
-            }
-
             case vmexit_success_promote.get(): {
-                mut_ret = mut_sys.bf_vs_op_advance_ip(vsid);
-                if (bsl::unlikely(!mut_ret)) {
-                    bsl::print<bsl::V>() << bsl::here();
-                    return mut_ret;
-                }
-
                 return mut_sys.bf_vs_op_promote(vsid);
             }
 
@@ -171,19 +180,9 @@ namespace microv
                 return mut_sys.bf_vs_op_run_current();
             }
 
-            case vmexit_failure_run_parent.get(): {
-                bsl::error() << "vmexit_success_run_parent not implemented\n";
-                break;
-            }
-
             case vmexit_failure_advance_ip_and_run.get(): {
                 bsl::print<bsl::V>() << bsl::here();
                 return mut_sys.bf_vs_op_advance_ip_and_run_current();
-            }
-
-            case vmexit_failure_advance_ip_and_run_parent.get(): {
-                bsl::error() << "vmexit_success_run_parent not implemented\n";
-                break;
             }
 
             default: {
@@ -191,8 +190,26 @@ namespace microv
             }
         }
 
+        if (mut_sys.is_vs_a_root_vs(vsid)) {
+            bsl::error() << "unrecoverable error from the root VM\n";
+            return bsl::errc_failure;
+        }
+
+        // ---------------------------------------------------------------------
+        // Context: Change To Root VM
+        // ---------------------------------------------------------------------
+
+        change_to_parent(mut_sys, mut_tls.parent_vmid, mut_tls.parent_vpid, mut_tls.parent_vsid);
+
+        // ---------------------------------------------------------------------
+        // Context: Root VM
+        // ---------------------------------------------------------------------
+
+        set_reg_return(mut_sys, hypercall::MV_STATUS_EXIT_UNKNOWN);
+        set_reg0(mut_sys, bsl::to_u64(hypercall::EXIT_REASON_UNKNOWN));
+
         bsl::print<bsl::V>() << bsl::here();
-        return mut_ret;
+        return mut_sys.bf_vs_op_advance_ip_and_run_current();
     }
 }
 

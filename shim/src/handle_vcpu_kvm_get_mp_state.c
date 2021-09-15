@@ -25,7 +25,7 @@
  */
 
 #include <kvm_mp_state.h>
-#include <types.h>
+#include <mv_types.h>
 
 /**
  * <!-- description -->
