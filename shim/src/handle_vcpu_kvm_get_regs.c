@@ -25,6 +25,7 @@
  */
 
 #include <debug.h>
+#include <detect_hypervisor.h>
 #include <g_mut_hndl.h>
 #include <kvm_regs.h>
 #include <kvm_regs_idxs.h>
@@ -42,64 +43,68 @@
  *   @brief Handles the execution of kvm_get_regs.
  *
  * <!-- inputs/outputs -->
- *   @param pmut_vcpu arguments received from private data	
+ *   @param vcpu arguments received from private data
  *   @param pmut_args the arguments provided by userspace
  *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
  */
 NODISCARD int64_t
 handle_vcpu_kvm_get_regs(
-    struct shim_vcpu_t *const pmut_vcpu, struct kvm_regs *const pmut_args) NOEXCEPT
-
+    struct shim_vcpu_t const *const vcpu, struct kvm_regs *const pmut_args) NOEXCEPT
 {
-
+    struct mv_rdl_t *pmut_mut_rdl;
     platform_expects(MV_INVALID_HANDLE != g_mut_hndl);
 
-    struct mv_rdl_t *const pmut_rdl = (struct mv_rdl_t *const)shared_page_for_current_pp();
-    platform_expects(NULL != pmut_rdl);
+    if (detect_hypervisor()) {
+        bferror("The shim is not running in a VM. Did you forget to start MicroV?");
+        return SHIM_FAILURE;
+    }
 
-    pmut_rdl->entries[RAX_IDX].reg = (uint64_t)mv_reg_t_rax;
-    pmut_rdl->entries[RBX_IDX].reg = (uint64_t)mv_reg_t_rbx;
-    pmut_rdl->entries[RCX_IDX].reg = (uint64_t)mv_reg_t_rcx;
-    pmut_rdl->entries[RDX_IDX].reg = (uint64_t)mv_reg_t_rdx;
-    pmut_rdl->entries[RSI_IDX].reg = (uint64_t)mv_reg_t_rsi;
-    pmut_rdl->entries[RDI_IDX].reg = (uint64_t)mv_reg_t_rdi;
-    pmut_rdl->entries[RBP_IDX].reg = (uint64_t)mv_reg_t_rbp;
-    pmut_rdl->entries[R8_IDX].reg = (uint64_t)mv_reg_t_r8;
-    pmut_rdl->entries[R9_IDX].reg = (uint64_t)mv_reg_t_r9;
-    pmut_rdl->entries[R10_IDX].reg = (uint64_t)mv_reg_t_r10;
-    pmut_rdl->entries[R11_IDX].reg = (uint64_t)mv_reg_t_r11;
-    pmut_rdl->entries[R12_IDX].reg = (uint64_t)mv_reg_t_r12;
-    pmut_rdl->entries[R13_IDX].reg = (uint64_t)mv_reg_t_r13;
-    pmut_rdl->entries[R14_IDX].reg = (uint64_t)mv_reg_t_r14;
-    pmut_rdl->entries[R15_IDX].reg = (uint64_t)mv_reg_t_r15;
-    pmut_rdl->entries[RSP_IDX].reg = (uint64_t)mv_reg_t_rsp;
-    pmut_rdl->entries[RIP_IDX].reg = (uint64_t)mv_reg_t_rip;
-    pmut_rdl->entries[RFLAGS_IDX].reg = (uint64_t)mv_reg_t_rflags;
-    pmut_rdl->num_entries = TOTAL_NUM_ENTRIES;
+    pmut_mut_rdl = (struct mv_rdl_t *const)shared_page_for_current_pp();
+    platform_expects(NULL != pmut_mut_rdl);
 
-    if (mv_vs_op_reg_get_list(g_mut_hndl, pmut_vcpu->vsid)) {
+    pmut_mut_rdl->entries[RAX_IDX].reg = (uint64_t)mv_reg_t_rax;
+    pmut_mut_rdl->entries[RBX_IDX].reg = (uint64_t)mv_reg_t_rbx;
+    pmut_mut_rdl->entries[RCX_IDX].reg = (uint64_t)mv_reg_t_rcx;
+    pmut_mut_rdl->entries[RDX_IDX].reg = (uint64_t)mv_reg_t_rdx;
+    pmut_mut_rdl->entries[RSI_IDX].reg = (uint64_t)mv_reg_t_rsi;
+    pmut_mut_rdl->entries[RDI_IDX].reg = (uint64_t)mv_reg_t_rdi;
+    pmut_mut_rdl->entries[RBP_IDX].reg = (uint64_t)mv_reg_t_rbp;
+    pmut_mut_rdl->entries[R8_IDX].reg = (uint64_t)mv_reg_t_r8;
+    pmut_mut_rdl->entries[R9_IDX].reg = (uint64_t)mv_reg_t_r9;
+    pmut_mut_rdl->entries[R10_IDX].reg = (uint64_t)mv_reg_t_r10;
+    pmut_mut_rdl->entries[R11_IDX].reg = (uint64_t)mv_reg_t_r11;
+    pmut_mut_rdl->entries[R12_IDX].reg = (uint64_t)mv_reg_t_r12;
+    pmut_mut_rdl->entries[R13_IDX].reg = (uint64_t)mv_reg_t_r13;
+    pmut_mut_rdl->entries[R14_IDX].reg = (uint64_t)mv_reg_t_r14;
+    pmut_mut_rdl->entries[R15_IDX].reg = (uint64_t)mv_reg_t_r15;
+    pmut_mut_rdl->entries[RSP_IDX].reg = (uint64_t)mv_reg_t_rsp;
+    pmut_mut_rdl->entries[RIP_IDX].reg = (uint64_t)mv_reg_t_rip;
+    pmut_mut_rdl->entries[RFLAGS_IDX].reg = (uint64_t)mv_reg_t_rflags;
+
+    pmut_mut_rdl->num_entries = TOTAL_NUM_ENTRIES;
+    if (mv_vs_op_reg_get_list(g_mut_hndl, vcpu->vsid)) {
         bferror("ms_vs_op_reg_get_list failed");
         return SHIM_FAILURE;
     }
 
-    pmut_args->rax = pmut_rdl->entries[RAX_IDX].val;
-    pmut_args->rbx = pmut_rdl->entries[RBX_IDX].val;
-    pmut_args->rcx = pmut_rdl->entries[RCX_IDX].val;
-    pmut_args->rdx = pmut_rdl->entries[RDX_IDX].val;
-    pmut_args->rsi = pmut_rdl->entries[RSI_IDX].val;
-    pmut_args->rdi = pmut_rdl->entries[RDI_IDX].val;
-    pmut_args->rbp = pmut_rdl->entries[RBP_IDX].val;
-    pmut_args->r8 = pmut_rdl->entries[R8_IDX].val;
-    pmut_args->r9 = pmut_rdl->entries[R9_IDX].val;
-    pmut_args->r10 = pmut_rdl->entries[R10_IDX].val;
-    pmut_args->r11 = pmut_rdl->entries[R11_IDX].val;
-    pmut_args->r12 = pmut_rdl->entries[R12_IDX].val;
-    pmut_args->r13 = pmut_rdl->entries[R13_IDX].val;
-    pmut_args->r14 = pmut_rdl->entries[R14_IDX].val;
-    pmut_args->r15 = pmut_rdl->entries[R15_IDX].val;
-    pmut_args->rsp = pmut_rdl->entries[RSP_IDX].val;
-    pmut_args->rip = pmut_rdl->entries[RIP_IDX].val;
-    pmut_args->rflags = pmut_rdl->entries[RFLAGS_IDX].val;
+    pmut_args->rax = pmut_mut_rdl->entries[RAX_IDX].val;
+    pmut_args->rbx = pmut_mut_rdl->entries[RBX_IDX].val;
+    pmut_args->rcx = pmut_mut_rdl->entries[RCX_IDX].val;
+    pmut_args->rdx = pmut_mut_rdl->entries[RDX_IDX].val;
+    pmut_args->rsi = pmut_mut_rdl->entries[RSI_IDX].val;
+    pmut_args->rdi = pmut_mut_rdl->entries[RDI_IDX].val;
+    pmut_args->rbp = pmut_mut_rdl->entries[RBP_IDX].val;
+    pmut_args->r8 = pmut_mut_rdl->entries[R8_IDX].val;
+    pmut_args->r9 = pmut_mut_rdl->entries[R9_IDX].val;
+    pmut_args->r10 = pmut_mut_rdl->entries[R10_IDX].val;
+    pmut_args->r11 = pmut_mut_rdl->entries[R11_IDX].val;
+    pmut_args->r12 = pmut_mut_rdl->entries[R12_IDX].val;
+    pmut_args->r13 = pmut_mut_rdl->entries[R13_IDX].val;
+    pmut_args->r14 = pmut_mut_rdl->entries[R14_IDX].val;
+    pmut_args->r15 = pmut_mut_rdl->entries[R15_IDX].val;
+    pmut_args->rsp = pmut_mut_rdl->entries[RSP_IDX].val;
+    pmut_args->rip = pmut_mut_rdl->entries[RIP_IDX].val;
+    pmut_args->rflags = pmut_mut_rdl->entries[RFLAGS_IDX].val;
 
     return SHIM_SUCCESS;
 }

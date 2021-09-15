@@ -25,18 +25,16 @@
 #include "constants.h"       // IWYU pragma: export
 #include "g_mut_hndl.h"      // IWYU pragma: export
 #include "mv_constants.h"    // IWYU pragma: export
+#include "mv_exit_reason_t.h"
 #include "mv_hypercall.h"    // IWYU pragma: export
-#include "platform.h"        // IWYU pragma: export
-#include "shim_vcpu_t.h"     // IWYU pragma: export
-#include "shim_vm_t.h"       // IWYU pragma: export
-#include "types.h"           // IWYU pragma: export
+#include "mv_translation_t.h"
+#include "types.h"    // IWYU pragma: export
 
-#include <shared_page_for_current_pp.h>
 #include <shim_fini.h>
 #include <shim_init.h>
 
-#include <bsl/cstdint.hpp>
 #include <bsl/expects.hpp>
+#include <bsl/safe_integral.hpp>
 #include <bsl/ut.hpp>
 
 namespace shim
@@ -53,28 +51,51 @@ namespace shim
         ///   need to track down what we are doing wrong, or report a bug
         ///   to LLVM.
         ///
-        constinit bsl::uint64 g_mut_val{};    //NOLINT
+
+        constinit void *g_mut_shared_pages[HYPERVISOR_MAX_PPS];    // NOLINT
+        constinit bsl::uint64 g_mut_val{};                         // NOLINT
 
         constinit bsl::uint32 g_mut_mv_id_op_version{};    // NOLINT
 
         constinit bsl::uint64 g_mut_mv_handle_op_open_handle{};     // NOLINT
         constinit mv_status_t g_mut_mv_handle_op_close_handle{};    // NOLINT
 
+        constinit bsl::uint16 g_mut_mv_pp_op_ppid{};                   // NOLINT
+        constinit mv_status_t g_mut_mv_pp_op_clr_shared_page_gpa{};    // NOLINT
+        constinit mv_status_t g_mut_mv_pp_op_set_shared_page_gpa{};    // NOLINT
+
         constinit bsl::uint16 g_mut_mv_vm_op_create_vm{};     // NOLINT
         constinit mv_status_t g_mut_mv_vm_op_destroy_vm{};    // NOLINT
+        constinit bsl::uint16 g_mut_mv_vm_op_vmid{};          // NOLINT
         constinit mv_status_t g_mut_mv_vm_op_mmio_map{};      // NOLINT
         constinit mv_status_t g_mut_mv_vm_op_mmio_unmap{};    // NOLINT
 
         constinit bsl::uint16 g_mut_mv_vp_op_create_vp{};     // NOLINT
         constinit mv_status_t g_mut_mv_vp_op_destroy_vp{};    // NOLINT
+        constinit bsl::uint16 g_mut_mv_vp_op_vmid{};          // NOLINT
+        constinit bsl::uint16 g_mut_mv_vp_op_vpid{};          // NOLINT
 
-        constinit bsl::uint16 g_mut_mv_vs_op_create_vs{};       // NOLINT
-        constinit mv_status_t g_mut_mv_vs_op_destroy_vs{};      // NOLINT
-        constinit mv_status_t g_mut_mv_vs_op_reg_get_list{};    // NOLINT
-        constinit mv_status_t g_mut_mv_vs_op_reg_set_list{};    // NOLINT
+        constinit bsl::uint16 g_mut_mv_vs_op_create_vs{};          // NOLINT
+        constinit mv_status_t g_mut_mv_vs_op_destroy_vs{};         // NOLINT
+        constinit bsl::uint16 g_mut_mv_vs_op_vmid{};               // NOLINT
+        constinit bsl::uint16 g_mut_mv_vs_op_vpid{};               // NOLINT
+        constinit bsl::uint16 g_mut_mv_vs_op_vsid{};               // NOLINT
+        constinit mv_translation_t g_mut_mv_vs_op_gla_to_gpa{};    // NOLINT
+        constinit mv_exit_reason_t g_mut_mv_vs_op_run{};           // NOLINT
+        constinit mv_status_t g_mut_mv_vs_op_reg_get{};            // NOLINT
+        constinit mv_status_t g_mut_mv_vs_op_reg_set{};            // NOLINT
+        constinit mv_status_t g_mut_mv_vs_op_reg_get_list{};       // NOLINT
+        constinit mv_status_t g_mut_mv_vs_op_reg_set_list{};       // NOLINT
+        constinit mv_status_t g_mut_mv_vs_op_msr_get{};            // NOLINT
+        constinit mv_status_t g_mut_mv_vs_op_msr_set{};            // NOLINT
+        constinit mv_status_t g_mut_mv_vs_op_msr_get_list{};       // NOLINT
+        constinit mv_status_t g_mut_mv_vs_op_msr_set_list{};       // NOLINT
 
-        extern bsl::int32 g_mut_platform_alloc_fails;
-        extern bsl::uint32 g_mut_platform_num_online_cpus;
+        extern bool g_mut_hypervisor_detected;
+        extern bool g_mut_platform_alloc_fails;
+        extern bsl::safe_u32 g_mut_platform_num_online_cpus;
+        extern int64_t g_mut_platform_mlock;
+        extern int64_t g_mut_platform_munlock;
     }
 
     /// <!-- description -->
@@ -84,6 +105,8 @@ namespace shim
     constexpr void
     init_tests() noexcept
     {
+        g_mut_hypervisor_detected = true;
+        g_mut_platform_num_online_cpus = 1U;
         g_mut_mv_id_op_version = MV_ALL_SPECS_SUPPORTED_VAL;
         g_mut_mv_handle_op_open_handle = MV_HANDLE_VAL;
 
@@ -96,9 +119,7 @@ namespace shim
     [[nodiscard]] constexpr auto
     fini_tests() noexcept -> bsl::exit_code
     {
-        g_mut_mv_handle_op_close_handle = {};
-
-        bsl::expects(SHIM_SUCCESS == shim_fini());
+        shim_fini();
         return bsl::ut_success();
     }
 
@@ -110,7 +131,7 @@ namespace shim
     [[nodiscard]] constexpr auto
     shared_page_as() noexcept -> T *
     {
-        T *const pmut_ptr = static_cast<T *>(shared_page_for_current_pp());
+        T *const pmut_ptr = static_cast<T *>(g_mut_shared_pages[0]);    // NOLINT
 
         bsl::expects(nullptr != pmut_ptr);
         return pmut_ptr;

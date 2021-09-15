@@ -26,6 +26,7 @@
 
 #include <helpers.hpp>
 
+#include <bsl/safe_integral.hpp>
 #include <bsl/ut.hpp>
 
 namespace shim
@@ -45,34 +46,40 @@ namespace shim
         bsl::ut_scenario{"success"} = []() noexcept {
             bsl::ut_given{} = [&]() noexcept {
                 bsl::ut_when{} = [&]() noexcept {
-                    g_mut_hndl = {};
+                    g_mut_hypervisor_detected = true;
+                    g_mut_platform_num_online_cpus = 1U;
+                    g_mut_hndl = MV_HANDLE_VAL;
                     g_mut_mv_handle_op_close_handle = {};
                     bsl::ut_then{} = [&]() noexcept {
-                        bsl::ut_check(SHIM_SUCCESS == shim_fini());
+                        shim_fini();
                     };
                 };
             };
         };
 
-        bsl::ut_scenario{"handle never opened"} = []() noexcept {
+        bsl::ut_scenario{"invalid handle"} = []() noexcept {
             bsl::ut_given{} = [&]() noexcept {
                 bsl::ut_when{} = [&]() noexcept {
+                    g_mut_hypervisor_detected = true;
+                    g_mut_platform_num_online_cpus = 1U;
                     g_mut_hndl = MV_INVALID_HANDLE;
                     g_mut_mv_handle_op_close_handle = {};
                     bsl::ut_then{} = [&]() noexcept {
-                        bsl::ut_check(SHIM_SUCCESS == shim_fini());
+                        shim_fini();
                     };
                 };
             };
         };
 
-        bsl::ut_scenario{"mv_handle_op_close_handle fails"} = []() noexcept {
+        bsl::ut_scenario{"hypervisor not detected"} = []() noexcept {
             bsl::ut_given{} = [&]() noexcept {
                 bsl::ut_when{} = [&]() noexcept {
-                    g_mut_hndl = {};
-                    g_mut_mv_handle_op_close_handle = MV_STATUS_FAILURE_UNKNOWN;
+                    g_mut_hypervisor_detected = false;
+                    g_mut_platform_num_online_cpus = 1U;
+                    g_mut_hndl = MV_HANDLE_VAL;
+                    g_mut_mv_handle_op_close_handle = {};
                     bsl::ut_then{} = [&]() noexcept {
-                        bsl::ut_check(SHIM_FAILURE == shim_fini());
+                        shim_fini();
                     };
                 };
             };

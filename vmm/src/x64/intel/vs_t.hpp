@@ -33,12 +33,14 @@
 #include <emulated_decoder_t.hpp>
 #include <emulated_io_t.hpp>
 #include <emulated_lapic_t.hpp>
-#include <emulated_mmio_t.hpp>
 #include <emulated_msr_t.hpp>
 #include <emulated_tlb_t.hpp>
 #include <gs_t.hpp>
 #include <intrinsic_t.hpp>
+#include <mv_rdl_t.hpp>
+#include <mv_reg_t.hpp>
 #include <mv_translation_t.hpp>
+#include <page_pool_t.hpp>
 #include <pp_pool_t.hpp>
 #include <tls_t.hpp>
 
@@ -95,8 +97,6 @@ namespace microv
         emulated_io_t m_emulated_io{};
         /// @brief stores this vs_t's emulated_lapic_t
         emulated_lapic_t m_emulated_lapic{};
-        /// @brief stores this vs_t's emulated_mmio_t
-        emulated_mmio_t m_emulated_mmio{};
         /// @brief stores this vs_t's emulated_msr_t
         emulated_msr_t m_emulated_msr{};
         /// @brief stores this vs_t's emulated_tlb_t
@@ -131,7 +131,6 @@ namespace microv
             m_emulated_decoder.initialize(gs, tls, sys, intrinsic, i);
             m_emulated_io.initialize(gs, tls, sys, intrinsic, i);
             m_emulated_lapic.initialize(gs, tls, sys, intrinsic, i);
-            m_emulated_mmio.initialize(gs, tls, sys, intrinsic, i);
             m_emulated_msr.initialize(gs, tls, sys, intrinsic, i);
             m_emulated_tlb.initialize(gs, tls, sys, intrinsic, i);
 
@@ -145,6 +144,7 @@ namespace microv
         ///   @param gs the gs_t to use
         ///   @param tls the tls_t to use
         ///   @param sys the bf_syscall_t to use
+        ///   @param page_pool the page_pool_t to use
         ///   @param intrinsic the intrinsic_t to use
         ///
         constexpr void
@@ -152,13 +152,13 @@ namespace microv
             gs_t const &gs,
             tls_t const &tls,
             syscall::bf_syscall_t const &sys,
+            page_pool_t const &page_pool,
             intrinsic_t const &intrinsic) noexcept
         {
-            this->deallocate(gs, tls, sys, intrinsic);
+            this->deallocate(gs, tls, sys, page_pool, intrinsic);
 
             m_emulated_tlb.release(gs, tls, sys, intrinsic);
             m_emulated_msr.release(gs, tls, sys, intrinsic);
-            m_emulated_mmio.release(gs, tls, sys, intrinsic);
             m_emulated_lapic.release(gs, tls, sys, intrinsic);
             m_emulated_io.release(gs, tls, sys, intrinsic);
             m_emulated_decoder.release(gs, tls, sys, intrinsic);
@@ -188,10 +188,13 @@ namespace microv
         ///   @param gs the gs_t to use
         ///   @param tls the tls_t to use
         ///   @param mut_sys the bf_syscall_t to use
+        ///   @param page_pool the page_pool_t to use
         ///   @param intrinsic the intrinsic_t to use
         ///   @param vmid the ID of the VM to assign the vs_t to
         ///   @param vpid the ID of the VP to assign the vs_t to
         ///   @param ppid the ID of the PP to assign the vs_t to
+        ///   @param slpt_spa the system physical address of the second level
+        ///     page tables to use.
         ///   @return Returns ID of this vs_t
         ///
         [[maybe_unused]] constexpr auto
@@ -199,10 +202,12 @@ namespace microv
             gs_t const &gs,
             tls_t const &tls,
             syscall::bf_syscall_t &mut_sys,
+            page_pool_t const &page_pool,
             intrinsic_t const &intrinsic,
             bsl::safe_u16 const &vmid,
             bsl::safe_u16 const &vpid,
-            bsl::safe_u16 const &ppid) noexcept -> bsl::safe_u16
+            bsl::safe_u16 const &ppid,
+            bsl::safe_umx const &slpt_spa) noexcept -> bsl::safe_u16
         {
             bsl::expects(this->id() != syscall::BF_INVALID_ID);
             bsl::expects(allocated_status_t::deallocated == m_allocated);
@@ -216,6 +221,7 @@ namespace microv
 
             bsl::discard(gs);
             bsl::discard(tls);
+            bsl::discard(page_pool);
             bsl::discard(intrinsic);
 
             auto const vsid{this->id()};
@@ -294,6 +300,8 @@ namespace microv
             constexpr auto msr_bitmaps_idx{syscall::bf_reg_t::bf_reg_t_address_of_msr_bitmaps};
             bsl::expects(mut_sys.bf_vs_op_write(this->id(), msr_bitmaps_idx, gs.msr_bitmap_phys));
 
+            bsl::discard(slpt_spa);
+
             m_assigned_vpid = ~vpid;
             m_assigned_ppid = ~ppid;
             m_allocated = allocated_status_t::allocated;
@@ -319,6 +327,7 @@ namespace microv
         ///   @param gs the gs_t to use
         ///   @param tls the tls_t to use
         ///   @param sys the bf_syscall_t to use
+        ///   @param page_pool the page_pool_t to use
         ///   @param intrinsic the intrinsic_t to use
         ///
         constexpr void
@@ -326,12 +335,14 @@ namespace microv
             gs_t const &gs,
             tls_t const &tls,
             syscall::bf_syscall_t const &sys,
+            page_pool_t const &page_pool,
             intrinsic_t const &intrinsic) noexcept
         {
             bsl::expects(this->is_active().is_invalid());
 
             bsl::discard(gs);
             bsl::discard(tls);
+            bsl::discard(page_pool);
             bsl::discard(intrinsic);
 
             m_assigned_ppid = {};
@@ -486,6 +497,714 @@ namespace microv
         }
 
         /// <!-- description -->
+        ///   @brief Returns the value of the requested register
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param sys the bf_syscall_t to use
+        ///   @param reg the register to get
+        ///   @return Returns the value of the requested register
+        ///
+        [[nodiscard]] constexpr auto
+        get(syscall::bf_syscall_t const &sys, bsl::safe_u64 const &reg) const noexcept
+            -> bsl::safe_u64
+        {
+            bsl::expects(allocated_status_t::allocated == m_allocated);
+            bsl::expects(sys.bf_tls_ppid() == this->assigned_pp());
+
+            bsl::expects(reg.is_valid_and_checked());
+
+            using mk = syscall::bf_reg_t;
+            using mv = hypercall::mv_reg_t;
+
+            switch (static_cast<hypercall::mv_reg_t>(reg.get())) {
+                case mv::mv_reg_t_unsupported: {
+                    break;
+                }
+
+                case mv::mv_reg_t_rax: {
+                    return sys.bf_vs_op_read(this->id(), mk::bf_reg_t_rax);
+                }
+
+                case mv::mv_reg_t_rbx: {
+                    return sys.bf_vs_op_read(this->id(), mk::bf_reg_t_rbx);
+                }
+
+                case mv::mv_reg_t_rcx: {
+                    return sys.bf_vs_op_read(this->id(), mk::bf_reg_t_rcx);
+                }
+
+                case mv::mv_reg_t_rdx: {
+                    return sys.bf_vs_op_read(this->id(), mk::bf_reg_t_rdx);
+                }
+
+                case mv::mv_reg_t_rbp: {
+                    return sys.bf_vs_op_read(this->id(), mk::bf_reg_t_rbp);
+                }
+
+                case mv::mv_reg_t_rsi: {
+                    return sys.bf_vs_op_read(this->id(), mk::bf_reg_t_rsi);
+                }
+
+                case mv::mv_reg_t_rdi: {
+                    return sys.bf_vs_op_read(this->id(), mk::bf_reg_t_rdi);
+                }
+
+                case mv::mv_reg_t_r8: {
+                    return sys.bf_vs_op_read(this->id(), mk::bf_reg_t_r8);
+                }
+
+                case mv::mv_reg_t_r9: {
+                    return sys.bf_vs_op_read(this->id(), mk::bf_reg_t_r9);
+                }
+
+                case mv::mv_reg_t_r10: {
+                    return sys.bf_vs_op_read(this->id(), mk::bf_reg_t_r10);
+                }
+
+                case mv::mv_reg_t_r11: {
+                    return sys.bf_vs_op_read(this->id(), mk::bf_reg_t_r11);
+                }
+
+                case mv::mv_reg_t_r12: {
+                    return sys.bf_vs_op_read(this->id(), mk::bf_reg_t_r12);
+                }
+
+                case mv::mv_reg_t_r13: {
+                    return sys.bf_vs_op_read(this->id(), mk::bf_reg_t_r13);
+                }
+
+                case mv::mv_reg_t_r14: {
+                    return sys.bf_vs_op_read(this->id(), mk::bf_reg_t_r14);
+                }
+
+                case mv::mv_reg_t_r15: {
+                    return sys.bf_vs_op_read(this->id(), mk::bf_reg_t_r15);
+                }
+
+                case mv::mv_reg_t_rsp: {
+                    return sys.bf_vs_op_read(this->id(), mk::bf_reg_t_rsp);
+                }
+
+                case mv::mv_reg_t_rip: {
+                    return sys.bf_vs_op_read(this->id(), mk::bf_reg_t_rip);
+                }
+
+                case mv::mv_reg_t_rflags: {
+                    return sys.bf_vs_op_read(this->id(), mk::bf_reg_t_rflags);
+                }
+
+                case mv::mv_reg_t_es_selector: {
+                    return sys.bf_vs_op_read(this->id(), mk::bf_reg_t_es_selector);
+                }
+
+                case mv::mv_reg_t_es_attrib: {
+                    return sys.bf_vs_op_read(this->id(), mk::bf_reg_t_es_attrib);
+                }
+
+                case mv::mv_reg_t_es_limit: {
+                    return sys.bf_vs_op_read(this->id(), mk::bf_reg_t_es_limit);
+                }
+
+                case mv::mv_reg_t_es_base: {
+                    return sys.bf_vs_op_read(this->id(), mk::bf_reg_t_es_base);
+                }
+
+                case mv::mv_reg_t_cs_selector: {
+                    return sys.bf_vs_op_read(this->id(), mk::bf_reg_t_cs_selector);
+                }
+
+                case mv::mv_reg_t_cs_attrib: {
+                    return sys.bf_vs_op_read(this->id(), mk::bf_reg_t_cs_attrib);
+                }
+
+                case mv::mv_reg_t_cs_limit: {
+                    return sys.bf_vs_op_read(this->id(), mk::bf_reg_t_cs_limit);
+                }
+
+                case mv::mv_reg_t_cs_base: {
+                    return sys.bf_vs_op_read(this->id(), mk::bf_reg_t_cs_base);
+                }
+
+                case mv::mv_reg_t_ss_selector: {
+                    return sys.bf_vs_op_read(this->id(), mk::bf_reg_t_ss_selector);
+                }
+
+                case mv::mv_reg_t_ss_attrib: {
+                    return sys.bf_vs_op_read(this->id(), mk::bf_reg_t_ss_attrib);
+                }
+
+                case mv::mv_reg_t_ss_limit: {
+                    return sys.bf_vs_op_read(this->id(), mk::bf_reg_t_ss_limit);
+                }
+
+                case mv::mv_reg_t_ss_base: {
+                    return sys.bf_vs_op_read(this->id(), mk::bf_reg_t_ss_base);
+                }
+
+                case mv::mv_reg_t_ds_selector: {
+                    return sys.bf_vs_op_read(this->id(), mk::bf_reg_t_ds_selector);
+                }
+
+                case mv::mv_reg_t_ds_attrib: {
+                    return sys.bf_vs_op_read(this->id(), mk::bf_reg_t_ds_attrib);
+                }
+
+                case mv::mv_reg_t_ds_limit: {
+                    return sys.bf_vs_op_read(this->id(), mk::bf_reg_t_ds_limit);
+                }
+
+                case mv::mv_reg_t_ds_base: {
+                    return sys.bf_vs_op_read(this->id(), mk::bf_reg_t_ds_base);
+                }
+
+                case mv::mv_reg_t_fs_selector: {
+                    return sys.bf_vs_op_read(this->id(), mk::bf_reg_t_fs_selector);
+                }
+
+                case mv::mv_reg_t_fs_attrib: {
+                    return sys.bf_vs_op_read(this->id(), mk::bf_reg_t_fs_attrib);
+                }
+
+                case mv::mv_reg_t_fs_limit: {
+                    return sys.bf_vs_op_read(this->id(), mk::bf_reg_t_fs_limit);
+                }
+
+                case mv::mv_reg_t_fs_base: {
+                    return sys.bf_vs_op_read(this->id(), mk::bf_reg_t_fs_base);
+                }
+
+                case mv::mv_reg_t_gs_selector: {
+                    return sys.bf_vs_op_read(this->id(), mk::bf_reg_t_gs_selector);
+                }
+
+                case mv::mv_reg_t_gs_attrib: {
+                    return sys.bf_vs_op_read(this->id(), mk::bf_reg_t_gs_attrib);
+                }
+
+                case mv::mv_reg_t_gs_limit: {
+                    return sys.bf_vs_op_read(this->id(), mk::bf_reg_t_gs_limit);
+                }
+
+                case mv::mv_reg_t_gs_base: {
+                    return sys.bf_vs_op_read(this->id(), mk::bf_reg_t_gs_base);
+                }
+
+                case mv::mv_reg_t_ldtr_selector: {
+                    return sys.bf_vs_op_read(this->id(), mk::bf_reg_t_ldtr_selector);
+                }
+
+                case mv::mv_reg_t_ldtr_attrib: {
+                    return sys.bf_vs_op_read(this->id(), mk::bf_reg_t_ldtr_attrib);
+                }
+
+                case mv::mv_reg_t_ldtr_limit: {
+                    return sys.bf_vs_op_read(this->id(), mk::bf_reg_t_ldtr_limit);
+                }
+
+                case mv::mv_reg_t_ldtr_base: {
+                    return sys.bf_vs_op_read(this->id(), mk::bf_reg_t_ldtr_base);
+                }
+
+                case mv::mv_reg_t_tr_selector: {
+                    return sys.bf_vs_op_read(this->id(), mk::bf_reg_t_tr_selector);
+                }
+
+                case mv::mv_reg_t_tr_attrib: {
+                    return sys.bf_vs_op_read(this->id(), mk::bf_reg_t_tr_attrib);
+                }
+
+                case mv::mv_reg_t_tr_limit: {
+                    return sys.bf_vs_op_read(this->id(), mk::bf_reg_t_tr_limit);
+                }
+
+                case mv::mv_reg_t_tr_base: {
+                    return sys.bf_vs_op_read(this->id(), mk::bf_reg_t_tr_base);
+                }
+
+                case mv::mv_reg_t_gdtr_selector: {
+                    break;
+                }
+
+                case mv::mv_reg_t_gdtr_attrib: {
+                    break;
+                }
+
+                case mv::mv_reg_t_gdtr_limit: {
+                    return sys.bf_vs_op_read(this->id(), mk::bf_reg_t_gdtr_limit);
+                }
+
+                case mv::mv_reg_t_gdtr_base: {
+                    return sys.bf_vs_op_read(this->id(), mk::bf_reg_t_gdtr_base);
+                }
+
+                case mv::mv_reg_t_idtr_selector: {
+                    break;
+                }
+
+                case mv::mv_reg_t_idtr_attrib: {
+                    break;
+                }
+
+                case mv::mv_reg_t_idtr_limit: {
+                    return sys.bf_vs_op_read(this->id(), mk::bf_reg_t_idtr_limit);
+                }
+
+                case mv::mv_reg_t_idtr_base: {
+                    return sys.bf_vs_op_read(this->id(), mk::bf_reg_t_idtr_base);
+                }
+
+                case mv::mv_reg_t_dr0: {
+                    break;
+                }
+
+                case mv::mv_reg_t_dr1: {
+                    break;
+                }
+
+                case mv::mv_reg_t_dr2: {
+                    break;
+                }
+
+                case mv::mv_reg_t_dr3: {
+                    break;
+                }
+
+                case mv::mv_reg_t_dr6: {
+                    return sys.bf_vs_op_read(this->id(), mk::bf_reg_t_dr6);
+                }
+
+                case mv::mv_reg_t_dr7: {
+                    return sys.bf_vs_op_read(this->id(), mk::bf_reg_t_dr7);
+                }
+
+                case mv::mv_reg_t_cr0: {
+                    return sys.bf_vs_op_read(this->id(), mk::bf_reg_t_cr0);
+                }
+
+                case mv::mv_reg_t_cr2: {
+                    return sys.bf_vs_op_read(this->id(), mk::bf_reg_t_cr2);
+                }
+
+                case mv::mv_reg_t_cr3: {
+                    return sys.bf_vs_op_read(this->id(), mk::bf_reg_t_cr3);
+                }
+
+                case mv::mv_reg_t_cr4: {
+                    return sys.bf_vs_op_read(this->id(), mk::bf_reg_t_cr4);
+                }
+
+                case mv::mv_reg_t_cr8: {
+                    break;
+                }
+
+                case mv::mv_reg_t_xcr0: {
+                    break;
+                }
+
+                case mv::mv_reg_t_invalid:
+                    [[fallthrough]];
+                default: {
+                    break;
+                }
+            }
+
+            bsl::error() << "mv_reg_t "      // --
+                         << bsl::hex(reg)    // --
+                         << " is either unsupported/invalid or not yet implemented"
+                         << bsl::endl       // --
+                         << bsl::here();    // --
+
+            return bsl::safe_u64::failure();
+        }
+
+        /// <!-- description -->
+        ///   @brief Sets the value of the requested register
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param mut_sys the bf_syscall_t to use
+        ///   @param reg the register to set
+        ///   @param val the value to set the register to
+        ///   @return Returns bsl::errc_success on success, bsl::errc_failure
+        ///     and friends otherwise
+        ///
+        [[nodiscard]] constexpr auto
+        set(syscall::bf_syscall_t &mut_sys,
+            bsl::safe_u64 const &reg,
+            bsl::safe_u64 const &val) noexcept -> bsl::errc_type
+        {
+            bsl::expects(allocated_status_t::allocated == m_allocated);
+            bsl::expects(mut_sys.bf_tls_ppid() == this->assigned_pp());
+
+            bsl::expects(reg.is_valid_and_checked());
+            bsl::expects(val.is_valid_and_checked());
+
+            using mk = syscall::bf_reg_t;
+            using mv = hypercall::mv_reg_t;
+
+            switch (static_cast<hypercall::mv_reg_t>(reg.get())) {
+                case mv::mv_reg_t_unsupported: {
+                    break;
+                }
+
+                case mv::mv_reg_t_rax: {
+                    return mut_sys.bf_vs_op_write(this->id(), mk::bf_reg_t_rax, val);
+                }
+
+                case mv::mv_reg_t_rbx: {
+                    return mut_sys.bf_vs_op_write(this->id(), mk::bf_reg_t_rbx, val);
+                }
+
+                case mv::mv_reg_t_rcx: {
+                    return mut_sys.bf_vs_op_write(this->id(), mk::bf_reg_t_rcx, val);
+                }
+
+                case mv::mv_reg_t_rdx: {
+                    return mut_sys.bf_vs_op_write(this->id(), mk::bf_reg_t_rdx, val);
+                }
+
+                case mv::mv_reg_t_rbp: {
+                    return mut_sys.bf_vs_op_write(this->id(), mk::bf_reg_t_rbp, val);
+                }
+
+                case mv::mv_reg_t_rsi: {
+                    return mut_sys.bf_vs_op_write(this->id(), mk::bf_reg_t_rsi, val);
+                }
+
+                case mv::mv_reg_t_rdi: {
+                    return mut_sys.bf_vs_op_write(this->id(), mk::bf_reg_t_rdi, val);
+                }
+
+                case mv::mv_reg_t_r8: {
+                    return mut_sys.bf_vs_op_write(this->id(), mk::bf_reg_t_r8, val);
+                }
+
+                case mv::mv_reg_t_r9: {
+                    return mut_sys.bf_vs_op_write(this->id(), mk::bf_reg_t_r9, val);
+                }
+
+                case mv::mv_reg_t_r10: {
+                    return mut_sys.bf_vs_op_write(this->id(), mk::bf_reg_t_r10, val);
+                }
+
+                case mv::mv_reg_t_r11: {
+                    return mut_sys.bf_vs_op_write(this->id(), mk::bf_reg_t_r11, val);
+                }
+
+                case mv::mv_reg_t_r12: {
+                    return mut_sys.bf_vs_op_write(this->id(), mk::bf_reg_t_r12, val);
+                }
+
+                case mv::mv_reg_t_r13: {
+                    return mut_sys.bf_vs_op_write(this->id(), mk::bf_reg_t_r13, val);
+                }
+
+                case mv::mv_reg_t_r14: {
+                    return mut_sys.bf_vs_op_write(this->id(), mk::bf_reg_t_r14, val);
+                }
+
+                case mv::mv_reg_t_r15: {
+                    return mut_sys.bf_vs_op_write(this->id(), mk::bf_reg_t_r15, val);
+                }
+
+                case mv::mv_reg_t_rsp: {
+                    return mut_sys.bf_vs_op_write(this->id(), mk::bf_reg_t_rsp, val);
+                }
+
+                case mv::mv_reg_t_rip: {
+                    return mut_sys.bf_vs_op_write(this->id(), mk::bf_reg_t_rip, val);
+                }
+
+                case mv::mv_reg_t_rflags: {
+                    return mut_sys.bf_vs_op_write(this->id(), mk::bf_reg_t_rflags, val);
+                }
+
+                case mv::mv_reg_t_es_selector: {
+                    return mut_sys.bf_vs_op_write(this->id(), mk::bf_reg_t_es_selector, val);
+                }
+
+                case mv::mv_reg_t_es_attrib: {
+                    return mut_sys.bf_vs_op_write(this->id(), mk::bf_reg_t_es_attrib, val);
+                }
+
+                case mv::mv_reg_t_es_limit: {
+                    return mut_sys.bf_vs_op_write(this->id(), mk::bf_reg_t_es_limit, val);
+                }
+
+                case mv::mv_reg_t_es_base: {
+                    return mut_sys.bf_vs_op_write(this->id(), mk::bf_reg_t_es_base, val);
+                }
+
+                case mv::mv_reg_t_cs_selector: {
+                    return mut_sys.bf_vs_op_write(this->id(), mk::bf_reg_t_cs_selector, val);
+                }
+
+                case mv::mv_reg_t_cs_attrib: {
+                    return mut_sys.bf_vs_op_write(this->id(), mk::bf_reg_t_cs_attrib, val);
+                }
+
+                case mv::mv_reg_t_cs_limit: {
+                    return mut_sys.bf_vs_op_write(this->id(), mk::bf_reg_t_cs_limit, val);
+                }
+
+                case mv::mv_reg_t_cs_base: {
+                    return mut_sys.bf_vs_op_write(this->id(), mk::bf_reg_t_cs_base, val);
+                }
+
+                case mv::mv_reg_t_ss_selector: {
+                    return mut_sys.bf_vs_op_write(this->id(), mk::bf_reg_t_ss_selector, val);
+                }
+
+                case mv::mv_reg_t_ss_attrib: {
+                    return mut_sys.bf_vs_op_write(this->id(), mk::bf_reg_t_ss_attrib, val);
+                }
+
+                case mv::mv_reg_t_ss_limit: {
+                    return mut_sys.bf_vs_op_write(this->id(), mk::bf_reg_t_ss_limit, val);
+                }
+
+                case mv::mv_reg_t_ss_base: {
+                    return mut_sys.bf_vs_op_write(this->id(), mk::bf_reg_t_ss_base, val);
+                }
+
+                case mv::mv_reg_t_ds_selector: {
+                    return mut_sys.bf_vs_op_write(this->id(), mk::bf_reg_t_ds_selector, val);
+                }
+
+                case mv::mv_reg_t_ds_attrib: {
+                    return mut_sys.bf_vs_op_write(this->id(), mk::bf_reg_t_ds_attrib, val);
+                }
+
+                case mv::mv_reg_t_ds_limit: {
+                    return mut_sys.bf_vs_op_write(this->id(), mk::bf_reg_t_ds_limit, val);
+                }
+
+                case mv::mv_reg_t_ds_base: {
+                    return mut_sys.bf_vs_op_write(this->id(), mk::bf_reg_t_ds_base, val);
+                }
+
+                case mv::mv_reg_t_fs_selector: {
+                    return mut_sys.bf_vs_op_write(this->id(), mk::bf_reg_t_fs_selector, val);
+                }
+
+                case mv::mv_reg_t_fs_attrib: {
+                    return mut_sys.bf_vs_op_write(this->id(), mk::bf_reg_t_fs_attrib, val);
+                }
+
+                case mv::mv_reg_t_fs_limit: {
+                    return mut_sys.bf_vs_op_write(this->id(), mk::bf_reg_t_fs_limit, val);
+                }
+
+                case mv::mv_reg_t_fs_base: {
+                    return mut_sys.bf_vs_op_write(this->id(), mk::bf_reg_t_fs_base, val);
+                }
+
+                case mv::mv_reg_t_gs_selector: {
+                    return mut_sys.bf_vs_op_write(this->id(), mk::bf_reg_t_gs_selector, val);
+                }
+
+                case mv::mv_reg_t_gs_attrib: {
+                    return mut_sys.bf_vs_op_write(this->id(), mk::bf_reg_t_gs_attrib, val);
+                }
+
+                case mv::mv_reg_t_gs_limit: {
+                    return mut_sys.bf_vs_op_write(this->id(), mk::bf_reg_t_gs_limit, val);
+                }
+
+                case mv::mv_reg_t_gs_base: {
+                    return mut_sys.bf_vs_op_write(this->id(), mk::bf_reg_t_gs_base, val);
+                }
+
+                case mv::mv_reg_t_ldtr_selector: {
+                    return mut_sys.bf_vs_op_write(this->id(), mk::bf_reg_t_ldtr_selector, val);
+                }
+
+                case mv::mv_reg_t_ldtr_attrib: {
+                    return mut_sys.bf_vs_op_write(this->id(), mk::bf_reg_t_ldtr_attrib, val);
+                }
+
+                case mv::mv_reg_t_ldtr_limit: {
+                    return mut_sys.bf_vs_op_write(this->id(), mk::bf_reg_t_ldtr_limit, val);
+                }
+
+                case mv::mv_reg_t_ldtr_base: {
+                    return mut_sys.bf_vs_op_write(this->id(), mk::bf_reg_t_ldtr_base, val);
+                }
+
+                case mv::mv_reg_t_tr_selector: {
+                    return mut_sys.bf_vs_op_write(this->id(), mk::bf_reg_t_tr_selector, val);
+                }
+
+                case mv::mv_reg_t_tr_attrib: {
+                    return mut_sys.bf_vs_op_write(this->id(), mk::bf_reg_t_tr_attrib, val);
+                }
+
+                case mv::mv_reg_t_tr_limit: {
+                    return mut_sys.bf_vs_op_write(this->id(), mk::bf_reg_t_tr_limit, val);
+                }
+
+                case mv::mv_reg_t_tr_base: {
+                    return mut_sys.bf_vs_op_write(this->id(), mk::bf_reg_t_tr_base, val);
+                }
+
+                case mv::mv_reg_t_gdtr_selector: {
+                    break;
+                }
+
+                case mv::mv_reg_t_gdtr_attrib: {
+                    break;
+                }
+
+                case mv::mv_reg_t_gdtr_limit: {
+                    return mut_sys.bf_vs_op_write(this->id(), mk::bf_reg_t_gdtr_limit, val);
+                }
+
+                case mv::mv_reg_t_gdtr_base: {
+                    return mut_sys.bf_vs_op_write(this->id(), mk::bf_reg_t_gdtr_base, val);
+                }
+
+                case mv::mv_reg_t_idtr_selector: {
+                    break;
+                }
+
+                case mv::mv_reg_t_idtr_attrib: {
+                    break;
+                }
+
+                case mv::mv_reg_t_idtr_limit: {
+                    return mut_sys.bf_vs_op_write(this->id(), mk::bf_reg_t_idtr_limit, val);
+                }
+
+                case mv::mv_reg_t_idtr_base: {
+                    return mut_sys.bf_vs_op_write(this->id(), mk::bf_reg_t_idtr_base, val);
+                }
+
+                case mv::mv_reg_t_dr0: {
+                    break;
+                }
+
+                case mv::mv_reg_t_dr1: {
+                    break;
+                }
+
+                case mv::mv_reg_t_dr2: {
+                    break;
+                }
+
+                case mv::mv_reg_t_dr3: {
+                    break;
+                }
+
+                case mv::mv_reg_t_dr6: {
+                    return mut_sys.bf_vs_op_write(this->id(), mk::bf_reg_t_dr6, val);
+                }
+
+                case mv::mv_reg_t_dr7: {
+                    return mut_sys.bf_vs_op_write(this->id(), mk::bf_reg_t_dr7, val);
+                }
+
+                case mv::mv_reg_t_cr0: {
+                    return mut_sys.bf_vs_op_write(this->id(), mk::bf_reg_t_cr0, val);
+                }
+
+                case mv::mv_reg_t_cr2: {
+                    return mut_sys.bf_vs_op_write(this->id(), mk::bf_reg_t_cr2, val);
+                }
+
+                case mv::mv_reg_t_cr3: {
+                    return mut_sys.bf_vs_op_write(this->id(), mk::bf_reg_t_cr3, val);
+                }
+
+                case mv::mv_reg_t_cr4: {
+                    return mut_sys.bf_vs_op_write(this->id(), mk::bf_reg_t_cr4, val);
+                }
+
+                case mv::mv_reg_t_cr8: {
+                    break;
+                }
+
+                case mv::mv_reg_t_xcr0: {
+                    break;
+                }
+
+                case mv::mv_reg_t_invalid:
+                    [[fallthrough]];
+                default: {
+                    break;
+                }
+            }
+
+            bsl::error() << "mv_reg_t "      // --
+                         << bsl::hex(reg)    // --
+                         << " is either unsupported/invalid or not yet implemented"
+                         << bsl::endl       // --
+                         << bsl::here();    // --
+
+            return bsl::errc_failure;
+        }
+
+        /// <!-- description -->
+        ///   @brief Returns the value of the requested registers from
+        ///     the provided RDL.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param sys the bf_syscall_t to use
+        ///   @param mut_rdl the RDL to store the requested register values
+        ///   @return Returns bsl::errc_success on success, bsl::errc_failure
+        ///     and friends otherwise
+        ///
+        [[nodiscard]] constexpr auto
+        get_list(syscall::bf_syscall_t const &sys, hypercall::mv_rdl_t &mut_rdl) const noexcept
+            -> bsl::errc_type
+        {
+            bsl::expects(mut_rdl.num_entries <= mut_rdl.entries.size());
+
+            for (bsl::safe_idx mut_i{}; mut_i < mut_rdl.num_entries; ++mut_i) {
+                auto const reg{bsl::to_u64(mut_rdl.entries.at_if(mut_i)->reg)};
+                auto const val{this->get(sys, reg)};
+                if (bsl::unlikely(val.is_invalid())) {
+                    bsl::print<bsl::V>() << bsl::here();
+                    return bsl::errc_failure;
+                }
+
+                mut_rdl.entries.at_if(mut_i)->val = val.get();
+            }
+
+            return bsl::errc_success;
+        }
+
+        /// <!-- description -->
+        ///   @brief Sets the value of the requested registers given
+        ///     the provided RDL.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param mut_sys the bf_syscall_t to use
+        ///   @param rdl the RDL to get the requested register values from
+        ///   @return Returns bsl::errc_success on success, bsl::errc_failure
+        ///     and friends otherwise
+        ///
+        [[nodiscard]] constexpr auto
+        set_list(syscall::bf_syscall_t &mut_sys, hypercall::mv_rdl_t const &rdl) noexcept
+            -> bsl::errc_type
+        {
+            bsl::expects(rdl.num_entries <= rdl.entries.size());
+
+            for (bsl::safe_idx mut_i{}; mut_i < rdl.num_entries; ++mut_i) {
+                auto const reg{bsl::to_u64(rdl.entries.at_if(mut_i)->reg)};
+                auto const val{bsl::to_u64(rdl.entries.at_if(mut_i)->val)};
+
+                auto const ret{this->set(mut_sys, reg, val)};
+                if (bsl::unlikely(!ret)) {
+                    bsl::print<bsl::V>() << bsl::here();
+                    return ret;
+                }
+
+                bsl::touch();
+            }
+
+            return bsl::errc_success;
+        }
+
+        /// <!-- description -->
         ///   @brief Reads CPUID for this vs_t and returns the results
         ///     in the appropriate bf_syscall_t TLS registers.
         ///
@@ -526,7 +1245,7 @@ namespace microv
             auto const vsid{this->id()};
             bsl::expects(allocated_status_t::allocated == m_allocated);
 
-            auto const cr0{mut_sys.bf_vs_op_read(vsid, syscall::bf_reg_t::bf_reg_t_guest_cr0)};
+            auto const cr0{mut_sys.bf_vs_op_read(vsid, syscall::bf_reg_t::bf_reg_t_cr0)};
             bsl::expects(cr0.is_valid_and_checked());
 
             if (bsl::unlikely(cr0.is_zero())) {
@@ -540,7 +1259,7 @@ namespace microv
                 return {};
             }
 
-            auto const cr3{mut_sys.bf_vs_op_read(vsid, syscall::bf_reg_t::bf_reg_t_guest_cr3)};
+            auto const cr3{mut_sys.bf_vs_op_read(vsid, syscall::bf_reg_t::bf_reg_t_cr3)};
             bsl::expects(cr3.is_valid_and_checked());
             bsl::expects(cr3.is_pos());
 
@@ -555,7 +1274,7 @@ namespace microv
                 return {};
             }
 
-            auto const cr4{mut_sys.bf_vs_op_read(vsid, syscall::bf_reg_t::bf_reg_t_guest_cr4)};
+            auto const cr4{mut_sys.bf_vs_op_read(vsid, syscall::bf_reg_t::bf_reg_t_cr4)};
             bsl::expects(cr4.is_valid_and_checked());
             bsl::expects(cr4.is_pos());
 

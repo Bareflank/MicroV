@@ -39,6 +39,8 @@ endif()
 
 if(NOT CMAKE_BUILD_TYPE STREQUAL RELEASE AND NOT CMAKE_BUILD_TYPE STREQUAL MINSIZEREL)
     if(BUILD_TESTS AND NOT MICROV_BUILD_TESTS_OVERRIDE)
+        add_subdirectory(hypercall/tests)
         add_subdirectory(shim/tests)
+        #add_subdirectory(vmm/tests)
     endif()
 endif()

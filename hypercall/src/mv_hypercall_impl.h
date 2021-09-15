@@ -126,7 +126,7 @@ extern "C"
      *   @return n/a
      */
     NODISCARD mv_status_t
-    mv_pp_op_set_shared_page_gpa_impl(uint64_t const reg0_in, uint64_t const reg1_in) NOEXCEPT;
+    mv_pp_op_set_shared_page_gpa_impl(uint64_t const reg0_in, int64_t const reg1_in) NOEXCEPT;
 
     /* ---------------------------------------------------------------------- */
     /* mv_vm_ops                                                              */
@@ -335,7 +335,7 @@ extern "C"
      * <!-- description -->
      *   @brief Implements the ABI for mv_vs_op_run.
      *
-     * <!-- inputs/outputs -->s
+     * <!-- inputs/outputs -->
      *   @param reg0_in n/a
      *   @param reg1_in n/a
      *   @param pmut_reg0_out n/a

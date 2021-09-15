@@ -27,7 +27,9 @@
 
 #include <mv_mdl_entry_t.hpp>    // IWYU pragma: export
 
-#include <bsl/cstdint.hpp>
+#include <bsl/array.hpp>
+#include <bsl/convert.hpp>
+#include <bsl/safe_integral.hpp>
 
 namespace hypercall
 {
@@ -79,7 +81,7 @@ namespace hypercall
         /// @brief stores the number of entries in the MDL
         uint64_t num_entries;
         /// @brief stores each entry in the MDL
-        mv_mdl_entry_t entries[MV_MDL_MAX_ENTRIES];
+        bsl::array<mv_mdl_entry_t, MV_MDL_MAX_ENTRIES.get()> entries;
     };
 }
 

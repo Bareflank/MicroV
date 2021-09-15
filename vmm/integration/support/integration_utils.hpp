@@ -26,6 +26,7 @@
 #define INTEGRATION_UTILS_HPP
 
 #include <cstdlib>
+#include <mv_reg_t.hpp>
 
 #include <bsl/convert.hpp>
 #include <bsl/debug.hpp>
@@ -37,17 +38,30 @@
 namespace hypercall
 {
     /// <!-- description -->
-    ///   @brief Returns bsl::to_umx(reinterpret_cast<bsl::uintmx>(pmut_ptr));
+    ///   @brief Returns bsl::to_umx(reinterpret_cast<bsl::uintmx>(pmut_ptr))
     ///
     /// <!-- inputs/outputs -->
     ///   @param pmut_ptr the pointer to convert to a bsl::safe_umx
-    ///   @return Returns bsl::to_umx(reinterpret_cast<bsl::uintmx>(pmut_ptr));
+    ///   @return Returns bsl::to_umx(reinterpret_cast<bsl::uintmx>(pmut_ptr))
     ///
     [[nodiscard]] constexpr auto
     to_umx(void *const pmut_ptr) noexcept -> bsl::safe_umx
     {
         // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
         return bsl::to_umx(reinterpret_cast<bsl::uintmx>(pmut_ptr));
+    }
+
+    /// <!-- description -->
+    ///   @brief Returns bsl::to_u64(static_cast<bsl::uint64>(reg))
+    ///
+    /// <!-- inputs/outputs -->
+    ///   @param reg the mv_reg_t to convert
+    ///   @return Returns bsl::to_u64(static_cast<bsl::uint64>(reg))
+    ///
+    [[nodiscard]] constexpr auto
+    to_u64(mv_reg_t const &reg) noexcept -> bsl::safe_u64
+    {
+        return bsl::to_u64(static_cast<bsl::uint64>(reg));
     }
 }
 

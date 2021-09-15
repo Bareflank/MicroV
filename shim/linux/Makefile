@@ -125,23 +125,24 @@ ifneq ($(KERNELRELEASE),)
 	$(TARGET_MODULE)-objs += ../src/shared_page_for_current_pp.o
 	$(TARGET_MODULE)-objs += ../src/shim_fini.o
 	$(TARGET_MODULE)-objs += ../src/shim_init.o
-    $(TARGET_MODULE)-objs += ../src/x64/serial_init.o
 
 	EXTRA_CFLAGS += -I$(src)/include
 	EXTRA_CFLAGS += -I$(src)/include/std
 	EXTRA_CFLAGS += -I$(src)/include/platform_interface
 	EXTRA_CFLAGS += -I$(src)/../include
 	EXTRA_CFLAGS += -I$(src)/../../hypercall/include
-	EXTRA_CFLAGS += -I$(src)/../../hypercall/include/x64
 	EXTRA_CFLAGS += -I$(src)/../../hypercall/src
 	EXTRA_CFLAGS += -I$(CMAKE_BINARY_DIR)/include
 
     EXTRA_AFLAGS += -I$(CMAKE_BINARY_DIR)/include
 
   	ifneq (,$(findstring AuthenticAMD,$(VENDOR_ID)))
+        $(TARGET_MODULE)-objs += src/x64/intrinsic_cpuid.o
         $(TARGET_MODULE)-objs += src/x64/intrinsic_inb.o
         $(TARGET_MODULE)-objs += src/x64/intrinsic_outb.o
         $(TARGET_MODULE)-objs += src/x64/serial_write_c.o
+		$(TARGET_MODULE)-objs += ../src/x64/detect_hypervisor.o
+		$(TARGET_MODULE)-objs += ../src/x64/serial_init.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_debug_op_out_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_handle_op_close_handle_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_handle_op_open_handle_impl.o
@@ -179,13 +180,18 @@ ifneq ($(KERNELRELEASE),)
     	EXTRA_CFLAGS += -I$(src)/../include/x64
 		EXTRA_CFLAGS += -I$(src)/../include/x64/amd
 		EXTRA_CFLAGS += -I$(src)/../../hypercall/include/x64
+		EXTRA_CFLAGS += -I$(src)/../../hypercall/src/x64
 		EXTRA_CFLAGS += -I$(src)/../../hypercall/include/x64/amd
+		EXTRA_CFLAGS += -I$(src)/../../hypercall/src/x64/amd
 	endif
 
 	ifneq (,$(findstring GenuineIntel,$(VENDOR_ID)))
+        $(TARGET_MODULE)-objs += src/x64/intrinsic_cpuid.o
         $(TARGET_MODULE)-objs += src/x64/intrinsic_inb.o
         $(TARGET_MODULE)-objs += src/x64/intrinsic_outb.o
         $(TARGET_MODULE)-objs += src/x64/serial_write_c.o
+		$(TARGET_MODULE)-objs += ../src/x64/detect_hypervisor.o
+		$(TARGET_MODULE)-objs += ../src/x64/serial_init.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_debug_op_out_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_handle_op_close_handle_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_handle_op_open_handle_impl.o
@@ -223,7 +229,9 @@ ifneq ($(KERNELRELEASE),)
     	EXTRA_CFLAGS += -I$(src)/../include/x64
 		EXTRA_CFLAGS += -I$(src)/../include/x64/intel
 		EXTRA_CFLAGS += -I$(src)/../../hypercall/include/x64
+		EXTRA_CFLAGS += -I$(src)/../../hypercall/src/x64
 		EXTRA_CFLAGS += -I$(src)/../../hypercall/include/x64/intel
+		EXTRA_CFLAGS += -I$(src)/../../hypercall/src/x64/intel
 	endif
 
 else

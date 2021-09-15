@@ -35,7 +35,6 @@
 #include <linux/unistd.h>
 #include <linux/vmalloc.h>
 #include <platform.h>
-#include <sys/syscall.h>
 #include <types.h>
 #include <work_on_cpu_callback_args.h>
 
@@ -51,7 +50,7 @@
  *   @param test the contract to check
  */
 void
-platform_expects(int const test)
+platform_expects(int const test) NOEXCEPT
 {
     BUG_ON(!test);
 }
@@ -68,7 +67,7 @@ platform_expects(int const test)
  *   @param test the contract to check
  */
 void
-platform_ensures(int const test)
+platform_ensures(int const test) NOEXCEPT
 {
     BUG_ON(!test);
 }
@@ -88,8 +87,8 @@ platform_ensures(int const test)
  *   @return Returns a pointer to the newly allocated memory on success.
  *     Returns a nullptr on failure.
  */
-void *
-platform_alloc(uint64_t const size)
+NODISCARD void *
+platform_alloc(uint64_t const size) NOEXCEPT
 {
     void *ret;
     platform_expects(0 != size);
@@ -116,7 +115,7 @@ platform_alloc(uint64_t const size)
  *     may or may not be ignored depending on the platform.
  */
 void
-platform_free(void *const pmut_ptr, uint64_t const size)
+platform_free(void *const pmut_ptr, uint64_t const size) NOEXCEPT
 {
     (void)size;
 
@@ -135,8 +134,8 @@ platform_free(void *const pmut_ptr, uint64_t const size)
  *   @return Given a virtual address, this function returns the virtual
  *     address's physical address. Returns ((void *)0) if the conversion failed.
  */
-uintptr_t
-platform_virt_to_phys(void const *const virt)
+NODISCARD uintptr_t
+platform_virt_to_phys(void const *const virt) NOEXCEPT
 {
     uintptr_t ret;
 
@@ -162,7 +161,8 @@ platform_virt_to_phys(void const *const virt)
  *   @param num the number of bytes in "pmut_ptr" to set to "val".
  */
 void
-platform_memset(void *const pmut_ptr, uint8_t const val, uint64_t const num)
+platform_memset(
+    void *const pmut_ptr, uint8_t const val, uint64_t const num) NOEXCEPT
 {
     platform_expects(((void *)0) != pmut_ptr);
     memset(pmut_ptr, val, num);
@@ -179,7 +179,8 @@ platform_memset(void *const pmut_ptr, uint8_t const val, uint64_t const num)
  *   @param num the number of bytes to copy
  */
 void
-platform_memcpy(void *const pmut_dst, void const *const src, uint64_t const num)
+platform_memcpy(
+    void *const pmut_dst, void const *const src, uint64_t const num) NOEXCEPT
 {
     platform_expects(((void *)0) != pmut_dst);
     platform_expects(((void *)0) != src);
@@ -189,69 +190,114 @@ platform_memcpy(void *const pmut_dst, void const *const src, uint64_t const num)
 
 /**
  * <!-- description -->
- *   @brief Pins the pages within a memory region starting at "pmut_ptr" and
- *     continuing for "num" bytes. Once pinned, the memory is guaranteed to
- *     never be paged out to disk.
+ *   @brief Locks the pages within a memory region starting at
+ *     "pmut_ptr" and continuing for "num" bytes. Once locked, the
+ *     memory is guaranteed to never be paged out to disk.
  *
  * <!-- inputs/outputs -->
- *   @param pmut_ptr a pointer to the memory to pin
- *   @param num the number of bytes to pin.
- *   @return This function returns 0 on success, otherwise
- *     this function returns a non-0 value
+ *   @param pmut_ptr a pointer to the memory to lock
+ *   @param num the number of bytes to lock.
+ *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
  */
-int64_t
-platform_mempin(void *const pmut_ptr, uint64_t const num)
+NODISCARD int64_t
+platform_mlock(void *const pmut_ptr, uint64_t const num) NOEXCEPT
 {
-    platform_expects((pmut_ptr & 0x0000000000000FFF) == 0);
-    platform_expects((num & 0x0000000000000FFF) == 0);
+    platform_expects(((void *)0) != pmut_ptr);
+    platform_expects(((uint64_t)0) != num);
 
-    return syscall(__NR_mlock, pmut_ptr, num) != 0);
+    /// TODO:
+    /// - This needs to be implemented. For now, we use such small amounts
+    ///   of memory that this is not a problem, but in the future it
+    ///   will be.
+    ///
+    /// - Making a call to a syscall from the kernel will not work. On
+    ///   newer kernels, pin_user_pages() seems like a good option, but
+    ///   that API was just added and is not available for Ubuntu 20.04.
+    ///
+    /// - get_user_pages() is likely the way that this will have to be
+    ///   implemented. This is what the IOMMU code uses, and it has to
+    ///   do something similar here. Either way, I do not see this being
+    ///   and easy function to implement.
+    ///
+
+    return SHIM_SUCCESS;
 }
 
 /**
  * <!-- description -->
- *   @brief Copies "num" bytes from "src" to "pmut_dst". If "src" or "pmut_dst" are
- *     ((void *)0), returns FAILURE, otherwise returns 0. Note that this function can
- *     be used to copy memory from userspace via an IOCTL.
+ *   @brief Unlocks the pages within a memory region starting at
+ *     "pmut_ptr" and continuing for "num" bytes. Once unlocked, the
+ *     memory is allowed to be paged out to disk.
+ *
+ * <!-- inputs/outputs -->
+ *   @param pmut_ptr a pointer to the memory to unlock
+ *   @param num the number of bytes to unlock.
+ *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
+ */
+NODISCARD int64_t
+platform_munlock(void *const pmut_ptr, uint64_t const num) NOEXCEPT
+{
+    platform_expects(((void *)0) != pmut_ptr);
+    platform_expects(((uint64_t)0) != num);
+
+    /// TODO:
+    /// - This needs to be implemented. For now, we use such small amounts
+    ///   of memory that this is not a problem, but in the future it
+    ///   will be.
+    ///
+    /// - Making a call to a syscall from the kernel will not work. On
+    ///   newer kernels, pin_user_pages() seems like a good option, but
+    ///   that API was just added and is not available for Ubuntu 20.04.
+    ///
+    /// - get_user_pages() is likely the way that this will have to be
+    ///   implemented. This is what the IOMMU code uses, and it has to
+    ///   do something similar here. Either way, I do not see this being
+    ///   and easy function to implement.
+    ///
+
+    return SHIM_SUCCESS;
+}
+
+/**
+ * <!-- description -->
+ *   @brief Copies "num" bytes from "src" to "pmut_dst". Returns
+ *     SHIM_SUCCESS on success, SHIM_FAILURE on failure.
  *
  * <!-- inputs/outputs -->
  *   @param pmut_dst a pointer to the memory to copy to
  *   @param src a pointer to the memory to copy from
  *   @param num the number of bytes to copy
- *   @return If "src" or "pmut_dst" are ((void *)0), returns FAILURE, otherwise
- *     returns 0.
+ *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
  */
-void
+NODISCARD int64_t
 platform_copy_from_user(
-    void *const pmut_dst, void const *const src, uint64_t const num)
+    void *const pmut_dst, void const *const src, uint64_t const num) NOEXCEPT
 {
     platform_expects(((void *)0) != pmut_dst);
     platform_expects(((void *)0) != src);
 
-    copy_from_user(pmut_dst, src, num);
+    return (int64_t)copy_from_user(pmut_dst, src, num);
 }
 
 /**
  * <!-- description -->
- *   @brief Copies "num" bytes from "src" to "pmut_dst". If "src" or "pmut_dst" are
- *     ((void *)0), returns FAILURE, otherwise returns 0. Note that this function can
- *     be used to copy memory to userspace via an IOCTL.
+ *   @brief Copies "num" bytes from "src" to "pmut_dst". Returns
+ *     SHIM_SUCCESS on success, SHIM_FAILURE on failure.
  *
  * <!-- inputs/outputs -->
  *   @param pmut_dst a pointer to the memory to copy to
  *   @param src a pointer to the memory to copy from
  *   @param num the number of bytes to copy
- *   @return If "src" or "pmut_dst" are ((void *)0), returns FAILURE, otherwise
- *     returns 0.
+ *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
  */
-void
+NODISCARD int64_t
 platform_copy_to_user(
-    void *const pmut_dst, void const *const src, uint64_t const num)
+    void *const pmut_dst, void const *const src, uint64_t const num) NOEXCEPT
 {
     platform_expects(((void *)0) != pmut_dst);
     platform_expects(((void *)0) != src);
 
-    copy_to_user(pmut_dst, src, num);
+    return (int64_t)copy_to_user(pmut_dst, src, num);
 }
 
 /**
@@ -261,8 +307,8 @@ platform_copy_to_user(
  * <!-- inputs/outputs -->
  *   @return Returns the total number of online CPUs (i.e. PPs)
  */
-uint32_t
-platform_num_online_cpus(void)
+NODISCARD uint32_t
+platform_num_online_cpus(void) NOEXCEPT
 {
     return num_online_cpus();
 }
@@ -274,8 +320,8 @@ platform_num_online_cpus(void)
  * <!-- inputs/outputs -->
  *   @return Returns the current CPU (i.e. PP)
  */
-uint32_t
-platform_current_cpu(void)
+NODISCARD uint32_t
+platform_current_cpu(void) NOEXCEPT
 {
     return (uint32_t)raw_smp_processor_id();
 }
@@ -289,8 +335,8 @@ platform_current_cpu(void)
  * <!-- inputs/outputs -->
  *   @param arg stores the params needed to execute the callback
  */
-static long
-work_on_cpu_callback(void *const arg)
+NODISCARD static long
+work_on_cpu_callback(void *const arg) NOEXCEPT
 {
     struct work_on_cpu_callback_args *args =
         ((struct work_on_cpu_callback_args *)arg);
@@ -313,8 +359,8 @@ work_on_cpu_callback(void *const arg)
  *   @return If each callback returns 0, this function returns 0, otherwise
  *     this function returns a non-0 value
  */
-static int64_t
-platform_on_each_cpu_forward(platform_per_cpu_func const pmut_func)
+NODISCARD static int64_t
+platform_on_each_cpu_forward(platform_per_cpu_func const pmut_func) NOEXCEPT
 {
     uint32_t cpu;
 
@@ -351,8 +397,8 @@ work_on_cpu_callback_failed:
  *   @return If each callback returns 0, this function returns 0, otherwise
  *     this function returns a non-0 value
  */
-static int64_t
-platform_on_each_cpu_reverse(platform_per_cpu_func const pmut_func)
+NODISCARD static int64_t
+platform_on_each_cpu_reverse(platform_per_cpu_func const pmut_func) NOEXCEPT
 {
     uint32_t cpu;
 
@@ -387,12 +433,11 @@ work_on_cpu_callback_failed:
  * <!-- inputs/outputs -->
  *   @param pmut_func the function to call on each cpu
  *   @param order sets the order the CPUs are called
- *   @return If each callback returns 0, this function returns 0, otherwise
- *     this function returns a non-0 value
+ *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
  */
-int64_t
+NODISCARD int64_t
 platform_on_each_cpu(
-    platform_per_cpu_func const pmut_func, uint32_t const order)
+    platform_per_cpu_func const pmut_func, uint32_t const order) NOEXCEPT
 {
     int64_t ret;
 
@@ -415,7 +460,7 @@ platform_on_each_cpu(
  *   @param pmut_mutex the mutex to lock
  */
 void
-platform_mutex_init(platform_mutex *const pmut_mutex)
+platform_mutex_init(platform_mutex *const pmut_mutex) NOEXCEPT
 {
     mutex_init(pmut_mutex);
 }
@@ -428,7 +473,8 @@ platform_mutex_init(platform_mutex *const pmut_mutex)
  * <!-- inputs/outputs -->
  *   @param pmut_mutex the mutex to destroy
  */
-void platform_mutex_destroy(platform_mutex *const pmut_mutex) NOEXCEPT;
+void
+platform_mutex_destroy(platform_mutex *const pmut_mutex) NOEXCEPT
 {
     mutex_destroy(pmut_mutex);
 }
@@ -442,7 +488,7 @@ void platform_mutex_destroy(platform_mutex *const pmut_mutex) NOEXCEPT;
  *   @param pmut_mutex the mutex to lock
  */
 void
-platform_mutex_lock(platform_mutex *const pmut_mutex)
+platform_mutex_lock(platform_mutex *const pmut_mutex) NOEXCEPT
 {
     mutex_lock(pmut_mutex);
 }
@@ -456,7 +502,7 @@ platform_mutex_lock(platform_mutex *const pmut_mutex)
  *   @param pmut_mutex the mutex to unlock
  */
 void
-platform_mutex_unlock(platform_mutex *const pmut_mutex)
+platform_mutex_unlock(platform_mutex *const pmut_mutex) NOEXCEPT
 {
     mutex_unlock(pmut_mutex);
 }

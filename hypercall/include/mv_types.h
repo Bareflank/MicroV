@@ -27,7 +27,8 @@
 #ifndef MV_TYPES_H
 #define MV_TYPES_H
 
-#include <stdint.h>
+#include <inttypes.h>    // IWYU pragma: export
+#include <stdint.h>      // IWYU pragma: export
 
 #ifdef __cplusplus
 extern "C"
@@ -55,6 +56,12 @@ extern "C"
 #else
 #define NODISCARD
 #endif
+#endif
+
+#ifdef __cplusplus
+#define NULLPTR nullptr
+#else
+#define NULLPTR ((void *)0)
 #endif
 
 #ifdef __cplusplus

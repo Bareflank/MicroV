@@ -25,6 +25,7 @@
 #include "../../include/handle_system_kvm_create_vm.h"
 
 #include <helpers.hpp>
+#include <shim_vm_t.h>
 
 #include <bsl/convert.hpp>
 #include <bsl/safe_integral.hpp>
@@ -44,6 +45,8 @@ namespace shim
     [[nodiscard]] constexpr auto
     tests() noexcept -> bsl::exit_code
     {
+        init_tests();
+
         bsl::ut_scenario{"success"} = []() noexcept {
             bsl::ut_given{} = [&]() noexcept {
                 shim_vm_t mut_vm{};
@@ -59,6 +62,21 @@ namespace shim
             };
         };
 
+        bsl::ut_scenario{"hypervisor not detected"} = []() noexcept {
+            bsl::ut_given{} = [&]() noexcept {
+                shim_vm_t mut_vm{};
+                bsl::ut_when{} = [&]() noexcept {
+                    g_mut_hypervisor_detected = false;
+                    bsl::ut_then{} = [&]() noexcept {
+                        bsl::ut_check(SHIM_FAILURE == handle_system_kvm_create_vm(&mut_vm));
+                    };
+                    bsl::ut_cleanup{} = [&]() noexcept {
+                        g_mut_hypervisor_detected = true;
+                    };
+                };
+            };
+        };
+
         bsl::ut_scenario{"mv_vm_op_create_vm fails"} = []() noexcept {
             bsl::ut_given{} = [&]() noexcept {
                 shim_vm_t mut_vm{};
@@ -67,11 +85,14 @@ namespace shim
                     bsl::ut_then{} = [&]() noexcept {
                         bsl::ut_check(SHIM_FAILURE == handle_system_kvm_create_vm(&mut_vm));
                     };
+                    bsl::ut_cleanup{} = [&]() noexcept {
+                        g_mut_mv_vm_op_create_vm = {};
+                    };
                 };
             };
         };
 
-        return bsl::ut_success();
+        return fini_tests();
     }
 }
 

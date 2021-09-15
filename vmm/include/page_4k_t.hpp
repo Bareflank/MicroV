@@ -29,6 +29,13 @@
 
 namespace microv
 {
+    /// @brief defines total number of bytes in a 4k page
+    constexpr auto PAGE_4K_T_SIZE{lib::BASIC_PAGE_4K_T_SIZE};
+    /// @brief defines the page shift for a 4k page
+    constexpr auto PAGE_4K_T_SHFT{lib::BASIC_PAGE_4K_T_SHFT};
+    /// @brief defines the page mask for a 4k page
+    constexpr auto PAGE_4K_T_MASK{lib::BASIC_PAGE_4K_T_MASK};
+
     /// @brief defines the page_4k_t used by MicroV
     using page_4k_t = lib::basic_page_4k_t;
 }

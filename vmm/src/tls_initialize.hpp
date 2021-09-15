@@ -40,15 +40,19 @@ namespace microv
     /// <!-- inputs/outputs -->
     ///   @param mut_tls the tls_t to use
     ///   @param sys the bf_syscall_t to use
+    ///   @param page_pool the page_pool_t to use
     ///   @param intrinsic the intrinsic_t to use
     ///   @return Returns bsl::errc_success on success, bsl::errc_failure
     ///     and friends otherwise
     ///
     [[nodiscard]] constexpr auto
     tls_initialize(
-        tls_t &mut_tls, syscall::bf_syscall_t const &sys, intrinsic_t const &intrinsic) noexcept
-        -> bsl::errc_type
+        tls_t &mut_tls,
+        syscall::bf_syscall_t const &sys,
+        page_pool_t const &page_pool,
+        intrinsic_t const &intrinsic) noexcept -> bsl::errc_type
     {
+        bsl::discard(page_pool);
         bsl::discard(intrinsic);
 
         mut_tls.ppid = sys.bf_tls_ppid();

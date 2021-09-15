@@ -28,6 +28,7 @@
 #include <bf_syscall_t.hpp>
 #include <gs_t.hpp>
 #include <intrinsic_t.hpp>
+#include <page_pool_t.hpp>
 #include <pp_pool_t.hpp>
 #include <tls_t.hpp>
 #include <vm_pool_t.hpp>
@@ -49,6 +50,7 @@ namespace microv
     ///   @param gs the gs_t to use
     ///   @param tls the tls_t to use
     ///   @param sys the bf_syscall_t to use
+    ///   @param page_pool the page_pool_t to use
     ///   @param intrinsic the intrinsic_t to use
     ///   @param pp_pool the pp_pool_t to use
     ///   @param vm_pool the vm_pool_t to use
@@ -64,6 +66,7 @@ namespace microv
         gs_t const &gs,
         tls_t const &tls,
         syscall::bf_syscall_t const &sys,
+        page_pool_t const &page_pool,
         intrinsic_t const &intrinsic,
         pp_pool_t const &pp_pool,
         vm_pool_t const &vm_pool,
@@ -78,6 +81,7 @@ namespace microv
         bsl::discard(gs);
         bsl::discard(tls);
         bsl::discard(sys);
+        bsl::discard(page_pool);
         bsl::discard(intrinsic);
         bsl::discard(pp_pool);
         bsl::discard(vm_pool);
