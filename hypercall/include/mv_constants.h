@@ -91,33 +91,33 @@ extern "C"
 /* -------------------------------------------------------------------------- */
 
 /** @brief Indicates the map has read access */
-#define MV_MAP_FLAG_READ_ACCESS ((uint64_t)0x0000000000000001);
+#define MV_MAP_FLAG_READ_ACCESS ((uint64_t)0x0000000000000001)
 /** @brief Indicates the map has write access */
-#define MV_MAP_FLAG_WRITE_ACCESS ((uint64_t)0x0000000000000002);
+#define MV_MAP_FLAG_WRITE_ACCESS ((uint64_t)0x0000000000000002)
 /** @brief Indicates the map has execute access */
-#define MV_MAP_FLAG_EXECUTE_ACCESS ((uint64_t)0x0000000000000004);
+#define MV_MAP_FLAG_EXECUTE_ACCESS ((uint64_t)0x0000000000000004)
 /** @brief Indicates the map has user privileges */
-#define MV_MAP_FLAG_USER ((uint64_t)0x0000000000000008);
+#define MV_MAP_FLAG_USER ((uint64_t)0x0000000000000008)
 /** @brief Indicates the map is 4k in size */
-#define MV_MAP_FLAG_4K_PAGE ((uint64_t)0x0000000000000200);
+#define MV_MAP_FLAG_4K_PAGE ((uint64_t)0x0000000000000200)
 /** @brief Indicates the map is 2m in size */
-#define MV_MAP_FLAG_2M_PAGE ((uint64_t)0x0000000000000400);
+#define MV_MAP_FLAG_2M_PAGE ((uint64_t)0x0000000000000400)
 /** @brief Indicates the map is 1g in size */
-#define MV_MAP_FLAG_1G_PAGE ((uint64_t)0x0000000000000800);
+#define MV_MAP_FLAG_1G_PAGE ((uint64_t)0x0000000000000800)
 /** @brief Indicates the map is mapped as UC */
-#define MV_MAP_FLAG_UNCACHEABLE ((uint64_t)0x0200000000000000);
+#define MV_MAP_FLAG_UNCACHEABLE ((uint64_t)0x0200000000000000)
 /** @brief Indicates the map is mapped as UC- */
-#define MV_MAP_FLAG_UNCACHEABLE_MINUS ((uint64_t)0x0400000000000000);
+#define MV_MAP_FLAG_UNCACHEABLE_MINUS ((uint64_t)0x0400000000000000)
 /** @brief Indicates the map is mapped as WC */
-#define MV_MAP_FLAG_WRITE_COMBINING ((uint64_t)0x0800000000000000);
+#define MV_MAP_FLAG_WRITE_COMBINING ((uint64_t)0x0800000000000000)
 /** @brief Indicates the map is mapped as WC +*/
-#define MV_MAP_FLAG_WRITE_COMBINING_PLUS ((uint64_t)0x1000000000000000);
+#define MV_MAP_FLAG_WRITE_COMBINING_PLUS ((uint64_t)0x1000000000000000)
 /** @brief Indicates the map is mapped as WT */
-#define MV_MAP_FLAG_WRITE_THROUGH ((uint64_t)0x2000000000000000);
+#define MV_MAP_FLAG_WRITE_THROUGH ((uint64_t)0x2000000000000000)
 /** @brief Indicates the map is mapped as WB */
-#define MV_MAP_FLAG_WRITE_BACK ((uint64_t)0x4000000000000000);
+#define MV_MAP_FLAG_WRITE_BACK ((uint64_t)0x4000000000000000)
 /** @brief Indicates the map is mapped as WP */
-#define MV_MAP_FLAG_WRITE_PROTECTED ((uint64_t)0x8000000000000000);
+#define MV_MAP_FLAG_WRITE_PROTECTED ((uint64_t)0x8000000000000000)
 
 /* -------------------------------------------------------------------------- */
 /* Special IDs                                                                */

@@ -24,7 +24,9 @@
 
 #include "../../include/handle_vm_kvm_set_user_memory_region.h"
 
+#include <helpers.hpp>
 #include <kvm_userspace_memory_region.h>
+#include <shim_vm_t.h>
 #include <types.h>
 
 #include <bsl/ut.hpp>
@@ -43,13 +45,21 @@ namespace shim
     [[nodiscard]] constexpr auto
     tests() noexcept -> bsl::exit_code
     {
-        bsl::ut_scenario{"description"} = []() noexcept {
+        bsl::ut_scenario{"valid user args"} = []() noexcept {
             bsl::ut_given{} = [&]() noexcept {
                 kvm_userspace_memory_region mut_args{};
+                mut_args.slot = 1;
+                mut_args.flags = 0;
+                mut_args.guest_phys_addr = 0x123456000ULL;
+                mut_args.memory_size = 0x1000;
+                mut_args.userspace_addr = 0x7FF123456000ULL;
+                shim_vm_t shim_vm{};
                 bsl::ut_when{} = [&]() noexcept {
                     bsl::ut_then{} = [&]() noexcept {
                         bsl::ut_check(
-                            SHIM_SUCCESS == handle_vm_kvm_set_user_memory_region(&mut_args));
+                            SHIM_SUCCESS ==
+                            // SHIM_SUCCESS);
+                            handle_vm_kvm_set_user_memory_region(&shim_vm, &mut_args));
                     };
                 };
             };

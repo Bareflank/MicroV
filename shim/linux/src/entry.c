@@ -144,15 +144,11 @@ dispatch_system_kvm_create_vm(void)
 {
     char name[22];
 
-    struct shim_vm_t *const pmut_vm =
-        (struct shim_vm_t *)vmalloc(sizeof(struct shim_vm_t));
-
-    if (NULL == pmut_vm) {
+    struct shim_vm_t *const pmut_vm = vmalloc(sizeof(struct shim_vm_t));
+    if (!mut_vm) {
         bferror("vmalloc failed");
-        return -EINVAL;
+        return -ENOMEM;
     }
-
-    platform_mutex_init(&pmut_vm->mutex);
 
     if (handle_system_kvm_create_vm(pmut_vm)) {
         bferror("handle_system_kvm_create_vm failed");
@@ -161,8 +157,7 @@ dispatch_system_kvm_create_vm(void)
 
     snprintf(name, sizeof(name), "kvm-vm:%d", pmut_vm->id);
 
-    pmut_vm->fd =
-        (uint64_t)anon_inode_getfd(name, &fops_vm, pmut_vm, O_RDWR | O_CLOEXEC);
+    pmut_vm->fd = anon_inode_getfd(name, &fops_vm, pmut_vm, O_RDWR | O_CLOEXEC);
     if ((int32_t)pmut_vm->fd < 0) {
         bferror("anon_inode_getfd failed");
         goto handle_system_kvm_create_vm_failed;
@@ -564,10 +559,20 @@ dispatch_vm_kvm_set_tss_addr(void)
 
 static long
 dispatch_vm_kvm_set_user_memory_region(
-    struct kvm_userspace_memory_region *const ioctl_args)
+    struct shim_vm_t vm, struct kvm_userspace_memory_region *const user_args)
 {
-    (void)ioctl_args;
-    return -EINVAL;
+    long ret;
+    struct kvm_userspace_memory_region args;
+
+    platform_copy_from_user(&args, user_args, sizeof(args));
+
+    if ((ret = handle_vm_kvm_set_user_memory_region(vm, &args)) !=
+        SHIM_SUCCESS) {
+        bferror("handle_vm_kvm_set_user_memory_region failed");
+        return ret;
+    }
+
+    return SHIM_SUCCESS;
 }
 
 static long
@@ -741,6 +746,7 @@ dev_unlocked_ioctl_vm(
 
         case KVM_SET_USER_MEMORY_REGION: {
             return dispatch_vm_kvm_set_user_memory_region(
+                (struct shim_vm_t vm)file->private_data,
                 (struct kvm_userspace_memory_region *)ioctl_args);
         }
 

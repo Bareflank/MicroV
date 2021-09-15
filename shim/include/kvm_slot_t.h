@@ -24,39 +24,40 @@
  * SOFTWARE.
  */
 
-#ifndef KVM_USERSPACE_MEMORY_REGION_H
-#define KVM_USERSPACE_MEMORY_REGION_H
+#ifndef KVM_SLOT_T_H
+#define KVM_SLOT_T_H
 
 #include <stdint.h>
+
+#define KVM_MEM_SLOTS_NUM 0x7FFF
+#define KVM_USER_MEM_SLOTS 0x7FFF
+// KVM_ADDRESS_SPACE_NUM needs some attention: defined as 1 in linux/hvm_host.h, 2 in asm/kvm_host.h
+#define KVM_ADDRESS_SPACE_NUM 1
 
 #ifdef __cplusplus
 extern "C"
 {
 #endif
 
-#pragma pack(push, 1)
-
     /**
-     * @struct kvm_userspace_memory_region
-     *
      * <!-- description -->
-     *   @brief see /include/uapi/linux/kvm.h in Linux for more details.
+     *   @brief An internal representation of a kvm slot for book keeping
      */
-    struct kvm_userspace_memory_region
+    struct kvm_slot_t
     {
-        /** @brief the guest physical memory slot */
-        uint32_t slot;
-        /** @brief the flags for this slot (log dirty pages or mem readonly) */
-        uint32_t flags;
-        /** @brief the guest physical address */
-        uint64_t guest_phys_addr;
-        /** @brief the memory size in bytes */
-        uint64_t memory_size;
-        /** @brief the start of the userspace allocated memory */
+        /** @brief stores the id of this slot */
+        int16_t id;
+        /** @brief stores the address space id that this slot is a member of */
+        uint16_t as_id;
+        /** @brief stores the base of the guest frame number */
+        uint64_t base_gfn;
+        /** @brief stores the number of pages */
+        uint32_t npages;
+        /** @brief stores the userspace address */
         uint64_t userspace_addr;
+        /** @brief stores the kvm flags for this slot */
+        uint64_t flags;
     };
-
-#pragma pack(pop)
 
 #ifdef __cplusplus
 }
