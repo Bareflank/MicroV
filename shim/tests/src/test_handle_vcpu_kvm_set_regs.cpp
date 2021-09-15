@@ -24,9 +24,10 @@
 
 #include "../../include/handle_vcpu_kvm_set_regs.h"
 
-#include <kvm_regs.h>
-#include <types.h>
+#include <helpers.hpp>
 
+#include <bsl/convert.hpp>
+#include <bsl/safe_integral.hpp>
 #include <bsl/ut.hpp>
 
 namespace shim
@@ -43,18 +44,55 @@ namespace shim
     [[nodiscard]] constexpr auto
     tests() noexcept -> bsl::exit_code
     {
-        bsl::ut_scenario{"description"} = []() noexcept {
+        init_tests();
+        bsl::ut_scenario{"success"} = []() noexcept {
             bsl::ut_given{} = [&]() noexcept {
+                shim_vcpu_t mut_vcpu{};
                 kvm_regs mut_args{};
+                constexpr auto val{42_u64};
                 bsl::ut_when{} = [&]() noexcept {
+                    mut_args.rax = val.get();
+                    mut_args.rbx = val.get();
+                    mut_args.rcx = val.get();
+                    mut_args.rdx = val.get();
+                    mut_args.rsi = val.get();
+                    mut_args.rdi = val.get();
+                    mut_args.rsp = val.get();
+                    mut_args.rbp = val.get();
+                    mut_args.r8 = val.get();
+                    mut_args.r9 = val.get();
+                    mut_args.r10 = val.get();
+                    mut_args.r11 = val.get();
+                    mut_args.r12 = val.get();
+                    mut_args.r13 = val.get();
+                    mut_args.r14 = val.get();
+                    mut_args.r15 = val.get();
+                    mut_args.rip = val.get();
+                    mut_args.rflags = val.get();
                     bsl::ut_then{} = [&]() noexcept {
-                        bsl::ut_check(SHIM_SUCCESS == handle_vcpu_kvm_set_regs(&mut_args));
+                        bsl::ut_check(
+                            SHIM_SUCCESS == handle_vcpu_kvm_set_regs(&mut_vcpu, &mut_args));
                     };
                 };
             };
         };
 
-        return bsl::ut_success();
+        bsl::ut_scenario{"mv_vs_op_reg_set_list fails"} = []() noexcept {
+            bsl::ut_given{} = [&]() noexcept {
+                shim_vcpu_t mut_vcpu{};
+                kvm_regs mut_args{};
+                constexpr auto val{1_u64};
+                bsl::ut_when{} = [&]() noexcept {
+                    g_mut_mv_vs_op_reg_set_list = val.get();
+                    bsl::ut_then{} = [&]() noexcept {
+                        bsl::ut_check(
+                            SHIM_FAILURE == handle_vcpu_kvm_set_regs(&mut_vcpu, &mut_args));
+                    };
+                };
+            };
+        };
+
+        return fini_tests();
     }
 }
 
