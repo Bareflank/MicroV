@@ -285,6 +285,19 @@ platform_mutex_init(platform_mutex *const pmut_mutex) NOEXCEPT
 
 /**
  * <!-- description -->
+ *   @brief Destroys a mutex object. This must be called to free resources
+ *     allocated from platform_mutex_init.
+ *
+ * <!-- inputs/outputs -->
+ *   @param pmut_mutex the mutex to destroy
+ */
+void platform_mutex_destroy(platform_mutex *const pmut_mutex) NOEXCEPT
+{
+    (void)pmut_mutex;
+}
+
+/**
+ * <!-- description -->
  *   @brief Locks a mutex object. The mutex object must be initialized
  *     using platform_mutex_init before it is used.
  *

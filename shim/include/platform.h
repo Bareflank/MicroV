@@ -224,13 +224,24 @@ typedef uint64_t platform_mutex;
 
     /**
      * <!-- description -->
-     *   @brief Initializes a mutex lock. This must be called before a
-     *     mutex can be used.
+     *   @brief Initializes a mutex object. This must be called before a
+     *     mutex can be used and platform_mutex_destroy must be called to free
+     *     resources once the mutex has run through its lifestime.
      *
      * <!-- inputs/outputs -->
-     *   @param pmut_mutex the mutex to lock
+     *   @param pmut_mutex the mutex to initialize
      */
     void platform_mutex_init(platform_mutex *const pmut_mutex) NOEXCEPT;
+
+    /**
+     * <!-- description -->
+     *   @brief Destroys a mutex object. This must be called to free resources
+     *     allocated from platform_mutex_init.
+     *
+     * <!-- inputs/outputs -->
+     *   @param pmut_mutex the mutex to destroy
+     */
+    void platform_mutex_destroy(platform_mutex *const pmut_mutex) NOEXCEPT;
 
     /**
      * <!-- description -->
