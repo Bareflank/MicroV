@@ -194,8 +194,12 @@ enum mv_reg_t
         mv_reg_t_cr8 = 69,
         /** @brief defines the xcr0 register (Intel Only) */
         mv_reg_t_xcr0 = 70,
+        /** @brief defines the mv_msr_t_efer register */
+        mv_msr_t_efer = 71,
+        /** @brief defines the mv_msr_t_apic_base register */
+        mv_msr_t_apic_base = 72,
         /** @brief defines and invalid mv_reg_t */
-        mv_reg_t_invalid = 71,
+        mv_reg_t_invalid = 73,
     };
 
 #ifdef __cplusplus

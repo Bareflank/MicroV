@@ -73,7 +73,6 @@ handle_vcpu_kvm_set_regs(
     pmut_rdl->entries[RSP_IDX].reg = (uint64_t)mv_reg_t_rsp;
     pmut_rdl->entries[RIP_IDX].reg = (uint64_t)mv_reg_t_rip;
     pmut_rdl->entries[RFLAGS_IDX].reg = (uint64_t)mv_reg_t_rflags;
-    pmut_rdl->num_entries = TOTAL_NUM_ENTRIES;
 
     pmut_rdl->entries[RAX_IDX].val = pmut_args->rax;
     pmut_rdl->entries[RBX_IDX].val = pmut_args->rbx;
@@ -93,6 +92,8 @@ handle_vcpu_kvm_set_regs(
     pmut_rdl->entries[RSP_IDX].val = pmut_args->rsp;
     pmut_rdl->entries[RIP_IDX].val = pmut_args->rip;
     pmut_rdl->entries[RFLAGS_IDX].val = pmut_args->rflags;
+
+    pmut_rdl->num_entries = TOTAL_SET_NUM_ENTRIES;
 
     if (mv_vs_op_reg_set_list(g_mut_hndl, pmut_vcpu->vsid)) {
         bferror("mv_vs_op_reg_set_list failed");

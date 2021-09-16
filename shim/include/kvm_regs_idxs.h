@@ -74,6 +74,9 @@ extern "C"
 /** @brief stores the total number of entries for rdl */
 #define TOTAL_NUM_ENTRIES ((uint64_t)18)
 
+/** @brief stores the total number of set entries(reg+val) for rdl */
+#define TOTAL_SET_NUM_ENTRIES ((uint64_t)36)
+
 #ifdef __cplusplus
 }
 #endif

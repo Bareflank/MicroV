@@ -31,7 +31,9 @@
 #include <handle_system_kvm_destroy_vm.h>
 #include <handle_system_kvm_get_vcpu_mmap_size.h>
 #include <handle_vcpu_kvm_get_regs.h>
+#include <handle_vcpu_kvm_get_sregs.h>
 #include <handle_vcpu_kvm_set_regs.h>
+#include <handle_vcpu_kvm_set_sregs.h>
 #include <handle_vm_kvm_create_vcpu.h>
 #include <handle_vm_kvm_destroy_vcpu.h>
 #include <linux/anon_inodes.h>
@@ -844,10 +846,19 @@ dispatch_vcpu_kvm_get_regs(
 }
 
 static long
-dispatch_vcpu_kvm_get_sregs(struct kvm_sregs *const ioctl_args)
+dispatch_vcpu_kvm_get_sregs(
+    struct shim_vcpu_t const *const vcpu, struct kvm_sregs *const user_args)
 {
-    (void)ioctl_args;
-    return -EINVAL;
+    struct kvm_sregs mut_args;
+
+    if (handle_vcpu_kvm_get_sregs(vcpu, &mut_args)) {
+        bferror("handle_vcpu_kvm_get_sregs failed");
+        return -EINVAL;
+    }
+
+    platform_copy_to_user(user_args, &mut_args, sizeof(struct kvm_sregs));
+
+    return (long)1;
 }
 
 static long
@@ -995,10 +1006,18 @@ dispatch_vcpu_kvm_set_signal_mask(struct kvm_signal_mask *const ioctl_args)
 }
 
 static long
-dispatch_vcpu_kvm_set_sregs(struct kvm_sregs *const ioctl_args)
+dispatch_vcpu_kvm_set_sregs(
+    struct shim_vcpu_t const *const vcpu, struct kvm_sregs *const user_args)
 {
-    (void)ioctl_args;
-    return -EINVAL;
+    struct kvm_sregs mut_args;
+
+    platform_copy_from_user(&mut_args, user_args, sizeof(kvm_regs));
+
+    if (handle_vcpu_kvm_set_sregs(vcpu, &mut_args)) {
+        bferror("handle_vcpu_kvm_set_sregs failed");
+        return -EINVAL;
+    }
+    return long(1);
 }
 
 static long
@@ -1109,7 +1128,8 @@ dev_unlocked_ioctl_vcpu(
         }
 
         case KVM_GET_SREGS: {
-            return dispatch_vcpu_kvm_get_sregs((struct kvm_sregs *)ioctl_args);
+            return dispatch_vcpu_kvm_get_sregs(
+                pmut_mut_vcpu, (struct kvm_sregs *)ioctl_args);
         }
 
         case KVM_GET_SUPPORTED_HV_CPUID: {
@@ -1204,7 +1224,8 @@ dev_unlocked_ioctl_vcpu(
         }
 
         case KVM_SET_SREGS: {
-            return dispatch_vcpu_kvm_set_sregs((struct kvm_sregs *)ioctl_args);
+            return dispatch_vcpu_kvm_set_sregs(
+                pmut_mut_vcpu, (struct kvm_sregs *)ioctl_args);
         }
 
         case KVM_SET_TSC_KHZ: {
