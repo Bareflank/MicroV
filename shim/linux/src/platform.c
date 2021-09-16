@@ -428,8 +428,7 @@ platform_mutex_init(platform_mutex *const pmut_mutex)
  * <!-- inputs/outputs -->
  *   @param pmut_mutex the mutex to destroy
  */
-void
-platform_mutex_destroy(platform_mutex *const pmut_mutex) NOEXCEPT;
+void platform_mutex_destroy(platform_mutex *const pmut_mutex) NOEXCEPT;
 {
     mutex_destroy(pmut_mutex);
 }

@@ -145,7 +145,7 @@ extern "C"
      *   @return This function returns 0 on success, otherwise
      *     this function returns a non-0 value
      */
-    int64_t platform_mempin(void *const pmut_ptr, uint64_t const num) NOEXCEPT;
+    NODISCARD int64_t platform_mempin(void *const pmut_ptr, uint64_t const num) NOEXCEPT;
 
     /**
      * <!-- description -->

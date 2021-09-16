@@ -195,8 +195,8 @@ platform_memcpy(void *const pmut_dst, void const *const src, uint64_t const num)
 int64_t
 platform_mempin(void *const pmut_ptr, uint64_t const num)
 {
-    platform_expects(((uint64_t)pmut_ptr & 0x0000000000000FFF) == 0);
-    platform_expects((num & 0x0000000000000FFF) == 0);
+    platform_expects((((uint64_t)pmut_ptr) & 0x0000000000000FFFULL) == 0);
+    platform_expects((num & 0x0000000000000FFFULL) == 0);
 
     return 0;
 }
@@ -312,7 +312,8 @@ platform_mutex_init(platform_mutex *const pmut_mutex) NOEXCEPT
  * <!-- inputs/outputs -->
  *   @param pmut_mutex the mutex to destroy
  */
-void platform_mutex_destroy(platform_mutex *const pmut_mutex) NOEXCEPT
+void
+platform_mutex_destroy(platform_mutex *const pmut_mutex) NOEXCEPT
 {
     (void)pmut_mutex;
 }
