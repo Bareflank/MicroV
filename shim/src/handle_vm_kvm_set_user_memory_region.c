@@ -41,20 +41,21 @@
  *   @brief Handles the execution of kvm_set_user_memory_region.
  *
  * <!-- inputs/outputs -->
- *   @param shim_vm the shim_vm_t argument
+ *   @param pmut_shim_vm the shim_vm_t argument
  *   @param args the arguments provided by userspace
  *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
  */
 NODISCARD int64_t
 handle_vm_kvm_set_user_memory_region(
-    struct shim_vm_t *const shim_vm, struct kvm_userspace_memory_region *const args) NOEXCEPT
+    struct shim_vm_t *const pmut_shim_vm, struct kvm_userspace_memory_region *const args) NOEXCEPT
 {
     int64_t ret = 0ULL;
     uint64_t i = 0ULL;
-    struct mv_mdl_t *mdl = (struct mv_mdl_t *)shared_page_for_current_pp();
+
     const uint16_t slot_id = (uint16_t)args->slot;
-    int16_t *slot_idx = &shim_vm->slot_id_to_index[slot_id];
+    int16_t *slot_idx = &pmut_shim_vm->slot_id_to_index[slot_id];
     struct kvm_slot_t *kslot;
+
     const uint16_t as_id = args->slot >> 16;
     const uint64_t addr = args->userspace_addr;
     const uint64_t gpa = args->guest_phys_addr;
@@ -63,7 +64,10 @@ handle_vm_kvm_set_user_memory_region(
     uint64_t mv_flags =
         MV_MAP_FLAG_READ_ACCESS | MV_MAP_FLAG_WRITE_ACCESS | MV_MAP_FLAG_EXECUTE_ACCESS;
 
-    platform_expects(!shim_vm);
+    struct mv_mdl_t *mdl = (struct mv_mdl_t *)shared_page_for_current_pp();
+    mdl->num_entries = 0;
+
+    platform_expects(!pmut_shim_vm);
     platform_expects(!args);
 
     if (size & 0x0000000000000FFFULL) {
@@ -91,30 +95,30 @@ handle_vm_kvm_set_user_memory_region(
         return SHIM_FAILURE;
     }
 
-    platform_mutex_lock(&shim_vm->mutex);
+    platform_mutex_lock(&pmut_shim_vm->mutex);
 
     if (*slot_idx < 0) {
         // Create slot
-        *slot_idx = shim_vm->used_slots++;
-        kslot = &shim_vm->slots[*slot_idx];
+        *slot_idx = pmut_shim_vm->used_slots++;
+        kslot = &pmut_shim_vm->slots[*slot_idx];
 
-        kslot->id = (int16_t) slot_id;
+        kslot->id = (int16_t)slot_id;
         kslot->as_id = as_id;
         kslot->base_gfn = gpa >> 12ULL;
-        kslot->npages = (uint32_t) (size >> 12ULL);
+        kslot->npages = (uint32_t)(size >> 12ULL);
         kslot->userspace_addr = addr;
         kslot->flags = kvm_flags;
     }
     else if (size == 0) {
         // Delete slot
-        --shim_vm->used_slots;
-        kslot = &shim_vm->slots[*slot_idx];
+        --pmut_shim_vm->used_slots;
+        kslot = &pmut_shim_vm->slots[*slot_idx];
         *slot_idx = -1;
         // TODO sanitize args with existing slot or just use existing slot?
         i = kslot->npages * HYPERVISOR_PAGE_SIZE;
         goto undo_mmio_map;
-
-    } else {
+    }
+    else {
         // Update or move slot
         bferror("Updating or moving a slot is not yet implemented\n");
         goto unlock;
@@ -131,8 +135,8 @@ handle_vm_kvm_set_user_memory_region(
         mdl->entries[mdl->num_entries].flags = mv_flags;    // TODO: KVM to MicroV flags
 
         if (mdl->num_entries >= MV_MDL_MAX_ENTRIES) {
-            if (mv_vm_op_mmio_map(g_mut_hndl, shim_vm->id, MV_SELF_ID) != MV_STATUS_SUCCESS) {
-                bferror("error while mapping pages");
+            if (mv_vm_op_mmio_map(g_mut_hndl, pmut_shim_vm->id, MV_SELF_ID) != MV_STATUS_SUCCESS) {
+                bferror("error while mapping pages...");
                 goto undo_mmio_map;
             }
             mdl->num_entries = 0;
@@ -141,12 +145,19 @@ handle_vm_kvm_set_user_memory_region(
             ++mdl->num_entries;
         }
     }
+    if (mdl->num_entries < MV_MDL_MAX_ENTRIES) {
+        if (mv_vm_op_mmio_map(g_mut_hndl, pmut_shim_vm->id, MV_SELF_ID) != MV_STATUS_SUCCESS) {
+            bferror("error while mapping pages..");
+            goto undo_mmio_map;
+        }
+    }
 
-    platform_mutex_unlock(&shim_vm->mutex);
+    platform_mutex_unlock(&pmut_shim_vm->mutex);
 
     return SHIM_SUCCESS;
 
 undo_mmio_map:
+    mdl->num_entries = 0;
     for (; i > 0; i -= HYPERVISOR_PAGE_SIZE) {
         mdl->entries[mdl->num_entries].dst = gpa + i;
         mdl->entries[mdl->num_entries].src = platform_virt_to_phys((void *)(addr + i));
@@ -154,8 +165,8 @@ undo_mmio_map:
         mdl->entries[mdl->num_entries].flags = mv_flags;    // TODO: original flags
 
         if (mdl->num_entries >= MV_MDL_MAX_ENTRIES) {
-            if (mv_vm_op_mmio_unmap(g_mut_hndl, shim_vm->id) != MV_STATUS_SUCCESS) {
-                bferror("error while unmapping previously mapped pages");
+            if (mv_vm_op_mmio_unmap(g_mut_hndl, pmut_shim_vm->id) != MV_STATUS_SUCCESS) {
+                bferror("error while unmapping pages...");
             }
             mdl->num_entries = 0;
         }
@@ -163,10 +174,15 @@ undo_mmio_map:
             ++mdl->num_entries;
         }
     }
+    if (mdl->num_entries < MV_MDL_MAX_ENTRIES) {
+        if (mv_vm_op_mmio_map(g_mut_hndl, pmut_shim_vm->id, MV_SELF_ID) != MV_STATUS_SUCCESS) {
+            bferror("error while unmapping pages..");
+        }
+    }
 
     // platform_memunpin((void *)addr, size)
 
 unlock:
-    platform_mutex_unlock(&shim_vm->mutex);
+    platform_mutex_unlock(&pmut_shim_vm->mutex);
     return ret;
 }

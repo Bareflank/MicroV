@@ -28,9 +28,9 @@
 #define SHIM_VM_T_H
 
 #include <constants.h>
+#include <kvm_slot_t.h>
 #include <platform.h>
 #include <shim_vcpu_t.h>
-#include <kvm_slot_t.h>
 #include <stdint.h>
 #include <types.h>
 
