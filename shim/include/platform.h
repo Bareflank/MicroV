@@ -135,6 +135,20 @@ extern "C"
 
     /**
      * <!-- description -->
+     *   @brief Pins the pages within a memory region starting at "pmut_ptr" and
+     *     continuing for "num" bytes. Once pinned, the memory is guaranteed to
+     *     never be paged out to disk.
+     *
+     * <!-- inputs/outputs -->
+     *   @param pmut_ptr a pointer to the memory to pin
+     *   @param num the number of bytes to pin.
+     *   @return This function returns 0 on success, otherwise
+     *     this function returns a non-0 value
+     */
+    NODISCARD int64_t platform_mempin(void *const pmut_ptr, uint64_t const num) NOEXCEPT;
+
+    /**
+     * <!-- description -->
      *   @brief Copies "num" bytes from "src" to "pmut_dst". If "src" or "pmut_dst" are
      *     ((void *)0), returns SHIM_FAILURE, otherwise returns 0. Note that this function can
      *     be used to copy memory from userspace via an IOCTL.
@@ -224,13 +238,24 @@ typedef uint64_t platform_mutex;
 
     /**
      * <!-- description -->
-     *   @brief Initializes a mutex lock. This must be called before a
-     *     mutex can be used.
+     *   @brief Initializes a mutex object. This must be called before a
+     *     mutex can be used and platform_mutex_destroy must be called to free
+     *     resources once the mutex has run through its lifestime.
      *
      * <!-- inputs/outputs -->
-     *   @param pmut_mutex the mutex to lock
+     *   @param pmut_mutex the mutex to initialize
      */
     void platform_mutex_init(platform_mutex *const pmut_mutex) NOEXCEPT;
+
+    /**
+     * <!-- description -->
+     *   @brief Destroys a mutex object. This must be called to free resources
+     *     allocated from platform_mutex_init.
+     *
+     * <!-- inputs/outputs -->
+     *   @param pmut_mutex the mutex to destroy
+     */
+    void platform_mutex_destroy(platform_mutex *const pmut_mutex) NOEXCEPT;
 
     /**
      * <!-- description -->

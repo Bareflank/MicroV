@@ -28,6 +28,7 @@
 #define SHIM_VM_T_H
 
 #include <constants.h>
+#include <kvm_slot_t.h>
 #include <platform.h>
 #include <shim_vcpu_t.h>
 #include <stdint.h>
@@ -62,6 +63,15 @@ extern "C"
 
         /** @brief stores the VCPUs associated with this VM */
         struct shim_vcpu_t vcpus[MICROV_MAX_VCPUS];
+
+        /** @brief stores the mutex lock used to operate on slots */
+        platform_mutex slots_mutex;
+        /** @brief stores the number of slots used */
+        int16_t used_slots;
+        /** @brief stores an array of indexes allowing to retrieve a slot given a slot id */
+        int16_t slot_id_to_index[KVM_MEM_SLOTS_NUM];
+        /** @brief stores the memory slots associated with this VM */
+        struct kvm_slot_t slots[KVM_MEM_SLOTS_NUM];
     };
 
 #pragma pack(pop)

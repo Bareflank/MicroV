@@ -47,6 +47,10 @@ handle_system_kvm_create_vm(struct shim_vm_t *const pmut_vm) NOEXCEPT
     platform_expects(NULL != pmut_vm);
 
     platform_memset(pmut_vm, ((uint8_t)0), sizeof(struct shim_vm_t));
+    platform_mutex_init(&pmut_vm->mutex);
+
+    platform_memset(pmut_vm->slot_id_to_index, ((uint8_t)-1), sizeof(struct shim_vm_t));
+    platform_mutex_init(&pmut_vm->slots_mutex);
 
     pmut_vm->vmid = mv_vm_op_create_vm(g_mut_hndl);
     if (MV_INVALID_ID == (int32_t)pmut_vm->vmid) {

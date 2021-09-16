@@ -32,8 +32,10 @@
 #include <linux/mm.h>
 #include <linux/slab.h>
 #include <linux/smp.h>
+#include <linux/unistd.h>
 #include <linux/vmalloc.h>
 #include <platform.h>
+#include <sys/syscall.h>
 #include <types.h>
 #include <work_on_cpu_callback_args.h>
 
@@ -183,6 +185,27 @@ platform_memcpy(void *const pmut_dst, void const *const src, uint64_t const num)
     platform_expects(((void *)0) != src);
 
     memcpy(pmut_dst, src, num);
+}
+
+/**
+ * <!-- description -->
+ *   @brief Pins the pages within a memory region starting at "pmut_ptr" and
+ *     continuing for "num" bytes. Once pinned, the memory is guaranteed to
+ *     never be paged out to disk.
+ *
+ * <!-- inputs/outputs -->
+ *   @param pmut_ptr a pointer to the memory to pin
+ *   @param num the number of bytes to pin.
+ *   @return This function returns 0 on success, otherwise
+ *     this function returns a non-0 value
+ */
+int64_t
+platform_mempin(void *const pmut_ptr, uint64_t const num)
+{
+    platform_expects((pmut_ptr & 0x0000000000000FFF) == 0);
+    platform_expects((num & 0x0000000000000FFF) == 0);
+
+    return syscall(__NR_mlock, pmut_ptr, num) != 0);
 }
 
 /**
@@ -395,6 +418,19 @@ void
 platform_mutex_init(platform_mutex *const pmut_mutex)
 {
     mutex_init(pmut_mutex);
+}
+
+/**
+ * <!-- description -->
+ *   @brief Destroys a mutex object. This must be called to free resources
+ *     allocated from platform_mutex_init.
+ *
+ * <!-- inputs/outputs -->
+ *   @param pmut_mutex the mutex to destroy
+ */
+void platform_mutex_destroy(platform_mutex *const pmut_mutex) NOEXCEPT;
+{
+    mutex_destroy(pmut_mutex);
 }
 
 /**
