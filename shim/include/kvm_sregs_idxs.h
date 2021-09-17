@@ -123,7 +123,7 @@ extern "C"
 /** @brief stores the regs total number of entries for rdl */
 #define TOTAL_SREGS_NUM_REG_ENTRIES ((uint64_t)40)
 /** @brief stores the regs total number of set entries reg+val for rdl */
-#define TOTAL_SREGS_SET_NUM_REG_ENTRIES ((uint64_t)42)
+#define TOTAL_SREGS_SET_NUM_REG_ENTRIES ((uint64_t)80)
 /** @brief stores the MSR total number of entries for rdl */
 #define TOTAL_SREGS_NUM_MSR_ENTRIES ((uint64_t)2)
 /** @brief stores the msr total number of set entries reg+val for rdl */
