@@ -24,15 +24,48 @@
  * SOFTWARE.
  */
 
-#include <constants.h>
 #include <debug.h>
+#include <detect_hypervisor.h>
 #include <g_mut_hndl.h>
 #include <g_mut_shared_pages.h>
 #include <mv_constants.h>
 #include <mv_hypercall.h>
 #include <platform.h>
-#include <touch.h>
+#include <shim_fini.h>
 #include <types.h>
+
+/**
+ * <!-- description -->
+ *   @brief Initializes the shim on the requested cpu (i.e. PP). This is
+ *     needed because to tell MicroV what the GPA of the shared page is
+ *     on a PP, we need to execute mv_pp_op_set_shared_page_gpa from the
+ *     PP the shared page will be used on (which MicroV requires so that
+ *     it doesn't have to perform IPIs when setting or clearing the shared
+ *     page from it's own page tables).
+ *
+ * <!-- inputs/outputs -->
+ *   @param cpu the cpu (i.e. PP) we are executing on
+ *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
+ */
+NODISCARD int64_t
+shim_init_on_cpu(uint32_t const cpu) NOEXCEPT
+{
+    uint64_t mut_gpa;
+
+    g_mut_shared_pages[cpu] = (void *)platform_alloc(HYPERVISOR_PAGE_SIZE);
+    if (((void *)0) == g_mut_shared_pages[cpu]) {
+        bferror("platform_alloc failed");
+        return SHIM_FAILURE;
+    }
+
+    mut_gpa = platform_virt_to_phys(g_mut_shared_pages[cpu]);
+    if (mv_pp_op_set_shared_page_gpa(g_mut_hndl, mut_gpa)) {
+        bferror("mv_pp_op_set_shared_page_gpa failed");
+        return SHIM_FAILURE;
+    }
+
+    return SHIM_SUCCESS;
+}
 
 /**
  * <!-- description -->
@@ -47,19 +80,23 @@
 NODISCARD int64_t
 shim_init(void) NOEXCEPT
 {
-    uint64_t mut_i;
     uint32_t mut_version;
     uint64_t mut_num_pps;
 
-    mut_num_pps = (uint64_t)platform_num_online_cpus();
-    if (mut_num_pps > HYPERVISOR_MAX_PPS) {
-        bferror_d64("unsupported number of CPUs", mut_num_pps);
+    if (detect_hypervisor()) {
+        bferror("The shim is not running in a VM. Is MicroV running?");
         return SHIM_FAILURE;
     }
 
     mut_version = mv_id_op_version();
     if (mv_is_spec1_supported(mut_version)) {
-        bferror_x32("unsupported version of MicroV. Is MicroV running?", mut_version);
+        bferror_x32("Unsupported version of MicroV. Is MicroV running?", mut_version);
+        return SHIM_FAILURE;
+    }
+
+    mut_num_pps = (uint64_t)platform_num_online_cpus();
+    if (mut_num_pps > HYPERVISOR_MAX_PPS) {
+        bferror_d64("Unsupported number of CPUs", mut_num_pps);
         return SHIM_FAILURE;
     }
 
@@ -69,23 +106,15 @@ shim_init(void) NOEXCEPT
         return SHIM_FAILURE;
     }
 
-    for (mut_i = ((uint64_t)0); mut_i < mut_num_pps; ++mut_i) {
-        g_mut_shared_pages[mut_i] = (void *)platform_alloc(HYPERVISOR_PAGE_SIZE);
-        if (((void *)0) == g_mut_shared_pages[mut_i]) {
-            bferror("platform_alloc failed");
-            goto platform_alloc_failed;
-        }
-
-        touch();
+    if (platform_on_each_cpu(shim_init_on_cpu, PLATFORM_FORWARD)) {
+        bferror("shim_init_on_cpu failed");
+        goto shim_init_on_cpu_failed;
     }
 
     return SHIM_SUCCESS;
 
-platform_alloc_failed:
-
-    for (mut_i = ((uint64_t)0); mut_i < mut_num_pps; ++mut_i) {
-        platform_free(g_mut_shared_pages[mut_i], HYPERVISOR_PAGE_SIZE);
-    }
+shim_init_on_cpu_failed:
+    shim_fini();
 
     return SHIM_FAILURE;
 }

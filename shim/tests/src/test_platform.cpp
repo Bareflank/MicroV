@@ -24,6 +24,7 @@
 
 #include <debug.h>
 #include <helpers.hpp>
+#include <platform.h>
 
 #include <bsl/discard.hpp>
 #include <bsl/safe_integral.hpp>
@@ -103,16 +104,14 @@ namespace shim
 
         bsl::ut_scenario{"platform_alloc fails"} = []() noexcept {
             bsl::ut_when{} = [&]() noexcept {
-                g_mut_platform_alloc_fails = 2;
-                auto *const pmut_ptr1{platform_alloc(HYPERVISOR_PAGE_SIZE)};
-                auto *const pmut_ptr2{platform_alloc(HYPERVISOR_PAGE_SIZE)};
+                g_mut_platform_alloc_fails = true;
+                auto *const pmut_ptr{platform_alloc(HYPERVISOR_PAGE_SIZE)};
                 bsl::ut_then{} = [&]() noexcept {
-                    bsl::ut_check(nullptr != pmut_ptr1);
-                    bsl::ut_check(nullptr == pmut_ptr2);
+                    bsl::ut_check(nullptr == pmut_ptr);
                 };
                 bsl::ut_cleanup{} = [&]() noexcept {
-                    platform_free(pmut_ptr1, HYPERVISOR_PAGE_SIZE);
-                    platform_free(pmut_ptr2, HYPERVISOR_PAGE_SIZE);
+                    platform_free(pmut_ptr, HYPERVISOR_PAGE_SIZE);
+                    g_mut_platform_alloc_fails = false;
                 };
             };
         };
@@ -175,7 +174,8 @@ namespace shim
                 bool const src{};
                 constexpr bsl::safe_umx size{sizeof(bool)};
                 bsl::ut_when{} = [&]() noexcept {
-                    platform_copy_from_user(&mut_dst, &src, size.get());
+                    bsl::ut_check(
+                        SHIM_SUCCESS == platform_copy_from_user(&mut_dst, &src, size.get()));
                     bsl::ut_then{} = [&]() noexcept {
                         bsl::ut_check(!mut_dst);
                     };
@@ -189,7 +189,8 @@ namespace shim
                 bool const src{};
                 constexpr bsl::safe_umx size{sizeof(bool)};
                 bsl::ut_when{} = [&]() noexcept {
-                    platform_copy_to_user(&mut_dst, &src, size.get());
+                    bsl::ut_check(
+                        SHIM_SUCCESS == platform_copy_to_user(&mut_dst, &src, size.get()));
                     bsl::ut_then{} = [&]() noexcept {
                         bsl::ut_check(!mut_dst);
                     };

@@ -29,6 +29,7 @@
 #include <gs_t.hpp>
 #include <intrinsic_t.hpp>
 #include <lock_guard_t.hpp>
+#include <page_pool_t.hpp>
 #include <pp_pool_t.hpp>
 #include <spinlock_t.hpp>
 #include <tls_t.hpp>
@@ -116,6 +117,7 @@ namespace microv
         ///   @param gs the gs_t to use
         ///   @param tls the tls_t to use
         ///   @param sys the bf_syscall_t to use
+        ///   @param page_pool the page_pool_t to use
         ///   @param intrinsic the intrinsic_t to use
         ///
         constexpr void
@@ -123,10 +125,11 @@ namespace microv
             gs_t const &gs,
             tls_t const &tls,
             syscall::bf_syscall_t const &sys,
+            page_pool_t const &page_pool,
             intrinsic_t const &intrinsic) noexcept
         {
             for (auto &mut_vs : m_pool) {
-                mut_vs.release(gs, tls, sys, intrinsic);
+                mut_vs.release(gs, tls, sys, page_pool, intrinsic);
             }
         }
 
@@ -137,10 +140,13 @@ namespace microv
         ///   @param gs the gs_t to use
         ///   @param tls the tls_t to use
         ///   @param mut_sys the bf_syscall_t to use
+        ///   @param page_pool the page_pool_t to use
         ///   @param intrinsic the intrinsic_t to use
         ///   @param vmid the ID of the VM to assign the newly created VS to
         ///   @param vpid the ID of the VP to assign the newly created VS to
         ///   @param ppid the ID of the PP to assign the newly created VS to
+        ///   @param slpt_spa the system physical address of the second level
+        ///     page tables to use.
         ///   @return Returns ID of the newly allocated vs_t. Returns
         ///     bsl::safe_u16::failure() on failure.
         ///
@@ -149,10 +155,12 @@ namespace microv
             gs_t const &gs,
             tls_t const &tls,
             syscall::bf_syscall_t &mut_sys,
+            page_pool_t const &page_pool,
             intrinsic_t const &intrinsic,
             bsl::safe_u16 const &vmid,
             bsl::safe_u16 const &vpid,
-            bsl::safe_u16 const &ppid) noexcept -> bsl::safe_u16
+            bsl::safe_u16 const &ppid,
+            bsl::safe_umx const &slpt_spa) noexcept -> bsl::safe_u16
         {
             lock_guard_t mut_lock{tls, m_lock};
 
@@ -162,7 +170,8 @@ namespace microv
                 return bsl::safe_u16::failure();
             }
 
-            return this->get_vs(vsid)->allocate(gs, tls, mut_sys, intrinsic, vmid, vpid, ppid);
+            return this->get_vs(vsid)->allocate(
+                gs, tls, mut_sys, page_pool, intrinsic, vmid, vpid, ppid, slpt_spa);
         }
 
         /// <!-- description -->
@@ -172,6 +181,7 @@ namespace microv
         ///   @param gs the gs_t to use
         ///   @param tls the tls_t to use
         ///   @param mut_sys the bf_syscall_t to use
+        ///   @param page_pool the page_pool_t to use
         ///   @param intrinsic the intrinsic_t to use
         ///   @param vsid the ID of the vs_t to deallocate
         ///
@@ -180,6 +190,7 @@ namespace microv
             gs_t const &gs,
             tls_t const &tls,
             syscall::bf_syscall_t &mut_sys,
+            page_pool_t const &page_pool,
             intrinsic_t const &intrinsic,
             bsl::safe_u16 const &vsid) noexcept
         {
@@ -188,7 +199,7 @@ namespace microv
             auto *const pmut_vs{this->get_vs(vsid)};
             if (pmut_vs->is_allocated()) {
                 bsl::expects(mut_sys.bf_vs_op_destroy_vs(vsid));
-                pmut_vs->deallocate(gs, tls, mut_sys, intrinsic);
+                pmut_vs->deallocate(gs, tls, mut_sys, page_pool, intrinsic);
             }
             else {
                 bsl::touch();
@@ -363,6 +374,83 @@ namespace microv
             }
 
             return bsl::safe_u16::failure();
+        }
+
+        /// <!-- description -->
+        ///   @brief Returns the value of the requested register
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param sys the bf_syscall_t to use
+        ///   @param reg the register to get
+        ///   @param vsid the ID of the vs_t to query
+        ///   @return Returns the value of the requested register
+        ///
+        [[nodiscard]] constexpr auto
+        get(syscall::bf_syscall_t const &sys,
+            bsl::safe_u64 const &reg,
+            bsl::safe_u16 const &vsid) const noexcept -> bsl::safe_u64
+        {
+            return this->get_vs(vsid)->get(sys, reg);
+        }
+
+        /// <!-- description -->
+        ///   @brief Sets the value of the requested register
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param mut_sys the bf_syscall_t to use
+        ///   @param reg the register to set
+        ///   @param val the value to set the register to
+        ///   @param vsid the ID of the vs_t to set
+        ///   @return Returns bsl::errc_success on success, bsl::errc_failure
+        ///     and friends otherwise
+        ///
+        [[nodiscard]] constexpr auto
+        set(syscall::bf_syscall_t &mut_sys,
+            bsl::safe_u64 const &reg,
+            bsl::safe_u64 const &val,
+            bsl::safe_u16 const &vsid) noexcept -> bsl::errc_type
+        {
+            return this->get_vs(vsid)->set(mut_sys, reg, val);
+        }
+
+        /// <!-- description -->
+        ///   @brief Returns the value of the requested registers from
+        ///     the provided RDL.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param sys the bf_syscall_t to use
+        ///   @param mut_rdl the RDL to store the requested register values
+        ///   @param vsid the ID of the vs_t to query
+        ///   @return Returns bsl::errc_success on success, bsl::errc_failure
+        ///     and friends otherwise
+        ///
+        [[nodiscard]] constexpr auto
+        get_list(
+            syscall::bf_syscall_t const &sys,
+            hypercall::mv_rdl_t &mut_rdl,
+            bsl::safe_u16 const &vsid) const noexcept -> bsl::errc_type
+        {
+            return this->get_vs(vsid)->get_list(sys, mut_rdl);
+        }
+
+        /// <!-- description -->
+        ///   @brief Sets the value of the requested registers given
+        ///     the provided RDL.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param mut_sys the bf_syscall_t to use
+        ///   @param rdl the RDL to get the requested register values from
+        ///   @param vsid the ID of the vs_t to set
+        ///   @return Returns bsl::errc_success on success, bsl::errc_failure
+        ///     and friends otherwise
+        ///
+        [[nodiscard]] constexpr auto
+        set_list(
+            syscall::bf_syscall_t &mut_sys,
+            hypercall::mv_rdl_t const &rdl,
+            bsl::safe_u16 const &vsid) noexcept -> bsl::errc_type
+        {
+            return this->get_vs(vsid)->set_list(mut_sys, rdl);
         }
 
         /// <!-- description -->

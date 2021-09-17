@@ -25,6 +25,7 @@
 #include "../../include/handle_system_kvm_destroy_vm.h"
 
 #include <helpers.hpp>
+#include <shim_vm_t.h>
 
 #include <bsl/ut.hpp>
 
@@ -42,7 +43,33 @@ namespace shim
     [[nodiscard]] constexpr auto
     tests() noexcept -> bsl::exit_code
     {
-        bsl::ut_scenario{"success doesn't crash"} = []() noexcept {
+        init_tests();
+
+        bsl::ut_scenario{"success"} = []() noexcept {
+            bsl::ut_given{} = [&]() noexcept {
+                shim_vm_t mut_vm{};
+                bsl::ut_then{} = [&]() noexcept {
+                    handle_system_kvm_destroy_vm(&mut_vm);
+                };
+            };
+        };
+
+        bsl::ut_scenario{"hypervisor not detected"} = []() noexcept {
+            bsl::ut_given{} = [&]() noexcept {
+                shim_vm_t mut_vm{};
+                bsl::ut_when{} = [&]() noexcept {
+                    g_mut_hypervisor_detected = false;
+                    bsl::ut_then{} = [&]() noexcept {
+                        handle_system_kvm_destroy_vm(&mut_vm);
+                    };
+                    bsl::ut_cleanup{} = [&]() noexcept {
+                        g_mut_hypervisor_detected = true;
+                    };
+                };
+            };
+        };
+
+        bsl::ut_scenario{"run more than once"} = []() noexcept {
             bsl::ut_given{} = [&]() noexcept {
                 shim_vm_t mut_vm{};
                 bsl::ut_then{} = [&]() noexcept {
@@ -53,7 +80,7 @@ namespace shim
             };
         };
 
-        return bsl::ut_success();
+        return fini_tests();
     }
 }
 

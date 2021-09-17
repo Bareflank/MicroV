@@ -33,6 +33,7 @@
 #include <bsl/debug.hpp>
 #include <bsl/enable_color.hpp>
 #include <bsl/exit_code.hpp>
+#include <bsl/safe_idx.hpp>
 #include <bsl/safe_integral.hpp>
 
 namespace hypercall
@@ -58,59 +59,57 @@ namespace hypercall
 
         bsl::safe_umx const gla{to_umx(&g_mut_test)};
         bsl::safe_umx mut_gpa{};
+        constexpr auto self{MV_SELF_ID};
 
         /// NOTE:
-        /// - Touch g_mut_test. This ensures that g_mut_test is paged in. On Linux,
-        ///   if g_mut_test has not yet been used, it would not be paged in.
+        /// - Touch g_mut_test. This ensures that g_mut_test is paged in.
         ///
 
         g_mut_test = true;
 
-        /// NOTE:
-        /// - Since we only support 64bit, a global variable's GVA will always
-        ///   be a GLA on at least Intel, AMD and ARM so long as we do not
-        ///   use a variable from thread local storage.
+        /// TODO:
+        /// - Currently we assume that the GVA and GLA or g_mut_test are the
+        ///   same. In most cases (if not all), this is true, but we really
+        ///   should call gva_to_gla to get the GLA instead of making this
+        ///   assumption.
         ///
 
         integration::verify(mut_hvc.initialize());
         auto const hndl{mut_hvc.handle()};
 
         // invalid VSID
-        mut_ret =
-            mv_vs_op_gla_to_gpa_impl(hndl.get(), MV_INVALID_ID.get(), gla.get(), mut_gpa.data());
+        auto const iid{MV_INVALID_ID};
+        mut_ret = mv_vs_op_gla_to_gpa_impl(hndl.get(), iid.get(), gla.get(), mut_gpa.data());
         integration::verify(mut_ret != MV_STATUS_SUCCESS);
 
         // VSID out of range
-        auto const oor{bsl::to_u16(HYPERVISOR_MAX_VMS + bsl::safe_u64::magic_1()).checked()};
+        auto const oor{bsl::to_u16(HYPERVISOR_MAX_VSS + bsl::safe_u64::magic_1()).checked()};
         mut_ret = mv_vs_op_gla_to_gpa_impl(hndl.get(), oor.get(), gla.get(), mut_gpa.data());
         integration::verify(mut_ret != MV_STATUS_SUCCESS);
 
         // VSID not yet created
-        auto const nyc{bsl::to_u16(HYPERVISOR_MAX_VMS - bsl::safe_u64::magic_1()).checked()};
+        auto const nyc{bsl::to_u16(HYPERVISOR_MAX_VSS - bsl::safe_u64::magic_1()).checked()};
         mut_ret = mv_vs_op_gla_to_gpa_impl(hndl.get(), nyc.get(), gla.get(), mut_gpa.data());
         integration::verify(mut_ret != MV_STATUS_SUCCESS);
 
         // GLA that is not paged aligned
         constexpr auto ugla{42_u64};
-        mut_ret =
-            mv_vs_op_gla_to_gpa_impl(hndl.get(), MV_SELF_ID.get(), ugla.get(), mut_gpa.data());
+        mut_ret = mv_vs_op_gla_to_gpa_impl(hndl.get(), self.get(), ugla.get(), mut_gpa.data());
         integration::verify(mut_ret != MV_STATUS_SUCCESS);
 
         // NULL GLA
         constexpr auto ngla{0_u64};
-        mut_ret =
-            mv_vs_op_gla_to_gpa_impl(hndl.get(), MV_SELF_ID.get(), ngla.get(), mut_gpa.data());
+        mut_ret = mv_vs_op_gla_to_gpa_impl(hndl.get(), self.get(), ngla.get(), mut_gpa.data());
         integration::verify(mut_ret != MV_STATUS_SUCCESS);
 
         // GLA that is not present (i.e. not paged in)
         constexpr auto npgla{0x1000_u64};
-        mut_ret =
-            mv_vs_op_gla_to_gpa_impl(hndl.get(), MV_SELF_ID.get(), npgla.get(), mut_gpa.data());
+        mut_ret = mv_vs_op_gla_to_gpa_impl(hndl.get(), self.get(), npgla.get(), mut_gpa.data());
         integration::verify(mut_ret != MV_STATUS_SUCCESS);
 
         // VSID that has been created, but has not been initialized
         {
-            auto const vsid{mut_hvc.mv_vs_op_create_vs(MV_SELF_ID)};
+            auto const vsid{mut_hvc.mv_vs_op_create_vs(self)};
             integration::verify(vsid.is_valid_and_checked());
 
             mut_trn = mut_hvc.mv_vs_op_gla_to_gpa(vsid, to_umx(&g_mut_test));
@@ -119,18 +118,37 @@ namespace hypercall
             integration::verify(mut_hvc.mv_vs_op_destroy_vs(vsid));
         }
 
-        // // Get a valid GPA a lot to make sure mapping/unmapping works
-        // {
-        //     constexpr auto num_loops{0x1000_umx};
-        //     for (bsl::safe_idx mut_i{}; mut_i < num_loops; ++mut_i) {
-        //         mut_trn = mut_hvc.mv_vs_op_gla_to_gpa(MV_SELF_ID, to_umx(&g_mut_test));
-        //         integration::verify(mut_trn.is_valid);
-        //     }
-        // }
+        // VSID that has been created, but is not locally assigned. Note that
+        // this test only works on multi-core systems
+        {
+            /// TODO:
+            /// - Skip this test is mv_pp_op_online_pps returns 1.
+            ///
+
+            auto mut_foreign_vsid{mut_hvc.mv_vs_op_vsid()};
+            integration::verify(mut_foreign_vsid.is_valid_and_checked());
+
+            if (mut_foreign_vsid.is_zero()) {
+                mut_foreign_vsid = (mut_foreign_vsid + bsl::safe_u16::magic_1()).checked();
+            }
+            else {
+                mut_foreign_vsid = (mut_foreign_vsid - bsl::safe_u16::magic_1()).checked();
+            }
+
+            mut_trn = mut_hvc.mv_vs_op_gla_to_gpa(mut_foreign_vsid, to_umx(&g_mut_test));
+            integration::verify(!mut_trn.is_valid);
+        }
+
+        // Get a valid GPA a lot to make sure mapping/unmapping works
+        constexpr auto num_loops{0x100_umx};
+        for (bsl::safe_idx mut_i{}; mut_i < num_loops; ++mut_i) {
+            mut_trn = mut_hvc.mv_vs_op_gla_to_gpa(self, to_umx(&g_mut_test));
+            integration::verify(mut_trn.is_valid);
+        }
 
         // Get the gpa and print the results for manual inspection
         {
-            mut_trn = mut_hvc.mv_vs_op_gla_to_gpa(MV_SELF_ID, to_umx(&g_mut_test));
+            mut_trn = mut_hvc.mv_vs_op_gla_to_gpa(self, to_umx(&g_mut_test));
             integration::verify(mut_trn.is_valid);
 
             bsl::debug() << "the result is:\n"

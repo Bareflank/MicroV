@@ -26,6 +26,7 @@
 
 #include <helpers.hpp>
 #include <kvm_regs.h>
+#include <shim_vcpu_t.h>
 
 #include <bsl/convert.hpp>
 #include <bsl/safe_integral.hpp>
@@ -78,6 +79,24 @@ namespace shim
                 };
             };
         };
+
+        bsl::ut_scenario{"hypervisor not detected"} = []() noexcept {
+            bsl::ut_given{} = [&]() noexcept {
+                shim_vcpu_t mut_vcpu{};
+                kvm_regs mut_args{};
+                bsl::ut_when{} = [&]() noexcept {
+                    g_mut_hypervisor_detected = false;
+                    bsl::ut_then{} = [&]() noexcept {
+                        bsl::ut_check(
+                            SHIM_FAILURE == handle_vcpu_kvm_get_regs(&mut_vcpu, &mut_args));
+                    };
+                    bsl::ut_cleanup{} = [&]() noexcept {
+                        g_mut_hypervisor_detected = true;
+                    };
+                };
+            };
+        };
+
         bsl::ut_scenario{"mv_vs_op_reg_get_list fails"} = []() noexcept {
             bsl::ut_given{} = [&]() noexcept {
                 shim_vcpu_t mut_vcpu{};
@@ -87,6 +106,9 @@ namespace shim
                     bsl::ut_then{} = [&]() noexcept {
                         bsl::ut_check(
                             SHIM_FAILURE == handle_vcpu_kvm_get_regs(&mut_vcpu, &mut_args));
+                    };
+                    bsl::ut_cleanup{} = [&]() noexcept {
+                        g_mut_mv_vs_op_reg_get_list = {};
                     };
                 };
             };

@@ -44,8 +44,16 @@ extern "C"
      */
     struct kvm_userspace_memory_region
     {
-        /** @brief replace me with contents from KVM API */
-        int32_t dummy;
+        /** @brief the guest physical memory slot */
+        uint32_t slot;
+        /** @brief the flags for this slot (log dirty pages or mem readonly) */
+        uint32_t flags;
+        /** @brief the guest physical address */
+        uint64_t guest_phys_addr;
+        /** @brief the memory size in bytes */
+        uint64_t memory_size;
+        /** @brief the start of the userspace allocated memory */
+        uint64_t userspace_addr;
     };
 
 #pragma pack(pop)

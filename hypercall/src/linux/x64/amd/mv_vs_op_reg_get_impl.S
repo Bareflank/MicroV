@@ -38,8 +38,7 @@ mv_vs_op_reg_get_impl:
     mov r11, rsi
     mov r12, rdx
     vmmcall
-    mov rdx, r10
-    mov [rcx], dx
+    mov [rcx], r10
 
     pop r12
 

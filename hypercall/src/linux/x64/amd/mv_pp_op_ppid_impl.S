@@ -34,6 +34,8 @@ mv_pp_op_ppid_impl:
     mov rax, 0x764D000000030000
     mov r10, rdi
     vmmcall
+    mov rdx, r10
+    mov [rsi], dx
 
     ret
     int 3

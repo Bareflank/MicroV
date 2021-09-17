@@ -35,16 +35,23 @@ extern "C"
 {
 #endif
 
+/** @brief TBD */
+#define KVM_MEM_LOG_DIRTY_PAGES (((uint64_t)1) << ((uint64_t)0))
+/** @brief allows a slot to be read-only */
+#define KVM_MEM_READONLY (((uint64_t)1) << ((uint64_t)1))
+
     /**
      * <!-- description -->
      *   @brief Handles the execution of kvm_set_user_memory_region.
      *
      * <!-- inputs/outputs -->
-     *   @param pmut_ioctl_args the arguments provided by userspace
+     *   @param args the arguments provided by userspace
+     *   @param pmut_vm the shim_vm_t argument
      *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
      */
     NODISCARD int64_t handle_vm_kvm_set_user_memory_region(
-        struct kvm_userspace_memory_region *const pmut_ioctl_args) NOEXCEPT;
+        struct kvm_userspace_memory_region const *const args,
+        struct shim_vm_t *const pmut_vm) NOEXCEPT;
 
 #ifdef __cplusplus
 }

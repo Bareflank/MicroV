@@ -29,6 +29,7 @@
 #include <bf_syscall_t.hpp>
 #include <gs_t.hpp>
 #include <intrinsic_t.hpp>
+#include <page_pool_t.hpp>
 #include <tls_t.hpp>
 
 #include <bsl/discard.hpp>
@@ -95,6 +96,7 @@ namespace microv
         ///   @param gs the gs_t to use
         ///   @param tls the tls_t to use
         ///   @param sys the bf_syscall_t to use
+        ///   @param page_pool the page_pool_t to use
         ///   @param intrinsic the intrinsic_t to use
         ///
         constexpr void
@@ -102,9 +104,10 @@ namespace microv
             gs_t const &gs,
             tls_t const &tls,
             syscall::bf_syscall_t const &sys,
+            page_pool_t const &page_pool,
             intrinsic_t const &intrinsic) noexcept
         {
-            this->deallocate(gs, tls, sys, intrinsic);
+            this->deallocate(gs, tls, sys, page_pool, intrinsic);
             m_id = {};
         }
 
@@ -128,6 +131,7 @@ namespace microv
         ///   @param gs the gs_t to use
         ///   @param tls the tls_t to use
         ///   @param sys the bf_syscall_t to use
+        ///   @param page_pool the page_pool_t to use
         ///   @param intrinsic the intrinsic_t to use
         ///   @param vmid the ID of the VM to assign the vp_t to
         ///   @param ppid the ID of the PP to assign the vp_t to
@@ -138,6 +142,7 @@ namespace microv
             gs_t const &gs,
             tls_t const &tls,
             syscall::bf_syscall_t const &sys,
+            page_pool_t const &page_pool,
             intrinsic_t const &intrinsic,
             bsl::safe_u16 const &vmid,
             bsl::safe_u16 const &ppid) noexcept -> bsl::safe_u16
@@ -152,6 +157,7 @@ namespace microv
 
             bsl::discard(gs);
             bsl::discard(tls);
+            bsl::discard(page_pool);
             bsl::discard(intrinsic);
 
             m_assigned_vmid = ~vmid;
@@ -179,6 +185,7 @@ namespace microv
         ///   @param gs the gs_t to use
         ///   @param tls the tls_t to use
         ///   @param sys the bf_syscall_t to use
+        ///   @param page_pool the page_pool_t to use
         ///   @param intrinsic the intrinsic_t to use
         ///
         constexpr void
@@ -186,12 +193,14 @@ namespace microv
             gs_t const &gs,
             tls_t const &tls,
             syscall::bf_syscall_t const &sys,
+            page_pool_t const &page_pool,
             intrinsic_t const &intrinsic) noexcept
         {
             bsl::expects(this->is_active().is_invalid());
 
             bsl::discard(gs);
             bsl::discard(tls);
+            bsl::discard(page_pool);
             bsl::discard(intrinsic);
 
             m_assigned_ppid = {};

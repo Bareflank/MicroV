@@ -36,6 +36,7 @@
 #include <handle_vcpu_kvm_set_sregs.h>
 #include <handle_vm_kvm_create_vcpu.h>
 #include <handle_vm_kvm_destroy_vcpu.h>
+#include <handle_vm_kvm_set_user_memory_region.h>
 #include <linux/anon_inodes.h>
 #include <linux/kernel.h>
 #include <linux/miscdevice.h>
@@ -79,6 +80,8 @@ vm_release_impl(struct shim_vm_t *const pmut_vm)
     }
 
     handle_system_kvm_destroy_vm(pmut_vm);
+
+    platform_mutex_destroy(&pmut_vm->mutex);
     vfree(pmut_vm);
 
     return 0;
@@ -146,14 +149,13 @@ dispatch_system_kvm_create_vm(void)
 {
     char name[22];
 
-    struct shim_vm_t *const pmut_vm =
-        (struct shim_vm_t *)vmalloc(sizeof(struct shim_vm_t));
-
+    struct shim_vm_t *const pmut_vm = vmalloc(sizeof(struct shim_vm_t));
     if (NULL == pmut_vm) {
         bferror("vmalloc failed");
-        return -EINVAL;
+        return -ENOMEM;
     }
 
+    platform_memset(pmut_vm, ((uint8_t)0), sizeof(struct shim_vm_t));
     platform_mutex_init(&pmut_vm->mutex);
 
     if (handle_system_kvm_create_vm(pmut_vm)) {
@@ -163,8 +165,7 @@ dispatch_system_kvm_create_vm(void)
 
     snprintf(name, sizeof(name), "kvm-vm:%d", pmut_vm->id);
 
-    pmut_vm->fd =
-        (uint64_t)anon_inode_getfd(name, &fops_vm, pmut_vm, O_RDWR | O_CLOEXEC);
+    pmut_vm->fd = anon_inode_getfd(name, &fops_vm, pmut_vm, O_RDWR | O_CLOEXEC);
     if ((int32_t)pmut_vm->fd < 0) {
         bferror("anon_inode_getfd failed");
         goto handle_system_kvm_create_vm_failed;
@@ -566,10 +567,21 @@ dispatch_vm_kvm_set_tss_addr(void)
 
 static long
 dispatch_vm_kvm_set_user_memory_region(
-    struct kvm_userspace_memory_region *const ioctl_args)
+    struct kvm_userspace_memory_region const *const user_args,
+    struct shim_vm_t *const pmut_vm)
 {
-    (void)ioctl_args;
-    return -EINVAL;
+    struct kvm_userspace_memory_region mut_args;
+    if (platform_copy_from_user(&mut_args, user_args, sizeof(mut_args))) {
+        bferror("platform_copy_from_user failed");
+        return -EINVAL;
+    }
+
+    if (handle_vm_kvm_set_user_memory_region(&mut_args, pmut_vm)) {
+        bferror("handle_vm_kvm_set_user_memory_region failed");
+        return -EINVAL;
+    }
+
+    return 0;
 }
 
 static long
@@ -743,7 +755,8 @@ dev_unlocked_ioctl_vm(
 
         case KVM_SET_USER_MEMORY_REGION: {
             return dispatch_vm_kvm_set_user_memory_region(
-                (struct kvm_userspace_memory_region *)ioctl_args);
+                (struct kvm_userspace_memory_region const *)ioctl_args,
+                pmut_mut_vm);
         }
 
         case KVM_SIGNAL_MSI: {
@@ -834,15 +847,17 @@ dispatch_vcpu_kvm_get_regs(
     struct shim_vcpu_t const *const vcpu, struct kvm_regs *const user_args)
 {
     struct kvm_regs mut_args;
-
     if (handle_vcpu_kvm_get_regs(vcpu, &mut_args)) {
         bferror("handle_vcpu_kvm_get_regs failed");
         return -EINVAL;
     }
 
-    platform_copy_to_user(user_args, &mut_args, sizeof(struct kvm_regs));
+    if (platform_copy_to_user(user_args, &mut_args, sizeof(struct kvm_regs))) {
+        bferror("platform_copy_from_user failed");
+        return -EINVAL;
+    }
 
-    return (long)1;
+    return 0;
 }
 
 static long
@@ -988,14 +1003,18 @@ dispatch_vcpu_kvm_set_regs(
     struct shim_vcpu_t const *const vcpu, struct kvm_regs *const user_args)
 {
     struct kvm_regs mut_args;
-
-    platform_copy_from_user(&mut_args, user_args, sizeof(kvm_regs));
-
-    if (handle_vcpu_kvm_set_regs(vcpu, &mut_args)) {
-        bferror("handle_vcpu_kvm_set_regs failed") return -EINVAL;
+    if (platform_copy_from_user(
+            &mut_args, user_args, sizeof(struct kvm_regs))) {
+        bferror("platform_copy_from_user failed");
+        return -EINVAL;
     }
 
-    return (long)1;
+    if (handle_vcpu_kvm_set_regs(vcpu, &mut_args)) {
+        bferror("handle_vcpu_kvm_set_regs failed");
+        return -EINVAL;
+    }
+
+    return 0;
 }
 
 static long

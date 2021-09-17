@@ -28,6 +28,7 @@
 #define SHIM_VM_T_H
 
 #include <constants.h>
+#include <kvm_userspace_memory_region.h>
 #include <platform.h>
 #include <shim_vcpu_t.h>
 #include <stdint.h>
@@ -62,6 +63,9 @@ extern "C"
 
         /** @brief stores the VCPUs associated with this VM */
         struct shim_vcpu_t vcpus[MICROV_MAX_VCPUS];
+
+        /** @brief stores the memory slots associated with this VM */
+        struct kvm_userspace_memory_region slots[MICROV_MAX_SLOTS];
     };
 
 #pragma pack(pop)

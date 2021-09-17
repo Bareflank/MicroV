@@ -181,7 +181,7 @@ namespace hypercall
         ///     current PP's shared page.
         ///
         /// <!-- inputs/outputs -->
-        ///   @return Returns MV_STATUS_SUCCESS on success, MV_FAILURE_UNKNOWN
+        ///   @return Returns MV_STATUS_SUCCESS on success, MV_STATUS_FAILURE_UNKNOWN
         ///     and friends on failure.
         ///
         [[nodiscard]] constexpr auto
@@ -206,7 +206,7 @@ namespace hypercall
         ///
         /// <!-- inputs/outputs -->
         ///   @param gpa The GPA to set the requested PP's shared page to
-        ///   @return Returns MV_STATUS_SUCCESS on success, MV_FAILURE_UNKNOWN
+        ///   @return Returns MV_STATUS_SUCCESS on success, MV_STATUS_FAILURE_UNKNOWN
         ///     and friends on failure.
         ///
         [[nodiscard]] constexpr auto
@@ -214,6 +214,7 @@ namespace hypercall
         {
             bsl::expects(gpa.is_valid_and_checked());
             bsl::expects(gpa.is_pos());
+            bsl::expects(gpa < MICROV_MAX_GPA_SIZE);
             bsl::expects(mv_is_page_aligned(gpa));
 
             mv_status_t const ret{mv_pp_op_set_shared_page_gpa_impl(m_hndl.get(), gpa.get())};
@@ -380,7 +381,7 @@ namespace hypercall
         /// <!-- inputs/outputs -->
         ///   @param dst_vmid The ID of the dst VM to map memory to
         ///   @param src_vmid The ID of the src VM to map memory from
-        ///   @return Returns MV_STATUS_SUCCESS on success, MV_FAILURE_UNKNOWN
+        ///   @return Returns MV_STATUS_SUCCESS on success, MV_STATUS_FAILURE_UNKNOWN
         ///     and friends on failure.
         ///
         [[nodiscard]] constexpr auto
@@ -425,7 +426,7 @@ namespace hypercall
         ///
         /// <!-- inputs/outputs -->
         ///   @param vmid The ID of the VM to unmap memory from
-        ///   @return Returns MV_STATUS_SUCCESS on success, MV_FAILURE_UNKNOWN
+        ///   @return Returns MV_STATUS_SUCCESS on success, MV_STATUS_FAILURE_UNKNOWN
         ///     and friends on failure.
         ///
         [[nodiscard]] constexpr auto
@@ -891,12 +892,12 @@ namespace hypercall
             bsl::expects(gla.is_pos());
             bsl::expects(mv_is_page_aligned(gla));
 
-            bsl::safe_u64 mut_gpa_and_flags{};
+            bsl::safe_u64 mut_gpa_and_fgs{};
             constexpr auto gpa_mask{0xFFFFFFFFFFFFF000_u64};
             constexpr auto fgs_mask{0x0000000000000FFF_u64};
 
             mv_status_t const ret{mv_vs_op_gla_to_gpa_impl(
-                m_hndl.get(), vsid.get(), gla.get(), mut_gpa_and_flags.data())};
+                m_hndl.get(), vsid.get(), gla.get(), mut_gpa_and_fgs.data())};
 
             if (bsl::unlikely(ret != MV_STATUS_SUCCESS)) {
                 bsl::error() << "mv_vs_op_gla_to_gpa_impl failed with status "    // --
@@ -907,7 +908,44 @@ namespace hypercall
                 return {{}, {}, {}, {}, false};
             }
 
-            return {{}, gla, (mut_gpa_and_flags & gpa_mask), (mut_gpa_and_flags & fgs_mask), true};
+            auto const gpa{mut_gpa_and_fgs & gpa_mask};
+            auto const fgs{mut_gpa_and_fgs & fgs_mask};
+
+            if (bsl::unlikely(gpa.is_zero())) {
+                bsl::error() << "the GPA "                                         // --
+                             << bsl::hex(gpa)                                      // --
+                             << " returned by mv_vs_op_gla_to_gpa_impl is NULL"    // --
+                             << bsl::endl                                          // --
+                             << bsl::here();                                       // --
+
+                return {{}, {}, {}, {}, false};
+            }
+
+            if (bsl::unlikely(gpa >= MICROV_MAX_GPA_SIZE)) {
+                bsl::error() << "the GPA "                                                 // --
+                             << bsl::hex(gpa)                                              // --
+                             << " returned by mv_vs_op_gla_to_gpa_impl is out of range"    // --
+                             << bsl::endl                                                  // --
+                             << bsl::here();                                               // --
+
+                return {{}, {}, {}, {}, false};
+            }
+
+            if (bsl::unlikely(!mv_is_page_aligned(gpa))) {
+                bsl::error() << "the GPA "                                                     // --
+                             << bsl::hex(gpa)                                                  // --
+                             << " returned by mv_vs_op_gla_to_gpa_impl is not page aligned"    // --
+                             << bsl::endl                                                      // --
+                             << bsl::here();                                                   // --
+
+                return {{}, {}, {}, {}, false};
+            }
+
+            /// TODO:
+            /// - Verify the flags
+            ///
+
+            return {{}, gla, gpa, fgs, true};
         }
 
         /// <!-- description -->
@@ -924,7 +962,7 @@ namespace hypercall
         ///     specific to the exit condition is returned providing software with
         ///     the information that it needs to handle the exit.
         ///
-        /// <!-- inputs/outputs -->s
+        /// <!-- inputs/outputs -->
         ///   @param vsid The ID of the VS to run
         ///   @return Returns A mv_exit_reason_t describing the reason for the exit
         ///
@@ -992,7 +1030,7 @@ namespace hypercall
         ///   @param vsid The ID of the VS to set
         ///   @param reg The register to set
         ///   @param val The value to write to the requested register
-        ///   @return Returns MV_STATUS_SUCCESS on success, MV_FAILURE_UNKNOWN
+        ///   @return Returns MV_STATUS_SUCCESS on success, MV_STATUS_FAILURE_UNKNOWN
         ///     and friends on failure.
         ///
         [[nodiscard]] constexpr auto
@@ -1029,7 +1067,7 @@ namespace hypercall
         ///
         /// <!-- inputs/outputs -->
         ///   @param vsid The ID of the VS to query
-        ///   @return Returns MV_STATUS_SUCCESS on success, MV_FAILURE_UNKNOWN
+        ///   @return Returns MV_STATUS_SUCCESS on success, MV_STATUS_FAILURE_UNKNOWN
         ///     and friends on failure.
         ///
         [[nodiscard]] constexpr auto
@@ -1062,7 +1100,7 @@ namespace hypercall
         ///
         /// <!-- inputs/outputs -->
         ///   @param vsid The ID of the VS to set
-        ///   @return Returns MV_STATUS_SUCCESS on success, MV_FAILURE_UNKNOWN
+        ///   @return Returns MV_STATUS_SUCCESS on success, MV_STATUS_FAILURE_UNKNOWN
         ///     and friends on failure.
         ///
         [[nodiscard]] constexpr auto
@@ -1125,7 +1163,7 @@ namespace hypercall
         ///   @param vsid The ID of the VS to set
         ///   @param msr The index of the MSR to set
         ///   @param val The value to write to the requested MSR
-        ///   @return Returns MV_STATUS_SUCCESS on success, MV_FAILURE_UNKNOWN
+        ///   @return Returns MV_STATUS_SUCCESS on success, MV_STATUS_FAILURE_UNKNOWN
         ///     and friends on failure.
         ///
         [[nodiscard]] constexpr auto
@@ -1162,7 +1200,7 @@ namespace hypercall
         ///
         /// <!-- inputs/outputs -->
         ///   @param vsid The ID of the VS to query
-        ///   @return Returns MV_STATUS_SUCCESS on success, MV_FAILURE_UNKNOWN
+        ///   @return Returns MV_STATUS_SUCCESS on success, MV_STATUS_FAILURE_UNKNOWN
         ///     and friends on failure.
         ///
         [[nodiscard]] constexpr auto
@@ -1194,7 +1232,7 @@ namespace hypercall
         ///
         /// <!-- inputs/outputs -->
         ///   @param vsid The ID of the VS to set
-        ///   @return Returns MV_STATUS_SUCCESS on success, MV_FAILURE_UNKNOWN
+        ///   @return Returns MV_STATUS_SUCCESS on success, MV_STATUS_FAILURE_UNKNOWN
         ///     and friends on failure.
         ///
         [[nodiscard]] constexpr auto

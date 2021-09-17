@@ -25,9 +25,11 @@
 #ifndef MV_RDL_T_HPP
 #define MV_RDL_T_HPP
 
-#include <mv_rdl_entry_t.hpp>    // IWYU pragma: export
+#include "mv_rdl_entry_t.hpp"    // IWYU pragma: export
 
-#include <bsl/cstdint.hpp>
+#include <bsl/array.hpp>
+#include <bsl/convert.hpp>
+#include <bsl/safe_integral.hpp>
 
 namespace hypercall
 {
@@ -80,7 +82,7 @@ namespace hypercall
         /// @brief stores the number of entries in the RDL
         uint64_t num_entries;
         /// @brief stores each entry in the RDL
-        mv_rdl_entry_t entries[MV_RDL_MAX_ENTRIES];
+        bsl::array<mv_rdl_entry_t, MV_RDL_MAX_ENTRIES.get()> entries;
     };
 }
 

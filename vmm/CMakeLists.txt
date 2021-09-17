@@ -39,6 +39,7 @@ if(HYPERVISOR_TARGET_ARCH STREQUAL "AuthenticAMD" OR HYPERVISOR_TARGET_ARCH STRE
         target_include_directories(vmm PRIVATE
             include/x64/amd
             src/x64/amd
+            ../hypercall/include/x64/amd
         )
     endif()
 
@@ -46,12 +47,14 @@ if(HYPERVISOR_TARGET_ARCH STREQUAL "AuthenticAMD" OR HYPERVISOR_TARGET_ARCH STRE
         target_include_directories(vmm PRIVATE
             include/x64/intel
             src/x64/intel
+            ../hypercall/include/x64/intel
         )
     endif()
 
     target_include_directories(vmm PRIVATE
         include/x64
         src/x64
+        ../hypercall/include/x64
     )
 endif()
 
@@ -99,8 +102,11 @@ endif()
 # ------------------------------------------------------------------------------
 
 target_compile_definitions(hypervisor INTERFACE
-    MICROV_MAX_VCPUS=${MICROV_MAX_VCPUS}_umx
     MICROV_MAX_PP_MAPS=${MICROV_MAX_PP_MAPS}_umx
+    MICROV_MAX_VMS=${MICROV_MAX_VMS}_umx
+    MICROV_MAX_VCPUS=${MICROV_MAX_VCPUS}_umx
+    MICROV_MAX_GPA_SIZE=${MICROV_MAX_GPA_SIZE}_umx
+    MICROV_MAX_SLOTS=${MICROV_MAX_SLOTS}_umx
 )
 
 # ------------------------------------------------------------------------------

@@ -27,6 +27,7 @@
 
 #include <bf_syscall_t.hpp>
 #include <dispatch_vmcall_abi_helpers.hpp>
+#include <mv_reg_t.hpp>
 
 #include <bsl/convert.hpp>
 #include <bsl/debug.hpp>
@@ -49,7 +50,6 @@ namespace microv
     ///     Returns false otherwise.
     ///
     [[nodiscard]] constexpr auto
-    // NOLINTNEXTLINE(bsl-non-safe-integral-types-are-forbidden)
     is_version_supported(bsl::safe_u64 const &reg) noexcept -> bool
     {
         auto const version{bsl::to_u32(reg)};
@@ -275,6 +275,68 @@ namespace microv
         return true;
     }
 
+    /// <!-- description -->
+    ///   @brief Returns true if the vs_t associated with the
+    ///     provided vsid is assigned to the current PP. Returns false
+    ///     otherwise.
+    ///
+    /// <!-- inputs/outputs -->
+    ///   @param sys the bf_syscall_t to use
+    ///   @param vs_pool the vs_pool_t to use
+    ///   @param vsid the ID of the VS to query
+    ///   @return Returns true if the vs_t associated with the
+    ///     provided vsid is assigned to the current PP. Returns false
+    ///     otherwise.
+    ///
+    [[nodiscard]] constexpr auto
+    is_vs_assigned_to_current_pp(
+        syscall::bf_syscall_t const &sys,
+        vs_pool_t const &vs_pool,
+        bsl::safe_u16 const &vsid) noexcept -> bool
+    {
+        auto const assigned_ppid{vs_pool.assigned_pp(vsid)};
+        if (bsl::unlikely(assigned_ppid != sys.bf_tls_ppid())) {
+            bsl::error() << "vs "                              // --
+                         << bsl::hex(vsid)                     // --
+                         << " is assigned to pp "              // --
+                         << bsl::hex(assigned_ppid)            // --
+                         << " which is not the current pp "    // --
+                         << bsl::hex(sys.bf_tls_ppid())        // --
+                         << " and therefore cannot be used"    // --
+                         << bsl::endl                          // --
+                         << bsl::here();                       // --
+
+            return false;
+        }
+
+        return true;
+    }
+
+    /// <!-- description -->
+    ///   @brief Returns true if the RDL is safe to use. Returns
+    ///     false otherwise.
+    ///
+    /// <!-- inputs/outputs -->
+    ///   @param rdl the RDL to verify
+    ///   @return Returns true if the RDL is safe to use. Returns
+    ///     false otherwise.
+    ///
+    [[nodiscard]] constexpr auto
+    is_rdl_safe(hypercall::mv_rdl_t const &rdl) noexcept -> bool
+    {
+        if (bsl::unlikely(rdl.num_entries >= rdl.entries.size())) {
+            bsl::error() << "rdl.num_entries "           // --
+                         << bsl::hex(rdl.num_entries)    // --
+                         << " is out of range "          // --
+                         << bsl::endl                    // --
+                         << bsl::here();                 // --
+
+            return false;
+        }
+
+        return true;
+    }
+
     /// ------------------------------------------------------------------------
     /// Get Functions
     /// ------------------------------------------------------------------------
@@ -285,21 +347,24 @@ namespace microv
     ///     bsl::safe_u16::failure().
     ///
     /// <!-- inputs/outputs -->
-    ///   @param tls the current TLS block
+    ///   @param sys the bf_syscall_t to use
     ///   @param reg the register to get the ppid from.
     ///   @return Given an input register, returns a ppid if the provided
     ///     register contains a valid ppid. Otherwise, this function returns
     ///     bsl::safe_u16::failure().
     ///
     [[nodiscard]] constexpr auto
-    // NOLINTNEXTLINE(bsl-non-safe-integral-types-are-forbidden)
-    get_ppid(tls_t const &tls, bsl::safe_u64 const &reg) noexcept -> bsl::safe_u16
+    get_ppid(syscall::bf_syscall_t const &sys, bsl::safe_u64 const &reg) noexcept -> bsl::safe_u16
     {
         auto const ppid{bsl::to_u16_unsafe(reg)};
-        if (bsl::unlikely(syscall::BF_INVALID_ID == ppid)) {
+        if (ppid == hypercall::MV_SELF_ID) {
+            return sys.bf_tls_ppid();
+        }
+
+        if (bsl::unlikely(hypercall::MV_INVALID_ID == ppid)) {
             bsl::error() << "the provided ppid "                      // --
                          << bsl::hex(ppid)                            // --
-                         << " is BF_INVALID_ID and cannot be used"    // --
+                         << " is MV_INVALID_ID and cannot be used"    // --
                          << bsl::endl                                 // --
                          << bsl::here();                              // --
 
@@ -316,7 +381,7 @@ namespace microv
             return bsl::safe_u16::failure();
         }
 
-        if (bsl::unlikely(ppid >= tls.online_pps)) {
+        if (bsl::unlikely(ppid >= sys.bf_tls_online_pps())) {
             bsl::error() << "the provided ppid "                   // --
                          << bsl::hex(ppid)                         // --
                          << " is not online and cannot be used"    // --
@@ -342,7 +407,6 @@ namespace microv
     ///     bsl::safe_u16::failure().
     ///
     [[nodiscard]] constexpr auto
-    // NOLINTNEXTLINE(bsl-non-safe-integral-types-are-forbidden)
     get_vmid(syscall::bf_syscall_t const &sys, bsl::safe_u64 const &reg) noexcept -> bsl::safe_u16
     {
         auto const vmid{bsl::to_u16_unsafe(reg)};
@@ -375,7 +439,7 @@ namespace microv
 
     /// <!-- description -->
     ///   @brief Given an input register, returns a vmid if the provided
-    ///     register contains a valid vmid and the VM associated with the
+    ///     register contains a valid vmid and the vm_t associated with the
     ///     vmid is allocated. Otherwise, this function returns
     ///     bsl::safe_u16::failure().
     ///
@@ -384,12 +448,11 @@ namespace microv
     ///   @param reg the register to get the vmid from.
     ///   @param vm_pool the vm_pool_t to use
     ///   @return Given an input register, returns a vmid if the provided
-    ///     register contains a valid vmid and the VM associated with the
+    ///     register contains a valid vmid and the vm_t associated with the
     ///     vmid is allocated. Otherwise, this function returns
     ///     bsl::safe_u16::failure().
     ///
     [[nodiscard]] constexpr auto
-    // NOLINTNEXTLINE(bsl-non-safe-integral-types-are-forbidden)
     get_allocated_vmid(
         syscall::bf_syscall_t const &sys,
         bsl::safe_u64 const &reg,
@@ -428,7 +491,6 @@ namespace microv
     ///     bsl::safe_u16::failure().
     ///
     [[nodiscard]] constexpr auto
-    // NOLINTNEXTLINE(bsl-non-safe-integral-types-are-forbidden)
     get_vpid(syscall::bf_syscall_t const &sys, bsl::safe_u64 const &reg) noexcept -> bsl::safe_u16
     {
         auto const vpid{bsl::to_u16_unsafe(reg)};
@@ -436,10 +498,10 @@ namespace microv
             return sys.bf_tls_vpid();
         }
 
-        if (bsl::unlikely(syscall::BF_INVALID_ID == vpid)) {
+        if (bsl::unlikely(hypercall::MV_INVALID_ID == vpid)) {
             bsl::error() << "the provided vpid "                      // --
                          << bsl::hex(vpid)                            // --
-                         << " is BF_INVALID_ID and cannot be used"    // --
+                         << " is MV_INVALID_ID and cannot be used"    // --
                          << bsl::endl                                 // --
                          << bsl::here();                              // --
 
@@ -461,7 +523,7 @@ namespace microv
 
     /// <!-- description -->
     ///   @brief Given an input register, returns a vpid if the provided
-    ///     register contains a valid vpid and the VM associated with the
+    ///     register contains a valid vpid and the vp_t associated with the
     ///     vpid is allocated. Otherwise, this function returns
     ///     bsl::safe_u16::failure().
     ///
@@ -470,12 +532,11 @@ namespace microv
     ///   @param reg the register to get the vpid from.
     ///   @param vp_pool the vp_pool_t to use
     ///   @return Given an input register, returns a vpid if the provided
-    ///     register contains a valid vpid and the VM associated with the
+    ///     register contains a valid vpid and the vp_t associated with the
     ///     vpid is allocated. Otherwise, this function returns
     ///     bsl::safe_u16::failure().
     ///
     [[nodiscard]] constexpr auto
-    // NOLINTNEXTLINE(bsl-non-safe-integral-types-are-forbidden)
     get_allocated_vpid(
         syscall::bf_syscall_t const &sys,
         bsl::safe_u64 const &reg,
@@ -514,7 +575,6 @@ namespace microv
     ///     bsl::safe_u16::failure().
     ///
     [[nodiscard]] constexpr auto
-    // NOLINTNEXTLINE(bsl-non-safe-integral-types-are-forbidden)
     get_vsid(syscall::bf_syscall_t const &sys, bsl::safe_u64 const &reg) noexcept -> bsl::safe_u16
     {
         auto const vsid{bsl::to_u16_unsafe(reg)};
@@ -522,10 +582,10 @@ namespace microv
             return sys.bf_tls_vsid();
         }
 
-        if (bsl::unlikely(syscall::BF_INVALID_ID == vsid)) {
+        if (bsl::unlikely(hypercall::MV_INVALID_ID == vsid)) {
             bsl::error() << "the provided vsid "                      // --
                          << bsl::hex(vsid)                            // --
-                         << " is BF_INVALID_ID and cannot be used"    // --
+                         << " is MV_INVALID_ID and cannot be used"    // --
                          << bsl::endl                                 // --
                          << bsl::here();                              // --
 
@@ -547,7 +607,7 @@ namespace microv
 
     /// <!-- description -->
     ///   @brief Given an input register, returns a vsid if the provided
-    ///     register contains a valid vsid and the VM associated with the
+    ///     register contains a valid vsid and the vs_t associated with the
     ///     vsid is allocated. Otherwise, this function returns
     ///     bsl::safe_u16::failure().
     ///
@@ -556,12 +616,11 @@ namespace microv
     ///   @param reg the register to get the vsid from.
     ///   @param vs_pool the vs_pool_t to use
     ///   @return Given an input register, returns a vsid if the provided
-    ///     register contains a valid vsid and the VM associated with the
+    ///     register contains a valid vsid and the vs_t associated with the
     ///     vsid is allocated. Otherwise, this function returns
     ///     bsl::safe_u16::failure().
     ///
     [[nodiscard]] constexpr auto
-    // NOLINTNEXTLINE(bsl-non-safe-integral-types-are-forbidden)
     get_allocated_vsid(
         syscall::bf_syscall_t const &sys,
         bsl::safe_u64 const &reg,
@@ -588,6 +647,42 @@ namespace microv
     }
 
     /// <!-- description -->
+    ///   @brief Given an input register, returns a vsid if the provided
+    ///     register contains a valid vsid and the vs_t associated with the
+    ///     vsid is allocated and assigned to the current PP. Otherwise, this
+    ///     function returns bsl::safe_u16::failure().
+    ///
+    /// <!-- inputs/outputs -->
+    ///   @param sys the bf_syscall_t to use
+    ///   @param reg the register to get the vsid from.
+    ///   @param vs_pool the vs_pool_t to use
+    ///   @return Given an input register, returns a vsid if the provided
+    ///     register contains a valid vsid and the vs_t associated with the
+    ///     vsid is allocated and assigned to the current PP. Otherwise, this
+    ///     function returns bsl::safe_u16::failure().
+    ///
+    [[nodiscard]] constexpr auto
+    get_locally_assigned_vsid(
+        syscall::bf_syscall_t const &sys,
+        bsl::safe_u64 const &reg,
+        vs_pool_t const &vs_pool) noexcept -> bsl::safe_u16
+    {
+        auto const vsid{get_allocated_vsid(sys, reg, vs_pool)};
+        if (bsl::unlikely(vsid.is_invalid())) {
+            bsl::print<bsl::V>() << bsl::here();
+            return bsl::safe_u16::failure();
+        }
+
+        bool const vs_assigned_to_pp{is_vs_assigned_to_current_pp(sys, vs_pool, vsid)};
+        if (bsl::unlikely(!vs_assigned_to_pp)) {
+            bsl::print<bsl::V>() << bsl::here();
+            return bsl::safe_u16::failure();
+        }
+
+        return vsid;
+    }
+
+    /// <!-- description -->
     ///   @brief Given an input register, returns a guest linear address if
     ///     the provided register contains a valid guest linear address.
     ///     Otherwise, this function returns bsl::safe_umx::failure().
@@ -599,7 +694,6 @@ namespace microv
     ///     Otherwise, this function returns bsl::safe_umx::failure().
     ///
     [[nodiscard]] constexpr auto
-    // NOLINTNEXTLINE(bsl-non-safe-integral-types-are-forbidden)
     get_gla(bsl::safe_u64 const &reg) noexcept -> bsl::safe_umx
     {
         /// TODO:
@@ -635,6 +729,81 @@ namespace microv
 
         return gla;
     }
+
+    /// <!-- description -->
+    ///   @brief Given an input register, returns a guest physical address if
+    ///     the provided register contains a valid guest physical address.
+    ///     Otherwise, this function returns bsl::safe_umx::failure().
+    ///
+    /// <!-- inputs/outputs -->
+    ///   @param reg the register to get the physical address from.
+    ///   @return Given an input register, returns a guest physical address if
+    ///     the provided register contains a valid guest physical address.
+    ///     Otherwise, this function returns bsl::safe_umx::failure().
+    ///
+    [[nodiscard]] constexpr auto
+    get_gpa(bsl::safe_u64 const &reg) noexcept -> bsl::safe_umx
+    {
+        auto const gpa{bsl::to_umx(reg)};
+        if (bsl::unlikely(gpa.is_zero())) {
+            bsl::error() << "the guest physical address "              // --
+                         << bsl::hex(gpa)                              // --
+                         << " is a NULL address and cannot be used"    // --
+                         << bsl::endl                                  // --
+                         << bsl::here();                               // --
+
+            return bsl::safe_umx::failure();
+        }
+
+        if (bsl::unlikely(gpa >= MICROV_MAX_GPA_SIZE)) {
+            bsl::error() << "the guest physical address "            // --
+                         << bsl::hex(gpa)                            // --
+                         << " is out of range and cannot be used"    // --
+                         << bsl::endl                                // --
+                         << bsl::here();                             // --
+
+            return bsl::safe_umx::failure();
+        }
+
+        bool const aligned{syscall::bf_is_page_aligned(gpa)};
+        if (bsl::unlikely(!aligned)) {
+            bsl::error() << "the guest physical address "                // --
+                         << bsl::hex(gpa)                                // --
+                         << " is not page aligned and cannot be used"    // --
+                         << bsl::endl                                    // --
+                         << bsl::here();                                 // --
+
+            return bsl::safe_umx::failure();
+        }
+
+        return gpa;
+    }
+
+    // /// <!-- description -->
+    // ///   @brief Given an input register, returns an msr index if the provided
+    // ///     register contains a valid msr index. Otherwise, this function
+    // ///     returns bsl::safe_u32::failure().
+    // ///
+    // /// <!-- inputs/outputs -->
+    // ///   @param reg the register to get the msr index from.
+    // ///   @return Given an input register, returns an msr index if the provided
+    // ///     register contains a valid msr index. Otherwise, this function
+    // ///     returns bsl::safe_u32::failure().
+    // ///
+    // [[nodiscard]] constexpr auto
+    // // NOLINTNEXTLINE(bsl-non-safe-integral-types-are-forbidden)
+    // get_msr(bsl::uint64 const reg) noexcept -> bsl::safe_u32
+    // {
+    //     /// TODO:
+    //     /// - We need to compile a whitelist of safe MSRs that an extension
+    //     ///   can read and then check to make sure that "reg" is in the
+    //     ///   list. The easiest way to do this is to see what MicroV needs
+    //     ///   and then limit this to that list. Any additional MSRs can be
+    //     ///   added on demand from the community as needed.
+    //     ///
+
+    //     return bsl::to_u32_unsafe(reg);
+    // }
 
     /// ------------------------------------------------------------------------
     /// Report Unsupported Functions
