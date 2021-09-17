@@ -26,6 +26,7 @@
 
 #include <helpers.hpp>
 #include <kvm_sregs.h>
+#include <shim_vcpu_t.h>
 
 #include <bsl/convert.hpp>
 #include <bsl/safe_integral.hpp>
