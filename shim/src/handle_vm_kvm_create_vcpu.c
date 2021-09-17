@@ -25,6 +25,7 @@
  */
 
 #include <debug.h>
+#include <detect_hypervisor.h>
 #include <g_mut_hndl.h>
 #include <mv_constants.h>
 #include <mv_hypercall.h>
@@ -55,6 +56,11 @@ handle_vm_kvm_create_vcpu(
     platform_expects(MV_INVALID_HANDLE != g_mut_hndl);
     platform_expects(NULL != pmut_vm);
     platform_expects(NULL != pmut_vcpu);
+
+    if (detect_hypervisor()) {
+        bferror("The shim is not running in a VM. Did you forget to start MicroV?");
+        return SHIM_FAILURE;
+    }
 
     platform_mutex_lock(&pmut_vm->mutex);
     for (mut_i = ((uint64_t)0); mut_i < MICROV_MAX_VCPUS; ++mut_i) {

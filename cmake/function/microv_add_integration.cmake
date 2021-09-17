@@ -48,8 +48,11 @@ macro(microv_add_integration NAME HEADERS)
     )
 
     target_compile_definitions(integration_${NAME} PRIVATE
-        MICROV_MAX_VCPUS=${MICROV_MAX_VCPUS}_umx
         MICROV_MAX_PP_MAPS=${MICROV_MAX_PP_MAPS}_umx
+        MICROV_MAX_VMS=${MICROV_MAX_VMS}_umx
+        MICROV_MAX_VCPUS=${MICROV_MAX_VCPUS}_umx
+        MICROV_MAX_GPA_SIZE=${MICROV_MAX_GPA_SIZE}_umx
+        MICROV_MAX_SLOTS=${MICROV_MAX_SLOTS}_umx
     )
 
     target_compile_options(integration_${NAME} PRIVATE -Wframe-larger-than=4294967295)

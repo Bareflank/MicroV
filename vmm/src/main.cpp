@@ -30,6 +30,7 @@
 #include <gs_initialize.hpp>
 #include <gs_t.hpp>
 #include <intrinsic_t.hpp>
+#include <page_pool_t.hpp>
 #include <pp_pool_t.hpp>
 #include <tls_t.hpp>
 #include <vm_pool_t.hpp>
@@ -47,6 +48,9 @@ namespace microv
     /// @brief stores the bf_syscall_t that this code will use
     // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
     constinit syscall::bf_syscall_t g_mut_sys{};
+    /// @brief stores the page_pool_t that this code will use
+    // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
+    constinit page_pool_t g_mut_page_pool{};
     /// @brief stores the intrinsic_t that this code will use
     // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
     constinit intrinsic_t g_mut_intrinsic{};
@@ -85,6 +89,7 @@ namespace microv
             g_mut_gs,                         // --
             g_mut_tls,                        // --
             g_mut_sys,                        // --
+            g_mut_page_pool,                  // --
             g_mut_intrinsic,                  // --
             g_mut_pp_pool,                    // --
             g_mut_vm_pool,                    // --
@@ -116,6 +121,7 @@ namespace microv
             g_mut_gs,                    // --
             g_mut_tls,                   // --
             g_mut_sys,                   // --
+            g_mut_page_pool,             // --
             g_mut_intrinsic,             // --
             g_mut_pp_pool,               // --
             g_mut_vm_pool,               // --
@@ -148,6 +154,7 @@ namespace microv
             g_mut_gs,                      // --
             g_mut_tls,                     // --
             g_mut_sys,                     // --
+            g_mut_page_pool,               // --
             g_mut_intrinsic,               // --
             g_mut_pp_pool,                 // --
             g_mut_vm_pool,                 // --
@@ -183,10 +190,10 @@ namespace microv
             return syscall::bf_control_op_exit();
         }
 
-        bsl::expects(gs_initialize(g_mut_gs, g_mut_sys, g_mut_intrinsic));
+        bsl::expects(gs_initialize(g_mut_gs, g_mut_sys, g_mut_page_pool, g_mut_intrinsic));
 
         g_mut_pp_pool.initialize(g_mut_gs, g_mut_tls, g_mut_sys, g_mut_intrinsic);
-        g_mut_vm_pool.initialize(g_mut_gs, g_mut_tls, g_mut_sys, g_mut_intrinsic);
+        g_mut_vm_pool.initialize(g_mut_gs, g_mut_tls, g_mut_sys, g_mut_page_pool, g_mut_intrinsic);
         g_mut_vp_pool.initialize(g_mut_gs, g_mut_tls, g_mut_sys, g_mut_intrinsic);
         g_mut_vs_pool.initialize(g_mut_gs, g_mut_tls, g_mut_sys, g_mut_intrinsic);
 

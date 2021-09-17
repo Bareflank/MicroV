@@ -27,7 +27,7 @@
 #ifndef MV_CONSTANTS_H
 #define MV_CONSTANTS_H
 
-#include <constants.h>
+#include <constants.h>    // IWYU pragma: export
 #include <mv_types.h>
 
 #ifdef __cplusplus
@@ -39,6 +39,11 @@ extern "C"
     // Page Alignment
     // -------------------------------------------------------------------------
 
+#ifdef __cplusplus
+    NODISCARD static inline bool
+#else
+NODISCARD static inline int
+#endif
     /**
      * <!-- description -->
      *   @brief Returns true if the provided address is page aligned,
@@ -49,21 +54,20 @@ extern "C"
      *   @return Returns 0 if the provided address is page aligned,
      *     returns a non-zero value otherwise.
      */
-    NODISCARD static inline uint64_t
     mv_is_page_aligned(uint64_t const addr) NOEXCEPT
     {
         uint64_t const mask = HYPERVISOR_PAGE_SIZE - ((uint64_t)1);
-        return (addr & mask);
+        return ((uint64_t)0) == (addr & mask);
     }
 
     /**
- * <!-- description -->
- *   @brief Returns the page aligned version of the addr
- *
- * <!-- inputs/outputs -->
- *   @param addr the address to query
- *   @return Returns the page aligned version of the addr
- */
+     * <!-- description -->
+     *   @brief Returns the page aligned version of the addr
+     *
+     * <!-- inputs/outputs -->
+     *   @param addr the address to query
+     *   @return Returns the page aligned version of the addr
+     */
     NODISCARD static inline uint64_t
     mv_page_aligned(uint64_t const addr) NOEXCEPT
     {
@@ -189,13 +193,13 @@ extern "C"
 #define MV_HYPERCALL_INDEX_MASK ((uint64_t)0x000000000000FFFF)
 
     /**
- * <!-- description -->
- *   @brief n/a
- *
- * <!-- inputs/outputs -->
- *   @param rax n/a
- *   @return n/a
- */
+     * <!-- description -->
+     *   @brief n/a
+     *
+     * <!-- inputs/outputs -->
+     *   @param rax n/a
+     *   @return n/a
+     */
     NODISCARD static inline uint64_t
     mv_hypercall_sig(uint64_t const rax) NOEXCEPT
     {
@@ -203,13 +207,13 @@ extern "C"
     }
 
     /**
- * <!-- description -->
- *   @brief n/a
- *
- * <!-- inputs/outputs -->
- *   @param rax n/a
- *   @return n/a
- */
+     * <!-- description -->
+     *   @brief n/a
+     *
+     * <!-- inputs/outputs -->
+     *   @param rax n/a
+     *   @return n/a
+     */
     NODISCARD static inline uint64_t
     mv_hypercall_flags(uint64_t const rax) NOEXCEPT
     {
@@ -217,13 +221,13 @@ extern "C"
     }
 
     /**
- * <!-- description -->
- *   @brief n/a
- *
- * <!-- inputs/outputs -->
- *   @param rax n/a
- *   @return n/a
- */
+     * <!-- description -->
+     *   @brief n/a
+     *
+     * <!-- inputs/outputs -->
+     *   @param rax n/a
+     *   @return n/a
+     */
     NODISCARD static inline uint64_t
     mv_hypercall_opcode(uint64_t const rax) NOEXCEPT
     {
@@ -231,13 +235,13 @@ extern "C"
     }
 
     /**
- * <!-- description -->
- *   @brief n/a
- *
- * <!-- inputs/outputs -->
- *   @param rax n/a
- *   @return n/a
- */
+     * <!-- description -->
+     *   @brief n/a
+     *
+     * <!-- inputs/outputs -->
+     *   @param rax n/a
+     *   @return n/a
+     */
     NODISCARD static inline uint64_t
     mv_hypercall_opcode_nosig(uint64_t const rax) NOEXCEPT
     {
@@ -245,13 +249,13 @@ extern "C"
     }
 
     /**
- * <!-- description -->
- *   @brief n/a
- *
- * <!-- inputs/outputs -->
- *   @param rax n/a
- *   @return n/a
- */
+     * <!-- description -->
+     *   @brief n/a
+     *
+     * <!-- inputs/outputs -->
+     *   @param rax n/a
+     *   @return n/a
+     */
     NODISCARD static inline uint64_t
     mv_hypercall_index(uint64_t const rax) NOEXCEPT
     {
@@ -275,13 +279,13 @@ extern "C"
 #define MV_INVALID_VERSION ((uint32_t)0x80000000)
 
     /**
- * <!-- description -->
- *   @brief n/a
- *
- * <!-- inputs/outputs -->
- *   @param version n/a
- *   @return n/a
- */
+     * <!-- description -->
+     *   @brief n/a
+     *
+     * <!-- inputs/outputs -->
+     *   @param version n/a
+     *   @return n/a
+     */
     NODISCARD static inline int32_t
     mv_is_spec1_supported(uint32_t const version) NOEXCEPT
     {

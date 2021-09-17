@@ -27,7 +27,7 @@
 
 #include <bf_syscall_t.hpp>
 #include <gs_t.hpp>
-#include <intrinsic_t.hpp>
+#include <page_pool_t.hpp>
 #include <pp_t.hpp>
 #include <tls_t.hpp>
 
@@ -56,26 +56,30 @@ namespace microv
         ///   @brief Returns the pp_t associated with the provided ppid.
         ///
         /// <!-- inputs/outputs -->
-        ///   @param sys the bf_syscall_t to use
+        ///   @param ppid the ID of the pp_t to get
         ///   @return Returns the pp_t associated with the provided ppid.
         ///
         [[nodiscard]] constexpr auto
-        get_pp(syscall::bf_syscall_t const &sys) noexcept -> pp_t *
+        get_pp(bsl::safe_u16 const &ppid) noexcept -> pp_t *
         {
-            return m_pool.at_if(bsl::to_idx(sys.bf_tls_ppid()));
+            bsl::expects(ppid.is_valid_and_checked());
+            bsl::expects(ppid < bsl::to_u16(m_pool.size()));
+            return m_pool.at_if(bsl::to_idx(ppid));
         }
 
         /// <!-- description -->
         ///   @brief Returns the pp_t associated with the provided ppid.
         ///
         /// <!-- inputs/outputs -->
-        ///   @param sys the bf_syscall_t to use
+        ///   @param ppid the ID of the pp_t to get
         ///   @return Returns the pp_t associated with the provided ppid.
         ///
         [[nodiscard]] constexpr auto
-        get_pp(syscall::bf_syscall_t const &sys) const noexcept -> pp_t const *
+        get_pp(bsl::safe_u16 const &ppid) const noexcept -> pp_t const *
         {
-            return m_pool.at_if(bsl::to_idx(sys.bf_tls_ppid()));
+            bsl::expects(ppid.is_valid_and_checked());
+            bsl::expects(ppid < bsl::to_u16(m_pool.size()));
+            return m_pool.at_if(bsl::to_idx(ppid));
         }
 
     public:
@@ -136,37 +140,41 @@ namespace microv
         [[nodiscard]] constexpr auto
         map(syscall::bf_syscall_t &mut_sys, bsl::safe_umx const &spa) noexcept -> pp_unique_map_t<T>
         {
-            return this->get_pp(mut_sys)->map<T>(mut_sys, spa);
+            return this->get_pp(mut_sys.bf_tls_ppid())->map<T>(mut_sys, spa);
         }
 
         /// <!-- description -->
-        ///   @brief Sets the SPA of the shared page. This cause the pp_mmio_t
-        ///     to map in the shared page so that it can be used later.
+        ///   @brief Clears the SPA of the shared page associated with the
+        ///     requested pp_t.
         ///
         /// <!-- inputs/outputs -->
         ///   @param mut_sys the bf_syscall_t to use
+        ///   @param ppid the ID of the pp_t to clear the SPA for
         ///
         constexpr void
-        clr_shared_page_spa(syscall::bf_syscall_t &mut_sys) noexcept
+        clr_shared_page_spa(syscall::bf_syscall_t &mut_sys, bsl::safe_u16 const &ppid) noexcept
         {
-            this->get_pp(mut_sys)->clr_shared_page_spa(mut_sys);
+            this->get_pp(ppid)->clr_shared_page_spa(mut_sys);
         }
 
         /// <!-- description -->
-        ///   @brief Sets the SPA of the shared page. This cause the pp_mmio_t
-        ///     to map in the shared page so that it can be used later.
+        ///   @brief Sets the SPA of the shared page associated with the
+        ///     requested pp_t.
         ///
         /// <!-- inputs/outputs -->
         ///   @param mut_sys the bf_syscall_t to use
         ///   @param spa the system physical address of the shared page
+        ///   @param ppid the ID of the pp_t to set the SPA for
         ///   @return Returns bsl::errc_success on success, bsl::errc_failure
         ///     and friends otherwise
         ///
         [[nodiscard]] constexpr auto
-        set_shared_page_spa(syscall::bf_syscall_t &mut_sys, bsl::safe_u64 const &spa) noexcept
-            -> bsl::errc_type
+        set_shared_page_spa(
+            syscall::bf_syscall_t &mut_sys,
+            bsl::safe_u64 const &spa,
+            bsl::safe_u16 const &ppid) noexcept -> bsl::errc_type
         {
-            return this->get_pp(mut_sys)->set_shared_page_spa(mut_sys, spa);
+            return this->get_pp(ppid)->set_shared_page_spa(mut_sys, spa);
         }
 
         /// <!-- description -->
@@ -176,16 +184,16 @@ namespace microv
         ///
         /// <!-- inputs/outputs -->
         ///   @tparam T the type of shared page to return
-        ///   @param sys the bf_syscall_t to use
+        ///   @param mut_sys the bf_syscall_t to use
         ///   @return Returns a pp_unique_shared_page_t<T> if the shared page
         ///     is not currently in use. If an error occurs, returns an invalid
         ///     pp_unique_shared_page_t<T>.
         ///
         template<typename T>
         [[nodiscard]] constexpr auto
-        shared_page(syscall::bf_syscall_t const &sys) noexcept -> pp_unique_shared_page_t<T>
+        shared_page(syscall::bf_syscall_t &mut_sys) noexcept -> pp_unique_shared_page_t<T>
         {
-            return this->get_pp(sys)->shared_page<T>(sys);
+            return this->get_pp(mut_sys.bf_tls_ppid())->shared_page<T>(mut_sys);
         }
     };
 }

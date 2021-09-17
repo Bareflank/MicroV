@@ -27,6 +27,7 @@
 
 #include <helpers.hpp>
 
+#include <bsl/safe_integral.hpp>
 #include <bsl/ut.hpp>
 
 namespace shim
@@ -44,67 +45,102 @@ namespace shim
     tests() noexcept -> bsl::exit_code
     {
         bsl::ut_scenario{"success"} = []() noexcept {
-            bsl::ut_given{} = [&]() noexcept {
-                bsl::ut_when{} = [&]() noexcept {
-                    g_mut_mv_id_op_version = MV_ALL_SPECS_SUPPORTED_VAL;
-                    g_mut_mv_handle_op_open_handle = MV_HANDLE_VAL;
-                    bsl::ut_then{} = [&]() noexcept {
-                        bsl::ut_check(SHIM_SUCCESS == shim_init());
-                    };
-                    bsl::ut_cleanup{} = [&]() noexcept {
-                        bsl::ut_required_step(SHIM_SUCCESS == shim_fini());
-                    };
+            bsl::ut_when{} = [&]() noexcept {
+                g_mut_hypervisor_detected = true;
+                g_mut_platform_num_online_cpus = 1U;
+                g_mut_mv_id_op_version = MV_ALL_SPECS_SUPPORTED_VAL;
+                g_mut_mv_handle_op_open_handle = MV_HANDLE_VAL;
+                g_mut_platform_alloc_fails = {};
+                g_mut_mv_pp_op_set_shared_page_gpa = {};
+                bsl::ut_then{} = [&]() noexcept {
+                    bsl::ut_check(SHIM_SUCCESS == shim_init());
+                };
+                bsl::ut_cleanup{} = [&]() noexcept {
+                    shim_fini();
+                };
+            };
+        };
+
+        bsl::ut_scenario{"hypervisor not detected"} = []() noexcept {
+            bsl::ut_when{} = [&]() noexcept {
+                g_mut_hypervisor_detected = false;
+                g_mut_platform_num_online_cpus = 1U;
+                g_mut_mv_id_op_version = MV_ALL_SPECS_SUPPORTED_VAL;
+                g_mut_mv_handle_op_open_handle = MV_HANDLE_VAL;
+                g_mut_platform_alloc_fails = {};
+                g_mut_mv_pp_op_set_shared_page_gpa = {};
+                bsl::ut_then{} = [&]() noexcept {
+                    bsl::ut_check(SHIM_FAILURE == shim_init());
                 };
             };
         };
 
         bsl::ut_scenario{"too many cpus"} = []() noexcept {
-            bsl::ut_given{} = [&]() noexcept {
-                bsl::ut_when{} = [&]() noexcept {
-                    g_mut_platform_num_online_cpus = 0xFFFFFFFFU;
-                    bsl::ut_then{} = [&]() noexcept {
-                        bsl::ut_check(SHIM_FAILURE == shim_init());
-                    };
-                    bsl::ut_cleanup{} = [&]() noexcept {
-                        g_mut_platform_num_online_cpus = 1U;
-                    };
+            bsl::ut_when{} = [&]() noexcept {
+                g_mut_hypervisor_detected = true;
+                g_mut_platform_num_online_cpus = 0xFFFFFFFFU;
+                g_mut_mv_id_op_version = MV_ALL_SPECS_SUPPORTED_VAL;
+                g_mut_mv_handle_op_open_handle = MV_HANDLE_VAL;
+                g_mut_platform_alloc_fails = {};
+                g_mut_mv_pp_op_set_shared_page_gpa = {};
+                bsl::ut_then{} = [&]() noexcept {
+                    bsl::ut_check(SHIM_FAILURE == shim_init());
                 };
             };
         };
 
         bsl::ut_scenario{"unsupported version"} = []() noexcept {
-            bsl::ut_given{} = [&]() noexcept {
-                bsl::ut_when{} = [&]() noexcept {
-                    g_mut_mv_id_op_version = 0U;
-                    g_mut_mv_handle_op_open_handle = MV_HANDLE_VAL;
-                    bsl::ut_then{} = [&]() noexcept {
-                        bsl::ut_check(SHIM_FAILURE == shim_init());
-                    };
+            bsl::ut_when{} = [&]() noexcept {
+                g_mut_hypervisor_detected = true;
+                g_mut_platform_num_online_cpus = 1U;
+                g_mut_mv_id_op_version = {};
+                g_mut_mv_handle_op_open_handle = MV_HANDLE_VAL;
+                g_mut_platform_alloc_fails = {};
+                g_mut_mv_pp_op_set_shared_page_gpa = {};
+                bsl::ut_then{} = [&]() noexcept {
+                    bsl::ut_check(SHIM_FAILURE == shim_init());
                 };
             };
         };
 
         bsl::ut_scenario{"mv_handle_op_open_handle fails"} = []() noexcept {
-            bsl::ut_given{} = [&]() noexcept {
-                bsl::ut_when{} = [&]() noexcept {
-                    g_mut_mv_id_op_version = MV_ALL_SPECS_SUPPORTED_VAL;
-                    g_mut_mv_handle_op_open_handle = MV_INVALID_HANDLE;
-                    bsl::ut_then{} = [&]() noexcept {
-                        bsl::ut_check(SHIM_FAILURE == shim_init());
-                    };
+            bsl::ut_when{} = [&]() noexcept {
+                g_mut_hypervisor_detected = true;
+                g_mut_platform_num_online_cpus = 1U;
+                g_mut_mv_id_op_version = MV_ALL_SPECS_SUPPORTED_VAL;
+                g_mut_mv_handle_op_open_handle = MV_INVALID_HANDLE;
+                g_mut_platform_alloc_fails = {};
+                g_mut_mv_pp_op_set_shared_page_gpa = {};
+                bsl::ut_then{} = [&]() noexcept {
+                    bsl::ut_check(SHIM_FAILURE == shim_init());
                 };
             };
         };
 
         bsl::ut_scenario{"platform_alloc fails"} = []() noexcept {
-            bsl::ut_given{} = [&]() noexcept {
-                bsl::ut_when{} = [&]() noexcept {
-                    g_mut_mv_id_op_version = MV_ALL_SPECS_SUPPORTED_VAL;
-                    g_mut_mv_handle_op_open_handle = MV_HANDLE_VAL;
-                    g_mut_platform_alloc_fails = 1;
-                    bsl::ut_then{} = [&]() noexcept {
-                        bsl::ut_check(SHIM_FAILURE == shim_init());
-                    };
+            bsl::ut_when{} = [&]() noexcept {
+                g_mut_hypervisor_detected = true;
+                g_mut_platform_num_online_cpus = 1U;
+                g_mut_mv_id_op_version = MV_ALL_SPECS_SUPPORTED_VAL;
+                g_mut_mv_handle_op_open_handle = MV_HANDLE_VAL;
+                g_mut_platform_alloc_fails = true;
+                g_mut_mv_pp_op_set_shared_page_gpa = {};
+                bsl::ut_then{} = [&]() noexcept {
+                    bsl::ut_check(SHIM_FAILURE == shim_init());
+                };
+            };
+        };
+
+        bsl::ut_scenario{"mv_pp_op_set_shared_page_gpa fails"} = []() noexcept {
+            bsl::ut_when{} = [&]() noexcept {
+                g_mut_hypervisor_detected = true;
+                g_mut_platform_num_online_cpus = 1U;
+                g_mut_mv_id_op_version = MV_ALL_SPECS_SUPPORTED_VAL;
+                g_mut_mv_handle_op_open_handle = MV_HANDLE_VAL;
+                g_mut_platform_alloc_fails = {};
+                g_mut_mv_pp_op_set_shared_page_gpa = MV_STATUS_FAILURE_UNKNOWN;
+                bsl::ut_then{} = [&]() noexcept {
+                    bsl::ut_check(SHIM_FAILURE == shim_init());
                 };
             };
         };

@@ -36,7 +36,8 @@ target_include_directories(shim_tests_common PRIVATE SYSTEM
 )
 
 target_sources(shim_tests_common PRIVATE
-    ${CURRENT_FUNCTION_LIST_DIR}/platform.c
+    ${CURRENT_FUNCTION_LIST_DIR}/platform.cpp
+    ${CURRENT_FUNCTION_LIST_DIR}/detect_hypervisor.cpp
     ${CURRENT_FUNCTION_LIST_DIR}/../../src/g_mut_hndl.c
     ${CURRENT_FUNCTION_LIST_DIR}/../../src/g_mut_shared_pages.c
     ${CURRENT_FUNCTION_LIST_DIR}/../../src/shared_page_for_current_pp.c
@@ -46,6 +47,10 @@ target_sources(shim_tests_common PRIVATE
 
 target_compile_definitions(shim_tests_common PRIVATE
     ${COMMON_DEFINES}
+)
+
+target_link_libraries(shim_tests_common PRIVATE
+    bsl
 )
 
 # ------------------------------------------------------------------------------
@@ -157,7 +162,8 @@ mv_add_test(handle_vm_kvm_set_user_memory_region ${CMAKE_CURRENT_LIST_DIR}/../..
 mv_add_test(handle_vm_kvm_signal_msi ${CMAKE_CURRENT_LIST_DIR}/../../src/handle_vm_kvm_signal_msi.c)
 mv_add_test(handle_vm_kvm_unregister_coalesced_mmio ${CMAKE_CURRENT_LIST_DIR}/../../src/handle_vm_kvm_unregister_coalesced_mmio.c)
 mv_add_test(handle_vm_kvm_xen_hvm_config ${CMAKE_CURRENT_LIST_DIR}/../../src/handle_vm_kvm_xen_hvm_config.c)
-mv_add_test(platform ${CMAKE_CURRENT_LIST_DIR}/platform.c)
+mv_add_test(platform ${CMAKE_CURRENT_LIST_DIR}/platform.cpp)
+mv_add_test(detect_hypervisor ${CMAKE_CURRENT_LIST_DIR}/detect_hypervisor.cpp)
 mv_add_test(serial_write ${CMAKE_CURRENT_LIST_DIR}/../../src/serial_write.c)
 mv_add_test(shared_page_for_current_pp ${CMAKE_CURRENT_LIST_DIR}/../../src/shared_page_for_current_pp.c)
 mv_add_test(shim_fini ${CMAKE_CURRENT_LIST_DIR}/../../src/shim_fini.c)

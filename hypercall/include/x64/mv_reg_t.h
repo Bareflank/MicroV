@@ -32,6 +32,9 @@ extern "C"
 {
 #endif
 
+/** @brief stores the max value for a mv_reg_t */
+#define MV_MAX_REG_T 71
+
 #ifdef __cplusplus
     /**
      * <!-- description -->
@@ -46,6 +49,8 @@ extern "C"
 enum mv_reg_t
 #endif
     {
+        /** @brief defines an unsupported register */
+        mv_reg_t_unsupported = 0,
         /** @brief defines the rax register */
         mv_reg_t_rax = 1,
         /** @brief defines the rbx register */
@@ -195,7 +200,7 @@ enum mv_reg_t
         /** @brief defines the xcr0 register (Intel Only) */
         mv_reg_t_xcr0 = 70,
         /** @brief defines and invalid mv_reg_t */
-        mv_reg_t_invalid = 71,
+        mv_reg_t_invalid = MV_MAX_REG_T,
     };
 
 #ifdef __cplusplus

@@ -336,7 +336,7 @@ namespace hypercall
     /// <!-- description -->
     ///   @brief Implements the ABI for mv_vs_op_run.
     ///
-    /// <!-- inputs/outputs -->s
+    /// <!-- inputs/outputs -->
     ///   @param reg0_in n/a
     ///   @param reg1_in n/a
     ///   @param pmut_reg0_out n/a

@@ -26,6 +26,22 @@ option(MICROV_BUILD_SHIM "Turns on/off building the shim" ON)
 option(MICROV_BUILD_VMM "Turns on/off building the vmm" ON)
 
 bf_add_config(
+    CONFIG_NAME MICROV_MAX_PP_MAPS
+    CONFIG_TYPE STRING
+    DEFAULT_VAL "150"
+    DESCRIPTION "Defines MicroV's max number of maps each PP can have open at any given time"
+    SKIP_VALIDATION
+)
+
+bf_add_config(
+    CONFIG_NAME MICROV_MAX_VMS
+    CONFIG_TYPE STRING
+    DEFAULT_VAL "${HYPERVISOR_MAX_VMS}"
+    DESCRIPTION "Defines MicroV's max number of KVM VMS that are supported"
+    SKIP_VALIDATION
+)
+
+bf_add_config(
     CONFIG_NAME MICROV_MAX_VCPUS
     CONFIG_TYPE STRING
     DEFAULT_VAL "${HYPERVISOR_MAX_PPS}"
@@ -34,9 +50,18 @@ bf_add_config(
 )
 
 bf_add_config(
-    CONFIG_NAME MICROV_MAX_PP_MAPS
+    CONFIG_NAME MICROV_MAX_GPA_SIZE
     CONFIG_TYPE STRING
-    DEFAULT_VAL "150"
-    DESCRIPTION "Defines MicroV's max number of maps each PP can have open at any given time"
+    DEFAULT_VAL "${HYPERVISOR_MK_DIRECT_MAP_SIZE}"
+    DESCRIPTION "Defines MicroV's max size in bytes of the guest physical address space"
     SKIP_VALIDATION
 )
+
+bf_add_config(
+    CONFIG_NAME MICROV_MAX_SLOTS
+    CONFIG_TYPE STRING
+    DEFAULT_VAL "64"
+    DESCRIPTION "Defines The max number of KVM memory slots that MicroV supports"
+    SKIP_VALIDATION
+)
+

@@ -40,8 +40,16 @@ namespace shim
     ///
     struct kvm_userspace_memory_region final
     {
-        /// @brief replace me with contents from KVM API
-        bsl::int32 dummy;
+        /// @brief the guest physical memory slot
+        bsl::uint32 slot;
+        /// @brief the flags for this slot (log dirty pages or mem readonly)
+        bsl::uint32 flags;
+        /// @brief the guest physical address
+        bsl::uint64 guest_phys_addr;
+        /// @brief the memory size in bytes
+        bsl::uint64 memory_size;
+        /// @brief the start of the userspace allocated memory
+        void const *userspace_addr;
     };
 }
 

@@ -28,6 +28,7 @@
 #include <bf_syscall_t.hpp>
 #include <gs_t.hpp>
 #include <intrinsic_t.hpp>
+#include <page_pool_t.hpp>
 
 #include <bsl/debug.hpp>
 #include <bsl/errc_type.hpp>
@@ -40,17 +41,21 @@ namespace microv
     /// <!-- inputs/outputs -->
     ///   @param gs the gs_t to use
     ///   @param sys the bf_syscall_t to use
+    ///   @param page_pool the page_pool_t to use
     ///   @param intrinsic the intrinsic_t to use
     ///   @return Returns bsl::errc_success on success, bsl::errc_failure
     ///     and friends otherwise
     ///
     [[nodiscard]] constexpr auto
     gs_initialize(
-        gs_t const &gs, syscall::bf_syscall_t const &sys, intrinsic_t const &intrinsic) noexcept
-        -> bsl::errc_type
+        gs_t const &gs,
+        syscall::bf_syscall_t const &sys,
+        page_pool_t const &page_pool,
+        intrinsic_t const &intrinsic) noexcept -> bsl::errc_type
     {
         bsl::discard(gs);
         bsl::discard(sys);
+        bsl::discard(page_pool);
         bsl::discard(intrinsic);
 
         return bsl::errc_success;

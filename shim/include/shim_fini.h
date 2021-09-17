@@ -40,11 +40,8 @@ extern "C"
      *     all archiectures and all platforms that is needed for finalizing
      *     the shim. This function will call platform and architecture specific
      *     functions as needed.
-     *
-     * <!-- inputs/outputs -->
-     *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
      */
-    NODISCARD int64_t shim_fini(void) NOEXCEPT;
+    void shim_fini(void) NOEXCEPT;
 
 #ifdef __cplusplus
 }

@@ -84,12 +84,24 @@ namespace microv
             T *const pudm_ptr, syscall::bf_syscall_t *const pmut_sys, bool *const pmut_use) noexcept
             : m_ptr{pudm_ptr}, m_sys{pmut_sys}, m_use{pmut_use}, m_ppid{}
         {
-            bsl::expects(nullptr != pudm_ptr);
             bsl::expects(nullptr != pmut_sys);
             bsl::expects(nullptr != pmut_use);
 
-            m_ppid = ~pmut_sys->bf_tls_ppid();
+            if (nullptr == pudm_ptr) {
+                bsl::error() << "shared page for pp "                // --
+                             << bsl::hex(pmut_sys->bf_tls_ppid())    // --
+                             << " is NULL"                           // --
+                             << bsl::endl;                           // --
+
+                *this = pp_unique_shared_page_t{};
+                return;
+            }
+
+            bsl::expects(!*pmut_use);
             bsl::expects(pmut_sys->is_the_active_vm_the_root_vm());
+
+            *pmut_use = true;
+            m_ppid = ~pmut_sys->bf_tls_ppid();
         }
 
         /// <!-- description -->
@@ -101,10 +113,7 @@ namespace microv
         ///
         constexpr ~pp_unique_shared_page_t() noexcept
         {
-            bsl::expects(this->assigned_ppid() == m_sys->bf_tls_ppid());
-            bsl::expects(this->assigned_vmid() == m_sys->bf_tls_vmid());
-
-            if (nullptr != m_ptr) {
+            if (nullptr != m_use) {
                 *m_use = {};
             }
             else {
@@ -178,51 +187,65 @@ namespace microv
         }
 
         /// <!-- description -->
-        ///   @brief Returns the pointer being held by the pp_unique_shared_page_t.
-        ///     If the PP is not the same PP the pp_unique_shared_page_t was created
-        ///     on, a nullptr is returned. If the pp_unique_shared_page_t was created
-        ///     with a nullptr, a nullptr is returned.
+        ///   @brief Returns the pointer being held by the
+        ///     pp_unique_shared_page_t. If the pp_unique_shared_page_t is
+        ///     invalid, a nullptr is returned.
         ///
         /// <!-- inputs/outputs -->
-        ///   @return Returns the pointer being held by the pp_unique_shared_page_t.
-        ///     If the PP is not the same PP the pp_unique_shared_page_t was created
-        ///     on, a nullptr is returned. If the pp_unique_shared_page_t was created
-        ///     with a nullptr, a nullptr is returned.
+        ///   @return Returns the pointer being held by the
+        ///     pp_unique_shared_page_t. If the pp_unique_shared_page_t is
+        ///     invalid, a nullptr is returned.
         ///
         [[nodiscard]] constexpr auto
         get() const noexcept -> T *
         {
             bsl::expects(this->assigned_ppid() == m_sys->bf_tls_ppid());
             bsl::expects(this->assigned_vmid() == m_sys->bf_tls_vmid());
+
+            if (this->is_invalid()) {
+                return nullptr;
+            }
+
             return m_ptr;
         }
 
         /// <!-- description -->
-        ///   @brief Returns nullptr == this->get().
+        ///   @brief Returns true if the shared page is invalid. This
+        ///     could be a default pp_unique_shared_page_t was created, or
+        ///     it could be because MicroV asked for a pp_unique_shared_page_t
+        ///     when the SPA of the shared page was never set. It is also
+        ///     possible that the shared page is invalid because the SPA of
+        ///     the shared page was cleared after it was created. This is
+        ///     why this API only provided get() and not */-> You must always
+        ///     check to make sure the shared page is valid before using it.
+        ///     When a hypercall is made that would use the shared page, it
+        ///     would be impossible for guest software to clear the SPA for
+        ///     the PP that the hypercall is on, because the hypercall is
+        ///     in the process of being executed, so the PP is busy.
         ///
         /// <!-- inputs/outputs -->
-        ///   @return Returns nullptr == this->get().
+        ///   @return Returns true if the shared page is invalid.
         ///
         [[nodiscard]] constexpr auto
         is_invalid() const noexcept -> bool
         {
-            bsl::expects(this->assigned_ppid() == m_sys->bf_tls_ppid());
-            bsl::expects(this->assigned_vmid() == m_sys->bf_tls_vmid());
-            return nullptr == m_ptr;
+            if (nullptr == m_use) {
+                return true;
+            }
+
+            return !*m_use;
         }
 
         /// <!-- description -->
-        ///   @brief Returns nullptr != this->get().
+        ///   @brief Returns !this->is_invalid().
         ///
         /// <!-- inputs/outputs -->
-        ///   @return Returns nullptr != this->get().
+        ///   @return Returns !this->is_invalid()
         ///
         [[nodiscard]] constexpr auto
         is_valid() const noexcept -> bool
         {
-            bsl::expects(this->assigned_ppid() == m_sys->bf_tls_ppid());
-            bsl::expects(this->assigned_vmid() == m_sys->bf_tls_vmid());
-            return nullptr != m_ptr;
+            return !this->is_invalid();
         }
     };
 }
