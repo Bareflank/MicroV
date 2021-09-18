@@ -27,6 +27,8 @@
 #ifndef KVM_SREGS_H
 #define KVM_SREGS_H
 
+#include <kvm_dtable.h>
+#include <kvm_segment.h>
 #include <stdint.h>
 
 #ifdef __cplusplus
@@ -34,7 +36,53 @@ extern "C"
 {
 #endif
 
-#pragma pack(push, 1)
+/** @brief stores the attrib type mask of segment */
+#define ATTRIB_TYPE_MASK ((uint64_t)0x00000F00ULL)
+
+/** @brief stores the attrib type shift of segment */
+#define ATTRIB_TYPE_SHIFT ((uint64_t)8ULL)
+
+/** @brief stores the attrib present mask of segment */
+#define ATTRIB_PRESENT_MASK ((uint64_t)0x00008000ULL)
+
+/** @brief stores the attrib type shift of segment */
+#define ATTRIB_PRESENT_SHIFT ((uint64_t)15ULL)
+
+/** @brief stores the attrib dpl mask of segment */
+#define ATTRIB_DPL_MASK ((uint64_t)0x00006000ULL)
+
+/** @brief stores the attrib dpl shift of segment */
+#define ATTRIB_DPL_SHIFT ((uint64_t)13ULL)
+
+/** @brief stores the attrib db mask of segment */
+#define ATTRIB_DB_MASK ((uint64_t)0x00400000ULL)
+
+/** @brief stores the attrib db shift of segment */
+#define ATTRIB_DB_SHIFT ((uint64_t)22ULL)
+
+/** @brief stores the attrib l mask of segment */
+#define ATTRIB_L_MASK ((uint64_t)0x00200000ULL)
+
+/** @brief stores the attrib l shift of segment */
+#define ATTRIB_L_SHIFT ((uint64_t)21ULL)
+
+/** @brief stores the attrib g mask of segment */
+#define ATTRIB_G_MASK ((uint64_t)0x00800000ULL)
+
+/** @brief stores the attrib g shift of segment */
+#define ATTRIB_G_SHIFT ((uint64_t)23ULL)
+
+/** @brief stores the attrib avl mask of segment */
+#define ATTRIB_AVL_MASK ((uint64_t)0x00100000ULL)
+
+/** @brief stores the attrib avl shift of segment */
+#define ATTRIB_AVL_SHIFT ((uint64_t)20ULL)
+
+/** @brief stores the attrib s mask of segment */
+#define ATTRIB_S_MASK ((uint64_t)0x00001000ULL)
+
+/** @brief stores the attrib s shift of segment */
+#define ATTRIB_S_SHIFT ((uint64_t)12ULL)
 
     /**
      * @struct kvm_sregs
@@ -44,11 +92,45 @@ extern "C"
      */
     struct kvm_sregs
     {
-        /** @brief replace me with contents from KVM API */
-        int32_t dummy;
+        /** @brief stores that value of the cs segment register */
+        struct kvm_segment cs;
+        /** @brief stores that value of the ds segment register */
+        struct kvm_segment ds;
+        /** @brief stores that value of the es segment register */
+        struct kvm_segment es;
+        /** @brief stores that value of the fs segment register */
+        struct kvm_segment fs;
+        /** @brief stores that value of the gs segment register */
+        struct kvm_segment gs;
+        /** @brief stores that value of the ss segment register */
+        struct kvm_segment ss;
+        /** @brief stores that value of the tr segment register */
+        struct kvm_segment tr;
+        /** @brief stores that value of the ldt segment register */
+        // NOLINTNEXTLINE(bsl-identifier-typographically-unambiguous)
+        struct kvm_segment ldt;
+        /** @brief stores that value of the gdt dtable register */
+        struct kvm_dtable gdt;
+        /** @brief stores that value of the gdt dtable register */
+        // NOLINTNEXTLINE(bsl-identifier-typographically-unambiguous)
+        struct kvm_dtable idt;
+        /** @brief stores that value of the cr0 register */
+        uint64_t cr0;
+        /** @brief stores that value of the cr2 register */
+        uint64_t cr2;
+        /** @brief stores that value of the cr3 register */
+        uint64_t cr3;
+        /** @brief stores that value of the cr4 register */
+        uint64_t cr4;
+        /** @brief stores that value of the cr8 register */
+        uint64_t cr8;
+        /** @brief stores that value of the efer register */
+        uint64_t efer;
+        /** @brief stores that value of the apic_base register */
+        uint64_t apic_base;
+        /** @brief stores that value of the interrupt bitmap */
+        uint64_t interrupt_bitmap[4];
     };
-
-#pragma pack(pop)
 
 #ifdef __cplusplus
 }

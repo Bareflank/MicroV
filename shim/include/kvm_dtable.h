@@ -1,7 +1,4 @@
-/**
- * @copyright
- * Copyright (C) 2020 Assured Information Security, Inc.
- *
+/** 
  * @copyright
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -24,12 +21,10 @@
  * SOFTWARE.
  */
 
-#ifndef HANDLE_VCPU_KVM_SET_SREGS_H
-#define HANDLE_VCPU_KVM_SET_SREGS_H
+#ifndef KVM_DTABLE_H
+#define KVM_DTABLE_H
 
-#include <kvm_sregs.h>
-#include <shim_vcpu_t.h>
-#include <types.h>
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C"
@@ -37,16 +32,20 @@ extern "C"
 #endif
 
     /**
-     * <!-- description -->
-     *   @brief Handles the execution of kvm_set_sregs.
+     * @struct kvm_dtable
      *
-     * <!-- inputs/outputs -->
-     *   @param pmut_vcpu to pass vsid to hypercall 
-     *   @param pmut_args the arguments provided by userspace
-     *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
+     * <!-- description -->
+     *   @brief see /include/uapi/linux/kvm.h in Linux for more details.
      */
-    NODISCARD int64_t handle_vcpu_kvm_set_sregs(
-        struct shim_vcpu_t *const pmut_vcpu, struct kvm_sregs *const pmut_args) NOEXCEPT;
+    struct kvm_dtable
+    {
+        /** @brief stores that value of the base dtable */
+        uint64_t base;
+        /** @brief stores that value of the limit dtable */
+        uint16_t limit;
+        /** @brief stores that value of the padding dtable register */
+        uint16_t padding[3];
+    };
 
 #ifdef __cplusplus
 }
