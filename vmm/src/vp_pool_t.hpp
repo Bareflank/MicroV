@@ -29,6 +29,7 @@
 #include <gs_t.hpp>
 #include <intrinsic_t.hpp>
 #include <lock_guard_t.hpp>
+#include <page_pool_t.hpp>
 #include <spinlock_t.hpp>
 #include <tls_t.hpp>
 #include <vp_t.hpp>
@@ -115,6 +116,7 @@ namespace microv
         ///   @param gs the gs_t to use
         ///   @param tls the tls_t to use
         ///   @param sys the bf_syscall_t to use
+        ///   @param page_pool the page_pool_t to use
         ///   @param intrinsic the intrinsic_t to use
         ///
         constexpr void
@@ -122,10 +124,11 @@ namespace microv
             gs_t const &gs,
             tls_t const &tls,
             syscall::bf_syscall_t const &sys,
+            page_pool_t const &page_pool,
             intrinsic_t const &intrinsic) noexcept
         {
             for (auto &mut_vp : m_pool) {
-                mut_vp.release(gs, tls, sys, intrinsic);
+                mut_vp.release(gs, tls, sys, page_pool, intrinsic);
             }
         }
 
@@ -136,6 +139,7 @@ namespace microv
         ///   @param gs the gs_t to use
         ///   @param tls the tls_t to use
         ///   @param mut_sys the bf_syscall_t to use
+        ///   @param page_pool the page_pool_t to use
         ///   @param intrinsic the intrinsic_t to use
         ///   @param vmid the ID of the VM to assign the newly created VP to
         ///   @param ppid the ID of the PP to assign the newly created VP to
@@ -147,6 +151,7 @@ namespace microv
             gs_t const &gs,
             tls_t const &tls,
             syscall::bf_syscall_t &mut_sys,
+            page_pool_t const &page_pool,
             intrinsic_t const &intrinsic,
             bsl::safe_u16 const &vmid,
             bsl::safe_u16 const &ppid) noexcept -> bsl::safe_u16
@@ -159,7 +164,7 @@ namespace microv
                 return bsl::safe_u16::failure();
             }
 
-            return this->get_vp(vpid)->allocate(gs, tls, mut_sys, intrinsic, vmid, ppid);
+            return this->get_vp(vpid)->allocate(gs, tls, mut_sys, page_pool, intrinsic, vmid, ppid);
         }
 
         /// <!-- description -->
@@ -169,6 +174,7 @@ namespace microv
         ///   @param gs the gs_t to use
         ///   @param tls the tls_t to use
         ///   @param mut_sys the bf_syscall_t to use
+        ///   @param page_pool the page_pool_t to use
         ///   @param intrinsic the intrinsic_t to use
         ///   @param vpid the ID of the vp_t to deallocate
         ///
@@ -177,6 +183,7 @@ namespace microv
             gs_t const &gs,
             tls_t const &tls,
             syscall::bf_syscall_t &mut_sys,
+            page_pool_t const &page_pool,
             intrinsic_t const &intrinsic,
             bsl::safe_u16 const &vpid) noexcept
         {
@@ -185,7 +192,7 @@ namespace microv
             auto *const pmut_vp{this->get_vp(vpid)};
             if (pmut_vp->is_allocated()) {
                 bsl::expects(mut_sys.bf_vp_op_destroy_vp(vpid));
-                pmut_vp->deallocate(gs, tls, mut_sys, intrinsic);
+                pmut_vp->deallocate(gs, tls, mut_sys, page_pool, intrinsic);
             }
             else {
                 bsl::touch();

@@ -24,6 +24,7 @@
  * SOFTWARE.
  */
 
+#include <detect_hypervisor.h>
 #include <g_mut_hndl.h>
 #include <mv_constants.h>
 #include <mv_hypercall.h>
@@ -41,8 +42,15 @@
 void
 handle_system_kvm_destroy_vm(struct shim_vm_t *const pmut_vm) NOEXCEPT
 {
+    mv_status_t mut_ret;
+
     platform_expects(MV_INVALID_HANDLE != g_mut_hndl);
     platform_expects(NULL != pmut_vm);
 
-    platform_expects(MV_STATUS_SUCCESS == mv_vm_op_destroy_vm(g_mut_hndl, pmut_vm->vmid));
+    if (detect_hypervisor()) {
+        return;
+    }
+
+    mut_ret = mv_vm_op_destroy_vm(g_mut_hndl, pmut_vm->vmid);
+    platform_expects(MV_STATUS_SUCCESS == mut_ret);
 }

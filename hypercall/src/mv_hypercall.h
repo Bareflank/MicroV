@@ -95,12 +95,15 @@ extern "C"
      *
      * <!-- inputs/outputs -->
      *   @param hndl Set to the result of mv_handle_op_open_handle
-     *   @return Returns MV_STATUS_SUCCESS on success, MV_FAILURE_UNKNOWN
+     *   @return Returns MV_STATUS_SUCCESS on success, MV_STATUS_FAILURE_UNKNOWN
      *     and friends on failure.
      */
     NODISCARD static inline mv_status_t
     mv_handle_op_close_handle(uint64_t const hndl) NOEXCEPT
     {
+        platform_expects(MV_INVALID_HANDLE != hndl);
+        platform_expects(hndl > ((uint64_t)0));
+
         return mv_handle_op_close_handle_impl(hndl);
     }
 
@@ -122,7 +125,7 @@ extern "C"
     {
         uint16_t mut_ppid;
 
-        platform_expects(hndl != MV_INVALID_HANDLE);
+        platform_expects(MV_INVALID_HANDLE != hndl);
         platform_expects(hndl > ((uint64_t)0));
 
         if (mv_pp_op_ppid_impl(hndl, &mut_ppid)) {
@@ -150,7 +153,7 @@ extern "C"
      *
      * <!-- inputs/outputs -->
      *   @param hndl Set to the result of mv_handle_op_open_handle
-     *   @return Returns MV_STATUS_SUCCESS on success, MV_FAILURE_UNKNOWN
+     *   @return Returns MV_STATUS_SUCCESS on success, MV_STATUS_FAILURE_UNKNOWN
      *     and friends on failure.
      */
     NODISCARD static inline mv_status_t
@@ -158,7 +161,7 @@ extern "C"
     {
         mv_status_t mut_ret;
 
-        platform_expects(hndl != MV_INVALID_HANDLE);
+        platform_expects(MV_INVALID_HANDLE != hndl);
         platform_expects(hndl > ((uint64_t)0));
 
         mut_ret = mv_pp_op_clr_shared_page_gpa_impl(hndl);
@@ -178,7 +181,7 @@ extern "C"
      * <!-- inputs/outputs -->
      *   @param hndl Set to the result of mv_handle_op_open_handle
      *   @param gpa The GPA to set the requested PP's shared page to
-     *   @return Returns MV_STATUS_SUCCESS on success, MV_FAILURE_UNKNOWN
+     *   @return Returns MV_STATUS_SUCCESS on success, MV_STATUS_FAILURE_UNKNOWN
      *     and friends on failure.
      */
     NODISCARD static inline mv_status_t
@@ -186,9 +189,10 @@ extern "C"
     {
         mv_status_t mut_ret;
 
-        platform_expects(hndl != MV_INVALID_HANDLE);
+        platform_expects(MV_INVALID_HANDLE != hndl);
         platform_expects(hndl > ((uint64_t)0));
         platform_expects(gpa > ((uint64_t)0));
+        platform_expects(gpa < MICROV_MAX_GPA_SIZE);
         platform_expects(mv_is_page_aligned(gpa));
 
         mut_ret = mv_pp_op_set_shared_page_gpa_impl(hndl, gpa);
@@ -217,7 +221,7 @@ extern "C"
     {
         uint16_t mut_vmid;
 
-        platform_expects(hndl != MV_INVALID_HANDLE);
+        platform_expects(MV_INVALID_HANDLE != hndl);
         platform_expects(hndl > ((uint64_t)0));
 
         if (mv_vm_op_create_vm_impl(hndl, &mut_vmid)) {
@@ -245,7 +249,7 @@ extern "C"
      * <!-- inputs/outputs -->
      *   @param hndl Set to the result of mv_handle_op_open_handle
      *   @param vmid The ID of the VM to destroy
-     *   @return Returns MV_STATUS_SUCCESS on success, MV_FAILURE_UNKNOWN
+     *   @return Returns MV_STATUS_SUCCESS on success, MV_STATUS_FAILURE_UNKNOWN
      *     and friends on failure.
      */
     NODISCARD static inline mv_status_t
@@ -253,9 +257,9 @@ extern "C"
     {
         mv_status_t mut_ret;
 
-        platform_expects(hndl != MV_INVALID_HANDLE);
+        platform_expects(MV_INVALID_HANDLE != hndl);
         platform_expects(hndl > ((uint64_t)0));
-        platform_expects(vmid != MV_INVALID_ID);
+        platform_expects((int32_t)MV_INVALID_ID != (int32_t)vmid);
         platform_expects(((uint64_t)vmid) < HYPERVISOR_MAX_VMS);
 
         mut_ret = mv_vm_op_destroy_vm_impl(hndl, vmid);
@@ -281,7 +285,7 @@ extern "C"
     {
         uint16_t mut_vmid;
 
-        platform_expects(hndl != MV_INVALID_HANDLE);
+        platform_expects(MV_INVALID_HANDLE != hndl);
         platform_expects(hndl > ((uint64_t)0));
 
         if (mv_vm_op_vmid_impl(hndl, &mut_vmid)) {
@@ -333,7 +337,7 @@ extern "C"
      *   @param hndl Set to the result of mv_handle_op_open_handle
      *   @param dst_vmid The ID of the dst VM to map memory to
      *   @param src_vmid The ID of the src VM to map memory from
-     *   @return Returns MV_STATUS_SUCCESS on success, MV_FAILURE_UNKNOWN
+     *   @return Returns MV_STATUS_SUCCESS on success, MV_STATUS_FAILURE_UNKNOWN
      *     and friends on failure.
      */
     NODISCARD static inline mv_status_t
@@ -342,10 +346,10 @@ extern "C"
     {
         mv_status_t mut_ret;
 
-        platform_expects(hndl != MV_INVALID_HANDLE);
+        platform_expects(MV_INVALID_HANDLE != hndl);
         platform_expects(hndl > ((uint64_t)0));
-        platform_expects(dst_vmid != MV_INVALID_ID);
-        platform_expects(src_vmid != MV_INVALID_ID);
+        platform_expects((int32_t)MV_INVALID_ID != (int32_t)dst_vmid);
+        platform_expects((int32_t)MV_INVALID_ID != (int32_t)src_vmid);
 
         mut_ret = mv_vm_op_mmio_map_impl(hndl, dst_vmid, src_vmid);
         if (mut_ret) {
@@ -377,7 +381,7 @@ extern "C"
      * <!-- inputs/outputs -->
      *   @param hndl Set to the result of mv_handle_op_open_handle
      *   @param vmid The ID of the VM to unmap memory from
-     *   @return Returns MV_STATUS_SUCCESS on success, MV_FAILURE_UNKNOWN
+     *   @return Returns MV_STATUS_SUCCESS on success, MV_STATUS_FAILURE_UNKNOWN
      *     and friends on failure.
      */
     NODISCARD static inline mv_status_t
@@ -385,9 +389,9 @@ extern "C"
     {
         mv_status_t mut_ret;
 
-        platform_expects(hndl != MV_INVALID_HANDLE);
+        platform_expects(MV_INVALID_HANDLE != hndl);
         platform_expects(hndl > ((uint64_t)0));
-        platform_expects(vmid != MV_INVALID_ID);
+        platform_expects((int32_t)MV_INVALID_ID != (int32_t)vmid);
 
         mut_ret = mv_vm_op_mmio_unmap_impl(hndl, vmid);
         if (mut_ret) {
@@ -418,9 +422,9 @@ extern "C"
     {
         uint16_t mut_vpid;
 
-        platform_expects(hndl != MV_INVALID_HANDLE);
+        platform_expects(MV_INVALID_HANDLE != hndl);
         platform_expects(hndl > ((uint64_t)0));
-        platform_expects(vmid != MV_INVALID_ID);
+        platform_expects((int32_t)MV_INVALID_ID != (int32_t)vmid);
 
         if (mv_vp_op_create_vp_impl(hndl, vmid, &mut_vpid)) {
             bferror("mv_vp_op_create_vp failed");
@@ -447,7 +451,7 @@ extern "C"
      * <!-- inputs/outputs -->
      *   @param hndl Set to the result of mv_handle_op_open_handle
      *   @param vpid The ID of the VP to destroy
-     *   @return Returns MV_STATUS_SUCCESS on success, MV_FAILURE_UNKNOWN
+     *   @return Returns MV_STATUS_SUCCESS on success, MV_STATUS_FAILURE_UNKNOWN
      *     and friends on failure.
      */
     NODISCARD static inline mv_status_t
@@ -455,9 +459,9 @@ extern "C"
     {
         mv_status_t mut_ret;
 
-        platform_expects(hndl != MV_INVALID_HANDLE);
+        platform_expects(MV_INVALID_HANDLE != hndl);
         platform_expects(hndl > ((uint64_t)0));
-        platform_expects(vpid != MV_INVALID_ID);
+        platform_expects((int32_t)MV_INVALID_ID != (int32_t)vpid);
         platform_expects(((uint64_t)vpid) < HYPERVISOR_MAX_VPS);
 
         mut_ret = mv_vp_op_destroy_vp_impl(hndl, vpid);
@@ -484,9 +488,9 @@ extern "C"
     {
         uint16_t mut_vmid;
 
-        platform_expects(hndl != MV_INVALID_HANDLE);
+        platform_expects(MV_INVALID_HANDLE != hndl);
         platform_expects(hndl > ((uint64_t)0));
-        platform_expects(vpid != MV_INVALID_ID);
+        platform_expects((int32_t)MV_INVALID_ID != (int32_t)vpid);
 
         if (mv_vp_op_vmid_impl(hndl, vpid, &mut_vmid)) {
             bferror("mv_vp_op_vmid failed");
@@ -520,7 +524,7 @@ extern "C"
     {
         uint16_t mut_vpid;
 
-        platform_expects(hndl != MV_INVALID_HANDLE);
+        platform_expects(MV_INVALID_HANDLE != hndl);
         platform_expects(hndl > ((uint64_t)0));
 
         if (mv_vp_op_vpid_impl(hndl, &mut_vpid)) {
@@ -561,9 +565,9 @@ extern "C"
     {
         uint16_t mut_vsid;
 
-        platform_expects(hndl != MV_INVALID_HANDLE);
+        platform_expects(MV_INVALID_HANDLE != hndl);
         platform_expects(hndl > ((uint64_t)0));
-        platform_expects(vpid != MV_INVALID_ID);
+        platform_expects((int32_t)MV_INVALID_ID != (int32_t)vpid);
 
         if (mv_vs_op_create_vs_impl(hndl, vpid, &mut_vsid)) {
             bferror("mv_vs_op_create_vs failed");
@@ -590,7 +594,7 @@ extern "C"
      * <!-- inputs/outputs -->
      *   @param hndl Set to the result of mv_handle_op_open_handle
      *   @param vsid The ID of the VS to destroy
-     *   @return Returns MV_STATUS_SUCCESS on success, MV_FAILURE_UNKNOWN
+     *   @return Returns MV_STATUS_SUCCESS on success, MV_STATUS_FAILURE_UNKNOWN
      *     and friends on failure.
      */
     NODISCARD static inline mv_status_t
@@ -598,9 +602,9 @@ extern "C"
     {
         mv_status_t mut_ret;
 
-        platform_expects(hndl != MV_INVALID_HANDLE);
+        platform_expects(MV_INVALID_HANDLE != hndl);
         platform_expects(hndl > ((uint64_t)0));
-        platform_expects(vsid != MV_INVALID_ID);
+        platform_expects((int32_t)MV_INVALID_ID != (int32_t)vsid);
         platform_expects(((uint64_t)vsid) < HYPERVISOR_MAX_VPS);
 
         mut_ret = mv_vs_op_destroy_vs_impl(hndl, vsid);
@@ -627,9 +631,9 @@ extern "C"
     {
         uint16_t mut_vmid;
 
-        platform_expects(hndl != MV_INVALID_HANDLE);
+        platform_expects(MV_INVALID_HANDLE != hndl);
         platform_expects(hndl > ((uint64_t)0));
-        platform_expects(vsid != MV_INVALID_ID);
+        platform_expects((int32_t)MV_INVALID_ID != (int32_t)vsid);
 
         if (mv_vs_op_vmid_impl(hndl, vsid, &mut_vmid)) {
             bferror("mv_vs_op_vmid failed");
@@ -664,9 +668,9 @@ extern "C"
     {
         uint16_t mut_vpid;
 
-        platform_expects(hndl != MV_INVALID_HANDLE);
+        platform_expects(MV_INVALID_HANDLE != hndl);
         platform_expects(hndl > ((uint64_t)0));
-        platform_expects(vsid != MV_INVALID_ID);
+        platform_expects((int32_t)MV_INVALID_ID != (int32_t)vsid);
 
         if (mv_vs_op_vpid_impl(hndl, vsid, &mut_vpid)) {
             bferror("mv_vs_op_vpid failed");
@@ -700,7 +704,7 @@ extern "C"
     {
         uint16_t mut_vsid;
 
-        platform_expects(hndl != MV_INVALID_HANDLE);
+        platform_expects(MV_INVALID_HANDLE != hndl);
         platform_expects(hndl > ((uint64_t)0));
 
         if (mv_vs_op_vsid_impl(hndl, &mut_vsid)) {
@@ -751,27 +755,51 @@ extern "C"
     NODISCARD static inline struct mv_translation_t
     mv_vs_op_gla_to_gpa(uint64_t const hndl, uint16_t const vsid, uint64_t const gla) NOEXCEPT
     {
-        uint64_t gpa_and_flags;
+        uint64_t mut_gpa;
+        uint64_t mut_fgs;
+        uint64_t mut_gpa_and_fgs;
         uint64_t const gpa_mask = ((uint64_t)0xFFFFFFFFFFFFF000U);
         uint64_t const fgs_mask = ((uint64_t)0x0000000000000FFFU);
         struct mv_translation_t ret = {0};
 
-        platform_expects(hndl != MV_INVALID_HANDLE);
+        platform_expects(MV_INVALID_HANDLE != hndl);
         platform_expects(hndl > ((uint64_t)0));
-        platform_expects(vsid != MV_INVALID_ID);
+        platform_expects((int32_t)MV_INVALID_ID != (int32_t)vsid);
         platform_expects(gla > ((uint64_t)0));
         platform_expects(mv_is_page_aligned(gla));
 
-        if (mv_vs_op_gla_to_gpa_impl(hndl, vsid, gla, &gpa_and_flags)) {
+        if (mv_vs_op_gla_to_gpa_impl(hndl, vsid, gla, &mut_gpa_and_fgs)) {
             bferror("mv_vs_op_destroy_vs failed");
             ret.is_valid = MV_TRANSLATION_T_IS_INVALID;
             return ret;
         }
 
+        mut_gpa = mut_gpa_and_fgs & gpa_mask;
+        mut_fgs = mut_gpa_and_fgs & fgs_mask;
+
+        if (((uint64_t)0) == mut_gpa) {
+            bferror("the GPA returned by mv_vs_op_gla_to_gpa_impl is NULL");
+            ret.is_valid = MV_TRANSLATION_T_IS_INVALID;
+            return ret;
+        }
+
+        if (mut_gpa >= MICROV_MAX_GPA_SIZE) {
+            bferror("the GPA returned by mv_vs_op_gla_to_gpa_impl is out of range");
+            ret.is_valid = MV_TRANSLATION_T_IS_INVALID;
+            return ret;
+        }
+
+        if (!mv_is_page_aligned(mut_gpa)) {
+            bferror("the GPA returned by mv_vs_op_gla_to_gpa_impl is not page aligned");
+            ret.is_valid = MV_TRANSLATION_T_IS_INVALID;
+            return ret;
+        }
+
         ret.laddr = gla;
-        ret.paddr = (gpa_and_flags & gpa_mask);
-        ret.flags = (gpa_and_flags & fgs_mask);
+        ret.paddr = mut_gpa;
+        ret.flags = mut_fgs;
         ret.is_valid = MV_TRANSLATION_T_IS_VALID;
+
         return ret;
     }
 
@@ -790,7 +818,7 @@ extern "C"
      *     specific to the exit condition is returned providing software with
      *     the information that it needs to handle the exit.
      *
-     * <!-- inputs/outputs -->s
+     * <!-- inputs/outputs -->
      *   @param hndl Set to the result of mv_handle_op_open_handle
      *   @param vsid The ID of the VS to run
      *   @return Returns a mv_exit_reason_t describing the reason for the exit
@@ -800,9 +828,9 @@ extern "C"
     {
         enum mv_exit_reason_t mut_exit_reason;
 
-        platform_expects(hndl != MV_INVALID_HANDLE);
+        platform_expects(MV_INVALID_HANDLE != hndl);
         platform_expects(hndl > ((uint64_t)0));
-        platform_expects(vsid != MV_INVALID_ID);
+        platform_expects((int32_t)MV_INVALID_ID != (int32_t)vsid);
         platform_expects(((uint64_t)vsid) < HYPERVISOR_MAX_VPS);
 
         if (mv_vs_op_run_impl(hndl, vsid, &mut_exit_reason)) {
@@ -824,7 +852,7 @@ extern "C"
      *   @param vsid The ID of the VS to query
      *   @param reg The register to get
      *   @param pmut_val The value read from the requested register
-     *   @return Returns MV_STATUS_SUCCESS on success, MV_FAILURE_UNKNOWN
+     *   @return Returns MV_STATUS_SUCCESS on success, MV_STATUS_FAILURE_UNKNOWN
      *     and friends on failure.
      */
     NODISCARD static inline mv_status_t
@@ -836,10 +864,11 @@ extern "C"
     {
         mv_status_t mut_ret;
 
-        platform_expects(hndl != MV_INVALID_HANDLE);
+        platform_expects(MV_INVALID_HANDLE != hndl);
         platform_expects(hndl > ((uint64_t)0));
-        platform_expects(vsid != MV_INVALID_ID);
-        platform_expects(reg < mv_reg_t_invalid);
+        platform_expects((int32_t)MV_INVALID_ID != (int32_t)vsid);
+        platform_expects((int32_t)reg < (int32_t)mv_reg_t_invalid);
+        platform_expects(NULLPTR != pmut_val);
 
         mut_ret = mv_vs_op_reg_get_impl(hndl, vsid, reg, pmut_val);
         if (mut_ret) {
@@ -861,7 +890,7 @@ extern "C"
      *   @param vsid The ID of the VS to set
      *   @param reg The register to set
      *   @param val The value to write to the requested register
-     *   @return Returns MV_STATUS_SUCCESS on success, MV_FAILURE_UNKNOWN
+     *   @return Returns MV_STATUS_SUCCESS on success, MV_STATUS_FAILURE_UNKNOWN
      *     and friends on failure.
      */
     NODISCARD static inline mv_status_t
@@ -873,10 +902,10 @@ extern "C"
     {
         mv_status_t mut_ret;
 
-        platform_expects(hndl != MV_INVALID_HANDLE);
+        platform_expects(MV_INVALID_HANDLE != hndl);
         platform_expects(hndl > ((uint64_t)0));
-        platform_expects(vsid != MV_INVALID_ID);
-        platform_expects(reg < mv_reg_t_invalid);
+        platform_expects((int32_t)MV_INVALID_ID != (int32_t)vsid);
+        platform_expects((int32_t)reg < (int32_t)mv_reg_t_invalid);
 
         mut_ret = mv_vs_op_reg_set_impl(hndl, vsid, reg, val);
         if (mut_ret) {
@@ -900,7 +929,7 @@ extern "C"
      * <!-- inputs/outputs -->
      *   @param hndl Set to the result of mv_handle_op_open_handle
      *   @param vsid The ID of the VS to query
-     *   @return Returns MV_STATUS_SUCCESS on success, MV_FAILURE_UNKNOWN
+     *   @return Returns MV_STATUS_SUCCESS on success, MV_STATUS_FAILURE_UNKNOWN
      *     and friends on failure.
      */
     NODISCARD static inline mv_status_t
@@ -908,9 +937,9 @@ extern "C"
     {
         mv_status_t mut_ret;
 
-        platform_expects(hndl != MV_INVALID_HANDLE);
+        platform_expects(MV_INVALID_HANDLE != hndl);
         platform_expects(hndl > ((uint64_t)0));
-        platform_expects(vsid != MV_INVALID_ID);
+        platform_expects((int32_t)MV_INVALID_ID != (int32_t)vsid);
 
         mut_ret = mv_vs_op_reg_get_list_impl(hndl, vsid);
         if (mut_ret) {
@@ -934,7 +963,7 @@ extern "C"
      * <!-- inputs/outputs -->
      *   @param hndl Set to the result of mv_handle_op_open_handle
      *   @param vsid The ID of the VS to set
-     *   @return Returns MV_STATUS_SUCCESS on success, MV_FAILURE_UNKNOWN
+     *   @return Returns MV_STATUS_SUCCESS on success, MV_STATUS_FAILURE_UNKNOWN
      *     and friends on failure.
      */
     NODISCARD static inline mv_status_t
@@ -942,9 +971,9 @@ extern "C"
     {
         mv_status_t mut_ret;
 
-        platform_expects(hndl != MV_INVALID_HANDLE);
+        platform_expects(MV_INVALID_HANDLE != hndl);
         platform_expects(hndl > ((uint64_t)0));
-        platform_expects(vsid != MV_INVALID_ID);
+        platform_expects((int32_t)MV_INVALID_ID != (int32_t)vsid);
 
         mut_ret = mv_vs_op_reg_set_list_impl(hndl, vsid);
         if (mut_ret) {
@@ -965,7 +994,7 @@ extern "C"
      *   @param vsid The ID of the VS to query
      *   @param msr The index of the MSR to get
      *   @param pmut_val The value read from the MSR
-     *   @return Returns MV_STATUS_SUCCESS on success, MV_FAILURE_UNKNOWN
+     *   @return Returns MV_STATUS_SUCCESS on success, MV_STATUS_FAILURE_UNKNOWN
      *     and friends on failure.
      */
     NODISCARD static inline mv_status_t
@@ -977,9 +1006,10 @@ extern "C"
     {
         mv_status_t mut_ret;
 
-        platform_expects(hndl != MV_INVALID_HANDLE);
+        platform_expects(MV_INVALID_HANDLE != hndl);
         platform_expects(hndl > ((uint64_t)0));
-        platform_expects(vsid != MV_INVALID_ID);
+        platform_expects((int32_t)MV_INVALID_ID != (int32_t)vsid);
+        platform_expects(NULLPTR != pmut_val);
 
         mut_ret = mv_vs_op_msr_get_impl(hndl, vsid, msr, pmut_val);
         if (mut_ret) {
@@ -1000,7 +1030,7 @@ extern "C"
      *   @param vsid The ID of the VS to set
      *   @param msr The index of the MSR to set
      *   @param val The value to write to the requested MSR
-     *   @return Returns MV_STATUS_SUCCESS on success, MV_FAILURE_UNKNOWN
+     *   @return Returns MV_STATUS_SUCCESS on success, MV_STATUS_FAILURE_UNKNOWN
      *     and friends on failure.
      */
     NODISCARD static inline mv_status_t
@@ -1009,9 +1039,9 @@ extern "C"
     {
         mv_status_t mut_ret;
 
-        platform_expects(hndl != MV_INVALID_HANDLE);
+        platform_expects(MV_INVALID_HANDLE != hndl);
         platform_expects(hndl > ((uint64_t)0));
-        platform_expects(vsid != MV_INVALID_ID);
+        platform_expects((int32_t)MV_INVALID_ID != (int32_t)vsid);
 
         mut_ret = mv_vs_op_msr_set_impl(hndl, vsid, msr, val);
         if (mut_ret) {
@@ -1034,7 +1064,7 @@ extern "C"
      * <!-- inputs/outputs -->
      *   @param hndl Set to the result of mv_handle_op_open_handle
      *   @param vsid The ID of the VS to query
-     *   @return Returns MV_STATUS_SUCCESS on success, MV_FAILURE_UNKNOWN
+     *   @return Returns MV_STATUS_SUCCESS on success, MV_STATUS_FAILURE_UNKNOWN
      *     and friends on failure.
      */
     NODISCARD static inline mv_status_t
@@ -1042,9 +1072,9 @@ extern "C"
     {
         mv_status_t mut_ret;
 
-        platform_expects(hndl != MV_INVALID_HANDLE);
+        platform_expects(MV_INVALID_HANDLE != hndl);
         platform_expects(hndl > ((uint64_t)0));
-        platform_expects(vsid != MV_INVALID_ID);
+        platform_expects((int32_t)MV_INVALID_ID != (int32_t)vsid);
 
         mut_ret = mv_vs_op_msr_get_list_impl(hndl, vsid);
         if (mut_ret) {
@@ -1067,7 +1097,7 @@ extern "C"
      * <!-- inputs/outputs -->
      *   @param hndl Set to the result of mv_handle_op_open_handle
      *   @param vsid The ID of the VS to set
-     *   @return Returns MV_STATUS_SUCCESS on success, MV_FAILURE_UNKNOWN
+     *   @return Returns MV_STATUS_SUCCESS on success, MV_STATUS_FAILURE_UNKNOWN
      *     and friends on failure.
      */
     NODISCARD static inline mv_status_t
@@ -1075,9 +1105,9 @@ extern "C"
     {
         mv_status_t mut_ret;
 
-        platform_expects(hndl != MV_INVALID_HANDLE);
+        platform_expects(MV_INVALID_HANDLE != hndl);
         platform_expects(hndl > ((uint64_t)0));
-        platform_expects(vsid != MV_INVALID_ID);
+        platform_expects((int32_t)MV_INVALID_ID != (int32_t)vsid);
 
         mut_ret = mv_vs_op_msr_set_list_impl(hndl, vsid);
         if (mut_ret) {

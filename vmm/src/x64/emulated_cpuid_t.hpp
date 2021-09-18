@@ -29,7 +29,7 @@
 #include <cpuid_commands.hpp>
 #include <errc_types.hpp>
 #include <gs_t.hpp>
-#include <intrinsic_t.hpp>
+#include <page_pool_t.hpp>
 #include <tls_t.hpp>
 
 #include <bsl/debug.hpp>
@@ -139,6 +139,12 @@ namespace microv
             auto mut_rax{mut_sys.bf_tls_rax()};
             auto mut_rcx{mut_sys.bf_tls_rcx()};
 
+            /// TODO:
+            /// - If the hypervisor feature bit is read, we need to report
+            ///   that a hypervisor is running. This is needed to ensure
+            ///   that the vmcall instruction is ok to execute.
+            ///
+
             if (loader::CPUID_COMMAND_EAX == bsl::to_u32_unsafe(mut_rax)) {
                 switch (bsl::to_u32_unsafe(mut_rcx).get()) {
                     case loader::CPUID_COMMAND_ECX_STOP.get(): {
@@ -184,9 +190,20 @@ namespace microv
                 return bsl::errc_failure;
             }
 
+            auto const old_rax{mut_rax};
+
             auto mut_rbx{mut_sys.bf_tls_rbx()};
             auto mut_rdx{mut_sys.bf_tls_rdx()};
             intrinsic.cpuid(mut_rax, mut_rbx, mut_rcx, mut_rdx);
+
+            constexpr auto fn0000_00001{0x00000001_u32};
+            if (fn0000_00001 == bsl::to_u32_unsafe(old_rax)) {
+                constexpr auto hypervisor_bit{0x0000000080000000_u64};
+                mut_rcx |= hypervisor_bit;
+            }
+            else {
+                bsl::touch();
+            }
 
             mut_sys.bf_tls_set_rax(mut_rax);
             mut_sys.bf_tls_set_rbx(mut_rbx);
@@ -214,6 +231,12 @@ namespace microv
         {
             bsl::discard(sys);
             bsl::discard(intrinsic);
+
+            // constexpr auto fn0000_00001{0x00000001_u32};
+            // if (fn0000_00001 == bsl::to_u32_unsafe(old_rax)) {
+            //     constexpr auto hypervisor_bit{0x0000000080000000_u64};
+            //     mut_rcx |= hypervisor_bit;
+            // }
 
             bsl::error() << "get_guest not implemented\n";
             return bsl::errc_failure;

@@ -65,6 +65,7 @@
     - [2.12.12. mv_pp_op_msr_get_emulated, OP=0x3, IDX=0xB](#21212-mv_pp_op_msr_get_emulated-op0x3-idx0xb)
     - [2.12.13. mv_pp_op_tsc_get_khz, OP=0x3, IDX=0xC](#21213-mv_pp_op_tsc_get_khz-op0x3-idx0xc)
     - [2.12.14. mv_pp_op_tsc_set_khz, OP=0x3, IDX=0xD](#21214-mv_pp_op_tsc_set_khz-op0x3-idx0xd)
+    - [2.12.1. mv_pp_op_online_pps, OP=0x3, IDX=0xE](#2121-mv_pp_op_online_pps-op0x3-idx0xe)
   - [2.13. Virtual Machine Hypercalls](#213-virtual-machine-hypercalls)
     - [2.13.1. mv_vm_op_create_vm, OP=0x4, IDX=0x0](#2131-mv_vm_op_create_vm-op0x4-idx0x0)
     - [2.13.2. mv_vm_op_destroy_vm, OP=0x4, IDX=0x1](#2132-mv_vm_op_destroy_vm-op0x4-idx0x1)
@@ -1037,6 +1038,26 @@ TBD
 | Value | Description |
 | :---- | :---------- |
 | 0x000000000000000D | Defines the index for mv_pp_op_tsc_set_khz |
+
+### 2.12.1. mv_pp_op_online_pps, OP=0x3, IDX=0xE
+
+This hypercall returns the number of online PPs
+
+**Input:**
+| Register Name | Bits | Description |
+| :------------ | :--- | :---------- |
+| REG0 | 63:0 | Set to the result of mv_handle_op_open_handle |
+
+**Output:**
+| Register Name | Bits | Description |
+| :------------ | :--- | :---------- |
+| REG0 | 15:0 | The resulting number of online PPs |
+| REG0 | 63:16 | REVI |
+
+**const, uint64_t: MV_PP_OP_ONLINE_PPS_IDX_VAL**
+| Value | Description |
+| :---- | :---------- |
+| 0x000000000000000E | Defines the index for mv_pp_op_online_pps |
 
 ## 2.13. Virtual Machine Hypercalls
 

@@ -27,7 +27,7 @@
 #ifndef MV_CONSTANTS_H
 #define MV_CONSTANTS_H
 
-#include <constants.h>
+#include <constants.h>    // IWYU pragma: export
 #include <mv_types.h>
 
 #ifdef __cplusplus
@@ -39,6 +39,11 @@ extern "C"
     // Page Alignment
     // -------------------------------------------------------------------------
 
+#ifdef __cplusplus
+    NODISCARD static inline bool
+#else
+NODISCARD static inline int
+#endif
     /**
      * <!-- description -->
      *   @brief Returns true if the provided address is page aligned,
@@ -49,21 +54,20 @@ extern "C"
      *   @return Returns 0 if the provided address is page aligned,
      *     returns a non-zero value otherwise.
      */
-    NODISCARD static inline uint64_t
     mv_is_page_aligned(uint64_t const addr) NOEXCEPT
     {
         uint64_t const mask = HYPERVISOR_PAGE_SIZE - ((uint64_t)1);
-        return (addr & mask);
+        return ((uint64_t)0) == (addr & mask);
     }
 
     /**
- * <!-- description -->
- *   @brief Returns the page aligned version of the addr
- *
- * <!-- inputs/outputs -->
- *   @param addr the address to query
- *   @return Returns the page aligned version of the addr
- */
+     * <!-- description -->
+     *   @brief Returns the page aligned version of the addr
+     *
+     * <!-- inputs/outputs -->
+     *   @param addr the address to query
+     *   @return Returns the page aligned version of the addr
+     */
     NODISCARD static inline uint64_t
     mv_page_aligned(uint64_t const addr) NOEXCEPT
     {
@@ -91,33 +95,33 @@ extern "C"
 /* -------------------------------------------------------------------------- */
 
 /** @brief Indicates the map has read access */
-#define MV_MAP_FLAG_READ_ACCESS ((uint64_t)0x0000000000000001);
+#define MV_MAP_FLAG_READ_ACCESS ((uint64_t)0x0000000000000001)
 /** @brief Indicates the map has write access */
-#define MV_MAP_FLAG_WRITE_ACCESS ((uint64_t)0x0000000000000002);
+#define MV_MAP_FLAG_WRITE_ACCESS ((uint64_t)0x0000000000000002)
 /** @brief Indicates the map has execute access */
-#define MV_MAP_FLAG_EXECUTE_ACCESS ((uint64_t)0x0000000000000004);
+#define MV_MAP_FLAG_EXECUTE_ACCESS ((uint64_t)0x0000000000000004)
 /** @brief Indicates the map has user privileges */
-#define MV_MAP_FLAG_USER ((uint64_t)0x0000000000000008);
+#define MV_MAP_FLAG_USER ((uint64_t)0x0000000000000008)
 /** @brief Indicates the map is 4k in size */
-#define MV_MAP_FLAG_4K_PAGE ((uint64_t)0x0000000000000200);
+#define MV_MAP_FLAG_4K_PAGE ((uint64_t)0x0000000000000200)
 /** @brief Indicates the map is 2m in size */
-#define MV_MAP_FLAG_2M_PAGE ((uint64_t)0x0000000000000400);
+#define MV_MAP_FLAG_2M_PAGE ((uint64_t)0x0000000000000400)
 /** @brief Indicates the map is 1g in size */
-#define MV_MAP_FLAG_1G_PAGE ((uint64_t)0x0000000000000800);
+#define MV_MAP_FLAG_1G_PAGE ((uint64_t)0x0000000000000800)
 /** @brief Indicates the map is mapped as UC */
-#define MV_MAP_FLAG_UNCACHEABLE ((uint64_t)0x0200000000000000);
+#define MV_MAP_FLAG_UNCACHEABLE ((uint64_t)0x0200000000000000)
 /** @brief Indicates the map is mapped as UC- */
-#define MV_MAP_FLAG_UNCACHEABLE_MINUS ((uint64_t)0x0400000000000000);
+#define MV_MAP_FLAG_UNCACHEABLE_MINUS ((uint64_t)0x0400000000000000)
 /** @brief Indicates the map is mapped as WC */
-#define MV_MAP_FLAG_WRITE_COMBINING ((uint64_t)0x0800000000000000);
+#define MV_MAP_FLAG_WRITE_COMBINING ((uint64_t)0x0800000000000000)
 /** @brief Indicates the map is mapped as WC +*/
-#define MV_MAP_FLAG_WRITE_COMBINING_PLUS ((uint64_t)0x1000000000000000);
+#define MV_MAP_FLAG_WRITE_COMBINING_PLUS ((uint64_t)0x1000000000000000)
 /** @brief Indicates the map is mapped as WT */
-#define MV_MAP_FLAG_WRITE_THROUGH ((uint64_t)0x2000000000000000);
+#define MV_MAP_FLAG_WRITE_THROUGH ((uint64_t)0x2000000000000000)
 /** @brief Indicates the map is mapped as WB */
-#define MV_MAP_FLAG_WRITE_BACK ((uint64_t)0x4000000000000000);
+#define MV_MAP_FLAG_WRITE_BACK ((uint64_t)0x4000000000000000)
 /** @brief Indicates the map is mapped as WP */
-#define MV_MAP_FLAG_WRITE_PROTECTED ((uint64_t)0x8000000000000000);
+#define MV_MAP_FLAG_WRITE_PROTECTED ((uint64_t)0x8000000000000000)
 
 /* -------------------------------------------------------------------------- */
 /* Special IDs                                                                */
@@ -189,13 +193,13 @@ extern "C"
 #define MV_HYPERCALL_INDEX_MASK ((uint64_t)0x000000000000FFFF)
 
     /**
- * <!-- description -->
- *   @brief n/a
- *
- * <!-- inputs/outputs -->
- *   @param rax n/a
- *   @return n/a
- */
+     * <!-- description -->
+     *   @brief n/a
+     *
+     * <!-- inputs/outputs -->
+     *   @param rax n/a
+     *   @return n/a
+     */
     NODISCARD static inline uint64_t
     mv_hypercall_sig(uint64_t const rax) NOEXCEPT
     {
@@ -203,13 +207,13 @@ extern "C"
     }
 
     /**
- * <!-- description -->
- *   @brief n/a
- *
- * <!-- inputs/outputs -->
- *   @param rax n/a
- *   @return n/a
- */
+     * <!-- description -->
+     *   @brief n/a
+     *
+     * <!-- inputs/outputs -->
+     *   @param rax n/a
+     *   @return n/a
+     */
     NODISCARD static inline uint64_t
     mv_hypercall_flags(uint64_t const rax) NOEXCEPT
     {
@@ -217,13 +221,13 @@ extern "C"
     }
 
     /**
- * <!-- description -->
- *   @brief n/a
- *
- * <!-- inputs/outputs -->
- *   @param rax n/a
- *   @return n/a
- */
+     * <!-- description -->
+     *   @brief n/a
+     *
+     * <!-- inputs/outputs -->
+     *   @param rax n/a
+     *   @return n/a
+     */
     NODISCARD static inline uint64_t
     mv_hypercall_opcode(uint64_t const rax) NOEXCEPT
     {
@@ -231,13 +235,13 @@ extern "C"
     }
 
     /**
- * <!-- description -->
- *   @brief n/a
- *
- * <!-- inputs/outputs -->
- *   @param rax n/a
- *   @return n/a
- */
+     * <!-- description -->
+     *   @brief n/a
+     *
+     * <!-- inputs/outputs -->
+     *   @param rax n/a
+     *   @return n/a
+     */
     NODISCARD static inline uint64_t
     mv_hypercall_opcode_nosig(uint64_t const rax) NOEXCEPT
     {
@@ -245,13 +249,13 @@ extern "C"
     }
 
     /**
- * <!-- description -->
- *   @brief n/a
- *
- * <!-- inputs/outputs -->
- *   @param rax n/a
- *   @return n/a
- */
+     * <!-- description -->
+     *   @brief n/a
+     *
+     * <!-- inputs/outputs -->
+     *   @param rax n/a
+     *   @return n/a
+     */
     NODISCARD static inline uint64_t
     mv_hypercall_index(uint64_t const rax) NOEXCEPT
     {
@@ -275,13 +279,13 @@ extern "C"
 #define MV_INVALID_VERSION ((uint32_t)0x80000000)
 
     /**
- * <!-- description -->
- *   @brief n/a
- *
- * <!-- inputs/outputs -->
- *   @param version n/a
- *   @return n/a
- */
+     * <!-- description -->
+     *   @brief n/a
+     *
+     * <!-- inputs/outputs -->
+     *   @param version n/a
+     *   @return n/a
+     */
     NODISCARD static inline int32_t
     mv_is_spec1_supported(uint32_t const version) NOEXCEPT
     {

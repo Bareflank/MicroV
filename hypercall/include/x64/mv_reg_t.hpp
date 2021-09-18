@@ -25,15 +25,21 @@
 #ifndef MV_REG_T_HPP
 #define MV_REG_T_HPP
 
-#include <bsl/cstdint.hpp>
+#include <bsl/convert.hpp>
+#include <bsl/safe_integral.hpp>
 
 namespace hypercall
 {
+    /// @brief stores the max value for a mv_reg_t
+    constexpr auto MV_MAX_REG_T{71_i32};
+
     /// <!-- description -->
     ///   @brief Defines which register to use for certain hypercalls
     ///
     enum class mv_reg_t : bsl::int32
     {
+        /// @brief defines an unsupported register
+        mv_reg_t_unsupported = 0,
         /// @brief defines the rax register
         mv_reg_t_rax = 1,
         /// @brief defines the rbx register
@@ -179,7 +185,7 @@ namespace hypercall
         /// @brief defines the xcr0 register (Intel Only)
         mv_reg_t_xcr0 = 70,
         /// @brief defines and invalid mv_reg_t
-        mv_reg_t_invalid = 71,
+        mv_reg_t_invalid = MV_MAX_REG_T.get(),
     };
 }
 

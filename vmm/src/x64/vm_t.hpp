@@ -28,10 +28,13 @@
 #include <allocated_status_t.hpp>
 #include <bf_syscall_t.hpp>
 #include <emulated_ioapic_t.hpp>
+#include <emulated_mmio_t.hpp>
 #include <emulated_pic_t.hpp>
 #include <emulated_pit_t.hpp>
 #include <gs_t.hpp>
 #include <intrinsic_t.hpp>
+#include <mv_translation_t.hpp>
+#include <page_pool_t.hpp>
 #include <tls_t.hpp>
 
 #include <bsl/discard.hpp>
@@ -57,6 +60,8 @@ namespace microv
 
         /// @brief stores this vs_t's emulated_ioapic_t
         emulated_ioapic_t m_emulated_ioapic{};
+        /// @brief stores this vs_t's emulated_mmio_t
+        emulated_mmio_t m_emulated_mmio{};
         /// @brief stores this vs_t's emulated_pic_t
         emulated_pic_t m_emulated_pic{};
         /// @brief stores this vs_t's emulated_pit_t
@@ -87,6 +92,7 @@ namespace microv
             bsl::expects(i != syscall::BF_INVALID_ID);
 
             m_emulated_ioapic.initialize(gs, tls, sys, intrinsic, i);
+            m_emulated_mmio.initialize(gs, tls, sys, intrinsic, i);
             m_emulated_pic.initialize(gs, tls, sys, intrinsic, i);
             m_emulated_pit.initialize(gs, tls, sys, intrinsic, i);
 
@@ -100,6 +106,7 @@ namespace microv
         ///   @param gs the gs_t to use
         ///   @param tls the tls_t to use
         ///   @param sys the bf_syscall_t to use
+        ///   @param mut_page_pool the page_pool_t to use
         ///   @param intrinsic the intrinsic_t to use
         ///
         constexpr void
@@ -107,12 +114,14 @@ namespace microv
             gs_t const &gs,
             tls_t const &tls,
             syscall::bf_syscall_t const &sys,
+            page_pool_t &mut_page_pool,
             intrinsic_t const &intrinsic) noexcept
         {
-            this->deallocate(gs, tls, sys, intrinsic);
+            this->deallocate(gs, tls, sys, mut_page_pool, intrinsic);
 
             m_emulated_pit.release(gs, tls, sys, intrinsic);
             m_emulated_pic.release(gs, tls, sys, intrinsic);
+            m_emulated_mmio.release(gs, tls, sys, intrinsic);
             m_emulated_ioapic.release(gs, tls, sys, intrinsic);
 
             m_id = {};
@@ -137,7 +146,8 @@ namespace microv
         /// <!-- inputs/outputs -->
         ///   @param gs the gs_t to use
         ///   @param tls the tls_t to use
-        ///   @param sys the bf_syscall_t to use
+        ///   @param mut_sys the bf_syscall_t to use
+        ///   @param mut_page_pool the page_pool_t to use
         ///   @param intrinsic the intrinsic_t to use
         ///   @return Returns ID of this vm_t
         ///
@@ -145,19 +155,22 @@ namespace microv
         allocate(
             gs_t const &gs,
             tls_t const &tls,
-            syscall::bf_syscall_t const &sys,
+            syscall::bf_syscall_t &mut_sys,
+            page_pool_t &mut_page_pool,
             intrinsic_t const &intrinsic) noexcept -> bsl::safe_u16
         {
             bsl::expects(this->id() != syscall::BF_INVALID_ID);
             bsl::expects(allocated_status_t::deallocated == m_allocated);
 
-            bsl::discard(gs);
-            bsl::discard(tls);
-            bsl::discard(intrinsic);
+            auto const ret{m_emulated_mmio.allocate(gs, tls, mut_sys, mut_page_pool, intrinsic)};
+            if (bsl::unlikely(!ret)) {
+                bsl::print<bsl::V>() << bsl::here();
+                return bsl::safe_u16::failure();
+            }
 
             m_allocated = allocated_status_t::allocated;
 
-            if (!sys.is_vm_the_root_vm(this->id())) {
+            if (!mut_sys.is_vm_the_root_vm(this->id())) {
                 bsl::debug<bsl::V>()                                   // --
                     << "vm "                                           // --
                     << bsl::grn << bsl::hex(this->id()) << bsl::rst    // --
@@ -178,6 +191,7 @@ namespace microv
         ///   @param gs the gs_t to use
         ///   @param tls the tls_t to use
         ///   @param sys the bf_syscall_t to use
+        ///   @param mut_page_pool the page_pool_t to use
         ///   @param intrinsic the intrinsic_t to use
         ///
         constexpr void
@@ -185,13 +199,12 @@ namespace microv
             gs_t const &gs,
             tls_t const &tls,
             syscall::bf_syscall_t const &sys,
+            page_pool_t &mut_page_pool,
             intrinsic_t const &intrinsic) noexcept
         {
             bsl::expects(this->is_active(tls).is_invalid());
 
-            bsl::discard(gs);
-            bsl::discard(intrinsic);
-
+            m_emulated_mmio.deallocate(gs, tls, sys, mut_page_pool, intrinsic);
             m_allocated = allocated_status_t::deallocated;
 
             if (!sys.is_vm_the_root_vm(this->id())) {
@@ -310,6 +323,40 @@ namespace microv
         {
             bsl::expects(bsl::to_umx(tls.ppid) < m_active.size());
             return *m_active.at_if(bsl::to_idx(tls.ppid));
+        }
+
+        /// <!-- description -->
+        ///   @brief Returns the system physical address of the second level
+        ///     page tables used by this vm_t.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @return Returns the system physical address of the second level
+        ///     page tables used by this vm_t.
+        ///
+        [[nodiscard]] constexpr auto
+        slpt_spa() const noexcept -> bsl::safe_umx
+        {
+            return m_emulated_mmio.slpt_spa();
+        }
+
+        /// <!-- description -->
+        ///   @brief Returns a system physical address given a guest physical
+        ///     address using MMIO second level paging from this vm_t to
+        ///     perform the translation.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param sys the bf_syscall_t to use
+        ///   @param gpa the GPA to translate to a SPA
+        ///   @return Returns a system physical address given a guest physical
+        ///     address using MMIO second level paging from this vm_t to
+        ///     perform the translation.
+        ///
+        [[nodiscard]] constexpr auto
+        gpa_to_spa(syscall::bf_syscall_t const &sys, bsl::safe_u64 const &gpa) const noexcept
+            -> bsl::safe_u64
+        {
+            bsl::expects(allocated_status_t::allocated == m_allocated);
+            return m_emulated_mmio.gpa_to_spa(sys, gpa);
         }
     };
 }

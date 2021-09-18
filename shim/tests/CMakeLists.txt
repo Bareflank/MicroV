@@ -80,13 +80,19 @@ list(APPEND INTEL_SYSTEM_INCLUDES
 
 if (WIN32)
     list(APPEND COMMON_DEFINES
-        MICROV_MAX_VCPUS=2ULL
         MICROV_MAX_PP_MAPS=2ULL
+        MICROV_MAX_VMS=2ULL
+        MICROV_MAX_VCPUS=2ULL
+        MICROV_MAX_GPA_SIZE=0x0000200000000000ULL
+        MICROV_MAX_SLOTS=64ULL
     )
 else()
     list(APPEND COMMON_DEFINES
-        MICROV_MAX_VCPUS=2UL
         MICROV_MAX_PP_MAPS=2UL
+        MICROV_MAX_VMS=2UL
+        MICROV_MAX_VCPUS=2UL
+        MICROV_MAX_GPA_SIZE=0x0000200000000000UL
+        MICROV_MAX_SLOTS=64UL
     )
 endif()
 
@@ -110,5 +116,4 @@ list(APPEND AARCH64_DEFINES
 # Tests
 # ------------------------------------------------------------------------------
 
-# add_subdirectory(mocks)
 add_subdirectory(src)

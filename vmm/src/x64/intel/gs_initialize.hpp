@@ -29,6 +29,7 @@
 #include <gs_t.hpp>
 #include <intrinsic_t.hpp>
 #include <page_4k_t.hpp>
+#include <page_pool_t.hpp>
 
 #include <bsl/debug.hpp>
 #include <bsl/discard.hpp>
@@ -43,15 +44,19 @@ namespace microv
     /// <!-- inputs/outputs -->
     ///   @param mut_gs the gs_t to use
     ///   @param mut_sys the bf_syscall_t to use
+    ///   @param page_pool the page_pool_t to use
     ///   @param intrinsic the intrinsic_t to use
     ///   @return Returns bsl::errc_success on success, bsl::errc_failure
     ///     and friends otherwise
     ///
     [[nodiscard]] constexpr auto
     gs_initialize(
-        gs_t &mut_gs, syscall::bf_syscall_t &mut_sys, intrinsic_t const &intrinsic) noexcept
-        -> bsl::errc_type
+        gs_t &mut_gs,
+        syscall::bf_syscall_t &mut_sys,
+        page_pool_t const &page_pool,
+        intrinsic_t const &intrinsic) noexcept -> bsl::errc_type
     {
+        bsl::discard(page_pool);
         bsl::discard(intrinsic);
 
         mut_gs.msr_bitmap = mut_sys.bf_mem_op_alloc_page<page_4k_t>(mut_gs.msr_bitmap_phys);

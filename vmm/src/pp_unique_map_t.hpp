@@ -110,9 +110,6 @@ namespace microv
         ///
         constexpr ~pp_unique_map_t() noexcept
         {
-            bsl::expects(this->assigned_ppid() == m_sys->bf_tls_ppid());
-            bsl::expects(this->assigned_vmid() == m_sys->bf_tls_vmid());
-
             if (nullptr != m_ptr) {
                 bsl::expects(m_sys->bf_vm_op_unmap_direct(m_sys->bf_tls_vmid(), m_ptr));
                 *m_spa = {};
@@ -245,8 +242,6 @@ namespace microv
         [[nodiscard]] constexpr auto
         is_invalid() const noexcept -> bool
         {
-            bsl::expects(this->assigned_ppid() == m_sys->bf_tls_ppid());
-            bsl::expects(this->assigned_vmid() == m_sys->bf_tls_vmid());
             return nullptr == m_ptr;
         }
 
@@ -259,8 +254,6 @@ namespace microv
         [[nodiscard]] constexpr auto
         is_valid() const noexcept -> bool
         {
-            bsl::expects(this->assigned_ppid() == m_sys->bf_tls_ppid());
-            bsl::expects(this->assigned_vmid() == m_sys->bf_tls_vmid());
             return nullptr != m_ptr;
         }
     };

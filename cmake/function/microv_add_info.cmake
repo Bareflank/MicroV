@@ -74,6 +74,26 @@ macro(microv_add_info)
     )
 
     add_custom_command(TARGET info
+        COMMAND ${CMAKE_COMMAND} -E echo "${BF_COLOR_YLW}   MICROV_MAX_VMS                 ${BF_COLOR_CYN}${MICROV_MAX_VMS}${BF_COLOR_RST}"
+        VERBATIM
+    )
+
+    add_custom_command(TARGET info
+        COMMAND ${CMAKE_COMMAND} -E echo "${BF_COLOR_YLW}   MICROV_MAX_VCPUS               ${BF_COLOR_CYN}${MICROV_MAX_VCPUS}${BF_COLOR_RST}"
+        VERBATIM
+    )
+
+    add_custom_command(TARGET info
+        COMMAND ${CMAKE_COMMAND} -E echo "${BF_COLOR_YLW}   MICROV_MAX_GPA_SIZE            ${BF_COLOR_CYN}${MICROV_MAX_GPA_SIZE}${BF_COLOR_RST}"
+        VERBATIM
+    )
+
+    add_custom_command(TARGET info
+        COMMAND ${CMAKE_COMMAND} -E echo "${BF_COLOR_YLW}   MICROV_MAX_SLOTS               ${BF_COLOR_CYN}${MICROV_MAX_SLOTS}${BF_COLOR_RST}"
+        VERBATIM
+    )
+
+    add_custom_command(TARGET info
         COMMAND ${CMAKE_COMMAND} -E echo " "
         VERBATIM
     )

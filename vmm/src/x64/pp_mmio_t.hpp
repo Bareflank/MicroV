@@ -285,6 +285,12 @@ namespace microv
                 bsl::expects(mut_sys.bf_vm_op_unmap_direct(vmid, m_shared_page));
                 m_shared_page = {};
                 m_shared_page_in_use = {};
+
+                bsl::debug<bsl::V>()                                              // --
+                    << "shared page for pp "                                      // --
+                    << bsl::cyn << bsl::hex(this->assigned_ppid()) << bsl::rst    // --
+                    << " was cleared"                                             // --
+                    << bsl::endl;                                                 // --
             }
             else {
                 bsl::touch();
@@ -312,7 +318,16 @@ namespace microv
             bsl::expects(spa.is_valid_and_checked());
             bsl::expects(spa.is_pos());
 
-            bsl::expects(nullptr == m_shared_page);
+            if (bsl::unlikely(nullptr != m_shared_page)) {
+                bsl::error() << "shared page for pp "              // --
+                             << bsl::hex(this->assigned_ppid())    // --
+                             << " was already set to spa "         // --
+                             << bsl::hex(spa)                      // --
+                             << bsl::endl;                         // --
+
+                return bsl::errc_failure;
+            }
+
             bsl::expects(!m_shared_page_in_use);
 
             m_shared_page = mut_sys.bf_vm_op_map_direct<page_4k_t>(vmid, spa);
@@ -320,6 +335,13 @@ namespace microv
                 bsl::print<bsl::V>() << bsl::here();
                 return bsl::errc_failure;
             }
+
+            bsl::debug<bsl::V>()                                              // --
+                << "shared page for pp "                                      // --
+                << bsl::cyn << bsl::hex(this->assigned_ppid()) << bsl::rst    // --
+                << " was set to spa "                                         // --
+                << bsl::cyn << bsl::hex(spa) << bsl::rst                      // --
+                << bsl::endl;                                                 // --
 
             return bsl::errc_success;
         }
@@ -331,24 +353,21 @@ namespace microv
         ///
         /// <!-- inputs/outputs -->
         ///   @tparam T the type of shared page to return
-        ///   @param sys the bf_syscall_t to use
+        ///   @param mut_sys the bf_syscall_t to use
         ///   @return Returns a pp_unique_shared_page_t<T> if the shared page
         ///     is not currently in use. If an error occurs, returns an invalid
         ///     pp_unique_shared_page_t<T>.
         ///
         template<typename T>
         [[nodiscard]] constexpr auto
-        shared_page(syscall::bf_syscall_t const &sys) noexcept -> pp_unique_shared_page_t<T>
+        shared_page(syscall::bf_syscall_t &mut_sys) noexcept -> pp_unique_shared_page_t<T>
         {
             static_assert(bsl::is_pod<T>::value);
             static_assert(sizeof(T) <= HYPERVISOR_PAGE_SIZE);
 
-            bsl::expects(this->assigned_ppid() == sys.bf_tls_ppid());
-            bsl::expects(sys.is_the_active_vm_the_root_vm());
-
-            bsl::expects(!m_shared_page_in_use);
+            bsl::expects(this->assigned_ppid() == mut_sys.bf_tls_ppid());
             // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
-            return {reinterpret_cast<T *>(m_shared_page), sys, &m_shared_page_in_use};
+            return {reinterpret_cast<T *>(m_shared_page), &mut_sys, &m_shared_page_in_use};
         }
     };
 }

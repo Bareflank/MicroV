@@ -22,6 +22,7 @@
 /// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 /// SOFTWARE.
 
+#include <integration_utils.hpp>
 #include <ioctl.hpp>
 #include <shim_platform_interface.hpp>
 
@@ -48,6 +49,10 @@ main() noexcept -> bsl::exit_code
         auto const vm2fd{mut_system_ctl.send(shim::KVM_CREATE_VM)};
         auto const vm3fd{mut_system_ctl.send(shim::KVM_CREATE_VM)};
 
+        integration::verify(vm1fd.is_pos());
+        integration::verify(vm2fd.is_pos());
+        integration::verify(vm3fd.is_pos());
+
         lib::ioctl mut_vm1{bsl::to_i32(vm1fd)};
         lib::ioctl mut_vm2{bsl::to_i32(vm2fd)};
         lib::ioctl mut_vm3{bsl::to_i32(vm3fd)};
@@ -63,6 +68,10 @@ main() noexcept -> bsl::exit_code
         auto const vm2fd{mut_system_ctl.send(shim::KVM_CREATE_VM)};
         auto const vm3fd{mut_system_ctl.send(shim::KVM_CREATE_VM)};
 
+        integration::verify(vm1fd.is_pos());
+        integration::verify(vm2fd.is_pos());
+        integration::verify(vm3fd.is_pos());
+
         lib::ioctl mut_vm1{bsl::to_i32(vm1fd)};
         lib::ioctl mut_vm2{bsl::to_i32(vm2fd)};
         lib::ioctl mut_vm3{bsl::to_i32(vm3fd)};
@@ -77,6 +86,10 @@ main() noexcept -> bsl::exit_code
         auto const vm1fd{mut_system_ctl.send(shim::KVM_CREATE_VM)};
         auto const vm2fd{mut_system_ctl.send(shim::KVM_CREATE_VM)};
         auto const vm3fd{mut_system_ctl.send(shim::KVM_CREATE_VM)};
+
+        integration::verify(vm1fd.is_pos());
+        integration::verify(vm2fd.is_pos());
+        integration::verify(vm3fd.is_pos());
 
         lib::ioctl mut_vm1{bsl::to_i32(vm1fd)};
         lib::ioctl mut_vm2{bsl::to_i32(vm2fd)};

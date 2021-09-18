@@ -36,7 +36,7 @@ extern "C"
 #endif
 
     /** @brief stores whether or not mv_debug_op_out executed */
-    int32_t g_mut_mv_debug_op_out_executed = {0};
+    extern int32_t g_mut_mv_debug_op_out_executed;
 
     /**
      * <!-- description -->
@@ -52,7 +52,7 @@ extern "C"
      *   @param val2 The second value to output to MicroV's console
      */
     static inline void
-    mv_debug_op_out(uint64_t const val1, uint64_t const val2)
+    mv_debug_op_out(uint64_t const val1, uint64_t const val2) NOEXCEPT
     {
         g_mut_mv_debug_op_out_executed = 1;
         printf("0x%" PRIx64 " 0x%" PRIx64 "\n", val1, val2);

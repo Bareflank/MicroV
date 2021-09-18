@@ -25,6 +25,8 @@
 #include "../../include/handle_vm_kvm_create_vcpu.h"
 
 #include <helpers.hpp>
+#include <shim_vcpu_t.h>
+#include <shim_vm_t.h>
 
 #include <bsl/convert.hpp>
 #include <bsl/safe_integral.hpp>
@@ -44,6 +46,8 @@ namespace shim
     [[nodiscard]] constexpr auto
     tests() noexcept -> bsl::exit_code
     {
+        init_tests();
+
         bsl::ut_scenario{"success"} = []() noexcept {
             bsl::ut_given{} = [&]() noexcept {
                 shim_vm_t mut_vm{};
@@ -63,16 +67,35 @@ namespace shim
             };
         };
 
+        bsl::ut_scenario{"hypervisor not detected"} = []() noexcept {
+            bsl::ut_given{} = [&]() noexcept {
+                shim_vm_t mut_vm{};
+                shim_vcpu_t *pmut_mut_vcpu{};
+                bsl::ut_when{} = [&]() noexcept {
+                    g_mut_hypervisor_detected = false;
+                    bsl::ut_then{} = [&]() noexcept {
+                        bsl::ut_check(
+                            SHIM_FAILURE == handle_vm_kvm_create_vcpu(&mut_vm, &pmut_mut_vcpu));
+                    };
+                    bsl::ut_cleanup{} = [&]() noexcept {
+                        g_mut_hypervisor_detected = true;
+                    };
+                };
+            };
+        };
+
         bsl::ut_scenario{"mv_vp_op_create_vp fails"} = []() noexcept {
             bsl::ut_given{} = [&]() noexcept {
                 shim_vm_t mut_vm{};
                 shim_vcpu_t *pmut_mut_vcpu{};
                 bsl::ut_when{} = [&]() noexcept {
                     g_mut_mv_vp_op_create_vp = MV_INVALID_ID;
-                    g_mut_mv_vs_op_create_vs = {};
                     bsl::ut_then{} = [&]() noexcept {
                         bsl::ut_check(
                             SHIM_FAILURE == handle_vm_kvm_create_vcpu(&mut_vm, &pmut_mut_vcpu));
+                    };
+                    bsl::ut_cleanup{} = [&]() noexcept {
+                        g_mut_mv_vp_op_create_vp = {};
                     };
                 };
             };
@@ -83,11 +106,13 @@ namespace shim
                 shim_vm_t mut_vm{};
                 shim_vcpu_t *pmut_mut_vcpu{};
                 bsl::ut_when{} = [&]() noexcept {
-                    g_mut_mv_vp_op_create_vp = {};
                     g_mut_mv_vs_op_create_vs = MV_INVALID_ID;
                     bsl::ut_then{} = [&]() noexcept {
                         bsl::ut_check(
                             SHIM_FAILURE == handle_vm_kvm_create_vcpu(&mut_vm, &pmut_mut_vcpu));
+                    };
+                    bsl::ut_cleanup{} = [&]() noexcept {
+                        g_mut_mv_vs_op_create_vs = {};
                     };
                 };
             };
@@ -98,8 +123,6 @@ namespace shim
                 shim_vm_t mut_vm{};
                 shim_vcpu_t *pmut_mut_vcpu{};
                 bsl::ut_when{} = [&]() noexcept {
-                    g_mut_mv_vp_op_create_vp = {};
-                    g_mut_mv_vs_op_create_vs = {};
                     bsl::ut_then{} = [&]() noexcept {
                         bsl::ut_check(
                             SHIM_SUCCESS == handle_vm_kvm_create_vcpu(&mut_vm, &pmut_mut_vcpu));
@@ -112,7 +135,7 @@ namespace shim
             };
         };
 
-        return bsl::ut_success();
+        return fini_tests();
     }
 }
 
