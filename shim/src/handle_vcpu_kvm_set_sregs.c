@@ -128,61 +128,84 @@ handle_vcpu_kvm_set_sregs(
         (((uint64_t)pmut_args->cs.g) << ATTRIB_G_SHIFT) |
         (((uint64_t)pmut_args->cs.db) << ATTRIB_DB_SHIFT));
 
-    /*    pmut_reg_rdl->entries[DS_SELECTOR_IDX].val = (uint64_t)mv_reg_t_ds_selector;
+    pmut_reg_rdl->entries[DS_SELECTOR_IDX].val = (uint64_t)mv_reg_t_ds_selector;
     pmut_reg_rdl->entries[DS_LIMIT_IDX].val = (uint64_t)mv_reg_t_ds_limit;
     pmut_reg_rdl->entries[DS_BASE_IDX].val = (uint64_t)mv_reg_t_ds_base;
     pmut_reg_rdl->entries[DS_ATTRIB_IDX].val = (uint64_t)(
-        (pmut_args->ds.type << ATTRIB_TYPE_SHIFT) | (pmut_args->ds.s << ATTRIB_S_SHIFT) |
-        (pmut_args->ds.dpl << ATTRIB_DPL_SHIFT) | (pmut_args->ds.present << ATTRIB_PRESENT_SHIFT) |
-        (pmut_args->ds.avl << ATTRIB_AVL_SHIFT) | (pmut_args->ds.l << ATTRIB_L_SHIFT) |
-        (pmut_args->ds.g << ATTRIB_G_SHIFT) | (pmut_args->ds.db << ATTRIB_DB_SHIFT));
+        (((uint64_t)pmut_args->ds.type) << ATTRIB_TYPE_SHIFT) |
+        (((uint64_t)pmut_args->ds.s) << ATTRIB_S_SHIFT) |
+        (((uint64_t)pmut_args->ds.dpl) << ATTRIB_DPL_SHIFT) |
+        (((uint64_t)pmut_args->ds.present) << ATTRIB_PRESENT_SHIFT) |
+        (((uint64_t)pmut_args->ds.avl) << ATTRIB_AVL_SHIFT) |
+        (((uint64_t)pmut_args->ds.l) << ATTRIB_L_SHIFT) |
+        (((uint64_t)pmut_args->ds.g) << ATTRIB_G_SHIFT) |
+        (((uint64_t)pmut_args->ds.db) << ATTRIB_DB_SHIFT));
 
     pmut_reg_rdl->entries[FS_SELECTOR_IDX].val = (uint64_t)mv_reg_t_fs_selector;
     pmut_reg_rdl->entries[FS_LIMIT_IDX].val = (uint64_t)mv_reg_t_fs_limit;
     pmut_reg_rdl->entries[FS_BASE_IDX].val = (uint64_t)mv_reg_t_fs_base;
     pmut_reg_rdl->entries[FS_ATTRIB_IDX].val = (uint64_t)(
-        (pmut_args->fs.type << ATTRIB_TYPE_SHIFT) | (pmut_args->fs.s << ATTRIB_S_SHIFT) |
-        (pmut_args->fs.dpl << ATTRIB_DPL_SHIFT) | (pmut_args->fs.present << ATTRIB_PRESENT_SHIFT) |
-        (pmut_args->fs.avl << ATTRIB_AVL_SHIFT) | (pmut_args->fs.l << ATTRIB_L_SHIFT) |
-        (pmut_args->fs.g << ATTRIB_G_SHIFT) | (pmut_args->fs.db << ATTRIB_DB_SHIFT));
+        (((uint64_t)pmut_args->fs.type) << ATTRIB_TYPE_SHIFT) |
+        (((uint64_t)pmut_args->fs.s) << ATTRIB_S_SHIFT) |
+        (((uint64_t)pmut_args->fs.dpl) << ATTRIB_DPL_SHIFT) |
+        (((uint64_t)pmut_args->fs.present) << ATTRIB_PRESENT_SHIFT) |
+        (((uint64_t)pmut_args->fs.avl) << ATTRIB_AVL_SHIFT) |
+        (((uint64_t)pmut_args->fs.l) << ATTRIB_L_SHIFT) |
+        (((uint64_t)pmut_args->fs.g) << ATTRIB_G_SHIFT) |
+        (((uint64_t)pmut_args->fs.db) << ATTRIB_DB_SHIFT));
 
     pmut_reg_rdl->entries[GS_SELECTOR_IDX].val = (uint64_t)mv_reg_t_gs_selector;
     pmut_reg_rdl->entries[GS_LIMIT_IDX].val = (uint64_t)mv_reg_t_gs_limit;
     pmut_reg_rdl->entries[GS_BASE_IDX].val = (uint64_t)mv_reg_t_gs_base;
     pmut_reg_rdl->entries[GS_ATTRIB_IDX].val = (uint64_t)(
-        (pmut_args->gs.type << ATTRIB_TYPE_SHIFT) | (pmut_args->gs.s << ATTRIB_S_SHIFT) |
-        (pmut_args->gs.dpl << ATTRIB_DPL_SHIFT) | (pmut_args->gs.present << ATTRIB_PRESENT_SHIFT) |
-        (pmut_args->gs.avl << ATTRIB_AVL_SHIFT) | (pmut_args->gs.l << ATTRIB_L_SHIFT) |
-        (pmut_args->gs.g << ATTRIB_G_SHIFT) | (pmut_args->gs.db << ATTRIB_DB_SHIFT));
+        (((uint64_t)pmut_args->gs.type) << ATTRIB_TYPE_SHIFT) |
+        (((uint64_t)pmut_args->gs.s) << ATTRIB_S_SHIFT) |
+        (((uint64_t)pmut_args->gs.dpl) << ATTRIB_DPL_SHIFT) |
+        (((uint64_t)pmut_args->gs.present) << ATTRIB_PRESENT_SHIFT) |
+        (((uint64_t)pmut_args->gs.avl) << ATTRIB_AVL_SHIFT) |
+        (((uint64_t)pmut_args->gs.l) << ATTRIB_L_SHIFT) |
+        (((uint64_t)pmut_args->gs.g) << ATTRIB_G_SHIFT) |
+        (((uint64_t)pmut_args->gs.db) << ATTRIB_DB_SHIFT));
 
     pmut_reg_rdl->entries[SS_SELECTOR_IDX].val = (uint64_t)mv_reg_t_ss_selector;
     pmut_reg_rdl->entries[SS_LIMIT_IDX].val = (uint64_t)mv_reg_t_ss_limit;
     pmut_reg_rdl->entries[SS_BASE_IDX].val = (uint64_t)mv_reg_t_ss_base;
     pmut_reg_rdl->entries[SS_ATTRIB_IDX].val = (uint64_t)(
-        (pmut_args->ss.type << ATTRIB_TYPE_SHIFT) | (pmut_args->ss.s << ATTRIB_S_SHIFT) |
-        (pmut_args->ss.dpl << ATTRIB_DPL_SHIFT) | (pmut_args->ss.present << ATTRIB_PRESENT_SHIFT) |
-        (pmut_args->ss.avl << ATTRIB_AVL_SHIFT) | (pmut_args->ss.l << ATTRIB_L_SHIFT) |
-        (pmut_args->ss.g << ATTRIB_G_SHIFT) | (pmut_args->ss.db << ATTRIB_DB_SHIFT));
+        (((uint64_t)pmut_args->ss.type) << ATTRIB_TYPE_SHIFT) |
+        (((uint64_t)pmut_args->ss.s) << ATTRIB_S_SHIFT) |
+        (((uint64_t)pmut_args->ss.dpl) << ATTRIB_DPL_SHIFT) |
+        (((uint64_t)pmut_args->ss.present) << ATTRIB_PRESENT_SHIFT) |
+        (((uint64_t)pmut_args->ss.avl) << ATTRIB_AVL_SHIFT) |
+        (((uint64_t)pmut_args->ss.l) << ATTRIB_L_SHIFT) |
+        (((uint64_t)pmut_args->ss.g) << ATTRIB_G_SHIFT) |
+        (((uint64_t)pmut_args->ss.db) << ATTRIB_DB_SHIFT));
 
     pmut_reg_rdl->entries[LDT_SELECTOR_IDX].val = (uint64_t)mv_reg_t_ldtr_selector;
     pmut_reg_rdl->entries[LDT_LIMIT_IDX].val = (uint64_t)mv_reg_t_ldtr_limit;
     pmut_reg_rdl->entries[LDT_BASE_IDX].val = (uint64_t)mv_reg_t_ldtr_base;
     pmut_reg_rdl->entries[LDT_ATTRIB_IDX].val = (uint64_t)(
-        (pmut_args->ldt.type << ATTRIB_TYPE_SHIFT) | (pmut_args->ldt.s << ATTRIB_S_SHIFT) |
-        (pmut_args->ldt.dpl << ATTRIB_DPL_SHIFT) |
-        (pmut_args->ldt.present << ATTRIB_PRESENT_SHIFT) |
-        (pmut_args->ldt.avl << ATTRIB_AVL_SHIFT) | (pmut_args->ldt.l << ATTRIB_L_SHIFT) |
-        (pmut_args->ldt.g << ATTRIB_G_SHIFT) | (pmut_args->ldt.db << ATTRIB_DB_SHIFT));
-*/
+        (((uint64_t)pmut_args->ldt.type) << ATTRIB_TYPE_SHIFT) |
+        (((uint64_t)pmut_args->ldt.s) << ATTRIB_S_SHIFT) |
+        (((uint64_t)pmut_args->ldt.dpl) << ATTRIB_DPL_SHIFT) |
+        (((uint64_t)pmut_args->ldt.present) << ATTRIB_PRESENT_SHIFT) |
+        (((uint64_t)pmut_args->ldt.avl) << ATTRIB_AVL_SHIFT) |
+        (((uint64_t)pmut_args->ldt.l) << ATTRIB_L_SHIFT) |
+        (((uint64_t)pmut_args->ldt.g) << ATTRIB_G_SHIFT) |
+        (((uint64_t)pmut_args->ldt.db) << ATTRIB_DB_SHIFT));
+
     pmut_reg_rdl->entries[TR_SELECTOR_IDX].val = (uint64_t)mv_reg_t_tr_selector;
     pmut_reg_rdl->entries[TR_LIMIT_IDX].val = (uint64_t)mv_reg_t_tr_limit;
     pmut_reg_rdl->entries[TR_BASE_IDX].val = (uint64_t)mv_reg_t_tr_base;
 
     pmut_reg_rdl->entries[TR_ATTRIB_IDX].val = (uint64_t)(
-        (pmut_args->tr.type << ATTRIB_TYPE_SHIFT) | (pmut_args->tr.s << ATTRIB_S_SHIFT) |
-        (pmut_args->tr.dpl << ATTRIB_DPL_SHIFT) | (pmut_args->tr.present << ATTRIB_PRESENT_SHIFT) |
-        (pmut_args->tr.avl << ATTRIB_AVL_SHIFT) | (pmut_args->tr.l << ATTRIB_L_SHIFT) |
-        (pmut_args->tr.g << ATTRIB_G_SHIFT) | (pmut_args->tr.db << ATTRIB_DB_SHIFT));
+        (((uint64_t)pmut_args->tr.type) << ATTRIB_TYPE_SHIFT) |
+        (((uint64_t)pmut_args->tr.s) << ATTRIB_S_SHIFT) |
+        (((uint64_t)pmut_args->tr.dpl) << ATTRIB_DPL_SHIFT) |
+        (((uint64_t)pmut_args->tr.present) << ATTRIB_PRESENT_SHIFT) |
+        (((uint64_t)pmut_args->tr.avl) << ATTRIB_AVL_SHIFT) |
+        (((uint64_t)pmut_args->tr.l) << ATTRIB_L_SHIFT) |
+        (((uint64_t)pmut_args->tr.g) << ATTRIB_G_SHIFT) |
+        (((uint64_t)pmut_args->tr.db) << ATTRIB_DB_SHIFT));
 
     pmut_reg_rdl->entries[GDT_LIMIT_IDX].val = (uint64_t)mv_reg_t_gdtr_limit;
     pmut_reg_rdl->entries[GDT_BASE_IDX].val = (uint64_t)mv_reg_t_gdtr_base;
