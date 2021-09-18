@@ -53,7 +53,7 @@ handle_vcpu_kvm_set_regs(
 {
     struct mv_rdl_t *pmut_mut_rdl;
     platform_expects(MV_INVALID_HANDLE != g_mut_hndl);
-       
+
     if (detect_hypervisor()) {
         bferror("The shim is not running in a VM. Did you forget to start MicroV?");
         return SHIM_FAILURE;

@@ -26,7 +26,6 @@
 
 #include <debug.h>
 #include <g_mut_hndl.h>
-#include <kvm_dtable.h>
 #include <kvm_segment.h>
 #include <kvm_sregs.h>
 #include <kvm_sregs_idxs.h>
