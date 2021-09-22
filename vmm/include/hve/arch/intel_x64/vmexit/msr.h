@@ -78,6 +78,10 @@ public:
                                  bfvmm::intel_x64::rdmsr_handler::info_t &info);
     bool handle_wrmsr_0x00000034(vcpu_t *vcpu,
                                  bfvmm::intel_x64::wrmsr_handler::info_t &info);
+    bool handle_rdmsr_0x0000003A(vcpu_t *vcpu,
+                                 bfvmm::intel_x64::rdmsr_handler::info_t &info);
+    bool handle_wrmsr_0x0000003A(vcpu_t *vcpu,
+                                 bfvmm::intel_x64::wrmsr_handler::info_t &info);
     bool handle_rdmsr_0x000000CE(vcpu_t *vcpu,
                                  bfvmm::intel_x64::rdmsr_handler::info_t &info);
     bool handle_wrmsr_0x000000CE(vcpu_t *vcpu,

@@ -105,6 +105,7 @@ msr_handler::msr_handler(gsl::not_null<vcpu *> vcpu) : m_vcpu{vcpu}
     vcpu->pass_through_msr_access(::intel_x64::msrs::ia32_sysenter_esp::addr);
 
     EMULATE_MSR(0x00000034, handle_rdmsr_0x00000034, handle_wrmsr_0x00000034);
+    EMULATE_MSR(0x0000003A, handle_rdmsr_0x0000003A, handle_wrmsr_0x0000003A);
     EMULATE_MSR(0x000000CE, handle_rdmsr_0x000000CE, handle_wrmsr_0x000000CE);
     EMULATE_MSR(0x00000140, handle_rdmsr_0x00000140, handle_wrmsr_0x00000140);
     EMULATE_MSR(0x000001A0, handle_rdmsr_0x000001A0, handle_wrmsr_0x000001A0);
@@ -252,6 +253,24 @@ bool msr_handler::handle_wrmsr_0x00000034(
     bfignored(info);
 
     vcpu->halt("wrmsr to 0x34 is not supported");
+    return true;
+}
+
+bool msr_handler::handle_rdmsr_0x0000003A(
+    vcpu_t *vcpu, bfvmm::intel_x64::rdmsr_handler::info_t &info)
+{
+    bfignored(vcpu);
+
+    info.val = ::intel_x64::msrs::ia32_feature_control::lock_bit::mask;
+    return true;
+}
+
+bool msr_handler::handle_wrmsr_0x0000003A(
+    vcpu_t *vcpu, bfvmm::intel_x64::wrmsr_handler::info_t &info)
+{
+    bfignored(info);
+
+    vcpu->halt("wrmsr to 0x3A is not supported");
     return true;
 }
 
