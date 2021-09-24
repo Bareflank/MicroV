@@ -25,7 +25,7 @@
 #include "../../include/handle_device_kvm_has_device_attr.h"
 
 #include <kvm_device_attr.h>
-#include <types.h>
+#include <mv_types.h>
 
 #include <bsl/ut.hpp>
 

@@ -27,8 +27,9 @@
 #ifndef SHIM_VCPU_T_H
 #define SHIM_VCPU_T_H
 
+#include <kvm_run.h>
+#include <mv_types.h>
 #include <stdint.h>
-#include <types.h>
 
 #ifdef __cplusplus
 extern "C"
@@ -59,6 +60,9 @@ extern "C"
         uint16_t vpid;
         /** @brief stores the ID of the MicroV VS associated with this VCPU */
         uint16_t vsid;
+
+        /** @brief stores the kvm_run struct associated with this VCPU */
+        struct kvm_run *run;
 
         /** @brief stores a pointer to the parent VM */
         struct shim_vm_t *vm;

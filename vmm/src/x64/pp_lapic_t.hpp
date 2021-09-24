@@ -40,10 +40,7 @@ namespace microv
     /// @class microv::pp_lapic_t
     ///
     /// <!-- description -->
-    ///   @brief Defines MicroV's physical processor LAPIC handler. Physical
-    ///     processor resources are owned by the physical processors and
-    ///     are used by the VM, VP and VSs to directly access the hardware
-    ///     and provide emulated responses to VMExits from the root VM.
+    ///   @brief Defines MicroV's physical processor LAPIC handler.
     ///
     class pp_lapic_t final
     {

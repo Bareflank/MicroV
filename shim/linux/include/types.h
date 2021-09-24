@@ -29,7 +29,9 @@
 #ifndef TYPES_H
 #define TYPES_H
 
-#include <mv_types.h>
+#include <inttypes.h>    // IWYU pragma: export
+#include <stddef.h>      // IWYU pragma: export
+#include <stdint.h>      // IWYU pragma: export
 
 /**
  * @brief Returned by a shim function when a function succeeds.

@@ -25,7 +25,7 @@
 #include "../../include/handle_vcpu_kvm_set_fpu.h"
 
 #include <kvm_fpu.h>
-#include <types.h>
+#include <mv_types.h>
 
 #include <bsl/ut.hpp>
 

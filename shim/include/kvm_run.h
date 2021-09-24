@@ -34,8 +34,8 @@
 #include <kvm_run_mmio.h>
 #include <kvm_run_system_event.h>
 #include <kvm_run_tpr_access.h>
+#include <mv_types.h>
 #include <stdint.h>
-#include <types.h>
 
 #ifdef __cplusplus
 extern "C"
@@ -50,6 +50,19 @@ extern "C"
 #define KVM_RUN_PADDING2_SIZE ((uint64_t)256)
 /** @brief defines the size of the padding3 field */
 #define KVM_RUN_PADDING3_SIZE ((uint64_t)2048)
+
+/** @brief defines KVM_EXIT_UNKNOWN kvm_run.exit_reason */
+#define KVM_EXIT_UNKNOWN 0
+/** @brief defines KVM_EXIT_IO kvm_run.exit_reason */
+#define KVM_EXIT_IO 2
+/** @brief defines KVM_EXIT_HLT kvm_run.exit_reason */
+#define KVM_EXIT_HLT 5
+/** @brief defines KVM_EXIT_MMIO kvm_run.exit_reason */
+#define KVM_EXIT_MMIO 6
+/** @brief defines KVM_EXIT_SHUTDOWN kvm_run.exit_reason */
+#define KVM_EXIT_SHUTDOWN 8
+/** @brief defines KVM_EXIT_FAIL_ENTRY kvm_run.exit_reason */
+#define KVM_EXIT_FAIL_ENTRY 9
 
     /**
      * @struct kvm_run

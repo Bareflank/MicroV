@@ -27,12 +27,12 @@
 #ifndef SHIM_VM_T_H
 #define SHIM_VM_T_H
 
-#include <constants.h>
 #include <kvm_userspace_memory_region.h>
+#include <mv_constants.h>
+#include <mv_types.h>
 #include <platform.h>
 #include <shim_vcpu_t.h>
 #include <stdint.h>
-#include <types.h>
 
 #ifdef __cplusplus
 extern "C"

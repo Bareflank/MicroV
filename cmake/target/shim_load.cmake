@@ -22,7 +22,6 @@
 if(MICROV_BUILD_SHIM AND NOT MICROV_TARGET_ARCH STREQUAL "aarch64")
     if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
         add_custom_target(shim_load
-            COMMAND ${CMAKE_COMMAND} --build . --target shim_build
             COMMAND ${CMAKE_COMMAND} -E chdir ${CMAKE_CURRENT_LIST_DIR}/../../shim/linux sudo make load CMAKE_BINARY_DIR='${CMAKE_BINARY_DIR}'
             VERBATIM
         )

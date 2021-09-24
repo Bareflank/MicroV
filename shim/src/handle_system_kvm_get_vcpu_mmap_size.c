@@ -25,8 +25,8 @@
  */
 
 #include <kvm_run.h>
+#include <mv_types.h>
 #include <platform.h>
-#include <types.h>
 
 /**
  * <!-- description -->

@@ -27,6 +27,7 @@
 
 #include <basic_entry_status_t.hpp>
 #include <basic_map_page_flags.hpp>
+#include <l0e_t.hpp>
 #include <l1e_t.hpp>
 #include <l2e_t.hpp>
 
@@ -37,6 +38,9 @@
 
 namespace helpers
 {
+    /// @brief TODO: We need to actually implement these in a helper
+    constexpr auto MEMORY_TYPE_WB{6_u64};
+
     /// <!-- description -->
     ///   @brief Returns basic_entry_status_t::present if the entry is valid. Returns
     ///     basic_entry_status_t::not_present if the entry is invalid. Returns
@@ -55,13 +59,9 @@ namespace helpers
     {
         bsl::expects(nullptr != pudm_entry);
 
-        // if (bsl::safe_u64::magic_0() == pudm_entry->p) {
-        //     return lib::basic_entry_status_t::not_present;
-        // }
-
-        // if (bsl::safe_u64::magic_0() == pudm_entry->us) {
-        //     return lib::basic_entry_status_t::reserved;
-        // }
+        if (bsl::safe_u64::magic_0() == pudm_entry->p) {
+            return lib::basic_entry_status_t::not_present;
+        }
 
         return lib::basic_entry_status_t::present;
     }
@@ -81,31 +81,31 @@ namespace helpers
         bsl::expects(nullptr != pmut_entry);
         bsl::expects(page_flgs.is_valid_and_checked());
 
-        // pmut_entry->p = bsl::safe_u64::magic_1().get();
-        // pmut_entry->rw = bsl::safe_u64::magic_1().get();
-        // pmut_entry->us = bsl::safe_u64::magic_1().get();
+        pmut_entry->p = bsl::safe_u64::magic_1().get();
+        pmut_entry->type = MEMORY_TYPE_WB.get();
+        pmut_entry->r = bsl::safe_u64::magic_1().get();
 
-        // if constexpr (bsl::is_same<bsl::remove_const_t<E>, microv::l2e_t>::value) {
-        //     pmut_entry->ps = bsl::safe_u64::magic_1().get();
-        // }
+        if constexpr (bsl::is_same<bsl::remove_const_t<E>, microv::l2e_t>::value) {
+            pmut_entry->ps = bsl::safe_u64::magic_1().get();
+        }
 
-        // if constexpr (bsl::is_same<bsl::remove_const_t<E>, microv::l1e_t>::value) {
-        //     pmut_entry->ps = bsl::safe_u64::magic_1().get();
-        // }
+        if constexpr (bsl::is_same<bsl::remove_const_t<E>, microv::l1e_t>::value) {
+            pmut_entry->ps = bsl::safe_u64::magic_1().get();
+        }
 
-        // if ((page_flgs & lib::BASIC_MAP_PAGE_WRITE).is_zero()) {
-        //     pmut_entry->rw = bsl::safe_u64::magic_0().get();
-        // }
-        // else {
-        //     pmut_entry->rw = bsl::safe_u64::magic_1().get();
-        // }
+        if ((page_flgs & lib::BASIC_MAP_PAGE_WRITE).is_zero()) {
+            pmut_entry->w = bsl::safe_u64::magic_0().get();
+        }
+        else {
+            pmut_entry->w = bsl::safe_u64::magic_1().get();
+        }
 
-        // if ((page_flgs & lib::BASIC_MAP_PAGE_EXECUTE).is_zero()) {
-        //     pmut_entry->nx = bsl::safe_u64::magic_1().get();
-        // }
-        // else {
-        //     pmut_entry->nx = bsl::safe_u64::magic_0().get();
-        // }
+        if ((page_flgs & lib::BASIC_MAP_PAGE_EXECUTE).is_zero()) {
+            pmut_entry->e = bsl::safe_u64::magic_0().get();
+        }
+        else {
+            pmut_entry->e = bsl::safe_u64::magic_1().get();
+        }
     }
 
     /// <!-- description -->
@@ -121,9 +121,10 @@ namespace helpers
     {
         bsl::expects(nullptr != pmut_entry);
 
-        // pmut_entry->p = bsl::safe_u64::magic_1().get();
-        // pmut_entry->rw = bsl::safe_u64::magic_1().get();
-        // pmut_entry->us = bsl::safe_u64::magic_1().get();
+        pmut_entry->p = bsl::safe_u64::magic_1().get();
+        pmut_entry->r = bsl::safe_u64::magic_1().get();
+        pmut_entry->w = bsl::safe_u64::magic_1().get();
+        pmut_entry->e = bsl::safe_u64::magic_1().get();
     }
 }
 

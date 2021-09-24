@@ -27,12 +27,14 @@
 #ifndef MOCKS_MV_HYPERCALL_H
 #define MOCKS_MV_HYPERCALL_H
 
-#include <mv_constants.h>        // for MV_INVALID_HANDLE, MV_INVALID_ID, MV_S...
-#include <mv_exit_reason_t.h>    // for mv_exit_reason_t
-#include <mv_rdl_t.h>            // for mv_rdl_t, mv_rdl_entry_t, MV_RDL_MAX_E...
-#include <mv_reg_t.h>            // for mv_reg_t, mv_reg_t_invalid
-#include <mv_translation_t.h>    // for mv_translation_t
-#include <mv_types.h>            // for mv_status_t, NODISCARD, NOEXCEPT, NULLPTR
+#include <mv_constants.h>
+#include <mv_exit_io_t.h>
+#include <mv_exit_reason_t.h>
+#include <mv_rdl_t.h>
+#include <mv_reg_t.h>
+#include <mv_touch.h>
+#include <mv_translation_t.h>
+#include <mv_types.h>
 
 #ifdef __cplusplus
 #include <bsl/expects.hpp>
@@ -49,6 +51,8 @@ extern "C"
     /** @brief stores the shared pages used by some hypercalls */
     extern void *g_mut_shared_pages[HYPERVISOR_MAX_PPS];
 #endif
+
+#define GARBAGE ((uint64_t)0xFFFFFFFFFFFFFFFFU)
 
     /** @brief stores a value that can be returned by certain hypercalls */
     extern uint64_t g_mut_val;
@@ -524,9 +528,16 @@ extern "C"
         return g_mut_mv_vp_op_vpid;
     }
 
-    /* -------------------------------------------------------------------------- */
-    /* mv_vs_ops                                                                  */
-    /* -------------------------------------------------------------------------- */
+/* -------------------------------------------------------------------------- */
+/* mv_vs_ops                                                                  */
+/* -------------------------------------------------------------------------- */
+
+/** tells the list APIs to add an unknown entry */
+#define MV_STATUS_FAILURE_INC_NUM_ENTRIES ((mv_status_t)0x1234567800000001U)
+/** tells the list APIs to add an unknown entry */
+#define MV_STATUS_FAILURE_ADD_UNKNOWN ((mv_status_t)0x1234567800000002U)
+/** tells the list APIs to corrupt the number of entries */
+#define MV_STATUS_FAILURE_CORRUPT_NUM_ENTRIES ((mv_status_t)0x1234567800000003U)
 
     /** @brief stores the return value for mv_vs_op_create_vs */
     extern uint16_t g_mut_mv_vs_op_create_vs;
@@ -542,6 +553,8 @@ extern "C"
     extern struct mv_translation_t g_mut_mv_vs_op_gla_to_gpa;
     /** @brief stores the return value for mv_vs_op_run */
     extern enum mv_exit_reason_t g_mut_mv_vs_op_run;
+    /** @brief stores the return value for mv_vs_op_run */
+    extern struct mv_exit_io_t g_mut_mv_vs_op_run_io;
     /** @brief stores the return value for mv_vs_op_reg_get */
     extern mv_status_t g_mut_mv_vs_op_reg_get;
     /** @brief stores the return value for mv_vs_op_reg_set */
@@ -772,6 +785,19 @@ extern "C"
     platform_expects(((uint64_t)vsid) < HYPERVISOR_MAX_VPS);
 #endif
 
+        if ((int32_t)mv_exit_reason_t_io == (int32_t)g_mut_mv_vs_op_run) {
+            struct mv_exit_io_t *const pmut_out = (struct mv_exit_io_t *)g_mut_shared_pages[0];
+#ifdef __cplusplus
+            bsl::expects(nullptr != pmut_out);
+#else
+        platform_expects(NULL != pmut_out);
+#endif
+            *pmut_out = g_mut_mv_vs_op_run_io;
+        }
+        else {
+            mv_touch();
+        }
+
         return g_mut_mv_vs_op_run;
     }
 
@@ -884,6 +910,7 @@ extern "C"
 #endif
 
         struct mv_rdl_t *const pmut_rdl = (struct mv_rdl_t *)g_mut_shared_pages[0];
+
 #ifdef __cplusplus
         bsl::expects(nullptr != pmut_rdl);
         bsl::expects(pmut_rdl->num_entries < MV_RDL_MAX_ENTRIES);
@@ -891,9 +918,25 @@ extern "C"
     platform_expects(NULL != pmut_rdl);
     platform_expects(pmut_rdl->num_entries < MV_RDL_MAX_ENTRIES);
 #endif
-
         for (mut_i = ((uint64_t)0); mut_i < pmut_rdl->num_entries; ++mut_i) {
             pmut_rdl->entries[mut_i].val = g_mut_val;
+        }
+
+        if (MV_STATUS_FAILURE_INC_NUM_ENTRIES == g_mut_mv_vs_op_reg_get_list) {
+            pmut_rdl->entries[pmut_rdl->num_entries].reg = ((uint64_t)0);
+            ++pmut_rdl->num_entries;
+            return MV_STATUS_SUCCESS;
+        }
+
+        if (MV_STATUS_FAILURE_ADD_UNKNOWN == g_mut_mv_vs_op_reg_get_list) {
+            pmut_rdl->entries[pmut_rdl->num_entries].reg = GARBAGE;
+            ++pmut_rdl->num_entries;
+            return MV_STATUS_SUCCESS;
+        }
+
+        if (MV_STATUS_FAILURE_CORRUPT_NUM_ENTRIES == g_mut_mv_vs_op_reg_get_list) {
+            pmut_rdl->num_entries = GARBAGE;
+            return MV_STATUS_SUCCESS;
         }
 
         return g_mut_mv_vs_op_reg_get_list;
@@ -1032,9 +1075,34 @@ extern "C"
     platform_expects((int32_t)MV_INVALID_ID != (int32_t)vsid);
 #endif
 
-        struct mv_rdl_t *const pmut_mdl = (struct mv_rdl_t *)g_mut_shared_pages[0];
-        for (mut_i = ((uint64_t)0); mut_i < pmut_mdl->num_entries; ++mut_i) {
-            pmut_mdl->entries[mut_i].val = g_mut_val;
+        struct mv_rdl_t *const pmut_rdl = (struct mv_rdl_t *)g_mut_shared_pages[0];
+
+#ifdef __cplusplus
+        bsl::expects(nullptr != pmut_rdl);
+        bsl::expects(pmut_rdl->num_entries < MV_RDL_MAX_ENTRIES);
+#else
+    platform_expects(NULL != pmut_rdl);
+    platform_expects(pmut_rdl->num_entries < MV_RDL_MAX_ENTRIES);
+#endif
+        for (mut_i = ((uint64_t)0); mut_i < pmut_rdl->num_entries; ++mut_i) {
+            pmut_rdl->entries[mut_i].val = g_mut_val;
+        }
+
+        if (MV_STATUS_FAILURE_INC_NUM_ENTRIES == g_mut_mv_vs_op_msr_get_list) {
+            pmut_rdl->entries[pmut_rdl->num_entries].reg = ((uint64_t)0);
+            ++pmut_rdl->num_entries;
+            return MV_STATUS_SUCCESS;
+        }
+
+        if (MV_STATUS_FAILURE_ADD_UNKNOWN == g_mut_mv_vs_op_msr_get_list) {
+            pmut_rdl->entries[pmut_rdl->num_entries].reg = GARBAGE;
+            ++pmut_rdl->num_entries;
+            return MV_STATUS_SUCCESS;
+        }
+
+        if (MV_STATUS_FAILURE_CORRUPT_NUM_ENTRIES == g_mut_mv_vs_op_msr_get_list) {
+            pmut_rdl->num_entries = GARBAGE;
+            return MV_STATUS_SUCCESS;
         }
 
         return g_mut_mv_vs_op_msr_get_list;

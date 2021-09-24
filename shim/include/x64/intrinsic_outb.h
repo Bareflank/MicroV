@@ -27,7 +27,7 @@
 #ifndef INTRINSIC_OUTB_H
 #define INTRINSIC_OUTB_H
 
-#include <types.h>
+#include <mv_types.h>
 
 /**
  * <!-- description -->

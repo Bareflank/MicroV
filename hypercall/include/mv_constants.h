@@ -174,6 +174,10 @@ NODISCARD static inline int
 #define MV_STATUS_INVALID_OUTPUT_REG3 ((uint64_t)0xDEAD000000800003)
 /** @brief Indicates software should execute the hypercall again */
 #define MV_STATUS_RETRY_CONTINUATION ((uint64_t)0xDEAD000000100004)
+/** @brief Indicates that mv_exit_failure_t contains more info */
+#define MV_STATUS_EXIT_FAILURE ((uint64_t)0xDEAD000000100005)
+/** @brief Indicates that mv_exit_unknown_t contains more info */
+#define MV_STATUS_EXIT_UNKNOWN ((uint64_t)0xDEAD000000200005)
 
 /* -------------------------------------------------------------------------- */
 /* Syscall Inputs                                                             */

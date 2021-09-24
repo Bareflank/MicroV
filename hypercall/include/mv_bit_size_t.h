@@ -37,13 +37,13 @@ extern "C"
      * <!-- description -->
      *   @brief Defines different bit sizes for address, operands, etc.
      */
-    enum mv_reg_t : int32_t
+    enum mv_bit_size_t : int32_t
 #else
 /**
      * <!-- description -->
      *   @brief Defines different bit sizes for address, operands, etc.
      */
-enum mv_reg_t
+enum mv_bit_size_t
 #endif
     {
         /** @brief indicates 8 bits */
@@ -55,6 +55,15 @@ enum mv_reg_t
         /** @brief indicates 64 bits */
         mv_bit_size_t_64 = 3,
     };
+
+/** @brief integer version of mv_bit_size_t_8 */
+#define BIT_SIZE_8 ((int32_t)mv_bit_size_t_8)
+/** @brief integer version of mv_bit_size_t_16 */
+#define BIT_SIZE_16 ((int32_t)mv_bit_size_t_16)
+/** @brief integer version of mv_bit_size_t_32 */
+#define BIT_SIZE_32 ((int32_t)mv_bit_size_t_32)
+/** @brief integer version of mv_bit_size_t_64 */
+#define BIT_SIZE_64 ((int32_t)mv_bit_size_t_64)
 
 #ifdef __cplusplus
 }

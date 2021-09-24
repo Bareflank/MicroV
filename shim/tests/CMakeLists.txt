@@ -31,7 +31,6 @@ list(APPEND COMMON_INCLUDES
     ${CMAKE_CURRENT_LIST_DIR}/include
     ${CMAKE_CURRENT_LIST_DIR}/src
     ${CMAKE_SOURCE_DIR}/hypercall/include
-    ${CMAKE_SOURCE_DIR}/hypercall/include/x64
     ${CMAKE_SOURCE_DIR}/hypercall/mocks
 )
 

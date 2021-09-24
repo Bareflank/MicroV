@@ -26,7 +26,7 @@
 #define DISPATCH_VMCALL_MV_HANDLE_OP_HPP
 
 #include <bf_syscall_t.hpp>
-#include <dispatch_vmcall_abi_helpers.hpp>
+#include <dispatch_abi_helpers.hpp>
 #include <dispatch_vmcall_helpers.hpp>
 #include <gs_t.hpp>
 #include <intrinsic_t.hpp>

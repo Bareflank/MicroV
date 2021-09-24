@@ -26,7 +26,7 @@
 #define DISPATCH_VMEXIT_VMCALL_HPP
 
 #include <bf_syscall_t.hpp>
-#include <dispatch_vmcall_abi_helpers.hpp>
+#include <dispatch_abi_helpers.hpp>
 #include <dispatch_vmcall_mv_debug_op.hpp>
 #include <dispatch_vmcall_mv_handle_op.hpp>
 #include <dispatch_vmcall_mv_id_op.hpp>
@@ -56,7 +56,7 @@ namespace microv
     ///
     /// <!-- inputs/outputs -->
     ///   @param gs the gs_t to use
-    ///   @param tls the tls_t to use
+    ///   @param mut_tls the tls_t to use
     ///   @param mut_sys the bf_syscall_t to use
     ///   @param mut_page_pool the page_pool_t to use
     ///   @param intrinsic the intrinsic_t to use
@@ -71,7 +71,7 @@ namespace microv
     [[nodiscard]] constexpr auto
     dispatch_vmexit_vmcall(
         gs_t const &gs,
-        tls_t const &tls,
+        tls_t &mut_tls,
         syscall::bf_syscall_t &mut_sys,
         page_pool_t &mut_page_pool,
         intrinsic_t const &intrinsic,
@@ -85,7 +85,7 @@ namespace microv
             case hypercall::MV_ID_OP_VAL.get(): {
                 auto const ret{dispatch_vmcall_mv_id_op(
                     gs,
-                    tls,
+                    mut_tls,
                     mut_sys,
                     mut_page_pool,
                     intrinsic,
@@ -107,7 +107,7 @@ namespace microv
             case hypercall::MV_HANDLE_OP_VAL.get(): {
                 auto const ret{dispatch_vmcall_mv_handle_op(
                     gs,
-                    tls,
+                    mut_tls,
                     mut_sys,
                     mut_page_pool,
                     intrinsic,
@@ -129,7 +129,7 @@ namespace microv
             case hypercall::MV_DEBUG_OP_VAL.get(): {
                 auto const ret{dispatch_vmcall_mv_debug_op(
                     gs,
-                    tls,
+                    mut_tls,
                     mut_sys,
                     mut_page_pool,
                     intrinsic,
@@ -151,7 +151,7 @@ namespace microv
             case hypercall::MV_PP_OP_VAL.get(): {
                 auto const ret{dispatch_vmcall_mv_pp_op(
                     gs,
-                    tls,
+                    mut_tls,
                     mut_sys,
                     mut_page_pool,
                     intrinsic,
@@ -173,7 +173,7 @@ namespace microv
             case hypercall::MV_VM_OP_VAL.get(): {
                 auto const ret{dispatch_vmcall_mv_vm_op(
                     gs,
-                    tls,
+                    mut_tls,
                     mut_sys,
                     mut_page_pool,
                     intrinsic,
@@ -195,7 +195,7 @@ namespace microv
             case hypercall::MV_VP_OP_VAL.get(): {
                 auto const ret{dispatch_vmcall_mv_vp_op(
                     gs,
-                    tls,
+                    mut_tls,
                     mut_sys,
                     mut_page_pool,
                     intrinsic,
@@ -217,7 +217,7 @@ namespace microv
             case hypercall::MV_VS_OP_VAL.get(): {
                 auto const ret{dispatch_vmcall_mv_vs_op(
                     gs,
-                    tls,
+                    mut_tls,
                     mut_sys,
                     mut_page_pool,
                     intrinsic,

@@ -28,7 +28,7 @@
 #define HANDLE_VM_KVM_SET_USER_MEMORY_REGION_H
 
 #include <kvm_userspace_memory_region.h>
-#include <types.h>
+#include <mv_types.h>
 
 #ifdef __cplusplus
 extern "C"

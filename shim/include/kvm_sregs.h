@@ -31,58 +31,55 @@
 #include <kvm_segment.h>
 #include <stdint.h>
 
+#ifdef __clang__
+#pragma clang diagnostic ignored "-Wold-style-cast"
+#endif
+
 #ifdef __cplusplus
 extern "C"
 {
 #endif
 
 /** @brief stores the attrib type mask of segment */
-#define ATTRIB_TYPE_MASK ((uint64_t)0x00000F00ULL)
-
+#define ATTRIB_TYPE_MASK ((uint64_t)0x0000000FU)
 /** @brief stores the attrib type shift of segment */
-#define ATTRIB_TYPE_SHIFT ((uint64_t)8ULL)
-
-/** @brief stores the attrib present mask of segment */
-#define ATTRIB_PRESENT_MASK ((uint64_t)0x00008000ULL)
-
-/** @brief stores the attrib type shift of segment */
-#define ATTRIB_PRESENT_SHIFT ((uint64_t)15ULL)
-
-/** @brief stores the attrib dpl mask of segment */
-#define ATTRIB_DPL_MASK ((uint64_t)0x00006000ULL)
-
-/** @brief stores the attrib dpl shift of segment */
-#define ATTRIB_DPL_SHIFT ((uint64_t)13ULL)
-
-/** @brief stores the attrib db mask of segment */
-#define ATTRIB_DB_MASK ((uint64_t)0x00400000ULL)
-
-/** @brief stores the attrib db shift of segment */
-#define ATTRIB_DB_SHIFT ((uint64_t)22ULL)
-
-/** @brief stores the attrib l mask of segment */
-#define ATTRIB_L_MASK ((uint64_t)0x00200000ULL)
-
-/** @brief stores the attrib l shift of segment */
-#define ATTRIB_L_SHIFT ((uint64_t)21ULL)
-
-/** @brief stores the attrib g mask of segment */
-#define ATTRIB_G_MASK ((uint64_t)0x00800000ULL)
-
-/** @brief stores the attrib g shift of segment */
-#define ATTRIB_G_SHIFT ((uint64_t)23ULL)
-
-/** @brief stores the attrib avl mask of segment */
-#define ATTRIB_AVL_MASK ((uint64_t)0x00100000ULL)
-
-/** @brief stores the attrib avl shift of segment */
-#define ATTRIB_AVL_SHIFT ((uint64_t)20ULL)
-
+#define ATTRIB_TYPE_SHIFT ((uint64_t)0)
 /** @brief stores the attrib s mask of segment */
-#define ATTRIB_S_MASK ((uint64_t)0x00001000ULL)
-
+#define ATTRIB_S_MASK ((uint64_t)0x00000001U)
 /** @brief stores the attrib s shift of segment */
-#define ATTRIB_S_SHIFT ((uint64_t)12ULL)
+#define ATTRIB_S_SHIFT ((uint64_t)4)
+/** @brief stores the attrib dpl mask of segment */
+#define ATTRIB_DPL_MASK ((uint64_t)0x00000003U)
+/** @brief stores the attrib dpl shift of segment */
+#define ATTRIB_DPL_SHIFT ((uint64_t)5)
+/** @brief stores the attrib present mask of segment */
+#define ATTRIB_PRESENT_MASK ((uint64_t)0x00000001U)
+/** @brief stores the attrib type shift of segment */
+#define ATTRIB_PRESENT_SHIFT ((uint64_t)7)
+/** @brief stores the attrib avl mask of segment */
+#define ATTRIB_AVL_MASK ((uint64_t)0x00000001U)
+/** @brief stores the attrib avl shift of segment */
+#define ATTRIB_AVL_SHIFT ((uint64_t)12)
+/** @brief stores the attrib l mask of segment */
+#define ATTRIB_L_MASK ((uint64_t)0x00000001U)
+/** @brief stores the attrib l shift of segment */
+#define ATTRIB_L_SHIFT ((uint64_t)13)
+/** @brief stores the attrib db mask of segment */
+#define ATTRIB_DB_MASK ((uint64_t)0x00000001U)
+/** @brief stores the attrib db shift of segment */
+#define ATTRIB_DB_SHIFT ((uint64_t)14)
+/** @brief stores the attrib g mask of segment */
+#define ATTRIB_G_MASK ((uint64_t)0x00000001U)
+/** @brief stores the attrib g shift of segment */
+#define ATTRIB_G_SHIFT ((uint64_t)15)
+
+/** @brief stores the EFER MSR address */
+#define EFER_REG ((uint64_t)0xC0000080U)
+/** @brief stores the APIC_BASE MSR address */
+#define APIC_BASE_REG ((uint64_t)0x0000001BU)
+
+/** @brief stores the size of the interrupt bitmap */
+#define INTERRUPT_BITMAP_SIZE ((uint64_t)4)
 
     /**
      * @struct kvm_sregs
@@ -129,7 +126,7 @@ extern "C"
         /** @brief stores that value of the apic_base register */
         uint64_t apic_base;
         /** @brief stores that value of the interrupt bitmap */
-        uint64_t interrupt_bitmap[4];
+        uint64_t interrupt_bitmap[INTERRUPT_BITMAP_SIZE];
     };
 
 #ifdef __cplusplus

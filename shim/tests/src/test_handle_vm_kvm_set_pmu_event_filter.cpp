@@ -25,7 +25,7 @@
 #include "../../include/handle_vm_kvm_set_pmu_event_filter.h"
 
 #include <kvm_pmu_event_filter.h>
-#include <types.h>
+#include <mv_types.h>
 
 #include <bsl/ut.hpp>
 

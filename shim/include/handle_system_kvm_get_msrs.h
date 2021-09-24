@@ -28,7 +28,7 @@
 #define HANDLE_SYSTEM_KVM_GET_MSRS_H
 
 #include <kvm_msrs.h>
-#include <types.h>
+#include <mv_types.h>
 
 #ifdef __cplusplus
 extern "C"

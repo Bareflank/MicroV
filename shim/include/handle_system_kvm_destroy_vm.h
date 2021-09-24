@@ -27,7 +27,7 @@
 #ifndef HANDLE_SYSTEM_KVM_DESTROY_VM_H
 #define HANDLE_SYSTEM_KVM_DESTROY_VM_H
 
-#include <types.h>
+#include <mv_types.h>
 
 #ifdef __cplusplus
 extern "C"

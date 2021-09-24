@@ -28,7 +28,7 @@
 #define HANDLE_VCPU_KVM_GET_VCPU_EVENTS_H
 
 #include <kvm_vcpu_events.h>
-#include <types.h>
+#include <mv_types.h>
 
 #ifdef __cplusplus
 extern "C"

@@ -28,7 +28,7 @@
 #define HANDLE_SYSTEM_KVM_GET_SUPPORTED_CPUID_H
 
 #include <kvm_cpuid2.h>
-#include <types.h>
+#include <mv_types.h>
 
 #ifdef __cplusplus
 extern "C"

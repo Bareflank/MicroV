@@ -51,10 +51,7 @@ namespace microv
     /// @class microv::pp_mmio_t
     ///
     /// <!-- description -->
-    ///   @brief Defines MicroV's physical processor MMIO handler. Physical
-    ///     processor resources are owned by the physical processors and
-    ///     are used by the VM, VP and VSs to directly access the hardware
-    ///     and provide emulated responses to VMExits from the root VM.
+    ///   @brief Defines MicroV's physical processor MMIO handler.
     ///
     /// <!-- notes -->
     ///   @note IMPORTANT: The most important aspect of this class is it
@@ -220,7 +217,7 @@ namespace microv
         ///
         template<typename T>
         [[nodiscard]] constexpr auto
-        map(syscall::bf_syscall_t &mut_sys, bsl::safe_umx const &spa) noexcept -> pp_unique_map_t<T>
+        map(syscall::bf_syscall_t &mut_sys, bsl::safe_u64 const &spa) noexcept -> pp_unique_map_t<T>
         {
             static_assert(bsl::is_pod<T>::value);
             static_assert(sizeof(T) <= HYPERVISOR_PAGE_SIZE);

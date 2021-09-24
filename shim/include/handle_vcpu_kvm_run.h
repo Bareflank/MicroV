@@ -27,7 +27,8 @@
 #ifndef HANDLE_VCPU_KVM_RUN_H
 #define HANDLE_VCPU_KVM_RUN_H
 
-#include <types.h>
+#include <mv_types.h>
+#include <shim_vcpu_t.h>
 
 #ifdef __cplusplus
 extern "C"
@@ -39,9 +40,10 @@ extern "C"
      *   @brief Handles the execution of kvm_run.
      *
      * <!-- inputs/outputs -->
+     *   @param pmut_vcpu the VCPU associated with the IOCTL
      *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
      */
-    NODISCARD int64_t handle_vcpu_kvm_run(void) NOEXCEPT;
+    NODISCARD int64_t handle_vcpu_kvm_run(struct shim_vcpu_t *const pmut_vcpu) NOEXCEPT;
 
 #ifdef __cplusplus
 }

@@ -47,15 +47,7 @@ namespace hypercall
     tests() noexcept -> bsl::exit_code
     {
         mv_status_t mut_ret{};
-        mv_hypercall_t mut_hvc{};
-
-        /// TODO:
-        /// - Need to implement at test for attempting to destroy an
-        ///   active VS.
-        ///
-
-        integration::verify(mut_hvc.initialize());
-        auto const hndl{mut_hvc.handle()};
+        integration::initialize_globals();
 
         // invalid VSID
         mut_ret = mv_vs_op_destroy_vs_impl(hndl.get(), MV_INVALID_ID.get());

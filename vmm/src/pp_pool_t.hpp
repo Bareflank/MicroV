@@ -138,7 +138,7 @@ namespace microv
         ///
         template<typename T>
         [[nodiscard]] constexpr auto
-        map(syscall::bf_syscall_t &mut_sys, bsl::safe_umx const &spa) noexcept -> pp_unique_map_t<T>
+        map(syscall::bf_syscall_t &mut_sys, bsl::safe_u64 const &spa) noexcept -> pp_unique_map_t<T>
         {
             return this->get_pp(mut_sys.bf_tls_ppid())->map<T>(mut_sys, spa);
         }

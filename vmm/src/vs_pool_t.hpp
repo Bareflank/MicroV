@@ -29,8 +29,11 @@
 #include <gs_t.hpp>
 #include <intrinsic_t.hpp>
 #include <lock_guard_t.hpp>
+#include <mv_exit_reason_t.hpp>
+#include <mv_run_t.hpp>
 #include <page_pool_t.hpp>
 #include <pp_pool_t.hpp>
+#include <running_status_t.hpp>
 #include <spinlock_t.hpp>
 #include <tls_t.hpp>
 #include <vs_t.hpp>
@@ -117,7 +120,7 @@ namespace microv
         ///   @param gs the gs_t to use
         ///   @param tls the tls_t to use
         ///   @param sys the bf_syscall_t to use
-        ///   @param page_pool the page_pool_t to use
+        ///   @param mut_page_pool the page_pool_t to use
         ///   @param intrinsic the intrinsic_t to use
         ///
         constexpr void
@@ -125,11 +128,11 @@ namespace microv
             gs_t const &gs,
             tls_t const &tls,
             syscall::bf_syscall_t const &sys,
-            page_pool_t const &page_pool,
+            page_pool_t &mut_page_pool,
             intrinsic_t const &intrinsic) noexcept
         {
             for (auto &mut_vs : m_pool) {
-                mut_vs.release(gs, tls, sys, page_pool, intrinsic);
+                mut_vs.release(gs, tls, sys, mut_page_pool, intrinsic);
             }
         }
 
@@ -140,7 +143,7 @@ namespace microv
         ///   @param gs the gs_t to use
         ///   @param tls the tls_t to use
         ///   @param mut_sys the bf_syscall_t to use
-        ///   @param page_pool the page_pool_t to use
+        ///   @param mut_page_pool the page_pool_t to use
         ///   @param intrinsic the intrinsic_t to use
         ///   @param vmid the ID of the VM to assign the newly created VS to
         ///   @param vpid the ID of the VP to assign the newly created VS to
@@ -155,12 +158,12 @@ namespace microv
             gs_t const &gs,
             tls_t const &tls,
             syscall::bf_syscall_t &mut_sys,
-            page_pool_t const &page_pool,
+            page_pool_t &mut_page_pool,
             intrinsic_t const &intrinsic,
             bsl::safe_u16 const &vmid,
             bsl::safe_u16 const &vpid,
             bsl::safe_u16 const &ppid,
-            bsl::safe_umx const &slpt_spa) noexcept -> bsl::safe_u16
+            bsl::safe_u64 const &slpt_spa) noexcept -> bsl::safe_u16
         {
             lock_guard_t mut_lock{tls, m_lock};
 
@@ -171,7 +174,7 @@ namespace microv
             }
 
             return this->get_vs(vsid)->allocate(
-                gs, tls, mut_sys, page_pool, intrinsic, vmid, vpid, ppid, slpt_spa);
+                gs, tls, mut_sys, mut_page_pool, intrinsic, vmid, vpid, ppid, slpt_spa);
         }
 
         /// <!-- description -->
@@ -181,7 +184,7 @@ namespace microv
         ///   @param gs the gs_t to use
         ///   @param tls the tls_t to use
         ///   @param mut_sys the bf_syscall_t to use
-        ///   @param page_pool the page_pool_t to use
+        ///   @param mut_page_pool the page_pool_t to use
         ///   @param intrinsic the intrinsic_t to use
         ///   @param vsid the ID of the vs_t to deallocate
         ///
@@ -190,7 +193,7 @@ namespace microv
             gs_t const &gs,
             tls_t const &tls,
             syscall::bf_syscall_t &mut_sys,
-            page_pool_t const &page_pool,
+            page_pool_t &mut_page_pool,
             intrinsic_t const &intrinsic,
             bsl::safe_u16 const &vsid) noexcept
         {
@@ -199,7 +202,7 @@ namespace microv
             auto *const pmut_vs{this->get_vs(vsid)};
             if (pmut_vs->is_allocated()) {
                 bsl::expects(mut_sys.bf_vs_op_destroy_vs(vsid));
-                pmut_vs->deallocate(gs, tls, mut_sys, page_pool, intrinsic);
+                pmut_vs->deallocate(gs, tls, mut_sys, mut_page_pool, intrinsic);
             }
             else {
                 bsl::touch();
@@ -377,6 +380,37 @@ namespace microv
         }
 
         /// <!-- description -->
+        ///   @brief Migrates the requested vs_t to the current PP. If the
+        ///     requested vs_t is already assigned to the current PP, this
+        ///     function does nothing.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param mut_sys the bf_syscall_t to use
+        ///   @param vsid the ID of the vs_t to migrate
+        ///   @return Returns bsl::errc_success on success, bsl::errc_failure
+        ///     and friends otherwise
+        ///
+        [[nodiscard]] constexpr auto
+        migrate(syscall::bf_syscall_t &mut_sys, bsl::safe_u16 const &vsid) noexcept
+            -> bsl::errc_type
+        {
+            return this->get_vs(vsid)->migrate(mut_sys);
+        }
+
+        /// <!-- description -->
+        ///   @brief Returns the running status of the requested vs_t
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param vsid the ID of the vs_t to query
+        ///   @return Returns the running status of the requested vs_t
+        ///
+        [[nodiscard]] constexpr auto
+        status(bsl::safe_u16 const &vsid) const noexcept -> running_status_t
+        {
+            return this->get_vs(vsid)->status();
+        }
+
+        /// <!-- description -->
         ///   @brief Returns the value of the requested register
         ///
         /// <!-- inputs/outputs -->
@@ -493,6 +527,21 @@ namespace microv
             bsl::safe_u16 const &vsid) const noexcept -> hypercall::mv_translation_t
         {
             return this->get_vs(vsid)->gla_to_gpa(mut_sys, mut_pp_pool, gla);
+        }
+
+        /// <!-- description -->
+        ///   @brief Runs the requested vs_t. Returns a mv_exit_reason_t
+        ///     explaining the reason for returning.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param mut_tls the tls_t to use
+        ///   @param mut_sys the bf_syscall_t to use
+        ///   @param vsid the ID of the vs_t to run
+        ///
+        constexpr void
+        run(tls_t &mut_tls, syscall::bf_syscall_t &mut_sys, bsl::safe_u16 const &vsid) noexcept
+        {
+            this->get_vs(vsid)->run(mut_tls, mut_sys);
         }
     };
 }

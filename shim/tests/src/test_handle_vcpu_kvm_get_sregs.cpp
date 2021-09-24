@@ -25,6 +25,8 @@
 #include "../../include/handle_vcpu_kvm_get_sregs.h"
 
 #include <helpers.hpp>
+#include <kvm_dtable.h>
+#include <kvm_segment.h>
 #include <kvm_sregs.h>
 #include <shim_vcpu_t.h>
 
@@ -34,6 +36,10 @@
 
 namespace shim
 {
+    constexpr auto VAL16{42_u16};
+    constexpr auto VAL32{42_u32};
+    constexpr auto VAL64{42_u64};
+
     /// <!-- description -->
     ///   @brief Used to execute the actual checks. We put the checks in this
     ///     function so that we can validate the tests both at compile-time
@@ -47,33 +53,128 @@ namespace shim
     tests() noexcept -> bsl::exit_code
     {
         init_tests();
+        constexpr auto handle{&handle_vcpu_kvm_get_sregs};
+
         bsl::ut_scenario{"success"} = []() noexcept {
             bsl::ut_given{} = [&]() noexcept {
-                shim_vcpu_t mut_vcpu{};
+                shim_vcpu_t const vcpu{};
                 kvm_sregs mut_args{};
-                constexpr auto entryval{42_u64};
                 bsl::ut_when{} = [&]() noexcept {
-                    g_mut_val = entryval.get();
+                    g_mut_val = VAL64.get();
                     bsl::ut_then{} = [&]() noexcept {
-                        bsl::ut_check(
-                            SHIM_SUCCESS == handle_vcpu_kvm_get_sregs(&mut_vcpu, &mut_args));
-                        bsl::ut_check(entryval == mut_args.cr0);
-                        bsl::ut_check(entryval == mut_args.cr2);
-                        bsl::ut_check(entryval == mut_args.cr3);
-                        bsl::ut_check(entryval == mut_args.cr4);
+                        bsl::ut_check(SHIM_SUCCESS == handle(&vcpu, &mut_args));
+                        bsl::ut_check(VAL64 == mut_args.cs.base);
+                        bsl::ut_check(VAL32 == mut_args.cs.limit);
+                        bsl::ut_check(VAL16 == mut_args.cs.selector);
+                        bsl::ut_check(VAL64 == mut_args.ds.base);
+                        bsl::ut_check(VAL32 == mut_args.ds.limit);
+                        bsl::ut_check(VAL16 == mut_args.ds.selector);
+                        bsl::ut_check(VAL64 == mut_args.es.base);
+                        bsl::ut_check(VAL32 == mut_args.es.limit);
+                        bsl::ut_check(VAL16 == mut_args.es.selector);
+                        bsl::ut_check(VAL64 == mut_args.fs.base);
+                        bsl::ut_check(VAL32 == mut_args.fs.limit);
+                        bsl::ut_check(VAL16 == mut_args.fs.selector);
+                        bsl::ut_check(VAL64 == mut_args.gs.base);
+                        bsl::ut_check(VAL32 == mut_args.gs.limit);
+                        bsl::ut_check(VAL16 == mut_args.gs.selector);
+                        bsl::ut_check(VAL64 == mut_args.ss.base);
+                        bsl::ut_check(VAL32 == mut_args.ss.limit);
+                        bsl::ut_check(VAL16 == mut_args.ss.selector);
+                        bsl::ut_check(VAL64 == mut_args.tr.base);
+                        bsl::ut_check(VAL32 == mut_args.tr.limit);
+                        bsl::ut_check(VAL16 == mut_args.tr.selector);
+                        bsl::ut_check(VAL64 == mut_args.ldt.base);
+                        bsl::ut_check(VAL32 == mut_args.ldt.limit);
+                        bsl::ut_check(VAL16 == mut_args.ldt.selector);
+                        bsl::ut_check(VAL64 == mut_args.gdt.base);
+                        bsl::ut_check(VAL16 == mut_args.gdt.limit);
+                        bsl::ut_check(VAL64 == mut_args.idt.base);
+                        bsl::ut_check(VAL16 == mut_args.idt.limit);
+                        bsl::ut_check(VAL64 == mut_args.cr0);
+                        bsl::ut_check(VAL64 == mut_args.cr2);
+                        bsl::ut_check(VAL64 == mut_args.cr3);
+                        bsl::ut_check(VAL64 == mut_args.cr4);
+                        bsl::ut_check(VAL64 == mut_args.cr8);
+                        bsl::ut_check(VAL64 == mut_args.efer);
+                        bsl::ut_check(VAL64 == mut_args.apic_base);
                     };
                 };
             };
         };
-        bsl::ut_scenario{"mv_vs_op_reg_get_list fails"} = []() noexcept {
+
+        bsl::ut_scenario{"hypervisor not detected"} = []() noexcept {
             bsl::ut_given{} = [&]() noexcept {
-                shim_vcpu_t mut_vcpu{};
+                shim_vcpu_t const vcpu{};
                 kvm_sregs mut_args{};
                 bsl::ut_when{} = [&]() noexcept {
-                    g_mut_mv_vs_op_reg_get_list = MV_INVALID_ID;
+                    g_mut_hypervisor_detected = false;
                     bsl::ut_then{} = [&]() noexcept {
-                        bsl::ut_check(
-                            SHIM_FAILURE == handle_vcpu_kvm_get_sregs(&mut_vcpu, &mut_args));
+                        bsl::ut_check(SHIM_FAILURE == handle(&vcpu, &mut_args));
+                    };
+                    bsl::ut_cleanup{} = [&]() noexcept {
+                        g_mut_hypervisor_detected = true;
+                    };
+                };
+            };
+        };
+
+        bsl::ut_scenario{"mv_vs_op_reg_get_list fails"} = []() noexcept {
+            bsl::ut_given{} = [&]() noexcept {
+                shim_vcpu_t const vcpu{};
+                kvm_sregs mut_args{};
+                bsl::ut_when{} = [&]() noexcept {
+                    g_mut_mv_vs_op_reg_get_list = VAL64.get();
+                    bsl::ut_then{} = [&]() noexcept {
+                        bsl::ut_check(SHIM_FAILURE == handle(&vcpu, &mut_args));
+                    };
+                    bsl::ut_cleanup{} = [&]() noexcept {
+                        g_mut_mv_vs_op_reg_get_list = {};
+                    };
+                };
+            };
+        };
+
+        bsl::ut_scenario{"mv_vs_op_reg_get_list adds 0 register"} = []() noexcept {
+            bsl::ut_given{} = [&]() noexcept {
+                shim_vcpu_t const vcpu{};
+                kvm_sregs mut_args{};
+                bsl::ut_when{} = [&]() noexcept {
+                    g_mut_mv_vs_op_reg_get_list = MV_STATUS_FAILURE_INC_NUM_ENTRIES;
+                    bsl::ut_then{} = [&]() noexcept {
+                        bsl::ut_check(SHIM_FAILURE == handle(&vcpu, &mut_args));
+                    };
+                    bsl::ut_cleanup{} = [&]() noexcept {
+                        g_mut_mv_vs_op_reg_get_list = {};
+                    };
+                };
+            };
+        };
+
+        bsl::ut_scenario{"mv_vs_op_reg_get_list adds unknown"} = []() noexcept {
+            bsl::ut_given{} = [&]() noexcept {
+                shim_vcpu_t const vcpu{};
+                kvm_sregs mut_args{};
+                bsl::ut_when{} = [&]() noexcept {
+                    g_mut_mv_vs_op_reg_get_list = MV_STATUS_FAILURE_ADD_UNKNOWN;
+                    bsl::ut_then{} = [&]() noexcept {
+                        bsl::ut_check(SHIM_FAILURE == handle(&vcpu, &mut_args));
+                    };
+                    bsl::ut_cleanup{} = [&]() noexcept {
+                        g_mut_mv_vs_op_reg_get_list = {};
+                    };
+                };
+            };
+        };
+
+        bsl::ut_scenario{"mv_vs_op_reg_get_list corrupts num_entries"} = []() noexcept {
+            bsl::ut_given{} = [&]() noexcept {
+                shim_vcpu_t const vcpu{};
+                kvm_sregs mut_args{};
+                bsl::ut_when{} = [&]() noexcept {
+                    g_mut_mv_vs_op_reg_get_list = MV_STATUS_FAILURE_CORRUPT_NUM_ENTRIES;
+                    bsl::ut_then{} = [&]() noexcept {
+                        bsl::ut_check(SHIM_FAILURE == handle(&vcpu, &mut_args));
                     };
                     bsl::ut_cleanup{} = [&]() noexcept {
                         g_mut_mv_vs_op_reg_get_list = {};
@@ -84,13 +185,60 @@ namespace shim
 
         bsl::ut_scenario{"mv_vs_op_msr_get_list fails"} = []() noexcept {
             bsl::ut_given{} = [&]() noexcept {
-                shim_vcpu_t mut_vcpu{};
+                shim_vcpu_t const vcpu{};
                 kvm_sregs mut_args{};
                 bsl::ut_when{} = [&]() noexcept {
-                    g_mut_mv_vs_op_msr_get_list = MV_INVALID_ID;
+                    g_mut_mv_vs_op_msr_get_list = VAL64.get();
                     bsl::ut_then{} = [&]() noexcept {
-                        bsl::ut_check(
-                            SHIM_FAILURE == handle_vcpu_kvm_get_sregs(&mut_vcpu, &mut_args));
+                        bsl::ut_check(SHIM_FAILURE == handle(&vcpu, &mut_args));
+                    };
+                    bsl::ut_cleanup{} = [&]() noexcept {
+                        g_mut_mv_vs_op_msr_get_list = {};
+                    };
+                };
+            };
+        };
+
+        bsl::ut_scenario{"mv_vs_op_msr_get_list adds 0 register"} = []() noexcept {
+            bsl::ut_given{} = [&]() noexcept {
+                shim_vcpu_t const vcpu{};
+                kvm_sregs mut_args{};
+                bsl::ut_when{} = [&]() noexcept {
+                    g_mut_mv_vs_op_msr_get_list = MV_STATUS_FAILURE_INC_NUM_ENTRIES;
+                    bsl::ut_then{} = [&]() noexcept {
+                        bsl::ut_check(SHIM_FAILURE == handle(&vcpu, &mut_args));
+                    };
+                    bsl::ut_cleanup{} = [&]() noexcept {
+                        g_mut_mv_vs_op_msr_get_list = {};
+                    };
+                };
+            };
+        };
+
+        bsl::ut_scenario{"mv_vs_op_msr_get_list adds unknown"} = []() noexcept {
+            bsl::ut_given{} = [&]() noexcept {
+                shim_vcpu_t const vcpu{};
+                kvm_sregs mut_args{};
+                bsl::ut_when{} = [&]() noexcept {
+                    g_mut_mv_vs_op_msr_get_list = MV_STATUS_FAILURE_ADD_UNKNOWN;
+                    bsl::ut_then{} = [&]() noexcept {
+                        bsl::ut_check(SHIM_FAILURE == handle(&vcpu, &mut_args));
+                    };
+                    bsl::ut_cleanup{} = [&]() noexcept {
+                        g_mut_mv_vs_op_msr_get_list = {};
+                    };
+                };
+            };
+        };
+
+        bsl::ut_scenario{"mv_vs_op_msr_get_list corrupts num_entries"} = []() noexcept {
+            bsl::ut_given{} = [&]() noexcept {
+                shim_vcpu_t const vcpu{};
+                kvm_sregs mut_args{};
+                bsl::ut_when{} = [&]() noexcept {
+                    g_mut_mv_vs_op_msr_get_list = MV_STATUS_FAILURE_CORRUPT_NUM_ENTRIES;
+                    bsl::ut_then{} = [&]() noexcept {
+                        bsl::ut_check(SHIM_FAILURE == handle(&vcpu, &mut_args));
                     };
                     bsl::ut_cleanup{} = [&]() noexcept {
                         g_mut_mv_vs_op_msr_get_list = {};

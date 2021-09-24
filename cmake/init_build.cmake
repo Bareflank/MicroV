@@ -32,11 +32,13 @@ include(${CMAKE_CURRENT_LIST_DIR}/config/default.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/validate.cmake)
 
 include(${CMAKE_CURRENT_LIST_DIR}/target/info.cmake)
+include(${CMAKE_CURRENT_LIST_DIR}/target/reload.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/target/shim_build.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/target/shim_load.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/target/shim_unload.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/target/shim_clean.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/target/shim_quick.cmake)
+include(${CMAKE_CURRENT_LIST_DIR}/target/shim_reload.cmake)
 
 include(${CMAKE_CURRENT_LIST_DIR}/write_constants.cmake)
 

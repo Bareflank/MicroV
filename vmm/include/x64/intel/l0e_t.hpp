@@ -70,8 +70,10 @@ namespace microv
         bsl::uint64 alias : static_cast<bsl::uint64>(1);
         /// @brief defines our "require_explicit_unmap" field in the page
         bsl::uint64 require_explicit_unmap : static_cast<bsl::uint64>(1);
+        /// @brief defines our "present" field in the page
+        bsl::uint64 p : static_cast<bsl::uint64>(1);
         /// @brief defines the "ignored" field in the page
-        bsl::uint64 ignored3 : static_cast<bsl::uint64>(5);
+        bsl::uint64 ignored3 : static_cast<bsl::uint64>(4);
         /// @brief defines the "sub page write permissions" field in the page
         bsl::uint64 sub : static_cast<bsl::uint64>(1);
         /// @brief defines the "ignored" field in the page

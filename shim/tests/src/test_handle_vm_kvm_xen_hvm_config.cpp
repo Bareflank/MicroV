@@ -25,7 +25,7 @@
 #include "../../include/handle_vm_kvm_xen_hvm_config.h"
 
 #include <kvm_xen_hvm_config.h>
-#include <types.h>
+#include <mv_types.h>
 
 #include <bsl/ut.hpp>
 

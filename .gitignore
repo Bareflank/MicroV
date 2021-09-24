@@ -72,5 +72,17 @@ shim/**/*.o
 shim/**/*.o.cmd
 shim/**/*.cmd
 
+hypercall/**/*.symvers
+hypercall/**/*.order
+hypercall/**/*.ko
+hypercall/**/*.ko.cmd
+hypercall/**/*.mod
+hypercall/**/*.mod.c
+hypercall/**/*.mod.o
+hypercall/**/*.mod.cmd
+hypercall/**/*.o
+hypercall/**/*.o.cmd
+hypercall/**/*.cmd
+
 # Windows Shim
 shim/windows/x64/

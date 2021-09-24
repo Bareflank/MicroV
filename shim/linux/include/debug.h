@@ -32,8 +32,8 @@
 #include <itoa.h>
 #include <linux/printk.h>
 #include <linux/types.h>
+#include <mv_types.h>
 #include <serial_write.h>
-#include <types.h>
 
 /** @brief defines a constant for base 10 */
 #define BASE10 ((uint64_t)10)

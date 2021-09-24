@@ -24,9 +24,9 @@
  * SOFTWARE.
  */
 
-#include <constants.h>
 #include <intrinsic_outb.h>
-#include <types.h>
+#include <mv_constants.h>
+#include <mv_types.h>
 
 /** @brief defines the line status register  */
 #define SERIAL_PORT ((uint16_t)HYPERVISOR_SERIAL_PORT)

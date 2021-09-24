@@ -28,7 +28,7 @@
 #define HANDLE_VM_KVM_IRQFD_H
 
 #include <kvm_irqfd.h>
-#include <types.h>
+#include <mv_types.h>
 
 #ifdef __cplusplus
 extern "C"

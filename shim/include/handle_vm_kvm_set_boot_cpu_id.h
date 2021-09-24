@@ -27,7 +27,7 @@
 #ifndef HANDLE_VM_KVM_SET_BOOT_CPU_ID_H
 #define HANDLE_VM_KVM_SET_BOOT_CPU_ID_H
 
-#include <types.h>
+#include <mv_types.h>
 
 #ifdef __cplusplus
 extern "C"

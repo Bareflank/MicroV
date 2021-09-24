@@ -25,7 +25,7 @@
 #include "../../include/handle_vm_kvm_register_coalesced_mmio.h"
 
 #include <kvm_coalesced_mmio_zone.h>
-#include <types.h>
+#include <mv_types.h>
 
 #include <bsl/ut.hpp>
 

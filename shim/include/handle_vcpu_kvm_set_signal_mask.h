@@ -28,7 +28,7 @@
 #define HANDLE_VCPU_KVM_SET_SIGNAL_MASK_H
 
 #include <kvm_signal_mask.h>
-#include <types.h>
+#include <mv_types.h>
 
 #ifdef __cplusplus
 extern "C"

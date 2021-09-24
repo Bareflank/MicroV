@@ -27,8 +27,8 @@
 #ifndef HANDLE_SYSTEM_KVM_CREATE_VM_H
 #define HANDLE_SYSTEM_KVM_CREATE_VM_H
 
+#include <mv_types.h>
 #include <shim_vm_t.h>
-#include <types.h>
 
 #ifdef __cplusplus
 extern "C"

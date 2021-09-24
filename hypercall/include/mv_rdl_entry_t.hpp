@@ -27,6 +27,8 @@
 
 #include <bsl/cstdint.hpp>
 
+#pragma pack(push, 1)
+
 namespace hypercall
 {
     /// <!-- description -->
@@ -40,5 +42,7 @@ namespace hypercall
         uint64_t val;
     };
 }
+
+#pragma pack(pop)
 
 #endif

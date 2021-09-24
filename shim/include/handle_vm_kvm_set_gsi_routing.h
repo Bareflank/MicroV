@@ -28,7 +28,7 @@
 #define HANDLE_VM_KVM_SET_GSI_ROUTING_H
 
 #include <kvm_irq_routing.h>
-#include <types.h>
+#include <mv_types.h>
 
 #ifdef __cplusplus
 extern "C"

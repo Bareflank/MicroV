@@ -36,6 +36,11 @@ extern "C"
 
 #pragma pack(push, 1)
 
+/** @brief n/a */
+#define KVM_EXIT_IO_IN ((uint8_t)0x00)
+/** @brief n/a */
+#define KVM_EXIT_IO_OUT ((uint8_t)0x01)
+
     /**
      * <!-- description -->
      *   @brief TODO
@@ -52,6 +57,13 @@ extern "C"
         uint32_t count;
         /** @brief TODO */
         uint64_t data_offset;
+
+        /** @brief stores the data when the size is 1 byte */
+        uint8_t data8;
+        /** @brief stores the data when the size is 2 bytes */
+        uint16_t data16;
+        /** @brief stores the data when the size is 4 bytes */
+        uint32_t data32;
     };
 
 #pragma pack(pop)

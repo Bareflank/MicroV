@@ -27,6 +27,8 @@
 
 #include <bsl/cstdint.hpp>
 
+#pragma pack(push, 1)
+
 namespace hypercall
 {
     /// <!-- description -->
@@ -44,5 +46,7 @@ namespace hypercall
         bsl::uint64 flags;
     };
 }
+
+#pragma pack(pop)
 
 #endif

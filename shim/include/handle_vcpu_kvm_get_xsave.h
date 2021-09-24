@@ -28,7 +28,7 @@
 #define HANDLE_VCPU_KVM_GET_XSAVE_H
 
 #include <kvm_xsave.h>
-#include <types.h>
+#include <mv_types.h>
 
 #ifdef __cplusplus
 extern "C"

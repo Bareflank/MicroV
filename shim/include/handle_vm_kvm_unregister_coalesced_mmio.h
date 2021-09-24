@@ -28,7 +28,7 @@
 #define HANDLE_VM_KVM_UNREGISTER_COALESCED_MMIO_H
 
 #include <kvm_coalesced_mmio_zone.h>
-#include <types.h>
+#include <mv_types.h>
 
 #ifdef __cplusplus
 extern "C"

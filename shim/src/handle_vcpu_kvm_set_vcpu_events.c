@@ -25,7 +25,7 @@
  */
 
 #include <kvm_vcpu_events.h>
-#include <types.h>
+#include <mv_types.h>
 
 /**
  * <!-- description -->

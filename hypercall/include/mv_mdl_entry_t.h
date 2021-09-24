@@ -34,6 +34,8 @@ extern "C"
 {
 #endif
 
+#pragma pack(push, 1)
+
     /**
      * <!-- description -->
      *   @brief See mv_mdl_t for more details
@@ -49,6 +51,8 @@ extern "C"
         /** @brief stores how to map dst to src */
         uint64_t flags;
     };
+
+#pragma pack(pop)
 
 #ifdef __cplusplus
 }

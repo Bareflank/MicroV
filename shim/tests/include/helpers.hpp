@@ -22,13 +22,13 @@
 /// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 /// SOFTWARE.
 
-#include "constants.h"       // IWYU pragma: export
 #include "g_mut_hndl.h"      // IWYU pragma: export
 #include "mv_constants.h"    // IWYU pragma: export
+#include "mv_exit_io_t.h"    // IWYU pragma: export
 #include "mv_exit_reason_t.h"
 #include "mv_hypercall.h"    // IWYU pragma: export
 #include "mv_translation_t.h"
-#include "types.h"    // IWYU pragma: export
+#include "mv_types.h"    // IWYU pragma: export
 
 #include <shim_fini.h>
 #include <shim_init.h>
@@ -82,6 +82,7 @@ namespace shim
         constinit bsl::uint16 g_mut_mv_vs_op_vsid{};               // NOLINT
         constinit mv_translation_t g_mut_mv_vs_op_gla_to_gpa{};    // NOLINT
         constinit mv_exit_reason_t g_mut_mv_vs_op_run{};           // NOLINT
+        constinit mv_exit_io_t g_mut_mv_vs_op_run_io{};            // NOLINT
         constinit mv_status_t g_mut_mv_vs_op_reg_get{};            // NOLINT
         constinit mv_status_t g_mut_mv_vs_op_reg_set{};            // NOLINT
         constinit mv_status_t g_mut_mv_vs_op_reg_get_list{};       // NOLINT
@@ -93,6 +94,7 @@ namespace shim
 
         extern bool g_mut_hypervisor_detected;
         extern bool g_mut_platform_alloc_fails;
+        extern bool g_mut_platform_virt_to_phys_user_fails;
         extern bsl::safe_u32 g_mut_platform_num_online_cpus;
         extern int64_t g_mut_platform_mlock;
         extern int64_t g_mut_platform_munlock;

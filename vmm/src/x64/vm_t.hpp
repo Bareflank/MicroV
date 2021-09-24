@@ -334,9 +334,53 @@ namespace microv
         ///     page tables used by this vm_t.
         ///
         [[nodiscard]] constexpr auto
-        slpt_spa() const noexcept -> bsl::safe_umx
+        slpt_spa() const noexcept -> bsl::safe_u64
         {
             return m_emulated_mmio.slpt_spa();
+        }
+
+        /// <!-- description -->
+        ///   @brief Maps memory into this vm_t using instructions from the
+        ///     provided MDL.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param tls the tls_t to use
+        ///   @param mut_sys the bf_syscall_t to use
+        ///   @param mut_page_pool the page_pool_t to use
+        ///   @param mdl the MDL containing the memory to map into the vm_t
+        ///   @return Returns bsl::errc_success on success, bsl::errc_failure
+        ///     and friends otherwise
+        ///
+        [[nodiscard]] constexpr auto
+        mmio_map(
+            tls_t const &tls,
+            syscall::bf_syscall_t &mut_sys,
+            page_pool_t &mut_page_pool,
+            hypercall::mv_mdl_t const &mdl) noexcept -> bsl::errc_type
+        {
+            return m_emulated_mmio.map(tls, mut_sys, mut_page_pool, mdl);
+        }
+
+        /// <!-- description -->
+        ///   @brief Unmaps memory from this vm_t using instructions from the
+        ///     provided MDL.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param tls the tls_t to use
+        ///   @param mut_sys the bf_syscall_t to use
+        ///   @param mut_page_pool the page_pool_t to use
+        ///   @param mdl the MDL containing the memory to map from the vm_t
+        ///   @return Returns bsl::errc_success on success, bsl::errc_failure
+        ///     and friends otherwise
+        ///
+        [[nodiscard]] constexpr auto
+        mmio_unmap(
+            tls_t const &tls,
+            syscall::bf_syscall_t &mut_sys,
+            page_pool_t &mut_page_pool,
+            hypercall::mv_mdl_t const &mdl) noexcept -> bsl::errc_type
+        {
+            return m_emulated_mmio.unmap(tls, mut_sys, mut_page_pool, mdl);
         }
 
         /// <!-- description -->

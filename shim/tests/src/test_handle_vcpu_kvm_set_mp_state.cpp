@@ -25,7 +25,7 @@
 #include "../../include/handle_vcpu_kvm_set_mp_state.h"
 
 #include <kvm_mp_state.h>
-#include <types.h>
+#include <mv_types.h>
 
 #include <bsl/ut.hpp>
 

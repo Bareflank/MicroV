@@ -27,14 +27,14 @@
 #ifndef SHIM_PLATFORM_INTERFACE_HPP
 #define SHIM_PLATFORM_INTERFACE_HPP
 
-#include <asm/ioctl.h>                        // for _IO, _IOW, _IOR, _IOWR
-#include <kvm_regs.hpp>                       // for kvm_regs
-#include <kvm_sregs.hpp>                      // for kvm_sregs
-#include <kvm_userspace_memory_region.hpp>    // for kvm_userspace_memory_region
+#include <asm/ioctl.h>
+#include <kvm_regs.hpp>
+#include <kvm_sregs.hpp>
+#include <kvm_userspace_memory_region.hpp>
 
-#include <bsl/convert.hpp>          // for operator""_umx
-#include <bsl/safe_integral.hpp>    // for safe_umx, uintmx, uint64
-#include <bsl/string_view.hpp>      // for string_view
+#include <bsl/convert.hpp>
+#include <bsl/safe_integral.hpp>
+#include <bsl/string_view.hpp>
 
 // #include <kvm_clear_dirty_log.hpp>
 // #include <kvm_clock_data.hpp>

@@ -28,7 +28,7 @@
 #define HANDLE_VM_KVM_GET_DEBUGREGS_H
 
 #include <kvm_debugregs.h>
-#include <types.h>
+#include <mv_types.h>
 
 #ifdef __cplusplus
 extern "C"

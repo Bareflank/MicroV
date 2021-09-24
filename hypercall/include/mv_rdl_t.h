@@ -35,6 +35,8 @@ extern "C"
 {
 #endif
 
+#pragma pack(push, 1)
+
 /** @brief defines the max number of entires in the RDL */
 #define MV_RDL_MAX_ENTRIES ((uint64_t)250)
 
@@ -87,6 +89,8 @@ extern "C"
         /** @brief stores each entry in the RDL */
         struct mv_rdl_entry_t entries[MV_RDL_MAX_ENTRIES];
     };
+
+#pragma pack(pop)
 
 #ifdef __cplusplus
 }

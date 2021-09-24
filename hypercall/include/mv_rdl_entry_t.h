@@ -34,6 +34,8 @@ extern "C"
 {
 #endif
 
+#pragma pack(push, 1)
+
     /**
      * <!-- description -->
      *   @brief See mv_rdl_t for more details
@@ -45,6 +47,8 @@ extern "C"
         /** @brief stores the value read or to be written */
         uint64_t val;
     };
+
+#pragma pack(pop)
 
 #ifdef __cplusplus
 }

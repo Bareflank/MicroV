@@ -25,7 +25,7 @@
  */
 
 #include <kvm_pit_state2.h>
-#include <types.h>
+#include <mv_types.h>
 
 /**
  * <!-- description -->

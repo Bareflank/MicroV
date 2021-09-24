@@ -29,6 +29,7 @@
 
 #include <inttypes.h>    // IWYU pragma: export
 #include <stdint.h>      // IWYU pragma: export
+#include <types.h>       // IWYU pragma: export
 
 #ifdef __cplusplus
 extern "C"
@@ -62,6 +63,10 @@ extern "C"
 #define NULLPTR nullptr
 #else
 #define NULLPTR ((void *)0)
+#endif
+
+#ifndef NULL
+#define NULL NULLPTR
 #endif
 
 #ifdef __cplusplus

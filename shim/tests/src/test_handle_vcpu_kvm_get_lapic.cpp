@@ -25,7 +25,7 @@
 #include "../../include/handle_vcpu_kvm_get_lapic.h"
 
 #include <kvm_lapic_state.h>
-#include <types.h>
+#include <mv_types.h>
 
 #include <bsl/ut.hpp>
 

@@ -26,7 +26,7 @@
 #define DISPATCH_VMCALL_MV_PP_OP_HPP
 
 #include <bf_syscall_t.hpp>
-#include <dispatch_vmcall_abi_helpers.hpp>
+#include <dispatch_abi_helpers.hpp>
 #include <dispatch_vmcall_helpers.hpp>
 #include <gs_t.hpp>
 #include <intrinsic_t.hpp>
@@ -92,7 +92,7 @@ namespace microv
         syscall::bf_syscall_t &mut_sys, pp_pool_t &mut_pp_pool, vm_pool_t const &vm_pool) noexcept
         -> bsl::errc_type
     {
-        auto const gpa{get_gpa(get_reg1(mut_sys))};
+        auto const gpa{get_pos_gpa(get_reg1(mut_sys))};
         if (bsl::unlikely(gpa.is_invalid())) {
             bsl::print<bsl::V>() << bsl::here();
             set_reg_return(mut_sys, hypercall::MV_STATUS_INVALID_INPUT_REG1);
@@ -105,6 +105,11 @@ namespace microv
             set_reg_return(mut_sys, hypercall::MV_STATUS_INVALID_INPUT_REG1);
             return vmexit_failure_advance_ip_and_run;
         }
+
+        /// TODO:
+        /// - We need to detect if the SPA is being used on another PP. An
+        ///   SPA can only be used once per PP, otherwise unmaps, and other
+        ///   TLB related issues will occur.
 
         auto const ret{mut_pp_pool.set_shared_page_spa(mut_sys, spa, mut_sys.bf_tls_ppid())};
         if (bsl::unlikely(!ret)) {

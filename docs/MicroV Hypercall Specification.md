@@ -10,6 +10,7 @@
     - [1.4.2. Register Type](#142-register-type)
     - [1.4.3. Register Descriptor Lists](#143-register-descriptor-lists)
     - [1.4.4. Memory Descriptor Lists](#144-memory-descriptor-lists)
+    - [1.4.3. CPUID Descriptor Lists](#143-cpuid-descriptor-lists)
     - [1.4.5. Map Flags](#145-map-flags)
   - [1.5. ID Constants](#15-id-constants)
   - [1.6. Endianness](#16-endianness)
@@ -343,6 +344,51 @@ The format of the MDL as follows:
 | reserved3 | uint64_t | 0x50 | 8 bytes | REVI |
 | num_entries | uint64_t | 0x58 | 8 bytes | The number of entries in the MDL |
 | entries | mv_mdl_entry_t[MV_MDL_MAX_ENTRIES] | 0x60 | ABI dependent | Each entry in the MDL |
+
+### 1.4.3. CPUID Descriptor Lists
+
+A CPUID descriptor list (CDL) describes a list of CPUID leaves that either need to be read or written. Each CDL consists of a list of entries with each entry describing one CPUID leaf to read/write. Like all structures used in this ABI, the CDL must be placed inside the shared page. Registers 0-7 in the mv_cdl_t are NOT entries, but instead input/output registers for the ABIs that need additional input and output registers. If any of these registers is not used by a specific ABI, it is REVI.
+
+**const, uint64_t: MV_CDL_MAX_ENTRIES**
+| Value | Description |
+| :---- | :---------- |
+| 125 | Defines the max number of entires in the CDL |
+
+**enum, int32_t: mv_cpuid_flag_t**
+| Name | Value | Description |
+| :--- | :---- | :---------- |
+| mv_cpuid_flag_t_reserved | 0 | reserved |
+
+**struct: mv_cdl_entry_t**
+| Name | Type | Offset | Size | Description |
+| :--- | :--- | :----- | :--- | :---------- |
+| fun | uint32_t | 0x0 | 4 bytes | stores the CPUID function input |
+| idx | uint32_t | 0x4 | 4 bytes | stores the CPUID index input |
+| flags | mv_cpuid_flag_t | 0x8 | 4 bytes | stores an MicroV specific flags |
+| eax | uint32_t | 0xC | 4 bytes | stores the CPUID eax output |
+| ebx | uint32_t | 0x10 | 4 bytes | stores the CPUID ebx output |
+| ecx | uint32_t | 0x14 | 4 bytes | stores the CPUID ecx output |
+| edx | uint32_t | 0x18 | 4 bytes | stores the CPUID edx output |
+| reserved | uint32_t | 0x1C | 4 bytes | reserved |
+
+The format of the CDL as follows:
+
+**struct: mv_cdl_t**
+| Name | Type | Offset | Size | Description |
+| :--- | :--- | :----- | :--- | :---------- |
+| reg0 | uint64_t | 0x0 | 8 bytes | ABI dependent. REVI if unused |
+| reg1 | uint64_t | 0x8 | 8 bytes | ABI dependent. REVI if unused |
+| reg2 | uint64_t | 0x10 | 8 bytes | ABI dependent. REVI if unused |
+| reg3 | uint64_t | 0x18 | 8 bytes | ABI dependent. REVI if unused |
+| reg4 | uint64_t | 0x20 | 8 bytes | ABI dependent. REVI if unused |
+| reg5 | uint64_t | 0x28 | 8 bytes | ABI dependent. REVI if unused |
+| reg6 | uint64_t | 0x30 | 8 bytes | ABI dependent. REVI if unused |
+| reg7 | uint64_t | 0x38 | 8 bytes | ABI dependent. REVI if unused |
+| reserved1 | uint64_t | 0x40 | 8 bytes | REVI |
+| reserved2 | uint64_t | 0x48 | 8 bytes | REVI |
+| reserved3 | uint64_t | 0x50 | 8 bytes | REVI |
+| num_entries | uint64_t | 0x58 | 8 bytes | The number of entries in the CDL |
+| entries | mv_cdl_entry_t[MV_CDL_MAX_ENTRIES] | 0x60 | ABI dependent | Each entry in the CDL |
 
 ### 1.4.5. Map Flags
 
@@ -943,11 +989,6 @@ This hypercall tells MicroV to set the GPA of the current PP's shared page.
 ### 2.12.4. mv_pp_op_cpuid_get_supported, OP=0x3, IDX=0x3
 
 TBD
-
-**const, uint64_t: MV_PP_OP_CPUID_GET_SUPPORTED_IDX_VAL**
-| Value | Description |
-| :---- | :---------- |
-| 0x0000000000000003 | Defines the index for mv_pp_op_cpuid_get_supported |
 
 ### 2.12.5. mv_pp_op_cpuid_get_permissable, OP=0x3, IDX=0x4
 
@@ -1606,12 +1647,12 @@ If mv_vs_op_run returns success with an exit reason of mv_exit_reason_t_io, it m
 **const, uint64_t: MV_EXIT_IO_IN**
 | Value | Description |
 | :---- | :---------- |
-| 0x0000000000000001 | The mv_exit_io_t defines an input access |
+| 0x0000000000000000 | The mv_exit_io_t defines an input access |
 
 **const, uint64_t: MV_EXIT_IO_OUT**
 | Value | Description |
 | :---- | :---------- |
-| 0x0000000000000002 | The mv_exit_io_t defines an output access |
+| 0x0000000000000001 | The mv_exit_io_t defines an output access |
 
 **struct: mv_exit_io_t**
 | Name | Type | Offset | Size | Description |

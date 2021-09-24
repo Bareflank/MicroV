@@ -25,7 +25,7 @@
 #include "../../include/handle_vm_kvm_get_dirty_log.h"
 
 #include <kvm_dirty_log.h>
-#include <types.h>
+#include <mv_types.h>
 
 #include <bsl/ut.hpp>
 

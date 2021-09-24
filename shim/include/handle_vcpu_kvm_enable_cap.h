@@ -28,7 +28,7 @@
 #define HANDLE_VCPU_KVM_ENABLE_CAP_H
 
 #include <kvm_enable_cap.h>
-#include <types.h>
+#include <mv_types.h>
 
 #ifdef __cplusplus
 extern "C"

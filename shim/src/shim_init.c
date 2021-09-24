@@ -30,9 +30,9 @@
 #include <g_mut_shared_pages.h>
 #include <mv_constants.h>
 #include <mv_hypercall.h>
+#include <mv_types.h>
 #include <platform.h>
 #include <shim_fini.h>
-#include <types.h>
 
 /**
  * <!-- description -->
@@ -59,6 +59,8 @@ shim_init_on_cpu(uint32_t const cpu) NOEXCEPT
     }
 
     mut_gpa = platform_virt_to_phys(g_mut_shared_pages[cpu]);
+
+    (void)mv_pp_op_clr_shared_page_gpa(g_mut_hndl);
     if (mv_pp_op_set_shared_page_gpa(g_mut_hndl, mut_gpa)) {
         bferror("mv_pp_op_set_shared_page_gpa failed");
         return SHIM_FAILURE;

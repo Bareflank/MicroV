@@ -25,7 +25,7 @@
 #include "../../include/handle_vm_kvm_get_pit2.h"
 
 #include <kvm_pit_state2.h>
-#include <types.h>
+#include <mv_types.h>
 
 #include <bsl/ut.hpp>
 

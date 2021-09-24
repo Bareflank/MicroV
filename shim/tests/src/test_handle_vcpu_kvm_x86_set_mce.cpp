@@ -25,7 +25,7 @@
 #include "../../include/handle_vcpu_kvm_x86_set_mce.h"
 
 #include <kvm_x86_mce.h>
-#include <types.h>
+#include <mv_types.h>
 
 #include <bsl/ut.hpp>
 

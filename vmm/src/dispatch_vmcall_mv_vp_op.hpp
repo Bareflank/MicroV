@@ -26,7 +26,7 @@
 #define DISPATCH_VMCALL_MV_VP_OP_HPP
 
 #include <bf_syscall_t.hpp>
-#include <dispatch_vmcall_abi_helpers.hpp>
+#include <dispatch_abi_helpers.hpp>
 #include <dispatch_vmcall_helpers.hpp>
 #include <gs_t.hpp>
 #include <intrinsic_t.hpp>
@@ -76,8 +76,7 @@ namespace microv
             return vmexit_failure_advance_ip_and_run;
         }
 
-        auto const vpid{
-            mut_vp_pool.allocate(gs, tls, mut_sys, page_pool, intrinsic, vmid, tls.ppid)};
+        auto const vpid{mut_vp_pool.allocate(gs, tls, mut_sys, page_pool, intrinsic, vmid)};
         if (bsl::unlikely(vpid.is_invalid())) {
             bsl::print<bsl::V>() << bsl::here();
             set_reg_return(mut_sys, hypercall::MV_STATUS_FAILURE_UNKNOWN);

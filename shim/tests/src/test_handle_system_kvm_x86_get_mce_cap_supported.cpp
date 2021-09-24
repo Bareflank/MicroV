@@ -24,7 +24,7 @@
 
 #include "../../include/handle_system_kvm_x86_get_mce_cap_supported.h"
 
-#include <types.h>
+#include <mv_types.h>
 
 #include <bsl/safe_integral.hpp>
 #include <bsl/ut.hpp>

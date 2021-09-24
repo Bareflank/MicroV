@@ -25,7 +25,7 @@
 #include "../../include/handle_system_kvm_get_msr_index_list.h"
 
 #include <kvm_msr_list.h>
-#include <types.h>
+#include <mv_types.h>
 
 #include <bsl/ut.hpp>
 

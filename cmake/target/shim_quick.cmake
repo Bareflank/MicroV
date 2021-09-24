@@ -21,7 +21,9 @@
 
 if(MICROV_BUILD_SHIM AND NOT MICROV_TARGET_ARCH STREQUAL "aarch64")
     add_custom_target(shim_quick
+        COMMAND ${CMAKE_COMMAND} --build . --target shim_unload
         COMMAND ${CMAKE_COMMAND} --build . --target shim_clean
+        COMMAND ${CMAKE_COMMAND} --build . --target shim_build
         COMMAND ${CMAKE_COMMAND} --build . --target shim_load
         VERBATIM
     )

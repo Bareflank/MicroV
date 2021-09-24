@@ -25,7 +25,7 @@
  */
 
 #include <intrinsic_cpuid.h>
-#include <types.h>
+#include <mv_types.h>
 
 /**
  * <!-- description -->
@@ -45,6 +45,24 @@ detect_hypervisor(void) NOEXCEPT
     uint32_t ebx;
     uint32_t ecx;
     uint32_t edx;
+
+    /// TODO:
+    /// - In release mode, this should be changed to cache the results
+    ///   so that CPUID only called once per-PP. Otherwise, this would
+    ///   result in a VMExit, and since this is called on every IOCTL,
+    ///   that would be a massive amount of overhead.
+    ///
+    /// - This is called on every IOCTL in debug mode because you can
+    ///   turn off the hypervisor without closing the shim. When this
+    ///   happens, the vmcall instruction is no longer useable. So you
+    ///   end up with a situation where the hypervisor was detected when
+    ///   the shim was opened, but then later on, the hypervisor is no
+    ///   longer there. The ability to turn off the hypervisor is a
+    ///   developer-only feature. In release mode, we would run MicroV
+    ///   from UEFI, and it would be on all the time and not be allowed
+    ///   to turn off, so this is a non-issue, and therefore should
+    ///   only be run once.
+    ///
 
     eax = fn0000_0001;
     ecx = 0U;

@@ -29,12 +29,12 @@
 #include <bf_syscall_t.hpp>
 #include <gs_t.hpp>
 #include <intrinsic_t.hpp>
-#include <pp_cr_t.hpp>
-#include <pp_io_t.hpp>
+#include <pp_cpuid_t.hpp>
 #include <pp_lapic_t.hpp>
 #include <pp_mmio_t.hpp>
 #include <pp_msr_t.hpp>
 #include <pp_mtrrs_t.hpp>
+#include <pp_reg_t.hpp>
 #include <tls_t.hpp>
 
 #include <bsl/discard.hpp>
@@ -54,10 +54,8 @@ namespace microv
         /// @brief stores the ID associated with this pp_t
         bsl::safe_u16 m_id{};
 
-        /// @brief stores this pp_t's pp_cr_t
-        pp_cr_t m_pp_cr{};
-        /// @brief stores this pp_t's pp_io_t
-        pp_io_t m_pp_io{};
+        /// @brief stores this pp_t's pp_cpuid_t
+        pp_cpuid_t m_pp_cpuid{};
         /// @brief stores this pp_t's pp_lapic_t
         pp_lapic_t m_pp_lapic{};
         /// @brief stores this pp_t's pp_mmio_t
@@ -66,6 +64,8 @@ namespace microv
         pp_msr_t m_pp_msr{};
         /// @brief stores this pp_t's pp_mtrrs_t
         pp_mtrrs_t m_pp_mtrrs{};
+        /// @brief stores this pp_t's pp_reg_t
+        pp_reg_t m_pp_reg{};
 
     public:
         /// <!-- description -->
@@ -88,12 +88,21 @@ namespace microv
         {
             bsl::expects(this->id() == syscall::BF_INVALID_ID);
 
-            m_pp_cr.initialize(gs, tls, mut_sys, intrinsic, i);
-            m_pp_io.initialize(gs, tls, mut_sys, intrinsic, i);
+            m_pp_cpuid.initialize(gs, tls, mut_sys, intrinsic, i);
             m_pp_lapic.initialize(gs, tls, mut_sys, intrinsic, i);
             m_pp_mmio.initialize(gs, tls, mut_sys, intrinsic, i);
             m_pp_msr.initialize(gs, tls, mut_sys, intrinsic, i);
             m_pp_mtrrs.initialize(gs, tls, mut_sys, intrinsic, i);
+            m_pp_reg.initialize(gs, tls, mut_sys, intrinsic, i);
+
+            /// TODO:
+            /// - We need to detect all of the features that we need
+            ///   support for here and error out if the CPU does not
+            ///   support the features that we need. This includes
+            ///
+            ///   - CPUID
+            ///   - MSRs
+            ///
 
             m_id = ~i;
         }
@@ -114,12 +123,12 @@ namespace microv
             syscall::bf_syscall_t &mut_sys,
             intrinsic_t const &intrinsic) noexcept
         {
+            m_pp_reg.release(gs, tls, mut_sys, intrinsic);
             m_pp_mtrrs.release(gs, tls, mut_sys, intrinsic);
             m_pp_msr.release(gs, tls, mut_sys, intrinsic);
             m_pp_mmio.release(gs, tls, mut_sys, intrinsic);
             m_pp_lapic.release(gs, tls, mut_sys, intrinsic);
-            m_pp_io.release(gs, tls, mut_sys, intrinsic);
-            m_pp_cr.release(gs, tls, mut_sys, intrinsic);
+            m_pp_cpuid.release(gs, tls, mut_sys, intrinsic);
 
             m_id = {};
         }
@@ -150,7 +159,7 @@ namespace microv
         ///
         template<typename T>
         [[nodiscard]] constexpr auto
-        map(syscall::bf_syscall_t &mut_sys, bsl::safe_umx const &spa) noexcept -> pp_unique_map_t<T>
+        map(syscall::bf_syscall_t &mut_sys, bsl::safe_u64 const &spa) noexcept -> pp_unique_map_t<T>
         {
             bsl::expects(this->id() != syscall::BF_INVALID_ID);
             return m_pp_mmio.map<T>(mut_sys, spa);

@@ -25,7 +25,7 @@
 #include "../../include/handle_vm_kvm_set_gsi_routing.h"
 
 #include <kvm_irq_routing.h>
-#include <types.h>
+#include <mv_types.h>
 
 #include <bsl/ut.hpp>
 

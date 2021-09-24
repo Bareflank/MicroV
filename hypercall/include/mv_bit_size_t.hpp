@@ -25,14 +25,15 @@
 #ifndef MV_BIT_SIZE_T_HPP
 #define MV_BIT_SIZE_T_HPP
 
-#include <bsl/cstdint.hpp>
+#include <bsl/convert.hpp>
+#include <bsl/safe_integral.hpp>
 
 namespace hypercall
 {
     /// <!-- description -->
     ///   @brief Defines different bit sizes for address, operands, etc.
     ///
-    enum class mv_reg_t : bsl::int32
+    enum class mv_bit_size_t : bsl::int32
     {
         /// @brief indicates 8 bits
         mv_bit_size_t_8 = 0,
@@ -43,6 +44,28 @@ namespace hypercall
         /// @brief indicates 64 bits
         mv_bit_size_t_64 = 3,
     };
+
+    /// <!-- description -->
+    ///   @brief return bsl::to_i32(static_cast<bsl::int32>(val))
+    ///
+    /// <!-- inputs/outputs -->
+    ///   @param val the mv_reg_t to convert
+    ///   @return return bsl::to_i32(static_cast<bsl::int32>(val))
+    ///
+    [[nodiscard]] constexpr auto
+    to_i32(mv_bit_size_t const &val) noexcept -> bsl::safe_i32
+    {
+        return bsl::to_i32(static_cast<bsl::int32>(val));
+    }
+
+    /// @brief integer version of mv_bit_size_t_8
+    constexpr auto BIT_SIZE_8{to_i32(mv_bit_size_t::mv_bit_size_t_8)};
+    /// @brief integer version of mv_bit_size_t_16
+    constexpr auto BIT_SIZE_16{to_i32(mv_bit_size_t::mv_bit_size_t_16)};
+    /// @brief integer version of mv_bit_size_t_32
+    constexpr auto BIT_SIZE_32{to_i32(mv_bit_size_t::mv_bit_size_t_32)};
+    /// @brief integer version of mv_bit_size_t_64
+    constexpr auto BIT_SIZE_64{to_i32(mv_bit_size_t::mv_bit_size_t_64)};
 }
 
 #endif

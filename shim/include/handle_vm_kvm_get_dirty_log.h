@@ -28,7 +28,7 @@
 #define HANDLE_VM_KVM_GET_DIRTY_LOG_H
 
 #include <kvm_dirty_log.h>
-#include <types.h>
+#include <mv_types.h>
 
 #ifdef __cplusplus
 extern "C"

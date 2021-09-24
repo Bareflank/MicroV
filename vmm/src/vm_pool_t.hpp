@@ -308,9 +308,57 @@ namespace microv
         ///     page tables used by the requested vm_t.
         ///
         [[nodiscard]] constexpr auto
-        slpt_spa(bsl::safe_u16 const &vmid) const noexcept -> bsl::safe_umx
+        slpt_spa(bsl::safe_u16 const &vmid) const noexcept -> bsl::safe_u64
         {
             return this->get_vm(vmid)->slpt_spa();
+        }
+
+        /// <!-- description -->
+        ///   @brief Maps memory into the requested vm_t using instructions
+        ///     from the provided MDL.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param tls the tls_t to use
+        ///   @param mut_sys the bf_syscall_t to use
+        ///   @param mut_page_pool the page_pool_t to use
+        ///   @param mdl the MDL containing the memory to map into the vm_t
+        ///   @param vmid the ID of the vm_t to modify
+        ///   @return Returns bsl::errc_success on success, bsl::errc_failure
+        ///     and friends otherwise
+        ///
+        [[nodiscard]] constexpr auto
+        mmio_map(
+            tls_t const &tls,
+            syscall::bf_syscall_t &mut_sys,
+            page_pool_t &mut_page_pool,
+            hypercall::mv_mdl_t const &mdl,
+            bsl::safe_u16 const &vmid) noexcept -> bsl::errc_type
+        {
+            return this->get_vm(vmid)->mmio_map(tls, mut_sys, mut_page_pool, mdl);
+        }
+
+        /// <!-- description -->
+        ///   @brief Unmaps memory from the requested vm_t using instructions
+        ///     from the provided MDL.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param tls the tls_t to use
+        ///   @param mut_sys the bf_syscall_t to use
+        ///   @param mut_page_pool the page_pool_t to use
+        ///   @param mdl the MDL containing the memory to map from the vm_t
+        ///   @param vmid the ID of the vm_t to modify
+        ///   @return Returns bsl::errc_success on success, bsl::errc_failure
+        ///     and friends otherwise
+        ///
+        [[nodiscard]] constexpr auto
+        mmio_unmap(
+            tls_t const &tls,
+            syscall::bf_syscall_t &mut_sys,
+            page_pool_t &mut_page_pool,
+            hypercall::mv_mdl_t const &mdl,
+            bsl::safe_u16 const &vmid) noexcept -> bsl::errc_type
+        {
+            return this->get_vm(vmid)->mmio_unmap(tls, mut_sys, mut_page_pool, mdl);
         }
 
         /// <!-- description -->

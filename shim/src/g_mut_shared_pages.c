@@ -24,7 +24,7 @@
  * SOFTWARE.
  */
 
-#include <constants.h>
+#include <mv_constants.h>
 
 /** @brief stores the shared pages used to communicate with MicroV */
 void *g_mut_shared_pages[HYPERVISOR_MAX_PPS] = {0};

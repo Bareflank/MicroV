@@ -30,7 +30,6 @@
 #define TYPES_H
 
 #include <inttypes.h>    // IWYU pragma: export
-#include <mv_types.h>    // IWYU pragma: export
 #include <stddef.h>      // IWYU pragma: export
 #include <stdint.h>      // IWYU pragma: export
 

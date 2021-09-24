@@ -67,7 +67,7 @@ namespace microv
     ///         instruction_opcode_t opcode;
     ///         instruction_operand_t dst;
     ///         instruction_operand_t src;
-    ///         bsl::safe_umx gva;
+    ///         bsl::safe_u64 gva;
     ///     };
     ///     @endcode
     ///

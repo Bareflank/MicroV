@@ -48,14 +48,10 @@ namespace hypercall
     tests() noexcept -> bsl::exit_code
     {
         mv_status_t mut_ret{};
-        mv_hypercall_t mut_hvc{};
-
-        constexpr auto self{MV_SELF_ID};
         constexpr auto reg{mv_reg_t::mv_reg_t_rax};
         bsl::safe_u64 mut_val{};
 
-        integration::verify(mut_hvc.initialize());
-        auto const hndl{mut_hvc.handle()};
+        integration::initialize_globals();
 
         // invalid VSID
         mut_ret = mv_vs_op_reg_get_impl(hndl.get(), MV_INVALID_ID.get(), reg, mut_val.data());
@@ -128,6 +124,36 @@ namespace hypercall
             integration::verify(val == mut_hvc.mv_vs_op_reg_get(vsid, mv_reg_t::mv_reg_t_r14));
             integration::verify(mut_hvc.mv_vs_op_reg_set(vsid, mv_reg_t::mv_reg_t_r15, val));
             integration::verify(val == mut_hvc.mv_vs_op_reg_get(vsid, mv_reg_t::mv_reg_t_r15));
+
+            integration::verify(mut_hvc.mv_vs_op_destroy_vs(vsid));
+            integration::verify(mut_hvc.mv_vp_op_destroy_vp(vpid));
+            integration::verify(mut_hvc.mv_vm_op_destroy_vm(vmid));
+        }
+
+        // Verify the general purpose registers
+        {
+            auto const vmid{mut_hvc.mv_vm_op_create_vm()};
+            auto const vpid{mut_hvc.mv_vp_op_create_vp(vmid)};
+            auto const vsid{mut_hvc.mv_vs_op_create_vs(vpid)};
+
+            integration::verify(vmid.is_valid_and_checked());
+            integration::verify(vpid.is_valid_and_checked());
+            integration::verify(vsid.is_valid_and_checked());
+
+            constexpr auto val{0x1234567890ABCDEF_u64};
+
+            integration::set_affinity(core0);
+            integration::verify(mut_hvc.mv_vs_op_reg_set(vsid, mv_reg_t::mv_reg_t_rax, val));
+            integration::verify(val == mut_hvc.mv_vs_op_reg_get(vsid, mv_reg_t::mv_reg_t_rax));
+            integration::set_affinity(core1);
+            integration::verify(mut_hvc.mv_vs_op_reg_set(vsid, mv_reg_t::mv_reg_t_rax, val));
+            integration::verify(val == mut_hvc.mv_vs_op_reg_get(vsid, mv_reg_t::mv_reg_t_rax));
+
+            integration::set_affinity(core0);
+            integration::verify(mut_hvc.mv_vs_op_reg_set(vsid, mv_reg_t::mv_reg_t_rax, val));
+            integration::set_affinity(core1);
+            integration::verify(val == mut_hvc.mv_vs_op_reg_get(vsid, mv_reg_t::mv_reg_t_rax));
+            integration::set_affinity(core0);
 
             integration::verify(mut_hvc.mv_vs_op_destroy_vs(vsid));
             integration::verify(mut_hvc.mv_vp_op_destroy_vp(vpid));

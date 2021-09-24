@@ -27,7 +27,7 @@
 #ifndef HANDLE_VCPU_KVM_SMI_H
 #define HANDLE_VCPU_KVM_SMI_H
 
-#include <types.h>
+#include <mv_types.h>
 
 #ifdef __cplusplus
 extern "C"

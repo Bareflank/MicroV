@@ -24,7 +24,7 @@
 
 #include "../../include/handle_vm_kvm_reinject_control.h"
 
-#include <types.h>
+#include <mv_types.h>
 
 #include <bsl/ut.hpp>
 

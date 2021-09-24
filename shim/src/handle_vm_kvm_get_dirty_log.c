@@ -25,7 +25,7 @@
  */
 
 #include <kvm_dirty_log.h>
-#include <types.h>
+#include <mv_types.h>
 
 /**
  * <!-- description -->

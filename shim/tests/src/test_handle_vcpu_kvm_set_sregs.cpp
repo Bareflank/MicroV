@@ -28,8 +28,6 @@
 #include <kvm_sregs.h>
 #include <shim_vcpu_t.h>
 
-#include <bsl/convert.hpp>
-#include <bsl/safe_integral.hpp>
 #include <bsl/ut.hpp>
 
 namespace shim
@@ -47,19 +45,29 @@ namespace shim
     tests() noexcept -> bsl::exit_code
     {
         init_tests();
+        constexpr auto handle{&handle_vcpu_kvm_set_sregs};
+
         bsl::ut_scenario{"success"} = []() noexcept {
             bsl::ut_given{} = [&]() noexcept {
-                shim_vcpu_t mut_vcpu{};
+                shim_vcpu_t const vcpu{};
                 kvm_sregs mut_args{};
-                constexpr auto entryval{42_u64};
+                bsl::ut_then{} = [&]() noexcept {
+                    bsl::ut_check(SHIM_SUCCESS == handle(&vcpu, &mut_args));
+                };
+            };
+        };
+
+        bsl::ut_scenario{"hypervisor not detected"} = []() noexcept {
+            bsl::ut_given{} = [&]() noexcept {
+                shim_vcpu_t const vcpu{};
+                kvm_sregs mut_args{};
                 bsl::ut_when{} = [&]() noexcept {
-                    mut_args.cr0 = entryval.get();
-                    mut_args.cr2 = entryval.get();
-                    mut_args.cr3 = entryval.get();
-                    mut_args.cr4 = entryval.get();
+                    g_mut_hypervisor_detected = false;
                     bsl::ut_then{} = [&]() noexcept {
-                        bsl::ut_check(
-                            SHIM_SUCCESS == handle_vcpu_kvm_set_sregs(&mut_vcpu, &mut_args));
+                        bsl::ut_check(SHIM_FAILURE == handle(&vcpu, &mut_args));
+                    };
+                    bsl::ut_cleanup{} = [&]() noexcept {
+                        g_mut_hypervisor_detected = true;
                     };
                 };
             };
@@ -67,14 +75,12 @@ namespace shim
 
         bsl::ut_scenario{"mv_vs_op_reg_set_list fails"} = []() noexcept {
             bsl::ut_given{} = [&]() noexcept {
-                shim_vcpu_t mut_vcpu{};
+                shim_vcpu_t const vcpu{};
                 kvm_sregs mut_args{};
-                constexpr auto val{1_u64};
                 bsl::ut_when{} = [&]() noexcept {
-                    g_mut_mv_vs_op_reg_set_list = val.get();
+                    g_mut_mv_vs_op_reg_set_list = MV_STATUS_FAILURE_UNKNOWN;
                     bsl::ut_then{} = [&]() noexcept {
-                        bsl::ut_check(
-                            SHIM_FAILURE == handle_vcpu_kvm_set_sregs(&mut_vcpu, &mut_args));
+                        bsl::ut_check(SHIM_FAILURE == handle(&vcpu, &mut_args));
                     };
                     bsl::ut_cleanup{} = [&]() noexcept {
                         g_mut_mv_vs_op_reg_set_list = {};
@@ -85,17 +91,15 @@ namespace shim
 
         bsl::ut_scenario{"mv_vs_op_msr_set_list fails"} = []() noexcept {
             bsl::ut_given{} = [&]() noexcept {
-                shim_vcpu_t mut_vcpu{};
+                shim_vcpu_t const vcpu{};
                 kvm_sregs mut_args{};
-                constexpr auto val{1_u64};
                 bsl::ut_when{} = [&]() noexcept {
-                    g_mut_mv_vs_op_msr_set_list = val.get();
+                    g_mut_mv_vs_op_msr_set_list = MV_STATUS_FAILURE_UNKNOWN;
                     bsl::ut_then{} = [&]() noexcept {
-                        bsl::ut_check(
-                            SHIM_FAILURE == handle_vcpu_kvm_set_sregs(&mut_vcpu, &mut_args));
+                        bsl::ut_check(SHIM_FAILURE == handle(&vcpu, &mut_args));
                     };
                     bsl::ut_cleanup{} = [&]() noexcept {
-                        g_mut_mv_vs_op_msr_get_list = {};
+                        g_mut_mv_vs_op_msr_set_list = {};
                     };
                 };
             };

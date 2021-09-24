@@ -22,8 +22,8 @@
 /// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 /// SOFTWARE.
 
-#ifndef L2E_T_HPP
-#define L2E_T_HPP
+#ifndef l2E_T_HPP
+#define l2E_T_HPP
 
 #include <bsl/convert.hpp>
 #include <bsl/cstdint.hpp>
@@ -71,8 +71,10 @@ namespace microv
         bsl::uint64 alias : static_cast<bsl::uint64>(1);
         /// @brief defines our "require_explicit_unmap" field in the page
         bsl::uint64 require_explicit_unmap : static_cast<bsl::uint64>(1);
+        /// @brief defines our "present" field in the page
+        bsl::uint64 p : static_cast<bsl::uint64>(1);
         /// @brief defines the "ignored" field in the page
-        bsl::uint64 ignored2 : static_cast<bsl::uint64>(7);
+        bsl::uint64 ignored2 : static_cast<bsl::uint64>(6);
         /// @brief defines the "virtualization exception" field in the page
         bsl::uint64 ve : static_cast<bsl::uint64>(1);
     };

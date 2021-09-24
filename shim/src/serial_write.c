@@ -24,8 +24,8 @@
  * SOFTWARE.
  */
 
+#include <mv_types.h>
 #include <serial_write_c.h>
-#include <types.h>
 
 /**
  * <!-- description -->

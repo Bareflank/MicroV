@@ -27,7 +27,7 @@
 #ifndef SHIM_INIT_H
 #define SHIM_INIT_H
 
-#include <types.h>
+#include <mv_types.h>
 
 #ifdef __cplusplus
 extern "C"
