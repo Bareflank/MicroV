@@ -166,6 +166,8 @@ ifneq ($(KERNELRELEASE),)
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_vs_op_msr_get_list_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_vs_op_msr_set_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_vs_op_msr_set_list_impl.o
+		$(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_vs_op_fpu_get_all_impl.o
+		$(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_vs_op_fpu_set_all_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_vs_op_reg_get_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_vs_op_reg_get_list_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_vs_op_reg_set_impl.o
@@ -215,6 +217,8 @@ ifneq ($(KERNELRELEASE),)
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_vs_op_msr_get_list_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_vs_op_msr_set_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_vs_op_msr_set_list_impl.o
+		$(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_vs_op_fpu_get_all_impl.o
+		$(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_vs_op_fpu_set_all_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_vs_op_reg_get_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_vs_op_reg_get_list_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_vs_op_reg_set_impl.o

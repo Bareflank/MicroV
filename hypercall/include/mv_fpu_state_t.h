@@ -24,32 +24,46 @@
  * SOFTWARE.
  */
 
-#ifndef HANDLE_VCPU_KVM_GET_FPU_H
-#define HANDLE_VCPU_KVM_GET_FPU_H
+#define MV_NO_OF_REGISTERS 32
+#define MV_NO_OF_XMM_REGISTERS 16
+#define MV_XMM_REGISTER_SIZE 16
+#define MV_NO_OF_FPR_REGISTERS 8
+#define MV_FPR_REGISTER_SIZE 16
 
-#include <kvm_fpu.h>
-#include <mv_types.h>
-#include <shim_vcpu_t.h>
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C"
 {
 #endif
 
+#pragma pack(push, 1)
+
     /**
      * <!-- description -->
-     *   @brief Handles the execution of kvm_get_fpu.
-     *
-     * <!-- inputs/outputs -->
-     *   @param pmut_ioctl_args the arguments provided by userspace
-     *   @param vcpu to get vsid to pass to hypercall
-     *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
+     *   @brief See mv_rdl_t for more details
      */
-    NODISCARD int64_t handle_vcpu_kvm_get_fpu(
-        struct shim_vcpu_t const *const vcpu, struct kvm_fpu *const pmut_ioctl_args) NOEXCEPT;
+    struct mv_fpu_state_t
+    {
+        /** @brief stores registers */
+        uint8_t registers[MV_NO_OF_REGISTERS];
+
+        /** @brief stores mxscr registers */
+        uint32_t mxcsr;
+
+        /** @brief stores mxcsr mask registers */
+        uint32_t mxcsr_mask;
+
+        /** @brief stores fpr registers */
+        uint8_t fpr[MV_NO_OF_FPR_REGISTERS * MV_FPR_REGISTER_SIZE];
+
+        /** @brief stores xmm registers */
+        uint8_t xmm[MV_NO_OF_XMM_REGISTERS * MV_NO_OF_XMM_REGISTERS];
+        /** @brief stores the value read or to be written */
+    };
+
+#pragma pack(pop)
 
 #ifdef __cplusplus
 }
-#endif
-
 #endif

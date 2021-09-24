@@ -31,9 +31,11 @@
 #include <handle_system_kvm_destroy_vm.h>
 #include <handle_system_kvm_get_api_version.h>
 #include <handle_system_kvm_get_vcpu_mmap_size.h>
+#include <handle_vcpu_kvm_get_fpu.h>
 #include <handle_vcpu_kvm_get_regs.h>
 #include <handle_vcpu_kvm_get_sregs.h>
 #include <handle_vcpu_kvm_run.h>
+#include <handle_vcpu_kvm_set_fpu.h>
 #include <handle_vcpu_kvm_set_regs.h>
 #include <handle_vcpu_kvm_set_sregs.h>
 #include <handle_vm_kvm_create_vcpu.h>
@@ -555,7 +557,8 @@ static long
 dispatch_vm_kvm_set_identity_map_addr(uint64_t *const ioctl_args)
 {
     (void)ioctl_args;
-    return -EINVAL;
+    //// KVM_SET_IDENTITY_MAP_ADDR is not needed by MicroV as this was a fix for systems that do not support unrestricted guest mode on Intel only, something we do not support.
+    return 0;
 }
 
 static long
@@ -583,7 +586,9 @@ dispatch_vm_kvm_set_pmu_event_filter(
 static long
 dispatch_vm_kvm_set_tss_addr(void)
 {
-    return -EINVAL;
+
+    // KVM_SET_TSS_ADDR is not needed by MicroV as this was a fix for systems that do not support unrestricted guest mode on Intel only, something we do not support.
+    return 0;
 }
 
 static long
@@ -775,6 +780,7 @@ dev_unlocked_ioctl_vm(
         }
 
         case KVM_SET_TSS_ADDR: {
+            bferror_x64("i am here ", cmd);
             return dispatch_vm_kvm_set_tss_addr();
         }
 
@@ -826,10 +832,23 @@ dispatch_vcpu_kvm_get_cpuid2(struct kvm_cpuid2 *const ioctl_args)
 }
 
 static long
-dispatch_vcpu_kvm_get_fpu(struct kvm_fpu *const ioctl_args)
+dispatch_vcpu_kvm_get_fpu(
+    struct shim_vcpu_t const *const vcpu, struct kvm_fpu *const ioctl_args)
 {
-    (void)ioctl_args;
-    return -EINVAL;
+    struct kvm_fpu mut_args;
+    uint64_t const size = sizeof(mut_args);
+
+    if (handle_vcpu_kvm_get_fpu(vcpu, &mut_args)) {
+        bferror("handle_vcpu_kvm_get_fpu failed");
+        return -EINVAL;
+    }
+
+    if (platform_copy_to_user(ioctl_args, &mut_args, size)) {
+        bferror("platform_copy_from_user failed");
+        return -EINVAL;
+    }
+
+    return 0;
 }
 
 static long
@@ -986,10 +1005,23 @@ dispatch_vcpu_kvm_set_cpuid2(struct kvm_cpuid2 *const ioctl_args)
 }
 
 static long
-dispatch_vcpu_kvm_set_fpu(struct kvm_fpu *const ioctl_args)
+dispatch_vcpu_kvm_set_fpu(
+    struct shim_vcpu_t *const vcpu, struct kvm_fpu *const ioctl_args)
 {
-    (void)ioctl_args;
-    return -EINVAL;
+    struct kvm_fpu mut_args;
+    uint64_t const size = sizeof(mut_args);
+
+    if (platform_copy_from_user(&mut_args, ioctl_args, size)) {
+        bferror("platform_copy_from_user failed");
+        return -EINVAL;
+    }
+
+    if (handle_vcpu_kvm_set_fpu(vcpu, &mut_args)) {
+        bferror("handle_vcpu_kvm_set_fpu failed");
+        return -EINVAL;
+    }
+
+    return 0;
 }
 
 static long
@@ -1158,7 +1190,8 @@ dev_unlocked_ioctl_vcpu(
         }
 
         case KVM_GET_FPU: {
-            return dispatch_vcpu_kvm_get_fpu((struct kvm_fpu *)ioctl_args);
+            return dispatch_vcpu_kvm_get_fpu(
+                pmut_mut_vcpu, (struct kvm_fpu *)ioctl_args);
         }
 
         case KVM_GET_LAPIC: {
@@ -1244,7 +1277,9 @@ dev_unlocked_ioctl_vcpu(
         }
 
         case KVM_SET_FPU: {
-            return dispatch_vcpu_kvm_set_fpu((struct kvm_fpu *)ioctl_args);
+            bferror("in KVM_set_fpu");
+            return dispatch_vcpu_kvm_set_fpu(
+                pmut_mut_vcpu, (struct kvm_fpu *)ioctl_args);
         }
 
         case KVM_SET_GUEST_DEBUG: {

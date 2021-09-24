@@ -345,7 +345,7 @@ namespace microv
             bsl::expects(mut_sys.bf_vs_op_write(vsid, mk::bf_reg_t_cr3, {}));
             bsl::expects(mut_sys.bf_vs_op_write(vsid, mk::bf_reg_t_cr4, {}));
             bsl::expects(mut_sys.bf_vs_op_write(vsid, mk::bf_reg_t_cr8, {}));
-            bsl::expects(mut_sys.bf_vs_op_write(vsid, mk::bf_reg_t_xcr0, {}));
+            bsl::expects(mut_sys.bf_vs_op_write(vsid, mk::bf_reg_t_cr0, {}));
 
             // -----------------------------------------------------------------
             // Debug Registers
@@ -1250,7 +1250,7 @@ namespace microv
                 }
 
                 case mv::mv_reg_t_xcr0: {
-                    return sys.bf_vs_op_read(this->id(), mk::bf_reg_t_xcr0);
+                    return sys.bf_vs_op_read(this->id(), mk::bf_reg_t_cr0);
                     break;
                 }
 
@@ -1578,7 +1578,7 @@ namespace microv
                 }
 
                 case mv::mv_reg_t_xcr0: {
-                    return mut_sys.bf_vs_op_write(this->id(), mk::bf_reg_t_xcr0, val);
+                    return mut_sys.bf_vs_op_write(this->id(), mk::bf_reg_t_cr0, val);
                 }
 
                 case mv::mv_reg_t_invalid:
