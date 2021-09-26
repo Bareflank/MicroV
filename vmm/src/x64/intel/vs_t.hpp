@@ -96,7 +96,7 @@ namespace microv
         emulated_tlb_t m_emulated_tlb{};
 
         /// @brief stores the xsave region for this vs_t
-        bsl::span<page_4k_t> m_xsave{};
+        page_4k_t *m_xsave{};
 
         /// <!-- description -->
         ///   @brief Initializes the VS to start as a 16bit guest.
@@ -340,8 +340,8 @@ namespace microv
             bsl::expects(mut_sys.bf_vs_op_write(vsid, mk::bf_reg_t_cr2, {}));
             bsl::expects(mut_sys.bf_vs_op_write(vsid, mk::bf_reg_t_cr3, {}));
             bsl::expects(mut_sys.bf_vs_op_write(vsid, mk::bf_reg_t_cr4, {}));
-
-            m_emulated_cr.set_cr8({});
+            bsl::expects(mut_sys.bf_vs_op_write(vsid, mk::bf_reg_t_cr8, {}));
+            bsl::expects(mut_sys.bf_vs_op_write(vsid, mk::bf_reg_t_xcr0, {}));
 
             // -----------------------------------------------------------------
             // Debug Registers
@@ -349,11 +349,10 @@ namespace microv
 
             constexpr auto dr7_val{0x00000400_u64};
 
-            m_emulated_dr.set_dr0({});
-            m_emulated_dr.set_dr1({});
-            m_emulated_dr.set_dr2({});
-            m_emulated_dr.set_dr3({});
-
+            bsl::expects(mut_sys.bf_vs_op_write(vsid, mk::bf_reg_t_dr0, {}));
+            bsl::expects(mut_sys.bf_vs_op_write(vsid, mk::bf_reg_t_dr1, {}));
+            bsl::expects(mut_sys.bf_vs_op_write(vsid, mk::bf_reg_t_dr2, {}));
+            bsl::expects(mut_sys.bf_vs_op_write(vsid, mk::bf_reg_t_dr3, {}));
             bsl::expects(mut_sys.bf_vs_op_write(vsid, mk::bf_reg_t_dr6, {}));
             bsl::expects(mut_sys.bf_vs_op_write(vsid, mk::bf_reg_t_dr7, dr7_val));
 
@@ -367,6 +366,13 @@ namespace microv
 
             constexpr auto apic_base{0xFEE00900_u64};
             m_emulated_lapic.set_apic_base(apic_base);
+
+            // -----------------------------------------------------------------
+            // XCR0
+            // -----------------------------------------------------------------
+
+            /// TODO:
+            /// - We need
         }
 
     public:
@@ -412,7 +418,7 @@ namespace microv
         ///   @param gs the gs_t to use
         ///   @param tls the tls_t to use
         ///   @param sys the bf_syscall_t to use
-        ///   @param page_pool the page_pool_t to use
+        ///   @param mut_page_pool the page_pool_t to use
         ///   @param intrinsic the intrinsic_t to use
         ///
         constexpr void
@@ -420,10 +426,10 @@ namespace microv
             gs_t const &gs,
             tls_t const &tls,
             syscall::bf_syscall_t const &sys,
-            page_pool_t const &page_pool,
+            page_pool_t &mut_page_pool,
             intrinsic_t const &intrinsic) noexcept
         {
-            this->deallocate(gs, tls, sys, page_pool, intrinsic);
+            this->deallocate(gs, tls, sys, mut_page_pool, intrinsic);
 
             m_emulated_tlb.release(gs, tls, sys, intrinsic);
             m_emulated_msr.release(gs, tls, sys, intrinsic);
@@ -496,8 +502,8 @@ namespace microv
             bsl::discard(tls);
             bsl::discard(intrinsic);
 
-            m_xsave = {mut_page_pool.allocate<page_4k_t>(tls, mut_sys), HYPERVISOR_PAGE_SIZE};
-            if (bsl::unlikely(m_xsave.is_invalid())) {
+            m_xsave = mut_page_pool.allocate<page_4k_t>(tls, mut_sys);
+            if (bsl::unlikely(nullptr == m_xsave)) {
                 bsl::print<bsl::V>() << bsl::here();
                 return bsl::safe_u16::failure();
             }
@@ -582,6 +588,7 @@ namespace microv
                 constexpr auto msrpm_idx{syscall::bf_reg_t::bf_reg_t_address_of_msr_bitmaps};
                 bsl::expects(mut_sys.bf_vs_op_write(vsid, msrpm_idx, gs.root_msrpm_spa));
 
+                intrinsic.xsave(m_xsave);
                 bsl::expects(mut_sys.bf_vs_op_init_as_root(vsid));
             }
             else {
@@ -625,7 +632,7 @@ namespace microv
         ///   @param gs the gs_t to use
         ///   @param tls the tls_t to use
         ///   @param sys the bf_syscall_t to use
-        ///   @param page_pool the page_pool_t to use
+        ///   @param mut_page_pool the page_pool_t to use
         ///   @param intrinsic the intrinsic_t to use
         ///
         constexpr void
@@ -633,7 +640,7 @@ namespace microv
             gs_t const &gs,
             tls_t const &tls,
             syscall::bf_syscall_t const &sys,
-            page_pool_t const &page_pool,
+            page_pool_t &mut_page_pool,
             intrinsic_t const &intrinsic) noexcept
         {
             bsl::expects(running_status_t::running != m_status);
@@ -641,8 +648,9 @@ namespace microv
 
             bsl::discard(gs);
             bsl::discard(tls);
-            bsl::discard(page_pool);
             bsl::discard(intrinsic);
+
+            mut_page_pool.deallocate(tls, m_xsave);
 
             m_assigned_ppid = {};
             m_assigned_vpid = {};
@@ -691,13 +699,16 @@ namespace microv
         ///
         /// <!-- inputs/outputs -->
         ///   @param mut_tls the current TLS block
+        ///   @param intrinsic the intrinsic_t to use
         ///
         constexpr void
-        set_active(tls_t &mut_tls) noexcept
+        set_active(tls_t &mut_tls, intrinsic_t const &intrinsic) noexcept
         {
             bsl::expects(allocated_status_t::allocated == m_allocated);
             bsl::expects(running_status_t::running != m_status);
             bsl::expects(syscall::BF_INVALID_ID == mut_tls.active_vsid);
+
+            intrinsic.xrstr(m_xsave);
 
             m_active_ppid = ~bsl::to_u16(mut_tls.ppid);
             mut_tls.active_vsid = this->id().get();
@@ -708,13 +719,16 @@ namespace microv
         ///
         /// <!-- inputs/outputs -->
         ///   @param mut_tls the current TLS block
+        ///   @param intrinsic the intrinsic_t to use
         ///
         constexpr void
-        set_inactive(tls_t &mut_tls) noexcept
+        set_inactive(tls_t &mut_tls, intrinsic_t const &intrinsic) noexcept
         {
             bsl::expects(allocated_status_t::allocated == m_allocated);
             bsl::expects(running_status_t::running != m_status);
             bsl::expects(this->id() == mut_tls.active_vsid);
+
+            intrinsic.xsave(m_xsave);
 
             m_active_ppid = {};
             mut_tls.active_vsid = syscall::BF_INVALID_ID.get();
@@ -842,15 +856,94 @@ namespace microv
         }
 
         /// <!-- description -->
-        ///   @brief Returns the running status of this vs_t
+        ///   @brief Translates a GLA to a GPA using the paging configuration
+        ///     of this vs_t stored in CR0, CR3 and CR4.
         ///
         /// <!-- inputs/outputs -->
-        ///   @return Returns the running status of this vs_t
+        ///   @param mut_sys the bf_syscall_t to use
+        ///   @param mut_pp_pool the pp_pool_t to use
+        ///   @param gla the GLA to translate to a GPA
+        ///   @return Returns mv_translation_t containing the results of the
+        ///     translation.
         ///
         [[nodiscard]] constexpr auto
-        status() const noexcept -> running_status_t
+        gla_to_gpa(syscall::bf_syscall_t &mut_sys, pp_pool_t &mut_pp_pool, bsl::safe_u64 const &gla)
+            const noexcept -> hypercall::mv_translation_t
         {
-            return m_status;
+            auto const vsid{this->id()};
+
+            bsl::expects(allocated_status_t::allocated == m_allocated);
+            bsl::expects(running_status_t::running != m_status);
+            bsl::expects(mut_sys.bf_tls_ppid() == this->assigned_pp());
+
+            auto const cr0{mut_sys.bf_vs_op_read(vsid, syscall::bf_reg_t::bf_reg_t_cr0)};
+            bsl::expects(cr0.is_valid_and_checked());
+
+            if (bsl::unlikely(cr0.is_zero())) {
+                bsl::error() << "gla_to_gpa failed for gla "                // --
+                             << bsl::hex(gla)                               // --
+                             << " because the value of cr0 is invalid: "    // --
+                             << bsl::hex(cr0)                               // --
+                             << bsl::endl                                   // --
+                             << bsl::here();                                // --
+
+                return {};
+            }
+
+            auto const cr3{mut_sys.bf_vs_op_read(vsid, syscall::bf_reg_t::bf_reg_t_cr3)};
+            bsl::expects(cr3.is_valid_and_checked());
+
+            if (bsl::unlikely(cr3.is_zero())) {
+                bsl::error() << "gla_to_gpa failed for gla "                // --
+                             << bsl::hex(gla)                               // --
+                             << " because the value of cr3 is invalid: "    // --
+                             << bsl::hex(cr3)                               // --
+                             << bsl::endl                                   // --
+                             << bsl::here();                                // --
+
+                return {};
+            }
+
+            auto const cr4{mut_sys.bf_vs_op_read(vsid, syscall::bf_reg_t::bf_reg_t_cr4)};
+            bsl::expects(cr4.is_valid_and_checked());
+
+            if (bsl::unlikely(cr4.is_zero())) {
+                bsl::error() << "gla_to_gpa failed for gla "                // --
+                             << bsl::hex(gla)                               // --
+                             << " because the value of cr4 is invalid: "    // --
+                             << bsl::hex(cr4)                               // --
+                             << bsl::endl                                   // --
+                             << bsl::here();                                // --
+
+                return {};
+            }
+
+            return m_emulated_tlb.gla_to_gpa(mut_sys, mut_pp_pool, gla, cr0, cr3, cr4);
+        }
+
+        /// <!-- description -->
+        ///   @brief Reads CPUID for this vs_t and returns the results
+        ///     in the appropriate bf_syscall_t TLS registers.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param mut_sys the bf_syscall_t to use
+        ///   @param intrinsic the intrinsic_t to use
+        ///   @return Returns bsl::errc_success on success, bsl::errc_failure
+        ///     and friends otherwise
+        ///
+        [[nodiscard]] constexpr auto
+        cpuid_get(syscall::bf_syscall_t &mut_sys, intrinsic_t const &intrinsic) const noexcept
+            -> bsl::errc_type
+        {
+            bsl::expects(allocated_status_t::allocated == m_allocated);
+            bsl::expects(running_status_t::running != m_status);
+            bsl::expects(mut_sys.bf_tls_ppid() == this->assigned_pp());
+
+            if (mut_sys.is_the_active_vm_the_root_vm()) {
+                return m_emulated_cpuid.get_root(mut_sys, intrinsic);
+            }
+
+            return m_emulated_cpuid.get(mut_sys, intrinsic);
         }
 
         /// <!-- description -->
@@ -862,7 +955,7 @@ namespace microv
         ///   @return Returns the value of the requested register
         ///
         [[nodiscard]] constexpr auto
-        get(syscall::bf_syscall_t const &sys, bsl::safe_u64 const &reg) const noexcept
+        reg_get(syscall::bf_syscall_t const &sys, bsl::safe_u64 const &reg) const noexcept
             -> bsl::safe_u64
         {
             bsl::expects(allocated_status_t::allocated == m_allocated);
@@ -1112,19 +1205,19 @@ namespace microv
                 }
 
                 case mv::mv_reg_t_dr0: {
-                    return m_emulated_dr.get_dr0();
+                    return sys.bf_vs_op_read(this->id(), mk::bf_reg_t_dr0);
                 }
 
                 case mv::mv_reg_t_dr1: {
-                    return m_emulated_dr.get_dr1();
+                    return sys.bf_vs_op_read(this->id(), mk::bf_reg_t_dr1);
                 }
 
                 case mv::mv_reg_t_dr2: {
-                    return m_emulated_dr.get_dr2();
+                    return sys.bf_vs_op_read(this->id(), mk::bf_reg_t_dr2);
                 }
 
                 case mv::mv_reg_t_dr3: {
-                    return m_emulated_dr.get_dr3();
+                    return sys.bf_vs_op_read(this->id(), mk::bf_reg_t_dr3);
                 }
 
                 case mv::mv_reg_t_dr6: {
@@ -1152,10 +1245,11 @@ namespace microv
                 }
 
                 case mv::mv_reg_t_cr8: {
-                    return m_emulated_cr.get_cr8();
+                    return sys.bf_vs_op_read(this->id(), mk::bf_reg_t_cr8);
                 }
 
                 case mv::mv_reg_t_xcr0: {
+                    return sys.bf_vs_op_read(this->id(), mk::bf_reg_t_xcr0);
                     break;
                 }
 
@@ -1186,7 +1280,8 @@ namespace microv
         ///     and friends otherwise
         ///
         [[nodiscard]] constexpr auto
-        set(syscall::bf_syscall_t &mut_sys,
+        reg_set(
+            syscall::bf_syscall_t &mut_sys,
             bsl::safe_u64 const &reg,
             bsl::safe_u64 const &val) noexcept -> bsl::errc_type
         {
@@ -1438,23 +1533,19 @@ namespace microv
                 }
 
                 case mv::mv_reg_t_dr0: {
-                    m_emulated_dr.set_dr0(val);
-                    return bsl::errc_success;
+                    return mut_sys.bf_vs_op_write(this->id(), mk::bf_reg_t_dr0, val);
                 }
 
                 case mv::mv_reg_t_dr1: {
-                    m_emulated_dr.set_dr1(val);
-                    return bsl::errc_success;
+                    return mut_sys.bf_vs_op_write(this->id(), mk::bf_reg_t_dr1, val);
                 }
 
                 case mv::mv_reg_t_dr2: {
-                    m_emulated_dr.set_dr2(val);
-                    return bsl::errc_success;
+                    return mut_sys.bf_vs_op_write(this->id(), mk::bf_reg_t_dr2, val);
                 }
 
                 case mv::mv_reg_t_dr3: {
-                    m_emulated_dr.set_dr3(val);
-                    return bsl::errc_success;
+                    return mut_sys.bf_vs_op_write(this->id(), mk::bf_reg_t_dr3, val);
                 }
 
                 case mv::mv_reg_t_dr6: {
@@ -1482,12 +1573,11 @@ namespace microv
                 }
 
                 case mv::mv_reg_t_cr8: {
-                    m_emulated_cr.set_cr8(val);
-                    return bsl::errc_success;
+                    return mut_sys.bf_vs_op_write(this->id(), mk::bf_reg_t_cr8, val);
                 }
 
                 case mv::mv_reg_t_xcr0: {
-                    break;
+                    return mut_sys.bf_vs_op_write(this->id(), mk::bf_reg_t_xcr0, val);
                 }
 
                 case mv::mv_reg_t_invalid:
@@ -1517,7 +1607,7 @@ namespace microv
         ///     and friends otherwise
         ///
         [[nodiscard]] constexpr auto
-        get_list(syscall::bf_syscall_t const &sys, hypercall::mv_rdl_t &mut_rdl) const noexcept
+        reg_get_list(syscall::bf_syscall_t const &sys, hypercall::mv_rdl_t &mut_rdl) const noexcept
             -> bsl::errc_type
         {
             bsl::expects(allocated_status_t::allocated == m_allocated);
@@ -1527,7 +1617,7 @@ namespace microv
 
             for (bsl::safe_idx mut_i{}; mut_i < mut_rdl.num_entries; ++mut_i) {
                 auto const reg{bsl::to_u64(mut_rdl.entries.at_if(mut_i)->reg)};
-                auto const val{this->get(sys, reg)};
+                auto const val{this->reg_get(sys, reg)};
                 if (bsl::unlikely(val.is_invalid())) {
                     bsl::print<bsl::V>() << bsl::here();
                     return bsl::errc_failure;
@@ -1550,7 +1640,7 @@ namespace microv
         ///     and friends otherwise
         ///
         [[nodiscard]] constexpr auto
-        set_list(syscall::bf_syscall_t &mut_sys, hypercall::mv_rdl_t const &rdl) noexcept
+        reg_set_list(syscall::bf_syscall_t &mut_sys, hypercall::mv_rdl_t const &rdl) noexcept
             -> bsl::errc_type
         {
             bsl::expects(allocated_status_t::allocated == m_allocated);
@@ -1562,7 +1652,7 @@ namespace microv
                 auto const reg{bsl::to_u64(rdl.entries.at_if(mut_i)->reg)};
                 auto const val{bsl::to_u64(rdl.entries.at_if(mut_i)->val)};
 
-                auto const ret{this->set(mut_sys, reg, val)};
+                auto const ret{this->reg_set(mut_sys, reg, val)};
                 if (bsl::unlikely(!ret)) {
                     bsl::print<bsl::V>() << bsl::here();
                     return ret;
@@ -1575,116 +1665,41 @@ namespace microv
         }
 
         /// <!-- description -->
-        ///   @brief Reads CPUID for this vs_t and returns the results
-        ///     in the appropriate bf_syscall_t TLS registers.
+        ///   @brief Returns this vs_t's FPU state in the provided "page".
         ///
         /// <!-- inputs/outputs -->
-        ///   @param mut_sys the bf_syscall_t to use
-        ///   @param intrinsic the intrinsic_t to use
-        ///   @return Returns bsl::errc_success on success, bsl::errc_failure
-        ///     and friends otherwise
-        ///
-        [[nodiscard]] constexpr auto
-        cpuid_get(syscall::bf_syscall_t &mut_sys, intrinsic_t const &intrinsic) const noexcept
-            -> bsl::errc_type
-        {
-            bsl::expects(allocated_status_t::allocated == m_allocated);
-            bsl::expects(running_status_t::running != m_status);
-            bsl::expects(mut_sys.bf_tls_ppid() == this->assigned_pp());
-
-            if (mut_sys.is_the_active_vm_the_root_vm()) {
-                return m_emulated_cpuid.get_root(mut_sys, intrinsic);
-            }
-
-            return m_emulated_cpuid.get(mut_sys, intrinsic);
-        }
-
-        /// <!-- description -->
-        ///   @brief Translates a GLA to a GPA using the paging configuration
-        ///     of this vs_t stored in CR0, CR3 and CR4.
-        ///
-        /// <!-- inputs/outputs -->
-        ///   @param mut_sys the bf_syscall_t to use
-        ///   @param mut_pp_pool the pp_pool_t to use
-        ///   @param gla the GLA to translate to a GPA
-        ///   @return Returns mv_translation_t containing the results of the
-        ///     translation.
-        ///
-        [[nodiscard]] constexpr auto
-        gla_to_gpa(syscall::bf_syscall_t &mut_sys, pp_pool_t &mut_pp_pool, bsl::safe_u64 const &gla)
-            const noexcept -> hypercall::mv_translation_t
-        {
-            auto const vsid{this->id()};
-
-            bsl::expects(allocated_status_t::allocated == m_allocated);
-            bsl::expects(running_status_t::running != m_status);
-            bsl::expects(mut_sys.bf_tls_ppid() == this->assigned_pp());
-
-            auto const cr0{mut_sys.bf_vs_op_read(vsid, syscall::bf_reg_t::bf_reg_t_cr0)};
-            bsl::expects(cr0.is_valid_and_checked());
-
-            if (bsl::unlikely(cr0.is_zero())) {
-                bsl::error() << "gla_to_gpa failed for gla "                // --
-                             << bsl::hex(gla)                               // --
-                             << " because the value of cr0 is invalid: "    // --
-                             << bsl::hex(cr0)                               // --
-                             << bsl::endl                                   // --
-                             << bsl::here();                                // --
-
-                return {};
-            }
-
-            auto const cr3{mut_sys.bf_vs_op_read(vsid, syscall::bf_reg_t::bf_reg_t_cr3)};
-            bsl::expects(cr3.is_valid_and_checked());
-
-            if (bsl::unlikely(cr3.is_zero())) {
-                bsl::error() << "gla_to_gpa failed for gla "                // --
-                             << bsl::hex(gla)                               // --
-                             << " because the value of cr3 is invalid: "    // --
-                             << bsl::hex(cr3)                               // --
-                             << bsl::endl                                   // --
-                             << bsl::here();                                // --
-
-                return {};
-            }
-
-            auto const cr4{mut_sys.bf_vs_op_read(vsid, syscall::bf_reg_t::bf_reg_t_cr4)};
-            bsl::expects(cr4.is_valid_and_checked());
-
-            if (bsl::unlikely(cr4.is_zero())) {
-                bsl::error() << "gla_to_gpa failed for gla "                // --
-                             << bsl::hex(gla)                               // --
-                             << " because the value of cr4 is invalid: "    // --
-                             << bsl::hex(cr4)                               // --
-                             << bsl::endl                                   // --
-                             << bsl::here();                                // --
-
-                return {};
-            }
-
-            return m_emulated_tlb.gla_to_gpa(mut_sys, mut_pp_pool, gla, cr0, cr3, cr4);
-        }
-
-        /// <!-- description -->
-        ///   @brief Runs the requested vs_t. Returns a mv_exit_reason_t
-        ///     explaining the reason for returning.
-        ///
-        /// <!-- inputs/outputs -->
-        ///   @param mut_tls the tls_t to use
-        ///   @param mut_sys the bf_syscall_t to use
+        ///   @param sys the bf_syscall_t to use
+        ///   @param mut_page the shared page to store the FPU state.
         ///
         constexpr void
-        run(tls_t &mut_tls, syscall::bf_syscall_t &mut_sys) const noexcept
+        fpu_get_all(syscall::bf_syscall_t const &sys, page_4k_t &mut_page) const noexcept
         {
-            auto const vmid{this->assigned_vm()};
-            auto const vpid{this->assigned_vp()};
-            auto const vsid{this->id()};
+            bsl::expects(allocated_status_t::allocated == m_allocated);
+            bsl::expects(running_status_t::running != m_status);
+            bsl::expects(sys.bf_tls_ppid() == this->assigned_pp());
 
-            mut_tls.parent_vmid = mut_sys.bf_tls_vmid();
-            mut_tls.parent_vpid = mut_sys.bf_tls_vpid();
-            mut_tls.parent_vsid = mut_sys.bf_tls_vsid();
+            constexpr auto fpu_size{512_umx};
+            bsl::builtin_memcpy(&mut_page, m_xsave, fpu_size);
+        }
 
-            bsl::expects(mut_sys.bf_vs_op_run(vmid, vpid, vsid));
+        /// <!-- description -->
+        ///   @brief Sets this vs_t's FPU state to the provided
+        ///     contents stored in "page".
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param sys the bf_syscall_t to use
+        ///   @param page the shared page containing the state to set this
+        ///     vs_t's FPU state to.
+        ///
+        constexpr void
+        fpu_set_all(syscall::bf_syscall_t const &sys, page_4k_t const &page) noexcept
+        {
+            bsl::expects(allocated_status_t::allocated == m_allocated);
+            bsl::expects(running_status_t::running != m_status);
+            bsl::expects(sys.bf_tls_ppid() == this->assigned_pp());
+
+            constexpr auto fpu_size{512_umx};
+            bsl::builtin_memcpy(m_xsave, &page, fpu_size);
         }
     };
 }

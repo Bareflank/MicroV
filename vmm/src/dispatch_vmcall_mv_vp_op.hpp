@@ -142,7 +142,7 @@ namespace microv
     handle_mv_vp_op_vmid(syscall::bf_syscall_t &mut_sys, vp_pool_t &mut_vp_pool) noexcept
         -> bsl::errc_type
     {
-        auto const vpid{get_allocated_vpid(mut_sys, get_reg1(mut_sys), mut_vp_pool)};
+        auto const vpid{get_vpid(mut_sys, get_reg1(mut_sys))};
         if (bsl::unlikely(vpid.is_invalid())) {
             bsl::print<bsl::V>() << bsl::here();
             set_reg_return(mut_sys, hypercall::MV_STATUS_INVALID_INPUT_REG1);

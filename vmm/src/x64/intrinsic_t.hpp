@@ -27,6 +27,8 @@
 
 #include <gs_t.hpp>
 #include <intrinsic_cpuid_impl.hpp>
+#include <intrinsic_xrstr_impl.hpp>
+#include <intrinsic_xsave_impl.hpp>
 #include <tls_t.hpp>
 
 #include <bsl/discard.hpp>
@@ -61,6 +63,32 @@ namespace microv
             bsl::safe_u64 &mut_rdx) noexcept
         {
             intrinsic_cpuid_impl(mut_rax.data(), mut_rbx.data(), mut_rcx.data(), mut_rdx.data());
+        }
+
+        /// <!-- description -->
+        ///   @brief Executes the XSAVE instruction given the provided address
+        ///     to the xsave region.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param pmut_xsave a pointer to the xsave region to use
+        ///
+        static constexpr void
+        xsave(void *const pmut_xsave) noexcept
+        {
+            intrinsic_xsave_impl(pmut_xsave);
+        }
+
+        /// <!-- description -->
+        ///   @brief Executes the XRSTOR instruction given the provided address
+        ///     to the xsave region.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param pmut_xsave a pointer to the xsave region to use
+        ///
+        static constexpr void
+        xrstr(void *const pmut_xsave) noexcept
+        {
+            intrinsic_xrstr_impl(pmut_xsave);
         }
     };
 }

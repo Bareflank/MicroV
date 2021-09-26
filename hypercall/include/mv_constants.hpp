@@ -82,6 +82,15 @@ namespace hypercall
     constexpr auto MV_HANDLE_VAL{0x42_u64};
 
     // -------------------------------------------------------------------------
+    // Permission Flags
+    // -------------------------------------------------------------------------
+
+    /// @brief Indicates read permissions
+    constexpr auto MV_PERM_READ{0x0000000000000001_u64};
+    /// @brief Indicates write permissions
+    constexpr auto MV_PERM_WRITE{0x0000000000000002_u64};
+
+    // -------------------------------------------------------------------------
     // Map Flags
     // -------------------------------------------------------------------------
 
@@ -380,32 +389,52 @@ namespace hypercall
 
     /// @brief Defines the index for mv_pp_op_ppid
     constexpr auto MV_PP_OP_PPID_IDX_VAL{0x0000000000000000_u64};
+    /// @brief Defines the index for mv_pp_op_ppid
+    constexpr auto MV_PP_OP_ONLINE_PPS_IDX_VAL{0x0000000000000001_u64};
     /// @brief Defines the index for mv_pp_op_clr_shared_page_gpa
-    constexpr auto MV_PP_OP_CLR_SHARED_PAGE_GPA_IDX_VAL{0x0000000000000001_u64};
+    constexpr auto MV_PP_OP_CLR_SHARED_PAGE_GPA_IDX_VAL{0x0000000000000002_u64};
     /// @brief Defines the index for mv_pp_op_set_shared_page_gpa
-    constexpr auto MV_PP_OP_SET_SHARED_PAGE_GPA_IDX_VAL{0x0000000000000002_u64};
+    constexpr auto MV_PP_OP_SET_SHARED_PAGE_GPA_IDX_VAL{0x0000000000000003_u64};
     /// @brief Defines the index for mv_pp_op_cpuid_get_supported
-    constexpr auto MV_PP_OP_CPUID_GET_SUPPORTED_IDX_VAL{0x0000000000000003_u64};
+    constexpr auto MV_PP_OP_CPUID_GET_SUPPORTED_IDX_VAL{0x0000000000000004_u64};
+    /// @brief Defines the index for mv_pp_op_cpuid_get_supported
+    constexpr auto MV_PP_OP_CPUID_GET_SUPPORTED_LIST_IDX_VAL{0x0000000000000005_u64};
     /// @brief Defines the index for mv_pp_op_cpuid_get_permissable
-    constexpr auto MV_PP_OP_CPUID_GET_PERMISSABLE_IDX_VAL{0x0000000000000004_u64};
+    constexpr auto MV_PP_OP_CPUID_GET_PERMISSABLE_IDX_VAL{0x0000000000000006_u64};
+    /// @brief Defines the index for mv_pp_op_cpuid_get_permissable
+    constexpr auto MV_PP_OP_CPUID_GET_PERMISSABLE_LIST_IDX_VAL{0x0000000000000007_u64};
     /// @brief Defines the index for mv_pp_op_cpuid_get_emulated
-    constexpr auto MV_PP_OP_CPUID_GET_EMULATED_IDX_VAL{0x0000000000000005_u64};
+    constexpr auto MV_PP_OP_CPUID_GET_EMULATED_IDX_VAL{0x0000000000000008_u64};
+    /// @brief Defines the index for mv_pp_op_cpuid_get_emulated
+    constexpr auto MV_PP_OP_CPUID_GET_EMULATED_LIST_IDX_VAL{0x0000000000000009_u64};
     /// @brief Defines the index for mv_pp_op_reg_get_supported
-    constexpr auto MV_PP_OP_REG_GET_SUPPORTED_IDX_VAL{0x0000000000000006_u64};
+    constexpr auto MV_PP_OP_REG_GET_SUPPORTED_IDX_VAL{0x000000000000000A_u64};
+    /// @brief Defines the index for mv_pp_op_reg_get_supported
+    constexpr auto MV_PP_OP_REG_GET_SUPPORTED_LIST_IDX_VAL{0x000000000000000B_u64};
     /// @brief Defines the index for mv_pp_op_reg_get_permissable
-    constexpr auto MV_PP_OP_REG_GET_PERMISSABLE_IDX_VAL{0x0000000000000007_u64};
+    constexpr auto MV_PP_OP_REG_GET_PERMISSABLE_IDX_VAL{0x000000000000000C_u64};
+    /// @brief Defines the index for mv_pp_op_reg_get_permissable
+    constexpr auto MV_PP_OP_REG_GET_PERMISSABLE_LIST_IDX_VAL{0x000000000000000D_u64};
     /// @brief Defines the index for mv_pp_op_reg_get_emulated
-    constexpr auto MV_PP_OP_REG_GET_EMULATED_IDX_VAL{0x0000000000000008_u64};
+    constexpr auto MV_PP_OP_REG_GET_EMULATED_IDX_VAL{0x000000000000000E_u64};
+    /// @brief Defines the index for mv_pp_op_reg_get_emulated
+    constexpr auto MV_PP_OP_REG_GET_EMULATED_LIST_IDX_VAL{0x000000000000000F_u64};
     /// @brief Defines the index for mv_pp_op_msr_get_supported
-    constexpr auto MV_PP_OP_MSR_GET_SUPPORTED_IDX_VAL{0x000000000000009_u64};
+    constexpr auto MV_PP_OP_MSR_GET_SUPPORTED_IDX_VAL{0x000000000000010_u64};
+    /// @brief Defines the index for mv_pp_op_msr_get_supported
+    constexpr auto MV_PP_OP_MSR_GET_SUPPORTED_LIST_IDX_VAL{0x000000000000011_u64};
     /// @brief Defines the index for mv_pp_op_msr_get_permissable
-    constexpr auto MV_PP_OP_MSR_GET_PERMISSABLE_IDX_VAL{0x000000000000000A_u64};
+    constexpr auto MV_PP_OP_MSR_GET_PERMISSABLE_IDX_VAL{0x0000000000000012_u64};
+    /// @brief Defines the index for mv_pp_op_msr_get_permissable
+    constexpr auto MV_PP_OP_MSR_GET_PERMISSABLE_LIST_IDX_VAL{0x0000000000000013_u64};
     /// @brief Defines the index for mv_pp_op_msr_get_emulated
-    constexpr auto MV_PP_OP_MSR_GET_EMULATED_IDX_VAL{0x000000000000000B_u64};
+    constexpr auto MV_PP_OP_MSR_GET_EMULATED_IDX_VAL{0x0000000000000014_u64};
+    /// @brief Defines the index for mv_pp_op_msr_get_emulated
+    constexpr auto MV_PP_OP_MSR_GET_EMULATED_LIST_IDX_VAL{0x0000000000000015_u64};
     /// @brief Defines the index for mv_pp_op_tsc_get_khz
-    constexpr auto MV_PP_OP_TSC_GET_KHZ_IDX_VAL{0x000000000000000C_u64};
+    constexpr auto MV_PP_OP_TSC_GET_KHZ_IDX_VAL{0x0000000000000016_u64};
     /// @brief Defines the index for mv_pp_op_tsc_set_khz
-    constexpr auto MV_PP_OP_TSC_SET_KHZ_IDX_VAL{0x000000000000000D_u64};
+    constexpr auto MV_PP_OP_TSC_SET_KHZ_IDX_VAL{0x0000000000000017_u64};
 
     /// @brief Defines the index for mv_vm_op_create_vm
     constexpr auto MV_VM_OP_CREATE_VM_IDX_VAL{0x0000000000000000_u64};
@@ -413,34 +442,10 @@ namespace hypercall
     constexpr auto MV_VM_OP_DESTROY_VM_IDX_VAL{0x0000000000000001_u64};
     /// @brief Defines the index for mv_vm_op_vmid
     constexpr auto MV_VM_OP_VMID_IDX_VAL{0x0000000000000002_u64};
-    /// @brief Defines the index for mv_vm_op_io_clr_trap
-    constexpr auto MV_VM_OP_IO_CLR_TRAP_IDX_VAL{0x0000000000000003_u64};
-    /// @brief Defines the index for mv_vm_op_io_set_trap
-    constexpr auto MV_VM_OP_IO_SET_TRAP_IDX_VAL{0x0000000000000004_u64};
-    /// @brief Defines the index for mv_vm_op_io_clr_trap_all
-    constexpr auto MV_VM_OP_IO_CLR_TRAP_ALL_IDX_VAL{0x0000000000000005_u64};
-    /// @brief Defines the index for mv_vm_op_io_set_trap_all
-    constexpr auto MV_VM_OP_IO_SET_TRAP_ALL_IDX_VAL{0x0000000000000006_u64};
     /// @brief Defines the index for mv_vm_op_mmio_map
-    constexpr auto MV_VM_OP_MMIO_MAP_IDX_VAL{0x0000000000000007_u64};
+    constexpr auto MV_VM_OP_MMIO_MAP_IDX_VAL{0x0000000000000003_u64};
     /// @brief Defines the index for mv_vm_op_mmio_unmap
-    constexpr auto MV_VM_OP_MMIO_UNMAP_IDX_VAL{0x0000000000000008_u64};
-    /// @brief Defines the index for mv_vm_op_mmio_clr_trap
-    constexpr auto MV_VM_OP_MMIO_CLR_TRAP_IDX_VAL{0x0000000000000009_u64};
-    /// @brief Defines the index for mv_vm_op_mmio_set_trap
-    constexpr auto MV_VM_OP_MMIO_SET_TRAP_IDX_VAL{0x000000000000000A_u64};
-    /// @brief Defines the index for mv_vm_op_mmio_clr_trap_all
-    constexpr auto MV_VM_OP_MMIO_CLR_TRAP_ALL_IDX_VAL{0x000000000000000B_u64};
-    /// @brief Defines the index for mv_vm_op_mmio_set_trap_all
-    constexpr auto MV_VM_OP_MMIO_SET_TRAP_ALL_IDX_VAL{0x000000000000000C_u64};
-    /// @brief Defines the index for mv_vm_op_msr_clr_trap
-    constexpr auto MV_VM_OP_MSR_CLR_TRAP_IDX_VAL{0x000000000000000D_u64};
-    /// @brief Defines the index for mv_vm_op_msr_set_trap
-    constexpr auto MV_VM_OP_MSR_SET_TRAP_IDX_VAL{0x000000000000000E_u64};
-    /// @brief Defines the index for mv_vm_op_msr_clr_trap_all
-    constexpr auto MV_VM_OP_MSR_CLR_TRAP_ALL_IDX_VAL{0x000000000000000F_u64};
-    /// @brief Defines the index for mv_vm_op_msr_set_trap_all
-    constexpr auto MV_VM_OP_MSR_SET_TRAP_ALL_IDX_VAL{0x0000000000000010_u64};
+    constexpr auto MV_VM_OP_MMIO_UNMAP_IDX_VAL{0x0000000000000004_u64};
 
     /// @brief Defines the index for mv_vp_op_create_vp
     constexpr auto MV_VP_OP_CREATE_VP_IDX_VAL{0x0000000000000000_u64};
@@ -509,6 +514,14 @@ namespace hypercall
     constexpr auto MV_VS_OP_XSAVE_GET_ALL_IDX_VAL{0x0000000000000021_u64};
     /// @brief Defines the index for mv_vs_op_xsave_set_all
     constexpr auto MV_VS_OP_XSAVE_SET_ALL_IDX_VAL{0x0000000000000022_u64};
+    /// @brief Defines the index for mv_vs_op_mp_state_get
+    constexpr auto MV_VS_OP_MP_STATE_GET_IDX_VAL{0x0000000000000023_u64};
+    /// @brief Defines the index for mv_vs_op_mp_state_set
+    constexpr auto MV_VS_OP_MP_STATE_SET_IDX_VAL{0x0000000000000024_u64};
+    /// @brief Defines the index for mv_vs_op_inject_exception
+    constexpr auto MV_VS_OP_INJECT_EXCEPTION_IDX_VAL{0x0000000000000025_u64};
+    /// @brief Defines the index for mv_vs_op_queue_interrupt
+    constexpr auto MV_VS_OP_QUEUE_INTERRUPT_IDX_VAL{0x0000000000000026_u64};
 }
 
 #endif

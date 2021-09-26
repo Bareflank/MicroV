@@ -27,21 +27,13 @@
     .code64
     .intel_syntax noprefix
 
-    .globl  mv_vm_op_mmio_map_impl
-    .type   mv_vm_op_mmio_map_impl, @function
-mv_vm_op_mmio_map_impl:
+    .globl  intrinsic_xsave_impl
+    .type   intrinsic_xsave_impl, @function
+intrinsic_xsave_impl:
 
-    push r12
-
-    mov rax, 0x764D000000040003
-    mov r10, rdi
-    mov r11, rsi
-    mov r12, rdx
-    vmmcall
-
-    pop r12
+    xsave64 [rdi]
 
     ret
     int 3
 
-    .size mv_vm_op_mmio_map_impl, .-mv_vm_op_mmio_map_impl
+    .size intrinsic_xsave_impl, .-intrinsic_xsave_impl

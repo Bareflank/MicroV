@@ -571,6 +571,10 @@ extern "C"
     extern mv_status_t g_mut_mv_vs_op_msr_get_list;
     /** @brief stores the return value for mv_vs_op_msr_set_list */
     extern mv_status_t g_mut_mv_vs_op_msr_set_list;
+    /** @brief stores the return value for mv_vs_op_fpu_get_all */
+    extern mv_status_t g_mut_mv_vs_op_fpu_get_all;
+    /** @brief stores the return value for mv_vs_op_fpu_set_all */
+    extern mv_status_t g_mut_mv_vs_op_fpu_set_all;
 
     /**
      * <!-- description -->
@@ -1137,6 +1141,62 @@ extern "C"
 #endif
 
         return g_mut_mv_vs_op_msr_set_list;
+    }
+
+    /**
+     * <!-- description -->
+     *   @brief Returns FPU state as seen by the VS in the shared page.
+     *     The format of the FPU state depends on which mode the VS is
+     *     currently in.
+     *
+     * <!-- inputs/outputs -->
+     *   @param hndl Set to the result of mv_handle_op_open_handle
+     *   @param vsid The ID of the VS to query
+     *   @return Returns MV_STATUS_SUCCESS on success, MV_STATUS_FAILURE_UNKNOWN
+     *     and friends on failure.
+     */
+    NODISCARD static inline mv_status_t
+    mv_vs_op_fpu_get_all(uint64_t const hndl, uint16_t const vsid) NOEXCEPT
+    {
+#ifdef __cplusplus
+        bsl::expects(MV_INVALID_HANDLE != hndl);
+        bsl::expects(hndl > ((uint64_t)0));
+        bsl::expects((int32_t)MV_INVALID_ID != (int32_t)vsid);
+#else
+    platform_expects(MV_INVALID_HANDLE != hndl);
+    platform_expects(hndl > ((uint64_t)0));
+    platform_expects((int32_t)MV_INVALID_ID != (int32_t)vsid);
+#endif
+
+        return g_mut_mv_vs_op_fpu_get_all;
+    }
+
+    /**
+     * <!-- description -->
+     *   @brief Sets the FPU state as seen by the VS in the shared page.
+     *     The format of the FPU state depends on which mode the VS is
+     *     currently in.
+     *
+     * <!-- inputs/outputs -->
+     *   @param hndl Set to the result of mv_handle_op_open_handle
+     *   @param vsid The ID of the VS to set
+     *   @return Returns MV_STATUS_SUCCESS on success, MV_STATUS_FAILURE_UNKNOWN
+     *     and friends on failure.
+     */
+    NODISCARD static inline mv_status_t
+    mv_vs_op_fpu_set_all(uint64_t const hndl, uint16_t const vsid) NOEXCEPT
+    {
+#ifdef __cplusplus
+        bsl::expects(MV_INVALID_HANDLE != hndl);
+        bsl::expects(hndl > ((uint64_t)0));
+        bsl::expects((int32_t)MV_INVALID_ID != (int32_t)vsid);
+#else
+    platform_expects(MV_INVALID_HANDLE != hndl);
+    platform_expects(hndl > ((uint64_t)0));
+    platform_expects((int32_t)MV_INVALID_ID != (int32_t)vsid);
+#endif
+
+        return g_mut_mv_vs_op_fpu_set_all;
     }
 
 #ifdef __cplusplus

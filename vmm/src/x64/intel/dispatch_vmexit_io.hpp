@@ -48,14 +48,14 @@ namespace microv
     ///
     /// <!-- inputs/outputs -->
     ///   @param gs the gs_t to use
-    ///   @param tls the tls_t to use
+    ///   @param mut_tls the tls_t to use
     ///   @param mut_sys the bf_syscall_t to use
     ///   @param page_pool the page_pool_t to use
     ///   @param intrinsic the intrinsic_t to use
     ///   @param mut_pp_pool the pp_pool_t to use
-    ///   @param vm_pool the vm_pool_t to use
-    ///   @param vp_pool the vp_pool_t to use
-    ///   @param vs_pool the vs_pool_t to use
+    ///   @param mut_vm_pool the vm_pool_t to use
+    ///   @param mut_vp_pool the vp_pool_t to use
+    ///   @param mut_vs_pool the vs_pool_t to use
     ///   @param vsid the ID of the VS that generated the VMExit
     ///   @return Returns bsl::errc_success on success, bsl::errc_failure
     ///     and friends otherwise
@@ -63,14 +63,14 @@ namespace microv
     [[nodiscard]] constexpr auto
     dispatch_vmexit_io(
         gs_t const &gs,
-        tls_t const &tls,
+        tls_t &mut_tls,
         syscall::bf_syscall_t &mut_sys,
         page_pool_t const &page_pool,
         intrinsic_t const &intrinsic,
         pp_pool_t &mut_pp_pool,
-        vm_pool_t const &vm_pool,
-        vp_pool_t const &vp_pool,
-        vs_pool_t const &vs_pool,
+        vm_pool_t &mut_vm_pool,
+        vp_pool_t &mut_vp_pool,
+        vs_pool_t &mut_vs_pool,
         bsl::safe_u16 const &vsid) noexcept -> bsl::errc_type
     {
         /// TODO:
@@ -81,14 +81,7 @@ namespace microv
         bsl::expects(!mut_sys.is_the_active_vm_the_root_vm());
 
         bsl::discard(gs);
-        bsl::discard(tls);
-        bsl::discard(mut_sys);
         bsl::discard(page_pool);
-        bsl::discard(intrinsic);
-        bsl::discard(mut_pp_pool);
-        bsl::discard(vm_pool);
-        bsl::discard(vp_pool);
-        bsl::discard(vs_pool);
         bsl::discard(vsid);
 
         // ---------------------------------------------------------------------
@@ -107,7 +100,7 @@ namespace microv
         // Context: Change To Root VM
         // ---------------------------------------------------------------------
 
-        advance_ip_and_change_to_parent(mut_sys, tls.parent_vmid, tls.parent_vpid, tls.parent_vsid);
+        switch_to_root(mut_tls, mut_sys, intrinsic, mut_vm_pool, mut_vp_pool, mut_vs_pool, true);
 
         // ---------------------------------------------------------------------
         // Context: Root VM

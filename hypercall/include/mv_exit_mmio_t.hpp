@@ -22,46 +22,25 @@
 /// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 /// SOFTWARE.
 
-#ifndef TLS_T_HPP
-#define TLS_T_HPP
+#ifndef MV_EXIT_MMIO_T_HPP
+#define MV_EXIT_MMIO_T_HPP
 
 #include <bsl/convert.hpp>
 #include <bsl/safe_integral.hpp>
 
-namespace microv
+#pragma pack(push, 1)
+
+namespace hypercall
 {
-    /// @class microv::tls_t
-    ///
     /// <!-- description -->
-    ///   @brief Defines MicroV's Thread Local Storage (TLS).
+    ///   @brief See mv_vs_op_run for more details
     ///
-    struct tls_t final
+    struct mv_exit_mmio_t final
     {
-        /// @brief stores the ID of the PP associated with this TLS
-        bsl::safe_u16 ppid;
-        /// @brief stores the total number of online PPs
-        bsl::safe_u16 online_pps;
-
-        /// @brief stores the ID of the VM that is active on this PP
-        bsl::safe_u16 active_vmid;
-        /// @brief stores the ID of the VP that is active on this PP
-        bsl::safe_u16 active_vpid;
-        /// @brief stores the ID of the VS that is active on this PP
-        bsl::safe_u16 active_vsid;
-
-        /// @brief stores the ID of the parent VM
-        bsl::safe_u16 parent_vmid;
-        /// @brief stores the ID of the parent VP
-        bsl::safe_u16 parent_vpid;
-        /// @brief stores the ID of the parent VS
-        bsl::safe_u16 parent_vsid;
+        // TBD
     };
-
-    /// @brief defines the max size supported for the TLS block
-    constexpr auto MAX_TLS_SIZE{HYPERVISOR_PAGE_SIZE};
-
-    /// @brief ensure that the tls_t does not exceed the max supported size
-    static_assert(!(sizeof(tls_t) > MAX_TLS_SIZE));
 }
+
+#pragma pack(pop)
 
 #endif

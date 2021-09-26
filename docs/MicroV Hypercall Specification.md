@@ -7,11 +7,13 @@
   - [1.4. Constants, Structures, Enumerations and Bit Fields](#14-constants-structures-enumerations-and-bit-fields)
     - [1.4.1. Register Type](#141-register-type)
       - [1.4.1.1. Intel/AMD](#1411-intelamd)
-    - [1.4.2. Register Type](#142-register-type)
-    - [1.4.3. Register Descriptor Lists](#143-register-descriptor-lists)
-    - [1.4.4. Memory Descriptor Lists](#144-memory-descriptor-lists)
-    - [1.4.3. CPUID Descriptor Lists](#143-cpuid-descriptor-lists)
-    - [1.4.5. Map Flags](#145-map-flags)
+    - [1.4.2. Bit Size Type](#142-bit-size-type)
+    - [1.4.3. Permission Flags](#143-permission-flags)
+    - [1.4.4. Multiprocessor State](#144-multiprocessor-state)
+    - [1.4.5. Register Descriptor Lists](#145-register-descriptor-lists)
+    - [1.4.6. Memory Descriptor Lists](#146-memory-descriptor-lists)
+    - [1.4.7. CPUID Descriptor Lists](#147-cpuid-descriptor-lists)
+    - [1.4.8. Map Flags](#148-map-flags)
   - [1.5. ID Constants](#15-id-constants)
   - [1.6. Endianness](#16-endianness)
   - [1.7. Physical Processor (PP)](#17-physical-processor-pp)
@@ -53,38 +55,35 @@
     - [2.11.1. mv_debug_op_out, OP=0x2, IDX=0x0](#2111-mv_debug_op_out-op0x2-idx0x0)
   - [2.12. Physical Processor Hypercalls](#212-physical-processor-hypercalls)
     - [2.12.1. mv_pp_op_ppid, OP=0x3, IDX=0x0](#2121-mv_pp_op_ppid-op0x3-idx0x0)
-    - [2.12.2. mv_pp_op_clr_shared_page_gpa, OP=0x3, IDX=0x1](#2122-mv_pp_op_clr_shared_page_gpa-op0x3-idx0x1)
-    - [2.12.3. mv_pp_op_set_shared_page_gpa, OP=0x3, IDX=0x2](#2123-mv_pp_op_set_shared_page_gpa-op0x3-idx0x2)
-    - [2.12.4. mv_pp_op_cpuid_get_supported, OP=0x3, IDX=0x3](#2124-mv_pp_op_cpuid_get_supported-op0x3-idx0x3)
-    - [2.12.5. mv_pp_op_cpuid_get_permissable, OP=0x3, IDX=0x4](#2125-mv_pp_op_cpuid_get_permissable-op0x3-idx0x4)
-    - [2.12.6. mv_pp_op_cpuid_get_emulated, OP=0x3, IDX=0x5](#2126-mv_pp_op_cpuid_get_emulated-op0x3-idx0x5)
-    - [2.12.7. mv_pp_op_reg_get_supported, OP=0x3, IDX=0x6](#2127-mv_pp_op_reg_get_supported-op0x3-idx0x6)
-    - [2.12.8. mv_pp_op_reg_get_permissable, OP=0x3, IDX=0x7](#2128-mv_pp_op_reg_get_permissable-op0x3-idx0x7)
-    - [2.12.9. mv_pp_op_reg_get_emulated, OP=0x3, IDX=0x8](#2129-mv_pp_op_reg_get_emulated-op0x3-idx0x8)
-    - [2.12.10. mv_pp_op_msr_get_supported, OP=0x3, IDX=0x9](#21210-mv_pp_op_msr_get_supported-op0x3-idx0x9)
-    - [2.12.11. mv_pp_op_msr_get_permissable, OP=0x3, IDX=0xA](#21211-mv_pp_op_msr_get_permissable-op0x3-idx0xa)
-    - [2.12.12. mv_pp_op_msr_get_emulated, OP=0x3, IDX=0xB](#21212-mv_pp_op_msr_get_emulated-op0x3-idx0xb)
-    - [2.12.13. mv_pp_op_tsc_get_khz, OP=0x3, IDX=0xC](#21213-mv_pp_op_tsc_get_khz-op0x3-idx0xc)
-    - [2.12.14. mv_pp_op_tsc_set_khz, OP=0x3, IDX=0xD](#21214-mv_pp_op_tsc_set_khz-op0x3-idx0xd)
-    - [2.12.1. mv_pp_op_online_pps, OP=0x3, IDX=0xE](#2121-mv_pp_op_online_pps-op0x3-idx0xe)
+    - [2.12.2. mv_pp_op_online_pps, OP=0x3, IDX=0x1](#2122-mv_pp_op_online_pps-op0x3-idx0x1)
+    - [2.12.3. mv_pp_op_clr_shared_page_gpa, OP=0x3, IDX=0x2](#2123-mv_pp_op_clr_shared_page_gpa-op0x3-idx0x2)
+    - [2.12.4. mv_pp_op_set_shared_page_gpa, OP=0x3, IDX=0x3](#2124-mv_pp_op_set_shared_page_gpa-op0x3-idx0x3)
+    - [2.12.5. mv_pp_op_cpuid_get_supported, OP=0x3, IDX=0x4](#2125-mv_pp_op_cpuid_get_supported-op0x3-idx0x4)
+    - [2.12.6. mv_pp_op_cpuid_get_supported_list, OP=0x3, IDX=0x5](#2126-mv_pp_op_cpuid_get_supported_list-op0x3-idx0x5)
+    - [2.12.7. mv_pp_op_cpuid_get_permissable, OP=0x3, IDX=0x6](#2127-mv_pp_op_cpuid_get_permissable-op0x3-idx0x6)
+    - [2.12.8. mv_pp_op_cpuid_get_permissable_list, OP=0x3, IDX=0x7](#2128-mv_pp_op_cpuid_get_permissable_list-op0x3-idx0x7)
+    - [2.12.9. mv_pp_op_cpuid_get_emulated, OP=0x3, IDX=0x8](#2129-mv_pp_op_cpuid_get_emulated-op0x3-idx0x8)
+    - [2.12.10. mv_pp_op_cpuid_get_emulated_list, OP=0x3, IDX=0x9](#21210-mv_pp_op_cpuid_get_emulated_list-op0x3-idx0x9)
+    - [2.12.11. mv_pp_op_reg_get_supported, OP=0x3, IDX=0xA](#21211-mv_pp_op_reg_get_supported-op0x3-idx0xa)
+    - [2.12.12. mv_pp_op_reg_get_supported_list, OP=0x3, IDX=0xB](#21212-mv_pp_op_reg_get_supported_list-op0x3-idx0xb)
+    - [2.12.13. mv_pp_op_reg_get_permissable, OP=0x3, IDX=0xC](#21213-mv_pp_op_reg_get_permissable-op0x3-idx0xc)
+    - [2.12.14. mv_pp_op_reg_get_permissable_list, OP=0x3, IDX=0xD](#21214-mv_pp_op_reg_get_permissable_list-op0x3-idx0xd)
+    - [2.12.15. mv_pp_op_reg_get_emulated, OP=0x3, IDX=0xE](#21215-mv_pp_op_reg_get_emulated-op0x3-idx0xe)
+    - [2.12.16. mv_pp_op_reg_get_emulated_list, OP=0x3, IDX=0xF](#21216-mv_pp_op_reg_get_emulated_list-op0x3-idx0xf)
+    - [2.12.17. mv_pp_op_msr_get_supported, OP=0x3, IDX=010](#21217-mv_pp_op_msr_get_supported-op0x3-idx010)
+    - [2.12.18. mv_pp_op_msr_get_supported_list, OP=0x3, IDX=0x11](#21218-mv_pp_op_msr_get_supported_list-op0x3-idx0x11)
+    - [2.12.19. mv_pp_op_msr_get_permissable, OP=0x3, IDX=0x12](#21219-mv_pp_op_msr_get_permissable-op0x3-idx0x12)
+    - [2.12.20. mv_pp_op_msr_get_permissable_list, OP=0x3, IDX=0x13](#21220-mv_pp_op_msr_get_permissable_list-op0x3-idx0x13)
+    - [2.12.21. mv_pp_op_msr_get_emulated, OP=0x3, IDX=0x14](#21221-mv_pp_op_msr_get_emulated-op0x3-idx0x14)
+    - [2.12.22. mv_pp_op_msr_get_emulated_list, OP=0x3, IDX=0x15](#21222-mv_pp_op_msr_get_emulated_list-op0x3-idx0x15)
+    - [2.12.23. mv_pp_op_tsc_get_khz, OP=0x3, IDX=0x16](#21223-mv_pp_op_tsc_get_khz-op0x3-idx0x16)
+    - [2.12.24. mv_pp_op_tsc_set_khz, OP=0x3, IDX=0x17](#21224-mv_pp_op_tsc_set_khz-op0x3-idx0x17)
   - [2.13. Virtual Machine Hypercalls](#213-virtual-machine-hypercalls)
     - [2.13.1. mv_vm_op_create_vm, OP=0x4, IDX=0x0](#2131-mv_vm_op_create_vm-op0x4-idx0x0)
     - [2.13.2. mv_vm_op_destroy_vm, OP=0x4, IDX=0x1](#2132-mv_vm_op_destroy_vm-op0x4-idx0x1)
     - [2.13.3. mv_vm_op_vmid, OP=0x4, IDX=0x2](#2133-mv_vm_op_vmid-op0x4-idx0x2)
-    - [2.13.4. mv_vm_op_io_clr_trap, OP=0x4, IDX=0x3](#2134-mv_vm_op_io_clr_trap-op0x4-idx0x3)
-    - [2.13.5. mv_vm_op_io_set_trap, OP=0x4, IDX=0x4](#2135-mv_vm_op_io_set_trap-op0x4-idx0x4)
-    - [2.13.6. mv_vm_op_io_clr_trap_all, OP=0x4, IDX=0x5](#2136-mv_vm_op_io_clr_trap_all-op0x4-idx0x5)
-    - [2.13.7. mv_vm_op_io_set_trap_all, OP=0x4, IDX=0x6](#2137-mv_vm_op_io_set_trap_all-op0x4-idx0x6)
-    - [2.13.8. mv_vm_op_mmio_map, OP=0x4, IDX=0x7](#2138-mv_vm_op_mmio_map-op0x4-idx0x7)
-    - [2.13.9. mv_vm_op_mmio_unmap, OP=0x4, IDX=0x8](#2139-mv_vm_op_mmio_unmap-op0x4-idx0x8)
-    - [2.13.10. mv_vm_op_mmio_clr_trap, OP=0x4, IDX=0x9](#21310-mv_vm_op_mmio_clr_trap-op0x4-idx0x9)
-    - [2.13.11. mv_vm_op_mmio_set_trap, OP=0x4, IDX=0xA](#21311-mv_vm_op_mmio_set_trap-op0x4-idx0xa)
-    - [2.13.12. mv_vm_op_mmio_clr_trap_all, OP=0x4, IDX=0xB](#21312-mv_vm_op_mmio_clr_trap_all-op0x4-idx0xb)
-    - [2.13.13. mv_vm_op_mmio_set_trap_all, OP=0x4, IDX=0xC](#21313-mv_vm_op_mmio_set_trap_all-op0x4-idx0xc)
-    - [2.13.14. mv_vm_op_msr_clr_trap, OP=0x4, IDX=0xD](#21314-mv_vm_op_msr_clr_trap-op0x4-idx0xd)
-    - [2.13.15. mv_vm_op_msr_set_trap, OP=0x4, IDX=0xE](#21315-mv_vm_op_msr_set_trap-op0x4-idx0xe)
-    - [2.13.16. mv_vm_op_msr_clr_trap_all, OP=0x4, IDX=0xF](#21316-mv_vm_op_msr_clr_trap_all-op0x4-idx0xf)
-    - [2.13.17. mv_vm_op_msr_set_trap_all, OP=0x4, IDX=0x10](#21317-mv_vm_op_msr_set_trap_all-op0x4-idx0x10)
+    - [2.13.4. mv_vm_op_mmio_map, OP=0x4, IDX=0x3](#2134-mv_vm_op_mmio_map-op0x4-idx0x3)
+    - [2.13.5. mv_vm_op_mmio_unmap, OP=0x4, IDX=0x4](#2135-mv_vm_op_mmio_unmap-op0x4-idx0x4)
   - [2.14. Virtual Processor Hypercalls](#214-virtual-processor-hypercalls)
     - [2.14.1. mv_vp_op_create_vp, OP=0x5, IDX=0x0](#2141-mv_vp_op_create_vp-op0x5-idx0x0)
     - [2.14.2. mv_vp_op_destroy_vp, OP=0x5, IDX=0x1](#2142-mv_vp_op_destroy_vp-op0x5-idx0x1)
@@ -127,7 +126,8 @@
     - [2.15.29. mv_vs_op_xsave_set_all, OP=0x6, IDX=0x22](#21529-mv_vs_op_xsave_set_all-op0x6-idx0x22)
     - [2.15.30. mv_vs_op_mp_state_get, OP=0x6, IDX=0x23](#21530-mv_vs_op_mp_state_get-op0x6-idx0x23)
     - [2.15.31. mv_vs_op_mp_state_set, OP=0x6, IDX=0x24](#21531-mv_vs_op_mp_state_set-op0x6-idx0x24)
-    - [2.15.32. mv_vs_op_interrupt, OP=0x6, IDX=0x23](#21532-mv_vs_op_interrupt-op0x6-idx0x23)
+    - [2.15.32. mv_vs_op_inject_exception, OP=0x6, IDX=0x25](#21532-mv_vs_op_inject_exception-op0x6-idx0x25)
+    - [2.15.33. mv_vs_op_queue_interrupt, OP=0x6, IDX=0x26](#21533-mv_vs_op_queue_interrupt-op0x6-idx0x26)
 
 # 1. Introduction
 
@@ -263,7 +263,7 @@ Defines which register a hypercall is requesting.
 | mv_reg_t_cr8 | 69 | defines the cr8 register |
 | mv_reg_t_xcr0 | 70 | defines the xcr0 register (Intel Only) |
 
-### 1.4.2. Register Type
+### 1.4.2. Bit Size Type
 
 Defines different bit sizes for address, operands, etc.
 
@@ -275,7 +275,29 @@ Defines different bit sizes for address, operands, etc.
 | mv_bit_size_t_32 | 2 | indicates 32 bits |
 | mv_bit_size_t_64 | 3 | indicates 64 bits |
 
-### 1.4.3. Register Descriptor Lists
+### 1.4.3. Permission Flags
+
+The permission flags are used to define different permission types.
+
+| Bit | Name | Description |
+| :-- | :--- | :---------- |
+|  0 | MV_PERM_READ | Indicates the read permissions |
+|  1 | MV_PERM_WRITE | Indicates the write permissions |
+
+### 1.4.4. Multiprocessor State
+
+Defines the multiprocessor state of a VS
+
+**enum, int32_t: mv_mp_state_t**
+| Name | Value | Description |
+| :--- | :---- | :---------- |
+| mv_mp_state_t_initial | 0 | the initial state of the VS |
+| mv_mp_state_t_running | 1 | the VS is running |
+| mv_mp_state_t_wait | 2 | the VS is waiting for an interrupt |
+| mv_mp_state_t_init | 3 | the VS is waiting for INIT (x86 only) |
+| mv_mp_state_t_sipi | 4 | the VS is waiting for SIPI (x86 only) |
+
+### 1.4.5. Register Descriptor Lists
 
 A register descriptor list (RDL) describes a list of registers that either need to be read or written. Each RDL consists of a list of entries with each entry describing one register to read/write. Like all structures used in this ABI, the RDL must be placed inside the shared page. Not all registers require 64 bits for either the register index or the value itself. In all cases, unused bits are considered REVI. The meaning of the register and value fields is ABI dependent. For some ABIs, the reg field refers to a mv_reg_t while in other cases it refers to an architecture specific register like MSRs on x86 which have it's index type. The value field for some ABIs is the value read or the value to be written to the requested register. In other cases, it is a boolean, enum or bit field describing attributes about the register such as whether the register is supported, emulated or permissable. Registers 0-7 in the mv_rdl_t are NOT entries, but instead input/output registers for the ABIs that need additional input and output registers. If any of these registers is not used by a specific ABI, it is REVI.
 
@@ -309,7 +331,7 @@ The format of the RDL as follows:
 | num_entries | uint64_t | 0x58 | 8 bytes | The number of entries in the RDL |
 | entries | mv_rdl_entry_t[MV_RDL_MAX_ENTRIES] | 0x60 | ABI dependent | Each entry in the RDL |
 
-### 1.4.4. Memory Descriptor Lists
+### 1.4.6. Memory Descriptor Lists
 
 A memory descriptor list (MDL) describes a discontiguous region of guest physical memory. Each MDL consists of a list of entries with each entry describing one contiguous region of guest physical memory. By combining multiple entries into a list, software is capable of describing both contiguous and discontiguous regions of guest physical memory. Like all structures used in this ABI, the MDL must be placed inside the shared page. The meaning of the dst and src fields is ABI dependent. Both the dst and src fields could be GVAs, GLAs or GPAs (virtual, linear or physical). The bytes field describes the total number of bytes in the contiguous memory region. For some ABIs, this field must be page aligned. The flags field is also ABI dependent. For example, for map hypercalls, this field refers to map flags. Registers 0-7 in the mv_mdl_t are NOT entries, but instead input/output registers for the ABIs that need additional input and output registers. If any of these registers is not used by a specific ABI, it is REVI.
 
@@ -345,7 +367,7 @@ The format of the MDL as follows:
 | num_entries | uint64_t | 0x58 | 8 bytes | The number of entries in the MDL |
 | entries | mv_mdl_entry_t[MV_MDL_MAX_ENTRIES] | 0x60 | ABI dependent | Each entry in the MDL |
 
-### 1.4.3. CPUID Descriptor Lists
+### 1.4.7. CPUID Descriptor Lists
 
 A CPUID descriptor list (CDL) describes a list of CPUID leaves that either need to be read or written. Each CDL consists of a list of entries with each entry describing one CPUID leaf to read/write. Like all structures used in this ABI, the CDL must be placed inside the shared page. Registers 0-7 in the mv_cdl_t are NOT entries, but instead input/output registers for the ABIs that need additional input and output registers. If any of these registers is not used by a specific ABI, it is REVI.
 
@@ -390,7 +412,7 @@ The format of the CDL as follows:
 | num_entries | uint64_t | 0x58 | 8 bytes | The number of entries in the CDL |
 | entries | mv_cdl_entry_t[MV_CDL_MAX_ENTRIES] | 0x60 | ABI dependent | Each entry in the CDL |
 
-### 1.4.5. Map Flags
+### 1.4.8. Map Flags
 
 The map flags are used by some of the hypercalls as both inputs to a hypercall as well as outputs from a hypercall to provide information about how a memory is or should be mapped.
 
@@ -952,135 +974,7 @@ This hypercall returns the ID of the PP that executed this hypercall.
 | :---- | :---------- |
 | 0x0000000000000000 | Defines the index for mv_pp_op_ppid |
 
-### 2.12.2. mv_pp_op_clr_shared_page_gpa, OP=0x3, IDX=0x1
-
-This hypercall tells MicroV to clear the GPA of the current PP's shared page.
-
-**Input:**
-| Register Name | Bits | Description |
-| :------------ | :--- | :---------- |
-| REG0 | 63:0 | Set to the result of mv_handle_op_open_handle |
-
-**const, uint64_t: MV_PP_OP_CLR_SHARED_PAGE_GPA_IDX_VAL**
-| Value | Description |
-| :---- | :---------- |
-| 0x0000000000000001 | Defines the index for mv_pp_op_clr_shared_page_gpa |
-
-### 2.12.3. mv_pp_op_set_shared_page_gpa, OP=0x3, IDX=0x2
-
-This hypercall tells MicroV to set the GPA of the current PP's shared page.
-
-**Input:**
-| Register Name | Bits | Description |
-| :------------ | :--- | :---------- |
-| REG0 | 63:0 | Set to the result of mv_handle_op_open_handle |
-| REG1 | 11:0 | REVZ |
-| REG1 | 63:12 | The GPA to set the requested PP's shared page to |
-
-**Output:**
-| Register Name | Bits | Description |
-| :------------ | :--- | :---------- |
-
-**const, uint64_t: MV_PP_OP_SET_SHARED_PAGE_GPA_IDX_VAL**
-| Value | Description |
-| :---- | :---------- |
-| 0x0000000000000002 | Defines the index for mv_pp_op_set_shared_page_gpa |
-
-### 2.12.4. mv_pp_op_cpuid_get_supported, OP=0x3, IDX=0x3
-
-TBD
-
-### 2.12.5. mv_pp_op_cpuid_get_permissable, OP=0x3, IDX=0x4
-
-TBD
-
-**const, uint64_t: MV_PP_OP_CPUID_GET_PERMISSABLE_IDX_VAL**
-| Value | Description |
-| :---- | :---------- |
-| 0x0000000000000004 | Defines the index for mv_pp_op_cpuid_get_permissable |
-
-### 2.12.6. mv_pp_op_cpuid_get_emulated, OP=0x3, IDX=0x5
-
-TBD
-
-**const, uint64_t: MV_PP_OP_CPUID_GET_EMULATED_IDX_VAL**
-| Value | Description |
-| :---- | :---------- |
-| 0x0000000000000005 | Defines the index for mv_pp_op_cpuid_get_emulated |
-
-### 2.12.7. mv_pp_op_reg_get_supported, OP=0x3, IDX=0x6
-
-TBD
-
-**const, uint64_t: MV_PP_OP_REG_GET_SUPPORTED_IDX_VAL**
-| Value | Description |
-| :---- | :---------- |
-| 0x0000000000000006 | Defines the index for mv_pp_op_reg_get_supported |
-
-### 2.12.8. mv_pp_op_reg_get_permissable, OP=0x3, IDX=0x7
-
-TBD
-
-**const, uint64_t: MV_PP_OP_REG_GET_PERMISSABLE_IDX_VAL**
-| Value | Description |
-| :---- | :---------- |
-| 0x0000000000000007 | Defines the index for mv_pp_op_reg_get_permissable |
-
-### 2.12.9. mv_pp_op_reg_get_emulated, OP=0x3, IDX=0x8
-
-TBD
-
-**const, uint64_t: MV_PP_OP_REG_GET_EMULATED_IDX_VAL**
-| Value | Description |
-| :---- | :---------- |
-| 0x0000000000000008 | Defines the index for mv_pp_op_reg_get_emulated |
-
-### 2.12.10. mv_pp_op_msr_get_supported, OP=0x3, IDX=0x9
-
-TBD
-
-**const, uint64_t: MV_PP_OP_MSR_GET_SUPPORTED_IDX_VAL**
-| Value | Description |
-| :---- | :---------- |
-| 0x0000000000000009 | Defines the index for mv_pp_op_msr_get_supported |
-
-### 2.12.11. mv_pp_op_msr_get_permissable, OP=0x3, IDX=0xA
-
-TBD
-
-**const, uint64_t: MV_PP_OP_MSR_GET_PERMISSABLE_IDX_VAL**
-| Value | Description |
-| :---- | :---------- |
-| 0x000000000000000A | Defines the index for mv_pp_op_msr_get_permissable |
-
-### 2.12.12. mv_pp_op_msr_get_emulated, OP=0x3, IDX=0xB
-
-TBD
-
-**const, uint64_t: MV_PP_OP_MSR_GET_EMULATED_IDX_VAL**
-| Value | Description |
-| :---- | :---------- |
-| 0x000000000000000B | Defines the index for mv_pp_op_msr_get_emulated |
-
-### 2.12.13. mv_pp_op_tsc_get_khz, OP=0x3, IDX=0xC
-
-TBD
-
-**const, uint64_t: MV_PP_OP_TSC_GET_KHZ_IDX_VAL**
-| Value | Description |
-| :---- | :---------- |
-| 0x000000000000000C | Defines the index for mv_pp_op_tsc_get_khz |
-
-### 2.12.14. mv_pp_op_tsc_set_khz, OP=0x3, IDX=0xD
-
-TBD
-
-**const, uint64_t: MV_PP_OP_TSC_SET_KHZ_IDX_VAL**
-| Value | Description |
-| :---- | :---------- |
-| 0x000000000000000D | Defines the index for mv_pp_op_tsc_set_khz |
-
-### 2.12.1. mv_pp_op_online_pps, OP=0x3, IDX=0xE
+### 2.12.2. mv_pp_op_online_pps, OP=0x3, IDX=0x1
 
 This hypercall returns the number of online PPs
 
@@ -1098,7 +992,286 @@ This hypercall returns the number of online PPs
 **const, uint64_t: MV_PP_OP_ONLINE_PPS_IDX_VAL**
 | Value | Description |
 | :---- | :---------- |
-| 0x000000000000000E | Defines the index for mv_pp_op_online_pps |
+| 0x0000000000000001 | Defines the index for mv_pp_op_online_pps |
+
+### 2.12.3. mv_pp_op_clr_shared_page_gpa, OP=0x3, IDX=0x2
+
+This hypercall tells MicroV to clear the GPA of the current PP's shared page.
+
+**Input:**
+| Register Name | Bits | Description |
+| :------------ | :--- | :---------- |
+| REG0 | 63:0 | Set to the result of mv_handle_op_open_handle |
+
+**const, uint64_t: MV_PP_OP_CLR_SHARED_PAGE_GPA_IDX_VAL**
+| Value | Description |
+| :---- | :---------- |
+| 0x0000000000000002 | Defines the index for mv_pp_op_clr_shared_page_gpa |
+
+### 2.12.4. mv_pp_op_set_shared_page_gpa, OP=0x3, IDX=0x3
+
+This hypercall tells MicroV to set the GPA of the current PP's shared page.
+
+**Input:**
+| Register Name | Bits | Description |
+| :------------ | :--- | :---------- |
+| REG0 | 63:0 | Set to the result of mv_handle_op_open_handle |
+| REG1 | 11:0 | REVZ |
+| REG1 | 63:12 | The GPA to set the requested PP's shared page to |
+
+**Output:**
+| Register Name | Bits | Description |
+| :------------ | :--- | :---------- |
+
+**const, uint64_t: MV_PP_OP_SET_SHARED_PAGE_GPA_IDX_VAL**
+| Value | Description |
+| :---- | :---------- |
+| 0x0000000000000003 | Defines the index for mv_pp_op_set_shared_page_gpa |
+
+### 2.12.5. mv_pp_op_cpuid_get_supported, OP=0x3, IDX=0x4
+
+Given the shared page cast as a single mv_cdl_entry_t, with mv_cdl_entry_t.fun and mv_cdl_entry_t.idx set to the requested CPUID leaf, the same mv_cdl_entry_t is returned in the shared page with mv_cdl_entry_t.eax, mv_cdl_entry_t.ebx, mv_cdl_entry_t.ecx and mv_cdl_entry_t.edx set with all supported CPU features set to 1. Any non-feature fields returned by CPUID are returned as 0.
+
+**Input:**
+| Register Name | Bits | Description |
+| :------------ | :--- | :---------- |
+| REG0 | 63:0 | Set to the result of mv_handle_op_open_handle |
+
+**const, uint64_t: MV_PP_OP_CPUID_GET_SUPPORTED_IDX_VAL**
+| Value | Description |
+| :---- | :---------- |
+| 0x0000000000000004 | Defines the index for mv_pp_op_cpuid_get_supported |
+
+### 2.12.6. mv_pp_op_cpuid_get_supported_list, OP=0x3, IDX=0x5
+
+Given the shared page cast as a mv_cdl_t, with each entry's mv_cdl_entry_t.fun and mv_cdl_entry_t.idx set to the requested CPUID leaf, the same entries are returned in the shared page with each entry's mv_cdl_entry_t.eax, mv_cdl_entry_t.ebx, mv_cdl_entry_t.ecx and mv_cdl_entry_t.edx set with all supported CPU features set to 1. Any non-feature fields returned by CPUID are returned as 0.
+
+**Input:**
+| Register Name | Bits | Description |
+| :------------ | :--- | :---------- |
+| REG0 | 63:0 | Set to the result of mv_handle_op_open_handle |
+
+**const, uint64_t: MV_PP_OP_CPUID_GET_SUPPORTED_LIST_IDX_VAL**
+| Value | Description |
+| :---- | :---------- |
+| 0x0000000000000005 | Defines the index for mv_pp_op_cpuid_get_supported_list |
+
+### 2.12.7. mv_pp_op_cpuid_get_permissable, OP=0x3, IDX=0x6
+
+Reserved
+
+**const, uint64_t: MV_PP_OP_CPUID_GET_PERMISSABLE_IDX_VAL**
+| Value | Description |
+| :---- | :---------- |
+| 0x0000000000000006 | Defines the index for mv_pp_op_cpuid_get_permissable |
+
+### 2.12.8. mv_pp_op_cpuid_get_permissable_list, OP=0x3, IDX=0x7
+
+Reserved
+
+**const, uint64_t: MV_PP_OP_CPUID_GET_PERMISSABLE_LIST_IDX_VAL**
+| Value | Description |
+| :---- | :---------- |
+| 0x0000000000000007 | Defines the index for mv_pp_op_cpuid_get_permissable_list |
+
+### 2.12.9. mv_pp_op_cpuid_get_emulated, OP=0x3, IDX=0x8
+
+Given the shared page cast as a single mv_cdl_entry_t, with mv_cdl_entry_t.fun and mv_cdl_entry_t.idx set to the requested CPUID leaf, the same mv_cdl_entry_t is returned in the shared page with mv_cdl_entry_t.eax, mv_cdl_entry_t.ebx, mv_cdl_entry_t.ecx and mv_cdl_entry_t.edx set with all emulated CPU features set to 1. Any non-feature fields returned by CPUID are returned as 0.  Emulated CPU features are features that are not supported by hardware, but are supported MicroV, meaning the VM is free to use this CPU feature as if hardware support were provided. An example of an emulated CPU feature might be the x2APIC.
+
+**Input:**
+| Register Name | Bits | Description |
+| :------------ | :--- | :---------- |
+| REG0 | 63:0 | Set to the result of mv_handle_op_open_handle |
+
+**const, uint64_t: MV_PP_OP_CPUID_GET_EMULATED_IDX_VAL**
+| Value | Description |
+| :---- | :---------- |
+| 0x0000000000000008 | Defines the index for mv_pp_op_cpuid_get_emulated |
+
+### 2.12.10. mv_pp_op_cpuid_get_emulated_list, OP=0x3, IDX=0x9
+
+Given the shared page cast as a mv_cdl_t, with each entry's mv_cdl_entry_t.fun and mv_cdl_entry_t.idx set to the requested CPUID leaf, the same entries are returned in the shared page with each entry's mv_cdl_entry_t.eax, mv_cdl_entry_t.ebx, mv_cdl_entry_t.ecx and mv_cdl_entry_t.edx set with all supported CPU features set to 1. Any non-feature fields returned by CPUID are returned as 0.  Emulated CPU features are features that are not supported by hardware, but are supported MicroV, meaning the VM is free to use this CPU feature as if hardware support were provided. An example of an emulated CPU feature might be the x2APIC.
+
+**Input:**
+| Register Name | Bits | Description |
+| :------------ | :--- | :---------- |
+| REG0 | 63:0 | Set to the result of mv_handle_op_open_handle |
+
+**const, uint64_t: MV_PP_OP_CPUID_GET_EMULATED_LIST_IDX_VAL**
+| Value | Description |
+| :---- | :---------- |
+| 0x0000000000000009 | Defines the index for mv_pp_op_cpuid_get_emulated_list |
+
+### 2.12.11. mv_pp_op_reg_get_supported, OP=0x3, IDX=0xA
+
+Reserved
+
+**const, uint64_t: MV_PP_OP_REG_GET_SUPPORTED_IDX_VAL**
+| Value | Description |
+| :---- | :---------- |
+| 0x000000000000000A | Defines the index for mv_pp_op_reg_get_supported |
+
+### 2.12.12. mv_pp_op_reg_get_supported_list, OP=0x3, IDX=0xB
+
+Reserved
+
+**const, uint64_t: MV_PP_OP_REG_GET_SUPPORTED_LIST_IDX_VAL**
+| Value | Description |
+| :---- | :---------- |
+| 0x000000000000000B | Defines the index for mv_pp_op_reg_get_supported_list |
+
+### 2.12.13. mv_pp_op_reg_get_permissable, OP=0x3, IDX=0xC
+
+Reserved
+
+**const, uint64_t: MV_PP_OP_REG_GET_PERMISSABLE_IDX_VAL**
+| Value | Description |
+| :---- | :---------- |
+| 0x000000000000000C | Defines the index for mv_pp_op_reg_get_permissable |
+
+### 2.12.14. mv_pp_op_reg_get_permissable_list, OP=0x3, IDX=0xD
+
+Reserved
+
+**const, uint64_t: MV_PP_OP_REG_GET_PERMISSABLE_LIST_IDX_VAL**
+| Value | Description |
+| :---- | :---------- |
+| 0x000000000000000D | Defines the index for mv_pp_op_reg_get_permissable_list |
+
+### 2.12.15. mv_pp_op_reg_get_emulated, OP=0x3, IDX=0xE
+
+Reserved
+
+**const, uint64_t: MV_PP_OP_REG_GET_EMULATED_IDX_VAL**
+| Value | Description |
+| :---- | :---------- |
+| 0x000000000000000E | Defines the index for mv_pp_op_reg_get_emulated |
+
+### 2.12.16. mv_pp_op_reg_get_emulated_list, OP=0x3, IDX=0xF
+
+Reserved
+
+**const, uint64_t: MV_PP_OP_REG_GET_EMULATED_LIST_IDX_VAL**
+| Value | Description |
+| :---- | :---------- |
+| 0x000000000000000F | Defines the index for mv_pp_op_reg_get_emulated_list |
+
+### 2.12.17. mv_pp_op_msr_get_supported, OP=0x3, IDX=010
+
+Given a requested MSR, a 1 is returned if the MSR is supported, and a 0 is returned if the MSR is not supported.
+
+**Input:**
+| Register Name | Bits | Description |
+| :------------ | :--- | :---------- |
+| REG0 | 63:0 | Set to the result of mv_handle_op_open_handle |
+| REG1 | 31:0 | The requested MSR |
+| REG1 | 63:32 | REVI |
+
+**Output:**
+| Register Name | Bits | Description |
+| :------------ | :--- | :---------- |
+| REG0 | 63:0 | The resulting supported value |
+
+**const, uint64_t: MV_PP_OP_MSR_GET_SUPPORTED_IDX_VAL**
+| Value | Description |
+| :---- | :---------- |
+| 0x0000000000000010 | Defines the index for mv_pp_op_msr_get_supported |
+
+### 2.12.18. mv_pp_op_msr_get_supported_list, OP=0x3, IDX=0x11
+
+Given the shared page cast as a mv_rdl_t, with each entry's mv_rdl_entry_t.reg set to the requested MSR, the same entries are returned in the shared page with each entry's mv_rdl_entry_t.val set to 1 if the MSR is supported, and 0 if the MSR is not supported.
+
+**Input:**
+| Register Name | Bits | Description |
+| :------------ | :--- | :---------- |
+| REG0 | 63:0 | Set to the result of mv_handle_op_open_handle |
+
+**const, uint64_t: MV_PP_OP_MSR_GET_SUPPORTED_LIST_IDX_VAL**
+| Value | Description |
+| :---- | :---------- |
+| 0x0000000000000011 | Defines the index for mv_pp_op_msr_get_supported_list |
+
+### 2.12.19. mv_pp_op_msr_get_permissable, OP=0x3, IDX=0x12
+
+Given a requested MSR, MV_PERM_READ is returned if the calling VM can read from the MSR, and MV_PERM_WRITE is returned if the calling VM can write to the MSR.
+
+**Input:**
+| Register Name | Bits | Description |
+| :------------ | :--- | :---------- |
+| REG0 | 63:0 | Set to the result of mv_handle_op_open_handle |
+| REG1 | 31:0 | The requested MSR |
+| REG1 | 63:32 | REVI |
+
+**Output:**
+| Register Name | Bits | Description |
+| :------------ | :--- | :---------- |
+| REG0 | 63:0 | The resulting permissions flags |
+
+**const, uint64_t: MV_PP_OP_MSR_GET_PERMISSABLE_IDX_VAL**
+| Value | Description |
+| :---- | :---------- |
+| 0x0000000000000012 | Defines the index for mv_pp_op_msr_get_permissable |
+
+### 2.12.20. mv_pp_op_msr_get_permissable_list, OP=0x3, IDX=0x13
+
+Given the shared page cast as a mv_rdl_t, with each entry's mv_rdl_entry_t.reg set to the requested MSR, the same entries are returned in the shared page with each entry's mv_rdl_entry_t.val MV_PERM_READ bit set to 1 if the MSR can be read by the calling VM, and the MV_PERM_WRITE bit set to 1 if the MSR can be written by the calling VM.
+
+**Input:**
+| Register Name | Bits | Description |
+| :------------ | :--- | :---------- |
+| REG0 | 63:0 | Set to the result of mv_handle_op_open_handle |
+
+**const, uint64_t: MV_PP_OP_MSR_GET_PERMISSABLE_LIST_IDX_VAL**
+| Value | Description |
+| :---- | :---------- |
+| 0x0000000000000013 | Defines the index for mv_pp_op_msr_get_permissable_list |
+
+### 2.12.21. mv_pp_op_msr_get_emulated, OP=0x3, IDX=0x14
+
+Reserved
+
+**const, uint64_t: MV_PP_OP_MSR_GET_EMULATED_IDX_VAL**
+| Value | Description |
+| :---- | :---------- |
+| 0x0000000000000014 | Defines the index for mv_pp_op_msr_get_emulated |
+
+### 2.12.22. mv_pp_op_msr_get_emulated_list, OP=0x3, IDX=0x15
+
+Reserved
+
+**const, uint64_t: MV_PP_OP_MSR_GET_EMULATED_LIST_IDX_VAL**
+| Value | Description |
+| :---- | :---------- |
+| 0x0000000000000015 | Defines the index for mv_pp_op_msr_get_emulated_list |
+
+### 2.12.23. mv_pp_op_tsc_get_khz, OP=0x3, IDX=0x16
+
+Returns the frequency of the PP.
+
+**Input:**
+| Register Name | Bits | Description |
+| :------------ | :--- | :---------- |
+| REG0 | 63:0 | Set to the result of mv_handle_op_open_handle |
+
+**Output:**
+| Register Name | Bits | Description |
+| :------------ | :--- | :---------- |
+| REG0 | 63:0 | The resulting frequency in KHz |
+
+**const, uint64_t: MV_PP_OP_TSC_GET_KHZ_IDX_VAL**
+| Value | Description |
+| :---- | :---------- |
+| 0x0000000000000016 | Defines the index for mv_pp_op_tsc_get_khz |
+
+### 2.12.24. mv_pp_op_tsc_set_khz, OP=0x3, IDX=0x17
+
+Reserved
+
+**const, uint64_t: MV_PP_OP_TSC_SET_KHZ_IDX_VAL**
+| Value | Description |
+| :---- | :---------- |
+| 0x0000000000000017 | Defines the index for mv_pp_op_tsc_set_khz |
+
 
 ## 2.13. Virtual Machine Hypercalls
 
@@ -1160,43 +1333,7 @@ This hypercall returns the ID of the VM that executed this hypercall.
 | :---- | :---------- |
 | 0x0000000000000002 | Defines the index for mv_vm_op_vmid |
 
-### 2.13.4. mv_vm_op_io_clr_trap, OP=0x4, IDX=0x3
-
-TBD
-
-**const, uint64_t: MV_VM_OP_IO_CLR_TRAP_IDX_VAL**
-| Value | Description |
-| :---- | :---------- |
-| 0x0000000000000003 | Defines the index for mv_vm_op_io_clr_trap |
-
-### 2.13.5. mv_vm_op_io_set_trap, OP=0x4, IDX=0x4
-
-TBD
-
-**const, uint64_t: MV_VM_OP_IO_SET_TRAP_IDX_VAL**
-| Value | Description |
-| :---- | :---------- |
-| 0x0000000000000004 | Defines the index for mv_vm_op_io_set_trap |
-
-### 2.13.6. mv_vm_op_io_clr_trap_all, OP=0x4, IDX=0x5
-
-TBD
-
-**const, uint64_t: MV_VM_OP_IO_CLR_TRAP_ALL_IDX_VAL**
-| Value | Description |
-| :---- | :---------- |
-| 0x0000000000000005 | Defines the index for mv_vm_op_io_clr_trap_all |
-
-### 2.13.7. mv_vm_op_io_set_trap_all, OP=0x4, IDX=0x6
-
-TBD
-
-**const, uint64_t: MV_VM_OP_IO_SET_TRAP_ALL_IDX_VAL**
-| Value | Description |
-| :---- | :---------- |
-| 0x0000000000000006 | Defines the index for mv_vm_op_io_set_trap_all |
-
-### 2.13.8. mv_vm_op_mmio_map, OP=0x4, IDX=0x7
+### 2.13.4. mv_vm_op_mmio_map, OP=0x4, IDX=0x3
 
 This hypercall is used to map a range of physically discontiguous guest memory from one VM to another using a Memory Descriptor List (MDL) in the shared page. For this ABI, the dst field in the mv_mdl_entry_t refers to the GPA to map the contiguous memory region described by the entry to. The src field in the mv_mdl_entry_t refers to the GPA to map the contiguous memory region from. The dst and src VMIDs must be different. If the src VMID is not MV_ROOT_VMID, the map is considered a foreign map and is currently not supported (although will be in the future to support device domains). The bytes field in the mv_mdl_entry_t must be page aligned and cannot be 0. The flags field in the mv_mdl_entry_t refers to Map Flags and only apply to the destination (meaning source mappings are not affected by this hypercall). The only flags that are supported by this hypercall are the access/permission flags and the capability flags. Of these flags, MicroV may reject the use of certain flags based on MicroV's configuration and which CPU architecture is in use. mv_id_op_get_capability can be used to determine which specific flags are supported by MicroV. Care should be taken to ensure that both the dst and src memory is mapped with the same cacheability. In general, the safest option is to map MV_MAP_FLAG_WRITE_BACK from the src to MV_MAP_FLAG_WRITE_BACK in the dst. This ABI does not use any of the reg 0-7 fields in the mv_mdl_t. Double maps (i.e., mapping memory that is already mapped) is undefined and may result in MicroV returning an error.
 
@@ -1215,9 +1352,9 @@ This hypercall is slow and may require a Hypercall Continuation. See Hypercall C
 **const, uint64_t: MV_VM_OP_MMIO_MAP_IDX_VAL**
 | Value | Description |
 | :---- | :---------- |
-| 0x0000000000000007 | Defines the index for mv_vm_op_mmio_map |
+| 0x0000000000000003 | Defines the index for mv_vm_op_mmio_map |
 
-### 2.13.9. mv_vm_op_mmio_unmap, OP=0x4, IDX=0x8
+### 2.13.5. mv_vm_op_mmio_unmap, OP=0x4, IDX=0x4
 
 This hypercall is used to unmap a range of physically discontiguous guest memory from a VM. For this ABI, the dst field in the mv_mdl_entry_t refers to the GPA of the contiguous memory region to unmap. The src field is ignored. The bytes field in the mv_mdl_entry_t must be page aligned and cannot be 0. The flags field is ignored. This ABI does not use any of the reg 0-7 fields in the mv_mdl_t. Double unmaps (i.e., unmapping memory that is already unmapped) is undefined and may result in MicroV returning an error. To ensure the unmap is seen by the processor, this hypercall performs a TLB invalidation of all of the memory described in the MDL. MicroV reserves the right to invalidate the entire TLB and cache if needed. If a VM has more than one VP, this hypercall may perform a remote TLB invalidation. How remote TLB invalidations are performed by MicroV is undefined and left to MicroV to determine.
 
@@ -1234,79 +1371,7 @@ This hypercall is slow and may require a Hypercall Continuation. See Hypercall C
 **const, uint64_t: MV_VM_OP_MMIO_UNMAP_IDX_VAL**
 | Value | Description |
 | :---- | :---------- |
-| 0x0000000000000008 | Defines the index for mv_vm_op_mmio_unmap |
-
-### 2.13.10. mv_vm_op_mmio_clr_trap, OP=0x4, IDX=0x9
-
-TBD
-
-**const, uint64_t: MV_VM_OP_MMIO_CLR_TRAP_IDX_VAL**
-| Value | Description |
-| :---- | :---------- |
-| 0x0000000000000009 | Defines the index for mv_vm_op_mmio_clr_trap |
-
-### 2.13.11. mv_vm_op_mmio_set_trap, OP=0x4, IDX=0xA
-
-TBD
-
-**const, uint64_t: MV_VM_OP_MMIO_SET_TRAP_IDX_VAL**
-| Value | Description |
-| :---- | :---------- |
-| 0x000000000000000A | Defines the index for mv_vm_op_mmio_set_trap |
-
-### 2.13.12. mv_vm_op_mmio_clr_trap_all, OP=0x4, IDX=0xB
-
-TBD
-
-**const, uint64_t: MV_VM_OP_MMIO_CLR_TRAP_ALL_IDX_VAL**
-| Value | Description |
-| :---- | :---------- |
-| 0x000000000000000B | Defines the index for mv_vm_op_mmio_clr_trap_all |
-
-### 2.13.13. mv_vm_op_mmio_set_trap_all, OP=0x4, IDX=0xC
-
-TBD
-
-**const, uint64_t: MV_VM_OP_MMIO_SET_TRAP_ALL_IDX_VAL**
-| Value | Description |
-| :---- | :---------- |
-| 0x000000000000000C | Defines the index for mv_vm_op_mmio_set_trap_all |
-
-### 2.13.14. mv_vm_op_msr_clr_trap, OP=0x4, IDX=0xD
-
-TBD
-
-**const, uint64_t: MV_VM_OP_MSR_CLR_TRAP_IDX_VAL**
-| Value | Description |
-| :---- | :---------- |
-| 0x000000000000000D | Defines the index for mv_vm_op_msr_clr_trap |
-
-### 2.13.15. mv_vm_op_msr_set_trap, OP=0x4, IDX=0xE
-
-TBD
-
-**const, uint64_t: MV_VM_OP_MSR_SET_TRAP_IDX_VAL**
-| Value | Description |
-| :---- | :---------- |
-| 0x000000000000000E | Defines the index for mv_vm_op_msr_set_trap |
-
-### 2.13.16. mv_vm_op_msr_clr_trap_all, OP=0x4, IDX=0xF
-
-TBD
-
-**const, uint64_t: MV_VM_OP_MSR_CLR_TRAP_ALL_IDX_VAL**
-| Value | Description |
-| :---- | :---------- |
-| 0x000000000000000F | Defines the index for mv_vm_op_msr_clr_trap_all |
-
-### 2.13.17. mv_vm_op_msr_set_trap_all, OP=0x4, IDX=0x10
-
-TBD
-
-**const, uint64_t: MV_VM_OP_MSR_SET_TRAP_ALL_IDX_VAL**
-| Value | Description |
-| :---- | :---------- |
-| 0x0000000000000010 | Defines the index for mv_vm_op_msr_set_trap_all |
+| 0x0000000000000004 | Defines the index for mv_vm_op_mmio_unmap |
 
 ## 2.14. Virtual Processor Hypercalls
 
@@ -1661,9 +1726,8 @@ If mv_vs_op_run returns success with an exit reason of mv_exit_reason_t_io, it m
 | data | uint64_t | 0x8 | 8 bytes | The data to read/write |
 | reps | uint64_t | 0x10 | 8 bytes | The number of repetitions to make |
 | type | uint64_t | 0x18 | 8 bytes | MV_EXIT_IO flags |
-| dst_size | mv_bit_size_t | 0x20 | 1 byte | defines the bit size of the dst |
-| src_size | mv_bit_size_t | 0x21 | 1 byte | defines the bit size of the src |
-| reserved | uint8_t | 0x22 | 4062 bytes | REVI |
+| size | mv_bit_size_t | 0x20 | 1 byte | defines the bit size of the IO |
+| reserved | uint8_t | 0x21 | 4063 bytes | REVI |
 
 #### 2.15.9.5. mv_exit_reason_t_mmio
 
@@ -1671,7 +1735,14 @@ TBD
 
 ### 2.15.10. mv_vs_op_cpuid_get, OP=0x6, IDX=0x9
 
-TBD
+Given the shared page cast as a single mv_cdl_entry_t, with mv_cdl_entry_t.fun and mv_cdl_entry_t.idx set to the requested CPUID leaf, the same mv_cdl_entry_t is returned in the shared page with mv_cdl_entry_t.eax, mv_cdl_entry_t.ebx, mv_cdl_entry_t.ecx and mv_cdl_entry_t.edx set to the value seen by the VS as if CPUID were executed.
+
+**Input:**
+| Register Name | Bits | Description |
+| :------------ | :--- | :---------- |
+| REG0 | 63:0 | Set to the result of mv_handle_op_open_handle |
+| REG1 | 15:0 | The ID of the VS to query |
+| REG1 | 63:16 | REVI |
 
 **const, uint64_t: MV_VS_OP_CPUID_GET_IDX_VAL**
 | Value | Description |
@@ -1680,7 +1751,14 @@ TBD
 
 ### 2.15.11. mv_vs_op_cpuid_set, OP=0x6, IDX=0xA
 
-TBD
+Given the shared page cast as a single mv_cdl_entry_t, with mv_cdl_entry_t.fun and mv_cdl_entry_t.idx set to the requested CPUID leaf, any feature bit in mv_cdl_entry_t.eax, mv_cdl_entry_t.ebx, mv_cdl_entry_t.ecx and mv_cdl_entry_t.edx set to 0 will disable the CPU feature for the requested VS. Any feature bit set to 1 is ignored by MicroV (meaning the CPU feature is left unmodified). Any non-feature bits are ignored. Note that mv_vs_op_cpuid_set can only be used to disabled CPU features. CPU features that are enabled are determined by hardware and MicroV's support for this hardware.
+
+**Input:**
+| Register Name | Bits | Description |
+| :------------ | :--- | :---------- |
+| REG0 | 63:0 | Set to the result of mv_handle_op_open_handle |
+| REG1 | 15:0 | The ID of the VS to set |
+| REG1 | 63:16 | REVI |
 
 **const, uint64_t: MV_VS_OP_CPUID_SET_IDX_VAL**
 | Value | Description |
@@ -1689,7 +1767,14 @@ TBD
 
 ### 2.15.12. mv_vs_op_cpuid_get_list, OP=0x6, IDX=0xB
 
-TBD
+Given the shared page cast as a mv_cdl_t, with each entry's mv_cdl_entry_t.fun and mv_cdl_entry_t.idx set to the requested CPUID leaf, the same entries are returned in the shared page with each entry's mv_cdl_entry_t.eax, mv_cdl_entry_t.ebx, mv_cdl_entry_t.ecx and mv_cdl_entry_t.edx set to the value seen by the VS as if CPUID were executed.
+
+**Input:**
+| Register Name | Bits | Description |
+| :------------ | :--- | :---------- |
+| REG0 | 63:0 | Set to the result of mv_handle_op_open_handle |
+| REG1 | 15:0 | The ID of the VS to query |
+| REG1 | 63:16 | REVI |
 
 **const, uint64_t: MV_VS_OP_CPUID_GET_LIST_IDX_VAL**
 | Value | Description |
@@ -1698,7 +1783,14 @@ TBD
 
 ### 2.15.13. mv_vs_op_cpuid_set_list, OP=0x6, IDX=0xC
 
-TBD
+Given the shared page cast as a mv_cdl_t, with each entry's mv_cdl_entry_t.fun and mv_cdl_entry_t.idx set to the requested CPUID leaf, any feature bit in entry's mv_cdl_entry_t.eax, mv_cdl_entry_t.ebx, mv_cdl_entry_t.ecx and mv_cdl_entry_t.edx set to 0 will disable the CPU feature for the requested VS. Any feature bit set to 1 is ignored by MicroV (meaning the CPU feature is left unmodified). Any non-feature bits are ignored. Note that mv_vs_op_cpuid_set can only be used to disabled CPU features. CPU features that are enabled are determined by hardware and MicroV's support for this hardware.
+
+**Input:**
+| Register Name | Bits | Description |
+| :------------ | :--- | :---------- |
+| REG0 | 63:0 | Set to the result of mv_handle_op_open_handle |
+| REG1 | 15:0 | The ID of the VS to set |
+| REG1 | 63:16 | REVI |
 
 **const, uint64_t: MV_VS_OP_CPUID_SET_LIST_IDX_VAL**
 | Value | Description |
@@ -1853,7 +1945,7 @@ This hypercall tells MicroV to set the values of multiple requested MSRs using a
 
 ### 2.15.22. mv_vs_op_fpu_get, OP=0x6, IDX=0x1B
 
-TBD
+Reserved
 
 **const, uint64_t: MV_VS_OP_FPU_GET_IDX_VAL**
 | Value | Description |
@@ -1862,7 +1954,7 @@ TBD
 
 ### 2.15.23. mv_vs_op_fpu_set, OP=0x6, IDX=0x1C
 
-TBD
+Reserved
 
 **const, uint64_t: MV_VS_OP_FPU_SET_IDX_VAL**
 | Value | Description |
@@ -1871,7 +1963,14 @@ TBD
 
 ### 2.15.24. mv_vs_op_fpu_get_all, OP=0x6, IDX=0x1D
 
-TBD
+Returns FPU state as seen by the VS in the shared page. The format of the FPU state depends on which mode the VS is currently in.
+
+*Input:**
+| Register Name | Bits | Description |
+| :------------ | :--- | :---------- |
+| REG0 | 63:0 | Set to the result of mv_handle_op_open_handle |
+| REG1 | 15:0 | The ID of the VS to query |
+| REG1 | 63:16 | REVI |
 
 **const, uint64_t: MV_VS_OP_FPU_GET_ALL_IDX_VAL**
 | Value | Description |
@@ -1880,7 +1979,14 @@ TBD
 
 ### 2.15.25. mv_vs_op_fpu_set_all, OP=0x6, IDX=0x1E
 
-TBD
+Sets the FPU state as seen by the VS in the shared page. The format of the FPU state depends on which mode the VS is currently in.
+
+*Input:**
+| Register Name | Bits | Description |
+| :------------ | :--- | :---------- |
+| REG0 | 63:0 | Set to the result of mv_handle_op_open_handle |
+| REG1 | 15:0 | The ID of the VS to set |
+| REG1 | 63:16 | REVI |
 
 **const, uint64_t: MV_VS_OP_FPU_SET_ALL_IDX_VAL**
 | Value | Description |
@@ -1889,7 +1995,7 @@ TBD
 
 ### 2.15.26. mv_vs_op_xsave_get, OP=0x6, IDX=0x1F
 
-TBD
+Reserved
 
 **const, uint64_t: MV_VS_OP_XSAVE_GET_IDX_VAL**
 | Value | Description |
@@ -1898,7 +2004,7 @@ TBD
 
 ### 2.15.27. mv_vs_op_xsave_set, OP=0x6, IDX=0x20
 
-TBD
+Reserved
 
 **const, uint64_t: MV_VS_OP_XSAVE_SET_IDX_VAL**
 | Value | Description |
@@ -1907,7 +2013,15 @@ TBD
 
 ### 2.15.28. mv_vs_op_xsave_get_all, OP=0x6, IDX=0x21
 
-TBD
+Returns XSAVE state as seen by the VS in the shared page. The format of the XSAVE state depends on which mode the VS is currently in, and which XSAVE features are enabled in the guest as seen by XCR0. If the XSAVE region is larger than one page, REG2 can be used to tell MicroV which page of the xsave region to return.
+
+*Input:**
+| Register Name | Bits | Description |
+| :------------ | :--- | :---------- |
+| REG0 | 63:0 | Set to the result of mv_handle_op_open_handle |
+| REG1 | 15:0 | The ID of the VS to query |
+| REG1 | 63:16 | REVI |
+| REG2 | 63:0 | The index of the page to return |
 
 **const, uint64_t: MV_VS_OP_XSAVE_GET_ALL_IDX_VAL**
 | Value | Description |
@@ -1916,7 +2030,15 @@ TBD
 
 ### 2.15.29. mv_vs_op_xsave_set_all, OP=0x6, IDX=0x22
 
-TBD
+Sets the XSAVE state as seen by the VS in the shared page. The format of the XSAVE state depends on which mode the VS is currently in, and which XSAVE features are enabled in the guest as seen by XCR0. If the XSAVE region is larger than one page, REG2 can be used to tell MicroV which page of the xsave region to set.
+
+*Input:**
+| Register Name | Bits | Description |
+| :------------ | :--- | :---------- |
+| REG0 | 63:0 | Set to the result of mv_handle_op_open_handle |
+| REG1 | 15:0 | The ID of the VS to query |
+| REG1 | 63:16 | REVI |
+| REG2 | 63:0 | The index of the page to set |
 
 **const, uint64_t: MV_VS_OP_XSAVE_SET_ALL_IDX_VAL**
 | Value | Description |
@@ -1925,7 +2047,19 @@ TBD
 
 ### 2.15.30. mv_vs_op_mp_state_get, OP=0x6, IDX=0x23
 
-TBD
+Returns the mv_mp_state_t of the VS.
+
+*Input:**
+| Register Name | Bits | Description |
+| :------------ | :--- | :---------- |
+| REG0 | 63:0 | Set to the result of mv_handle_op_open_handle |
+| REG1 | 15:0 | The ID of the VS to query |
+| REG1 | 63:16 | REVI |
+
+**Output:**
+| Register Name | Bits | Description |
+| :------------ | :--- | :---------- |
+| REG0 | 63:0 | The mv_mp_state_t read from the VS |
 
 **const, uint64_t: MV_VS_OP_MP_STATE_GET_IDX_VAL**
 | Value | Description |
@@ -1934,18 +2068,55 @@ TBD
 
 ### 2.15.31. mv_vs_op_mp_state_set, OP=0x6, IDX=0x24
 
-TBD
+Sets the mv_mp_state_t of the VS.
+
+*Input:**
+| Register Name | Bits | Description |
+| :------------ | :--- | :---------- |
+| REG0 | 63:0 | Set to the result of mv_handle_op_open_handle |
+| REG1 | 15:0 | The ID of the VS to query |
+| REG1 | 63:16 | REVI |
+| REG2 | 63:0 | The mv_mp_state_t to set the VS to |
 
 **const, uint64_t: MV_VS_OP_MP_STATE_SET_IDX_VAL**
 | Value | Description |
 | :---- | :---------- |
 | 0x0000000000000024 | Defines the index for mv_vs_op_mp_state_set |
 
-### 2.15.32. mv_vs_op_interrupt, OP=0x6, IDX=0x23
+### 2.15.32. mv_vs_op_inject_exception, OP=0x6, IDX=0x25
 
-TBD
+Injects an exception into the VS immediately.
 
-**const, uint64_t: MV_VS_OP_INTERRUPT_IDX_VAL**
+On x86, only vectors 0-31 may be injected.
+
+*Input:**
+| Register Name | Bits | Description |
+| :------------ | :--- | :---------- |
+| REG0 | 63:0 | Set to the result of mv_handle_op_open_handle |
+| REG1 | 15:0 | The ID of the VS to inject the exception into |
+| REG1 | 63:16 | REVI |
+| REG2 | 63:0 | The vector to inject |
+
+**const, uint64_t: MV_VS_OP_INJECT_EXCEPTION_IDX_VAL**
 | Value | Description |
 | :---- | :---------- |
-| 0x0000000000000023 | Defines the index for mv_vs_op_interrupt |
+| 0x0000000000000025 | Defines the index for mv_vs_op_inject_exception |
+
+### 2.15.33. mv_vs_op_queue_interrupt, OP=0x6, IDX=0x26
+
+Queues an interrupt in the VS for injection. The interrupt will only be injected into the VS once the VS is capable of processing the interrupt.
+
+On x86, only vectors 31-255 may be injected. Interrupts injected using mv_vs_op_queue_interrupt bypass the emulated LAPIC, IOAPIC and PIC. If these emulated devices are in use, interrupts should be injected using these devices instead of the mv_vs_op_queue_interrupt, otherwise the guest's view of these emulated devices will not match the interrupt currently being processed.
+
+*Input:**
+| Register Name | Bits | Description |
+| :------------ | :--- | :---------- |
+| REG0 | 63:0 | Set to the result of mv_handle_op_open_handle |
+| REG1 | 15:0 | The ID of the VS to queue the interrupt into |
+| REG1 | 63:16 | REVI |
+| REG2 | 63:0 | The vector to queue |
+
+**const, uint64_t: MV_VS_OP_QUEUE_INTERRUPT_IDX_VAL**
+| Value | Description |
+| :---- | :---------- |
+| 0x0000000000000026 | Defines the index for mv_vs_op_queue_interrupt |

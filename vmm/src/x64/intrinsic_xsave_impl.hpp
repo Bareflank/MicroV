@@ -22,46 +22,21 @@
 /// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 /// SOFTWARE.
 
-#ifndef TLS_T_HPP
-#define TLS_T_HPP
+#ifndef INTRINSIC_XSAVE_IMPL_HPP
+#define INTRINSIC_XSAVE_IMPL_HPP
 
-#include <bsl/convert.hpp>
-#include <bsl/safe_integral.hpp>
+#include <bsl/cstdint.hpp>
 
 namespace microv
 {
-    /// @class microv::tls_t
-    ///
     /// <!-- description -->
-    ///   @brief Defines MicroV's Thread Local Storage (TLS).
+    ///   @brief Executes the XSAVE instruction given the provided address to
+    ///     the xsave region.
     ///
-    struct tls_t final
-    {
-        /// @brief stores the ID of the PP associated with this TLS
-        bsl::safe_u16 ppid;
-        /// @brief stores the total number of online PPs
-        bsl::safe_u16 online_pps;
-
-        /// @brief stores the ID of the VM that is active on this PP
-        bsl::safe_u16 active_vmid;
-        /// @brief stores the ID of the VP that is active on this PP
-        bsl::safe_u16 active_vpid;
-        /// @brief stores the ID of the VS that is active on this PP
-        bsl::safe_u16 active_vsid;
-
-        /// @brief stores the ID of the parent VM
-        bsl::safe_u16 parent_vmid;
-        /// @brief stores the ID of the parent VP
-        bsl::safe_u16 parent_vpid;
-        /// @brief stores the ID of the parent VS
-        bsl::safe_u16 parent_vsid;
-    };
-
-    /// @brief defines the max size supported for the TLS block
-    constexpr auto MAX_TLS_SIZE{HYPERVISOR_PAGE_SIZE};
-
-    /// @brief ensure that the tls_t does not exceed the max supported size
-    static_assert(!(sizeof(tls_t) > MAX_TLS_SIZE));
+    /// <!-- inputs/outputs -->
+    ///   @param pmut_xsave a pointer to the xsave region to use
+    ///
+    extern "C" void intrinsic_xsave_impl(void *const pmut_xsave) noexcept;
 }
 
 #endif

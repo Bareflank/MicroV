@@ -248,7 +248,7 @@ namespace microv
             bsl::expects(syscall::BF_INVALID_ID == mut_tls.active_vpid);
 
             m_active_ppid = ~bsl::to_u16(mut_tls.ppid);
-            mut_tls.active_vpid = this->id().get();
+            mut_tls.active_vpid = this->id();
         }
 
         /// <!-- description -->
@@ -264,7 +264,7 @@ namespace microv
             bsl::expects(this->id() == mut_tls.active_vpid);
 
             m_active_ppid = {};
-            mut_tls.active_vpid = syscall::BF_INVALID_ID.get();
+            mut_tls.active_vpid = syscall::BF_INVALID_ID;
         }
 
         /// <!-- description -->

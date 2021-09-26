@@ -26,6 +26,8 @@
 #define DISPATCH_FAIL
 
 #include <bf_syscall_t.hpp>
+#include <dispatch_abi_helpers.hpp>
+#include <dispatch_vmcall_helpers.hpp>
 #include <gs_t.hpp>
 #include <intrinsic_t.hpp>
 #include <page_pool_t.hpp>
@@ -48,14 +50,14 @@ namespace microv
     ///
     /// <!-- inputs/outputs -->
     ///   @param gs the gs_t to use
-    ///   @param tls the tls_t to use
-    ///   @param sys the bf_syscall_t to use
+    ///   @param mut_tls the tls_t to use
+    ///   @param mut_sys the bf_syscall_t to use
     ///   @param page_pool the page_pool_t to use
     ///   @param intrinsic the intrinsic_t to use
     ///   @param pp_pool the pp_pool_t to use
-    ///   @param vm_pool the vm_pool_t to use
-    ///   @param vp_pool the vp_pool_t to use
-    ///   @param vs_pool the vs_pool_t to use
+    ///   @param mut_vm_pool the vm_pool_t to use
+    ///   @param mut_vp_pool the vp_pool_t to use
+    ///   @param mut_vs_pool the vs_pool_t to use
     ///   @param vsid the ID of the VS that generated the fail
     ///   @param fail_reason the exit reason associated with the fail
     ///   @return Returns bsl::errc_success on success, bsl::errc_failure
@@ -64,14 +66,14 @@ namespace microv
     [[nodiscard]] static constexpr auto
     dispatch_fail(
         gs_t const &gs,
-        tls_t const &tls,
-        syscall::bf_syscall_t const &sys,
+        tls_t &mut_tls,
+        syscall::bf_syscall_t &mut_sys,
         page_pool_t const &page_pool,
         intrinsic_t const &intrinsic,
         pp_pool_t const &pp_pool,
-        vm_pool_t const &vm_pool,
-        vp_pool_t const &vp_pool,
-        vs_pool_t const &vs_pool,
+        vm_pool_t &mut_vm_pool,
+        vp_pool_t &mut_vp_pool,
+        vs_pool_t &mut_vs_pool,
         bsl::safe_u16 const &vsid,
         bsl::safe_u64 const &fail_reason) noexcept -> bsl::errc_type
     {
@@ -79,16 +81,28 @@ namespace microv
         bsl::expects(fail_reason.is_valid_and_checked());
 
         bsl::discard(gs);
-        bsl::discard(tls);
-        bsl::discard(sys);
         bsl::discard(page_pool);
-        bsl::discard(intrinsic);
         bsl::discard(pp_pool);
-        bsl::discard(vm_pool);
-        bsl::discard(vp_pool);
-        bsl::discard(vs_pool);
 
-        return bsl::errc_failure;
+        if (mut_sys.is_vs_a_root_vs(vsid)) {
+            bsl::error() << "unrecoverable error from the root VM\n";
+            return bsl::errc_failure;
+        }
+
+        // ---------------------------------------------------------------------
+        // Context: Change To Root VM
+        // ---------------------------------------------------------------------
+
+        switch_to_root(mut_tls, mut_sys, intrinsic, mut_vm_pool, mut_vp_pool, mut_vs_pool, false);
+
+        // ---------------------------------------------------------------------
+        // Context: Root VM
+        // ---------------------------------------------------------------------
+
+        set_reg_return(mut_sys, hypercall::MV_STATUS_EXIT_UNKNOWN);
+        set_reg0(mut_sys, bsl::to_u64(hypercall::EXIT_REASON_UNKNOWN));
+
+        return mut_sys.bf_vs_op_run_current();
     }
 }
 

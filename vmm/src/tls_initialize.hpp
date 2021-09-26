@@ -58,6 +58,14 @@ namespace microv
         mut_tls.ppid = sys.bf_tls_ppid();
         mut_tls.online_pps = sys.bf_tls_online_pps();
 
+        mut_tls.active_vmid = hypercall::MV_INVALID_ID;
+        mut_tls.active_vpid = hypercall::MV_INVALID_ID;
+        mut_tls.active_vsid = hypercall::MV_INVALID_ID;
+
+        mut_tls.parent_vmid = hypercall::MV_INVALID_ID;
+        mut_tls.parent_vpid = hypercall::MV_INVALID_ID;
+        mut_tls.parent_vsid = hypercall::MV_INVALID_ID;
+
         return bsl::errc_success;
     }
 }

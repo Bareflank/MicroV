@@ -199,7 +199,7 @@ namespace microv
         // Context: Change To Root VM
         // ---------------------------------------------------------------------
 
-        change_to_parent(mut_sys, mut_tls.parent_vmid, mut_tls.parent_vpid, mut_tls.parent_vsid);
+        switch_to_root(mut_tls, mut_sys, intrinsic, mut_vm_pool, mut_vp_pool, mut_vs_pool, false);
 
         // ---------------------------------------------------------------------
         // Context: Root VM

@@ -31,7 +31,7 @@
     .type   mv_pp_op_set_shared_page_gpa_impl, @function
 mv_pp_op_set_shared_page_gpa_impl:
 
-    mov rax, 0x764D000000030002
+    mov rax, 0x764D000000030003
     mov r10, rdi
     mov r11, rsi
     vmcall

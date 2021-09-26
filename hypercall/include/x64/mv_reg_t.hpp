@@ -182,7 +182,7 @@ namespace hypercall
         mv_reg_t_cr4 = 68,
         /// @brief defines the cr8 register
         mv_reg_t_cr8 = 69,
-        /// @brief defines the xcr0 register (Intel Only)
+        /// @brief defines the xcr0 register
         mv_reg_t_xcr0 = 70,
         /// @brief defines and invalid mv_reg_t
         mv_reg_t_invalid = MV_MAX_REG_T.get(),

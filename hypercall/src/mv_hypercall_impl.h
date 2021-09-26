@@ -462,6 +462,30 @@ extern "C"
     NODISCARD mv_status_t
     mv_vs_op_msr_set_list_impl(uint64_t const reg0_in, uint16_t const reg1_in) NOEXCEPT;
 
+    /**
+     * <!-- description -->
+     *   @brief Implements the ABI for mv_vs_op_fpu_get_all.
+     *
+     * <!-- inputs/outputs -->
+     *   @param reg0_in n/a
+     *   @param reg1_in n/a
+     *   @return n/a
+     */
+    NODISCARD mv_status_t
+    mv_vs_op_fpu_get_all_impl(uint64_t const reg0_in, uint16_t const reg1_in) NOEXCEPT;
+
+    /**
+     * <!-- description -->
+     *   @brief Implements the ABI for mv_vs_op_fpu_set_all.
+     *
+     * <!-- inputs/outputs -->
+     *   @param reg0_in n/a
+     *   @param reg1_in n/a
+     *   @return n/a
+     */
+    NODISCARD mv_status_t
+    mv_vs_op_fpu_set_all_impl(uint64_t const reg0_in, uint16_t const reg1_in) NOEXCEPT;
+
 #ifdef __cplusplus
 }
 #endif

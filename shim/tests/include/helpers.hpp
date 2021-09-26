@@ -91,6 +91,8 @@ namespace shim
         constinit mv_status_t g_mut_mv_vs_op_msr_set{};            // NOLINT
         constinit mv_status_t g_mut_mv_vs_op_msr_get_list{};       // NOLINT
         constinit mv_status_t g_mut_mv_vs_op_msr_set_list{};       // NOLINT
+        constinit mv_status_t g_mut_mv_vs_op_fpu_get_all{};        // NOLINT
+        constinit mv_status_t g_mut_mv_vs_op_fpu_set_all{};        // NOLINT
 
         extern bool g_mut_hypervisor_detected;
         extern bool g_mut_platform_alloc_fails;

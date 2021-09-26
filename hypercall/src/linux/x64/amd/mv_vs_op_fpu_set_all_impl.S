@@ -27,21 +27,16 @@
     .code64
     .intel_syntax noprefix
 
-    .globl  mv_vm_op_mmio_map_impl
-    .type   mv_vm_op_mmio_map_impl, @function
-mv_vm_op_mmio_map_impl:
+    .globl  mv_vs_op_fpu_set_all_impl
+    .type   mv_vs_op_fpu_set_all_impl, @function
+mv_vs_op_fpu_set_all_impl:
 
-    push r12
-
-    mov rax, 0x764D000000040003
+    mov rax, 0x764D00000006001E
     mov r10, rdi
     mov r11, rsi
-    mov r12, rdx
     vmmcall
-
-    pop r12
 
     ret
     int 3
 
-    .size mv_vm_op_mmio_map_impl, .-mv_vm_op_mmio_map_impl
+    .size mv_vs_op_fpu_set_all_impl, .-mv_vs_op_fpu_set_all_impl

@@ -59,15 +59,6 @@ namespace microv
         /// @brief stores the ID of the VS associated with this emulated_dr_t
         bsl::safe_u16 m_assigned_vsid{};
 
-        /// @brief stores the value of dr0;
-        bsl::safe_u64 m_dr0{};
-        /// @brief stores the value of dr1;
-        bsl::safe_u64 m_dr1{};
-        /// @brief stores the value of dr2;
-        bsl::safe_u64 m_dr2{};
-        /// @brief stores the value of dr3;
-        bsl::safe_u64 m_dr3{};
-
     public:
         /// <!-- description -->
         ///   @brief Initializes this emulated_dr_t.
@@ -118,11 +109,6 @@ namespace microv
             bsl::discard(sys);
             bsl::discard(intrinsic);
 
-            m_dr3 = {};
-            m_dr2 = {};
-            m_dr1 = {};
-            m_dr0 = {};
-
             m_assigned_vsid = {};
         }
 
@@ -139,110 +125,6 @@ namespace microv
         {
             bsl::ensures(m_assigned_vsid.is_valid_and_checked());
             return ~m_assigned_vsid;
-        }
-
-        /// <!-- description -->
-        ///   @brief Returns the emulated value of DR0
-        ///
-        /// <!-- inputs/outputs -->
-        ///   @return Returns the emulated value of DR0
-        ///
-        [[nodiscard]] constexpr auto
-        get_dr0() const noexcept -> bsl::safe_u64 const &
-        {
-            bsl::ensures(m_dr0.is_valid_and_checked());
-            return m_dr0;
-        }
-
-        /// <!-- description -->
-        ///   @brief Sets the value of the emulated DR0
-        ///
-        /// <!-- inputs/outputs -->
-        ///   @param val the value to set DR0 to
-        ///
-        constexpr void
-        set_dr0(bsl::safe_u64 const &val) noexcept
-        {
-            bsl::expects(val.is_valid_and_checked());
-            m_dr0 = val;
-        }
-
-        /// <!-- description -->
-        ///   @brief Returns the emulated value of DR1
-        ///
-        /// <!-- inputs/outputs -->
-        ///   @return Returns the emulated value of DR1
-        ///
-        [[nodiscard]] constexpr auto
-        get_dr1() const noexcept -> bsl::safe_u64 const &
-        {
-            bsl::ensures(m_dr1.is_valid_and_checked());
-            return m_dr1;
-        }
-
-        /// <!-- description -->
-        ///   @brief Sets the value of the emulated DR1
-        ///
-        /// <!-- inputs/outputs -->
-        ///   @param val the value to set DR1 to
-        ///
-        constexpr void
-        set_dr1(bsl::safe_u64 const &val) noexcept
-        {
-            bsl::expects(val.is_valid_and_checked());
-            m_dr1 = val;
-        }
-
-        /// <!-- description -->
-        ///   @brief Returns the emulated value of DR2
-        ///
-        /// <!-- inputs/outputs -->
-        ///   @return Returns the emulated value of DR2
-        ///
-        [[nodiscard]] constexpr auto
-        get_dr2() const noexcept -> bsl::safe_u64 const &
-        {
-            bsl::ensures(m_dr2.is_valid_and_checked());
-            return m_dr2;
-        }
-
-        /// <!-- description -->
-        ///   @brief Sets the value of the emulated DR2
-        ///
-        /// <!-- inputs/outputs -->
-        ///   @param val the value to set DR2 to
-        ///
-        constexpr void
-        set_dr2(bsl::safe_u64 const &val) noexcept
-        {
-            bsl::expects(val.is_valid_and_checked());
-            m_dr2 = val;
-        }
-
-        /// <!-- description -->
-        ///   @brief Returns the emulated value of DR3
-        ///
-        /// <!-- inputs/outputs -->
-        ///   @return Returns the emulated value of DR3
-        ///
-        [[nodiscard]] constexpr auto
-        get_dr3() const noexcept -> bsl::safe_u64 const &
-        {
-            bsl::ensures(m_dr3.is_valid_and_checked());
-            return m_dr3;
-        }
-
-        /// <!-- description -->
-        ///   @brief Sets the value of the emulated DR3
-        ///
-        /// <!-- inputs/outputs -->
-        ///   @param val the value to set DR3 to
-        ///
-        constexpr void
-        set_dr3(bsl::safe_u64 const &val) noexcept
-        {
-            bsl::expects(val.is_valid_and_checked());
-            m_dr3 = val;
         }
     };
 }

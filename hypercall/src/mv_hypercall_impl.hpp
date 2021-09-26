@@ -458,6 +458,30 @@ namespace hypercall
     extern "C" [[nodiscard]] auto
     mv_vs_op_msr_set_list_impl(bsl::uint64 const reg0_in, bsl::uint16 const reg1_in) noexcept
         -> mv_status_t::value_type;
+
+    /// <!-- description -->
+    ///   @brief Implements the ABI for mv_vs_op_fpu_get_all.
+    ///
+    /// <!-- inputs/outputs -->
+    ///   @param reg0_in n/a
+    ///   @param reg1_in n/a
+    ///   @return n/a
+    ///
+    extern "C" [[nodiscard]] auto
+    mv_vs_op_fpu_get_all_impl(bsl::uint64 const reg0_in, bsl::uint16 const reg1_in) noexcept
+        -> mv_status_t::value_type;
+
+    /// <!-- description -->
+    ///   @brief Implements the ABI for mv_vs_op_fpu_set_all.
+    ///
+    /// <!-- inputs/outputs -->
+    ///   @param reg0_in n/a
+    ///   @param reg1_in n/a
+    ///   @return n/a
+    ///
+    extern "C" [[nodiscard]] auto
+    mv_vs_op_fpu_set_all_impl(bsl::uint64 const reg0_in, bsl::uint16 const reg1_in) noexcept
+        -> mv_status_t::value_type;
 }
 
 #endif
