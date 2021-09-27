@@ -333,7 +333,6 @@ namespace microv
                          << " is empty"                  // --
                          << bsl::endl                    // --
                          << bsl::here();                 // --
-
             return false;
         }
 
@@ -343,8 +342,54 @@ namespace microv
                          << " is out of range "          // --
                          << bsl::endl                    // --
                          << bsl::here();                 // --
-
             return false;
+        }
+        return true;
+    }
+
+    /// <!-- description -->
+    ///   @brief Returns true if the RDL is safe to use. Returns
+    ///     false otherwise.
+    ///
+    /// <!-- inputs/outputs -->
+    ///   @param rdl the RDL to verify
+    ///   @return Returns true if the RDL is safe to use. Returns
+    ///     false otherwise.
+    ///
+    [[nodiscard]] constexpr auto
+    is_rdl_msr_safe(hypercall::mv_rdl_t const &rdl) noexcept -> bool
+    {
+        const auto reg0_allowed_mask = ~(hypercall::MV_RDL_FLAG_ALL);
+        if (bsl::unlikely((rdl.reg0 & reg0_allowed_mask) != bsl::safe_u64::magic_0())) {
+            bsl::error() << "rdl.reg0 "                  // --
+                         << bsl::hex(rdl.reg0)           // --
+                         << " contains unknown flags"    // --
+                         << bsl::endl                    // --
+                         << bsl::here();                 // --
+            return false;
+        }
+
+        if ((rdl.reg0 & hypercall::MV_RDL_FLAG_ALL).is_pos()) {
+            if (bsl::unlikely(rdl.num_entries != bsl::safe_u64::magic_0())) {
+                bsl::error() << "rdl.num_entries "                             // --
+                             << bsl::hex(rdl.num_entries)                      // --
+                             << " should be 0 with MV_RDL_FLAG_ALL present"    // --
+                             << bsl::endl                                      // --
+                             << bsl::here();                                   // --
+                return false;
+            }
+            bsl::touch();
+        }
+        else {
+            if (bsl::unlikely(rdl.reg1 != bsl::safe_u64::magic_0())) {
+                bsl::error() << "rdl.reg1 "                                            // --
+                             << bsl::hex(rdl.reg1)                                     // --
+                             << " should only be used with MV_RDL_FLAG_ALL present"    // --
+                             << bsl::endl                                              // --
+                             << bsl::here();                                           // --
+                return false;
+            }
+            return is_rdl_safe(rdl);
         }
 
         return true;

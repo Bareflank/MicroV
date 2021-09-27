@@ -44,6 +44,7 @@ main() noexcept -> bsl::exit_code
     lib::ioctl mut_system_ctl{shim::DEVICE_NAME};
 
     auto const apiversion{mut_system_ctl.send(shim::KVM_GET_API_VERSION)};
+    bsl::print() << " apiversion: " << apiversion.get() << bsl::endl;
     integration::verify(apiversion.is_pos());
     integration::verify(apiversion == shim::KVM_API_VERSION);
 

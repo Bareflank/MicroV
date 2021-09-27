@@ -264,6 +264,23 @@ namespace microv
             bsl::expects(this->id() != syscall::BF_INVALID_ID);
             return m_pp_mmio.shared_page<T>(mut_sys);
         }
+
+        /// <!-- description -->
+        ///   @brief Set the list of supported MSRs into the shared page using an RDL.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param mut_sys the bf_syscall_t to use
+        ///   @param mut_rdl the mv_rdl_t in which the supported MSR are set.
+        ///   @return bsl::exit_success on success, bsl::exit_failure otherwise.
+        ///
+        [[nodiscard]] constexpr auto
+        msr_get_supported_list(
+            syscall::bf_syscall_t &mut_sys, hypercall::mv_rdl_t &mut_rdl) noexcept -> bsl::errc_type
+        {
+            bsl::expects(this->id() != syscall::BF_INVALID_ID);
+
+            return m_pp_msr.supported_list(mut_sys, mut_rdl);
+        }
     };
 }
 

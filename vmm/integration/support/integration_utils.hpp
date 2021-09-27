@@ -31,9 +31,9 @@
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE
 #endif
-#include <sched.h>    // IWYU pragma: keep
+#include <sched.h>       // IWYU pragma: keep
+#include <sys/mman.h>    // IWYU pragma: keep
 #endif
-
 #include <basic_page_4k_t.hpp>
 #include <cstdlib>
 #include <ifmap.hpp>
@@ -79,6 +79,25 @@ namespace integration
     {
         bsl::expects(0 == SetProcessAffinityMask(GetCurrentProcess(), 1ULL << core.get()));
     }
+
+    /// <!-- description -->
+    ///   @brief lock the virtual address space into RAM, preventing that memory
+    ///    from being paged to the swap area.
+    ///
+    /// <!-- inputs/outputs -->
+    ///   @param addr the address to lock in memory
+    ///   @param len the length in bytes
+    ///
+    inline void
+    platform_mlock(void const *const addr, bsl::safe_u64 const &len) noexcept
+    {
+        bsl::expects(nullptr != addr);
+        bsl::expects(0_u64 != len);
+
+        bsl::print() << bsl::red << "platform_mlock not yet implemented";
+        bsl::print() << bsl::rst << sloc;
+        exit(1);
+    }
 #else
     /// <!-- description -->
     ///   @brief Sets the core affinity of the integration test
@@ -95,6 +114,22 @@ namespace integration
         CPU_SET(core.get(), &mask);    // NOLINT
 
         bsl::expects(0 == sched_setaffinity(0, sizeof(mask), &mask));
+    }
+
+    /// <!-- description -->
+    ///   @brief lock the virtual address space into RAM, preventing that memory
+    ///    from being paged to the swap area.
+    ///
+    /// <!-- inputs/outputs -->
+    ///   @param addr the address to lock in memory
+    ///   @param len the length in bytes
+    ///
+    inline void
+    platform_mlock(void const *const addr, bsl::safe_u64 const &len) noexcept
+    {
+        bsl::expects(nullptr != addr);
+        bsl::expects(0_u64 != len);
+        bsl::expects(0 == mlock(addr, static_cast<size_t>(len.get())));
     }
 #endif
 
@@ -286,6 +321,8 @@ namespace integration
     {
         auto const gpa0{hypercall::to_gpa(&hypercall::g_shared_page0, core0)};
         auto const gpa1{hypercall::to_gpa(&hypercall::g_shared_page1, core1)};
+        platform_mlock(&hypercall::g_shared_page0, HYPERVISOR_PAGE_SIZE);
+        platform_mlock(&hypercall::g_shared_page1, HYPERVISOR_PAGE_SIZE);
 
         integration::set_affinity(core0);
         integration::verify(mut_hvc.mv_pp_op_clr_shared_page_gpa());
