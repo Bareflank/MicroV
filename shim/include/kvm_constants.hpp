@@ -32,7 +32,38 @@
 namespace shim
 {
     /// @brief defines the size of the API version
-    constexpr auto KVM_API_VERSION{12_umx};
+    constexpr auto KVM_API_VERSION{12_i64};
+    /// @brief defines the size of the KVM_CAP_USER_MEMORY
+    constexpr auto KVM_CAP_USER_MEMORY{1_i64};
+    /// @brief defines the size of the KVM_CAP_SET_TSS_ADDR
+    constexpr auto KVM_CAP_SET_TSS_ADDR{1_i64};
+    /// @brief defines the size of the KVM_CAP_EXT_CPUID
+    constexpr auto KVM_CAP_EXT_CPUID{1_i64};
+    /// @brief defines the size of the KVM_CAP_NR_VCPUS
+    constexpr auto KVM_CAP_NR_VCPUS{1_i64};
+    /// @brief defines the size of the KVM_CAP_NR_MEMSLOTS
+    constexpr auto KVM_CAP_NR_MEMSLOTS{64_i64};
+    /// @brief defines the size of the KVM_CAP_MP_STATE
+    constexpr auto KVM_CAP_MP_STATE{1_i64};
+    /// @brief defines the size of the KVM_CAP_DESTROY_MEMORY_REGION_WORKS
+    constexpr auto KVM_CAP_DESTROY_MEMORY_REGION_WORKS{1_i64};
+    /// @brief defines the size of the KVM_CAP_JOIN_MEMORY_REGIONS_WORKS
+    constexpr auto KVM_CAP_JOIN_MEMORY_REGIONS_WORKS{1_i64};
+    /// @brief defines the size of the KVM_CAP_MCE
+    constexpr auto KVM_CAP_MCE{32_i64};
+    /// @brief defines the size of the KVM_CAP_GET_TSC_KHZ
+    constexpr auto KVM_CAP_GET_TSC_KHZ{1_i64};
+    /// @brief defines the size of the KVM_CAP_MAX_VCPUS
+    constexpr auto KVM_CAP_MAX_VCPUS{128_i64};
+    /// @brief defines the size of the KVM_CAP_TSC_DEADLINE_TIMER
+    constexpr auto KVM_CAP_TSC_DEADLINE_TIMER{1_i64};
+    /// @brief defines the size of the KVM_CAP_MAX_VCPU_ID
+    constexpr auto KVM_CAP_MAX_VCPU_ID{32767_i64};
+    /// @brief defines the size of the KVM_CAP_UNSUPPORTED
+    constexpr auto KVM_CAP_UNSUPPORTED{0_i64};
+    /// @brief defines the size of the KVM_CAP_IMMEDIATE_EXIT
+    constexpr auto KVM_CAP_IMMEDIATE_EXIT{1_i64};
+
 }
 #pragma pack(pop)
 

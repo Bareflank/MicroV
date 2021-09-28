@@ -27,7 +27,6 @@
 #include <kvm_constants.hpp>
 #include <shim_platform_interface.hpp>
 
-#include <bsl/convert.hpp>
 #include <bsl/enable_color.hpp>
 #include <bsl/exit_code.hpp>
 #include <bsl/safe_integral.hpp>
@@ -46,7 +45,7 @@ main() noexcept -> bsl::exit_code
 
     auto const apiversion{mut_system_ctl.send(shim::KVM_GET_API_VERSION)};
     integration::verify(apiversion.is_pos());
-    integration::verify(bsl::to_umx(apiversion) == bsl::to_u64(shim::KVM_API_VERSION));
+    integration::verify(apiversion == shim::KVM_API_VERSION);
 
     return bsl::exit_success;
 }

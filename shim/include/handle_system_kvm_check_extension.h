@@ -39,9 +39,12 @@ extern "C"
      *   @brief Handles the execution of kvm_check_extension.
      *
      * <!-- inputs/outputs -->
+     *   @param mut_userargs as a input from the user
+     *   @param pmut_ret as a output to the user to check the extension is supported or not
      *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
      */
-    NODISCARD int64_t handle_system_kvm_check_extension(void) NOEXCEPT;
+    NODISCARD int64_t handle_system_kvm_check_extension(
+        unsigned long mut_userargs, uint32_t *const pmut_ret) NOEXCEPT;
 
 #ifdef __cplusplus
 }

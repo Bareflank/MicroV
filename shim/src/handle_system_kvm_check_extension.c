@@ -24,17 +24,23 @@
  * SOFTWARE.
  */
 
+#include <handle_vm_kvm_check_extension.h>
 #include <mv_types.h>
+#include <platform.h>
 
 /**
  * <!-- description -->
  *   @brief Handles the execution of kvm_check_extension.
  *
  * <!-- inputs/outputs -->
+ *   @param mut_userargs as a input from the user
+ *   @param pmut_ret as a output to the user to check the extension is supported or not
  *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
  */
 NODISCARD int64_t
-handle_system_kvm_check_extension(void) NOEXCEPT
+handle_system_kvm_check_extension(unsigned long mut_userargs, uint32_t *const pmut_ret) NOEXCEPT
 {
-    return SHIM_SUCCESS;
+    platform_expects(NULL != pmut_ret);
+
+    return handle_vm_kvm_check_extension(mut_userargs, pmut_ret);
 }

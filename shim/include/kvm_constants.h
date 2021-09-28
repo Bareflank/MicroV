@@ -36,6 +36,36 @@ extern "C"
 
 /** @brief defines KVM_GET_API_VERSION API to return */
 #define KVM_API_VERSION 12
+/** @brief defines KVM_CAP_USER_MEMORY for check extension */
+#define KVM_CAP_USER_MEMORY 3
+/** @brief defines KVM_CAP_SET_TSS_ADDR for check extension */
+#define KVM_CAP_SET_TSS_ADDR 4
+/** @brief defines KVM_CAP_EXT_CPUID for check extension */
+#define KVM_CAP_EXT_CPUID 7
+/** @brief defines KVM_CAP_NR_VCPUS for check extension */
+#define KVM_CAP_NR_VCPUS 9
+/** @brief defines KVM_CAP_NR_MEMSLOTS for check extension */
+#define KVM_CAP_NR_MEMSLOTS 10
+/** @brief defines KVM_CAP_MP_STATE for check extension */
+#define KVM_CAP_MP_STATE 14
+/** @brief defines KVM_CAP_DESTROY_MEMORY_REGION_WORKS for check extension */
+#define KVM_CAP_DESTROY_MEMORY_REGION_WORKS 21
+/** @brief defines KVM_CAP_JOIN_MEMORY_REGIONS_WORKS for check extension */
+#define KVM_CAP_JOIN_MEMORY_REGIONS_WORKS 30
+/** @brief defines KVM_CAP_MCE for check extension */
+#define KVM_CAP_MCE 31
+/** @brief defines KVM_CAP_GET_TSC_KHZ for check extension */
+#define KVM_CAP_GET_TSC_KHZ 61
+/** @brief defines KVM_CAP_MAX_VCPUS for check extension */
+#define KVM_CAP_MAX_VCPUS 66
+/** @brief defines KVM_CAP_TSC_DEADLINE_TIMER for check extension */
+#define KVM_CAP_TSC_DEADLINE_TIMER 72
+/** @brief defines KVM_CAP_MAX_VCPU_ID for check extension */
+#define KVM_CAP_MAX_VCPU_ID 128
+/** @brief defines KVM_CAP_IMMEDIATE_EXIT for check extension */
+#define KVM_CAP_IMMEDIATE_EXIT 136
+/** @brief defines MICROV_MAX_MCE_BANKS  */
+#define MICROV_MAX_MCE_BANKS 32
 
 #pragma pack(pop)
 
