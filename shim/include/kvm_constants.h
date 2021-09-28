@@ -24,25 +24,20 @@
  * SOFTWARE.
  */
 
-#ifndef HANDLE_SYSTEM_KVM_GET_API_VERSION_H
-#define HANDLE_SYSTEM_KVM_GET_API_VERSION_H
-
-#include <mv_types.h>
+#ifndef KVM_CONSTANTS_H
+#define KVM_CONSTANTS_H
 
 #ifdef __cplusplus
 extern "C"
 {
 #endif
 
-    /**
-     * <!-- description -->
-     *   @brief Handles the execution of kvm_get_api_version.
-     *
-     * <!-- inputs/outputs -->
-     *   @param pmut_apiversion returns the kvm apiversion
-     *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
-     */
-    NODISCARD int64_t handle_system_kvm_get_api_version(uint32_t *const pmut_apiversion) NOEXCEPT;
+#pragma pack(push, 1)
+
+/** @brief defines KVM_GET_API_VERSION API to return */
+#define KVM_API_VERSION 12
+
+#pragma pack(pop)
 
 #ifdef __cplusplus
 }

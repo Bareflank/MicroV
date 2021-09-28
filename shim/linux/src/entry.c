@@ -29,6 +29,7 @@
 #include <debug.h>
 #include <handle_system_kvm_create_vm.h>
 #include <handle_system_kvm_destroy_vm.h>
+#include <handle_system_kvm_get_api_version.h>
 #include <handle_system_kvm_get_vcpu_mmap_size.h>
 #include <handle_vcpu_kvm_get_regs.h>
 #include <handle_vcpu_kvm_get_sregs.h>
@@ -192,7 +193,9 @@ vmalloc_failed:
 static long
 dispatch_system_kvm_get_api_version(void)
 {
-    return -EINVAL;
+    uint32_t api_version;
+    handle_system_kvm_get_api_version(&api_version);
+    return (long)api_version;
 }
 
 static long
@@ -285,6 +288,11 @@ dev_unlocked_ioctl_system(
         }
 
         case KVM_GET_API_VERSION: {
+            if (ioctl_args) {
+                bferror("KVM_GET_API_VERSION: ioctl_args are present");
+                return -EINVAL;
+            }
+
             return dispatch_system_kvm_get_api_version();
         }
 
