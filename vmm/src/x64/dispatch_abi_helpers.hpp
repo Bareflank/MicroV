@@ -160,59 +160,6 @@ namespace microv
     {
         mut_sys.bf_tls_set_r13(val);
     }
-
-    /// <!-- description -->
-    ///   @brief Some VMExits are from a guest VS, which means the guest VM is
-    ///   active. Any attempt to set the ABI registers or use the shared page
-    ///   will fail as these must be done from the root VM. This function
-    ///   switches us to the root VM.
-    ///
-    /// <!-- inputs/outputs -->
-    ///   @param mut_sys the bf_syscall_t to use
-    ///   @param parent_vmid the ID of the parent VM to switch to
-    ///   @param parent_vpid the ID of the parent VP to switch to
-    ///   @param parent_vsid the ID of the parent VS to switch to
-    ///
-    constexpr void
-    change_to_parent(
-        syscall::bf_syscall_t &mut_sys,
-        bsl::safe_u16 const &parent_vmid,
-        bsl::safe_u16 const &parent_vpid,
-        bsl::safe_u16 const &parent_vsid) noexcept
-    {
-        auto const vmid{parent_vmid};
-        auto const vpid{parent_vpid};
-        auto const vsid{parent_vsid};
-
-        bsl::expects(mut_sys.bf_vs_op_set_active(vmid, vpid, vsid));
-    }
-
-    /// <!-- description -->
-    ///   @brief Some VMExits are from a guest VS, which means the guest VM is
-    ///   active. Any attempt to set the ABI registers or use the shared page
-    ///   will fail as these must be done from the root VM. This function
-    ///   switches us to the root VM. Before it does this, it advances the IP
-    ///   of the guest VS.
-    ///
-    /// <!-- inputs/outputs -->
-    ///   @param mut_sys the bf_syscall_t to use
-    ///   @param parent_vmid the ID of the parent VM to switch to
-    ///   @param parent_vpid the ID of the parent VP to switch to
-    ///   @param parent_vsid the ID of the parent VS to switch to
-    ///
-    constexpr void
-    advance_ip_and_change_to_parent(
-        syscall::bf_syscall_t &mut_sys,
-        bsl::safe_u16 const &parent_vmid,
-        bsl::safe_u16 const &parent_vpid,
-        bsl::safe_u16 const &parent_vsid) noexcept
-    {
-        auto const vmid{parent_vmid};
-        auto const vpid{parent_vpid};
-        auto const vsid{parent_vsid};
-
-        bsl::expects(mut_sys.bf_vs_op_advance_ip_and_set_active(vmid, vpid, vsid));
-    }
 }
 
 #endif

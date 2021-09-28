@@ -59,9 +59,6 @@ namespace microv
         /// @brief stores the ID of the VS associated with this emulated_cr_t
         bsl::safe_u16 m_assigned_vsid{};
 
-        /// @brief stores the value of cr8;
-        bsl::safe_u64 m_cr8{};
-
     public:
         /// <!-- description -->
         ///   @brief Initializes this emulated_cr_t.
@@ -112,7 +109,6 @@ namespace microv
             bsl::discard(sys);
             bsl::discard(intrinsic);
 
-            m_cr8 = {};
             m_assigned_vsid = {};
         }
 
@@ -129,32 +125,6 @@ namespace microv
         {
             bsl::ensures(m_assigned_vsid.is_valid_and_checked());
             return ~m_assigned_vsid;
-        }
-
-        /// <!-- description -->
-        ///   @brief Returns the emulated value of CR8
-        ///
-        /// <!-- inputs/outputs -->
-        ///   @return Returns the emulated value of CR8
-        ///
-        [[nodiscard]] constexpr auto
-        get_cr8() const noexcept -> bsl::safe_u64 const &
-        {
-            bsl::ensures(m_cr8.is_valid_and_checked());
-            return m_cr8;
-        }
-
-        /// <!-- description -->
-        ///   @brief Sets the value of the emulated CR8
-        ///
-        /// <!-- inputs/outputs -->
-        ///   @param val the value to set CR8 to
-        ///
-        constexpr void
-        set_cr8(bsl::safe_u64 const &val) noexcept
-        {
-            bsl::expects(val.is_valid_and_checked());
-            m_cr8 = val;
         }
     };
 }

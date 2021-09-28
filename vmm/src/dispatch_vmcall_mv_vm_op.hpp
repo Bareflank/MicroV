@@ -169,7 +169,7 @@ namespace microv
             return vmexit_failure_advance_ip_and_run;
         }
 
-        auto const src_vmid{get_allocated_root_vmid(mut_sys, get_reg2(mut_sys), mut_vm_pool)};
+        auto const src_vmid{get_root_vmid(mut_sys, get_reg2(mut_sys))};
         if (bsl::unlikely(src_vmid.is_invalid())) {
             bsl::print<bsl::V>() << bsl::here();
             set_reg_return(mut_sys, hypercall::MV_STATUS_INVALID_INPUT_REG2);

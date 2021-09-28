@@ -1118,6 +1118,66 @@ extern "C"
         return mut_ret;
     }
 
+    /**
+     * <!-- description -->
+     *   @brief Returns FPU state as seen by the VS in the shared page.
+     *     The format of the FPU state depends on which mode the VS is
+     *     currently in.
+     *
+     * <!-- inputs/outputs -->
+     *   @param hndl Set to the result of mv_handle_op_open_handle
+     *   @param vsid The ID of the VS to query
+     *   @return Returns MV_STATUS_SUCCESS on success, MV_STATUS_FAILURE_UNKNOWN
+     *     and friends on failure.
+     */
+    NODISCARD static inline mv_status_t
+    mv_vs_op_fpu_get_all(uint64_t const hndl, uint16_t const vsid) NOEXCEPT
+    {
+        mv_status_t mut_ret;
+
+        platform_expects(MV_INVALID_HANDLE != hndl);
+        platform_expects(hndl > ((uint64_t)0));
+        platform_expects((int32_t)MV_INVALID_ID != (int32_t)vsid);
+
+        mut_ret = mv_vs_op_fpu_get_all_impl(hndl, vsid);
+        if (mut_ret) {
+            bferror("mv_vs_op_fpu_get_all failed");
+            return mut_ret;
+        }
+
+        return mut_ret;
+    }
+
+    /**
+     * <!-- description -->
+     *   @brief Sets the FPU state as seen by the VS in the shared page.
+     *     The format of the FPU state depends on which mode the VS is
+     *     currently in.
+     *
+     * <!-- inputs/outputs -->
+     *   @param hndl Set to the result of mv_handle_op_open_handle
+     *   @param vsid The ID of the VS to set
+     *   @return Returns MV_STATUS_SUCCESS on success, MV_STATUS_FAILURE_UNKNOWN
+     *     and friends on failure.
+     */
+    NODISCARD static inline mv_status_t
+    mv_vs_op_fpu_set_all(uint64_t const hndl, uint16_t const vsid) NOEXCEPT
+    {
+        mv_status_t mut_ret;
+
+        platform_expects(MV_INVALID_HANDLE != hndl);
+        platform_expects(hndl > ((uint64_t)0));
+        platform_expects((int32_t)MV_INVALID_ID != (int32_t)vsid);
+
+        mut_ret = mv_vs_op_fpu_set_all_impl(hndl, vsid);
+        if (mut_ret) {
+            bferror("mv_vs_op_fpu_set_all failed");
+            return mut_ret;
+        }
+
+        return mut_ret;
+    }
+
 #ifdef __cplusplus
 }
 #endif

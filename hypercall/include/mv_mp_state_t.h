@@ -24,43 +24,50 @@
  * SOFTWARE.
  */
 
-#ifndef MV_EXIT_IO_T_HPP
-#define MV_EXIT_IO_T_HPP
-
-#include <mv_bit_size_t.h>
-#include <stdint.h>
+#ifndef MV_MP_STATE_T_H
+#define MV_MP_STATE_T_H
 
 #ifdef __cplusplus
 extern "C"
 {
 #endif
 
-#pragma pack(push, 1)
-
-/** @brief The mv_exit_io_t defines an input access */
-#define MV_EXIT_IO_IN ((uint64_t)0x0000000000000000)
-/** @brief The mv_exit_io_t defines an output access */
-#define MV_EXIT_IO_OUT ((uint64_t)0x0000000000000001)
-
+#ifdef __cplusplus
     /**
      * <!-- description -->
-     *   @brief See mv_vs_op_run for more details
+     *   @brief Defines different bit sizes for address, operands, etc.
      */
-    struct mv_exit_io_t
+    enum mv_mp_state_t : int32_t
+#else
+/**
+     * <!-- description -->
+     *   @brief Defines the multiprocessor state of a VS
+     */
+enum mv_mp_state_t
+#endif
     {
-        /** @brief stores the address of the IO register */
-        uint64_t addr;
-        /** @brief stores the data to read/write */
-        uint64_t data;
-        /** @brief stores the number of repetitions to make */
-        uint64_t reps;
-        /** @brief stores MV_EXIT_IO flags */
-        uint64_t type;
-        /** @brief stores defines the bit size of the dst */
-        enum mv_bit_size_t size;
+        /** @brief the initial state of the VS */
+        mv_mp_state_t_initial = 0,
+        /** @brief the VS is running */
+        mv_mp_state_t_running = 1,
+        /** @brief the VS is waiting for an interrupt */
+        mv_mp_state_t_wait = 2,
+        /** @brief the VS is waiting for INIT (x86 only) */
+        mv_mp_state_t_init = 3,
+        /** @brief the VS is waiting for SIPI (x86 only) */
+        mv_mp_state_t_sipi = 4,
     };
 
-#pragma pack(pop)
+/** @brief integer version of mv_mp_state_t_initial */
+#define MP_STATE_INITIAL ((int32_t)mv_mp_state_t_initial)
+/** @brief integer version of mv_mp_state_t_running */
+#define MP_STATE_RUNNING ((int32_t)mv_mp_state_t_running)
+/** @brief integer version of mv_mp_state_t_wait */
+#define MP_STATE_WAIT ((int32_t)mv_mp_state_t_wait)
+/** @brief integer version of mv_mp_state_t_init */
+#define MP_STATE_INIT ((int32_t)mv_mp_state_t_init)
+/** @brief integer version of mv_mp_state_t_sipi */
+#define MP_STATE_SIPI ((int32_t)mv_mp_state_t_sipi)
 
 #ifdef __cplusplus
 }

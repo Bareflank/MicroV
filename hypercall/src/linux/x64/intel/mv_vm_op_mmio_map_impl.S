@@ -33,7 +33,7 @@ mv_vm_op_mmio_map_impl:
 
     push r12
 
-    mov rax, 0x764D000000040007
+    mov rax, 0x764D000000040003
     mov r10, rdi
     mov r11, rsi
     mov r12, rdx

@@ -540,8 +540,69 @@ namespace microv
     get_vmid(syscall::bf_syscall_t const &sys, bsl::safe_u64 const &reg) noexcept -> bsl::safe_u16
     {
         auto const vmid{bsl::to_u16_unsafe(reg)};
-        if (vmid == hypercall::MV_SELF_ID) {
+        if (hypercall::MV_SELF_ID == vmid) {
             return sys.bf_tls_vmid();
+        }
+
+        if (bsl::unlikely(hypercall::MV_INVALID_ID == vmid)) {
+            bsl::error() << "the provided vmid "                      // --
+                         << bsl::hex(vmid)                            // --
+                         << " is MV_INVALID_ID and cannot be used"    // --
+                         << bsl::endl                                 // --
+                         << bsl::here();                              // --
+
+            return bsl::safe_u16::failure();
+        }
+
+        if (bsl::unlikely(bsl::to_umx(vmid) >= HYPERVISOR_MAX_VMS)) {
+            bsl::error() << "the provided vmid "                      // --
+                         << bsl::hex(vmid)                            // --
+                         << " is out of bounds and cannot be used"    // --
+                         << bsl::endl                                 // --
+                         << bsl::here();                              // --
+
+            return bsl::safe_u16::failure();
+        }
+
+        return vmid;
+    }
+
+    /// <!-- description -->
+    ///   @brief Given an input register, returns a vmid if the provided
+    ///     register contains a valid vmid. Otherwise, this function returns
+    ///     bsl::safe_u16::failure().
+    ///
+    /// <!-- inputs/outputs -->
+    ///   @param sys the bf_syscall_t to use
+    ///   @param reg the register to get the vmid from.
+    ///   @return Given an input register, returns a vmid if the provided
+    ///     register contains a valid vmid. Otherwise, this function returns
+    ///     bsl::safe_u16::failure().
+    ///
+    [[nodiscard]] constexpr auto
+    get_non_self_vmid(syscall::bf_syscall_t const &sys, bsl::safe_u64 const &reg) noexcept
+        -> bsl::safe_u16
+    {
+        auto const vmid{bsl::to_u16_unsafe(reg)};
+        if (bsl::unlikely(hypercall::MV_SELF_ID == vmid)) {
+            bsl::error() << "the provided vmid "                     // --
+                         << bsl::hex(vmid)                           // --
+                         << " is MV_SELF_ID which cannot be used"    // --
+                         << bsl::endl                                // --
+                         << bsl::here();                             // --
+
+            return bsl::safe_u16::failure();
+        }
+
+        auto const self{sys.bf_tls_vmid()};
+        if (bsl::unlikely(self == vmid)) {
+            bsl::error() << "the provided vmid "                     // --
+                         << bsl::hex(hypercall::MV_SELF_ID)          // --
+                         << " is MV_SELF_ID which cannot be used"    // --
+                         << bsl::endl                                // --
+                         << bsl::here();                             // --
+
+            return bsl::safe_u16::failure();
         }
 
         if (bsl::unlikely(hypercall::MV_INVALID_ID == vmid)) {
@@ -611,8 +672,8 @@ namespace microv
     /// <!-- description -->
     ///   @brief Given an input register, returns a vmid if the provided
     ///     register contains a valid vmid and the vm_t associated with the
-    ///     vmid is allocated and is the root vm_t. Otherwise, this function
-    ///     returns bsl::safe_u16::failure().
+    ///     vmid is allocated and not self. Otherwise, this function returns
+    ///     bsl::safe_u16::failure().
     ///
     /// <!-- inputs/outputs -->
     ///   @param sys the bf_syscall_t to use
@@ -620,25 +681,62 @@ namespace microv
     ///   @param vm_pool the vm_pool_t to use
     ///   @return Given an input register, returns a vmid if the provided
     ///     register contains a valid vmid and the vm_t associated with the
-    ///     vmid is allocated and is the root vm_t. Otherwise, this function
-    ///     returns bsl::safe_u16::failure().
+    ///     vmid is allocated and not self. Otherwise, this function returns
+    ///     bsl::safe_u16::failure().
     ///
     [[nodiscard]] constexpr auto
-    get_allocated_root_vmid(
+    get_allocated_non_self_vmid(
         syscall::bf_syscall_t const &sys,
         bsl::safe_u64 const &reg,
         vm_pool_t const &vm_pool) noexcept -> bsl::safe_u16
     {
-        auto const vmid{get_allocated_vmid(sys, reg, vm_pool)};
+        auto const vmid{get_non_self_vmid(sys, reg)};
         if (bsl::unlikely(vmid.is_invalid())) {
             bsl::print<bsl::V>() << bsl::here();
             return bsl::safe_u16::failure();
         }
 
-        bool const vm_the_root_vm{sys.is_vm_the_root_vm(vmid)};
-        if (bsl::unlikely(!vm_the_root_vm)) {
+        bool const is_deallocated{vm_pool.is_deallocated(vmid)};
+        if (bsl::unlikely(is_deallocated)) {
+            bsl::error() << "the provided vmid "                         // --
+                         << bsl::hex(vmid)                               // --
+                         << " was never allocated and cannot be used"    // --
+                         << bsl::endl                                    // --
+                         << bsl::here();                                 // --
+
+            return bsl::safe_u16::failure();
+        }
+
+        return vmid;
+    }
+
+    /// <!-- description -->
+    ///   @brief Given an input register, returns a vmid if the provided
+    ///     register contains a valid root vmid. Otherwise, this function
+    ///     returns bsl::safe_u16::failure().
+    ///
+    /// <!-- inputs/outputs -->
+    ///   @param sys the bf_syscall_t to use
+    ///   @param reg the register to get the vmid from.
+    ///   @return Given an input register, returns a vmid if the provided
+    ///     register contains a valid root vmid. Otherwise, this function
+    ///     returns bsl::safe_u16::failure().
+    ///
+    [[nodiscard]] constexpr auto
+    get_root_vmid(syscall::bf_syscall_t const &sys, bsl::safe_u64 const &reg) noexcept
+        -> bsl::safe_u16
+    {
+        auto mut_vmid{bsl::to_u16_unsafe(reg)};
+        if (hypercall::MV_SELF_ID == mut_vmid) {
+            mut_vmid = sys.bf_tls_vmid();
+        }
+        else {
+            bsl::touch();
+        }
+
+        if (bsl::unlikely(mut_vmid != hypercall::MV_ROOT_VMID)) {
             bsl::error() << "the provided vmid "                        // --
-                         << bsl::hex(vmid)                              // --
+                         << bsl::hex(mut_vmid)                          // --
                          << " is not the root vm and cannot be used"    // --
                          << bsl::endl                                   // --
                          << bsl::here();                                // --
@@ -646,7 +744,7 @@ namespace microv
             return bsl::safe_u16::failure();
         }
 
-        return vmid;
+        return mut_vmid;
     }
 
     /// <!-- description -->
@@ -676,8 +774,7 @@ namespace microv
             return bsl::safe_u16::failure();
         }
 
-        bool const vm_the_root_vm{sys.is_vm_the_root_vm(vmid)};
-        if (bsl::unlikely(vm_the_root_vm)) {
+        if (bsl::unlikely(vmid == hypercall::MV_ROOT_VMID)) {
             bsl::error() << "the provided vmid "                    // --
                          << bsl::hex(vmid)                          // --
                          << " is the root vm and cannot be used"    // --
@@ -706,8 +803,69 @@ namespace microv
     get_vpid(syscall::bf_syscall_t const &sys, bsl::safe_u64 const &reg) noexcept -> bsl::safe_u16
     {
         auto const vpid{bsl::to_u16_unsafe(reg)};
-        if (vpid == hypercall::MV_SELF_ID) {
+        if (hypercall::MV_SELF_ID == vpid) {
             return sys.bf_tls_vpid();
+        }
+
+        if (bsl::unlikely(hypercall::MV_INVALID_ID == vpid)) {
+            bsl::error() << "the provided vpid "                      // --
+                         << bsl::hex(vpid)                            // --
+                         << " is MV_INVALID_ID and cannot be used"    // --
+                         << bsl::endl                                 // --
+                         << bsl::here();                              // --
+
+            return bsl::safe_u16::failure();
+        }
+
+        if (bsl::unlikely(bsl::to_umx(vpid) >= HYPERVISOR_MAX_VPS)) {
+            bsl::error() << "the provided vpid "                      // --
+                         << bsl::hex(vpid)                            // --
+                         << " is out of bounds and cannot be used"    // --
+                         << bsl::endl                                 // --
+                         << bsl::here();                              // --
+
+            return bsl::safe_u16::failure();
+        }
+
+        return vpid;
+    }
+
+    /// <!-- description -->
+    ///   @brief Given an input register, returns a vpid if the provided
+    ///     register contains a valid vpid. Otherwise, this function returns
+    ///     bsl::safe_u16::failure().
+    ///
+    /// <!-- inputs/outputs -->
+    ///   @param sys the bf_syscall_t to use
+    ///   @param reg the register to get the vpid from.
+    ///   @return Given an input register, returns a vpid if the provided
+    ///     register contains a valid vpid. Otherwise, this function returns
+    ///     bsl::safe_u16::failure().
+    ///
+    [[nodiscard]] constexpr auto
+    get_non_self_vpid(syscall::bf_syscall_t const &sys, bsl::safe_u64 const &reg) noexcept
+        -> bsl::safe_u16
+    {
+        auto const vpid{bsl::to_u16_unsafe(reg)};
+        if (bsl::unlikely(hypercall::MV_SELF_ID == vpid)) {
+            bsl::error() << "the provided vpid "                     // --
+                         << bsl::hex(vpid)                           // --
+                         << " is MV_SELF_ID which cannot be used"    // --
+                         << bsl::endl                                // --
+                         << bsl::here();                             // --
+
+            return bsl::safe_u16::failure();
+        }
+
+        auto const self{sys.bf_tls_vpid()};
+        if (bsl::unlikely(self == vpid)) {
+            bsl::error() << "the provided vpid "                     // --
+                         << bsl::hex(hypercall::MV_SELF_ID)          // --
+                         << " is MV_SELF_ID which cannot be used"    // --
+                         << bsl::endl                                // --
+                         << bsl::here();                             // --
+
+            return bsl::safe_u16::failure();
         }
 
         if (bsl::unlikely(hypercall::MV_INVALID_ID == vpid)) {
@@ -775,6 +933,125 @@ namespace microv
     }
 
     /// <!-- description -->
+    ///   @brief Given an input register, returns a vpid if the provided
+    ///     register contains a valid vpid and the vp_t associated with the
+    ///     vpid is allocated and not self. Otherwise, this function returns
+    ///     bsl::safe_u16::failure().
+    ///
+    /// <!-- inputs/outputs -->
+    ///   @param sys the bf_syscall_t to use
+    ///   @param reg the register to get the vpid from.
+    ///   @param vp_pool the vp_pool_t to use
+    ///   @return Given an input register, returns a vpid if the provided
+    ///     register contains a valid vpid and the vp_t associated with the
+    ///     vpid is allocated and not self. Otherwise, this function returns
+    ///     bsl::safe_u16::failure().
+    ///
+    [[nodiscard]] constexpr auto
+    get_allocated_non_self_vpid(
+        syscall::bf_syscall_t const &sys,
+        bsl::safe_u64 const &reg,
+        vp_pool_t const &vp_pool) noexcept -> bsl::safe_u16
+    {
+        auto const vpid{get_non_self_vpid(sys, reg)};
+        if (bsl::unlikely(vpid.is_invalid())) {
+            bsl::print<bsl::V>() << bsl::here();
+            return bsl::safe_u16::failure();
+        }
+
+        bool const is_deallocated{vp_pool.is_deallocated(vpid)};
+        if (bsl::unlikely(is_deallocated)) {
+            bsl::error() << "the provided vpid "                         // --
+                         << bsl::hex(vpid)                               // --
+                         << " was never allocated and cannot be used"    // --
+                         << bsl::endl                                    // --
+                         << bsl::here();                                 // --
+
+            return bsl::safe_u16::failure();
+        }
+
+        return vpid;
+    }
+
+    /// <!-- description -->
+    ///   @brief Given an input register, returns a vpid if the provided
+    ///     register contains a valid root vpid. Otherwise, this function
+    ///     returns bsl::safe_u16::failure().
+    ///
+    /// <!-- inputs/outputs -->
+    ///   @param sys the bf_syscall_t to use
+    ///   @param reg the register to get the vpid from.
+    ///   @param vp_pool the vp_pool_t to use
+    ///   @return Given an input register, returns a vpid if the provided
+    ///     register contains a valid root vpid. Otherwise, this function
+    ///     returns bsl::safe_u16::failure().
+    ///
+    [[nodiscard]] constexpr auto
+    get_root_vpid(
+        syscall::bf_syscall_t const &sys,
+        bsl::safe_u64 const &reg,
+        vp_pool_t const &vp_pool) noexcept -> bsl::safe_u16
+    {
+        auto const vpid{get_allocated_vpid(sys, reg, vp_pool)};
+        if (bsl::unlikely(vpid.is_invalid())) {
+            bsl::print<bsl::V>() << bsl::here();
+            return bsl::safe_u16::failure();
+        }
+
+        if (bsl::unlikely(!sys.is_vp_a_root_vp(vpid))) {
+            bsl::error() << "the provided vpid "                        // --
+                         << bsl::hex(vpid)                              // --
+                         << " is not the root vp and cannot be used"    // --
+                         << bsl::endl                                   // --
+                         << bsl::here();                                // --
+
+            return bsl::safe_u16::failure();
+        }
+
+        return vpid;
+    }
+
+    /// <!-- description -->
+    ///   @brief Given an input register, returns a vpid if the provided
+    ///     register contains a valid vpid and the vp_t associated with the
+    ///     vpid is allocated and is not the root vp_t. Otherwise, this
+    ///     function returns bsl::safe_u16::failure().
+    ///
+    /// <!-- inputs/outputs -->
+    ///   @param sys the bf_syscall_t to use
+    ///   @param reg the register to get the vpid from.
+    ///   @param vp_pool the vp_pool_t to use
+    ///   @return Given an input register, returns a vpid if the provided
+    ///     register contains a valid vpid and the vp_t associated with the
+    ///     vpid is allocated and is not the root vp_t. Otherwise, this
+    ///     function returns bsl::safe_u16::failure().
+    ///
+    [[nodiscard]] constexpr auto
+    get_allocated_guest_vpid(
+        syscall::bf_syscall_t const &sys,
+        bsl::safe_u64 const &reg,
+        vp_pool_t const &vp_pool) noexcept -> bsl::safe_u16
+    {
+        auto const vpid{get_allocated_vpid(sys, reg, vp_pool)};
+        if (bsl::unlikely(vpid.is_invalid())) {
+            bsl::print<bsl::V>() << bsl::here();
+            return bsl::safe_u16::failure();
+        }
+
+        if (bsl::unlikely(sys.is_vp_a_root_vp(vpid))) {
+            bsl::error() << "the provided vpid "                    // --
+                         << bsl::hex(vpid)                          // --
+                         << " is the root vp and cannot be used"    // --
+                         << bsl::endl                               // --
+                         << bsl::here();                            // --
+
+            return bsl::safe_u16::failure();
+        }
+
+        return vpid;
+    }
+
+    /// <!-- description -->
     ///   @brief Given an input register, returns a vsid if the provided
     ///     register contains a valid vsid. Otherwise, this function returns
     ///     bsl::safe_u16::failure().
@@ -790,7 +1067,7 @@ namespace microv
     get_vsid(syscall::bf_syscall_t const &sys, bsl::safe_u64 const &reg) noexcept -> bsl::safe_u16
     {
         auto const vsid{bsl::to_u16_unsafe(reg)};
-        if (vsid == hypercall::MV_SELF_ID) {
+        if (hypercall::MV_SELF_ID == vsid) {
             return sys.bf_tls_vsid();
         }
 
@@ -804,7 +1081,7 @@ namespace microv
             return bsl::safe_u16::failure();
         }
 
-        if (bsl::unlikely(bsl::to_umx(vsid) >= HYPERVISOR_MAX_VSS)) {
+        if (bsl::unlikely(bsl::to_umx(vsid) >= HYPERVISOR_MAX_VPS)) {
             bsl::error() << "the provided vsid "                      // --
                          << bsl::hex(vsid)                            // --
                          << " is out of bounds and cannot be used"    // --
@@ -819,70 +1096,38 @@ namespace microv
 
     /// <!-- description -->
     ///   @brief Given an input register, returns a vsid if the provided
-    ///     register contains a valid vsid and the vs_t associated with the
-    ///     vsid is allocated. Otherwise, this function returns
+    ///     register contains a valid vsid. Otherwise, this function returns
     ///     bsl::safe_u16::failure().
     ///
     /// <!-- inputs/outputs -->
     ///   @param sys the bf_syscall_t to use
     ///   @param reg the register to get the vsid from.
-    ///   @param vs_pool the vs_pool_t to use
     ///   @return Given an input register, returns a vsid if the provided
-    ///     register contains a valid vsid and the vs_t associated with the
-    ///     vsid is allocated. Otherwise, this function returns
+    ///     register contains a valid vsid. Otherwise, this function returns
     ///     bsl::safe_u16::failure().
     ///
     [[nodiscard]] constexpr auto
-    get_allocated_vsid(
-        syscall::bf_syscall_t const &sys,
-        bsl::safe_u64 const &reg,
-        vs_pool_t const &vs_pool) noexcept -> bsl::safe_u16
-    {
-        auto const vsid{get_vsid(sys, reg)};
-        if (bsl::unlikely(vsid.is_invalid())) {
-            bsl::print<bsl::V>() << bsl::here();
-            return bsl::safe_u16::failure();
-        }
-
-        bool const is_deallocated{vs_pool.is_deallocated(vsid)};
-        if (bsl::unlikely(is_deallocated)) {
-            bsl::error() << "the provided vsid "                         // --
-                         << bsl::hex(vsid)                               // --
-                         << " was never allocated and cannot be used"    // --
-                         << bsl::endl                                    // --
-                         << bsl::here();                                 // --
-
-            return bsl::safe_u16::failure();
-        }
-
-        return vsid;
-    }
-
-    /// <!-- description -->
-    ///   @brief Given an input register, returns a vsid if the provided
-    ///     register contains a valid vsid and the vs_t associated with the
-    ///     vsid is allocated and not self. Otherwise, this function returns
-    ///     bsl::safe_u16::failure().
-    ///
-    /// <!-- inputs/outputs -->
-    ///   @param reg the register to get the vsid from.
-    ///   @param vs_pool the vs_pool_t to use
-    ///   @return Given an input register, returns a vsid if the provided
-    ///     register contains a valid vsid and the vs_t associated with the
-    ///     vsid is allocated and not self. Otherwise, this function returns
-    ///     bsl::safe_u16::failure().
-    ///
-    [[nodiscard]] constexpr auto
-    get_allocated_remote_vsid(bsl::safe_u64 const &reg, vs_pool_t const &vs_pool) noexcept
+    get_non_self_vsid(syscall::bf_syscall_t const &sys, bsl::safe_u64 const &reg) noexcept
         -> bsl::safe_u16
     {
         auto const vsid{bsl::to_u16_unsafe(reg)};
-        if (vsid == hypercall::MV_SELF_ID) {
-            bsl::error() << "the provided vsid "                   // --
-                         << bsl::hex(vsid)                         // --
-                         << " is MV_SELF_ID and cannot be used"    // --
-                         << bsl::endl                              // --
-                         << bsl::here();                           // --
+        if (bsl::unlikely(hypercall::MV_SELF_ID == vsid)) {
+            bsl::error() << "the provided vsid "                     // --
+                         << bsl::hex(vsid)                           // --
+                         << " is MV_SELF_ID which cannot be used"    // --
+                         << bsl::endl                                // --
+                         << bsl::here();                             // --
+
+            return bsl::safe_u16::failure();
+        }
+
+        auto const self{sys.bf_tls_vsid()};
+        if (bsl::unlikely(self == vsid)) {
+            bsl::error() << "the provided vsid "                     // --
+                         << bsl::hex(hypercall::MV_SELF_ID)          // --
+                         << " is MV_SELF_ID which cannot be used"    // --
+                         << bsl::endl                                // --
+                         << bsl::here();                             // --
 
             return bsl::safe_u16::failure();
         }
@@ -897,7 +1142,7 @@ namespace microv
             return bsl::safe_u16::failure();
         }
 
-        if (bsl::unlikely(bsl::to_umx(vsid) >= HYPERVISOR_MAX_VSS)) {
+        if (bsl::unlikely(bsl::to_umx(vsid) >= HYPERVISOR_MAX_VPS)) {
             bsl::error() << "the provided vsid "                      // --
                          << bsl::hex(vsid)                            // --
                          << " is out of bounds and cannot be used"    // --
@@ -907,13 +1152,170 @@ namespace microv
             return bsl::safe_u16::failure();
         }
 
-        bool const is_deallocated{vs_pool.is_deallocated(vsid)};
+        return vsid;
+    }
+
+    /// <!-- description -->
+    ///   @brief Given an input register, returns a vsid if the provided
+    ///     register contains a valid vsid and the vs_t associated with the
+    ///     vsid is allocated. Otherwise, this function returns
+    ///     bsl::safe_u16::failure().
+    ///
+    /// <!-- inputs/outputs -->
+    ///   @param mut_sys the bf_syscall_t to use
+    ///   @param reg the register to get the vsid from.
+    ///   @param mut_vs_pool the vs_pool_t to use
+    ///   @return Given an input register, returns a vsid if the provided
+    ///     register contains a valid vsid and the vs_t associated with the
+    ///     vsid is allocated. Otherwise, this function returns
+    ///     bsl::safe_u16::failure().
+    ///
+    [[nodiscard]] constexpr auto
+    get_allocated_vsid(
+        syscall::bf_syscall_t &mut_sys, bsl::safe_u64 const &reg, vs_pool_t &mut_vs_pool) noexcept
+        -> bsl::safe_u16
+    {
+        auto const vsid{get_vsid(mut_sys, reg)};
+        if (bsl::unlikely(vsid.is_invalid())) {
+            bsl::print<bsl::V>() << bsl::here();
+            return bsl::safe_u16::failure();
+        }
+
+        bool const is_deallocated{mut_vs_pool.is_deallocated(vsid)};
         if (bsl::unlikely(is_deallocated)) {
             bsl::error() << "the provided vsid "                         // --
                          << bsl::hex(vsid)                               // --
                          << " was never allocated and cannot be used"    // --
                          << bsl::endl                                    // --
                          << bsl::here();                                 // --
+
+            return bsl::safe_u16::failure();
+        }
+
+        auto const ret{mut_vs_pool.migrate(mut_sys, vsid)};
+        if (bsl::unlikely(!ret)) {
+            bsl::print<bsl::V>() << bsl::here();
+            return bsl::safe_u16::failure();
+        }
+
+        return vsid;
+    }
+
+    /// <!-- description -->
+    ///   @brief Given an input register, returns a vsid if the provided
+    ///     register contains a valid vsid and the vs_t associated with the
+    ///     vsid is allocated and not self. Otherwise, this function returns
+    ///     bsl::safe_u16::failure().
+    ///
+    /// <!-- inputs/outputs -->
+    ///   @param mut_sys the bf_syscall_t to use
+    ///   @param reg the register to get the vsid from.
+    ///   @param mut_vs_pool the vs_pool_t to use
+    ///   @return Given an input register, returns a vsid if the provided
+    ///     register contains a valid vsid and the vs_t associated with the
+    ///     vsid is allocated and not self. Otherwise, this function returns
+    ///     bsl::safe_u16::failure().
+    ///
+    [[nodiscard]] constexpr auto
+    get_allocated_non_self_vsid(
+        syscall::bf_syscall_t &mut_sys, bsl::safe_u64 const &reg, vs_pool_t &mut_vs_pool) noexcept
+        -> bsl::safe_u16
+    {
+        auto const vsid{get_non_self_vsid(mut_sys, reg)};
+        if (bsl::unlikely(vsid.is_invalid())) {
+            bsl::print<bsl::V>() << bsl::here();
+            return bsl::safe_u16::failure();
+        }
+
+        bool const is_deallocated{mut_vs_pool.is_deallocated(vsid)};
+        if (bsl::unlikely(is_deallocated)) {
+            bsl::error() << "the provided vsid "                         // --
+                         << bsl::hex(vsid)                               // --
+                         << " was never allocated and cannot be used"    // --
+                         << bsl::endl                                    // --
+                         << bsl::here();                                 // --
+
+            return bsl::safe_u16::failure();
+        }
+
+        auto const ret{mut_vs_pool.migrate(mut_sys, vsid)};
+        if (bsl::unlikely(!ret)) {
+            bsl::print<bsl::V>() << bsl::here();
+            return bsl::safe_u16::failure();
+        }
+
+        return vsid;
+    }
+
+    /// <!-- description -->
+    ///   @brief Given an input register, returns a vsid if the provided
+    ///     register contains a valid root vsid. Otherwise, this function
+    ///     returns bsl::safe_u16::failure().
+    ///
+    /// <!-- inputs/outputs -->
+    ///   @param mut_sys the bf_syscall_t to use
+    ///   @param reg the register to get the vsid from.
+    ///   @param mut_vs_pool the vs_pool_t to use
+    ///   @return Given an input register, returns a vsid if the provided
+    ///     register contains a valid root vsid. Otherwise, this function
+    ///     returns bsl::safe_u16::failure().
+    ///
+    [[nodiscard]] constexpr auto
+    get_root_vsid(
+        syscall::bf_syscall_t &mut_sys, bsl::safe_u64 const &reg, vs_pool_t &mut_vs_pool) noexcept
+        -> bsl::safe_u16
+    {
+        auto const vsid{get_allocated_vsid(mut_sys, reg, mut_vs_pool)};
+        if (bsl::unlikely(vsid.is_invalid())) {
+            bsl::print<bsl::V>() << bsl::here();
+            return bsl::safe_u16::failure();
+        }
+
+        if (bsl::unlikely(!mut_sys.is_vs_a_root_vs(vsid))) {
+            bsl::error() << "the provided vsid "                        // --
+                         << bsl::hex(vsid)                              // --
+                         << " is not the root vs and cannot be used"    // --
+                         << bsl::endl                                   // --
+                         << bsl::here();                                // --
+
+            return bsl::safe_u16::failure();
+        }
+
+        return vsid;
+    }
+
+    /// <!-- description -->
+    ///   @brief Given an input register, returns a vsid if the provided
+    ///     register contains a valid vsid and the vs_t associated with the
+    ///     vsid is allocated and is not the root vs_t. Otherwise, this
+    ///     function returns bsl::safe_u16::failure().
+    ///
+    /// <!-- inputs/outputs -->
+    ///   @param mut_sys the bf_syscall_t to use
+    ///   @param reg the register to get the vsid from.
+    ///   @param mut_vs_pool the vs_pool_t to use
+    ///   @return Given an input register, returns a vsid if the provided
+    ///     register contains a valid vsid and the vs_t associated with the
+    ///     vsid is allocated and is not the root vs_t. Otherwise, this
+    ///     function returns bsl::safe_u16::failure().
+    ///
+    [[nodiscard]] constexpr auto
+    get_allocated_guest_vsid(
+        syscall::bf_syscall_t &mut_sys, bsl::safe_u64 const &reg, vs_pool_t &mut_vs_pool) noexcept
+        -> bsl::safe_u16
+    {
+        auto const vsid{get_allocated_vsid(mut_sys, reg, mut_vs_pool)};
+        if (bsl::unlikely(vsid.is_invalid())) {
+            bsl::print<bsl::V>() << bsl::here();
+            return bsl::safe_u16::failure();
+        }
+
+        if (bsl::unlikely(mut_sys.is_vs_a_root_vs(vsid))) {
+            bsl::error() << "the provided vsid "                    // --
+                         << bsl::hex(vsid)                          // --
+                         << " is the root vs and cannot be used"    // --
+                         << bsl::endl                               // --
+                         << bsl::here();                            // --
 
             return bsl::safe_u16::failure();
         }
@@ -1065,6 +1467,232 @@ namespace microv
 
         set_reg_return(mut_sys, hypercall::MV_STATUS_FAILURE_UNKNOWN);
         return vmexit_failure_advance_ip_and_run;
+    }
+
+    /// ------------------------------------------------------------------------
+    /// Run/Switch Functions
+    /// ------------------------------------------------------------------------
+
+    /// <!-- description -->
+    ///   @brief Run's a guest vs_t. When a guest VM is run, it becomes a
+    ///     child, and the current VM, VP and VS become parents. The next
+    ///     time that MicroV executes, it will be from the VMExit handler.
+    ///     The VMExit handler can execute for any VS, including a root VS,
+    ///     but when the next VMExit occurs on the PP that runs this
+    ///     function, it will be for the child VS. This function must also
+    ///     save/load state that is not handled by the Microkernel, as a
+    ///     new VS is being run.
+    ///
+    /// <!-- notes -->
+    ///   @note This function does not return
+    ///
+    /// <!-- inputs/outputs -->
+    ///   @param mut_tls the tls_t to use
+    ///   @param mut_sys the bf_syscall_t to use
+    ///   @param intrinsic the intrinsic_t to use
+    ///   @param mut_vm_pool the vm_pool_t to use
+    ///   @param mut_vp_pool the vp_pool_t to use
+    ///   @param mut_vs_pool the vs_pool_t to use
+    ///   @param vsid the ID of the VS to run
+    ///   @return Returns bsl::errc_success on success, bsl::errc_failure
+    ///     and friends otherwise
+    ///
+    [[nodiscard]] constexpr auto
+    run_guest(
+        tls_t &mut_tls,
+        syscall::bf_syscall_t &mut_sys,
+        intrinsic_t const &intrinsic,
+        vm_pool_t &mut_vm_pool,
+        vp_pool_t &mut_vp_pool,
+        vs_pool_t &mut_vs_pool,
+        bsl::safe_u16 const &vsid) noexcept -> bsl::errc_type
+    {
+        bsl::expects(!mut_sys.is_vs_a_root_vs(vsid));
+        bsl::expects(mut_tls.parent_vmid == hypercall::MV_INVALID_ID);
+        bsl::expects(mut_tls.parent_vpid == hypercall::MV_INVALID_ID);
+        bsl::expects(mut_tls.parent_vsid == hypercall::MV_INVALID_ID);
+
+        auto const vmid{mut_vs_pool.assigned_vm(vsid)};
+        auto const vpid{mut_vs_pool.assigned_vp(vsid)};
+
+        auto const vp_active{mut_vp_pool.is_active(vpid)};
+        if (bsl::unlikely(!vp_active.is_invalid())) {
+            bsl::error() << "vp "                              // --
+                         << bsl::hex(vpid)                     // --
+                         << " is already active on PP "        // --
+                         << bsl::hex(vp_active)                // --
+                         << " and therefore cannot be used"    // --
+                         << bsl::endl                          // --
+                         << bsl::here();                       // --
+
+            return bsl::errc_failure;
+        }
+
+        auto const vs_active{mut_vs_pool.is_active(vsid)};
+        if (bsl::unlikely(!vs_active.is_invalid())) {
+            bsl::error() << "vs "                              // --
+                         << bsl::hex(vsid)                     // --
+                         << " is already active on PP "        // --
+                         << bsl::hex(vs_active)                // --
+                         << " and therefore cannot be used"    // --
+                         << bsl::endl                          // --
+                         << bsl::here();                       // --
+
+            return bsl::errc_failure;
+        }
+
+        mut_tls.parent_vmid = mut_sys.bf_tls_vmid();
+        mut_tls.parent_vpid = mut_sys.bf_tls_vpid();
+        mut_tls.parent_vsid = mut_sys.bf_tls_vsid();
+
+        mut_vm_pool.set_inactive(mut_tls, mut_tls.parent_vmid);
+        mut_vp_pool.set_inactive(mut_tls, mut_tls.parent_vpid);
+        mut_vs_pool.set_inactive(mut_tls, intrinsic, mut_tls.parent_vsid);
+
+        auto const ret{mut_sys.bf_vs_op_set_active(vmid, vpid, vsid)};
+        if (bsl::unlikely(!ret)) {
+            bsl::print<bsl::V>() << bsl::here();
+            return ret;
+        }
+
+        mut_vm_pool.set_active(mut_tls, vmid);
+        mut_vp_pool.set_active(mut_tls, vpid);
+        mut_vs_pool.set_active(mut_tls, intrinsic, vsid);
+
+        return mut_sys.bf_vs_op_run_current();
+    }
+
+    /// <!-- description -->
+    ///   @brief When a VMExit occurs, the active VM, VP and VS are either
+    ///     from the root or a guest. The microkernel has this idea of the
+    ///     "active" resource. If you use sys.bf_vs_op_read or
+    ///     sys.bf_vs_op_write, you provide a VSID, which means not matter
+    ///     who is active, these reads/writes work as expected. The TLS
+    ///     functions like sys.bf_tls_rax, are based on the active VS. These
+    ///     functions read/write state a LOT faster than the functions listed
+    ///     above because they do not execute a syscall, and instead simply
+    ///     read/write to TLS variables that the Microkernel will save/load
+    ///     when the active VS is changed.
+    ///
+    ///     So what this means is that when a VMExit occurs for a guest,
+    ///     the TLS functions read/write the guest VS that generated the
+    ///     VMExit. But, in some cases, you will need to return to the
+    ///     root VM so that it can handle the VMExit from userspace. The
+    ///     problem is, the "active" VS is the guest VS. To solve this, we
+    ///     use this function. It is the other half to run_guest.
+    ///
+    ///     If a VMExit occurs where we simply need to emulate an instruction
+    ///     and return, we call sys.bf_vs_op_run_current (or the advance IP
+    ///     version of it). This tells the Microkernel, to run the active VS
+    ///     which is really fast as there is a lot of checking that must take
+    ///     place. If, however, the root VM should handle the exit, we need
+    ///     to return to the root. This requires us to change the state of
+    ///     the PP. So the pattern is this:
+    ///     - run_guest
+    ///     - VMExit
+    ///     - switch_to_root
+    ///     - bf_vs_op_run_current
+    ///
+    ///     What this is doing is running a guest VS. The next VMExit will
+    ///     have the guest VS set to active. We then gather state from the
+    ///     VS, and switch to the root. This sets the root VS as the active
+    ///     VS. Now, read/writes to the TLS functions will be for the root
+    ///     VS and not the guest VS. Once we are done loading the root VS
+    ///     state with the guest state that the root will need to handle the
+    ///     VMExit, we run bf_vs_op_run_current. This is because we have set
+    ///     the root VS as active, so the current VS is the root VS. VMExits
+    ///     that do not need to change the active VS look more like this
+    ///     - VMExit
+    ///     - emulate instruction
+    ///     - bf_vs_op_run_current
+    ///
+    ///     Advancing the IP is also important. Remember that we have both
+    ///     a guest VS and a root VS to worry about if this function is to
+    ///     be executed. Lets look at a simple example.
+    ///     - root VS calls mv_vs_op_run to executed a guest VS.
+    ///     - guest executes until a PIO instruction is seen
+    ///     - VMExit occurs for guest VS
+    ///     - MicroV gathers state associated with the PIO
+    ///     - root VS is executed to handle the PIO
+    ///     - root VS calls mv_vs_op_run to executed a guest VS.
+    ///     - ...
+    ///
+    ///     The PIO that generated the exit is going to be emulated by the
+    ///     root VS. When it returns, the VS's IP should be advanced to the
+    ///     next instruction. The root VS must also have been advanced. This
+    ///     is because the call to run the guest VS in the first place was
+    ///     a vmcall (and friends) instruction, and when we return to the
+    ///     root VS, we need to return to the next instruction as well.
+    ///
+    ///     What this means is that there are TWO IPs that we need to worry
+    ///     about. The IP of the root and guest VS. The "advance_ip" param
+    ///     for this function call handles the guest VS. If set to true,
+    ///     just before the active VS is switch from the guest VS to the
+    ///     root VS, the IP of the guest VS is advanced. Then the active VS
+    ///     is changed to the root VS. To advance the IP of the root VS,
+    ///     all you need to do is us bf_vs_op_advance_ip_and_run_current.
+    ///     So the patten for handling PIO for example would be:
+    ///     - VMExit
+    ///     - Gather guest VS state
+    ///     - switch_to_root(advance_ip = true), this advances the IP
+    ///       of the guest VS to the next instruction after the PIO
+    ///       instruction that generated the VMExit
+    ///     - Set the root VS state so that the root VS has what it needs
+    ///       to emulate the PIO
+    ///     - bf_vs_op_advance_ip_and_run_current, which advances the IP
+    ///       of the root VS (since it is the active VS now), which means
+    ///       the next instruction after the VMCall that started the guest
+    ///       in the first place is now executed, and then the root VS is
+    ///       actually run.
+    ///
+    /// <!-- inputs/outputs -->
+    ///   @param mut_tls the tls_t to use
+    ///   @param mut_sys the bf_syscall_t to use
+    ///   @param intrinsic the intrinsic_t to use
+    ///   @param mut_vm_pool the vm_pool_t to use
+    ///   @param mut_vp_pool the vp_pool_t to use
+    ///   @param mut_vs_pool the vs_pool_t to use
+    ///   @param advance_ip if true, the
+    ///
+    constexpr void
+    switch_to_root(
+        tls_t &mut_tls,
+        syscall::bf_syscall_t &mut_sys,
+        intrinsic_t const &intrinsic,
+        vm_pool_t &mut_vm_pool,
+        vp_pool_t &mut_vp_pool,
+        vs_pool_t &mut_vs_pool,
+        bool const advance_ip) noexcept
+    {
+        bsl::expects(!mut_sys.is_the_active_vm_the_root_vm());
+        bsl::expects(mut_tls.parent_vmid != hypercall::MV_INVALID_ID);
+        bsl::expects(mut_tls.parent_vpid != hypercall::MV_INVALID_ID);
+        bsl::expects(mut_tls.parent_vsid != hypercall::MV_INVALID_ID);
+
+        auto const vmid{mut_sys.bf_tls_vmid()};
+        auto const vpid{mut_sys.bf_tls_vpid()};
+        auto const vsid{mut_sys.bf_tls_vsid()};
+
+        mut_vm_pool.set_inactive(mut_tls, vmid);
+        mut_vp_pool.set_inactive(mut_tls, vpid);
+        mut_vs_pool.set_inactive(mut_tls, intrinsic, vsid);
+
+        if (advance_ip) {
+            bsl::expects(mut_sys.bf_vs_op_advance_ip_and_set_active(
+                mut_tls.parent_vmid, mut_tls.parent_vpid, mut_tls.parent_vsid));
+        }
+        else {
+            bsl::expects(mut_sys.bf_vs_op_set_active(
+                mut_tls.parent_vmid, mut_tls.parent_vpid, mut_tls.parent_vsid));
+        }
+
+        mut_vm_pool.set_active(mut_tls, mut_tls.parent_vmid);
+        mut_vp_pool.set_active(mut_tls, mut_tls.parent_vpid);
+        mut_vs_pool.set_active(mut_tls, intrinsic, mut_tls.parent_vsid);
+
+        mut_tls.parent_vmid = hypercall::MV_INVALID_ID;
+        mut_tls.parent_vpid = hypercall::MV_INVALID_ID;
+        mut_tls.parent_vsid = hypercall::MV_INVALID_ID;
     }
 }
 

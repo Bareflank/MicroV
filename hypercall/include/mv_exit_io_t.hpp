@@ -40,7 +40,7 @@ namespace hypercall
     constexpr auto MV_EXIT_IO_OUT{0x0000000000000001_u64};
 
     /// <!-- description -->
-    ///   @brief See mv_mdl_t for more details
+    ///   @brief See mv_vs_op_run for more details
     ///
     struct mv_exit_io_t final
     {

@@ -79,6 +79,8 @@ namespace shim
         constinit mv_status_t g_mut_mv_vs_op_msr_set{};
         constinit mv_status_t g_mut_mv_vs_op_msr_get_list{};
         constinit mv_status_t g_mut_mv_vs_op_msr_set_list{};
+        constinit mv_status_t g_mut_mv_vs_op_fpu_get_all{};
+        constinit mv_status_t g_mut_mv_vs_op_fpu_set_all{};
 
         extern bool g_mut_hypervisor_detected;
         extern bool g_mut_platform_alloc_fails;
@@ -573,6 +575,32 @@ namespace shim
                 constexpr auto expected{42_u64};
                 bsl::ut_when{} = [&]() noexcept {
                     g_mut_mv_vs_op_msr_set_list = expected.get();
+                    bsl::ut_then{} = [&]() noexcept {
+                        bsl::ut_check(expected == hypercall(hndl, {}));
+                    };
+                };
+            };
+        };
+
+        bsl::ut_scenario{"mv_vs_op_fpu_get_all"} = []() noexcept {
+            bsl::ut_given{} = [&]() noexcept {
+                constexpr auto hypercall{&mv_vs_op_fpu_get_all};
+                constexpr auto expected{42_u64};
+                bsl::ut_when{} = [&]() noexcept {
+                    g_mut_mv_vs_op_fpu_get_all = expected.get();
+                    bsl::ut_then{} = [&]() noexcept {
+                        bsl::ut_check(expected == hypercall(hndl, {}));
+                    };
+                };
+            };
+        };
+
+        bsl::ut_scenario{"mv_vs_op_fpu_set_all"} = []() noexcept {
+            bsl::ut_given{} = [&]() noexcept {
+                constexpr auto hypercall{&mv_vs_op_fpu_set_all};
+                constexpr auto expected{42_u64};
+                bsl::ut_when{} = [&]() noexcept {
+                    g_mut_mv_vs_op_fpu_set_all = expected.get();
                     bsl::ut_then{} = [&]() noexcept {
                         bsl::ut_check(expected == hypercall(hndl, {}));
                     };

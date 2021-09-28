@@ -91,7 +91,16 @@ NODISCARD static inline int
 #define MV_HANDLE_VAL ((uint64_t)0x42)
 
 /* -------------------------------------------------------------------------- */
-/* Handle                                                                     */
+/* Permission Flags                                                           */
+/* -------------------------------------------------------------------------- */
+
+/** @brief Indicates read permissions */
+#define MV_PERM_READ ((uint64_t)0x0000000000000001)
+/** @brief Indicates write permissions */
+#define MV_PERM_WRITE ((uint64_t)0x0000000000000002)
+
+/* -------------------------------------------------------------------------- */
+/* Map Flags                                                                  */
 /* -------------------------------------------------------------------------- */
 
 /** @brief Indicates the map has read access */
@@ -393,32 +402,52 @@ NODISCARD static inline int
 
 /** @brief Defines the index for mv_pp_op_ppid */
 #define MV_PP_OP_PPID_IDX_VAL ((uint64_t)0x0000000000000000)
+/** @brief Defines the index for mv_pp_op_ppid */
+#define MV_PP_OP_ONLINE_PPS_IDX_VAL ((uint64_t)0x0000000000000001)
 /** @brief Defines the index for mv_pp_op_clr_shared_page_gpa */
-#define MV_PP_OP_CLR_SHARED_PAGE_GPA_IDX_VAL ((uint64_t)0x0000000000000001)
+#define MV_PP_OP_CLR_SHARED_PAGE_GPA_IDX_VAL ((uint64_t)0x0000000000000002)
 /** @brief Defines the index for mv_pp_op_set_shared_page_gpa */
-#define MV_PP_OP_SET_SHARED_PAGE_GPA_IDX_VAL ((uint64_t)0x0000000000000002)
+#define MV_PP_OP_SET_SHARED_PAGE_GPA_IDX_VAL ((uint64_t)0x0000000000000003)
 /** @brief Defines the index for mv_pp_op_cpuid_get_supported */
-#define MV_PP_OP_CPUID_GET_SUPPORTED_IDX_VAL ((uint64_t)0x0000000000000003)
+#define MV_PP_OP_CPUID_GET_SUPPORTED_IDX_VAL ((uint64_t)0x0000000000000004)
+/** @brief Defines the index for mv_pp_op_cpuid_get_supported */
+#define MV_PP_OP_CPUID_GET_SUPPORTED_LIST_IDX_VAL ((uint64_t)0x0000000000000005)
 /** @brief Defines the index for mv_pp_op_cpuid_get_permissable */
-#define MV_PP_OP_CPUID_GET_PERMISSABLE_IDX_VAL ((uint64_t)0x0000000000000004)
+#define MV_PP_OP_CPUID_GET_PERMISSABLE_IDX_VAL ((uint64_t)0x0000000000000006)
+/** @brief Defines the index for mv_pp_op_cpuid_get_permissable */
+#define MV_PP_OP_CPUID_GET_PERMISSABLE_LIST_IDX_VAL ((uint64_t)0x0000000000000007)
 /** @brief Defines the index for mv_pp_op_cpuid_get_emulated */
-#define MV_PP_OP_CPUID_GET_EMULATED_IDX_VAL ((uint64_t)0x0000000000000005)
+#define MV_PP_OP_CPUID_GET_EMULATED_IDX_VAL ((uint64_t)0x0000000000000008)
+/** @brief Defines the index for mv_pp_op_cpuid_get_emulated */
+#define MV_PP_OP_CPUID_GET_EMULATED_LIST_IDX_VAL ((uint64_t)0x0000000000000009)
 /** @brief Defines the index for mv_pp_op_reg_get_supported */
-#define MV_PP_OP_REG_GET_SUPPORTED_IDX_VAL ((uint64_t)0x0000000000000006)
+#define MV_PP_OP_REG_GET_SUPPORTED_IDX_VAL ((uint64_t)0x000000000000000A)
+/** @brief Defines the index for mv_pp_op_reg_get_supported */
+#define MV_PP_OP_REG_GET_SUPPORTED_LIST_IDX_VAL ((uint64_t)0x000000000000000B)
 /** @brief Defines the index for mv_pp_op_reg_get_permissable */
-#define MV_PP_OP_REG_GET_PERMISSABLE_IDX_VAL ((uint64_t)0x0000000000000007)
+#define MV_PP_OP_REG_GET_PERMISSABLE_IDX_VAL ((uint64_t)0x000000000000000C)
+/** @brief Defines the index for mv_pp_op_reg_get_permissable */
+#define MV_PP_OP_REG_GET_PERMISSABLE_LIST_IDX_VAL ((uint64_t)0x000000000000000D)
 /** @brief Defines the index for mv_pp_op_reg_get_emulated */
-#define MV_PP_OP_REG_GET_EMULATED_IDX_VAL ((uint64_t)0x0000000000000008)
+#define MV_PP_OP_REG_GET_EMULATED_IDX_VAL ((uint64_t)0x000000000000000E)
+/** @brief Defines the index for mv_pp_op_reg_get_emulated */
+#define MV_PP_OP_REG_GET_EMULATED_LIST_IDX_VAL ((uint64_t)0x000000000000000F)
 /** @brief Defines the index for mv_pp_op_msr_get_supported */
-#define MV_PP_OP_MSR_GET_SUPPORTED_IDX_VAL ((uint64_t)0x000000000000009)
+#define MV_PP_OP_MSR_GET_SUPPORTED_IDX_VAL ((uint64_t)0x000000000000010)
+/** @brief Defines the index for mv_pp_op_msr_get_supported */
+#define MV_PP_OP_MSR_GET_SUPPORTED_LIST_IDX_VAL ((uint64_t)0x000000000000011)
 /** @brief Defines the index for mv_pp_op_msr_get_permissable */
-#define MV_PP_OP_MSR_GET_PERMISSABLE_IDX_VAL ((uint64_t)0x000000000000000A)
+#define MV_PP_OP_MSR_GET_PERMISSABLE_IDX_VAL ((uint64_t)0x0000000000000012)
+/** @brief Defines the index for mv_pp_op_msr_get_permissable */
+#define MV_PP_OP_MSR_GET_PERMISSABLE_LIST_IDX_VAL ((uint64_t)0x0000000000000013)
 /** @brief Defines the index for mv_pp_op_msr_get_emulated */
-#define MV_PP_OP_MSR_GET_EMULATED_IDX_VAL ((uint64_t)0x000000000000000B)
+#define MV_PP_OP_MSR_GET_EMULATED_IDX_VAL ((uint64_t)0x0000000000000014)
+/** @brief Defines the index for mv_pp_op_msr_get_emulated */
+#define MV_PP_OP_MSR_GET_EMULATED_LIST_IDX_VAL ((uint64_t)0x0000000000000015)
 /** @brief Defines the index for mv_pp_op_tsc_get_khz */
-#define MV_PP_OP_TSC_GET_KHZ_IDX_VAL ((uint64_t)0x000000000000000C)
+#define MV_PP_OP_TSC_GET_KHZ_IDX_VAL ((uint64_t)0x0000000000000016)
 /** @brief Defines the index for mv_pp_op_tsc_set_khz */
-#define MV_PP_OP_TSC_SET_KHZ_IDX_VAL ((uint64_t)0x000000000000000D)
+#define MV_PP_OP_TSC_SET_KHZ_IDX_VAL ((uint64_t)0x0000000000000017)
 
 /** @brief Defines the index for mv_vm_op_create_vm */
 #define MV_VM_OP_CREATE_VM_IDX_VAL ((uint64_t)0x0000000000000000)
@@ -426,43 +455,19 @@ NODISCARD static inline int
 #define MV_VM_OP_DESTROY_VM_IDX_VAL ((uint64_t)0x0000000000000001)
 /** @brief Defines the index for mv_vm_op_vmid */
 #define MV_VM_OP_VMID_IDX_VAL ((uint64_t)0x0000000000000002)
-/** @brief Defines the index for mv_vm_op_io_clr_trap */
-#define MV_VM_OP_IO_CLR_TRAP_IDX_VAL ((uint64_t)0x0000000000000003)
-/** @brief Defines the index for mv_vm_op_io_set_trap */
-#define MV_VM_OP_IO_SET_TRAP_IDX_VAL ((uint64_t)0x0000000000000004)
-/** @brief Defines the index for mv_vm_op_io_clr_trap_all */
-#define MV_VM_OP_IO_CLR_TRAP_ALL_IDX_VAL ((uint64_t)0x0000000000000005)
-/** @brief Defines the index for mv_vm_op_io_set_trap_all */
-#define MV_VM_OP_IO_SET_TRAP_ALL_IDX_VAL ((uint64_t)0x0000000000000006)
 /** @brief Defines the index for mv_vm_op_mmio_map */
-#define MV_VM_OP_MMIO_MAP_IDX_VAL ((uint64_t)0x0000000000000007)
+#define MV_VM_OP_MMIO_MAP_IDX_VAL ((uint64_t)0x0000000000000003)
 /** @brief Defines the index for mv_vm_op_mmio_unmap */
-#define MV_VM_OP_MMIO_UNMAP_IDX_VAL ((uint64_t)0x0000000000000008)
-/** @brief Defines the index for mv_vm_op_mmio_clr_trap */
-#define MV_VM_OP_MMIO_CLR_TRAP_IDX_VAL ((uint64_t)0x0000000000000009)
-/** @brief Defines the index for mv_vm_op_mmio_set_trap */
-#define MV_VM_OP_MMIO_SET_TRAP_IDX_VAL ((uint64_t)0x000000000000000A)
-/** @brief Defines the index for mv_vm_op_mmio_clr_trap_all */
-#define MV_VM_OP_MMIO_CLR_TRAP_ALL_IDX_VAL ((uint64_t)0x000000000000000B)
-/** @brief Defines the index for mv_vm_op_mmio_set_trap_all */
-#define MV_VM_OP_MMIO_SET_TRAP_ALL_IDX_VAL ((uint64_t)0x000000000000000C)
-/** @brief Defines the index for mv_vm_op_msr_clr_trap */
-#define MV_VM_OP_MSR_CLR_TRAP_IDX_VAL ((uint64_t)0x000000000000000D)
-/** @brief Defines the index for mv_vm_op_msr_set_trap */
-#define MV_VM_OP_MSR_SET_TRAP_IDX_VAL ((uint64_t)0x000000000000000E)
-/** @brief Defines the index for mv_vm_op_msr_clr_trap_all */
-#define MV_VM_OP_MSR_CLR_TRAP_ALL_IDX_VAL ((uint64_t)0x000000000000000F)
-/** @brief Defines the index for mv_vm_op_msr_set_trap_all */
-#define MV_VM_OP_MSR_SET_TRAP_ALL_IDX_VAL ((uint64_t)0x0000000000000010)
+#define MV_VM_OP_MMIO_UNMAP_IDX_VAL ((uint64_t)0x0000000000000004)
 
 /** @brief Defines the index for mv_vp_op_create_vp */
 #define MV_VP_OP_CREATE_VP_IDX_VAL ((uint64_t)0x0000000000000000)
 /** @brief Defines the index for mv_vp_op_destroy_vp */
 #define MV_VP_OP_DESTROY_VP_IDX_VAL ((uint64_t)0x0000000000000001)
 /** @brief Defines the index for mv_vp_op_vmid */
-#define mv_vp_op_vmid_IDX_VAL ((uint64_t)0x0000000000000002)
+#define MV_VP_OP_VMID_IDX_VAL ((uint64_t)0x0000000000000002)
 /** @brief Defines the index for mv_vp_op_vpid */
-#define mv_vp_op_vpid_IDX_VAL ((uint64_t)0x0000000000000003)
+#define MV_VP_OP_VPID_IDX_VAL ((uint64_t)0x0000000000000003)
 
 /** @brief Defines the index for mv_vs_op_create_vs */
 #define MV_VS_OP_CREATE_VS_IDX_VAL ((uint64_t)0x0000000000000000)
@@ -522,6 +527,14 @@ NODISCARD static inline int
 #define MV_VS_OP_XSAVE_GET_ALL_IDX_VAL ((uint64_t)0x0000000000000021)
 /** @brief Defines the index for mv_vs_op_xsave_set_all */
 #define MV_VS_OP_XSAVE_SET_ALL_IDX_VAL ((uint64_t)0x0000000000000022)
+/** @brief Defines the index for mv_vs_op_mp_state_get */
+#define MV_VS_OP_MP_STATE_GET_IDX_VAL ((uint64_t)0x0000000000000023)
+/** @brief Defines the index for mv_vs_op_mp_state_set */
+#define MV_VS_OP_MP_STATE_SET_IDX_VAL ((uint64_t)0x0000000000000024)
+/** @brief Defines the index for mv_vs_op_inject_exception */
+#define MV_VS_OP_INJECT_EXCEPTION_IDX_VAL ((uint64_t)0x0000000000000025)
+/** @brief Defines the index for mv_vs_op_queue_interrupt */
+#define MV_VS_OP_QUEUE_INTERRUPT_IDX_VAL ((uint64_t)0x0000000000000026)
 
 #ifdef __cplusplus
 }

@@ -31,7 +31,7 @@
     .type   mv_vm_op_mmio_unmap_impl, @function
 mv_vm_op_mmio_unmap_impl:
 
-    mov rax, 0x764D000000040008
+    mov rax, 0x764D000000040004
     mov r10, rdi
     mov r11, rsi
     vmmcall

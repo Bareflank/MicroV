@@ -94,6 +94,8 @@ microv_target_source(vmm src/main.cpp ${HEADERS})
 
 if(HYPERVISOR_TARGET_ARCH STREQUAL "AuthenticAMD" OR HYPERVISOR_TARGET_ARCH STREQUAL "GenuineIntel")
     microv_target_source(vmm src/x64/intrinsic_cpuid_impl.S ${HEADERS})
+    microv_target_source(vmm src/x64/intrinsic_xrstr_impl.S ${HEADERS})
+    microv_target_source(vmm src/x64/intrinsic_xsave_impl.S ${HEADERS})
     microv_target_source(vmm src/x64/pause.S ${HEADERS})
 endif()
 

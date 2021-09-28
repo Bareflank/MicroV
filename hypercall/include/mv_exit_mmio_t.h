@@ -24,24 +24,31 @@
  * SOFTWARE.
  */
 
-    .code64
-    .intel_syntax noprefix
+#ifndef MV_EXIT_MMIO_T_HPP
+#define MV_EXIT_MMIO_T_HPP
 
-    .globl  mv_vm_op_mmio_map_impl
-    .type   mv_vm_op_mmio_map_impl, @function
-mv_vm_op_mmio_map_impl:
+#include <stdint.h>
 
-    push r12
+#ifdef __cplusplus
+extern "C"
+{
+#endif
 
-    mov rax, 0x764D000000040003
-    mov r10, rdi
-    mov r11, rsi
-    mov r12, rdx
-    vmmcall
+#pragma pack(push, 1)
 
-    pop r12
+    /**
+     * <!-- description -->
+     *   @brief See mv_vs_op_run for more details
+     */
+    struct mv_exit_mmio_t
+    {
+        /** TBD */
+    };
 
-    ret
-    int 3
+#pragma pack(pop)
 
-    .size mv_vm_op_mmio_map_impl, .-mv_vm_op_mmio_map_impl
+#ifdef __cplusplus
+}
+#endif
+
+#endif

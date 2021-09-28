@@ -244,12 +244,13 @@ namespace microv
         ///
         /// <!-- inputs/outputs -->
         ///   @param mut_tls the current TLS block
+        ///   @param intrinsic the intrinsic_t to use
         ///   @param vsid the ID of the vs_t to set as active
         ///
         constexpr void
-        set_active(tls_t &mut_tls, bsl::safe_u16 const &vsid) noexcept
+        set_active(tls_t &mut_tls, intrinsic_t const &intrinsic, bsl::safe_u16 const &vsid) noexcept
         {
-            this->get_vs(vsid)->set_active(mut_tls);
+            this->get_vs(vsid)->set_active(mut_tls, intrinsic);
         }
 
         /// <!-- description -->
@@ -257,16 +258,18 @@ namespace microv
         ///
         /// <!-- inputs/outputs -->
         ///   @param mut_tls the current TLS block
+        ///   @param intrinsic the intrinsic_t to use
         ///   @param vsid the ID of the vs_t to set as inactive
         ///
         constexpr void
-        set_inactive(tls_t &mut_tls, bsl::safe_u16 const &vsid) noexcept
+        set_inactive(
+            tls_t &mut_tls, intrinsic_t const &intrinsic, bsl::safe_u16 const &vsid) noexcept
         {
             if (bsl::unlikely(vsid == syscall::BF_INVALID_ID)) {
                 return;
             }
 
-            this->get_vs(vsid)->set_inactive(mut_tls);
+            this->get_vs(vsid)->set_inactive(mut_tls, intrinsic);
         }
 
         /// <!-- description -->
@@ -398,93 +401,25 @@ namespace microv
         }
 
         /// <!-- description -->
-        ///   @brief Returns the running status of the requested vs_t
-        ///
-        /// <!-- inputs/outputs -->
-        ///   @param vsid the ID of the vs_t to query
-        ///   @return Returns the running status of the requested vs_t
-        ///
-        [[nodiscard]] constexpr auto
-        status(bsl::safe_u16 const &vsid) const noexcept -> running_status_t
-        {
-            return this->get_vs(vsid)->status();
-        }
-
-        /// <!-- description -->
-        ///   @brief Returns the value of the requested register
-        ///
-        /// <!-- inputs/outputs -->
-        ///   @param sys the bf_syscall_t to use
-        ///   @param reg the register to get
-        ///   @param vsid the ID of the vs_t to query
-        ///   @return Returns the value of the requested register
-        ///
-        [[nodiscard]] constexpr auto
-        get(syscall::bf_syscall_t const &sys,
-            bsl::safe_u64 const &reg,
-            bsl::safe_u16 const &vsid) const noexcept -> bsl::safe_u64
-        {
-            return this->get_vs(vsid)->get(sys, reg);
-        }
-
-        /// <!-- description -->
-        ///   @brief Sets the value of the requested register
+        ///   @brief Translates a GLA to a GPA using the paging configuration
+        ///     of the requested vs_t stored in CR0, CR3 and CR4.
         ///
         /// <!-- inputs/outputs -->
         ///   @param mut_sys the bf_syscall_t to use
-        ///   @param reg the register to set
-        ///   @param val the value to set the register to
-        ///   @param vsid the ID of the vs_t to set
-        ///   @return Returns bsl::errc_success on success, bsl::errc_failure
-        ///     and friends otherwise
+        ///   @param mut_pp_pool the pp_pool_t to use
+        ///   @param gla the GLA to translate to a GPA
+        ///   @param vsid the ID of the vs_t to use to translate the GLA
+        ///   @return Returns mv_translation_t containing the results of the
+        ///     translation.
         ///
         [[nodiscard]] constexpr auto
-        set(syscall::bf_syscall_t &mut_sys,
-            bsl::safe_u64 const &reg,
-            bsl::safe_u64 const &val,
-            bsl::safe_u16 const &vsid) noexcept -> bsl::errc_type
-        {
-            return this->get_vs(vsid)->set(mut_sys, reg, val);
-        }
-
-        /// <!-- description -->
-        ///   @brief Returns the value of the requested registers from
-        ///     the provided RDL.
-        ///
-        /// <!-- inputs/outputs -->
-        ///   @param sys the bf_syscall_t to use
-        ///   @param mut_rdl the RDL to store the requested register values
-        ///   @param vsid the ID of the vs_t to query
-        ///   @return Returns bsl::errc_success on success, bsl::errc_failure
-        ///     and friends otherwise
-        ///
-        [[nodiscard]] constexpr auto
-        get_list(
-            syscall::bf_syscall_t const &sys,
-            hypercall::mv_rdl_t &mut_rdl,
-            bsl::safe_u16 const &vsid) const noexcept -> bsl::errc_type
-        {
-            return this->get_vs(vsid)->get_list(sys, mut_rdl);
-        }
-
-        /// <!-- description -->
-        ///   @brief Sets the value of the requested registers given
-        ///     the provided RDL.
-        ///
-        /// <!-- inputs/outputs -->
-        ///   @param mut_sys the bf_syscall_t to use
-        ///   @param rdl the RDL to get the requested register values from
-        ///   @param vsid the ID of the vs_t to set
-        ///   @return Returns bsl::errc_success on success, bsl::errc_failure
-        ///     and friends otherwise
-        ///
-        [[nodiscard]] constexpr auto
-        set_list(
+        gla_to_gpa(
             syscall::bf_syscall_t &mut_sys,
-            hypercall::mv_rdl_t const &rdl,
-            bsl::safe_u16 const &vsid) noexcept -> bsl::errc_type
+            pp_pool_t &mut_pp_pool,
+            bsl::safe_u64 const &gla,
+            bsl::safe_u16 const &vsid) const noexcept -> hypercall::mv_translation_t
         {
-            return this->get_vs(vsid)->set_list(mut_sys, rdl);
+            return this->get_vs(vsid)->gla_to_gpa(mut_sys, mut_pp_pool, gla);
         }
 
         /// <!-- description -->
@@ -508,40 +443,119 @@ namespace microv
         }
 
         /// <!-- description -->
-        ///   @brief Translates a GLA to a GPA using the paging configuration
-        ///     of the requested vs_t stored in CR0, CR3 and CR4.
+        ///   @brief Returns the value of the requested register
         ///
         /// <!-- inputs/outputs -->
-        ///   @param mut_sys the bf_syscall_t to use
-        ///   @param mut_pp_pool the pp_pool_t to use
-        ///   @param gla the GLA to translate to a GPA
-        ///   @param vsid the ID of the vs_t to use to translate the GLA
-        ///   @return Returns mv_translation_t containing the results of the
-        ///     translation.
+        ///   @param sys the bf_syscall_t to use
+        ///   @param reg the register to get
+        ///   @param vsid the ID of the vs_t to query
+        ///   @return Returns the value of the requested register
         ///
         [[nodiscard]] constexpr auto
-        gla_to_gpa(
-            syscall::bf_syscall_t &mut_sys,
-            pp_pool_t &mut_pp_pool,
-            bsl::safe_u64 const &gla,
-            bsl::safe_u16 const &vsid) const noexcept -> hypercall::mv_translation_t
+        reg_get(
+            syscall::bf_syscall_t const &sys,
+            bsl::safe_u64 const &reg,
+            bsl::safe_u16 const &vsid) const noexcept -> bsl::safe_u64
         {
-            return this->get_vs(vsid)->gla_to_gpa(mut_sys, mut_pp_pool, gla);
+            return this->get_vs(vsid)->reg_get(sys, reg);
         }
 
         /// <!-- description -->
-        ///   @brief Runs the requested vs_t. Returns a mv_exit_reason_t
-        ///     explaining the reason for returning.
+        ///   @brief Sets the value of the requested register
         ///
         /// <!-- inputs/outputs -->
-        ///   @param mut_tls the tls_t to use
         ///   @param mut_sys the bf_syscall_t to use
-        ///   @param vsid the ID of the vs_t to run
+        ///   @param reg the register to set
+        ///   @param val the value to set the register to
+        ///   @param vsid the ID of the vs_t to set
+        ///   @return Returns bsl::errc_success on success, bsl::errc_failure
+        ///     and friends otherwise
+        ///
+        [[nodiscard]] constexpr auto
+        reg_set(
+            syscall::bf_syscall_t &mut_sys,
+            bsl::safe_u64 const &reg,
+            bsl::safe_u64 const &val,
+            bsl::safe_u16 const &vsid) noexcept -> bsl::errc_type
+        {
+            return this->get_vs(vsid)->reg_set(mut_sys, reg, val);
+        }
+
+        /// <!-- description -->
+        ///   @brief Returns the value of the requested registers from
+        ///     the provided RDL.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param sys the bf_syscall_t to use
+        ///   @param mut_rdl the RDL to store the requested register values
+        ///   @param vsid the ID of the vs_t to query
+        ///   @return Returns bsl::errc_success on success, bsl::errc_failure
+        ///     and friends otherwise
+        ///
+        [[nodiscard]] constexpr auto
+        reg_get_list(
+            syscall::bf_syscall_t const &sys,
+            hypercall::mv_rdl_t &mut_rdl,
+            bsl::safe_u16 const &vsid) const noexcept -> bsl::errc_type
+        {
+            return this->get_vs(vsid)->reg_get_list(sys, mut_rdl);
+        }
+
+        /// <!-- description -->
+        ///   @brief Sets the value of the requested registers given
+        ///     the provided RDL.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param mut_sys the bf_syscall_t to use
+        ///   @param rdl the RDL to get the requested register values from
+        ///   @param vsid the ID of the vs_t to set
+        ///   @return Returns bsl::errc_success on success, bsl::errc_failure
+        ///     and friends otherwise
+        ///
+        [[nodiscard]] constexpr auto
+        reg_set_list(
+            syscall::bf_syscall_t &mut_sys,
+            hypercall::mv_rdl_t const &rdl,
+            bsl::safe_u16 const &vsid) noexcept -> bsl::errc_type
+        {
+            return this->get_vs(vsid)->reg_set_list(mut_sys, rdl);
+        }
+
+        /// <!-- description -->
+        ///   @brief Returns the requested vs_t's FPU state in the provided
+        ///     "page".
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param sys the bf_syscall_t to use
+        ///   @param mut_page the shared page to store the FPU state.
+        ///   @param vsid the ID of the vs_t to query
         ///
         constexpr void
-        run(tls_t &mut_tls, syscall::bf_syscall_t &mut_sys, bsl::safe_u16 const &vsid) noexcept
+        fpu_get_all(
+            syscall::bf_syscall_t const &sys,
+            page_4k_t &mut_page,
+            bsl::safe_u16 const &vsid) const noexcept
         {
-            this->get_vs(vsid)->run(mut_tls, mut_sys);
+            this->get_vs(vsid)->fpu_get_all(sys, mut_page);
+        }
+
+        /// <!-- description -->
+        ///   @brief Sets the requested vs_t's FPU state to the provided
+        ///     contents stored in "page".
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param sys the bf_syscall_t to use
+        ///   @param page the shared page containing the state to set the
+        ///     requested vs_t's FPU state to.
+        ///   @param vsid the ID of the vs_t to set
+        ///
+        constexpr void
+        fpu_set_all(
+            syscall::bf_syscall_t const &sys,
+            page_4k_t const &page,
+            bsl::safe_u16 const &vsid) noexcept
+        {
+            this->get_vs(vsid)->fpu_set_all(sys, page);
         }
     };
 }

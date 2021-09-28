@@ -63,7 +63,8 @@ namespace hypercall
         // VPID not yet created
         auto const nyc{bsl::to_u16(HYPERVISOR_MAX_VPS - bsl::safe_u64::magic_1()).checked()};
         mut_ret = mv_vs_op_vpid_impl(hndl.get(), nyc.get(), mut_id.data());
-        integration::verify(mut_ret != MV_STATUS_SUCCESS);
+        integration::verify(mut_ret == MV_STATUS_SUCCESS);
+        integration::verify(mut_id == MV_INVALID_ID);
 
         // Self ID should be the current VP
         {

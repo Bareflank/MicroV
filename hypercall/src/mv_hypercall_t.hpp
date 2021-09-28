@@ -1254,6 +1254,64 @@ namespace hypercall
 
             return bsl::errc_success;
         }
+
+        /// <!-- description -->
+        ///   @brief Returns FPU state as seen by the VS in the shared page.
+        ///     The format of the FPU state depends on which mode the VS is
+        ///     currently in.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param vsid The ID of the VS to query
+        ///   @return Returns MV_STATUS_SUCCESS on success, MV_STATUS_FAILURE_UNKNOWN
+        ///     and friends on failure.
+        ///
+        [[nodiscard]] constexpr auto
+        mv_vs_op_fpu_get_all(bsl::safe_u16 const &vsid) noexcept -> bsl::errc_type
+        {
+            bsl::expects(vsid.is_valid_and_checked());
+            bsl::expects(vsid != MV_INVALID_ID);
+
+            mv_status_t const ret{mv_vs_op_fpu_get_all_impl(m_hndl.get(), vsid.get())};
+            if (bsl::unlikely(ret != MV_STATUS_SUCCESS)) {
+                bsl::error() << "mv_vs_op_fpu_get_all failed with status "    // --
+                             << bsl::hex(ret)                                 // --
+                             << bsl::endl                                     // --
+                             << bsl::here();                                  // --
+
+                return bsl::errc_failure;
+            }
+
+            return bsl::errc_success;
+        }
+
+        /// <!-- description -->
+        ///   @brief Sets the FPU state as seen by the VS in the shared page.
+        ///     The format of the FPU state depends on which mode the VS is
+        ///     currently in.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param vsid The ID of the VS to set
+        ///   @return Returns MV_STATUS_SUCCESS on success, MV_STATUS_FAILURE_UNKNOWN
+        ///     and friends on failure.
+        ///
+        [[nodiscard]] constexpr auto
+        mv_vs_op_fpu_set_all(bsl::safe_u16 const vsid) noexcept -> bsl::errc_type
+        {
+            bsl::expects(vsid.is_valid_and_checked());
+            bsl::expects(vsid != MV_INVALID_ID);
+
+            mv_status_t const ret{mv_vs_op_fpu_set_all_impl(m_hndl.get(), vsid.get())};
+            if (bsl::unlikely(ret != MV_STATUS_SUCCESS)) {
+                bsl::error() << "mv_vs_op_fpu_set_all failed with status "    // --
+                             << bsl::hex(ret)                                 // --
+                             << bsl::endl                                     // --
+                             << bsl::here();                                  // --
+
+                return bsl::errc_failure;
+            }
+
+            return bsl::errc_success;
+        }
     };
 }
 
