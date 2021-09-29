@@ -24,17 +24,23 @@
  * SOFTWARE.
  */
 
+#include <kvm_constants.h>
 #include <mv_types.h>
+#include <platform.h>
 
 /**
  * <!-- description -->
- *   @brief Handles the execution of kvm_check_extension.
+ *   @brief Handles the execution of kvm_get_api_version.
  *
  * <!-- inputs/outputs -->
+ *   @param pmut_apiversion returns the kvm api version
  *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
  */
 NODISCARD int64_t
-handle_system_kvm_get_api_version(void) NOEXCEPT
+handle_system_kvm_get_api_version(uint32_t *const pmut_apiversion) NOEXCEPT
 {
+    platform_expects(NULL != pmut_apiversion);
+
+    *pmut_apiversion = (uint32_t)KVM_API_VERSION;
     return SHIM_SUCCESS;
 }

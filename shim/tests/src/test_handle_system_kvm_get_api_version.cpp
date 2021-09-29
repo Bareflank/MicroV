@@ -24,8 +24,11 @@
 
 #include "../../include/handle_system_kvm_get_api_version.h"
 
-#include <mv_types.h>
+#include <helpers.hpp>
+#include <kvm_constants.h>
 
+#include <bsl/convert.hpp>
+#include <bsl/safe_integral.hpp>
 #include <bsl/ut.hpp>
 
 namespace shim
@@ -42,17 +45,22 @@ namespace shim
     [[nodiscard]] constexpr auto
     tests() noexcept -> bsl::exit_code
     {
-        bsl::ut_scenario{"description"} = []() noexcept {
+        init_tests();
+        constexpr auto handle{&handle_system_kvm_get_api_version};
+
+        bsl::ut_scenario{"return KVM_API_VERSION"} = []() noexcept {
             bsl::ut_given{} = [&]() noexcept {
+                bsl::safe_u32 mut_apiversion{};
                 bsl::ut_when{} = [&]() noexcept {
                     bsl::ut_then{} = [&]() noexcept {
-                        bsl::ut_check(SHIM_SUCCESS == handle_system_kvm_get_api_version());
+                        bsl::ut_check(SHIM_SUCCESS == handle(mut_apiversion.data()));
+                        bsl::ut_check(bsl::to_u64(mut_apiversion) == bsl::to_u64(KVM_API_VERSION));
                     };
                 };
             };
         };
 
-        return bsl::ut_success();
+        return fini_tests();
     }
 }
 
