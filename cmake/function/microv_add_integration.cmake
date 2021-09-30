@@ -53,6 +53,7 @@ macro(microv_add_vmm_integration NAME HEADERS)
         MICROV_MAX_VCPUS=${MICROV_MAX_VCPUS}_umx
         MICROV_MAX_GPA_SIZE=${MICROV_MAX_GPA_SIZE}_umx
         MICROV_MAX_SLOTS=${MICROV_MAX_SLOTS}_umx
+        MICROV_INTERRUPT_QUEUE_SIZE=${MICROV_INTERRUPT_QUEUE_SIZE}_umx
     )
 
     target_compile_options(integration_${NAME} PRIVATE -Wframe-larger-than=4294967295)
@@ -123,6 +124,7 @@ macro(microv_add_shim_integration NAME HEADERS)
         MICROV_MAX_VCPUS=${MICROV_MAX_VCPUS}_umx
         MICROV_MAX_GPA_SIZE=${MICROV_MAX_GPA_SIZE}_umx
         MICROV_MAX_SLOTS=${MICROV_MAX_SLOTS}_umx
+        MICROV_INTERRUPT_QUEUE_SIZE=${MICROV_INTERRUPT_QUEUE_SIZE}_umx
     )
 
     target_compile_options(integration_${NAME} PRIVATE -Wframe-larger-than=4294967295)

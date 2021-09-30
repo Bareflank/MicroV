@@ -87,34 +87,34 @@ namespace hypercall
 
         // VSID that has been created, but has not been initialized
         {
-            auto const vsid{mut_hvc.mv_vs_op_create_vs(self)};
-            integration::verify(vsid.is_valid_and_checked());
+            auto const vmid1{mut_hvc.mv_vm_op_create_vm()};
+            auto const vm1_vpid0{mut_hvc.mv_vp_op_create_vp(vmid1)};
+            auto const vm1_vp0_vsid0{mut_hvc.mv_vs_op_create_vs(vm1_vpid0)};
 
-            auto const trns{mut_hvc.mv_vs_op_gla_to_gpa(vsid, gla)};
+            auto const trns{mut_hvc.mv_vs_op_gla_to_gpa(vm1_vp0_vsid0, gla)};
             integration::verify(!trns.is_valid);
 
-            integration::verify(mut_hvc.mv_vs_op_destroy_vs(vsid));
+            integration::verify(mut_hvc.mv_vs_op_destroy_vs(vm1_vp0_vsid0));
+            integration::verify(mut_hvc.mv_vp_op_destroy_vp(vm1_vpid0));
+            integration::verify(mut_hvc.mv_vm_op_destroy_vm(vmid1));
         }
 
-        // VSID that has been created, but is not locally assigned. Note that
-        // this test only works on multi-core systems
+        // VSID that has been created, but is not locally assigned.
         {
-            /// TODO:
-            /// - Skip this test is mv_pp_op_online_pps returns 1.
-            ///
+            auto const vmid1{mut_hvc.mv_vm_op_create_vm()};
+            auto const vm1_vpid0{mut_hvc.mv_vp_op_create_vp(vmid1)};
+            auto const vm1_vp0_vsid0{mut_hvc.mv_vs_op_create_vs(vm1_vpid0)};
 
-            auto mut_foreign_vsid{mut_hvc.mv_vs_op_vsid()};
-            integration::verify(mut_foreign_vsid.is_valid_and_checked());
+            integration::set_affinity(core1);
 
-            if (mut_foreign_vsid.is_zero()) {
-                mut_foreign_vsid = (mut_foreign_vsid + bsl::safe_u16::magic_1()).checked();
-            }
-            else {
-                mut_foreign_vsid = (mut_foreign_vsid - bsl::safe_u16::magic_1()).checked();
-            }
-
-            auto const trns{mut_hvc.mv_vs_op_gla_to_gpa(mut_foreign_vsid, gla)};
+            auto const trns{mut_hvc.mv_vs_op_gla_to_gpa(vm1_vp0_vsid0, gla)};
             integration::verify(!trns.is_valid);
+
+            integration::set_affinity(core0);
+
+            integration::verify(mut_hvc.mv_vs_op_destroy_vs(vm1_vp0_vsid0));
+            integration::verify(mut_hvc.mv_vp_op_destroy_vp(vm1_vpid0));
+            integration::verify(mut_hvc.mv_vm_op_destroy_vm(vmid1));
         }
 
         // Get a valid GPA a lot to make sure mapping/unmapping works

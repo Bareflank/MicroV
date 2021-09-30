@@ -85,6 +85,8 @@ namespace microv
     extern "C" void
     bootstrap_entry(bsl::safe_u16::value_type const ppid) noexcept
     {
+        bsl::discard(ppid);
+
         auto const ret{dispatch_bootstrap(    // --
             g_mut_gs,                         // --
             g_mut_tls,                        // --
@@ -94,8 +96,7 @@ namespace microv
             g_mut_pp_pool,                    // --
             g_mut_vm_pool,                    // --
             g_mut_vp_pool,                    // --
-            g_mut_vs_pool,                    // --
-            bsl::to_u16(ppid))};
+            g_mut_vs_pool)};
 
         if (bsl::unlikely(!ret)) {
             bsl::print<bsl::V>() << bsl::here();
@@ -150,6 +151,8 @@ namespace microv
     vmexit_entry(
         bsl::safe_u16::value_type const vsid, bsl::safe_u64::value_type const exit_reason) noexcept
     {
+        g_mut_tls.handling_vmcall = false;
+
         auto const ret{dispatch_vmexit(    // --
             g_mut_gs,                      // --
             g_mut_tls,                     // --
@@ -182,15 +185,20 @@ namespace microv
     extern "C" void
     ext_main_entry(bsl::uint32 const version) noexcept
     {
-        auto const ret{g_mut_sys.initialize(
-            bsl::to_u32(version), &bootstrap_entry, &vmexit_entry, &fail_entry)};
+        bsl::errc_type mut_ret{};
 
-        if (bsl::unlikely(!ret)) {
+        mut_ret = g_mut_sys.initialize(
+            bsl::to_u32(version), &bootstrap_entry, &vmexit_entry, &fail_entry);
+        if (bsl::unlikely(!mut_ret)) {
             bsl::print<bsl::V>() << bsl::here();
             return syscall::bf_control_op_exit();
         }
 
-        bsl::expects(gs_initialize(g_mut_gs, g_mut_sys, g_mut_page_pool, g_mut_intrinsic));
+        mut_ret = gs_initialize(g_mut_gs, g_mut_sys, g_mut_page_pool, g_mut_intrinsic);
+        if (bsl::unlikely(!mut_ret)) {
+            bsl::print<bsl::V>() << bsl::here();
+            return syscall::bf_control_op_exit();
+        }
 
         g_mut_pp_pool.initialize(g_mut_gs, g_mut_tls, g_mut_sys, g_mut_intrinsic);
         g_mut_vm_pool.initialize(g_mut_gs, g_mut_tls, g_mut_sys, g_mut_page_pool, g_mut_intrinsic);

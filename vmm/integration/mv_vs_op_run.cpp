@@ -56,8 +56,20 @@ namespace hypercall
         integration::initialize_globals();
         auto const vm_image{integration::load_vm("vm_cross_compile/bin/16bit_io_test")};
 
-        // invalid VSID
+        // invalid VSID #1
         mut_ret = mv_vs_op_run_impl(hndl.get(), MV_INVALID_ID.get(), &mut_exit_reason);
+        integration::verify(mut_ret != MV_STATUS_SUCCESS);
+
+        // invalid VSID #2
+        mut_ret = mv_vs_op_run_impl(hndl.get(), MV_SELF_ID.get(), &mut_exit_reason);
+        integration::verify(mut_ret != MV_STATUS_SUCCESS);
+
+        // invalid VSID #3
+        mut_ret = mv_vs_op_run_impl(hndl.get(), vsid0.get(), &mut_exit_reason);
+        integration::verify(mut_ret != MV_STATUS_SUCCESS);
+
+        // invalid VSID #4
+        mut_ret = mv_vs_op_run_impl(hndl.get(), vsid1.get(), &mut_exit_reason);
         integration::verify(mut_ret != MV_STATUS_SUCCESS);
 
         // VSID out of range
@@ -84,7 +96,7 @@ namespace hypercall
             integration::verify(vpid.is_valid_and_checked());
             integration::verify(vsid.is_valid_and_checked());
 
-            mut_exit_reason = mut_hvc.mv_vs_op_run(vsid);
+            mut_exit_reason = integration::run_until_non_interrupt_exit(vsid);
             integration::verify(mut_exit_reason == mv_exit_reason_t::mv_exit_reason_t_unknown);
 
             integration::verify(mut_hvc.mv_vs_op_destroy_vs(vsid));
@@ -107,11 +119,11 @@ namespace hypercall
             integration::map_vm(vm_image, {}, vmid);
             integration::initialize_register_state_for_16bit_vm(vsid);
 
-            mut_exit_reason = mut_hvc.mv_vs_op_run(vsid);
+            mut_exit_reason = integration::run_until_non_interrupt_exit(vsid);
             integration::verify(mut_exit_reason == mv_exit_reason_t::mv_exit_reason_t_io);
-            mut_exit_reason = mut_hvc.mv_vs_op_run(vsid);
+            mut_exit_reason = integration::run_until_non_interrupt_exit(vsid);
             integration::verify(mut_exit_reason == mv_exit_reason_t::mv_exit_reason_t_io);
-            mut_exit_reason = mut_hvc.mv_vs_op_run(vsid);
+            mut_exit_reason = integration::run_until_non_interrupt_exit(vsid);
             integration::verify(mut_exit_reason == mv_exit_reason_t::mv_exit_reason_t_io);
 
             constexpr auto expected_addr{0x10_u64};

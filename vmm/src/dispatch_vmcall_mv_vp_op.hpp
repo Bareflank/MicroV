@@ -69,7 +69,7 @@ namespace microv
         vm_pool_t const &vm_pool,
         vp_pool_t &mut_vp_pool) noexcept -> bsl::errc_type
     {
-        auto const vmid{get_allocated_vmid(mut_sys, get_reg1(mut_sys), vm_pool)};
+        auto const vmid{get_allocated_non_self_vmid(mut_sys, get_reg1(mut_sys), vm_pool)};
         if (bsl::unlikely(vmid.is_invalid())) {
             bsl::print<bsl::V>() << bsl::here();
             set_reg_return(mut_sys, hypercall::MV_STATUS_INVALID_INPUT_REG1);

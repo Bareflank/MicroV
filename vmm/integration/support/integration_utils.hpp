@@ -38,6 +38,7 @@
 #include <cstdlib>
 #include <ifmap.hpp>
 #include <mv_constants.hpp>
+#include <mv_exit_reason_t.hpp>
 #include <mv_hypercall_t.hpp>
 #include <mv_mdl_t.hpp>
 #include <mv_rdl_t.hpp>
@@ -58,6 +59,8 @@
 constexpr auto self{hypercall::MV_SELF_ID};        // NOLINT
 constexpr auto core0{bsl::safe_u64::magic_0()};    // NOLINT
 constexpr auto core1{bsl::safe_u64::magic_1()};    // NOLINT
+constexpr auto vsid0{bsl::safe_u16::magic_0()};    // NOLINT
+constexpr auto vsid1{bsl::safe_u16::magic_1()};    // NOLINT
 
 hypercall::mv_hypercall_t mut_hvc{};    // NOLINT
 bsl::safe_u64 hndl{};                   // NOLINT
@@ -271,6 +274,7 @@ namespace integration
         integration::verify(mut_hvc.mv_pp_op_clr_shared_page_gpa());
         integration::set_affinity(core1);
         integration::verify(mut_hvc.mv_pp_op_clr_shared_page_gpa());
+
         integration::set_affinity(core0);
     }
 
@@ -321,6 +325,37 @@ namespace integration
 
         pmut_rdl->num_entries = total.get();
         integration::verify(mut_hvc.mv_vs_op_reg_set_list(vsid));
+    }
+
+    /// <!-- description -->
+    ///   @brief Executes mv_vs_op_run until the first non-interrupt based
+    ///     exit is seen and then returns this exit.
+    ///
+    /// <!-- inputs/outputs -->
+    ///   @param vsid the ID of the VS to run
+    ///   @return Returns the first non-interrupt exit reason that is seen
+    ///
+    [[nodiscard]] constexpr auto
+    run_until_non_interrupt_exit(bsl::safe_u16 const &vsid) noexcept -> hypercall::mv_exit_reason_t
+    {
+        while (true) {
+            auto const exit_reason{mut_hvc.mv_vs_op_run(vsid)};
+            switch (exit_reason) {
+                case hypercall::mv_exit_reason_t::mv_exit_reason_t_interrupt: {
+                    continue;
+                }
+
+                case hypercall::mv_exit_reason_t::mv_exit_reason_t_nmi: {
+                    continue;
+                }
+
+                default: {
+                    break;
+                }
+            }
+
+            return exit_reason;
+        }
     }
 
     /// <!-- description -->

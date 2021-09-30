@@ -46,6 +46,9 @@ namespace microv
     /// @brief Defines failure, advance IP, and run current VM, VP and VS
     // NOLINTNEXTLINE(bsl-name-case)
     constexpr bsl::errc_type vmexit_failure_advance_ip_and_run{-10002};
+    /// @brief Defines failure and triple fault
+    // NOLINTNEXTLINE(bsl-name-case)
+    constexpr bsl::errc_type vmexit_failure_triple_fault{-10003};
 }
 
 #endif

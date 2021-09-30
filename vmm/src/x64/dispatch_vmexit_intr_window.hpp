@@ -83,7 +83,8 @@ namespace microv
         bsl::discard(vs_pool);
         bsl::discard(vsid);
 
-        bsl::error() << "dispatch_vmexit_external_interrupt_window not implemented\n";
+        bsl::error() << "dispatch_vmexit_external_interrupt_window not implemented\n"
+                     << bsl::here();
         return bsl::errc_failure;
     }
 }

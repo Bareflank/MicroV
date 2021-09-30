@@ -25,6 +25,7 @@
 #ifndef DISPATCH_VMEXIT_UNKNOWN_HPP
 #define DISPATCH_VMEXIT_UNKNOWN_HPP
 
+#include <bf_debug_ops.hpp>
 #include <bf_syscall_t.hpp>
 #include <gs_t.hpp>
 #include <intrinsic_t.hpp>

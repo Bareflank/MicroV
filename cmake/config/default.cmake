@@ -61,7 +61,14 @@ bf_add_config(
     CONFIG_NAME MICROV_MAX_SLOTS
     CONFIG_TYPE STRING
     DEFAULT_VAL "64"
-    DESCRIPTION "Defines The max number of KVM memory slots that MicroV supports"
+    DESCRIPTION "Defines the max number of KVM memory slots that MicroV supports"
     SKIP_VALIDATION
 )
 
+bf_add_config(
+    CONFIG_NAME MICROV_INTERRUPT_QUEUE_SIZE
+    CONFIG_TYPE STRING
+    DEFAULT_VAL "64"
+    DESCRIPTION "Defines the size of a VS interrupt queue"
+    SKIP_VALIDATION
+)

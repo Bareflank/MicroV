@@ -557,6 +557,94 @@ namespace microv
         {
             this->get_vs(vsid)->fpu_set_all(sys, page);
         }
+
+        /// <!-- description -->
+        ///   @brief Injects an exception into the vs_t. Unlike interrupts,
+        ///     exceptions cannot be masked, and therefore, the exception is
+        ///     immediately injected.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param mut_sys the bf_syscall_t to use
+        ///   @param vector the vector to inject
+        ///   @param ec the error code to inject
+        ///   @param vsid the ID of the vs_t to query
+        ///   @return Returns bsl::errc_success on success, bsl::errc_failure
+        ///     and friends otherwise.
+        ///
+        [[nodiscard]] constexpr auto
+        inject_exception(
+            syscall::bf_syscall_t &mut_sys,
+            bsl::safe_u64 const &vector,
+            bsl::safe_u64 const &ec,
+            bsl::safe_u16 const &vsid) noexcept -> bsl::errc_type
+        {
+            return this->get_vs(vsid)->inject_exception(mut_sys, vector, ec);
+        }
+
+        /// <!-- description -->
+        ///   @brief Injects an NMI into this vs_t
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param mut_sys the bf_syscall_t to use
+        ///   @param vsid the ID of the vs_t to query
+        ///   @return Returns bsl::errc_success on success, bsl::errc_failure
+        ///     and friends otherwise.
+        ///
+        [[nodiscard]] constexpr auto
+        inject_nmi(syscall::bf_syscall_t &mut_sys, bsl::safe_u16 const &vsid) noexcept
+            -> bsl::errc_type
+        {
+            return this->get_vs(vsid)->inject_nmi(mut_sys);
+        }
+
+        /// <!-- description -->
+        ///   @brief Injects an GPF into this vs_t
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param mut_sys the bf_syscall_t to use
+        ///   @param vsid the ID of the vs_t to query
+        ///   @return Returns bsl::errc_success on success, bsl::errc_failure
+        ///     and friends otherwise.
+        ///
+        [[nodiscard]] constexpr auto
+        inject_gpf(syscall::bf_syscall_t &mut_sys, bsl::safe_u16 const &vsid) noexcept
+            -> bsl::errc_type
+        {
+            return this->get_vs(vsid)->inject_gpf(mut_sys);
+        }
+
+        /// <!-- description -->
+        ///   @brief Queues an interrupt for injection when this vs_t is
+        ///     capable of injecting interrupts. If the queue is full, this
+        ///     function will fail.
+        ///
+        /// <!-- notes -->
+        ///   @note You can only queue an interrupt for a vs_t that is assigned
+        ///     to the current PP. This means that one vs_t cannot queue an
+        ///     interrupt for another vs_t. Instead, you need to IPI the other
+        ///     PP, and queue the interrupt into the vs_t from the PP the vs_t
+        ///     is assigned to. This is done to ensure that not only is there
+        ///     no need for a lock on the queue, but more importantly, on Intel
+        ///     you cannot actually do interrupt/exception queuing on a vs_t
+        ///     on a remote PP as such an action is undefined by Intel, and
+        ///     we should not be migrating a vs_t to our current PP every time
+        ///     that we need to inject an interrupt.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param mut_sys the bf_syscall_t to use
+        ///   @param vector the vector to queue
+        ///   @param vsid the ID of the vs_t to query
+        ///   @return Returns bsl::errc_success on success, bsl::errc_failure
+        ///     and friends otherwise
+        ///
+        [[nodiscard]] constexpr auto
+        queue_interrupt(
+            syscall::bf_syscall_t &mut_sys,
+            bsl::safe_u64 const &vector,
+            bsl::safe_u16 const &vsid) noexcept -> bsl::errc_type
+        {
+            return this->get_vs(vsid)->queue_interrupt(mut_sys, vector);
+        }
     };
 }
 

@@ -104,6 +104,9 @@
       - [2.15.9.3. mv_exit_reason_t_hlt](#21593-mv_exit_reason_t_hlt)
       - [2.15.9.4. mv_exit_reason_t_io](#21594-mv_exit_reason_t_io)
       - [2.15.9.5. mv_exit_reason_t_mmio](#21595-mv_exit_reason_t_mmio)
+      - [2.15.9.5. mv_exit_reason_t_msr](#21595-mv_exit_reason_t_msr)
+      - [2.15.9.5. mv_exit_reason_t_interrupt](#21595-mv_exit_reason_t_interrupt)
+      - [2.15.9.5. mv_exit_reason_t_nmi](#21595-mv_exit_reason_t_nmi)
     - [2.15.10. mv_vs_op_cpuid_get, OP=0x6, IDX=0x9](#21510-mv_vs_op_cpuid_get-op0x6-idx0x9)
     - [2.15.11. mv_vs_op_cpuid_set, OP=0x6, IDX=0xA](#21511-mv_vs_op_cpuid_set-op0x6-idx0xa)
     - [2.15.12. mv_vs_op_cpuid_get_list, OP=0x6, IDX=0xB](#21512-mv_vs_op_cpuid_get_list-op0x6-idx0xb)
@@ -1629,7 +1632,7 @@ Internal to MicroV an API like this should never be implemented as a GVA to GLA 
 
 ### 2.15.9. mv_vs_op_run, OP=0x6, IDX=0x8
 
-This hypercall executes a VM's VP using the requested VS. The VM and VP that are executed is determined by which VM and VP were assigned during the creation of the VP and VS. This hypercall does not return until an exit condition occurs, or an error is encountered. The exit condition can be identified using the output REG0 which defines the "exit reason". Whenever mv_vs_op_run is executed, MicroV reads the shared page using a mv_run_t as input. When mv_vs_op_run returns, and no error has occurred, the shared page's contents depends on the exit condition. For some exit conditions, the shared page is ignored. In other cases, a structure specific to the exit condition is returned providing software with the information that it needs to handle the exit.
+This hypercall executes a VM's VP using the requested VS. The VM and VP that are executed is determined by which VM and VP were assigned during the creation of the VP and VS. This hypercall does not return until an exit condition occurs, or an error is encountered. The exit condition can be identified using the output REG0 which defines the "exit reason". Whenever mv_vs_op_run is executed, MicroV reads the shared page using a mv_run_t as input. If "reg" is set to a valid mv_reg_t, this register is written before the guest VM is executed. If "reg" is mv_reg_t_unsupported, "reg" is ignored. If "msr" is set to a valid, non-zero MSR, the MSR is written before the guest VM is executed. If "msr" is set to 0, "msr" is ignored. When mv_vs_op_run returns, and no error has occurred, the shared page's contents depends on the exit condition. For some exit conditions, the shared page is ignored. In other cases, a structure specific to the exit condition is returned providing software with the information that it needs to handle the exit.
 
 **Warning:**<br>
 This hypercall is slow and may require a Hypercall Continuation. See Hypercall Continuations for more information.
@@ -1637,7 +1640,9 @@ This hypercall is slow and may require a Hypercall Continuation. See Hypercall C
 **struct: mv_run_t**
 | Name | Type | Offset | Size | Description |
 | :--- | :--- | :----- | :--- | :---------- |
-| reserved | uint8_t | 0x0 | 4096 bytes | REVI |
+| reg | mv_rdl_entry_t | 0x0 | 16 bytes | An RDL entry containing the contents of a register that should be set |
+| msr | mv_rdl_entry_t | 0x0 | 16 bytes | An RDL entry containing the contents of an MSR that should be set |
+| reserved | uint8_t | 0x10 | 4080 bytes | REVI |
 
 **enum, int32_t: mv_exit_reason_t**
 | Name | Value | Description |
@@ -1647,6 +1652,9 @@ This hypercall is slow and may require a Hypercall Continuation. See Hypercall C
 | mv_exit_reason_t_hlt | 2 | a halt event has occurred |
 | mv_exit_reason_t_io | 3 | a IO event has occurred |
 | mv_exit_reason_t_mmio | 4 | a MMIO event has occurred |
+| mv_exit_reason_t_msr | 5 | a MSR event has occurred |
+| mv_exit_reason_t_interrupt | 6 | an interrupt event has occurred |
+| mv_exit_reason_t_nmi | 7 | an NMI event has occurred |
 
 **Input:**
 | Register Name | Bits | Description |
@@ -1731,7 +1739,94 @@ If mv_vs_op_run returns success with an exit reason of mv_exit_reason_t_io, it m
 
 #### 2.15.9.5. mv_exit_reason_t_mmio
 
-TBD
+If mv_vs_op_run returns success with an exit reason of mv_exit_reason_t_mmio, it means that the VM has executed MMIO that MicroV does not know how to handle. It is up to guest software to determine how to handle the MMIO access. To support the emulation of the instruction that has generated the MMIO event, the raw instruction bytes are returned along with the guest physical address the instruction was attempting to access. In addition, the contents of the CPU's general purpose registers are provided as well. Which general purpose registers are provided depends on MMIO access. Guest software must use this information to decode the instruction and perform whatever emulation is required, but it must not assume that all of general purpose registers will be provided. For example, if the MMIO access is attempting to read the contents of RAX, and write the value to a memory location, MicroV may only provide a valid value to RAX, with the rest of the registers being undefined. It is up to MicroV as to how much state it wishes to share with guest software for any given exit. At a minimum, MicroV will always provide enough state so that guest software can perform emulation as required to produce a valid result, but has the right to withhold any addition state that it believes guest software should have no use for. How this is determined is up to MicroV, but in general, you can only rely on register state that would be needed to emulate the instruction that generated the MMIO access. Any additional register state that might be needed should be read using mv_vs_op_reg_get instead. If a register must be modified as a result of emulation, mv_run_t.reg can be set on the next execution of mv_vs_op_run without the need to execute mv_vs_op_reg_set. Again, MicroV reserves the right to return an error when executing mv_vs_op_run if the register being set does not match what MicroV would expect if the MMIO where being emulated.
+
+Note that the resulting RWE flags are system dependent. On AMD, MV_EXIT_MMIO_READ == always enabled, MV_EXIT_MMIO_WRITE == EXITINFO1.RW, and MV_EXIT_MMIO_EXECUTE == EXITINFO1.ID. On Intel, MV_EXIT_MMIO_READ == EXIT_QUALIFICATION.0, MV_EXIT_MMIO_WRITE == EXIT_QUALIFICATION.1, and MV_EXIT_MMIO_EXECUTE == EXIT_QUALIFICATION.2.
+
+Note that the registers that are returned are not written back. Any changes made to mv_exit_mmio_t will NOT be written back to the VS. Either set mv_run_t.reg.reg and mv_run_t.reg.val, or use mv_vs_op_reg_set. The values of each register on AMD and Intel are reg0 == rax, reg1 == rbx, reg2 == rcx, reg3 == rdx, reg4 == rbp, reg5 == rsi, reg6 == rdi, reg7 == r8, reg8 == r9, reg9 == r10, reg10 == r11, reg11 == r12, reg12 == r13, reg13 == r14, reg14 == r15, reg15 = rsp, reg16 = rip. All other registers are REVI. reg16 (i.e., RIP which is a GVA), should be used by guest software to determine which instruction generated the MMIO access. Since guest software provided the original memory, it should not only be able to easily perform the needed GVA to GLA conversion without the need for MicroV's assistance (i.e., do not use mv_vs_op_gva_to_gpa for this), it should also be able to access this memory to get the instruction's bytes and decode the instruction as needed.
+
+**const, uint64_t: MV_EXIT_MMIO_READ**
+| Value | Description |
+| :---- | :---------- |
+| 0x0000000000000001 | The mv_exit_mmio_t defines a read access |
+
+**const, uint64_t: MV_EXIT_MMIO_WRITE**
+| Value | Description |
+| :---- | :---------- |
+| 0x0000000000000002 | The mv_exit_mmio_t defines a write access |
+
+**const, uint64_t: MV_EXIT_MMIO_EXECUTE**
+| Value | Description |
+| :---- | :---------- |
+| 0x0000000000000004 | The mv_exit_mmio_t defines an execute access |
+
+**struct: mv_exit_mmio_t**
+| Name | Type | Offset | Size | Description |
+| :--- | :--- | :----- | :--- | :---------- |
+| gpa | uint64_t | 0x0 | 8 bytes | The GPA of the MMIO access |
+| flags | uint64_t | 0x8 | 8 bytes | The MV_EXIT_MMIO flags |
+| reserved0 | uint64_t | 0x10 | 8 bytes | reserved |
+| reserved1 | uint64_t | 0x18 | 8 bytes | reserved |
+| reg0 | uint64_t | 0x20 | 8 bytes | system dependent register value |
+| reg1 | uint64_t | 0x28 | 8 bytes | system dependent register value |
+| reg2 | uint64_t | 0x30 | 8 bytes | system dependent register value |
+| reg3 | uint64_t | 0x38 | 8 bytes | system dependent register value |
+| reg4 | uint64_t | 0x40 | 8 bytes | system dependent register value |
+| reg5 | uint64_t | 0x48 | 8 bytes | system dependent register value |
+| reg6 | uint64_t | 0x50 | 8 bytes | system dependent register value |
+| reg7 | uint64_t | 0x58 | 8 bytes | system dependent register value |
+| reg8 | uint64_t | 0x60 | 8 bytes | system dependent register value |
+| reg9 | uint64_t | 0x68 | 8 bytes | system dependent register value |
+| reg10 | uint64_t | 0x70 | 8 bytes | system dependent register value |
+| reg11 | uint64_t | 0x78 | 8 bytes | system dependent register value |
+| reg12 | uint64_t | 0x80 | 8 bytes | system dependent register value |
+| reg13 | uint64_t | 0x88 | 8 bytes | system dependent register value |
+| reg14 | uint64_t | 0x90 | 8 bytes | system dependent register value |
+| reg15 | uint64_t | 0x98 | 8 bytes | system dependent register value |
+| reg16 | uint64_t | 0xA0 | 8 bytes | system dependent register value |
+| reg17 | uint64_t | 0xA8 | 8 bytes | system dependent register value |
+| reg18 | uint64_t | 0xB0 | 8 bytes | system dependent register value |
+| reg19 | uint64_t | 0xB8 | 8 bytes | system dependent register value |
+| reg20 | uint64_t | 0xC0 | 8 bytes | system dependent register value |
+| reg21 | uint64_t | 0xC8 | 8 bytes | system dependent register value |
+| reg22 | uint64_t | 0xD0 | 8 bytes | system dependent register value |
+| reg23 | uint64_t | 0xD8 | 8 bytes | system dependent register value |
+| reg24 | uint64_t | 0xE0 | 8 bytes | system dependent register value |
+| reg25 | uint64_t | 0xE8 | 8 bytes | system dependent register value |
+| reg26 | uint64_t | 0xF0 | 8 bytes | system dependent register value |
+| reg27 | uint64_t | 0xF8 | 8 bytes | system dependent register value |
+| reg28 | uint64_t | 0x100 | 8 bytes | system dependent register value |
+| reg29 | uint64_t | 0x108 | 8 bytes | system dependent register value |
+| reg30 | uint64_t | 0x110 | 8 bytes | system dependent register value |
+| reg31 | uint64_t | 0x118 | 8 bytes | system dependent register value |
+
+#### 2.15.9.5. mv_exit_reason_t_msr
+
+If mv_vs_op_run returns success with an exit reason of mv_exit_reason_t_msr, it means that the VM has executed an rdmsr or wrmsr that MicroV does not know how to handle, and the MSR is permissable, meaning guest software is allowed to read/write the value of the MSR.
+
+**const, uint64_t: MV_EXIT_MSR_READ**
+| Value | Description |
+| :---- | :---------- |
+| 0x0000000000000001 | The mv_exit_msr_t defines a read access |
+
+**const, uint64_t: MV_EXIT_MSR_WRITE**
+| Value | Description |
+| :---- | :---------- |
+| 0x0000000000000002 | The mv_exit_msr_t defines a write access |
+
+**struct: mv_exit_msr_t**
+| Name | Type | Offset | Size | Description |
+| :--- | :--- | :----- | :--- | :---------- |
+| msr | mv_rdl_entry_t | 0x0 | 16 bytes | The MSR and it's value (wrmsr only, REVI for rdmsr) |
+| flags | uint64_t | 0x10 | 8 bytes | The MV_EXIT_MSR flags |
+
+#### 2.15.9.5. mv_exit_reason_t_interrupt
+
+If mv_vs_op_run returns success with an exit reason of mv_exit_reason_t_interrupt, it means that MicroV needed to inject an interrupt into the VM that executed mv_vs_op_run. There is nothing for software to do other than execute mv_vs_op_run again.
+
+#### 2.15.9.5. mv_exit_reason_t_nmi
+
+If mv_vs_op_run returns success with an exit reason of mv_exit_reason_t_nmi, it means that MicroV needed to inject an NMI into the VM that executed mv_vs_op_run. There is nothing for software to do other than execute mv_vs_op_run again.
 
 ### 2.15.10. mv_vs_op_cpuid_get, OP=0x6, IDX=0x9
 

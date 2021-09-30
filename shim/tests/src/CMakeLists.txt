@@ -57,10 +57,10 @@ target_link_libraries(shim_tests_common PRIVATE
 # Macros For This Directory
 # ------------------------------------------------------------------------------
 
-macro(mv_add_test NAME SOURCES)
+macro(mv_add_test NAME)
     bf_add_test(
         test_${NAME}
-        SOURCES ${SOURCES}
+        SOURCES ${ARGN}
         INCLUDES ${COMMON_INCLUDES}
         SYSTEM_INCLUDES ${COMMON_SYSTEM_INCLUDES}
         DEFINES ${COMMON_DEFINES}

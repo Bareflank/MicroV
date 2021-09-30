@@ -53,8 +53,20 @@ namespace hypercall
 
         integration::initialize_globals();
 
-        // invalid VSID
+        // invalid VSID #1
         mut_ret = mv_vs_op_reg_get_impl(hndl.get(), MV_INVALID_ID.get(), reg, mut_val.data());
+        integration::verify(mut_ret != MV_STATUS_SUCCESS);
+
+        // invalid VSID #2
+        mut_ret = mv_vs_op_reg_get_impl(hndl.get(), MV_SELF_ID.get(), reg, mut_val.data());
+        integration::verify(mut_ret != MV_STATUS_SUCCESS);
+
+        // invalid VSID #3
+        mut_ret = mv_vs_op_reg_get_impl(hndl.get(), vsid0.get(), reg, mut_val.data());
+        integration::verify(mut_ret != MV_STATUS_SUCCESS);
+
+        // invalid VSID #4
+        mut_ret = mv_vs_op_reg_get_impl(hndl.get(), vsid1.get(), reg, mut_val.data());
         integration::verify(mut_ret != MV_STATUS_SUCCESS);
 
         // VSID out of range

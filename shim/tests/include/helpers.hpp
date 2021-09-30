@@ -100,6 +100,7 @@ namespace shim
         extern bsl::safe_u32 g_mut_platform_num_online_cpus;
         extern int64_t g_mut_platform_mlock;
         extern int64_t g_mut_platform_munlock;
+        extern bool g_mut_platform_interrupted;
     }
 
     /// <!-- description -->

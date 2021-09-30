@@ -265,7 +265,7 @@ namespace microv
             ///   don't calculate it like we do with the root.
             ///
 
-            bsl::error() << "get_guest not implemented\n";
+            bsl::error() << "get not implemented\n" << bsl::here();
             return bsl::errc_failure;
         }
     };

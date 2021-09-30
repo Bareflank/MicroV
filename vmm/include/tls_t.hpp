@@ -55,6 +55,9 @@ namespace microv
         bsl::safe_u16 parent_vpid;
         /// @brief stores the ID of the parent VS
         bsl::safe_u16 parent_vsid;
+
+        /// @brief tells the VMExit handler that we are in a vmcall
+        bool handling_vmcall;
     };
 
     /// @brief defines the max size supported for the TLS block
