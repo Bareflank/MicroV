@@ -37,7 +37,7 @@ namespace microv
     using page_pool_t = lib::basic_page_pool_t<
         tls_t,
         syscall::bf_syscall_t,
-        HYPERVISOR_EXT_DIRECT_MAP_ADDR.get(),
+        HYPERVISOR_EXT_PAGE_POOL_ADDR.get(),
         HYPERVISOR_EXT_DIRECT_MAP_SIZE.get()>;
 }
 

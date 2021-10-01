@@ -303,35 +303,98 @@ namespace microv
             page_pool_t &mut_page_pool,
             hypercall::mv_mdl_t const &mdl) noexcept -> bsl::errc_type
         {
+            bsl::errc_type mut_ret{};
+
             bsl::expects(mut_sys.is_the_active_vm_the_root_vm());
             bsl::expects(!mut_sys.is_vm_the_root_vm(this->assigned_vmid()));
 
             for (bsl::safe_idx mut_i{}; mut_i < mdl.num_entries; ++mut_i) {
                 auto const *const entry{mdl.entries.at_if(mut_i)};
+                auto const gpa{bsl::to_u64(entry->dst)};
 
                 /// TODO:
                 /// - Add support for entries that have a size greater than
                 ///   4k. For now we only support 4k pages.
                 ///
 
-                auto const ret{
-                    m_slpt.unmap_page(tls, mut_page_pool, bsl::to_u64(entry->dst), mut_sys)};
-
-                if (bsl::unlikely(!ret)) {
+                mut_ret = m_slpt.unmap(tls, mut_page_pool, gpa, mut_sys);
+                if (bsl::unlikely(!mut_ret)) {
                     bsl::print<bsl::V>() << bsl::here();
-                    return ret;
+                    return mut_ret;
                 }
-
-                /// TODO:
-                /// - We need to flush the TLB. Once SMP support is added,
-                ///   we will have to perform a remote TLB flush. For now,
-                ///   a local TLB flush is fine.
-                ///
 
                 bsl::touch();
             }
 
-            return bsl::errc_success;
+            /// TODO:
+            /// - This needs to be a broadcast TLB flush. To do that, every
+            ///   PP that the VM has touched (means we will have to track
+            ///   this in the vm_t), we need to flush the TLB for. So likely
+            ///   this should just return a bsl::errc_type that is something
+            ///   like flush_tlb. Then the vm_t that called this, can loop
+            ///   though all of the PPs and IPI the PPs that need to be
+            ///   flushed, and the call below is what they would call.
+            ///
+            /// - On AMD, we can use the broadcast function instead, but the
+            ///   microkernel will need a an intrinsic for this. I would not
+            ///   make this a VM or VS opcode in the Microkernel because this
+            ///   is an AMD specific thing that does not require the use of
+            ///   IPIs. If it was a VM, VS thing, any CPU that doesn't have
+            ///   this kind of function would have to implement IPIs internal
+            ///   to the Microkernel which should be avoided at all costs.
+            ///   Instead, making this an intrinsic op means that it can be
+            ///   specific to AMD, and you can literally just pass whatever
+            ///   the instruction needs. The microkernel would just sanitize
+            ///   this input and then call the instruction.
+            ///
+            /// - On Intel, IPIs will be needed. The pp_lapic_t can be used
+            ///   for this. Just implement an IPI API in the pp_lapic_t,
+            ///   which will have to have support for both the x1 and x2
+            ///   versions, and the MMIO and MSR APIs for this already exist
+            ///   in the Microkernel. The code for how to do this is already
+            ///   in MicroV/mono, but basically, trap on all INIT calls, and
+            ///   then repurpose INIT for IPIs with a mailbox. You will
+            ///   have to add an INIT message, so that if a VS executes a
+            ///   real INIT, you can send it to the proper PP and handle
+            ///   it as needed. But this will allow you to create additional
+            ///   messages, including one that performs an tlb flush.
+            ///
+            /// - On AMD with VMWare, the IPI method will be needed, unless you
+            ///   can figure out what VMWare's APIs are for performing a
+            ///   remote TLB flush (I know that HyperV has them, not sure
+            ///   about VMWare). With AMD, the INIT trick works as well, you
+            ///   just need to catch them with an exception, but in general
+            ///   they are basically the same.
+            ///
+            /// - So TL;DR, return `flush_tlb` as a bsl::errc_type instead
+            ///   of calling tlb_flush. The vm_t code that called this can
+            ///   look for this, and when it sees this, it will flush the
+            ///   TLB. To do that, first, add PP tracking to the VM. Each
+            ///   time a VS is mirgrated to a PP, it will call the vm_t
+            ///   and tell it that it has dirtied the TLB on a given PP.
+            ///   This way, when you need to flush the TLB, you can loop
+            ///   through this array, and flush the TLB for each PP that the
+            ///   VM has touched. Next, add an IPI API to the pp_lapic_t
+            ///   and then add a mailbox (locked of course) API to the
+            ///   pp_t. The pp_t will lock the mailbox, add the message,
+            ///   and then IPI using it's pp_lapic_t, to tell send the
+            ///   message. The vm_t will call this pp_t API with a message
+            ///   to flush the TLB. To implement the IPI, send an INIT.
+            ///   This means that you will have to trap on INIT exits, and
+            ///   the LAPIC to see when a guest VM attempts to send an INIT.
+            ///   If a guest VM attempts to send an INIT, send it using the
+            ///   mailbox. This way you can tell the difference between a
+            ///   real INIT and something else like a TLB flush. Finally,
+            ///   on VMExit, for INIT, if it is the root VM, just puke as
+            ///   this should never happen, and you are not trapping on
+            ///   INIT writes to the root VM LAPICs so you have no way to
+            ///   make sense of this (but again, it should not happen as it
+            ///   would result in a CPU reset). If you get a VMExit INIT for
+            ///   a guest VM, if the message is INIT, emulate INIT. If the
+            ///   message is flush the TLB, flush the TLB.
+            ///
+
+            return mut_sys.bf_vm_op_tlb_flush(this->assigned_vmid());
         }
 
         /// <!-- description -->

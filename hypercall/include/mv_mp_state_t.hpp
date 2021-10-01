@@ -45,19 +45,60 @@ namespace hypercall
         mv_mp_state_t_init = 3,
         /// @brief the VS is waiting for SIPI (x86 only)
         mv_mp_state_t_sipi = 4,
+        /// @brief invalid
+        mv_mp_state_t_invalid = 5,
     };
 
     /// <!-- description -->
-    ///   @brief return bsl::to_i32(static_cast<bsl::int32>(val))
+    ///   @brief Returns bsl::to_i32(static_cast<bsl::int32>(val))
     ///
     /// <!-- inputs/outputs -->
-    ///   @param val the mv_reg_t to convert
-    ///   @return return bsl::to_i32(static_cast<bsl::int32>(val))
+    ///   @param val the mv_mp_state_t to convert
+    ///   @return Returns bsl::to_i32(static_cast<bsl::int32>(val))
     ///
     [[nodiscard]] constexpr auto
-    to_i32(mv_mp_state_t const &val) noexcept -> bsl::safe_i32
+    to_i32(mv_mp_state_t const val) noexcept -> bsl::safe_i32
     {
         return bsl::to_i32(static_cast<bsl::int32>(val));
+    }
+
+    /// <!-- description -->
+    ///   @brief Returns bsl::to_i64(static_cast<bsl::uint64>(val))
+    ///
+    /// <!-- inputs/outputs -->
+    ///   @param val the mv_mp_state_t to convert
+    ///   @return Returns bsl::to_i64(static_cast<bsl::uint64>(val))
+    ///
+    [[nodiscard]] constexpr auto
+    to_u64(mv_mp_state_t const val) noexcept -> bsl::safe_u64
+    {
+        return bsl::to_u64(static_cast<bsl::uint64>(val));
+    }
+
+    /// <!-- description -->
+    ///   @brief Returns static_cast<mv_mp_state_t>(val.get())
+    ///
+    /// <!-- inputs/outputs -->
+    ///   @param val the value to convert
+    ///   @return Returns static_cast<mv_mp_state_t>(val.get())
+    ///
+    [[nodiscard]] constexpr auto
+    to_mv_mp_state_t(bsl::safe_i32 const &val) noexcept -> mv_mp_state_t
+    {
+        return static_cast<mv_mp_state_t>(val.get());
+    }
+
+    /// <!-- description -->
+    ///   @brief Returns static_cast<mv_mp_state_t>(val.get())
+    ///
+    /// <!-- inputs/outputs -->
+    ///   @param val the value to convert
+    ///   @return Returns static_cast<mv_mp_state_t>(val.get())
+    ///
+    [[nodiscard]] constexpr auto
+    to_mv_mp_state_t(bsl::safe_u64 const &val) noexcept -> mv_mp_state_t
+    {
+        return static_cast<mv_mp_state_t>(val.get());
     }
 
     /// @brief integer version of mv_mp_state_t_initial
@@ -70,6 +111,8 @@ namespace hypercall
     constexpr auto MP_STATE_INIT{to_i32(mv_mp_state_t::mv_mp_state_t_init)};
     /// @brief integer version of mv_mp_state_t_sipi
     constexpr auto MP_STATE_SIPI{to_i32(mv_mp_state_t::mv_mp_state_t_sipi)};
+    /// @brief integer version of mv_mp_state_t_invalid
+    constexpr auto MP_STATE_INVALID{to_i32(mv_mp_state_t::mv_mp_state_t_invalid)};
 }
 
 #endif

@@ -25,8 +25,20 @@
 #ifndef INTEGRATION_UTILS_HPP
 #define INTEGRATION_UTILS_HPP
 
-#ifdef WIN64
-#include <windows.h>
+#ifdef _WIN32
+// clang-format off
+
+/// NOTE:
+/// - The windows includes that we use here need to remain in this order.
+///   Otherwise the code will not compile. Also, when using CPP, we need
+///   to remove the max/min macros as they are used by the C++ standard.
+///
+
+#include <Windows.h>
+#undef max
+#undef min
+
+// clang-format on
 #else
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE
@@ -67,7 +79,7 @@ bsl::safe_u64 hndl{};                   // NOLINT
 
 namespace integration
 {
-#ifdef WIN64
+#ifdef _WIN32
     /// <!-- description -->
     ///   @brief Sets the core affinity of the integration test
     ///
@@ -77,7 +89,7 @@ namespace integration
     inline void
     set_affinity(bsl::safe_u64 const &core) noexcept
     {
-        bsl::expects(0 == SetProcessAffinityMask(GetCurrentProcess(), 1ULL << core.get()));
+        bsl::expects(SetProcessAffinityMask(GetCurrentProcess(), 1ULL << core.get()));
     }
 
     /// <!-- description -->
@@ -228,19 +240,6 @@ namespace hypercall
     }
 
     /// <!-- description -->
-    ///   @brief Returns bsl::to_u64(static_cast<bsl::uint64>(reg))
-    ///
-    /// <!-- inputs/outputs -->
-    ///   @param reg the mv_reg_t to convert
-    ///   @return Returns bsl::to_u64(static_cast<bsl::uint64>(reg))
-    ///
-    [[nodiscard]] constexpr auto
-    to_uint64(mv_reg_t const &reg) noexcept -> bsl::uint64
-    {
-        return bsl::to_u64(static_cast<bsl::uint64>(reg)).get();
-    }
-
-    /// <!-- description -->
     ///   @brief Returns reinterpret_cast<T *>(&g_shared_page0);
     ///
     /// <!-- inputs/outputs -->
@@ -299,6 +298,8 @@ namespace integration
     constexpr void
     initialize_globals() noexcept
     {
+        constexpr auto tsc_khz{0x42_umx};
+
         hypercall::g_shared_page0 = {};
         hypercall::g_shared_page1 = {};
 
@@ -309,6 +310,11 @@ namespace integration
         integration::verify(mut_hvc.mv_pp_op_clr_shared_page_gpa());
         integration::set_affinity(core1);
         integration::verify(mut_hvc.mv_pp_op_clr_shared_page_gpa());
+
+        integration::set_affinity(core0);
+        integration::verify(mut_hvc.mv_pp_op_tsc_set_khz(tsc_khz));
+        integration::set_affinity(core1);
+        integration::verify(mut_hvc.mv_pp_op_tsc_set_khz(tsc_khz));
 
         integration::set_affinity(core0);
     }
@@ -349,15 +355,15 @@ namespace integration
         integration::set_affinity(core0);
 
         constexpr auto total{3_idx};
-        constexpr auto cs_selector_idx{0_idx};
+        constexpr auto cs_sel_idx{0_idx};
         constexpr auto cs_base_idx{1_idx};
         constexpr auto rip_idx{2_idx};
 
-        pmut_rdl->entries.at_if(cs_selector_idx)->reg = to_uint64(mv_reg_t::mv_reg_t_cs_selector);
-        pmut_rdl->entries.at_if(cs_selector_idx)->val = {};
-        pmut_rdl->entries.at_if(cs_base_idx)->reg = to_uint64(mv_reg_t::mv_reg_t_cs_base);
+        pmut_rdl->entries.at_if(cs_sel_idx)->reg = to_u64(mv_reg_t::mv_reg_t_cs_selector).get();
+        pmut_rdl->entries.at_if(cs_sel_idx)->val = {};
+        pmut_rdl->entries.at_if(cs_base_idx)->reg = to_u64(mv_reg_t::mv_reg_t_cs_base).get();
         pmut_rdl->entries.at_if(cs_base_idx)->val = {};
-        pmut_rdl->entries.at_if(rip_idx)->reg = to_uint64(mv_reg_t::mv_reg_t_rip);
+        pmut_rdl->entries.at_if(rip_idx)->reg = to_u64(mv_reg_t::mv_reg_t_rip).get();
         pmut_rdl->entries.at_if(rip_idx)->val = {};
 
         pmut_rdl->num_entries = total.get();
@@ -407,6 +413,24 @@ namespace integration
     {
         lib::ifmap mut_vm_image{filename};
         integration::verify(!mut_vm_image.empty());
+
+        /// NOTE:
+        /// - Quickly calculate the checksum of the VM image. This will
+        ///   ensure that the image is in memory before we attempt to
+        ///   get it's GLA. The right way to do this would be to lock
+        ///   the memory in place using mlock or VirtualLock
+        ///
+
+        bsl::uint8 sum{};    // NOLINT
+        for (bsl::safe_idx mut_i{}; mut_i < mut_vm_image.size(); ++mut_i) {
+            sum += static_cast<bsl::uint8 const *>(mut_vm_image.data())[mut_i.get()];    // NOLINT
+        }
+
+        bsl::print() << "checksum ["                             // --
+                     << bsl::cyn << filename << bsl::rst         // --
+                     << "]: "                                    // --
+                     << bsl::ylw << bsl::hex(sum) << bsl::rst    // --
+                     << bsl::endl;                               // --
 
         auto const gpa{hypercall::to_gpa(mut_vm_image.data(), core0)};
         mut_vm_image.set_gpa(gpa);

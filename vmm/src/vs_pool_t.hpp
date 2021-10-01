@@ -145,9 +145,10 @@ namespace microv
         ///   @param mut_sys the bf_syscall_t to use
         ///   @param mut_page_pool the page_pool_t to use
         ///   @param intrinsic the intrinsic_t to use
-        ///   @param vmid the ID of the VM to assign the newly created VS to
-        ///   @param vpid the ID of the VP to assign the newly created VS to
-        ///   @param ppid the ID of the PP to assign the newly created VS to
+        ///   @param vmid the ID of the VM to assign the newly created vs_t to
+        ///   @param vpid the ID of the VP to assign the newly created vs_t to
+        ///   @param ppid the ID of the PP to assign the newly created vs_t to
+        ///   @param tsc_khz the starting TSC frequency of the newly created vs_t
         ///   @param slpt_spa the system physical address of the second level
         ///     page tables to use.
         ///   @return Returns ID of the newly allocated vs_t. Returns
@@ -163,6 +164,7 @@ namespace microv
             bsl::safe_u16 const &vmid,
             bsl::safe_u16 const &vpid,
             bsl::safe_u16 const &ppid,
+            bsl::safe_u64 const &tsc_khz,
             bsl::safe_u64 const &slpt_spa) noexcept -> bsl::safe_u16
         {
             lock_guard_t mut_lock{tls, m_lock};
@@ -174,7 +176,7 @@ namespace microv
             }
 
             return this->get_vs(vsid)->allocate(
-                gs, tls, mut_sys, mut_page_pool, intrinsic, vmid, vpid, ppid, slpt_spa);
+                gs, tls, mut_sys, mut_page_pool, intrinsic, vmid, vpid, ppid, tsc_khz, slpt_spa);
         }
 
         /// <!-- description -->
@@ -559,6 +561,38 @@ namespace microv
         }
 
         /// <!-- description -->
+        ///   @brief Returns the requested vs_t's multiprocessor state.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param vsid the ID of the vs_t to query
+        ///   @return Returns the requested vs_t's multiprocessor state
+        ///
+        [[nodiscard]] constexpr auto
+        mp_state_get(bsl::safe_u16 const &vsid) const noexcept -> hypercall::mv_mp_state_t
+        {
+            return this->get_vs(vsid)->mp_state_get();
+        }
+
+        /// <!-- description -->
+        ///   @brief Sets the requested vs_t's multiprocessor state.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param mut_sys the bf_syscall_t to use
+        ///   @param mp_state the new MP state
+        ///   @param vsid the ID of the vs_t to query
+        ///   @return Returns bsl::errc_success on success, bsl::errc_failure
+        ///     and friends otherwise.
+        ///
+        [[nodiscard]] constexpr auto
+        mp_state_set(
+            syscall::bf_syscall_t &mut_sys,
+            hypercall::mv_mp_state_t const mp_state,
+            bsl::safe_u16 const &vsid) noexcept -> bsl::errc_type
+        {
+            return this->get_vs(vsid)->mp_state_set(mut_sys, mp_state);
+        }
+
+        /// <!-- description -->
         ///   @brief Injects an exception into the vs_t. Unlike interrupts,
         ///     exceptions cannot be masked, and therefore, the exception is
         ///     immediately injected.
@@ -644,6 +678,19 @@ namespace microv
             bsl::safe_u16 const &vsid) noexcept -> bsl::errc_type
         {
             return this->get_vs(vsid)->queue_interrupt(mut_sys, vector);
+        }
+
+        /// <!-- description -->
+        ///   @brief Returns the requested vs_t's TSC frequency in KHz.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param vsid the ID of the vs_t to query
+        ///   @return Returns the requested vs_t's TSC frequency in KHz.
+        ///
+        [[nodiscard]] constexpr auto
+        tsc_khz_get(bsl::safe_u16 const &vsid) const noexcept -> bsl::safe_u64
+        {
+            return this->get_vs(vsid)->tsc_khz_get();
         }
     };
 }

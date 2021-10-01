@@ -20,17 +20,14 @@
 # SOFTWARE.
 
 include(${CMAKE_CURRENT_LIST_DIR}/../../cmake/function/microv_add_integration.cmake)
-include(${CMAKE_CURRENT_LIST_DIR}/../../cmake/function/microv_add_vm_cross_compile.cmake)
 
 list(APPEND HEADERS
     ${CMAKE_CURRENT_LIST_DIR}/support/integration_utils.hpp
 )
 
-microv_add_vm_cross_compile(vms)
-
 microv_add_shim_integration(kvm_create_vcpu HEADERS)
 microv_add_shim_integration(kvm_create_vm HEADERS)
-#microv_add_shim_integration(kvm_emulate_interrupts HEADERS)
+microv_add_shim_integration(kvm_emulate_interrupts HEADERS)
 microv_add_shim_integration(kvm_get_regs HEADERS)
 microv_add_shim_integration(kvm_get_sregs HEADERS)
 microv_add_shim_integration(kvm_get_vcpu_mmap_size HEADERS)
@@ -39,4 +36,3 @@ microv_add_shim_integration(kvm_set_regs HEADERS)
 microv_add_shim_integration(kvm_set_sregs HEADERS)
 microv_add_shim_integration(kvm_set_user_memory_region HEADERS)
 microv_add_shim_integration(kvm_get_api_version HEADERS)
-microv_add_shim_integration(kvm_check_extension HEADERS)

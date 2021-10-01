@@ -64,7 +64,6 @@ macro(microv_add_vmm_integration NAME HEADERS)
         bsl
         hypercall
         lib
-        shim
     )
 
     if(CMAKE_BUILD_TYPE STREQUAL RELEASE OR CMAKE_BUILD_TYPE STREQUAL MINSIZEREL)
@@ -76,6 +75,11 @@ macro(microv_add_vmm_integration NAME HEADERS)
     if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
         add_custom_target(${NAME}
             COMMAND sync
+            COMMAND ${CMAKE_BINARY_DIR}/integration_${NAME}
+            VERBATIM
+        )
+    elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+        add_custom_target(${NAME}
             COMMAND ${CMAKE_BINARY_DIR}/integration_${NAME}
             VERBATIM
         )
@@ -147,6 +151,11 @@ macro(microv_add_shim_integration NAME HEADERS)
     if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
         add_custom_target(${NAME}
             COMMAND sync
+            COMMAND ${CMAKE_BINARY_DIR}/integration_${NAME}
+            VERBATIM
+        )
+    elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+        add_custom_target(${NAME}
             COMMAND ${CMAKE_BINARY_DIR}/integration_${NAME}
             VERBATIM
         )

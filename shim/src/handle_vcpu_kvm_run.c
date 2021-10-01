@@ -176,7 +176,7 @@ handle_vcpu_kvm_run_io(struct shim_vcpu_t *const pmut_vcpu) NOEXCEPT
 
         case mv_bit_size_t_64:
         default: {
-            bferror_d32("size is invalid", pmut_exit_io->size);
+            bferror_d32("size is invalid", (uint32_t)pmut_exit_io->size);
             return return_failure(pmut_vcpu);
         }
     }
@@ -185,7 +185,7 @@ handle_vcpu_kvm_run_io(struct shim_vcpu_t *const pmut_vcpu) NOEXCEPT
         pmut_vcpu->run->io.port = (uint16_t)pmut_exit_io->addr;
     }
     else {
-        bferror_x64("addr is invalid", pmut_exit_io->size);
+        bferror_d32("addr is invalid", (uint32_t)pmut_exit_io->size);
         return return_failure(pmut_vcpu);
     }
 

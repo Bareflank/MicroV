@@ -210,13 +210,13 @@ namespace microv
 
         if (bsl::unlikely(!verify_handle(mut_sys))) {
             bsl::print<bsl::V>() << bsl::here();
-            set_reg_return(mut_sys, hypercall::MV_STATUS_FAILURE_UNKNOWN);
+            set_reg_return(mut_sys, hypercall::MV_STATUS_INVALID_INPUT_REG0);
             return vmexit_failure_advance_ip_and_run;
         }
 
         if (bsl::unlikely(!verify_root_vm(mut_sys))) {
             bsl::print<bsl::V>() << bsl::here();
-            set_reg_return(mut_sys, hypercall::MV_STATUS_FAILURE_UNKNOWN);
+            set_reg_return(mut_sys, hypercall::MV_STATUS_INVALID_PERM_DENIED);
             return vmexit_failure_advance_ip_and_run;
         }
 

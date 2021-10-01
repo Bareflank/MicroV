@@ -56,7 +56,65 @@ enum mv_mp_state_t
         mv_mp_state_t_init = 3,
         /** @brief the VS is waiting for SIPI (x86 only) */
         mv_mp_state_t_sipi = 4,
+        /** @brief invalid */
+        mv_mp_state_t_invalid = 5,
     };
+
+    /**
+     * <!-- description -->
+     *   @brief Returns (int32_t)val
+     *
+     * <!-- inputs/outputs -->
+     *   @param val the mv_mp_state_t to convert
+     *   @return Returns (int32_t)val
+     */
+    NODISCARD CONSTEXPR int32_t
+    mv_mp_state_t_to_i32(enum mv_mp_state_t const val) NOEXCEPT
+    {
+        return (int32_t)val;
+    }
+
+    /**
+     * <!-- description -->
+     *   @brief Returns (uint64_t)val
+     *
+     * <!-- inputs/outputs -->
+     *   @param val the mv_mp_state_t to convert
+     *   @return Returns (uint64_t)val
+     */
+    NODISCARD CONSTEXPR uint64_t
+    mv_mp_state_t_to_u64(enum mv_mp_state_t const val) NOEXCEPT
+    {
+        return (uint64_t)val;
+    }
+
+    /**
+     * <!-- description -->
+     *   @brief Returns (mv_mp_state_t)val
+     *
+     * <!-- inputs/outputs -->
+     *   @param val the mv_mp_state_t to convert
+     *   @return Returns (mv_mp_state_t)val
+     */
+    NODISCARD CONSTEXPR enum mv_mp_state_t
+    i32_to_mv_mp_state_t(int32_t const val) NOEXCEPT
+    {
+        return (enum mv_mp_state_t)val;
+    }
+
+    /**
+     * <!-- description -->
+     *   @brief Returns (mv_mp_state_t)val
+     *
+     * <!-- inputs/outputs -->
+     *   @param val the mv_mp_state_t to convert
+     *   @return Returns (mv_mp_state_t)val
+     */
+    NODISCARD CONSTEXPR enum mv_mp_state_t
+    u64_to_mv_mp_state_t(uint64_t const val) NOEXCEPT
+    {
+        return (enum mv_mp_state_t)val;
+    }
 
 /** @brief integer version of mv_mp_state_t_initial */
 #define MP_STATE_INITIAL ((int32_t)mv_mp_state_t_initial)
@@ -68,6 +126,8 @@ enum mv_mp_state_t
 #define MP_STATE_INIT ((int32_t)mv_mp_state_t_init)
 /** @brief integer version of mv_mp_state_t_sipi */
 #define MP_STATE_SIPI ((int32_t)mv_mp_state_t_sipi)
+/** @brief integer version of mv_mp_state_t_invalid */
+#define MP_STATE_INVALID ((int32_t)mv_mp_state_t_invalid)
 
 #ifdef __cplusplus
 }

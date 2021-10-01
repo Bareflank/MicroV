@@ -52,19 +52,19 @@ extern "C"
 #define KVM_RUN_PADDING3_SIZE ((uint64_t)2048)
 
 /** @brief defines KVM_EXIT_UNKNOWN kvm_run.exit_reason */
-#define KVM_EXIT_UNKNOWN 0
+#define KVM_EXIT_UNKNOWN 0U
 /** @brief defines KVM_EXIT_IO kvm_run.exit_reason */
-#define KVM_EXIT_IO 2
+#define KVM_EXIT_IO 2U
 /** @brief defines KVM_EXIT_HLT kvm_run.exit_reason */
-#define KVM_EXIT_HLT 5
+#define KVM_EXIT_HLT 5U
 /** @brief defines KVM_EXIT_MMIO kvm_run.exit_reason */
-#define KVM_EXIT_MMIO 6
+#define KVM_EXIT_MMIO 6U
 /** @brief defines KVM_EXIT_SHUTDOWN kvm_run.exit_reason */
-#define KVM_EXIT_SHUTDOWN 8
+#define KVM_EXIT_SHUTDOWN 8U
 /** @brief defines KVM_EXIT_FAIL_ENTRY kvm_run.exit_reason */
-#define KVM_EXIT_FAIL_ENTRY 9
+#define KVM_EXIT_FAIL_ENTRY 9U
 /** @brief defines KVM_EXIT_INTR kvm_run.exit_reason */
-#define KVM_EXIT_INTR 10
+#define KVM_EXIT_INTR 10U
 
     /**
      * @struct kvm_run

@@ -26,6 +26,7 @@
 #define MV_HYPERCALL_IMPL_HPP
 
 #include <mv_exit_reason_t.hpp>
+#include <mv_mp_state_t.hpp>
 #include <mv_reg_t.hpp>
 #include <mv_types.hpp>
 
@@ -135,6 +136,30 @@ namespace hypercall
     ///
     extern "C" [[nodiscard]] auto
     mv_pp_op_msr_get_supported_list_impl(bsl::uint64 const reg0_in) noexcept
+        -> mv_status_t::value_type;
+
+    /// <!-- description -->
+    ///   @brief Implements the ABI for mv_pp_op_tsc_get_khz.
+    ///
+    /// <!-- inputs/outputs -->
+    ///   @param reg0_in n/a
+    ///   @param pmut_reg0_out n/a
+    ///   @return n/a
+    ///
+    extern "C" [[nodiscard]] auto
+    mv_pp_op_tsc_get_khz_impl(bsl::uint64 const reg0_in, bsl::uint64 *const pmut_reg0_out) noexcept
+        -> mv_status_t::value_type;
+
+    /// <!-- description -->
+    ///   @brief Implements the ABI for mv_pp_op_tsc_set_khz.
+    ///
+    /// <!-- inputs/outputs -->
+    ///   @param reg0_in n/a
+    ///   @param reg1_in n/a
+    ///   @return n/a
+    ///
+    extern "C" [[nodiscard]] auto
+    mv_pp_op_tsc_set_khz_impl(bsl::uint64 const reg0_in, bsl::uint64 const reg1_in) noexcept
         -> mv_status_t::value_type;
 
     // -------------------------------------------------------------------------
@@ -493,6 +518,48 @@ namespace hypercall
     extern "C" [[nodiscard]] auto
     mv_vs_op_fpu_set_all_impl(bsl::uint64 const reg0_in, bsl::uint16 const reg1_in) noexcept
         -> mv_status_t::value_type;
+
+    /// <!-- description -->
+    ///   @brief Implements the ABI for mv_vs_op_mp_state_get.
+    ///
+    /// <!-- inputs/outputs -->
+    ///   @param reg0_in n/a
+    ///   @param reg1_in n/a
+    ///   @param pmut_reg0_out n/a
+    ///   @return n/a
+    ///
+    extern "C" [[nodiscard]] auto mv_vs_op_mp_state_get_impl(
+        bsl::uint64 const reg0_in,
+        bsl::uint16 const reg1_in,
+        hypercall::mv_mp_state_t *const pmut_reg0_out) noexcept -> mv_status_t::value_type;
+
+    /// <!-- description -->
+    ///   @brief Implements the ABI for mv_vs_op_mp_state_set.
+    ///
+    /// <!-- inputs/outputs -->
+    ///   @param reg0_in n/a
+    ///   @param reg1_in n/a
+    ///   @param reg2_in n/a
+    ///   @return n/a
+    ///
+    extern "C" [[nodiscard]] auto mv_vs_op_mp_state_set_impl(
+        bsl::uint64 const reg0_in,
+        bsl::uint16 const reg1_in,
+        hypercall::mv_mp_state_t const reg2_in) noexcept -> mv_status_t::value_type;
+
+    /// <!-- description -->
+    ///   @brief Implements the ABI for mv_vs_op_tsc_get_khz.
+    ///
+    /// <!-- inputs/outputs -->
+    ///   @param reg0_in n/a
+    ///   @param reg1_in n/a
+    ///   @param pmut_reg0_out n/a
+    ///   @return n/a
+    ///
+    extern "C" [[nodiscard]] auto mv_vs_op_tsc_get_khz_impl(
+        bsl::uint64 const reg0_in,
+        bsl::uint16 const reg1_in,
+        bsl::uint64 *const pmut_reg0_out) noexcept -> mv_status_t::value_type;
 }
 
 #endif

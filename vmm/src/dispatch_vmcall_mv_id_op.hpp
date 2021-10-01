@@ -100,6 +100,12 @@ namespace microv
         bsl::discard(vs_pool);
         bsl::discard(vsid);
 
+        if (bsl::unlikely(!verify_root_vm(mut_sys))) {
+            bsl::print<bsl::V>() << bsl::here();
+            set_reg_return(mut_sys, hypercall::MV_STATUS_INVALID_PERM_DENIED);
+            return vmexit_failure_advance_ip_and_run;
+        }
+
         switch (hypercall::mv_hypercall_index(get_reg_hypercall(mut_sys)).get()) {
             case hypercall::MV_ID_OP_VERSION_IDX_VAL.get(): {
                 auto const ret{handle_mv_id_op_version(mut_sys)};

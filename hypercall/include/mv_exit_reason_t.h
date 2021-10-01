@@ -64,6 +64,62 @@ enum mv_exit_reason_t
         mv_exit_reason_t_nmi = 7,
     };
 
+    /**
+     * <!-- description -->
+     *   @brief Returns (int32_t)val
+     *
+     * <!-- inputs/outputs -->
+     *   @param val the mv_exit_reason_t to convert
+     *   @return Returns (int32_t)val
+     */
+    NODISCARD CONSTEXPR int32_t
+    mv_exit_reason_t_to_i32(enum mv_exit_reason_t const val) NOEXCEPT
+    {
+        return (int32_t)val;
+    }
+
+    /**
+     * <!-- description -->
+     *   @brief Returns (uint64_t)val
+     *
+     * <!-- inputs/outputs -->
+     *   @param val the mv_exit_reason_t to convert
+     *   @return Returns (uint64_t)val
+     */
+    NODISCARD CONSTEXPR uint64_t
+    mv_exit_reason_t_to_u64(enum mv_exit_reason_t const val) NOEXCEPT
+    {
+        return (uint64_t)val;
+    }
+
+    /**
+     * <!-- description -->
+     *   @brief Returns (mv_exit_reason_t)val
+     *
+     * <!-- inputs/outputs -->
+     *   @param val the mv_exit_reason_t to convert
+     *   @return Returns (mv_exit_reason_t)val
+     */
+    NODISCARD CONSTEXPR enum mv_exit_reason_t
+    i32_to_mv_exit_reason_t(int32_t const val) NOEXCEPT
+    {
+        return (enum mv_exit_reason_t)val;
+    }
+
+    /**
+     * <!-- description -->
+     *   @brief Returns (mv_exit_reason_t)val
+     *
+     * <!-- inputs/outputs -->
+     *   @param val the mv_exit_reason_t to convert
+     *   @return Returns (mv_exit_reason_t)val
+     */
+    NODISCARD CONSTEXPR enum mv_exit_reason_t
+    u64_to_mv_exit_reason_t(uint64_t const val) NOEXCEPT
+    {
+        return (enum mv_exit_reason_t)val;
+    }
+
 /** @brief integer version of mv_exit_reason_t_failure */
 #define EXIT_REASON_FAILURE ((int32_t)mv_exit_reason_t_failure)
 /** @brief integer version of mv_exit_reason_t_unknown */
