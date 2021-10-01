@@ -33,6 +33,7 @@
 #include <linux/cpu.h>
 #include <linux/mm.h>
 #include <linux/sched/mm.h>
+#include <linux/sched/signal.h>
 #include <linux/sched/task.h>
 #include <linux/slab.h>
 #include <linux/smp.h>
@@ -590,4 +591,24 @@ void
 platform_mutex_unlock(platform_mutex *const pmut_mutex) NOEXCEPT
 {
     mutex_unlock(pmut_mutex);
+}
+
+/**
+ * <!-- description -->
+ *   @brief Returns SHIM_SUCCESS if the current process has NOT been
+ *     interrupted. Returns SHIM_FAILURE otherwise.
+ *
+ * <!-- inputs/outputs -->
+ *   @return Returns SHIM_SUCCESS if the current process has NOT been
+ *     interrupted. Returns SHIM_FAILURE otherwise.
+ */
+NODISCARD int64_t
+platform_interrupted(void) NOEXCEPT
+{
+    cond_resched();
+    if (signal_pending(current)) {
+        return SHIM_INTERRUPTED;
+    }
+
+    return SHIM_SUCCESS;
 }

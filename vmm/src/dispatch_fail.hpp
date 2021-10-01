@@ -77,32 +77,13 @@ namespace microv
         bsl::safe_u16 const &vsid,
         bsl::safe_u64 const &fail_reason) noexcept -> bsl::errc_type
     {
-        bsl::expects(vsid.is_valid_and_checked());
-        bsl::expects(fail_reason.is_valid_and_checked());
-
         bsl::discard(gs);
         bsl::discard(page_pool);
         bsl::discard(pp_pool);
+        bsl::discard(vsid);
+        bsl::discard(fail_reason);
 
-        if (mut_sys.is_vs_a_root_vs(vsid)) {
-            bsl::error() << "unrecoverable error from the root VM\n";
-            return bsl::errc_failure;
-        }
-
-        // ---------------------------------------------------------------------
-        // Context: Change To Root VM
-        // ---------------------------------------------------------------------
-
-        switch_to_root(mut_tls, mut_sys, intrinsic, mut_vm_pool, mut_vp_pool, mut_vs_pool, false);
-
-        // ---------------------------------------------------------------------
-        // Context: Root VM
-        // ---------------------------------------------------------------------
-
-        set_reg_return(mut_sys, hypercall::MV_STATUS_EXIT_UNKNOWN);
-        set_reg0(mut_sys, bsl::to_u64(hypercall::EXIT_REASON_UNKNOWN));
-
-        return mut_sys.bf_vs_op_run_current();
+        return return_unknown(mut_tls, mut_sys, intrinsic, mut_vm_pool, mut_vp_pool, mut_vs_pool);
     }
 }
 

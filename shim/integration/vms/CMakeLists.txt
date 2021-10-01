@@ -22,8 +22,12 @@
 cmake_minimum_required(VERSION 3.13)
 project(hypervisor_extensions ASM C CXX)
 
+macro(add_vm NAME)
+    add_executable(${NAME} ${NAME}.S)
+    install(TARGETS ${NAME} DESTINATION bin)
+endmacro(add_vm)
+
 include(${CMAKE_CURRENT_LIST_DIR}/../../../cmake/init_cross_compile_build.cmake)
 
-add_executable(16bit_io_test 16bit_io_test.S)
-
-install(TARGETS 16bit_io_test DESTINATION bin)
+add_vm(16bit_endless_loop_test)
+add_vm(16bit_io_test)

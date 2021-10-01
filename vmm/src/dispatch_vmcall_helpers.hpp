@@ -838,13 +838,16 @@ namespace microv
     /// <!-- inputs/outputs -->
     ///   @param sys the bf_syscall_t to use
     ///   @param reg the register to get the vpid from.
+    ///   @param vp_pool the vp_pool_t to use
     ///   @return Given an input register, returns a vpid if the provided
     ///     register contains a valid vpid. Otherwise, this function returns
     ///     bsl::safe_u16::failure().
     ///
     [[nodiscard]] constexpr auto
-    get_non_self_vpid(syscall::bf_syscall_t const &sys, bsl::safe_u64 const &reg) noexcept
-        -> bsl::safe_u16
+    get_non_self_vpid(
+        syscall::bf_syscall_t const &sys,
+        bsl::safe_u64 const &reg,
+        vp_pool_t const &vp_pool) noexcept -> bsl::safe_u16
     {
         auto const vpid{bsl::to_u16_unsafe(reg)};
         if (bsl::unlikely(hypercall::MV_SELF_ID == vpid)) {
@@ -860,10 +863,23 @@ namespace microv
         auto const self{sys.bf_tls_vpid()};
         if (bsl::unlikely(self == vpid)) {
             bsl::error() << "the provided vpid "                     // --
-                         << bsl::hex(hypercall::MV_SELF_ID)          // --
+                         << bsl::hex(vpid)                           // --
                          << " is MV_SELF_ID which cannot be used"    // --
                          << bsl::endl                                // --
                          << bsl::here();                             // --
+
+            return bsl::safe_u16::failure();
+        }
+
+        auto const self_vmid{vp_pool.assigned_vm(self)};
+        if (bsl::unlikely(self_vmid == vp_pool.assigned_vm(vpid))) {
+            bsl::error() << "the provided vpid "               // --
+                         << bsl::hex(vpid)                     // --
+                         << " is assigned to the same vm "     // --
+                         << bsl::hex(self_vmid)                // --
+                         << " and therefore cannot be used"    // --
+                         << bsl::endl                          // --
+                         << bsl::here();                       // --
 
             return bsl::safe_u16::failure();
         }
@@ -953,7 +969,7 @@ namespace microv
         bsl::safe_u64 const &reg,
         vp_pool_t const &vp_pool) noexcept -> bsl::safe_u16
     {
-        auto const vpid{get_non_self_vpid(sys, reg)};
+        auto const vpid{get_non_self_vpid(sys, reg, vp_pool)};
         if (bsl::unlikely(vpid.is_invalid())) {
             bsl::print<bsl::V>() << bsl::here();
             return bsl::safe_u16::failure();
@@ -1102,13 +1118,16 @@ namespace microv
     /// <!-- inputs/outputs -->
     ///   @param sys the bf_syscall_t to use
     ///   @param reg the register to get the vsid from.
+    ///   @param vs_pool the vs_pool_t to use
     ///   @return Given an input register, returns a vsid if the provided
     ///     register contains a valid vsid. Otherwise, this function returns
     ///     bsl::safe_u16::failure().
     ///
     [[nodiscard]] constexpr auto
-    get_non_self_vsid(syscall::bf_syscall_t const &sys, bsl::safe_u64 const &reg) noexcept
-        -> bsl::safe_u16
+    get_non_self_vsid(
+        syscall::bf_syscall_t const &sys,
+        bsl::safe_u64 const &reg,
+        vs_pool_t const &vs_pool) noexcept -> bsl::safe_u16
     {
         auto const vsid{bsl::to_u16_unsafe(reg)};
         if (bsl::unlikely(hypercall::MV_SELF_ID == vsid)) {
@@ -1128,6 +1147,19 @@ namespace microv
                          << " is MV_SELF_ID which cannot be used"    // --
                          << bsl::endl                                // --
                          << bsl::here();                             // --
+
+            return bsl::safe_u16::failure();
+        }
+
+        auto const self_vmid{vs_pool.assigned_vm(self)};
+        if (bsl::unlikely(self_vmid == vs_pool.assigned_vm(vsid))) {
+            bsl::error() << "the provided vsid "               // --
+                         << bsl::hex(vsid)                     // --
+                         << " is assigned to the same vm "     // --
+                         << bsl::hex(self_vmid)                // --
+                         << " and therefore cannot be used"    // --
+                         << bsl::endl                          // --
+                         << bsl::here();                       // --
 
             return bsl::safe_u16::failure();
         }
@@ -1221,7 +1253,7 @@ namespace microv
         syscall::bf_syscall_t &mut_sys, bsl::safe_u64 const &reg, vs_pool_t &mut_vs_pool) noexcept
         -> bsl::safe_u16
     {
-        auto const vsid{get_non_self_vsid(mut_sys, reg)};
+        auto const vsid{get_non_self_vsid(mut_sys, reg, mut_vs_pool)};
         if (bsl::unlikely(vsid.is_invalid())) {
             bsl::print<bsl::V>() << bsl::here();
             return bsl::safe_u16::failure();
@@ -1634,9 +1666,7 @@ namespace microv
     ///     So the patten for handling PIO for example would be:
     ///     - VMExit
     ///     - Gather guest VS state
-    ///     - switch_to_root(advance_ip = true), this advances the IP
-    ///       of the guest VS to the next instruction after the PIO
-    ///       instruction that generated the VMExit
+    ///     - switch_to_root
     ///     - Set the root VS state so that the root VS has what it needs
     ///       to emulate the PIO
     ///     - bf_vs_op_advance_ip_and_run_current, which advances the IP
@@ -1652,7 +1682,6 @@ namespace microv
     ///   @param mut_vm_pool the vm_pool_t to use
     ///   @param mut_vp_pool the vp_pool_t to use
     ///   @param mut_vs_pool the vs_pool_t to use
-    ///   @param advance_ip if true, the
     ///
     constexpr void
     switch_to_root(
@@ -1661,8 +1690,7 @@ namespace microv
         intrinsic_t const &intrinsic,
         vm_pool_t &mut_vm_pool,
         vp_pool_t &mut_vp_pool,
-        vs_pool_t &mut_vs_pool,
-        bool const advance_ip) noexcept
+        vs_pool_t &mut_vs_pool) noexcept
     {
         bsl::expects(!mut_sys.is_the_active_vm_the_root_vm());
         bsl::expects(mut_tls.parent_vmid != hypercall::MV_INVALID_ID);
@@ -1677,14 +1705,8 @@ namespace microv
         mut_vp_pool.set_inactive(mut_tls, vpid);
         mut_vs_pool.set_inactive(mut_tls, intrinsic, vsid);
 
-        if (advance_ip) {
-            bsl::expects(mut_sys.bf_vs_op_advance_ip_and_set_active(
-                mut_tls.parent_vmid, mut_tls.parent_vpid, mut_tls.parent_vsid));
-        }
-        else {
-            bsl::expects(mut_sys.bf_vs_op_set_active(
-                mut_tls.parent_vmid, mut_tls.parent_vpid, mut_tls.parent_vsid));
-        }
+        bsl::expects(mut_sys.bf_vs_op_advance_ip_and_set_active(
+            mut_tls.parent_vmid, mut_tls.parent_vpid, mut_tls.parent_vsid));
 
         mut_vm_pool.set_active(mut_tls, mut_tls.parent_vmid);
         mut_vp_pool.set_active(mut_tls, mut_tls.parent_vpid);
@@ -1693,6 +1715,150 @@ namespace microv
         mut_tls.parent_vmid = hypercall::MV_INVALID_ID;
         mut_tls.parent_vpid = hypercall::MV_INVALID_ID;
         mut_tls.parent_vsid = hypercall::MV_INVALID_ID;
+    }
+
+    /// <!-- description -->
+    ///   @brief Returns from a VMExit.
+    ///
+    /// <!-- notes -->
+    ///   @note This function does not return unless the provided error
+    ///     code is not one that can be handled.
+    ///
+    /// <!-- inputs/outputs -->
+    ///   @param mut_tls the tls_t to use
+    ///   @param mut_sys the bf_syscall_t to use
+    ///   @param intrinsic the intrinsic_t to use
+    ///   @param mut_vm_pool the vm_pool_t to use
+    ///   @param mut_vp_pool the vp_pool_t to use
+    ///   @param mut_vs_pool the vs_pool_t to use
+    ///   @return Returns bsl::errc_success on success, bsl::errc_failure
+    ///     and friends otherwise
+    ///
+    [[nodiscard]] constexpr auto
+    return_unknown(
+        tls_t &mut_tls,
+        syscall::bf_syscall_t &mut_sys,
+        intrinsic_t const &intrinsic,
+        vm_pool_t &mut_vm_pool,
+        vp_pool_t &mut_vp_pool,
+        vs_pool_t &mut_vs_pool) noexcept -> bsl::errc_type
+    {
+        if (mut_sys.is_the_active_vm_the_root_vm()) {
+            if (!mut_tls.handling_vmcall) {
+                bsl::error() << "unrecoverable error from the root VM\n" << bsl::here();
+                return bsl::errc_failure;
+            }
+
+            set_reg_return(mut_sys, hypercall::MV_STATUS_EXIT_UNKNOWN);
+            set_reg0(mut_sys, bsl::to_u64(hypercall::EXIT_REASON_UNKNOWN));
+
+            return mut_sys.bf_vs_op_advance_ip_and_run_current();
+        }
+
+        /// NOTE:
+        /// - If we get this far, it is because we are executing right now
+        ///   from the context of a guest VM. This means that right now, all
+        ///   of the TLS registers point to registers in the guest VS. It
+        ///   also means that in the root VM, the IP points to the vmcall
+        ///   instruction that was called when mv_vs_op_run was called. This
+        ///   is because the ONLY way that a guest VM would have been running
+        ///   is if the root VM asked MicroV to run it using this hypercall.
+        ///
+        /// - This means that no matter how we got to this pointer, whether
+        ///   it is because of a crash, segfault, error, narrow contract
+        ///   violation, whatever, we know that at the very least, the root
+        ///   VM is still there, and the IP points to the vmcall for this
+        ///   hypercall. So, to recover, all we need to do is go back to the
+        ///   root VM.
+        ///
+        /// - To do this we need to switch the the root VM's context. Again,
+        ///   right now we are in the guest VM's context. But we want to
+        ///   return an error, but that means we need a way to modify the
+        ///   registers for the root VM, not the guest VM. To handle this,
+        ///   we switch to the root VM. This ensures that the state of the
+        ///   root VM is now loaded and ready for us to use.
+        ///
+        /// - Finally, we tell the root VM that there was an error, and we
+        ///   run the root VM, but advance the IP because we want to execute
+        ///   just after the vmcall.
+        ///
+
+        // ---------------------------------------------------------------------
+        // Context: Change To Root VM
+        // ---------------------------------------------------------------------
+
+        switch_to_root(mut_tls, mut_sys, intrinsic, mut_vm_pool, mut_vp_pool, mut_vs_pool);
+
+        // ---------------------------------------------------------------------
+        // Context: Root VM
+        // ---------------------------------------------------------------------
+
+        set_reg_return(mut_sys, hypercall::MV_STATUS_EXIT_UNKNOWN);
+        set_reg0(mut_sys, bsl::to_u64(hypercall::EXIT_REASON_UNKNOWN));
+
+        return mut_sys.bf_vs_op_advance_ip_and_run_current();
+    }
+
+    /// <!-- description -->
+    ///   @brief Returns from a VMExit.
+    ///
+    /// <!-- notes -->
+    ///   @note This function does not return unless the provided error
+    ///     code is not one that can be handled.
+    ///
+    /// <!-- inputs/outputs -->
+    ///   @param mut_tls the tls_t to use
+    ///   @param mut_sys the bf_syscall_t to use
+    ///   @param intrinsic the intrinsic_t to use
+    ///   @param mut_vm_pool the vm_pool_t to use
+    ///   @param mut_vp_pool the vp_pool_t to use
+    ///   @param mut_vs_pool the vs_pool_t to use
+    ///   @param vsid the ID of the VS to return from
+    ///   @param errc the return code from the VMExit handlers.
+    ///   @return Returns bsl::errc_success on success, bsl::errc_failure
+    ///     and friends otherwise
+    ///
+    [[nodiscard]] constexpr auto
+    return_from_vmexit(
+        tls_t &mut_tls,
+        syscall::bf_syscall_t &mut_sys,
+        intrinsic_t const &intrinsic,
+        vm_pool_t &mut_vm_pool,
+        vp_pool_t &mut_vp_pool,
+        vs_pool_t &mut_vs_pool,
+        bsl::safe_u16 const &vsid,
+        bsl::errc_type const &errc) noexcept -> bsl::errc_type
+    {
+        switch (errc.get()) {
+            case vmexit_success_run.get(): {
+                return mut_sys.bf_vs_op_run_current();
+            }
+
+            case vmexit_success_advance_ip_and_run.get(): {
+                return mut_sys.bf_vs_op_advance_ip_and_run_current();
+            }
+
+            case vmexit_success_promote.get(): {
+                return mut_sys.bf_vs_op_promote(vsid);
+            }
+
+            case vmexit_failure_run.get(): {
+                bsl::print<bsl::V>() << bsl::here();
+                return mut_sys.bf_vs_op_run_current();
+            }
+
+            case vmexit_failure_advance_ip_and_run.get(): {
+                bsl::print<bsl::V>() << bsl::here();
+                return mut_sys.bf_vs_op_advance_ip_and_run_current();
+            }
+
+            default: {
+                bsl::print<bsl::V>() << bsl::here();
+                break;
+            }
+        }
+
+        return return_unknown(mut_tls, mut_sys, intrinsic, mut_vm_pool, mut_vp_pool, mut_vs_pool);
     }
 }
 

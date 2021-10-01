@@ -29,9 +29,10 @@
 #ifndef TYPES_H
 #define TYPES_H
 
-#include <inttypes.h>    // IWYU pragma: export
-#include <stddef.h>      // IWYU pragma: export
-#include <stdint.h>      // IWYU pragma: export
+#include <inttypes.h>       // IWYU pragma: export
+#include <linux/errno.h>    // IWYU pragma: export
+#include <stddef.h>         // IWYU pragma: export
+#include <stdint.h>         // IWYU pragma: export
 
 /**
  * @brief Returned by a shim function when a function succeeds.
@@ -41,6 +42,12 @@
 /**
  * @brief Returned by a shim function when an error occurs.
  */
-#define SHIM_FAILURE ((int64_t)-1)
+#define SHIM_FAILURE ((int64_t)-EINVAL)
+
+/**
+ * @brief Returned by a shim function when an the current process
+ *   has been interrupted.
+ */
+#define SHIM_INTERRUPTED ((int64_t)-EINTR)
 
 #endif

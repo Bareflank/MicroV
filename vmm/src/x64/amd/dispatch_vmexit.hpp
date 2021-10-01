@@ -30,13 +30,13 @@
 #include <dispatch_vmexit_cpuid.hpp>
 #include <dispatch_vmexit_cr.hpp>
 #include <dispatch_vmexit_dr.hpp>
-#include <dispatch_vmexit_exception.hpp>
-#include <dispatch_vmexit_external_interrupt.hpp>
-#include <dispatch_vmexit_external_interrupt_window.hpp>
 #include <dispatch_vmexit_hlt.hpp>
 #include <dispatch_vmexit_init.hpp>
+#include <dispatch_vmexit_intr.hpp>
+#include <dispatch_vmexit_intr_window.hpp>
 #include <dispatch_vmexit_io.hpp>
 #include <dispatch_vmexit_mmio.hpp>
+#include <dispatch_vmexit_nmi.hpp>
 #include <dispatch_vmexit_rdmsr.hpp>
 #include <dispatch_vmexit_sipi.hpp>
 #include <dispatch_vmexit_triple_fault.hpp>
@@ -58,6 +58,10 @@
 
 namespace microv
 {
+    /// @brief defines the INTR exit reason code
+    constexpr auto EXIT_REASON_INTR{0x60_u64};
+    /// @brief defines the NMI exit reason code
+    constexpr auto EXIT_REASON_NMI{0x61_u64};
     /// @brief defines the CPUID exit reason code
     constexpr auto EXIT_REASON_CPUID{0x72_u64};
     /// @brief defines the IOIO exit reason code
@@ -100,6 +104,36 @@ namespace microv
         bsl::errc_type mut_ret{};
 
         switch (exit_reason.get()) {
+            case EXIT_REASON_INTR.get(): {
+                mut_ret = dispatch_vmexit_intr(
+                    gs,
+                    mut_tls,
+                    mut_sys,
+                    mut_page_pool,
+                    intrinsic,
+                    mut_pp_pool,
+                    mut_vm_pool,
+                    mut_vp_pool,
+                    mut_vs_pool,
+                    vsid);
+                break;
+            }
+
+            case EXIT_REASON_NMI.get(): {
+                mut_ret = dispatch_vmexit_nmi(
+                    gs,
+                    mut_tls,
+                    mut_sys,
+                    mut_page_pool,
+                    intrinsic,
+                    mut_pp_pool,
+                    mut_vm_pool,
+                    mut_vp_pool,
+                    mut_vs_pool,
+                    vsid);
+                break;
+            }
+
             case EXIT_REASON_CPUID.get(): {
                 mut_ret = dispatch_vmexit_cpuid(
                     gs,
@@ -162,54 +196,8 @@ namespace microv
             }
         }
 
-        switch (mut_ret.get()) {
-            case vmexit_success_run.get(): {
-                return mut_sys.bf_vs_op_run_current();
-            }
-
-            case vmexit_success_advance_ip_and_run.get(): {
-                return mut_sys.bf_vs_op_advance_ip_and_run_current();
-            }
-
-            case vmexit_success_promote.get(): {
-                return mut_sys.bf_vs_op_promote(vsid);
-            }
-
-            case vmexit_failure_run.get(): {
-                bsl::print<bsl::V>() << bsl::here();
-                return mut_sys.bf_vs_op_run_current();
-            }
-
-            case vmexit_failure_advance_ip_and_run.get(): {
-                bsl::print<bsl::V>() << bsl::here();
-                return mut_sys.bf_vs_op_advance_ip_and_run_current();
-            }
-
-            default: {
-                break;
-            }
-        }
-
-        if (mut_sys.is_vs_a_root_vs(vsid)) {
-            bsl::error() << "unrecoverable error from the root VM\n";
-            return bsl::errc_failure;
-        }
-
-        // ---------------------------------------------------------------------
-        // Context: Change To Root VM
-        // ---------------------------------------------------------------------
-
-        switch_to_root(mut_tls, mut_sys, intrinsic, mut_vm_pool, mut_vp_pool, mut_vs_pool, false);
-
-        // ---------------------------------------------------------------------
-        // Context: Root VM
-        // ---------------------------------------------------------------------
-
-        set_reg_return(mut_sys, hypercall::MV_STATUS_EXIT_UNKNOWN);
-        set_reg0(mut_sys, bsl::to_u64(hypercall::EXIT_REASON_UNKNOWN));
-
-        bsl::print<bsl::V>() << bsl::here();
-        return mut_sys.bf_vs_op_advance_ip_and_run_current();
+        return return_from_vmexit(
+            mut_tls, mut_sys, intrinsic, mut_vm_pool, mut_vp_pool, mut_vs_pool, vsid, mut_ret);
     }
 }
 

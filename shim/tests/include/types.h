@@ -43,4 +43,10 @@
  */
 #define SHIM_FAILURE ((int64_t)-1)
 
+/**
+ * @brief Returned by a shim function when an the current process
+ *   has been interrupted.
+ */
+#define SHIM_INTERRUPTED ((int64_t)-2)
+
 #endif

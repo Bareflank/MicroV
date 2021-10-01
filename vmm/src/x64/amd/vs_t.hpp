@@ -46,6 +46,7 @@
 #include <page_4k_t.hpp>
 #include <page_pool_t.hpp>
 #include <pp_pool_t.hpp>
+#include <queue.hpp>
 #include <running_status_t.hpp>
 #include <tls_t.hpp>
 
@@ -101,6 +102,9 @@ namespace microv
 
         /// @brief stores the xsave region for this vs_t
         page_4k_t *m_xsave{};
+
+        /// @brief stores a queue of interrupts that need to be injected
+        queue<bsl::safe_u64, MICROV_INTERRUPT_QUEUE_SIZE.get()> m_interrupt_queue{};
 
         /// <!-- description -->
         ///   @brief Initializes the VS to start as a 16bit guest.
@@ -527,13 +531,33 @@ namespace microv
                 bsl::expects(mut_sys.bf_vs_op_init_as_root(vsid));
             }
             else {
-                constexpr auto intercept1_val{0x99040000_u64};
+                constexpr auto intercept_crr_val{0xFFFF_u64};
+                constexpr auto intercept_crr_idx{syscall::bf_reg_t::bf_reg_t_intercept_cr_read};
+                bsl::expects(mut_sys.bf_vs_op_write(vsid, intercept_crr_idx, intercept_crr_val));
+
+                constexpr auto intercept_crw_val{0xFFFF_u64};
+                constexpr auto intercept_crw_idx{syscall::bf_reg_t::bf_reg_t_intercept_cr_write};
+                bsl::expects(mut_sys.bf_vs_op_write(vsid, intercept_crw_idx, intercept_crw_val));
+
+                constexpr auto intercept_drr_val{0xFFFF_u64};
+                constexpr auto intercept_drr_idx{syscall::bf_reg_t::bf_reg_t_intercept_dr_read};
+                bsl::expects(mut_sys.bf_vs_op_write(vsid, intercept_drr_idx, intercept_drr_val));
+
+                constexpr auto intercept_drw_val{0xFFFF_u64};
+                constexpr auto intercept_drw_idx{syscall::bf_reg_t::bf_reg_t_intercept_dr_write};
+                bsl::expects(mut_sys.bf_vs_op_write(vsid, intercept_drw_idx, intercept_drw_val));
+
+                constexpr auto intercept1_val{0x9F24003B_u64};
                 constexpr auto intercept1_idx{syscall::bf_reg_t::bf_reg_t_intercept_instruction1};
                 bsl::expects(mut_sys.bf_vs_op_write(vsid, intercept1_idx, intercept1_val));
 
-                constexpr auto intercept2_val{0x00000003_u64};
+                constexpr auto intercept2_val{0x0000007F_u64};
                 constexpr auto intercept2_idx{syscall::bf_reg_t::bf_reg_t_intercept_instruction2};
                 bsl::expects(mut_sys.bf_vs_op_write(vsid, intercept2_idx, intercept2_val));
+
+                constexpr auto vint_a_val{0x01000000_u64};
+                constexpr auto vint_a_idx{syscall::bf_reg_t::bf_reg_t_virtual_interrupt_a};
+                bsl::expects(mut_sys.bf_vs_op_write(vsid, vint_a_idx, vint_a_val));
 
                 constexpr auto ctls1_val{0x1_u64};
                 constexpr auto ctls1_idx{syscall::bf_reg_t::bf_reg_t_ctls1};
@@ -777,15 +801,26 @@ namespace microv
                 return bsl::errc_success;
             }
 
+            if (bsl::unlikely(mut_sys.is_vs_a_root_vs(this->id()))) {
+                bsl::error() << "vs "                                            // --
+                             << bsl::hex(this->id())                             // --
+                             << " is a root vs and cannot be migrated to pp "    // --
+                             << bsl::hex(ppid)                                   // --
+                             << bsl::endl                                        // --
+                             << bsl::here();                                     // --
+
+                return bsl::errc_failure;
+            }
+
             if (bsl::unlikely(running_status_t::running == m_status)) {
-                bsl::error() << "vs "                            // --
-                             << bsl::hex(this->id())             // --
-                             << " is running on "                // --
-                             << bsl::hex(this->assigned_pp())    // --
-                             << " and cannot be migrated to "    // --
-                             << bsl::hex(ppid)                   // --
-                             << bsl::endl                        // --
-                             << bsl::here();                     // --
+                bsl::error() << "vs "                               // --
+                             << bsl::hex(this->id())                // --
+                             << " is running on "                   // --
+                             << bsl::hex(this->assigned_pp())       // --
+                             << " and cannot be migrated to pp "    // --
+                             << bsl::hex(ppid)                      // --
+                             << bsl::endl                           // --
+                             << bsl::here();                        // --
 
                 return bsl::errc_failure;
             }
@@ -1646,6 +1681,252 @@ namespace microv
 
             constexpr auto fpu_size{512_umx};
             bsl::builtin_memcpy(m_xsave, &page, fpu_size);
+        }
+
+        /// <!-- description -->
+        ///   @brief Injects an exception into the vs_t. Unlike interrupts,
+        ///     exceptions cannot be masked, and therefore, the exception is
+        ///     immediately injected.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param mut_sys the bf_syscall_t to use
+        ///   @param vector the vector to inject
+        ///   @param ec the error code to inject
+        ///   @return Returns bsl::errc_success on success, bsl::errc_failure
+        ///     and friends otherwise.
+        ///
+        [[nodiscard]] constexpr auto
+        inject_exception(
+            syscall::bf_syscall_t &mut_sys,
+            bsl::safe_u64 const &vector,
+            bsl::safe_u64 const &ec) noexcept -> bsl::errc_type
+        {
+            constexpr auto idx{syscall::bf_reg_t::bf_reg_t_eventinj};
+
+            constexpr auto vector_mask{0xFF_u64};
+            constexpr auto divide_by_zero_error{0x80000300_u64};
+            constexpr auto debug{0x80000301_u64};
+            constexpr auto nmi{0x80000202_u64};
+            constexpr auto breakpoint{0x80000303_u64};
+            constexpr auto overflow{0x80000304_u64};
+            constexpr auto bound_range{0x80000305_u64};
+            constexpr auto invalid_opcode{0x80000306_u64};
+            constexpr auto device_not_available{0x80000307_u64};
+            constexpr auto double_fault{0x80000B08_u64};
+            constexpr auto invalid_tss{0x80000B0A_u64};
+            constexpr auto segment_not_present{0x80000B0B_u64};
+            constexpr auto stack{0x80000B0C_u64};
+            constexpr auto general_protection{0x80000B0D_u64};
+            constexpr auto page_fault{0x80000B0E_u64};
+            constexpr auto floating_point{0x80000310_u64};
+            constexpr auto alignment_check{0x80000B11_u64};
+            constexpr auto machine_check{0x80000312_u64};
+            constexpr auto simd{0x80000313_u64};
+
+            bsl::expects(allocated_status_t::allocated == m_allocated);
+            bsl::expects(running_status_t::running != m_status);
+            bsl::expects(mut_sys.bf_tls_ppid() == this->assigned_pp());
+            bsl::expects(vector.is_valid_and_checked());
+
+            constexpr auto ec_shift{32_u64};
+            auto mut_ec{ec << ec_shift};
+
+            auto const val{mut_sys.bf_vs_op_read(this->id(), idx)};
+            bsl::expects(val.is_valid_and_checked());
+
+            if (val.is_pos()) {
+                if (val == double_fault) {
+                    bsl::error() << "inject_exception called with existing double fault"    // --
+                                 << bsl::endl                                               // --
+                                 << bsl::here();                                            // --
+
+                    return vmexit_failure_triple_fault;
+                }
+
+                return mut_sys.bf_vs_op_write(this->id(), idx, double_fault);
+            }
+
+            switch (vector.get()) {
+                case (divide_by_zero_error & vector_mask).get(): {
+                    return mut_sys.bf_vs_op_write(this->id(), idx, divide_by_zero_error);
+                }
+
+                case (debug & vector_mask).get(): {
+                    return mut_sys.bf_vs_op_write(this->id(), idx, debug);
+                }
+
+                case (nmi & vector_mask).get(): {
+                    return mut_sys.bf_vs_op_write(this->id(), idx, nmi);
+                }
+
+                case (breakpoint & vector_mask).get(): {
+                    return mut_sys.bf_vs_op_write(this->id(), idx, breakpoint);
+                }
+
+                case (overflow & vector_mask).get(): {
+                    return mut_sys.bf_vs_op_write(this->id(), idx, overflow);
+                }
+
+                case (bound_range & vector_mask).get(): {
+                    return mut_sys.bf_vs_op_write(this->id(), idx, bound_range);
+                }
+
+                case (invalid_opcode & vector_mask).get(): {
+                    return mut_sys.bf_vs_op_write(this->id(), idx, invalid_opcode);
+                }
+
+                case (device_not_available & vector_mask).get(): {
+                    return mut_sys.bf_vs_op_write(this->id(), idx, device_not_available);
+                }
+
+                case (double_fault & vector_mask).get(): {
+                    return mut_sys.bf_vs_op_write(this->id(), idx, mut_ec | double_fault);
+                }
+
+                case (invalid_tss & vector_mask).get(): {
+                    return mut_sys.bf_vs_op_write(this->id(), idx, mut_ec | invalid_tss);
+                }
+
+                case (segment_not_present & vector_mask).get(): {
+                    return mut_sys.bf_vs_op_write(this->id(), idx, mut_ec | segment_not_present);
+                }
+
+                case (stack & vector_mask).get(): {
+                    return mut_sys.bf_vs_op_write(this->id(), idx, mut_ec | stack);
+                }
+
+                case (general_protection & vector_mask).get(): {
+                    return mut_sys.bf_vs_op_write(this->id(), idx, mut_ec | general_protection);
+                }
+
+                case (page_fault & vector_mask).get(): {
+                    return mut_sys.bf_vs_op_write(this->id(), idx, mut_ec | page_fault);
+                }
+
+                case (floating_point & vector_mask).get(): {
+                    return mut_sys.bf_vs_op_write(this->id(), idx, floating_point);
+                }
+
+                case (alignment_check & vector_mask).get(): {
+                    return mut_sys.bf_vs_op_write(this->id(), idx, mut_ec | alignment_check);
+                }
+
+                case (machine_check & vector_mask).get(): {
+                    return mut_sys.bf_vs_op_write(this->id(), idx, machine_check);
+                }
+
+                case (simd & vector_mask).get(): {
+                    return mut_sys.bf_vs_op_write(this->id(), idx, simd);
+                }
+
+                default: {
+                    break;
+                }
+            }
+
+            bsl::error() << "unknown/unsupported exception vector " << vector << bsl::endl
+                         << bsl::here();
+
+            return bsl::errc_failure;
+        }
+
+        /// <!-- description -->
+        ///   @brief Injects an NMI into this vs_t
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param mut_sys the bf_syscall_t to use
+        ///   @return Returns bsl::errc_success on success, bsl::errc_failure
+        ///     and friends otherwise.
+        ///
+        [[nodiscard]] constexpr auto
+        inject_nmi(syscall::bf_syscall_t &mut_sys) noexcept -> bsl::errc_type
+        {
+            /// TODO:
+            /// - AMD does not have an NMI window VMExit. What this means is
+            ///   that we need to handle the case where we need to inject
+            ///   an NMI into the root VM when the root VM is already handling
+            ///   an NMI. To do that, you need to trap on IRET, and inject
+            ///   once we see an IRET. So, the task here is simply detect if
+            ///   the root VM is already handling an NMI, and then inject
+            ///   the NMI after we see the next IRET. Once we do, turn IRET
+            ///   trapping off and inject.
+            ///
+            /// - Now..., in theory this should work, but it is not really
+            ///   the right thing to do. The IRET trap occurs BEFORE the IRET
+            ///   completes. What this means is that RIP is just before IRET
+            ///   and not after. So technically, the NMI is not open yet, and
+            ///   we really should inject the NMI AFTER the IRET completes.
+            ///   You could single step the IRET, but that is extremely hard
+            ///   to do. Or, we inject on IRET and cross our fingers. In
+            ///   theory, this should work, because we would be placing the
+            ///   RIP back at the beginning of the NMI handler in the root
+            ///   VM, and the NMI window remains closed. It will complete and
+            ///   run IRET, but this one will not trap, and will complete,
+            ///   which will open the window again. So, although this is not
+            ///   what hardware does, in theory, it should work fine.
+            ///
+            /// - There is a not that NMIs injected do NOT block future NMIs.
+            ///   This might require that we trap on NMIs in the root VM,
+            ///   as well, just so that we can use the logic above to ensure
+            ///   that the NMI blocking bit is preserved.
+            ///
+
+            constexpr auto nmi{2_u64};
+            return this->inject_exception(mut_sys, nmi, {});
+        }
+
+        /// <!-- description -->
+        ///   @brief Injects an GPF into this vs_t
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param mut_sys the bf_syscall_t to use
+        ///   @return Returns bsl::errc_success on success, bsl::errc_failure
+        ///     and friends otherwise.
+        ///
+        [[nodiscard]] constexpr auto
+        inject_gpf(syscall::bf_syscall_t &mut_sys) noexcept -> bsl::errc_type
+        {
+            constexpr auto gpf{13_u64};
+            return this->inject_exception(mut_sys, gpf, {});
+        }
+
+        /// <!-- description -->
+        ///   @brief Queues an interrupt for injection when this vs_t is
+        ///     capable of injecting interrupts. If the queue is full, this
+        ///     function will fail.
+        ///
+        /// <!-- notes -->
+        ///   @note You can only queue an interrupt for a vs_t that is assigned
+        ///     to the current PP. This means that one vs_t cannot queue an
+        ///     interrupt for another vs_t. Instead, you need to IPI the other
+        ///     PP, and queue the interrupt into the vs_t from the PP the vs_t
+        ///     is assigned to. This is done to ensure that not only is there
+        ///     no need for a lock on the queue, but more importantly, on Intel
+        ///     you cannot actually do interrupt/exception queuing on a vs_t
+        ///     on a remote PP as such an action is undefined by Intel, and
+        ///     we should not be migrating a vs_t to our current PP every time
+        ///     that we need to inject an interrupt.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param mut_sys the bf_syscall_t to use
+        ///   @param vector the vector to queue
+        ///   @return Returns bsl::errc_success on success, bsl::errc_failure
+        ///     and friends otherwise
+        ///
+        [[nodiscard]] constexpr auto
+        queue_interrupt(syscall::bf_syscall_t &mut_sys, bsl::safe_u64 const &vector) noexcept
+            -> bsl::errc_type
+        {
+            bsl::expects(allocated_status_t::allocated == m_allocated);
+            bsl::expects(running_status_t::running != m_status);
+            bsl::expects(mut_sys.bf_tls_ppid() == this->assigned_pp());
+            bsl::expects(vector.is_valid_and_checked());
+
+            constexpr auto vint_a_val{0x000000FF010F0100_u64};
+            constexpr auto vint_a_idx{syscall::bf_reg_t::bf_reg_t_virtual_interrupt_a};
+            bsl::expects(mut_sys.bf_vs_op_write(this->id(), vint_a_idx, vint_a_val));
+
+            return m_interrupt_queue.push(vector);
         }
     };
 }

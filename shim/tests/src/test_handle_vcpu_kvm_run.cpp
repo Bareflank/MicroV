@@ -55,7 +55,7 @@ namespace shim
             bsl::ut_given{} = [&]() noexcept {
                 shim_vcpu_t mut_vcpu{};
                 bsl::ut_when{} = [&]() noexcept {
-                    mut_vcpu.run = new kvm_run;    // NOLINT
+                    mut_vcpu.run = new kvm_run();    // NOLINT
                     g_mut_hypervisor_detected = false;
                     bsl::ut_then{} = [&]() noexcept {
                         bsl::ut_check(SHIM_FAILURE == handle(&mut_vcpu));
@@ -68,11 +68,45 @@ namespace shim
             };
         };
 
+        bsl::ut_scenario{"platform_interrupted returns interrupted"} = []() noexcept {
+            bsl::ut_given{} = [&]() noexcept {
+                shim_vcpu_t mut_vcpu{};
+                bsl::ut_when{} = [&]() noexcept {
+                    mut_vcpu.run = new kvm_run();    // NOLINT
+                    g_mut_platform_interrupted = true;
+                    bsl::ut_then{} = [&]() noexcept {
+                        bsl::ut_check(SHIM_INTERRUPTED == handle(&mut_vcpu));
+                    };
+                    bsl::ut_cleanup{} = [&]() noexcept {
+                        g_mut_platform_interrupted = false;
+                        delete mut_vcpu.run;    // NOLINT // GRCOV_EXCLUDE_BR
+                    };
+                };
+            };
+        };
+
+        bsl::ut_scenario{"exit immediately"} = []() noexcept {
+            bsl::ut_given{} = [&]() noexcept {
+                shim_vcpu_t mut_vcpu{};
+                bsl::ut_when{} = [&]() noexcept {
+                    mut_vcpu.run = new kvm_run();    // NOLINT
+                    mut_vcpu.run->immediate_exit = bsl::safe_u8::magic_1().get();
+                    bsl::ut_then{} = [&]() noexcept {
+                        bsl::ut_check(SHIM_INTERRUPTED == handle(&mut_vcpu));
+                    };
+                    bsl::ut_cleanup{} = [&]() noexcept {
+                        mut_vcpu.run->immediate_exit = {};
+                        delete mut_vcpu.run;    // NOLINT // GRCOV_EXCLUDE_BR
+                    };
+                };
+            };
+        };
+
         bsl::ut_scenario{"g_mut_mv_vs_op_run returns failure"} = []() noexcept {
             bsl::ut_given{} = [&]() noexcept {
                 shim_vcpu_t mut_vcpu{};
                 bsl::ut_when{} = [&]() noexcept {
-                    mut_vcpu.run = new kvm_run;    // NOLINT
+                    mut_vcpu.run = new kvm_run();    // NOLINT
                     g_mut_mv_vs_op_run = mv_exit_reason_t_failure;
                     bsl::ut_then{} = [&]() noexcept {
                         bsl::ut_check(SHIM_FAILURE == handle(&mut_vcpu));
@@ -89,7 +123,7 @@ namespace shim
             bsl::ut_given{} = [&]() noexcept {
                 shim_vcpu_t mut_vcpu{};
                 bsl::ut_when{} = [&]() noexcept {
-                    mut_vcpu.run = new kvm_run;    // NOLINT
+                    mut_vcpu.run = new kvm_run();    // NOLINT
                     g_mut_mv_vs_op_run = mv_exit_reason_t_unknown;
                     bsl::ut_then{} = [&]() noexcept {
                         bsl::ut_check(SHIM_FAILURE == handle(&mut_vcpu));
@@ -106,7 +140,7 @@ namespace shim
             bsl::ut_given{} = [&]() noexcept {
                 shim_vcpu_t mut_vcpu{};
                 bsl::ut_when{} = [&]() noexcept {
-                    mut_vcpu.run = new kvm_run;    // NOLINT
+                    mut_vcpu.run = new kvm_run();    // NOLINT
                     g_mut_mv_vs_op_run = mv_exit_reason_t_hlt;
                     bsl::ut_then{} = [&]() noexcept {
                         bsl::ut_check(SHIM_FAILURE == handle(&mut_vcpu));
@@ -127,7 +161,7 @@ namespace shim
                 constexpr bsl::safe_u64 type{MV_EXIT_IO_IN};
                 constexpr auto size{mv_bit_size_t_8};
                 bsl::ut_when{} = [&]() noexcept {
-                    mut_vcpu.run = new kvm_run;    // NOLINT
+                    mut_vcpu.run = new kvm_run();    // NOLINT
                     g_mut_mv_vs_op_run = mv_exit_reason_t_io;
                     g_mut_mv_vs_op_run_io.addr = addr.get();
                     g_mut_mv_vs_op_run_io.data = data.get();
@@ -154,7 +188,7 @@ namespace shim
                 constexpr bsl::safe_u64 type{MV_EXIT_IO_OUT};
                 constexpr auto size{mv_bit_size_t_8};
                 bsl::ut_when{} = [&]() noexcept {
-                    mut_vcpu.run = new kvm_run;    // NOLINT
+                    mut_vcpu.run = new kvm_run();    // NOLINT
                     g_mut_mv_vs_op_run = mv_exit_reason_t_io;
                     g_mut_mv_vs_op_run_io.addr = addr.get();
                     g_mut_mv_vs_op_run_io.data = data.get();
@@ -181,7 +215,7 @@ namespace shim
                 constexpr auto type{42_u64};
                 constexpr auto size{mv_bit_size_t_8};
                 bsl::ut_when{} = [&]() noexcept {
-                    mut_vcpu.run = new kvm_run;    // NOLINT
+                    mut_vcpu.run = new kvm_run();    // NOLINT
                     g_mut_mv_vs_op_run = mv_exit_reason_t_io;
                     g_mut_mv_vs_op_run_io.addr = addr.get();
                     g_mut_mv_vs_op_run_io.data = data.get();
@@ -207,7 +241,7 @@ namespace shim
                 constexpr bsl::safe_u64 type{MV_EXIT_IO_IN};
                 constexpr auto size{mv_bit_size_t_8};
                 bsl::ut_when{} = [&]() noexcept {
-                    mut_vcpu.run = new kvm_run;    // NOLINT
+                    mut_vcpu.run = new kvm_run();    // NOLINT
                     g_mut_mv_vs_op_run = mv_exit_reason_t_io;
                     g_mut_mv_vs_op_run_io.addr = addr.get();
                     g_mut_mv_vs_op_run_io.data = data.get();
@@ -234,7 +268,7 @@ namespace shim
                 constexpr bsl::safe_u64 type{MV_EXIT_IO_IN};
                 constexpr auto size{mv_bit_size_t_16};
                 bsl::ut_when{} = [&]() noexcept {
-                    mut_vcpu.run = new kvm_run;    // NOLINT
+                    mut_vcpu.run = new kvm_run();    // NOLINT
                     g_mut_mv_vs_op_run = mv_exit_reason_t_io;
                     g_mut_mv_vs_op_run_io.addr = addr.get();
                     g_mut_mv_vs_op_run_io.data = data.get();
@@ -261,7 +295,7 @@ namespace shim
                 constexpr bsl::safe_u64 type{MV_EXIT_IO_IN};
                 constexpr auto size{mv_bit_size_t_32};
                 bsl::ut_when{} = [&]() noexcept {
-                    mut_vcpu.run = new kvm_run;    // NOLINT
+                    mut_vcpu.run = new kvm_run();    // NOLINT
                     g_mut_mv_vs_op_run = mv_exit_reason_t_io;
                     g_mut_mv_vs_op_run_io.addr = addr.get();
                     g_mut_mv_vs_op_run_io.data = data.get();
@@ -288,7 +322,7 @@ namespace shim
                 constexpr bsl::safe_u64 type{MV_EXIT_IO_IN};
                 constexpr auto size{mv_bit_size_t_64};
                 bsl::ut_when{} = [&]() noexcept {
-                    mut_vcpu.run = new kvm_run;    // NOLINT
+                    mut_vcpu.run = new kvm_run();    // NOLINT
                     g_mut_mv_vs_op_run = mv_exit_reason_t_io;
                     g_mut_mv_vs_op_run_io.addr = addr.get();
                     g_mut_mv_vs_op_run_io.data = data.get();
@@ -314,7 +348,7 @@ namespace shim
                 constexpr bsl::safe_u64 type{MV_EXIT_IO_IN};
                 constexpr auto size{static_cast<mv_bit_size_t>(42)};
                 bsl::ut_when{} = [&]() noexcept {
-                    mut_vcpu.run = new kvm_run;    // NOLINT
+                    mut_vcpu.run = new kvm_run();    // NOLINT
                     g_mut_mv_vs_op_run = mv_exit_reason_t_io;
                     g_mut_mv_vs_op_run_io.addr = addr.get();
                     g_mut_mv_vs_op_run_io.data = data.get();
@@ -340,7 +374,7 @@ namespace shim
                 constexpr bsl::safe_u64 type{MV_EXIT_IO_IN};
                 constexpr auto size{mv_bit_size_t_8};
                 bsl::ut_when{} = [&]() noexcept {
-                    mut_vcpu.run = new kvm_run;    // NOLINT
+                    mut_vcpu.run = new kvm_run();    // NOLINT
                     g_mut_mv_vs_op_run = mv_exit_reason_t_io;
                     g_mut_mv_vs_op_run_io.addr = addr.get();
                     g_mut_mv_vs_op_run_io.data = data.get();
@@ -366,7 +400,7 @@ namespace shim
                 constexpr bsl::safe_u64 type{MV_EXIT_IO_IN};
                 constexpr auto size{mv_bit_size_t_8};
                 bsl::ut_when{} = [&]() noexcept {
-                    mut_vcpu.run = new kvm_run;    // NOLINT
+                    mut_vcpu.run = new kvm_run();    // NOLINT
                     g_mut_mv_vs_op_run = mv_exit_reason_t_io;
                     g_mut_mv_vs_op_run_io.addr = addr.get();
                     g_mut_mv_vs_op_run_io.data = data.get();
@@ -387,8 +421,56 @@ namespace shim
             bsl::ut_given{} = [&]() noexcept {
                 shim_vcpu_t mut_vcpu{};
                 bsl::ut_when{} = [&]() noexcept {
-                    mut_vcpu.run = new kvm_run;    // NOLINT
+                    mut_vcpu.run = new kvm_run();    // NOLINT
                     g_mut_mv_vs_op_run = mv_exit_reason_t_mmio;
+                    bsl::ut_then{} = [&]() noexcept {
+                        bsl::ut_check(SHIM_FAILURE == handle(&mut_vcpu));
+                    };
+                    bsl::ut_cleanup{} = [&]() noexcept {
+                        delete mut_vcpu.run;    // NOLINT // GRCOV_EXCLUDE_BR
+                    };
+                };
+            };
+        };
+
+        bsl::ut_scenario{"g_mut_mv_vs_op_run returns msr"} = []() noexcept {
+            bsl::ut_given{} = [&]() noexcept {
+                shim_vcpu_t mut_vcpu{};
+                bsl::ut_when{} = [&]() noexcept {
+                    mut_vcpu.run = new kvm_run();    // NOLINT
+                    g_mut_mv_vs_op_run = mv_exit_reason_t_msr;
+                    bsl::ut_then{} = [&]() noexcept {
+                        bsl::ut_check(SHIM_FAILURE == handle(&mut_vcpu));
+                    };
+                    bsl::ut_cleanup{} = [&]() noexcept {
+                        delete mut_vcpu.run;    // NOLINT // GRCOV_EXCLUDE_BR
+                    };
+                };
+            };
+        };
+
+        bsl::ut_scenario{"g_mut_mv_vs_op_run returns interrupt"} = []() noexcept {
+            bsl::ut_given{} = [&]() noexcept {
+                shim_vcpu_t mut_vcpu{};
+                bsl::ut_when{} = [&]() noexcept {
+                    mut_vcpu.run = new kvm_run();    // NOLINT
+                    g_mut_mv_vs_op_run = mv_exit_reason_t_interrupt;
+                    bsl::ut_then{} = [&]() noexcept {
+                        bsl::ut_check(SHIM_FAILURE == handle(&mut_vcpu));
+                    };
+                    bsl::ut_cleanup{} = [&]() noexcept {
+                        delete mut_vcpu.run;    // NOLINT // GRCOV_EXCLUDE_BR
+                    };
+                };
+            };
+        };
+
+        bsl::ut_scenario{"g_mut_mv_vs_op_run returns nmi"} = []() noexcept {
+            bsl::ut_given{} = [&]() noexcept {
+                shim_vcpu_t mut_vcpu{};
+                bsl::ut_when{} = [&]() noexcept {
+                    mut_vcpu.run = new kvm_run();    // NOLINT
+                    g_mut_mv_vs_op_run = mv_exit_reason_t_nmi;
                     bsl::ut_then{} = [&]() noexcept {
                         bsl::ut_check(SHIM_FAILURE == handle(&mut_vcpu));
                     };
@@ -403,7 +485,7 @@ namespace shim
             bsl::ut_given{} = [&]() noexcept {
                 shim_vcpu_t mut_vcpu{};
                 bsl::ut_when{} = [&]() noexcept {
-                    mut_vcpu.run = new kvm_run;    // NOLINT
+                    mut_vcpu.run = new kvm_run();    // NOLINT
                     g_mut_mv_vs_op_run = static_cast<mv_exit_reason_t>(-42);
                     bsl::ut_then{} = [&]() noexcept {
                         bsl::ut_check(SHIM_FAILURE == handle(&mut_vcpu));

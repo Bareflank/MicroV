@@ -45,6 +45,12 @@ namespace hypercall
         mv_exit_reason_t_io = 3,
         /// @brief a MMIO event has occurred
         mv_exit_reason_t_mmio = 4,
+        /// @brief a MSR event has occurred
+        mv_exit_reason_t_msr = 5,
+        /// @brief an interrupt event has occurred
+        mv_exit_reason_t_interrupt = 6,
+        /// @brief an nmi event has occurred
+        mv_exit_reason_t_nmi = 7,
     };
 
     /// <!-- description -->
@@ -70,6 +76,12 @@ namespace hypercall
     constexpr auto EXIT_REASON_IO{to_i32(mv_exit_reason_t::mv_exit_reason_t_io)};
     /// @brief integer version of mv_exit_reason_t_mmio
     constexpr auto EXIT_REASON_MMIO{to_i32(mv_exit_reason_t::mv_exit_reason_t_mmio)};
+    /// @brief integer version of mv_exit_reason_t_msr
+    constexpr auto EXIT_REASON_MSR{to_i32(mv_exit_reason_t::mv_exit_reason_t_msr)};
+    /// @brief integer version of mv_exit_reason_t_interrupt
+    constexpr auto EXIT_REASON_INTERRUPT{to_i32(mv_exit_reason_t::mv_exit_reason_t_interrupt)};
+    /// @brief integer version of mv_exit_reason_t_nmi
+    constexpr auto EXIT_REASON_NMI{to_i32(mv_exit_reason_t::mv_exit_reason_t_nmi)};
 }
 
 #endif

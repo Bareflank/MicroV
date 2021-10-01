@@ -81,6 +81,8 @@ namespace microv
         vs_pool_t &mut_vs_pool,
         bsl::safe_u16 const &vsid) noexcept -> bsl::errc_type
     {
+        mut_tls.handling_vmcall = true;
+
         switch (hypercall::mv_hypercall_opcode(get_reg_hypercall(mut_sys)).get()) {
             case hypercall::MV_ID_OP_VAL.get(): {
                 auto const ret{dispatch_vmcall_mv_id_op(

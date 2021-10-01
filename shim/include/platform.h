@@ -296,6 +296,17 @@ namespace shim
          */
         void platform_mutex_unlock(platform_mutex *const pmut_mutex) NOEXCEPT;
 
+        /**
+         * <!-- description -->
+         *   @brief Returns SHIM_INTERRUPTED if the current process has NOT
+         *     been interrupted. Returns SHIM_FAILURE otherwise.
+         *
+         * <!-- inputs/outputs -->
+         *   @return Returns SHIM_INTERRUPTED if the current process has NOT
+         *     been interrupted. Returns SHIM_FAILURE otherwise.
+         */
+        NODISCARD int64_t platform_interrupted(void) NOEXCEPT;
+
 #ifdef __cplusplus
     }
 }

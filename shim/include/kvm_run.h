@@ -63,6 +63,8 @@ extern "C"
 #define KVM_EXIT_SHUTDOWN 8
 /** @brief defines KVM_EXIT_FAIL_ENTRY kvm_run.exit_reason */
 #define KVM_EXIT_FAIL_ENTRY 9
+/** @brief defines KVM_EXIT_INTR kvm_run.exit_reason */
+#define KVM_EXIT_INTR 10
 
     /**
      * @struct kvm_run

@@ -126,6 +126,30 @@ namespace microv
         }
 
         /// <!-- description -->
+        ///   @brief Allocates a PP and returns it's ID
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param gs the gs_t to use
+        ///   @param tls the tls_t to use
+        ///   @param mut_sys the bf_syscall_t to use
+        ///   @param page_pool the page_pool_t to use
+        ///   @param intrinsic the intrinsic_t to use
+        ///   @return Returns ID of the newly allocated pp_t. Returns
+        ///     bsl::safe_u16::failure() on failure.
+        ///
+        [[nodiscard]] constexpr auto
+        allocate(
+            gs_t const &gs,
+            tls_t const &tls,
+            syscall::bf_syscall_t &mut_sys,
+            page_pool_t const &page_pool,
+            intrinsic_t const &intrinsic) noexcept -> bsl::safe_u16
+        {
+            return this->get_pp(mut_sys.bf_tls_ppid())
+                ->allocate(gs, tls, mut_sys, page_pool, intrinsic);
+        }
+
+        /// <!-- description -->
         ///   @brief Returns a pp_unique_map_t<T> given an SPA to map. If an
         ///     error occurs, an invalid pp_unique_map_t<T> is returned.
         ///

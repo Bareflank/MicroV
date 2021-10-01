@@ -42,6 +42,8 @@ namespace shim
     extern "C" int64_t g_mut_platform_mlock{SHIM_SUCCESS};    // NOLINT
     /// @brief return value for g_mut_platform_mlock
     extern "C" int64_t g_mut_platform_munlock{SHIM_SUCCESS};    // NOLINT
+    /// @brief tells platform_interrupted to return interrupted
+    extern "C" bool g_mut_platform_interrupted{};    // NOLINT
 
     /// <!-- description -->
     ///   @brief If test is false, a contract violation has occurred. This
@@ -357,5 +359,23 @@ namespace shim
     platform_mutex_unlock(platform_mutex *const pmut_mutex) noexcept
     {
         (void)pmut_mutex;
+    }
+
+    /// <!-- description -->
+    ///   @brief Returns SHIM_SUCCESS if the current process has NOT been
+    ///     interrupted. Returns SHIM_FAILURE otherwise.
+    ///
+    /// <!-- inputs/outputs -->
+    ///   @return Returns SHIM_SUCCESS if the current process has NOT been
+    ///     interrupted. Returns SHIM_FAILURE otherwise.
+    ///
+    extern "C" [[nodiscard]] auto
+    platform_interrupted() noexcept -> int64_t
+    {
+        if (g_mut_platform_interrupted) {
+            return SHIM_INTERRUPTED;
+        }
+
+        return SHIM_SUCCESS;
     }
 }

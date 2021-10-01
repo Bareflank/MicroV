@@ -36,13 +36,23 @@ extern "C"
 
 #pragma pack(push, 1)
 
+/** @brief The mv_exit_mmio_t defines a read access */
+#define MV_EXIT_MMIO_READ ((uint64_t)0x0000000000000001)
+/** @brief The mv_exit_mmio_t defines a write access */
+#define MV_EXIT_MMIO_WRITE ((uint64_t)0x0000000000000002)
+/** @brief The mv_exit_mmio_t defines an execute access */
+#define MV_EXIT_MMIO_EXECUTE ((uint64_t)0x0000000000000004)
+
     /**
      * <!-- description -->
      *   @brief See mv_vs_op_run for more details
      */
     struct mv_exit_mmio_t
     {
-        /** TBD */
+        /** @brief stores the GPA of the MMIO access */
+        uint64_t gpa;
+        /** @brief stores the MV_EXIT_MMIO flags */
+        uint64_t flags;
     };
 
 #pragma pack(pop)

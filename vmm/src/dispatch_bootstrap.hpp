@@ -55,11 +55,10 @@ namespace microv
     ///   @param mut_sys the bf_syscall_t to use
     ///   @param mut_page_pool the page_pool_t to use
     ///   @param intrinsic the intrinsic_t to use
-    ///   @param pp_pool the pp_pool_t to use
+    ///   @param mut_pp_pool the pp_pool_t to use
     ///   @param mut_vm_pool the vm_pool_t to use
     ///   @param mut_vp_pool the vp_pool_t to use
     ///   @param mut_vs_pool the vs_pool_t to use
-    ///   @param ppid the ID of the PP to bootstrap
     ///   @return Returns bsl::errc_success on success, bsl::errc_failure
     ///     and friends otherwise
     ///
@@ -70,20 +69,21 @@ namespace microv
         syscall::bf_syscall_t &mut_sys,
         page_pool_t &mut_page_pool,
         intrinsic_t const &intrinsic,
-        pp_pool_t const &pp_pool,
+        pp_pool_t &mut_pp_pool,
         vm_pool_t &mut_vm_pool,
         vp_pool_t &mut_vp_pool,
-        vs_pool_t &mut_vs_pool,
-        bsl::safe_u16 const &ppid) noexcept -> bsl::errc_type
+        vs_pool_t &mut_vs_pool) noexcept -> bsl::errc_type
     {
         constexpr auto vmid{syscall::BF_ROOT_VMID};
-        bsl::discard(pp_pool);
-
-        bsl::expects(ppid.is_valid_and_checked());
-        bsl::expects(ppid != syscall::BF_INVALID_ID);
 
         auto const ret{tls_initialize(mut_tls, mut_sys, mut_page_pool, intrinsic)};
         if (bsl::unlikely(!ret)) {
+            bsl::print<bsl::V>() << bsl::here();
+            return bsl::errc_failure;
+        }
+
+        auto const ppid{mut_pp_pool.allocate(gs, mut_tls, mut_sys, mut_page_pool, intrinsic)};
+        if (bsl::unlikely(ppid.is_invalid())) {
             bsl::print<bsl::V>() << bsl::here();
             return bsl::errc_failure;
         }

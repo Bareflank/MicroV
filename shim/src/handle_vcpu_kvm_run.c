@@ -221,35 +221,57 @@ handle_vcpu_kvm_run(struct shim_vcpu_t *const pmut_vcpu) NOEXCEPT
         return return_failure(pmut_vcpu);
     }
 
-    mut_exit_reason = mv_vs_op_run(g_mut_hndl, pmut_vcpu->vsid);
-    switch ((int32_t)mut_exit_reason) {
-        case mv_exit_reason_t_failure: {
-            return handle_vcpu_kvm_run_failure(pmut_vcpu);
-        }
-
-        case mv_exit_reason_t_unknown: {
-            return handle_vcpu_kvm_run_unknown(pmut_vcpu);
-        }
-
-        case mv_exit_reason_t_hlt: {
-            bferror("mv_exit_reason_t_hlt currently not implemented\n");
-            return return_failure(pmut_vcpu);
-        }
-
-        case mv_exit_reason_t_io: {
-            return handle_vcpu_kvm_run_io(pmut_vcpu);
-        }
-
-        case mv_exit_reason_t_mmio: {
-            bferror("mv_exit_reason_t_mmio currently not implemented\n");
-            return return_failure(pmut_vcpu);
-        }
-
-        default: {
+    while (0 == (int32_t)pmut_vcpu->run->immediate_exit) {
+        if (platform_interrupted()) {
             break;
         }
+
+        mut_exit_reason = mv_vs_op_run(g_mut_hndl, pmut_vcpu->vsid);
+        switch ((int32_t)mut_exit_reason) {
+            case mv_exit_reason_t_failure: {
+                return handle_vcpu_kvm_run_failure(pmut_vcpu);
+            }
+
+            case mv_exit_reason_t_unknown: {
+                return handle_vcpu_kvm_run_unknown(pmut_vcpu);
+            }
+
+            case mv_exit_reason_t_hlt: {
+                bferror("mv_exit_reason_t_hlt currently not implemented\n");
+                return return_failure(pmut_vcpu);
+            }
+
+            case mv_exit_reason_t_io: {
+                return handle_vcpu_kvm_run_io(pmut_vcpu);
+            }
+
+            case mv_exit_reason_t_mmio: {
+                bferror("mv_exit_reason_t_mmio currently not implemented\n");
+                return return_failure(pmut_vcpu);
+            }
+
+            case mv_exit_reason_t_msr: {
+                bferror("mv_exit_reason_t_msr currently not implemented\n");
+                return return_failure(pmut_vcpu);
+            }
+
+            case mv_exit_reason_t_interrupt: {
+                continue;
+            }
+
+            case mv_exit_reason_t_nmi: {
+                continue;
+            }
+
+            default: {
+                break;
+            }
+        }
+
+        bferror("mv_vs_op_run returned with an unsupported exit reason\n");
+        return return_failure(pmut_vcpu);
     }
 
-    bferror("mv_vs_op_run returned with an unsupported exit reason\n");
-    return return_failure(pmut_vcpu);
+    pmut_vcpu->run->exit_reason = KVM_EXIT_INTR;
+    return SHIM_INTERRUPTED;
 }

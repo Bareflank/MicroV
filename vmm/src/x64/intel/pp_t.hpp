@@ -67,6 +67,9 @@ namespace microv
         /// @brief stores this pp_t's pp_reg_t
         pp_reg_t m_pp_reg{};
 
+        /// @brief stores the TSC frequency of this physical processor
+        bsl::safe_u64 m_tsc_freq{};
+
     public:
         /// <!-- description -->
         ///   @brief Initializes this pp_t
@@ -94,15 +97,6 @@ namespace microv
             m_pp_msr.initialize(gs, tls, mut_sys, intrinsic, i);
             m_pp_mtrrs.initialize(gs, tls, mut_sys, intrinsic, i);
             m_pp_reg.initialize(gs, tls, mut_sys, intrinsic, i);
-
-            /// TODO:
-            /// - We need to detect all of the features that we need
-            ///   support for here and error out if the CPU does not
-            ///   support the features that we need. This includes
-            ///
-            ///   - CPUID
-            ///   - MSRs
-            ///
 
             m_id = ~i;
         }
@@ -144,6 +138,60 @@ namespace microv
         {
             bsl::ensures(m_id.is_valid_and_checked());
             return ~m_id;
+        }
+
+        /// <!-- description -->
+        ///   @brief Allocates the pp_t and returns it's ID
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param gs the gs_t to use
+        ///   @param tls the tls_t to use
+        ///   @param sys the bf_syscall_t to use
+        ///   @param page_pool the page_pool_t to use
+        ///   @param intrinsic the intrinsic_t to use
+        ///   @return Returns ID of this pp_t
+        ///
+        [[nodiscard]] constexpr auto
+        allocate(
+            gs_t const &gs,
+            tls_t const &tls,
+            syscall::bf_syscall_t const &sys,
+            page_pool_t const &page_pool,
+            intrinsic_t const &intrinsic) const noexcept -> bsl::safe_u16
+        {
+            bsl::expects(this->id() != syscall::BF_INVALID_ID);
+
+            bsl::discard(gs);
+            bsl::discard(tls);
+            bsl::discard(sys);
+            bsl::discard(page_pool);
+            bsl::discard(intrinsic);
+
+            // m_tsc_freq = get_tsc_freq(intrinsic);
+            // if (bsl::unlikely(m_tsc_freq.is_invalid())) {
+            //     bsl::error() << "System not supported because the TSC is not invariant" << bsl::endl
+            //                  << bsl::here();
+
+            //     return bsl::safe_u16::failure();
+            // }
+
+            // /// TODO:
+            // /// - We need to detect all of the features that we need
+            // ///   support for here and error out if the CPU does not
+            // ///   support the features that we need. This includes
+            // ///
+            // ///   - CPUID
+            // ///   - MSRs
+            // ///
+
+            // bsl::debug<bsl::V>()                                   // --
+            //     << "tsc frequency on pp "                          // --
+            //     << bsl::cyn << bsl::hex(this->id()) << bsl::rst    // --
+            //     << " is "                                          // --
+            //     << bsl::grn << m_tsc_freq << "khz" << bsl::rst     // --
+            //     << bsl::endl;                                      // --
+
+            return this->id();
         }
 
         /// <!-- description -->

@@ -76,8 +76,20 @@ namespace hypercall
         auto *const pmut_rdl0{to_0<mv_rdl_t>()};
         auto *const pmut_rdl1{to_1<mv_rdl_t>()};
 
-        // invalid VSID
+        // invalid VSID #1
         mut_ret = mv_vs_op_reg_set_list_impl(hndl.get(), MV_INVALID_ID.get());
+        integration::verify(mut_ret != MV_STATUS_SUCCESS);
+
+        // invalid VSID #2
+        mut_ret = mv_vs_op_reg_set_list_impl(hndl.get(), MV_SELF_ID.get());
+        integration::verify(mut_ret != MV_STATUS_SUCCESS);
+
+        // invalid VSID #3
+        mut_ret = mv_vs_op_reg_set_list_impl(hndl.get(), vsid0.get());
+        integration::verify(mut_ret != MV_STATUS_SUCCESS);
+
+        // invalid VSID #4
+        mut_ret = mv_vs_op_reg_set_list_impl(hndl.get(), vsid1.get());
         integration::verify(mut_ret != MV_STATUS_SUCCESS);
 
         // VSID out of range

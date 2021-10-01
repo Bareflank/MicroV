@@ -79,37 +79,37 @@ namespace hypercall
             auto const vmid2{mut_hvc.mv_vm_op_create_vm()};
             auto const vmid3{mut_hvc.mv_vm_op_create_vm()};
 
-            auto const vpid1{mut_hvc.mv_vp_op_create_vp(vmid1)};
-            auto const vpid2{mut_hvc.mv_vp_op_create_vp(vmid2)};
-            auto const vpid3{mut_hvc.mv_vp_op_create_vp(vmid3)};
+            auto const vm1_vpid0{mut_hvc.mv_vp_op_create_vp(vmid1)};
+            auto const vm1_vpid1{mut_hvc.mv_vp_op_create_vp(vmid2)};
+            auto const vm1_vpid2{mut_hvc.mv_vp_op_create_vp(vmid3)};
 
-            integration::verify(vpid1.is_valid_and_checked());
-            integration::verify(vpid2.is_valid_and_checked());
-            integration::verify(vpid3.is_valid_and_checked());
+            integration::verify(vm1_vpid0.is_valid_and_checked());
+            integration::verify(vm1_vpid1.is_valid_and_checked());
+            integration::verify(vm1_vpid2.is_valid_and_checked());
 
-            auto const vsid1{mut_hvc.mv_vs_op_create_vs(vpid1)};
-            auto const vsid2{mut_hvc.mv_vs_op_create_vs(vpid2)};
-            auto const vsid3{mut_hvc.mv_vs_op_create_vs(vpid3)};
+            auto const vm1_vp0_vsid1{mut_hvc.mv_vs_op_create_vs(vm1_vpid0)};
+            auto const vm1_vp1_vsid2{mut_hvc.mv_vs_op_create_vs(vm1_vpid1)};
+            auto const vm1_vp2_vsid3{mut_hvc.mv_vs_op_create_vs(vm1_vpid2)};
 
-            integration::verify(vsid1.is_valid_and_checked());
-            integration::verify(vsid2.is_valid_and_checked());
-            integration::verify(vsid3.is_valid_and_checked());
+            integration::verify(vm1_vp0_vsid1.is_valid_and_checked());
+            integration::verify(vm1_vp1_vsid2.is_valid_and_checked());
+            integration::verify(vm1_vp2_vsid3.is_valid_and_checked());
 
-            auto const assigned_vpid1{mut_hvc.mv_vs_op_vpid(vsid1)};
-            auto const assigned_vpid2{mut_hvc.mv_vs_op_vpid(vsid2)};
-            auto const assigned_vpid3{mut_hvc.mv_vs_op_vpid(vsid3)};
+            auto const assigned_vm1_vpid0{mut_hvc.mv_vs_op_vpid(vm1_vp0_vsid1)};
+            auto const assigned_vm1_vpid1{mut_hvc.mv_vs_op_vpid(vm1_vp1_vsid2)};
+            auto const assigned_vm1_vpid2{mut_hvc.mv_vs_op_vpid(vm1_vp2_vsid3)};
 
-            integration::verify(assigned_vpid1 == vpid1);
-            integration::verify(assigned_vpid2 == vpid2);
-            integration::verify(assigned_vpid3 == vpid3);
+            integration::verify(assigned_vm1_vpid0 == vm1_vpid0);
+            integration::verify(assigned_vm1_vpid1 == vm1_vpid1);
+            integration::verify(assigned_vm1_vpid2 == vm1_vpid2);
 
-            integration::verify(mut_hvc.mv_vs_op_destroy_vs(vsid3));
-            integration::verify(mut_hvc.mv_vs_op_destroy_vs(vsid2));
-            integration::verify(mut_hvc.mv_vs_op_destroy_vs(vsid1));
+            integration::verify(mut_hvc.mv_vs_op_destroy_vs(vm1_vp2_vsid3));
+            integration::verify(mut_hvc.mv_vs_op_destroy_vs(vm1_vp1_vsid2));
+            integration::verify(mut_hvc.mv_vs_op_destroy_vs(vm1_vp0_vsid1));
 
-            integration::verify(mut_hvc.mv_vp_op_destroy_vp(vpid3));
-            integration::verify(mut_hvc.mv_vp_op_destroy_vp(vpid2));
-            integration::verify(mut_hvc.mv_vp_op_destroy_vp(vpid1));
+            integration::verify(mut_hvc.mv_vp_op_destroy_vp(vm1_vpid2));
+            integration::verify(mut_hvc.mv_vp_op_destroy_vp(vm1_vpid1));
+            integration::verify(mut_hvc.mv_vp_op_destroy_vp(vm1_vpid0));
 
             integration::verify(mut_hvc.mv_vm_op_destroy_vm(vmid3));
             integration::verify(mut_hvc.mv_vm_op_destroy_vm(vmid2));

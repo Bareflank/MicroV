@@ -22,7 +22,7 @@
 FetchContent_Declare(
     hypervisor
     GIT_REPOSITORY  https://github.com/bareflank/hypervisor.git
-    GIT_TAG         326d731fc984bd1c8f89b024dd8fca86e32956c4
+    GIT_TAG         ace605a80b2a13e7cd935c383e5da7ec2deebfe3
 )
 
 FetchContent_GetProperties(hypervisor)
@@ -30,7 +30,7 @@ if(NOT hypervisor_POPULATED)
     set(HYPERVISOR_BUILD_EXAMPLES_OVERRIDE ON)
     set(HYPERVISOR_BUILD_TESTS_OVERRIDE ON)
     set(HYPERVISOR_INCLUDE_INFO_OVERRIDE ON)
-    set(HYPERVISOR_EXTENSIONS "vmm")
+    set(HYPERVISOR_EXTENSIONS "microv")
     set(HYPERVISOR_EXTENSIONS_DIR ${CMAKE_SOURCE_DIR}/vmm)
     FetchContent_Populate(hypervisor)
     add_subdirectory(${hypervisor_SOURCE_DIR} ${hypervisor_BINARY_DIR})

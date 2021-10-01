@@ -32,7 +32,6 @@
 #include <mv_exit_reason_t.h>
 #include <mv_rdl_t.h>
 #include <mv_reg_t.h>
-#include <mv_touch.h>
 #include <mv_translation_t.h>
 #include <mv_types.h>
 
@@ -789,17 +788,26 @@ extern "C"
     platform_expects(((uint64_t)vsid) < HYPERVISOR_MAX_VPS);
 #endif
 
-        if ((int32_t)mv_exit_reason_t_io == (int32_t)g_mut_mv_vs_op_run) {
-            struct mv_exit_io_t *const pmut_out = (struct mv_exit_io_t *)g_mut_shared_pages[0];
-#ifdef __cplusplus
-            bsl::expects(nullptr != pmut_out);
-#else
-        platform_expects(NULL != pmut_out);
-#endif
-            *pmut_out = g_mut_mv_vs_op_run_io;
-        }
-        else {
-            mv_touch();
+        switch ((int32_t)g_mut_mv_vs_op_run) {
+            case mv_exit_reason_t_io: {
+                struct mv_exit_io_t *const pmut_out = (struct mv_exit_io_t *)g_mut_shared_pages[0];
+                *pmut_out = g_mut_mv_vs_op_run_io;
+                break;
+            }
+
+            case mv_exit_reason_t_interrupt: {
+                g_mut_mv_vs_op_run = (enum mv_exit_reason_t)mv_exit_reason_t_failure;
+                return (enum mv_exit_reason_t)mv_exit_reason_t_interrupt;
+            }
+
+            case mv_exit_reason_t_nmi: {
+                g_mut_mv_vs_op_run = (enum mv_exit_reason_t)mv_exit_reason_t_failure;
+                return (enum mv_exit_reason_t)mv_exit_reason_t_nmi;
+            }
+
+            default: {
+                break;
+            }
         }
 
         return g_mut_mv_vs_op_run;

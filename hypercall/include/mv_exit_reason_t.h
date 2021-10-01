@@ -56,6 +56,12 @@ enum mv_exit_reason_t
         mv_exit_reason_t_io = 3,
         /** @brief a MMIO event has occurred */
         mv_exit_reason_t_mmio = 4,
+        /** @brief a MSR event has occurred */
+        mv_exit_reason_t_msr = 5,
+        /** @brief an interrupt event has occurred */
+        mv_exit_reason_t_interrupt = 6,
+        /** @brief an nmi event has occurred */
+        mv_exit_reason_t_nmi = 7,
     };
 
 /** @brief integer version of mv_exit_reason_t_failure */
@@ -68,6 +74,12 @@ enum mv_exit_reason_t
 #define EXIT_REASON_IO ((int32_t)mv_exit_reason_t_io)
 /** @brief integer version of mv_exit_reason_t_mmio */
 #define EXIT_REASON_MMIO ((int32_t)mv_exit_reason_t_mmio)
+/** @brief integer version of mv_exit_reason_t_msr */
+#define EXIT_REASON_MSR ((int32_t)mv_exit_reason_t_msr)
+/** @brief integer version of mv_exit_reason_t_interrupt */
+#define EXIT_REASON_INTERRUPT ((int32_t)mv_exit_reason_t_interrupt)
+/** @brief integer version of mv_exit_reason_t_nmi */
+#define EXIT_REASON_NMI ((int32_t)mv_exit_reason_t_nmi)
 
 #ifdef __cplusplus
 }

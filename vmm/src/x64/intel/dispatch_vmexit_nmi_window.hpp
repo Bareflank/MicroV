@@ -74,17 +74,24 @@ namespace microv
     {
         bsl::discard(gs);
         bsl::discard(tls);
-        bsl::discard(mut_sys);
         bsl::discard(page_pool);
         bsl::discard(intrinsic);
         bsl::discard(pp_pool);
         bsl::discard(vm_pool);
         bsl::discard(vp_pool);
         bsl::discard(vs_pool);
-        bsl::discard(vsid);
 
-        bsl::error() << "dispatch_vmexit_nmi_window not implemented\n";
-        return bsl::errc_failure;
+        auto const ctls_idx{syscall::bf_reg_t::bf_reg_t_primary_proc_based_vm_execution_ctls};
+        auto const ctls_val{mut_sys.bf_vs_op_read(vsid, ctls_idx)};
+
+        constexpr auto clr_nmi_window{0xFFBFFFFF_u64};
+        bsl::expects(mut_sys.bf_vs_op_write(vsid, ctls_idx, ctls_val & clr_nmi_window));
+
+        constexpr auto info_val{0x80000202_u64};
+        constexpr auto info_idx{syscall::bf_reg_t::bf_reg_t_vmentry_interrupt_information_field};
+        bsl::expects(mut_sys.bf_vs_op_write(vsid, info_idx, info_val));
+
+        return vmexit_success_run;
     }
 }
 
