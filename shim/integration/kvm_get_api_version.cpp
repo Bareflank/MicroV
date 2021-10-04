@@ -27,6 +27,7 @@
 #include <kvm_constants.hpp>
 #include <shim_platform_interface.hpp>
 
+#include <bsl/debug.hpp>
 #include <bsl/enable_color.hpp>
 #include <bsl/exit_code.hpp>
 #include <bsl/safe_integral.hpp>
