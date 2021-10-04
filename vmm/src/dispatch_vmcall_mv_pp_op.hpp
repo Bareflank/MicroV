@@ -30,6 +30,7 @@
 #include <dispatch_vmcall_helpers.hpp>
 #include <gs_t.hpp>
 #include <intrinsic_t.hpp>
+#include <mv_cdl_t.hpp>
 #include <mv_constants.hpp>
 #include <page_pool_t.hpp>
 #include <pp_pool_t.hpp>
@@ -116,6 +117,44 @@ namespace microv
         if (bsl::unlikely(!ret)) {
             bsl::print<bsl::V>() << bsl::here();
             set_reg_return(mut_sys, hypercall::MV_STATUS_FAILURE_UNKNOWN);
+            return vmexit_failure_advance_ip_and_run;
+        }
+
+        return vmexit_success_advance_ip_and_run;
+    }
+
+    /// <!-- description -->
+    ///   @brief Implements the mv_pp_op_cpuid_get_supported_list hypercall
+    ///
+    /// <!-- inputs/outputs -->
+    ///   @param mut_sys the bf_syscall_t to use
+    ///   @param mut_pp_pool the pp_pool_t to use
+    ///   @return Returns bsl::errc_success on success, bsl::errc_failure
+    ///     and friends otherwise
+    ///
+    [[nodiscard]] constexpr auto
+    handle_mv_pp_op_cpuid_get_supported_list(
+        syscall::bf_syscall_t &mut_sys, pp_pool_t &mut_pp_pool) noexcept -> bsl::errc_type
+    {
+        auto mut_cdl{mut_pp_pool.shared_page<hypercall::mv_cdl_t>(mut_sys)};
+
+        if (bsl::unlikely(mut_cdl.is_invalid())) {
+            bsl::print<bsl::V>() << bsl::here();
+            set_reg_return(mut_sys, hypercall::MV_STATUS_INVALID_INPUT_REG1);
+            return vmexit_failure_advance_ip_and_run;
+        }
+
+        bool const cdl_safe{is_cdl_safe(*mut_cdl)};
+        if (bsl::unlikely(!cdl_safe)) {
+            bsl::print<bsl::V>() << bsl::here();
+            set_reg_return(mut_sys, hypercall::MV_STATUS_INVALID_INPUT_REG1);
+            return vmexit_failure_advance_ip_and_run;
+        }
+
+        auto const ret{
+            mut_pp_pool.cpuid_get_supported_list(mut_sys, mut_sys.bf_tls_ppid(), *mut_cdl)};
+        if (bsl::unlikely(!ret)) {
+            bsl::print<bsl::V>() << bsl::here();
             return vmexit_failure_advance_ip_and_run;
         }
 
@@ -282,6 +321,16 @@ namespace microv
 
             case hypercall::MV_PP_OP_SET_SHARED_PAGE_GPA_IDX_VAL.get(): {
                 auto const ret{handle_mv_pp_op_set_shared_page_gpa(mut_sys, mut_pp_pool, vm_pool)};
+                if (bsl::unlikely(!ret)) {
+                    bsl::print<bsl::V>() << bsl::here();
+                    return ret;
+                }
+
+                return ret;
+            }
+
+            case hypercall::MV_PP_OP_CPUID_GET_SUPPORTED_LIST_IDX_VAL.get(): {
+                auto const ret{handle_mv_pp_op_cpuid_get_supported_list(mut_sys, mut_pp_pool)};
                 if (bsl::unlikely(!ret)) {
                     bsl::print<bsl::V>() << bsl::here();
                     return ret;

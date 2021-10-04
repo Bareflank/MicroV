@@ -148,13 +148,6 @@ NODISCARD static inline int
 #define MV_MAP_FLAG_WRITE_PROTECTED ((uint64_t)0x8000000000000000)
 
 /* -------------------------------------------------------------------------- */
-/* CDL Flags                                                                  */
-/* -------------------------------------------------------------------------- */
-
-/** @brief Indicates the hypervisor should return all supported CPUIDs */
-#define MV_CDL_FLAG_ALL ((uint64_t)0x0000000000000001)
-
-/* -------------------------------------------------------------------------- */
 /* Special IDs                                                                */
 /* -------------------------------------------------------------------------- */
 
@@ -432,7 +425,7 @@ NODISCARD static inline int
 #define MV_PP_OP_SET_SHARED_PAGE_GPA_IDX_VAL ((uint64_t)0x0000000000000003)
 /** @brief Defines the index for mv_pp_op_cpuid_get_supported */
 #define MV_PP_OP_CPUID_GET_SUPPORTED_IDX_VAL ((uint64_t)0x0000000000000004)
-/** @brief Defines the index for mv_pp_op_cpuid_get_supported */
+/** @brief Defines the index for mv_pp_op_cpuid_get_supported_list */
 #define MV_PP_OP_CPUID_GET_SUPPORTED_LIST_IDX_VAL ((uint64_t)0x0000000000000005)
 /** @brief Defines the index for mv_pp_op_cpuid_get_permissable */
 #define MV_PP_OP_CPUID_GET_PERMISSABLE_IDX_VAL ((uint64_t)0x0000000000000006)
