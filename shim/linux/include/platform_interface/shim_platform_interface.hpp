@@ -30,6 +30,7 @@
 #include <asm/ioctl.h>
 #include <kvm_fpu.hpp>
 #include <kvm_mp_state.hpp>
+#include <kvm_msr_list.hpp>
 #include <kvm_regs.hpp>
 #include <kvm_sregs.hpp>
 #include <kvm_userspace_memory_region.hpp>
@@ -61,7 +62,6 @@
 // #include <kvm_lapic_state.hpp>
 // #include <kvm_mp_state.hpp>
 // #include <kvm_msi.hpp>
-// #include <kvm_msr_list.hpp>
 // #include <kvm_msrs.hpp>
 // #include <kvm_nested_state.hpp>
 // #include <kvm_one_reg.hpp>
@@ -93,8 +93,9 @@ namespace shim
     constexpr bsl::safe_umx KVM_GET_API_VERSION{static_cast<bsl::uintmx>(_IO(SHIMIO.get(), 0x00))};
     /// @brief defines KVM's KVM_CREATE_VM IOCTL
     constexpr bsl::safe_umx KVM_CREATE_VM{static_cast<bsl::uintmx>(_IO(SHIMIO.get(), 0x01))};
-    // /// @brief defines KVM's KVM_GET_MSR_INDEX_LIST IOCTL
-    // constexpr bsl::safe_umx KVM_GET_MSR_INDEX_LIST{static_cast<bsl::uintmx>(_IOWR(SHIMIO.get(), 0x02, struct kvm_msr_list))};
+    /// @brief defines KVM's KVM_GET_MSR_INDEX_LIST IOCTL
+    constexpr bsl::safe_umx KVM_GET_MSR_INDEX_LIST{
+        static_cast<bsl::uintmx>(_IOWR(SHIMIO.get(), 0x02, struct kvm_msr_list))};
     // /// @brief defines KVM's KVM_GET_MSR_FEATURE_INDEX_LIST IOCTL
     // constexpr bsl::safe_umx KVM_GET_MSR_FEATURE_INDEX_LIST{static_cast<bsl::uintmx>(_IOWR(SHIMIO.get(), 0x0a, struct kvm_msr_list))};
     /// @brief defines KVM's KVM_CHECK_EXTENSION IOCTL

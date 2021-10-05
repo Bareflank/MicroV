@@ -207,7 +207,10 @@ namespace shim
             bsl::ut_given{} = [&]() noexcept {
                 constexpr auto hypercall{&mv_pp_op_msr_get_supported_list};
                 constexpr auto expected{42_u64};
+                mv_rdl_t mut_rdl{};
                 bsl::ut_when{} = [&]() noexcept {
+                    mut_rdl.num_entries = bsl::safe_u64::magic_2().get();
+                    g_mut_shared_pages[0] = &mut_rdl;
                     g_mut_mv_pp_op_msr_get_supported_list = expected.get();
                     bsl::ut_then{} = [&]() noexcept {
                         bsl::ut_check(expected == hypercall(hndl));
