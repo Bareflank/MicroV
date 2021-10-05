@@ -31,6 +31,7 @@
 #include <handle_system_kvm_create_vm.h>
 #include <handle_system_kvm_destroy_vm.h>
 #include <handle_system_kvm_get_api_version.h>
+#include <handle_system_kvm_get_msr_index_list.h>
 #include <handle_system_kvm_get_vcpu_mmap_size.h>
 #include <handle_vcpu_kvm_get_fpu.h>
 #include <handle_vcpu_kvm_get_mp_state.h>
@@ -228,10 +229,58 @@ dispatch_system_kvm_get_msr_feature_index_list(
 }
 
 static long
-dispatch_system_kvm_get_msr_index_list(struct kvm_msr_list *const ioctl_args)
+dispatch_system_kvm_get_msr_index_list(
+    struct kvm_msr_list __user *const user_args)
 {
-    (void)ioctl_args;
-    return -EINVAL;
+    struct kvm_msr_list mut_args;
+    uint32_t __user *pmut_mut_user_indices;
+    int64_t mut_ret;
+    uint64_t mut_alloc_size;
+
+    if (platform_copy_from_user(&mut_args, user_args, sizeof(mut_args))) {
+        bferror("platform_copy_from_user failed");
+        return -EINVAL;
+    }
+
+    mut_alloc_size = mut_args.nmsrs * sizeof(*mut_args.indices);
+    if (mut_alloc_size > HYPERVISOR_PAGE_SIZE) {
+        bferror("requested nmsrs too big");
+        return -ENOMEM;
+    }
+
+    pmut_mut_user_indices = mut_args.indices;
+    mut_args.indices = vzalloc(mut_alloc_size);
+
+    if (NULL == mut_args.indices) {
+        bferror("vzalloc failed");
+        return -ENOMEM;
+    }
+
+    mut_ret = -EINVAL;
+    if (handle_system_kvm_get_msr_index_list(&mut_args)) {
+        bferror("handle_system_kvm_get_msr_index_list failed");
+        goto out;
+    }
+
+    if (platform_copy_to_user(user_args, &mut_args, sizeof(mut_args.nmsrs))) {
+        bferror("platform_copy_to_user nmsrs failed");
+        goto out;
+    }
+
+    if (platform_copy_to_user(
+            pmut_mut_user_indices,
+            mut_args.indices,
+            mut_args.nmsrs * sizeof(*mut_args.indices))) {
+        bferror("platform_copy_to_user indices failed");
+        goto out;
+    }
+
+    mut_ret = 0;
+out:
+    if (mut_args.indices)
+        vfree(mut_args.indices);
+
+    return mut_ret;
 }
 
 static long
@@ -322,7 +371,7 @@ dev_unlocked_ioctl_system(
 
         case KVM_GET_MSR_INDEX_LIST: {
             return dispatch_system_kvm_get_msr_index_list(
-                (struct kvm_msr_list *)ioctl_args);
+                (struct kvm_msr_list __user *)ioctl_args);
         }
 
         case KVM_GET_MSRS: {

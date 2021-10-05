@@ -1,6 +1,6 @@
 /**
  * @copyright
- * Copyright (C) 2020 Assured Information Security, Inc.
+ * Copyright (C) 2021 Assured Information Security, Inc.
  *
  * @copyright
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -24,16 +24,13 @@
  * SOFTWARE.
  */
 
-#ifndef KVM_MSR_LIST_H
-#define KVM_MSR_LIST_H
+#ifndef KVM_MSR_LIST_HPP
+#define KVM_MSR_LIST_HPP
 
-#include <stdint.h>
+#include <bsl/cstdint.hpp>
 
-#ifdef __cplusplus
-extern "C"
+namespace shim
 {
-#endif
-
 #pragma pack(push, 1)
 
     /**
@@ -42,19 +39,16 @@ extern "C"
      * <!-- description -->
      *   @brief see /include/uapi/linux/kvm.h in Linux for more details.
      */
-    struct kvm_msr_list
+    struct kvm_msr_list final
     {
         /** @brief number of msrs in the indices array */
-        uint32_t nmsrs;
+        bsl::uint32 nmsrs;
 
         /** @brief array containing the indices of supported MSRs */
-        uint32_t *indices;
+        bsl::uint32 *indices;
     };
+}
 
 #pragma pack(pop)
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif

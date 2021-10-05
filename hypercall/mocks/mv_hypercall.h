@@ -54,6 +54,15 @@ extern "C"
 
 #define GARBAGE ((uint64_t)0xFFFFFFFFFFFFFFFFU)
 
+/** tells the list APIs to add an unknown entry */
+#define MV_STATUS_FAILURE_INC_NUM_ENTRIES ((mv_status_t)0x1234567800000001U)
+/** tells the list APIs to add an unknown entry */
+#define MV_STATUS_FAILURE_ADD_UNKNOWN ((mv_status_t)0x1234567800000002U)
+/** tells the list APIs to corrupt the number of entries */
+#define MV_STATUS_FAILURE_CORRUPT_NUM_ENTRIES ((mv_status_t)0x1234567800000003U)
+/** tells the list APIs to set reg1 in rdl */
+#define MV_STATUS_FAILURE_SET_RDL_REG1 ((mv_status_t)0x1234567800000004U)
+
     /** @brief stores a value that can be returned by certain hypercalls */
     extern uint64_t g_mut_val;
 
@@ -272,6 +281,8 @@ extern "C"
     NODISCARD static inline mv_status_t
     mv_pp_op_msr_get_supported_list(uint64_t const hndl) NOEXCEPT
     {
+        uint64_t mut_i;
+
 #ifdef __cplusplus
         bsl::expects(MV_INVALID_HANDLE != hndl);
         bsl::expects(hndl > ((uint64_t)0));
@@ -279,6 +290,33 @@ extern "C"
     platform_expects(MV_INVALID_HANDLE != hndl);
     platform_expects(hndl > ((uint64_t)0));
 #endif
+        struct mv_rdl_t *const pmut_rdl = (struct mv_rdl_t *)g_mut_shared_pages[0];
+
+#ifdef __cplusplus
+        bsl::expects(nullptr != pmut_rdl);
+        bsl::expects(pmut_rdl->num_entries < MV_RDL_MAX_ENTRIES);
+#else
+    platform_expects(NULL != pmut_rdl);
+    platform_expects(pmut_rdl->num_entries < MV_RDL_MAX_ENTRIES);
+#endif
+        if (MV_STATUS_FAILURE_CORRUPT_NUM_ENTRIES == g_mut_mv_pp_op_msr_get_supported_list) {
+            pmut_rdl->num_entries = GARBAGE;
+            return MV_STATUS_SUCCESS;
+        }
+
+        if (MV_STATUS_FAILURE_SET_RDL_REG1 == g_mut_mv_pp_op_msr_get_supported_list) {
+            g_mut_mv_pp_op_msr_get_supported_list = MV_STATUS_SUCCESS;
+            pmut_rdl->reg1 = ((uint64_t)1);
+        }
+        else {
+            pmut_rdl->reg1 = ((uint64_t)0);
+        }
+
+        pmut_rdl->num_entries = g_mut_val;
+        for (mut_i = ((uint64_t)0); mut_i < pmut_rdl->num_entries; ++mut_i) {
+            pmut_rdl->entries[mut_i].reg = g_mut_val;
+            pmut_rdl->entries[mut_i].val = ((uint64_t)1);
+        }
 
         return g_mut_mv_pp_op_msr_get_supported_list;
     }
@@ -654,16 +692,9 @@ extern "C"
         return g_mut_mv_vp_op_vpid;
     }
 
-/* -------------------------------------------------------------------------- */
-/* mv_vs_ops                                                                  */
-/* -------------------------------------------------------------------------- */
-
-/** tells the list APIs to add an unknown entry */
-#define MV_STATUS_FAILURE_INC_NUM_ENTRIES ((mv_status_t)0x1234567800000001U)
-/** tells the list APIs to add an unknown entry */
-#define MV_STATUS_FAILURE_ADD_UNKNOWN ((mv_status_t)0x1234567800000002U)
-/** tells the list APIs to corrupt the number of entries */
-#define MV_STATUS_FAILURE_CORRUPT_NUM_ENTRIES ((mv_status_t)0x1234567800000003U)
+    /* -------------------------------------------------------------------------- */
+    /* mv_vs_ops                                                                  */
+    /* -------------------------------------------------------------------------- */
 
     /** @brief stores the return value for mv_vs_op_create_vs */
     extern uint16_t g_mut_mv_vs_op_create_vs;
