@@ -44,6 +44,16 @@ extern "C"
     typedef uint64_t mv_status_t;
 
 #ifdef __cplusplus
+#define FALLTHROUGH [[fallthrough]]
+#else
+#ifdef __clang__
+#define FALLTHROUGH __attribute__((fallthrough))
+#else
+#define FALLTHROUGH
+#endif
+#endif
+
+#ifdef __cplusplus
 #define NOEXCEPT noexcept
 #else
 #define NOEXCEPT

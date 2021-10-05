@@ -27,6 +27,7 @@
  */
 
 #include <debug.h>
+#include <handle_system_kvm_check_extension.h>
 #include <handle_system_kvm_create_vm.h>
 #include <handle_system_kvm_destroy_vm.h>
 #include <handle_system_kvm_get_api_version.h>
@@ -36,6 +37,7 @@
 #include <handle_vcpu_kvm_run.h>
 #include <handle_vcpu_kvm_set_regs.h>
 #include <handle_vcpu_kvm_set_sregs.h>
+#include <handle_vm_kvm_check_extension.h>
 #include <handle_vm_kvm_create_vcpu.h>
 #include <handle_vm_kvm_destroy_vcpu.h>
 #include <handle_vm_kvm_set_user_memory_region.h>
@@ -147,9 +149,16 @@ static struct file_operations fops_device;
 /* -------------------------------------------------------------------------- */
 
 static long
-dispatch_system_kvm_check_extension(void)
+dispatch_system_kvm_check_extension(unsigned long const user_args)
 {
-    return -EINVAL;
+    uint32_t ret;
+
+    if (handle_system_kvm_check_extension(user_args, &ret)) {
+        bferror("system kvm check_extension failed");
+        return -EINVAL;
+    }
+
+    return (long)ret;
 }
 
 static long
@@ -280,7 +289,7 @@ dev_unlocked_ioctl_system(
 {
     switch (cmd) {
         case KVM_CHECK_EXTENSION: {
-            return dispatch_system_kvm_check_extension();
+            return dispatch_system_kvm_check_extension(ioctl_args);
         }
 
         case KVM_CREATE_VM: {
@@ -358,9 +367,17 @@ dev_unlocked_ioctl_system(
 /* -------------------------------------------------------------------------- */
 
 static long
-dispatch_vm_kvm_check_extension(void)
+dispatch_vm_kvm_check_extension(
+    struct shim_vm_t *pmut_mut_vm, unsigned long const user_args)
 {
-    return -EINVAL;
+    uint32_t ret;
+
+    if (handle_vm_kvm_check_extension(user_args, &ret)) {
+        bferror("vm kvm check_extension failed");
+        return -EINVAL;
+    }
+
+    return (long)ret;
 }
 
 static long
@@ -642,7 +659,7 @@ dev_unlocked_ioctl_vm(
 
     switch (cmd) {
         case KVM_CHECK_EXTENSION: {
-            return dispatch_vm_kvm_check_extension();
+            return dispatch_vm_kvm_check_extension(pmut_mut_vm, ioctl_args);
         }
 
         case KVM_CLEAR_DIRTY_LOG: {
