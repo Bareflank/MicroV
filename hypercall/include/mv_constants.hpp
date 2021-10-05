@@ -91,6 +91,13 @@ namespace hypercall
     constexpr auto MV_PERM_WRITE{0x0000000000000002_u64};
 
     // -------------------------------------------------------------------------
+    // RDL Flags
+    // -------------------------------------------------------------------------
+
+    /// @brief Indicates the hypervisor should return all supported registers
+    constexpr auto MV_RDL_FLAG_ALL{0x0000000000000001_u64};
+
+    // -------------------------------------------------------------------------
     // Map Flags
     // -------------------------------------------------------------------------
 
@@ -122,6 +129,13 @@ namespace hypercall
     constexpr auto MV_MAP_FLAG_WRITE_BACK{0x4000000000000000_u64};
     /// @brief Indicates the map is mapped as WP
     constexpr auto MV_MAP_FLAG_WRITE_PROTECTED{0x8000000000000000_u64};
+
+    // -------------------------------------------------------------------------
+    // CDL Flags
+    // -------------------------------------------------------------------------
+
+    /// @brief Indicates the hypervisor should return all supported CPUIDs
+    constexpr auto MV_CDL_FLAG_ALL{0x0000000000000001_u64};
 
     // -------------------------------------------------------------------------
     // Special IDs
@@ -421,7 +435,7 @@ namespace hypercall
     constexpr auto MV_PP_OP_REG_GET_EMULATED_LIST_IDX_VAL{0x000000000000000F_u64};
     /// @brief Defines the index for mv_pp_op_msr_get_supported
     constexpr auto MV_PP_OP_MSR_GET_SUPPORTED_IDX_VAL{0x000000000000010_u64};
-    /// @brief Defines the index for mv_pp_op_msr_get_supported
+    /// @brief Defines the index for mv_pp_op_msr_get_supported_list
     constexpr auto MV_PP_OP_MSR_GET_SUPPORTED_LIST_IDX_VAL{0x000000000000011_u64};
     /// @brief Defines the index for mv_pp_op_msr_get_permissable
     constexpr auto MV_PP_OP_MSR_GET_PERMISSABLE_IDX_VAL{0x0000000000000012_u64};

@@ -100,6 +100,13 @@ NODISCARD static inline int
 #define MV_PERM_WRITE ((uint64_t)0x0000000000000002)
 
 /* -------------------------------------------------------------------------- */
+/* RDL Flags                                                                  */
+/* -------------------------------------------------------------------------- */
+
+/** @brief Indicates the hypervisor should return all supported registers */
+#define MV_RDL_FLAG_ALL ((uint64_t)0x0000000000000001)
+
+/* -------------------------------------------------------------------------- */
 /* Map Flags                                                                  */
 /* -------------------------------------------------------------------------- */
 
@@ -131,6 +138,13 @@ NODISCARD static inline int
 #define MV_MAP_FLAG_WRITE_BACK ((uint64_t)0x4000000000000000)
 /** @brief Indicates the map is mapped as WP */
 #define MV_MAP_FLAG_WRITE_PROTECTED ((uint64_t)0x8000000000000000)
+
+/* -------------------------------------------------------------------------- */
+/* CDL Flags                                                                  */
+/* -------------------------------------------------------------------------- */
+
+/** @brief Indicates the hypervisor should return all supported CPUIDs */
+#define MV_CDL_FLAG_ALL ((uint64_t)0x0000000000000001)
 
 /* -------------------------------------------------------------------------- */
 /* Special IDs                                                                */
@@ -434,7 +448,7 @@ NODISCARD static inline int
 #define MV_PP_OP_REG_GET_EMULATED_LIST_IDX_VAL ((uint64_t)0x000000000000000F)
 /** @brief Defines the index for mv_pp_op_msr_get_supported */
 #define MV_PP_OP_MSR_GET_SUPPORTED_IDX_VAL ((uint64_t)0x000000000000010)
-/** @brief Defines the index for mv_pp_op_msr_get_supported */
+/** @brief Defines the index for mv_pp_op_msr_get_supported_list */
 #define MV_PP_OP_MSR_GET_SUPPORTED_LIST_IDX_VAL ((uint64_t)0x000000000000011)
 /** @brief Defines the index for mv_pp_op_msr_get_permissable */
 #define MV_PP_OP_MSR_GET_PERMISSABLE_IDX_VAL ((uint64_t)0x0000000000000012)

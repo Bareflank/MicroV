@@ -126,6 +126,17 @@ namespace hypercall
     mv_pp_op_set_shared_page_gpa_impl(bsl::uint64 const reg0_in, bsl::uint64 const reg1_in) noexcept
         -> mv_status_t::value_type;
 
+    /// <!-- description -->
+    ///   @brief Implements the ABI for mv_pp_op_msr_get_supported_list.
+    ///
+    /// <!-- inputs/outputs -->
+    ///   @param reg0_in n/a
+    ///   @return n/a
+    ///
+    extern "C" [[nodiscard]] auto
+    mv_pp_op_msr_get_supported_list_impl(bsl::uint64 const reg0_in) noexcept
+        -> mv_status_t::value_type;
+
     // -------------------------------------------------------------------------
     // mv_vm_ops
     // -------------------------------------------------------------------------

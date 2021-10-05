@@ -122,6 +122,44 @@ namespace microv
     }
 
     /// <!-- description -->
+    ///   @brief Implements the mv_pp_op_msr_get_supported_list hypercall
+    ///
+    /// <!-- inputs/outputs -->
+    ///   @param mut_sys the bf_syscall_t to use
+    ///   @param mut_pp_pool the pp_pool_t to use
+    ///   @return Returns bsl::errc_success on success, bsl::errc_failure
+    ///     and friends otherwise
+    ///
+    [[nodiscard]] constexpr auto
+    handle_mv_pp_op_msr_get_supported_list(
+        syscall::bf_syscall_t &mut_sys, pp_pool_t &mut_pp_pool) noexcept -> bsl::errc_type
+    {
+        auto mut_rdl{mut_pp_pool.shared_page<hypercall::mv_rdl_t>(mut_sys)};
+
+        if (bsl::unlikely(mut_rdl.is_invalid())) {
+            bsl::print<bsl::V>() << bsl::here();
+            set_reg_return(mut_sys, hypercall::MV_STATUS_INVALID_INPUT_REG1);
+            return vmexit_failure_advance_ip_and_run;
+        }
+
+        bool const mdl_safe{is_rdl_msr_safe(*mut_rdl)};
+        if (bsl::unlikely(!mdl_safe)) {
+            bsl::print<bsl::V>() << bsl::here();
+            set_reg_return(mut_sys, hypercall::MV_STATUS_INVALID_INPUT_REG1);
+            return vmexit_failure_advance_ip_and_run;
+        }
+
+        auto const ret{
+            mut_pp_pool.msr_get_supported_list(mut_sys, mut_sys.bf_tls_ppid(), *mut_rdl)};
+        if (bsl::unlikely(!ret)) {
+            bsl::print<bsl::V>() << bsl::here();
+            return vmexit_failure_advance_ip_and_run;
+        }
+
+        return vmexit_success_advance_ip_and_run;
+    }
+
+    /// <!-- description -->
     ///   @brief Dispatches physical processor VMCalls.
     ///
     /// <!-- inputs/outputs -->
@@ -172,6 +210,7 @@ namespace microv
         }
 
         switch (hypercall::mv_hypercall_index(get_reg_hypercall(mut_sys)).get()) {
+
             case hypercall::MV_PP_OP_PPID_IDX_VAL.get(): {
                 auto const ret{handle_mv_pp_op_ppid(mut_sys)};
                 if (bsl::unlikely(!ret)) {
@@ -194,6 +233,16 @@ namespace microv
 
             case hypercall::MV_PP_OP_SET_SHARED_PAGE_GPA_IDX_VAL.get(): {
                 auto const ret{handle_mv_pp_op_set_shared_page_gpa(mut_sys, mut_pp_pool, vm_pool)};
+                if (bsl::unlikely(!ret)) {
+                    bsl::print<bsl::V>() << bsl::here();
+                    return ret;
+                }
+
+                return ret;
+            }
+
+            case hypercall::MV_PP_OP_MSR_GET_SUPPORTED_LIST_IDX_VAL.get(): {
+                auto const ret{handle_mv_pp_op_msr_get_supported_list(mut_sys, mut_pp_pool)};
                 if (bsl::unlikely(!ret)) {
                     bsl::print<bsl::V>() << bsl::here();
                     return ret;

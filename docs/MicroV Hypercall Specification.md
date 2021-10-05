@@ -13,7 +13,9 @@
     - [1.4.5. Register Descriptor Lists](#145-register-descriptor-lists)
     - [1.4.6. Memory Descriptor Lists](#146-memory-descriptor-lists)
     - [1.4.7. CPUID Descriptor Lists](#147-cpuid-descriptor-lists)
-    - [1.4.8. Map Flags](#148-map-flags)
+    - [1.4.8. RDL Flags](#148-rdl-flags)
+    - [1.4.9. Map Flags](#149-map-flags)
+    - [1.4.10. CDL Flags](#1410-cdl-flags)
   - [1.5. ID Constants](#15-id-constants)
   - [1.6. Endianness](#16-endianness)
   - [1.7. Physical Processor (PP)](#17-physical-processor-pp)
@@ -320,8 +322,8 @@ The format of the RDL as follows:
 **struct: mv_rdl_t**
 | Name | Type | Offset | Size | Description |
 | :--- | :--- | :----- | :--- | :---------- |
-| reg0 | uint64_t | 0x0 | 8 bytes | ABI dependent. REVI if unused |
-| reg1 | uint64_t | 0x8 | 8 bytes | ABI dependent. REVI if unused |
+| reg0 | uint64_t | 0x0 | 8 bytes | ABI dependent. REVZ if unused |
+| reg1 | uint64_t | 0x8 | 8 bytes | ABI dependent. REVZ if unused |
 | reg2 | uint64_t | 0x10 | 8 bytes | ABI dependent. REVI if unused |
 | reg3 | uint64_t | 0x18 | 8 bytes | ABI dependent. REVI if unused |
 | reg4 | uint64_t | 0x20 | 8 bytes | ABI dependent. REVI if unused |
@@ -401,8 +403,8 @@ The format of the CDL as follows:
 **struct: mv_cdl_t**
 | Name | Type | Offset | Size | Description |
 | :--- | :--- | :----- | :--- | :---------- |
-| reg0 | uint64_t | 0x0 | 8 bytes | ABI dependent. REVI if unused |
-| reg1 | uint64_t | 0x8 | 8 bytes | ABI dependent. REVI if unused |
+| reg0 | uint64_t | 0x0 | 8 bytes | ABI dependent. REVZ if unused |
+| reg1 | uint64_t | 0x8 | 8 bytes | ABI dependent. REVZ if unused |
 | reg2 | uint64_t | 0x10 | 8 bytes | ABI dependent. REVI if unused |
 | reg3 | uint64_t | 0x18 | 8 bytes | ABI dependent. REVI if unused |
 | reg4 | uint64_t | 0x20 | 8 bytes | ABI dependent. REVI if unused |
@@ -415,7 +417,15 @@ The format of the CDL as follows:
 | num_entries | uint64_t | 0x58 | 8 bytes | The number of entries in the CDL |
 | entries | mv_cdl_entry_t[MV_CDL_MAX_ENTRIES] | 0x60 | ABI dependent | Each entry in the CDL |
 
-### 1.4.8. Map Flags
+### 1.4.8. RDL Flags
+
+The RDL flags are used by some of the hypercalls as both inputs to a hypercall as well as outputs from a hypercall to provide information about how an RDL should be interpreted.
+
+| Bit | Name | Description |
+| :-- | :--- | :---------- |
+|  0 | MV_RDL_FLAG_ALL | Indicates a request for all available registers |
+
+### 1.4.9. Map Flags
 
 The map flags are used by some of the hypercalls as both inputs to a hypercall as well as outputs from a hypercall to provide information about how a memory is or should be mapped.
 
@@ -437,6 +447,14 @@ The map flags are used by some of the hypercalls as both inputs to a hypercall a
 | 61 | MV_MAP_FLAG_WRITE_THROUGH | Indicates the map is mapped as WT |
 | 62 | MV_MAP_FLAG_WRITE_BACK | Indicates the map is mapped as WB |
 | 63 | MV_MAP_FLAG_WRITE_PROTECTED | Indicates the map is mapped as WP |
+
+### 1.4.10. CDL Flags
+
+The CDL flags are used by some of the hypercalls as both inputs to a hypercall as well as outputs from a hypercall to provide information about how a CDL should be interpreted.
+
+| Bit | Name | Description |
+| :-- | :--- | :---------- |
+|  0 | MV_CDL_FLAG_ALL | Indicates a request for all available CPUIDs |
 
 ## 1.5. ID Constants
 
@@ -1049,6 +1067,8 @@ Given the shared page cast as a single mv_cdl_entry_t, with mv_cdl_entry_t.fun a
 
 Given the shared page cast as a mv_cdl_t, with each entry's mv_cdl_entry_t.fun and mv_cdl_entry_t.idx set to the requested CPUID leaf, the same entries are returned in the shared page with each entry's mv_cdl_entry_t.eax, mv_cdl_entry_t.ebx, mv_cdl_entry_t.ecx and mv_cdl_entry_t.edx set with all supported CPU features set to 1. Any non-feature fields returned by CPUID are returned as 0.
 
+This hypercall supports flag modifiers in mv_cdl_t.reg0. When MV_CDL_FLAG_ALL is enabled, the entire list of supported CPUIDs will be returned via the shared page and no entries must be given as input. If the entire list doesn't fit in the shared page, this hypercall will output in mv_cdl_t.reg1 the number of entries that are left allowing to make subsequent continuation calls by providing the current index of entries to resume from in mv_cdl_t.reg1 as input, i.e. mv_cdl_t.reg1 should be incremented by MV_CDL_MAX_ENTRIES.
+
 **Input:**
 | Register Name | Bits | Description |
 | :------------ | :--- | :---------- |
@@ -1094,6 +1114,8 @@ Given the shared page cast as a single mv_cdl_entry_t, with mv_cdl_entry_t.fun a
 ### 2.12.10. mv_pp_op_cpuid_get_emulated_list, OP=0x3, IDX=0x9
 
 Given the shared page cast as a mv_cdl_t, with each entry's mv_cdl_entry_t.fun and mv_cdl_entry_t.idx set to the requested CPUID leaf, the same entries are returned in the shared page with each entry's mv_cdl_entry_t.eax, mv_cdl_entry_t.ebx, mv_cdl_entry_t.ecx and mv_cdl_entry_t.edx set with all supported CPU features set to 1. Any non-feature fields returned by CPUID are returned as 0.  Emulated CPU features are features that are not supported by hardware, but are supported MicroV, meaning the VM is free to use this CPU feature as if hardware support were provided. An example of an emulated CPU feature might be the x2APIC.
+
+This hypercall supports flag modifiers in mv_cdl_t.reg0. When MV_CDL_FLAG_ALL is enabled, the entire list of emulated CPUIDs will be returned via the shared page and no entries must be given as input. If the entire list doesn't fit in the shared page, this hypercall will output in mv_cdl_t.reg1 the number of entries that are left allowing to make subsequent continuation calls by providing the current index of entries to resume from in mv_cdl_t.reg1 as input, i.e. mv_cdl_t.reg1 should be incremented by MV_CDL_MAX_ENTRIES.
 
 **Input:**
 | Register Name | Bits | Description |
@@ -1184,6 +1206,8 @@ Given a requested MSR, a 1 is returned if the MSR is supported, and a 0 is retur
 
 Given the shared page cast as a mv_rdl_t, with each entry's mv_rdl_entry_t.reg set to the requested MSR, the same entries are returned in the shared page with each entry's mv_rdl_entry_t.val set to 1 if the MSR is supported, and 0 if the MSR is not supported.
 
+This hypercall supports flag modifiers in mv_rdl_t.reg0. When MV_RDL_FLAG_ALL is enabled, the entire list of supported MSRs will be returned via the shared page and no entries must be given as input. If the entire list doesn't fit in the shared page, this hypercall will output in mv_rdl_t.reg1 the number of entries that are left allowing to make subsequent continuation calls by providing the current index of entries to resume from in mv_rdl_t.reg1 as input, i.e. mv_rdl_t.reg1 should be incremented by MV_RDL_MAX_ENTRIES.
+
 **Input:**
 | Register Name | Bits | Description |
 | :------------ | :--- | :---------- |
@@ -1218,6 +1242,8 @@ Given a requested MSR, MV_PERM_READ is returned if the calling VM can read from 
 ### 2.12.20. mv_pp_op_msr_get_permissable_list, OP=0x3, IDX=0x13
 
 Given the shared page cast as a mv_rdl_t, with each entry's mv_rdl_entry_t.reg set to the requested MSR, the same entries are returned in the shared page with each entry's mv_rdl_entry_t.val MV_PERM_READ bit set to 1 if the MSR can be read by the calling VM, and the MV_PERM_WRITE bit set to 1 if the MSR can be written by the calling VM.
+
+This hypercall supports flag modifiers in mv_rdl_t.reg0. When MV_RDL_FLAG_ALL is enabled, the entire list of permissable MSRs will be returned via the shared page and no entries must be given as input. If the entire list doesn't fit in the shared page, this hypercall will output in mv_rdl_t.reg1 the number of entries that are left allowing to make subsequent continuation calls by providing the current index of entries to resume from in mv_rdl_t.reg1 as input, i.e. mv_rdl_t.reg1 should be incremented by MV_RDL_MAX_ENTRIES.
 
 **Input:**
 | Register Name | Bits | Description |

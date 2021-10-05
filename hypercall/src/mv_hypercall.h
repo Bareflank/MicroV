@@ -204,6 +204,44 @@ extern "C"
         return mut_ret;
     }
 
+    /**
+     * <!-- description -->
+     *   @brief Given the shared page cast as a mv_rdl_t, with each entry's
+     *     mv_rdl_entry_t.reg set to the requested MSR, the same entries are
+     *     returned in the shared page with each entry's mv_rdl_entry_t.val set
+     *     to 1 if the MSR is supported, and 0 if the MSR is not supported.
+     *
+     *     This hypercall supports flag modifiers in mv_rdl_t.reg0. When
+     *     MV_RDL_FLAG_ALL is enabled, the entire list of supported MSRs will be
+     *     returned via the shared page and no entries must be given as input.
+     *     If the entire list doesn't fit in the shared page, this hypercall
+     *     will output in mv_rdl_t.reg1 the number of entries that are left
+     *     allowing to make subsequent continuation calls by providing the
+     *     current index of entries to resume from in mv_rdl_t.reg1 as input,
+     *     i.e. mv_rdl_t.reg1 should be incremented by MV_RDL_MAX_ENTRIES.
+     *
+     * <!-- inputs/outputs -->
+     *   @param hndl Set to the result of mv_handle_op_open_handle
+     *   @return Returns MV_STATUS_SUCCESS on success, MV_STATUS_FAILURE_UNKNOWN
+     *     and friends on failure.
+     */
+    NODISCARD static inline mv_status_t
+    mv_pp_op_msr_get_supported_list(uint64_t const hndl) NOEXCEPT
+    {
+        mv_status_t mut_ret;
+
+        platform_expects(MV_INVALID_HANDLE != hndl);
+        platform_expects(hndl > ((uint64_t)0));
+
+        mut_ret = mv_pp_op_msr_get_supported_list_impl(hndl);
+        if (mut_ret != MV_STATUS_SUCCESS) {
+            bferror("mv_pp_op_msr_get_supported_list failed");
+            return mut_ret;
+        }
+
+        return mut_ret;
+    }
+
     /* ---------------------------------------------------------------------- */
     /* mv_vm_ops                                                              */
     /* ---------------------------------------------------------------------- */

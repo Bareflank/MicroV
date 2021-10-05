@@ -219,6 +219,26 @@ namespace microv
         {
             return this->get_pp(mut_sys.bf_tls_ppid())->shared_page<T>(mut_sys);
         }
+
+        /// <!-- description -->
+        ///   @brief Set the list of supported MSRs of the requested pp_t into
+        ///     an RDL shared page.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param mut_sys the bf_syscall_t to use
+        ///   @param ppid the ID of the pp_t to clear the SPA for
+        ///   @param mut_rdl the mv_rdl_t in which the supported MSR are set.
+        ///   @return Returns bsl::errc_success on success, bsl::errc_failure
+        ///    otherwise.
+        ///
+        [[nodiscard]] constexpr auto
+        msr_get_supported_list(
+            syscall::bf_syscall_t &mut_sys,
+            bsl::safe_u16 const &ppid,
+            hypercall::mv_rdl_t &mut_rdl) noexcept -> bsl::errc_type
+        {
+            return this->get_pp(ppid)->msr_get_supported_list(mut_sys, mut_rdl);
+        }
     };
 }
 

@@ -28,13 +28,17 @@
 #include <bf_syscall_t.hpp>
 #include <gs_t.hpp>
 #include <intrinsic_t.hpp>
+#include <mv_rdl_t.hpp>
 #include <tls_t.hpp>
 
+#include <bsl/array.hpp>
+#include <bsl/convert.hpp>
 #include <bsl/debug.hpp>
 #include <bsl/discard.hpp>
 #include <bsl/errc_type.hpp>
 #include <bsl/unlikely.hpp>
 
+// #define INTEGRATION_MOCK
 namespace microv
 {
     /// @class microv::pp_msr_t
@@ -46,6 +50,27 @@ namespace microv
     {
         /// @brief stores the ID of the PP associated with this pp_msr_t
         bsl::safe_u16 m_assigned_ppid{};
+        /// @brief stores the total number of supported msrs
+        static constexpr auto num_supported_msrs{13_umx};
+        /// @brief stores the supported msrs
+        static constexpr const bsl::array<hypercall::mv_rdl_entry_t, num_supported_msrs.get()>
+            supported_msrs{{
+                {.reg = 0xC0000081UL, .val = 1UL},    // star
+                {.reg = 0xC0000082UL, .val = 1UL},    // lstar
+                {.reg = 0xC0000083UL, .val = 1UL},    // cstar
+                {.reg = 0xC0000084UL, .val = 1UL},    // fmask
+                {.reg = 0xC0000102UL, .val = 1UL},    // kernel_gs_base
+
+                {.reg = 0xC0000080UL, .val = 1UL},    // efer
+                {.reg = 0xC0000100UL, .val = 1UL},    // fs_base
+                {.reg = 0xC0000101UL, .val = 1UL},    // gs_base
+                {.reg = 0x00000174UL, .val = 1UL},    // sysenter_cs
+                {.reg = 0x00000175UL, .val = 1UL},    // sysenter_esp
+                {.reg = 0x00000176UL, .val = 1UL},    // sysenter_eip
+                {.reg = 0x00000277UL, .val = 1UL},    // pat
+
+                {.reg = 0x0000001BUL, .val = 1UL},    // apic_base
+            }};
 
     public:
         /// <!-- description -->
@@ -161,6 +186,90 @@ namespace microv
         ///   it is permissable(), and in the future we can restrict what
         ///   QEMU gets with a little research into what it actually needs.
         ///
+
+        /// <!-- description -->
+        ///   @brief Check that an MSR is supported.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param sys the bf_syscall_t to use
+        ///   @param msr the msr to check
+        ///   @return an mv_entry_t with .val set to 1 if the msr is supported.
+        ///
+        [[nodiscard]] static constexpr auto
+        supported(syscall::bf_syscall_t const &sys, bsl::safe_u32 const msr) noexcept
+            -> hypercall::mv_rdl_entry_t
+        {
+            bsl::discard(sys);
+            for (const auto &mut_entry : supported_msrs) {
+                if (mut_entry.reg == bsl::to_u64(msr).get()) {
+                    return mut_entry;
+                }
+                bsl::touch();
+            }
+
+            return {.reg = bsl::to_u64(msr).get(), .val = 0UL};
+        }
+
+        /// <!-- description -->
+        ///   @brief Set the list of supported MSRs into the shared page using an RDL.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param mut_sys the bf_syscall_t to use
+        ///   @param mut_rdl the mv_rdl_t in which the supported MSR are set.
+        ///   @return Returns bsl::errc_success on success, bsl::errc_failure
+        ///    otherwise.
+        ///
+        [[nodiscard]] constexpr auto
+        supported_list(syscall::bf_syscall_t &mut_sys, hypercall::mv_rdl_t &mut_rdl) noexcept
+            -> bsl::errc_type
+        {
+            bsl::expects(mut_sys.bf_tls_ppid() == this->assigned_ppid());
+            const auto reg0_mask = ~(hypercall::MV_RDL_FLAG_ALL);
+            bsl::expects((mut_rdl.reg0 & reg0_mask) == 0_u64);
+            if (bsl::unlikely(mut_rdl.reg1 >= supported_msrs.size())) {
+                bsl::error() << "rdl.reg1 "                                   // --
+                             << mut_rdl.reg1                                  // --
+                             << " >= "                                        // --
+                             << supported_msrs.size()                         // --
+                             << ". The resume index in reg1 is too large."    // --
+                             << bsl::endl                                     // --
+                             << bsl::here();                                  // --
+
+                return bsl::errc_failure;
+            }
+
+            if ((mut_rdl.reg0 & hypercall::MV_RDL_FLAG_ALL).is_pos()) {
+                auto num_entries{(supported_msrs.size() - mut_rdl.reg1).checked()};
+                if (num_entries >= hypercall::MV_RDL_MAX_ENTRIES) {
+                    num_entries = hypercall::MV_RDL_MAX_ENTRIES;
+                }
+                else {
+                    num_entries %= hypercall::MV_RDL_MAX_ENTRIES;
+                    num_entries = num_entries.checked();
+                }
+                for (bsl::safe_idx mut_i{}; mut_i < num_entries; ++mut_i) {
+                    *mut_rdl.entries.at_if(mut_i) = *supported_msrs.at_if(mut_i + mut_rdl.reg1);
+                }
+                mut_rdl.num_entries = num_entries.get();
+                mut_rdl.reg1 =
+                    (supported_msrs.size() - (mut_rdl.reg1 + num_entries)).checked().get();
+            }
+            else {
+                for (auto &mut_entry : mut_rdl.entries) {
+                    constexpr auto upper_mask = 0xFFFFFF00000000_u64;
+                    if (bsl::unlikely(0UL != (mut_entry.reg & upper_mask.get()))) {
+                        bsl::error() << "The upper 32 bit should be 0 but register address is "
+                                     << bsl::hex(mut_entry.reg) << bsl::endl
+                                     << bsl::here();
+                        return bsl::errc_failure;
+                    }
+                    const auto msr = bsl::to_u32(static_cast<uint32_t>(mut_entry.reg));
+                    mut_entry.val = this->supported(mut_sys, msr).val;
+                }
+            }
+
+            return bsl::errc_success;
+        }
     };
 }
 
