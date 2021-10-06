@@ -346,7 +346,7 @@ namespace shim
                 constexpr auto data{42_u64};
                 constexpr auto reps{0_u64};
                 constexpr bsl::safe_u64 type{MV_EXIT_IO_IN};
-                constexpr auto size{static_cast<mv_bit_size_t>(42)};
+                constexpr auto size{i32_to_mv_bit_size_t(42)};
                 bsl::ut_when{} = [&]() noexcept {
                     mut_vcpu.run = new kvm_run();    // NOLINT
                     g_mut_mv_vs_op_run = mv_exit_reason_t_io;
@@ -486,7 +486,7 @@ namespace shim
                 shim_vcpu_t mut_vcpu{};
                 bsl::ut_when{} = [&]() noexcept {
                     mut_vcpu.run = new kvm_run();    // NOLINT
-                    g_mut_mv_vs_op_run = static_cast<mv_exit_reason_t>(-42);
+                    g_mut_mv_vs_op_run = i32_to_mv_exit_reason_t(-42);
                     bsl::ut_then{} = [&]() noexcept {
                         bsl::ut_check(SHIM_FAILURE == handle(&mut_vcpu));
                     };

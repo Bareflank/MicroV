@@ -26,6 +26,7 @@
 #define DISPATCH_VMEXIT_CR_HPP
 
 #include <bf_syscall_t.hpp>
+#include <cr_access_t.hpp>
 #include <gs_t.hpp>
 #include <intrinsic_t.hpp>
 #include <page_pool_t.hpp>
@@ -55,6 +56,7 @@ namespace microv
     ///   @param vm_pool the vm_pool_t to use
     ///   @param vp_pool the vp_pool_t to use
     ///   @param vs_pool the vs_pool_t to use
+    ///   @param cr_access the type of control register access
     ///   @param vsid the ID of the VS that generated the VMExit
     ///   @return Returns bsl::errc_success on success, bsl::errc_failure
     ///     and friends otherwise
@@ -70,21 +72,31 @@ namespace microv
         vm_pool_t const &vm_pool,
         vp_pool_t const &vp_pool,
         vs_pool_t const &vs_pool,
+        cr_access_t const cr_access,
         bsl::safe_u16 const &vsid) noexcept -> bsl::errc_type
     {
+        constexpr auto gpr_mask{0x00000000FFFFFFFF_u64};
+
         bsl::discard(gs);
         bsl::discard(tls);
-        bsl::discard(mut_sys);
         bsl::discard(page_pool);
         bsl::discard(intrinsic);
         bsl::discard(pp_pool);
         bsl::discard(vm_pool);
         bsl::discard(vp_pool);
         bsl::discard(vs_pool);
-        bsl::discard(vsid);
+        bsl::discard(cr_access);
 
-        bsl::error() << "dispatch_vmexit_cr not implemented\n" << bsl::here();
-        return bsl::errc_failure;
+        bsl::expects(!mut_sys.is_the_active_vm_the_root_vm());
+
+        auto const exitinfo1{mut_sys.bf_vs_op_read(vsid, syscall::bf_reg_t::bf_reg_t_exitinfo1)};
+        bsl::expects(exitinfo1.is_valid());
+
+        auto const cr0_val{gpr_mask & mut_sys.bf_tls_rax()};
+        auto const cr0_idx{syscall::bf_reg_t::bf_reg_t_cr0};
+        bsl::expects(mut_sys.bf_vs_op_write(vsid, cr0_idx, cr0_val));
+
+        return vmexit_success_advance_ip_and_run;
     }
 }
 

@@ -58,8 +58,13 @@ namespace microv
     ///   @param mut_vm_pool the vm_pool_t to use
     ///   @param mut_vp_pool the vp_pool_t to use
     ///   @param mut_vs_pool the vs_pool_t to use
-    ///   @param vsid the ID of the VS that generated the fail
-    ///   @param fail_reason the exit reason associated with the fail
+    ///   @param errc the reason for the failure, which is CPU
+    ///     specific. On x86, this is a combination of the exception
+    ///     vector and error code.
+    ///   @param addr contains a faulting address if the fail reason
+    ///     is associated with an error that involves a faulting address (
+    ///     for example like a page fault). Otherwise, the value of this
+    ///     input is undefined.
     ///   @return Returns bsl::errc_success on success, bsl::errc_failure
     ///     and friends otherwise
     ///
@@ -74,14 +79,14 @@ namespace microv
         vm_pool_t &mut_vm_pool,
         vp_pool_t &mut_vp_pool,
         vs_pool_t &mut_vs_pool,
-        bsl::safe_u16 const &vsid,
-        bsl::safe_u64 const &fail_reason) noexcept -> bsl::errc_type
+        bsl::safe_u64 const &errc,
+        bsl::safe_u64 const &addr) noexcept -> bsl::errc_type
     {
         bsl::discard(gs);
         bsl::discard(page_pool);
         bsl::discard(pp_pool);
-        bsl::discard(vsid);
-        bsl::discard(fail_reason);
+        bsl::discard(errc);
+        bsl::discard(addr);
 
         return return_unknown(mut_tls, mut_sys, intrinsic, mut_vm_pool, mut_vp_pool, mut_vs_pool);
     }

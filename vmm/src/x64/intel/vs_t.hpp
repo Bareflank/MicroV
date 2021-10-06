@@ -29,7 +29,6 @@
 #include <bf_constants.hpp>
 #include <bf_syscall_t.hpp>
 #include <emulated_cpuid_t.hpp>
-#include <emulated_cr_t.hpp>
 #include <emulated_decoder_t.hpp>
 #include <emulated_dr_t.hpp>
 #include <emulated_io_t.hpp>
@@ -39,6 +38,7 @@
 #include <gs_t.hpp>
 #include <intrinsic_t.hpp>
 #include <mv_exit_reason_t.hpp>
+#include <mv_mp_state_t.hpp>
 #include <mv_rdl_t.hpp>
 #include <mv_reg_t.hpp>
 #include <mv_run_t.hpp>
@@ -81,8 +81,6 @@ namespace microv
 
         /// @brief stores this vs_t's emulated_cpuid_t
         emulated_cpuid_t m_emulated_cpuid{};
-        /// @brief stores this vs_t's emulated_cr_t
-        emulated_cr_t m_emulated_cr{};
         /// @brief stores this vs_t's emulated_decoder_t
         emulated_decoder_t m_emulated_decoder{};
         /// @brief stores this vs_t's emulated_dr_t
@@ -98,6 +96,10 @@ namespace microv
 
         /// @brief stores the xsave region for this vs_t
         page_4k_t *m_xsave{};
+        /// @brief stores multiprocessor state of this vs_t
+        hypercall::mv_mp_state_t m_mp_state{};
+        /// @brief stores the TSC frequency in KHz of this vs_t
+        bsl::safe_u64 m_tsc_khz{};
 
         /// @brief stores a queue of interrupts that need to be injected
         queue<bsl::safe_u64, MICROV_INTERRUPT_QUEUE_SIZE.get()> m_interrupt_queue{};
@@ -347,6 +349,9 @@ namespace microv
             bsl::expects(mut_sys.bf_vs_op_write(vsid, mk::bf_reg_t_cr8, {}));
             bsl::expects(mut_sys.bf_vs_op_write(vsid, mk::bf_reg_t_xcr0, {}));
 
+            bsl::expects(mut_sys.bf_vs_op_write(vsid, mk::bf_reg_t_cr0_read_shadow, cr0_val));
+            bsl::expects(mut_sys.bf_vs_op_write(vsid, mk::bf_reg_t_cr4_read_shadow, {}));
+
             // -----------------------------------------------------------------
             // Debug Registers
             // -----------------------------------------------------------------
@@ -404,7 +409,6 @@ namespace microv
             bsl::expects(i != syscall::BF_INVALID_ID);
 
             m_emulated_cpuid.initialize(gs, tls, sys, intrinsic, i);
-            m_emulated_cr.initialize(gs, tls, sys, intrinsic, i);
             m_emulated_decoder.initialize(gs, tls, sys, intrinsic, i);
             m_emulated_dr.initialize(gs, tls, sys, intrinsic, i);
             m_emulated_io.initialize(gs, tls, sys, intrinsic, i);
@@ -441,7 +445,6 @@ namespace microv
             m_emulated_io.release(gs, tls, sys, intrinsic);
             m_emulated_dr.release(gs, tls, sys, intrinsic);
             m_emulated_decoder.release(gs, tls, sys, intrinsic);
-            m_emulated_cr.release(gs, tls, sys, intrinsic);
             m_emulated_cpuid.release(gs, tls, sys, intrinsic);
 
             m_id = {};
@@ -472,6 +475,7 @@ namespace microv
         ///   @param vmid the ID of the VM to assign the vs_t to
         ///   @param vpid the ID of the VP to assign the vs_t to
         ///   @param ppid the ID of the PP to assign the vs_t to
+        ///   @param tsc_khz the starting TSC frequency of the vs_t
         ///   @param slpt_spa the system physical address of the second level
         ///     page tables to use.
         ///   @return Returns ID of this vs_t
@@ -486,6 +490,7 @@ namespace microv
             bsl::safe_u16 const &vmid,
             bsl::safe_u16 const &vpid,
             bsl::safe_u16 const &ppid,
+            bsl::safe_u64 const &tsc_khz,
             bsl::safe_u64 const &slpt_spa) noexcept -> bsl::safe_u16
         {
             syscall::bf_reg_t mut_idx{};
@@ -501,6 +506,10 @@ namespace microv
             bsl::expects(vpid != syscall::BF_INVALID_ID);
             bsl::expects(ppid.is_valid_and_checked());
             bsl::expects(ppid != syscall::BF_INVALID_ID);
+            bsl::expects(tsc_khz.is_valid_and_checked());
+            bsl::expects(tsc_khz.is_pos());
+            bsl::expects(slpt_spa.is_valid_and_checked());
+            bsl::expects(slpt_spa.is_pos());
 
             bsl::discard(gs);
             bsl::discard(tls);
@@ -604,12 +613,21 @@ namespace microv
                 constexpr auto msrpm_idx{syscall::bf_reg_t::bf_reg_t_address_of_msr_bitmaps};
                 bsl::expects(mut_sys.bf_vs_op_write(vsid, msrpm_idx, gs.guest_msrpm_spa));
 
+                constexpr auto cr0_mask_val{0xFFFFFFFFFFFFFFFF_u64};
+                constexpr auto cr0_mask_idx{syscall::bf_reg_t::bf_reg_t_cr0_guest_host_mask};
+                bsl::expects(mut_sys.bf_vs_op_write(vsid, cr0_mask_idx, cr0_mask_val));
+
+                constexpr auto cr4_mask_val{0xFFFFFFFFFFFFFFFF_u64};
+                constexpr auto cr4_mask_idx{syscall::bf_reg_t::bf_reg_t_cr4_guest_host_mask};
+                bsl::expects(mut_sys.bf_vs_op_write(vsid, cr4_mask_idx, cr4_mask_val));
+
                 this->init_as_16bit_guest(mut_sys);
             }
 
             m_assigned_vmid = ~vmid;
             m_assigned_vpid = ~vpid;
             m_assigned_ppid = ~ppid;
+            m_tsc_khz = tsc_khz;
             m_allocated = allocated_status_t::allocated;
 
             if (!mut_sys.is_vs_a_root_vs(vsid)) {
@@ -653,6 +671,8 @@ namespace microv
 
             mut_page_pool.deallocate(tls, m_xsave);
 
+            m_tsc_khz = {};
+            m_mp_state = {};
             m_assigned_ppid = {};
             m_assigned_vpid = {};
             m_assigned_vmid = {};
@@ -968,7 +988,7 @@ namespace microv
             using mk = syscall::bf_reg_t;
             using mv = hypercall::mv_reg_t;
 
-            switch (static_cast<hypercall::mv_reg_t>(reg.get())) {
+            switch (hypercall::to_mv_reg_t(reg)) {
                 case mv::mv_reg_t_unsupported: {
                     break;
                 }
@@ -1296,7 +1316,7 @@ namespace microv
             using mk = syscall::bf_reg_t;
             using mv = hypercall::mv_reg_t;
 
-            switch (static_cast<hypercall::mv_reg_t>(reg.get())) {
+            switch (hypercall::to_mv_reg_t(reg)) {
                 case mv::mv_reg_t_unsupported: {
                     break;
                 }
@@ -1704,6 +1724,201 @@ namespace microv
         }
 
         /// <!-- description -->
+        ///   @brief Returns this vs_t's multiprocessor state.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @return Returns this vs_t's multiprocessor state
+        ///
+        [[nodiscard]] constexpr auto
+        mp_state_get() const noexcept -> hypercall::mv_mp_state_t
+        {
+            bsl::ensures(m_mp_state != hypercall::mv_mp_state_t::mv_mp_state_t_invalid);
+            return m_mp_state;
+        }
+
+        /// <!-- description -->
+        ///   @brief Sets this vs_t's multiprocessor state.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param mut_sys the bf_syscall_t to use
+        ///   @param mp_state the new MP state
+        ///   @return Returns bsl::errc_success on success, bsl::errc_failure
+        ///     and friends otherwise.
+        ///
+        [[nodiscard]] constexpr auto
+        mp_state_set(
+            syscall::bf_syscall_t &mut_sys, hypercall::mv_mp_state_t const mp_state) noexcept
+            -> bsl::errc_type
+        {
+            using mp = hypercall::mv_mp_state_t;
+
+            /// TODO:
+            /// - For both UEFI and SMP, we need to handle the MP state
+            ///   properly. Specifically, when a processor is put into INIT,
+            ///   we need to set the guest activity state on Intel (see
+            ///   Bareflank v2.1 INIT/SIPI vmexit handlers for more an
+            ///   example of what to do as some of the logic is already
+            ///   implemented here, but some is still missing like the
+            ///   activity state).
+            ///
+            /// - We also need to watch for INIT/SIPI exits and make sure
+            ///   that the MP state is switch automatically properly.
+            ///
+
+            switch (mp_state) {
+                case mp::mv_mp_state_t_initial: {
+                    if (bsl::unlikely(m_mp_state != mp::mv_mp_state_t_initial)) {
+                        bsl::error() << "setting the mp state of vs_t "    // --
+                                     << bsl::hex(this->id())               // --
+                                     << " to 'initial' is unsupported"     // --
+                                     << bsl::endl                          // --
+                                     << bsl::here();                       // --
+
+                        return bsl::errc_failure;
+                    }
+
+                    return bsl::errc_success;
+                }
+
+                case mp::mv_mp_state_t_running: {
+                    if (bsl::unlikely(m_mp_state == mp::mv_mp_state_t_init)) {
+                        bsl::error()
+                            << "setting the mp state of vs_t "                          // --
+                            << bsl::hex(this->id())                                     // --
+                            << " to 'running' while waiting for SIPI is unsupported"    // --
+                            << bsl::endl                                                // --
+                            << bsl::here();                                             // --
+
+                        return bsl::errc_failure;
+                    }
+
+                    m_mp_state = mp_state;
+                    return bsl::errc_success;
+                }
+
+                case mp::mv_mp_state_t_wait: {
+                    if (bsl::unlikely(m_mp_state == mp::mv_mp_state_t_initial)) {
+                        bsl::error() << "setting the mp state of vs_t "                // --
+                                     << bsl::hex(this->id())                           // --
+                                     << " to 'wait' without running is unsupported"    // --
+                                     << bsl::endl                                      // --
+                                     << bsl::here();                                   // --
+
+                        return bsl::errc_failure;
+                    }
+
+                    if (bsl::unlikely(m_mp_state == mp::mv_mp_state_t_init)) {
+                        bsl::error() << "setting the mp state of vs_t "                       // --
+                                     << bsl::hex(this->id())                                  // --
+                                     << " to 'wait' while waiting for SIPI is unsupported"    // --
+                                     << bsl::endl                                             // --
+                                     << bsl::here();                                          // --
+
+                        return bsl::errc_failure;
+                    }
+
+                    if (bsl::unlikely(m_mp_state == mp::mv_mp_state_t_init)) {
+                        bsl::error() << "setting the mp state of vs_t "                // --
+                                     << bsl::hex(this->id())                           // --
+                                     << " to 'wait' without running is unsupported"    // --
+                                     << bsl::endl                                      // --
+                                     << bsl::here();                                   // --
+
+                        return bsl::errc_failure;
+                    }
+
+                    m_mp_state = mp_state;
+                    return bsl::errc_success;
+                }
+
+                case mp::mv_mp_state_t_init: {
+                    this->init_as_16bit_guest(mut_sys);
+
+                    if (bsl::unlikely(m_mp_state == mp::mv_mp_state_t_running)) {
+                        bsl::error() << "setting the mp state of vs_t "              // --
+                                     << bsl::hex(this->id())                         // --
+                                     << " to 'init' while running is unsupported"    // --
+                                     << bsl::endl                                    // --
+                                     << bsl::here();                                 // --
+
+                        return bsl::errc_failure;
+                    }
+
+                    if (bsl::unlikely(m_mp_state == mp::mv_mp_state_t_wait)) {
+                        bsl::error() << "setting the mp state of vs_t "              // --
+                                     << bsl::hex(this->id())                         // --
+                                     << " to 'init' while waiting is unsupported"    // --
+                                     << bsl::endl                                    // --
+                                     << bsl::here();                                 // --
+
+                        return bsl::errc_failure;
+                    }
+
+                    if (bsl::unlikely(m_mp_state == mp::mv_mp_state_t_sipi)) {
+                        bsl::error() << "setting the mp state of vs_t "           // --
+                                     << bsl::hex(this->id())                      // --
+                                     << " to 'init' after SIPI is unsupported"    // --
+                                     << bsl::endl                                 // --
+                                     << bsl::here();                              // --
+
+                        return bsl::errc_failure;
+                    }
+
+                    m_mp_state = mp_state;
+                    return bsl::errc_success;
+                }
+
+                case mp::mv_mp_state_t_sipi: {
+                    if (bsl::unlikely(m_mp_state == mp::mv_mp_state_t_initial)) {
+                        bsl::error() << "setting the mp state of vs_t "            // --
+                                     << bsl::hex(this->id())                       // --
+                                     << " to 'sipi' before INIT is unsupported"    // --
+                                     << bsl::endl                                  // --
+                                     << bsl::here();                               // --
+
+                        return bsl::errc_failure;
+                    }
+
+                    if (bsl::unlikely(m_mp_state == mp::mv_mp_state_t_running)) {
+                        bsl::error() << "setting the mp state of vs_t "              // --
+                                     << bsl::hex(this->id())                         // --
+                                     << " to 'sipi' while running is unsupported"    // --
+                                     << bsl::endl                                    // --
+                                     << bsl::here();                                 // --
+
+                        return bsl::errc_failure;
+                    }
+
+                    if (bsl::unlikely(m_mp_state == mp::mv_mp_state_t_wait)) {
+                        bsl::error() << "setting the mp state of vs_t "              // --
+                                     << bsl::hex(this->id())                         // --
+                                     << " to 'sipi' while waiting is unsupported"    // --
+                                     << bsl::endl                                    // --
+                                     << bsl::here();                                 // --
+
+                        return bsl::errc_failure;
+                    }
+
+                    m_mp_state = mp_state;
+                    return bsl::errc_success;
+                }
+
+                case mp::mv_mp_state_t_invalid:
+                    [[fallthrough]];
+                default: {
+                    break;
+                }
+            }
+
+            bsl::error() << "unsupported mp state "        // --
+                         << hypercall::to_i32(mp_state)    // --
+                         << bsl::endl                      // --
+                         << bsl::here();                   // --
+
+            return bsl::errc_failure;
+        }
+
+        /// <!-- description -->
         ///   @brief Injects an exception into the vs_t. Unlike interrupts,
         ///     exceptions cannot be masked, and therefore, the exception is
         ///     immediately injected.
@@ -1922,6 +2137,20 @@ namespace microv
             bsl::expects(vector.is_valid_and_checked());
 
             return m_interrupt_queue.push(vector);
+        }
+
+        /// <!-- description -->
+        ///   @brief Returns this vs_t's TSC frequency in KHz.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @return Returns this vs_t's TSC frequency in KHz.
+        ///
+        [[nodiscard]] constexpr auto
+        tsc_khz_get() const noexcept -> bsl::safe_u64
+        {
+            bsl::ensures(m_tsc_khz.is_valid_and_checked());
+            bsl::ensures(m_tsc_khz.is_pos());
+            return m_tsc_khz;
         }
     };
 }

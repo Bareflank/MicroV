@@ -28,6 +28,7 @@
 #include <mv_constants.hpp>
 #include <mv_exit_reason_t.hpp>
 #include <mv_hypercall_impl.hpp>
+#include <mv_mp_state_t.hpp>
 #include <mv_reg_t.hpp>
 #include <mv_translation_t.hpp>
 #include <mv_types.hpp>
@@ -260,6 +261,60 @@ namespace hypercall
                              << bsl::hex(ret)                                            // --
                              << bsl::endl                                                // --
                              << bsl::here();                                             // --
+                return bsl::errc_failure;
+            }
+
+            return bsl::errc_success;
+        }
+
+        /// <!-- description -->
+        ///   @brief Returns the frequency of the PP. If the frequency has not
+        ///     been set, returns 0.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @return Returns the frequency of the PP. If the frequency has not
+        ///     been set, returns 0.
+        ///
+        [[nodiscard]] constexpr auto
+        mv_pp_op_tsc_get_khz() noexcept -> bsl::safe_u64
+        {
+            bsl::safe_u64 mut_freq;
+
+            mv_status_t const ret{mv_pp_op_tsc_get_khz_impl(m_hndl.get(), mut_freq.data())};
+            if (bsl::unlikely(ret != MV_STATUS_SUCCESS)) {
+                bsl::error() << "mv_pp_op_tsc_get_khz failed with status "    // --
+                             << bsl::hex(ret)                                 // --
+                             << bsl::endl                                     // --
+                             << bsl::here();                                  // --
+
+                return bsl::safe_u64::failure();
+            }
+
+            return mut_freq;
+        }
+
+        /// <!-- description -->
+        ///   @brief Sets the frequency of the PP. This hypercall must be
+        ///     called before any VS can be created.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param freq the frequency in KHz to set the PP to
+        ///   @return Returns MV_STATUS_SUCCESS on success, MV_STATUS_FAILURE_UNKNOWN
+        ///     and friends on failure.
+        ///
+        [[nodiscard]] constexpr auto
+        mv_pp_op_tsc_set_khz(bsl::safe_u64 const &freq) noexcept -> bsl::errc_type
+        {
+            bsl::expects(freq.is_valid_and_checked());
+            bsl::expects(freq.is_pos());
+
+            mv_status_t const ret{mv_pp_op_tsc_set_khz_impl(m_hndl.get(), freq.get())};
+            if (bsl::unlikely(ret != MV_STATUS_SUCCESS)) {
+                bsl::error() << "mv_pp_op_tsc_set_khz failed with status "    // --
+                             << bsl::hex(ret)                                 // --
+                             << bsl::endl                                     // --
+                             << bsl::here();                                  // --
+
                 return bsl::errc_failure;
             }
 
@@ -1347,6 +1402,94 @@ namespace hypercall
             }
 
             return bsl::errc_success;
+        }
+
+        /// <!-- description -->
+        ///   @brief Returns the mv_mp_state_t of the VS.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param vsid The ID of the VS to set
+        ///   @return Returns the mv_mp_state_t of the VS.
+        ///
+        [[nodiscard]] constexpr auto
+        mv_vs_op_mp_state_get(bsl::safe_u16 const vsid) noexcept -> hypercall::mv_mp_state_t
+        {
+            hypercall::mv_mp_state_t mut_state;
+
+            bsl::expects(vsid.is_valid_and_checked());
+            bsl::expects(vsid != MV_INVALID_ID);
+
+            mv_status_t const ret{mv_vs_op_mp_state_get_impl(m_hndl.get(), vsid.get(), &mut_state)};
+            if (bsl::unlikely(ret != MV_STATUS_SUCCESS)) {
+                bsl::error() << "mv_vs_op_mp_state_get failed with status "    // --
+                             << bsl::hex(ret)                                  // --
+                             << bsl::endl                                      // --
+                             << bsl::here();                                   // --
+
+                return hypercall::mv_mp_state_t::mv_mp_state_t_invalid;
+            }
+
+            return mut_state;
+        }
+
+        /// <!-- description -->
+        ///   @brief Sets the mv_mp_state_t of the VS.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param state he mv_mp_state_t to set the VS to
+        ///   @param vsid The ID of the VS to set
+        ///   @return Returns MV_STATUS_SUCCESS on success, MV_STATUS_FAILURE_UNKNOWN
+        ///     and friends on failure.
+        ///
+        [[nodiscard]] constexpr auto
+        mv_vs_op_mp_state_set(
+            bsl::safe_u16 const vsid, hypercall::mv_mp_state_t const state) noexcept
+            -> bsl::errc_type
+        {
+            bsl::expects(vsid.is_valid_and_checked());
+            bsl::expects(vsid != MV_INVALID_ID);
+            bsl::expects(state < hypercall::mv_mp_state_t::mv_mp_state_t_invalid);
+
+            mv_status_t const ret{mv_vs_op_mp_state_set_impl(m_hndl.get(), vsid.get(), state)};
+            if (bsl::unlikely(ret != MV_STATUS_SUCCESS)) {
+                bsl::error() << "mv_vs_op_mp_state_set failed with status "    // --
+                             << bsl::hex(ret)                                  // --
+                             << bsl::endl                                      // --
+                             << bsl::here();                                   // --
+
+                return bsl::errc_failure;
+            }
+
+            return bsl::errc_success;
+        }
+
+        /// <!-- description -->
+        ///   @brief Returns the frequency of the VS.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param vsid The ID of the VS to set
+        ///   @return Returns the frequency of the VS.
+        ///
+        [[nodiscard]] constexpr auto
+        mv_vs_op_tsc_get_khz(bsl::safe_u16 const vsid) noexcept -> bsl::safe_u64
+        {
+            bsl::safe_u64 mut_freq;
+
+            bsl::expects(vsid.is_valid_and_checked());
+            bsl::expects(vsid != MV_INVALID_ID);
+
+            mv_status_t const ret{
+                mv_vs_op_tsc_get_khz_impl(m_hndl.get(), vsid.get(), mut_freq.data())};
+            if (bsl::unlikely(ret != MV_STATUS_SUCCESS)) {
+                bsl::error() << "mv_vs_op_tsc_get_khz failed with status "    // --
+                             << bsl::hex(ret)                                 // --
+                             << bsl::endl                                     // --
+                             << bsl::here();                                  // --
+
+                return bsl::safe_u64::failure();
+            }
+
+            return mut_freq;
         }
     };
 }

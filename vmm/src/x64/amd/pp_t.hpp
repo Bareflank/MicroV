@@ -69,8 +69,8 @@ namespace microv
         /// @brief stores this pp_t's pp_reg_t
         pp_reg_t m_pp_reg{};
 
-        /// @brief stores the TSC frequency of this physical processor
-        bsl::safe_u64 m_tsc_freq{};
+        /// @brief stores the TSC frequency in KHz of this pp_t
+        bsl::safe_u64 m_tsc_khz{};
 
     public:
         /// <!-- description -->
@@ -126,6 +126,7 @@ namespace microv
             m_pp_lapic.release(gs, tls, mut_sys, intrinsic);
             m_pp_cpuid.release(gs, tls, mut_sys, intrinsic);
 
+            m_tsc_khz = {};
             m_id = {};
         }
 
@@ -169,50 +170,16 @@ namespace microv
             bsl::discard(page_pool);
             bsl::discard(intrinsic);
 
-            // m_tsc_freq = get_tsc_freq(intrinsic);
-            // if (bsl::unlikely(m_tsc_freq.is_invalid())) {
-            //     bsl::error() << "System not supported because the TSC is not invariant" << bsl::endl
-            //                  << bsl::here();
-
-            //     return bsl::safe_u16::failure();
-            // }
-
-            // /// TODO:
-            // /// - We need to detect all of the features that we need
-            // ///   support for here and error out if the CPU does not
-            // ///   support the features that we need. This includes
-            // ///
-            // ///   - CPUID
-            // ///   - MSRs
-            // ///
-
-            // bsl::debug<bsl::V>()                                   // --
-            //     << "tsc frequency on pp "                          // --
-            //     << bsl::cyn << bsl::hex(this->id()) << bsl::rst    // --
-            //     << " is "                                          // --
-            //     << bsl::grn << m_tsc_freq << "khz" << bsl::rst     // --
-            //     << bsl::endl;                                      // --
+            /// TODO:
+            /// - We need to detect all of the features that we need
+            ///   support for here and error out if the CPU does not
+            ///   support the features that we need. This includes
+            ///
+            ///   - CPUID
+            ///   - MSRs
+            ///
 
             return this->id();
-        }
-
-        /// <!-- description -->
-        ///   @brief Returns a pp_unique_map_t<T> given an SPA to map. If an
-        ///     error occurs, an invalid pp_unique_map_t<T> is returned.
-        ///
-        /// <!-- inputs/outputs -->
-        ///   @tparam T the type to map and return
-        ///   @param mut_sys the bf_syscall_t to use
-        ///   @param spa the system physical address of the T * to return.
-        ///   @return Returns the resulting T * given the SPA, or a nullptr
-        ///     on error.
-        ///
-        template<typename T>
-        [[nodiscard]] constexpr auto
-        map(syscall::bf_syscall_t &mut_sys, bsl::safe_u64 const &spa) noexcept -> pp_unique_map_t<T>
-        {
-            bsl::expects(this->id() != syscall::BF_INVALID_ID);
-            return m_pp_mmio.map<T>(mut_sys, spa);
         }
 
         /// <!-- description -->
@@ -248,6 +215,60 @@ namespace microv
         }
 
         /// <!-- description -->
+        ///   @brief Returns the pp_t's TSC frequency in KHz.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @return Returns the pp_t's TSC frequency in KHz.
+        ///
+        [[nodiscard]] constexpr auto
+        tsc_khz_get() const noexcept -> bsl::safe_u64
+        {
+            bsl::ensures(m_tsc_khz.is_valid_and_checked());
+            return m_tsc_khz;
+        }
+
+        /// <!-- description -->
+        ///   @brief Sets the pp_t's TSC frequency in KHz.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param tsc_khz the new TSC frequency
+        ///
+        constexpr void
+        tsc_khz_set(bsl::safe_u64 const &tsc_khz) noexcept
+        {
+            bsl::ensures(tsc_khz.is_valid_and_checked());
+            bsl::ensures(tsc_khz.is_pos());
+
+            bsl::debug<bsl::V>()                                   // --
+                << "tsc frequency on pp "                          // --
+                << bsl::cyn << bsl::hex(this->id()) << bsl::rst    // --
+                << " is "                                          // --
+                << bsl::grn << tsc_khz << "khz" << bsl::rst        // --
+                << bsl::endl;                                      // --
+
+            m_tsc_khz = tsc_khz;
+        }
+
+        /// <!-- description -->
+        ///   @brief Returns a pp_unique_map_t<T> given an SPA to map. If an
+        ///     error occurs, an invalid pp_unique_map_t<T> is returned.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @tparam T the type to map and return
+        ///   @param mut_sys the bf_syscall_t to use
+        ///   @param spa the system physical address of the T * to return.
+        ///   @return Returns the resulting T * given the SPA, or a nullptr
+        ///     on error.
+        ///
+        template<typename T>
+        [[nodiscard]] constexpr auto
+        map(syscall::bf_syscall_t &mut_sys, bsl::safe_u64 const &spa) noexcept -> pp_unique_map_t<T>
+        {
+            bsl::expects(this->id() != syscall::BF_INVALID_ID);
+            return m_pp_mmio.map<T>(mut_sys, spa);
+        }
+
+        /// <!-- description -->
         ///   @brief Returns a pp_unique_shared_page_t<T> if the shared page
         ///     is not currently in use. If an error occurs, returns an invalid
         ///     pp_unique_shared_page_t<T>.
@@ -280,7 +301,6 @@ namespace microv
             syscall::bf_syscall_t &mut_sys, hypercall::mv_rdl_t &mut_rdl) noexcept -> bsl::errc_type
         {
             bsl::expects(this->id() != syscall::BF_INVALID_ID);
-
             return m_pp_msr.supported_list(mut_sys, mut_rdl);
         }
     };

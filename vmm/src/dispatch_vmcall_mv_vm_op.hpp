@@ -179,14 +179,14 @@ namespace microv
         auto mut_mdl{mut_pp_pool.shared_page<hypercall::mv_mdl_t>(mut_sys)};
         if (bsl::unlikely(mut_mdl.is_invalid())) {
             bsl::print<bsl::V>() << bsl::here();
-            set_reg_return(mut_sys, hypercall::MV_STATUS_INVALID_INPUT_REG1);
+            set_reg_return(mut_sys, hypercall::MV_STATUS_FAILURE_UNKNOWN);
             return vmexit_failure_advance_ip_and_run;
         }
 
         bool const mdl_safe{is_mdl_safe(*mut_mdl, false)};
         if (bsl::unlikely(!mdl_safe)) {
             bsl::print<bsl::V>() << bsl::here();
-            set_reg_return(mut_sys, hypercall::MV_STATUS_INVALID_INPUT_REG1);
+            set_reg_return(mut_sys, hypercall::MV_STATUS_FAILURE_UNKNOWN);
             return vmexit_failure_advance_ip_and_run;
         }
 
@@ -236,14 +236,14 @@ namespace microv
         auto mut_mdl{mut_pp_pool.shared_page<hypercall::mv_mdl_t>(mut_sys)};
         if (bsl::unlikely(mut_mdl.is_invalid())) {
             bsl::print<bsl::V>() << bsl::here();
-            set_reg_return(mut_sys, hypercall::MV_STATUS_INVALID_INPUT_REG1);
+            set_reg_return(mut_sys, hypercall::MV_STATUS_FAILURE_UNKNOWN);
             return vmexit_failure_advance_ip_and_run;
         }
 
         bool const mdl_safe{is_mdl_safe(*mut_mdl, true)};
         if (bsl::unlikely(!mdl_safe)) {
             bsl::print<bsl::V>() << bsl::here();
-            set_reg_return(mut_sys, hypercall::MV_STATUS_INVALID_INPUT_REG1);
+            set_reg_return(mut_sys, hypercall::MV_STATUS_FAILURE_UNKNOWN);
             return vmexit_failure_advance_ip_and_run;
         }
 
@@ -293,13 +293,13 @@ namespace microv
 
         if (bsl::unlikely(!verify_handle(mut_sys))) {
             bsl::print<bsl::V>() << bsl::here();
-            set_reg_return(mut_sys, hypercall::MV_STATUS_FAILURE_UNKNOWN);
+            set_reg_return(mut_sys, hypercall::MV_STATUS_INVALID_INPUT_REG0);
             return vmexit_failure_advance_ip_and_run;
         }
 
         if (bsl::unlikely(!verify_root_vm(mut_sys))) {
             bsl::print<bsl::V>() << bsl::here();
-            set_reg_return(mut_sys, hypercall::MV_STATUS_FAILURE_UNKNOWN);
+            set_reg_return(mut_sys, hypercall::MV_STATUS_INVALID_PERM_DENIED);
             return vmexit_failure_advance_ip_and_run;
         }
 

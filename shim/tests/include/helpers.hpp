@@ -64,6 +64,8 @@ namespace shim
         constinit mv_status_t g_mut_mv_pp_op_clr_shared_page_gpa{};       // NOLINT
         constinit mv_status_t g_mut_mv_pp_op_set_shared_page_gpa{};       // NOLINT
         constinit mv_status_t g_mut_mv_pp_op_msr_get_supported_list{};    // NOLINT
+        constinit mv_status_t g_mut_mv_pp_op_tsc_get_khz{};               // NOLINT
+        constinit mv_status_t g_mut_mv_pp_op_tsc_set_khz{};               // NOLINT
 
         constinit bsl::uint16 g_mut_mv_vm_op_create_vm{};     // NOLINT
         constinit mv_status_t g_mut_mv_vm_op_destroy_vm{};    // NOLINT
@@ -94,6 +96,9 @@ namespace shim
         constinit mv_status_t g_mut_mv_vs_op_msr_set_list{};       // NOLINT
         constinit mv_status_t g_mut_mv_vs_op_fpu_get_all{};        // NOLINT
         constinit mv_status_t g_mut_mv_vs_op_fpu_set_all{};        // NOLINT
+        constinit mv_status_t g_mut_mv_vs_op_mp_state_get{};       // NOLINT
+        constinit mv_status_t g_mut_mv_vs_op_mp_state_set{};       // NOLINT
+        constinit mv_status_t g_mut_mv_vs_op_tsc_get_khz{};        // NOLINT
 
         extern bool g_mut_hypervisor_detected;
         extern bool g_mut_platform_alloc_fails;

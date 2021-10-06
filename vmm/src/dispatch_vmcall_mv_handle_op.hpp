@@ -59,7 +59,7 @@ namespace microv
         bool const version_supported{is_version_supported(get_reg0(mut_sys))};
         if (bsl::unlikely(!version_supported)) {
             bsl::print<bsl::V>() << bsl::here();
-            set_reg_return(mut_sys, hypercall::MV_STATUS_FAILURE_UNKNOWN);
+            set_reg_return(mut_sys, hypercall::MV_STATUS_INVALID_INPUT_REG0);
             return vmexit_failure_advance_ip_and_run;
         }
 
@@ -82,7 +82,7 @@ namespace microv
     {
         if (bsl::unlikely(!verify_handle(mut_sys))) {
             bsl::print<bsl::V>() << bsl::here();
-            set_reg_return(mut_sys, hypercall::MV_STATUS_FAILURE_UNKNOWN);
+            set_reg_return(mut_sys, hypercall::MV_STATUS_INVALID_INPUT_REG0);
             return vmexit_failure_advance_ip_and_run;
         }
 
@@ -132,7 +132,7 @@ namespace microv
 
         if (bsl::unlikely(!verify_root_vm(mut_sys))) {
             bsl::print<bsl::V>() << bsl::here();
-            set_reg_return(mut_sys, hypercall::MV_STATUS_FAILURE_UNKNOWN);
+            set_reg_return(mut_sys, hypercall::MV_STATUS_INVALID_PERM_DENIED);
             return vmexit_failure_advance_ip_and_run;
         }
 

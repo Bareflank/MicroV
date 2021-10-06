@@ -110,17 +110,17 @@ namespace hypercall
         pmut_rdl0->num_entries = bsl::safe_u64::magic_1().get();
 
         // register unsupported
-        pmut_rdl0->entries.front().reg = to_uint64(mv_reg_t::mv_reg_t_unsupported);
+        pmut_rdl0->entries.front().reg = to_u64(mv_reg_t::mv_reg_t_unsupported).get();
         mut_ret = mv_vs_op_reg_get_list_impl(hndl.get(), self.get());
         integration::verify(mut_ret != MV_STATUS_SUCCESS);
 
         // register invalid
-        pmut_rdl0->entries.front().reg = to_uint64(mv_reg_t::mv_reg_t_invalid);
+        pmut_rdl0->entries.front().reg = to_u64(mv_reg_t::mv_reg_t_invalid).get();
         mut_ret = mv_vs_op_reg_get_list_impl(hndl.get(), self.get());
         integration::verify(mut_ret != MV_STATUS_SUCCESS);
 
         // register out of range
-        pmut_rdl0->entries.front().reg = ~to_uint64(mv_reg_t::mv_reg_t_invalid);
+        pmut_rdl0->entries.front().reg = ~to_u64(mv_reg_t::mv_reg_t_invalid).get();
         mut_ret = mv_vs_op_reg_get_list_impl(hndl.get(), self.get());
         integration::verify(mut_ret != MV_STATUS_SUCCESS);
 
@@ -166,11 +166,11 @@ namespace hypercall
         // CPU affinity test (requires more than one core)
         {
             pmut_rdl0->num_entries = bsl::safe_u64::magic_1().get();
-            pmut_rdl0->entries.front().reg = to_uint64(mv_reg_t::mv_reg_t_rax);
+            pmut_rdl0->entries.front().reg = to_u64(mv_reg_t::mv_reg_t_rax).get();
             pmut_rdl0->entries.front().val = {};
 
             pmut_rdl1->num_entries = bsl::safe_u64::magic_1().get();
-            pmut_rdl1->entries.front().reg = to_uint64(mv_reg_t::mv_reg_t_rax);
+            pmut_rdl1->entries.front().reg = to_u64(mv_reg_t::mv_reg_t_rax).get();
             pmut_rdl1->entries.front().val = {};
 
             auto const vmid{mut_hvc.mv_vm_op_create_vm()};
@@ -196,7 +196,7 @@ namespace hypercall
         {
             pmut_rdl0->num_entries = GPR_REG_LIST.size().get();
             for (bsl::safe_idx mut_i{}; mut_i < GPR_REG_LIST.size(); ++mut_i) {
-                pmut_rdl0->entries.at_if(mut_i)->reg = to_uint64(*GPR_REG_LIST.at_if(mut_i));
+                pmut_rdl0->entries.at_if(mut_i)->reg = to_u64(*GPR_REG_LIST.at_if(mut_i)).get();
             }
 
             auto const vmid{mut_hvc.mv_vm_op_create_vm()};

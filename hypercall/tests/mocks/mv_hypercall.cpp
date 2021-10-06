@@ -52,6 +52,8 @@ namespace shim
         constinit mv_status_t g_mut_mv_pp_op_clr_shared_page_gpa{};
         constinit mv_status_t g_mut_mv_pp_op_set_shared_page_gpa{};
         constinit mv_status_t g_mut_mv_pp_op_msr_get_supported_list{};
+        constinit mv_status_t g_mut_mv_pp_op_tsc_get_khz{};
+        constinit mv_status_t g_mut_mv_pp_op_tsc_set_khz{};
 
         constinit bsl::uint16 g_mut_mv_vm_op_create_vm{};
         constinit mv_status_t g_mut_mv_vm_op_destroy_vm{};
@@ -82,6 +84,9 @@ namespace shim
         constinit mv_status_t g_mut_mv_vs_op_msr_set_list{};
         constinit mv_status_t g_mut_mv_vs_op_fpu_get_all{};
         constinit mv_status_t g_mut_mv_vs_op_fpu_set_all{};
+        constinit mv_status_t g_mut_mv_vs_op_mp_state_get{};
+        constinit mv_status_t g_mut_mv_vs_op_mp_state_set{};
+        constinit mv_status_t g_mut_mv_vs_op_tsc_get_khz{};
 
         extern bool g_mut_hypervisor_detected;
         extern bool g_mut_platform_alloc_fails;

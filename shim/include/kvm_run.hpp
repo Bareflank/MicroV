@@ -48,6 +48,21 @@ namespace shim
     /// @brief defines the size of the padding3 field
     constexpr auto KVM_RUN_PADDING3_SIZE{2048_umx};
 
+    /// @brief defines KVM_EXIT_UNKNOWN kvm_run.exit_reason
+    constexpr auto KVM_EXIT_UNKNOWN{0_u32};
+    /// @brief defines KVM_EXIT_IO kvm_run.exit_reason
+    constexpr auto KVM_EXIT_IO{2_u32};
+    /// @brief defines KVM_EXIT_HLT kvm_run.exit_reason
+    constexpr auto KVM_EXIT_HLT{5_u32};
+    /// @brief defines KVM_EXIT_MMIO kvm_run.exit_reason
+    constexpr auto KVM_EXIT_MMIO{6_u32};
+    /// @brief defines KVM_EXIT_SHUTDOWN kvm_run.exit_reason
+    constexpr auto KVM_EXIT_SHUTDOWN{8_u32};
+    /// @brief defines KVM_EXIT_FAIL_ENTRY kvm_run.exit_reason
+    constexpr auto KVM_EXIT_FAIL_ENTRY{9_u32};
+    /// @brief defines KVM_EXIT_INTR kvm_run.exit_reason
+    constexpr auto KVM_EXIT_INTR{10_u32};
+
     /// @struct kvm_run
     ///
     /// <!-- description -->

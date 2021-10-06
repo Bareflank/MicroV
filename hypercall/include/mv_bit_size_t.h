@@ -56,6 +56,62 @@ enum mv_bit_size_t
         mv_bit_size_t_64 = 3,
     };
 
+    /**
+     * <!-- description -->
+     *   @brief Returns (int32_t)val
+     *
+     * <!-- inputs/outputs -->
+     *   @param val the mv_bit_size_t to convert
+     *   @return Returns (int32_t)val
+     */
+    NODISCARD CONSTEXPR int32_t
+    mv_bit_size_t_to_i32(enum mv_bit_size_t const val) NOEXCEPT
+    {
+        return (int32_t)val;
+    }
+
+    /**
+     * <!-- description -->
+     *   @brief Returns (uint64_t)val
+     *
+     * <!-- inputs/outputs -->
+     *   @param val the mv_bit_size_t to convert
+     *   @return Returns (uint64_t)val
+     */
+    NODISCARD CONSTEXPR uint64_t
+    mv_bit_size_t_to_u64(enum mv_bit_size_t const val) NOEXCEPT
+    {
+        return (uint64_t)val;
+    }
+
+    /**
+     * <!-- description -->
+     *   @brief Returns (mv_bit_size_t)val
+     *
+     * <!-- inputs/outputs -->
+     *   @param val the mv_bit_size_t to convert
+     *   @return Returns (mv_bit_size_t)val
+     */
+    NODISCARD CONSTEXPR enum mv_bit_size_t
+    i32_to_mv_bit_size_t(int32_t const val) NOEXCEPT
+    {
+        return (enum mv_bit_size_t)val;
+    }
+
+    /**
+     * <!-- description -->
+     *   @brief Returns (mv_bit_size_t)val
+     *
+     * <!-- inputs/outputs -->
+     *   @param val the mv_bit_size_t to convert
+     *   @return Returns (mv_bit_size_t)val
+     */
+    NODISCARD CONSTEXPR enum mv_bit_size_t
+    u64_to_mv_bit_size_t(uint64_t const val) NOEXCEPT
+    {
+        return (enum mv_bit_size_t)val;
+    }
+
 /** @brief integer version of mv_bit_size_t_8 */
 #define BIT_SIZE_8 ((int32_t)mv_bit_size_t_8)
 /** @brief integer version of mv_bit_size_t_16 */

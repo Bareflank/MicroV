@@ -150,7 +150,8 @@ ifneq ($(KERNELRELEASE),)
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_pp_op_clr_shared_page_gpa_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_pp_op_ppid_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_pp_op_set_shared_page_gpa_impl.o
-        $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_pp_op_msr_get_supported_list_impl.o
+        $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_pp_op_tsc_get_khz_impl.o
+        $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_pp_op_tsc_set_khz_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_vm_op_create_vm_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_vm_op_destroy_vm_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_vm_op_mmio_map_impl.o
@@ -163,6 +164,8 @@ ifneq ($(KERNELRELEASE),)
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_vs_op_create_vs_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_vs_op_destroy_vs_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_vs_op_gla_to_gpa_impl.o
+        $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_vs_op_mp_state_get_impl.o
+        $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_vs_op_mp_state_set_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_vs_op_msr_get_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_vs_op_msr_get_list_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_vs_op_msr_set_impl.o
@@ -172,6 +175,8 @@ ifneq ($(KERNELRELEASE),)
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_vs_op_reg_set_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_vs_op_reg_set_list_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_vs_op_run_impl.o
+        $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_vs_op_tsc_get_khz_impl.o
+        $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_vs_op_tsc_set_khz_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_vs_op_vmid_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_vs_op_vpid_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_vs_op_vsid_impl.o
@@ -200,7 +205,8 @@ ifneq ($(KERNELRELEASE),)
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_pp_op_clr_shared_page_gpa_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_pp_op_ppid_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_pp_op_set_shared_page_gpa_impl.o
-        $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_pp_op_msr_get_supported_list_impl.o
+        $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_pp_op_tsc_get_khz_impl.o
+        $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_pp_op_tsc_set_khz_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_vm_op_create_vm_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_vm_op_destroy_vm_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_vm_op_mmio_map_impl.o
@@ -213,6 +219,8 @@ ifneq ($(KERNELRELEASE),)
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_vs_op_create_vs_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_vs_op_destroy_vs_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_vs_op_gla_to_gpa_impl.o
+        $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_vs_op_mp_state_get_impl.o
+        $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_vs_op_mp_state_set_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_vs_op_msr_get_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_vs_op_msr_get_list_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_vs_op_msr_set_impl.o
@@ -222,6 +230,8 @@ ifneq ($(KERNELRELEASE),)
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_vs_op_reg_set_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_vs_op_reg_set_list_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_vs_op_run_impl.o
+        $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_vs_op_tsc_get_khz_impl.o
+        $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_vs_op_tsc_set_khz_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_vs_op_vmid_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_vs_op_vpid_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_vs_op_vsid_impl.o

@@ -150,6 +150,66 @@ namespace microv
         }
 
         /// <!-- description -->
+        ///   @brief Clears the SPA of the shared page associated with the
+        ///     requested pp_t.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param mut_sys the bf_syscall_t to use
+        ///
+        constexpr void
+        clr_shared_page_spa(syscall::bf_syscall_t &mut_sys) noexcept
+        {
+            this->get_pp(mut_sys.bf_tls_ppid())->clr_shared_page_spa(mut_sys);
+        }
+
+        /// <!-- description -->
+        ///   @brief Sets the SPA of the shared page associated with the
+        ///     requested pp_t.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param mut_sys the bf_syscall_t to use
+        ///   @param spa the system physical address of the shared page
+        ///   @return Returns bsl::errc_success on success, bsl::errc_failure
+        ///     and friends otherwise
+        ///
+        [[nodiscard]] constexpr auto
+        set_shared_page_spa(syscall::bf_syscall_t &mut_sys, bsl::safe_u64 const &spa) noexcept
+            -> bsl::errc_type
+        {
+            return this->get_pp(mut_sys.bf_tls_ppid())->set_shared_page_spa(mut_sys, spa);
+        }
+
+        /// <!-- description -->
+        ///   @brief Returns the PP's TSC frequency in KHz. If the TSC
+        ///     frequency has not yet been set, bsl::safe_u64::failure is
+        ///     returned.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param sys the bf_syscall_t to use
+        ///   @return Returns the PP's TSC frequency in KHz. If the TSC
+        ///     frequency has not yet been set, bsl::safe_u64::failure is
+        ///     returned.
+        ///
+        [[nodiscard]] constexpr auto
+        tsc_khz_get(syscall::bf_syscall_t const &sys) const noexcept -> bsl::safe_u64
+        {
+            return this->get_pp(sys.bf_tls_ppid())->tsc_khz_get();
+        }
+
+        /// <!-- description -->
+        ///   @brief Sets the PP's TSC frequency in KHz.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param sys the bf_syscall_t to use
+        ///   @param tsc_khz the new TSC frequency
+        ///
+        constexpr void
+        tsc_khz_set(syscall::bf_syscall_t const &sys, bsl::safe_u64 const &tsc_khz) noexcept
+        {
+            this->get_pp(sys.bf_tls_ppid())->tsc_khz_set(tsc_khz);
+        }
+
+        /// <!-- description -->
         ///   @brief Returns a pp_unique_map_t<T> given an SPA to map. If an
         ///     error occurs, an invalid pp_unique_map_t<T> is returned.
         ///
@@ -165,40 +225,6 @@ namespace microv
         map(syscall::bf_syscall_t &mut_sys, bsl::safe_u64 const &spa) noexcept -> pp_unique_map_t<T>
         {
             return this->get_pp(mut_sys.bf_tls_ppid())->map<T>(mut_sys, spa);
-        }
-
-        /// <!-- description -->
-        ///   @brief Clears the SPA of the shared page associated with the
-        ///     requested pp_t.
-        ///
-        /// <!-- inputs/outputs -->
-        ///   @param mut_sys the bf_syscall_t to use
-        ///   @param ppid the ID of the pp_t to clear the SPA for
-        ///
-        constexpr void
-        clr_shared_page_spa(syscall::bf_syscall_t &mut_sys, bsl::safe_u16 const &ppid) noexcept
-        {
-            this->get_pp(ppid)->clr_shared_page_spa(mut_sys);
-        }
-
-        /// <!-- description -->
-        ///   @brief Sets the SPA of the shared page associated with the
-        ///     requested pp_t.
-        ///
-        /// <!-- inputs/outputs -->
-        ///   @param mut_sys the bf_syscall_t to use
-        ///   @param spa the system physical address of the shared page
-        ///   @param ppid the ID of the pp_t to set the SPA for
-        ///   @return Returns bsl::errc_success on success, bsl::errc_failure
-        ///     and friends otherwise
-        ///
-        [[nodiscard]] constexpr auto
-        set_shared_page_spa(
-            syscall::bf_syscall_t &mut_sys,
-            bsl::safe_u64 const &spa,
-            bsl::safe_u16 const &ppid) noexcept -> bsl::errc_type
-        {
-            return this->get_pp(ppid)->set_shared_page_spa(mut_sys, spa);
         }
 
         /// <!-- description -->

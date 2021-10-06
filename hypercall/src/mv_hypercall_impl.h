@@ -28,6 +28,7 @@
 #define MV_HYPERCALL_IMPL_H
 
 #include <mv_exit_reason_t.h>
+#include <mv_mp_state_t.h>
 #include <mv_reg_t.h>
 #include <mv_types.h>
 
@@ -137,6 +138,30 @@ extern "C"
      *   @return n/a
      */
     NODISCARD mv_status_t mv_pp_op_msr_get_supported_list_impl(uint64_t const reg0_in) NOEXCEPT;
+
+    /**
+     * <!-- description -->
+     *   @brief Implements the ABI for mv_pp_op_tsc_get_khz.
+     *
+     * <!-- inputs/outputs -->
+     *   @param reg0_in n/a
+     *   @param pmut_reg0_out n/a
+     *   @return n/a
+     */
+    NODISCARD mv_status_t
+    mv_pp_op_tsc_get_khz_impl(uint64_t const reg0_in, uint64_t *const pmut_reg0_out) NOEXCEPT;
+
+    /**
+     * <!-- description -->
+     *   @brief Implements the ABI for mv_pp_op_tsc_set_khz.
+     *
+     * <!-- inputs/outputs -->
+     *   @param reg0_in n/a
+     *   @param reg1_in n/a
+     *   @return n/a
+     */
+    NODISCARD mv_status_t
+    mv_pp_op_tsc_set_khz_impl(uint64_t const reg0_in, uint64_t const reg1_in) NOEXCEPT;
 
     /* ---------------------------------------------------------------------- */
     /* mv_vm_ops                                                              */
@@ -495,6 +520,47 @@ extern "C"
      */
     NODISCARD mv_status_t
     mv_vs_op_fpu_set_all_impl(uint64_t const reg0_in, uint16_t const reg1_in) NOEXCEPT;
+
+    /**
+     * <!-- description -->
+     *   @brief Implements the ABI for mv_vs_op_mp_state_get.
+     *
+     * <!-- inputs/outputs -->
+     *   @param reg0_in n/a
+     *   @param reg1_in n/a
+     *   @param pmut_reg0_out n/a
+     *   @return n/a
+     */
+    NODISCARD mv_status_t mv_vs_op_mp_state_get_impl(
+        uint64_t const reg0_in,
+        uint16_t const reg1_in,
+        enum mv_mp_state_t *const pmut_reg0_out) NOEXCEPT;
+
+    /**
+     * <!-- description -->
+     *   @brief Implements the ABI for mv_vs_op_mp_state_set.
+     *
+     * <!-- inputs/outputs -->
+     *   @param reg0_in n/a
+     *   @param reg1_in n/a
+     *   @param reg2_in n/a
+     *   @return n/a
+     */
+    NODISCARD mv_status_t mv_vs_op_mp_state_set_impl(
+        uint64_t const reg0_in, uint16_t const reg1_in, enum mv_mp_state_t const reg2_in) NOEXCEPT;
+
+    /**
+     * <!-- description -->
+     *   @brief Implements the ABI for mv_vs_op_tsc_get_khz.
+     *
+     * <!-- inputs/outputs -->
+     *   @param reg0_in n/a
+     *   @param reg1_in n/a
+     *   @param pmut_reg0_out n/a
+     *   @return n/a
+     */
+    NODISCARD mv_status_t mv_vs_op_tsc_get_khz_impl(
+        uint64_t const reg0_in, uint16_t const reg1_in, uint64_t *const pmut_reg0_out) NOEXCEPT;
 
 #ifdef __cplusplus
 }

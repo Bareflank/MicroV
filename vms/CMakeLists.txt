@@ -27,7 +27,8 @@ macro(add_vm NAME)
     install(TARGETS ${NAME} DESTINATION bin)
 endmacro(add_vm)
 
-include(${CMAKE_CURRENT_LIST_DIR}/../../../cmake/init_cross_compile_build.cmake)
+include(${CMAKE_CURRENT_LIST_DIR}/../cmake/init_cross_compile_build.cmake)
 
 add_vm(16bit_endless_loop_test)
 add_vm(16bit_io_test)
+add_vm(32bit_io_test)

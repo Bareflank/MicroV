@@ -187,6 +187,58 @@ namespace hypercall
         /// @brief defines and invalid mv_reg_t
         mv_reg_t_invalid = MV_MAX_REG_T.get(),
     };
+
+    /// <!-- description -->
+    ///   @brief return bsl::to_i32(static_cast<bsl::int32>(val))
+    ///
+    /// <!-- inputs/outputs -->
+    ///   @param val the mv_reg_t to convert
+    ///   @return return bsl::to_i32(static_cast<bsl::int32>(val))
+    ///
+    [[nodiscard]] constexpr auto
+    to_i32(mv_reg_t const &val) noexcept -> bsl::safe_i32
+    {
+        return bsl::to_i32(static_cast<bsl::int32>(val));
+    }
+
+    /// <!-- description -->
+    ///   @brief return bsl::to_i64(static_cast<bsl::uint64>(val))
+    ///
+    /// <!-- inputs/outputs -->
+    ///   @param val the mv_reg_t to convert
+    ///   @return return bsl::to_i64(static_cast<bsl::uint64>(val))
+    ///
+    [[nodiscard]] constexpr auto
+    to_u64(mv_reg_t const &val) noexcept -> bsl::safe_u64
+    {
+        return bsl::to_u64(static_cast<bsl::uint64>(val));
+    }
+
+    /// <!-- description -->
+    ///   @brief return static_cast<mv_reg_t>(val.get())
+    ///
+    /// <!-- inputs/outputs -->
+    ///   @param val the value to convert
+    ///   @return return static_cast<mv_reg_t>(val.get())
+    ///
+    [[nodiscard]] constexpr auto
+    to_mv_reg_t(bsl::safe_i32 const &val) noexcept -> mv_reg_t
+    {
+        return static_cast<mv_reg_t>(val.get());
+    }
+
+    /// <!-- description -->
+    ///   @brief return static_cast<mv_reg_t>(val.get())
+    ///
+    /// <!-- inputs/outputs -->
+    ///   @param val the value to convert
+    ///   @return return static_cast<mv_reg_t>(val.get())
+    ///
+    [[nodiscard]] constexpr auto
+    to_mv_reg_t(bsl::safe_u64 const &val) noexcept -> mv_reg_t
+    {
+        return static_cast<mv_reg_t>(val.get());
+    }
 }
 
 #endif

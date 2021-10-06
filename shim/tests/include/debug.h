@@ -56,7 +56,7 @@ bfdebug(char const *const str) NOEXCEPT
 static inline void
 bfdebug_x8(char const *const str, uint8_t const val) NOEXCEPT
 {
-    printf("[BAREFLANK DEBUG] %s: 0x%" PRIx8 "\n", str, (int32_t)val);
+    printf("[BAREFLANK DEBUG] %s: 0x%" PRIx32 "\n", str, (uint32_t)val);
 }
 
 /**
@@ -70,7 +70,7 @@ bfdebug_x8(char const *const str, uint8_t const val) NOEXCEPT
 static inline void
 bfdebug_x16(char const *const str, uint16_t const val) NOEXCEPT
 {
-    printf("[BAREFLANK DEBUG] %s: 0x%" PRIx16 "\n", str, (int32_t)val);
+    printf("[BAREFLANK DEBUG] %s: 0x%" PRIx32 "\n", str, (uint32_t)val);
 }
 
 /**
@@ -112,7 +112,7 @@ bfdebug_x64(char const *const str, uint64_t const val) NOEXCEPT
 static inline void
 bfdebug_d8(char const *const str, uint8_t const val) NOEXCEPT
 {
-    printf("[BAREFLANK DEBUG] %s: %" PRId8 "\n", str, (int32_t)val);
+    printf("[BAREFLANK DEBUG] %s: %" PRId32 "\n", str, (uint32_t)val);
 }
 
 /**
@@ -126,7 +126,7 @@ bfdebug_d8(char const *const str, uint8_t const val) NOEXCEPT
 static inline void
 bfdebug_d16(char const *const str, uint16_t const val) NOEXCEPT
 {
-    printf("[BAREFLANK DEBUG] %s: %" PRId16 "\n", str, (int32_t)val);
+    printf("[BAREFLANK DEBUG] %s: %" PRId32 "\n", str, (uint32_t)val);
 }
 
 /**
@@ -195,7 +195,7 @@ bferror(char const *const str) NOEXCEPT
 static inline void
 bferror_x8(char const *const str, uint8_t const val) NOEXCEPT
 {
-    printf("[BAREFLANK ERROR] %s: 0x%" PRIx8 "\n", str, (int32_t)val);
+    printf("[BAREFLANK ERROR] %s: 0x%" PRIx32 "\n", str, (uint32_t)val);
 }
 
 /**
@@ -209,7 +209,7 @@ bferror_x8(char const *const str, uint8_t const val) NOEXCEPT
 static inline void
 bferror_x16(char const *const str, uint16_t const val) NOEXCEPT
 {
-    printf("[BAREFLANK ERROR] %s: 0x%" PRIx16 "\n", str, (int32_t)val);
+    printf("[BAREFLANK ERROR] %s: 0x%" PRIx32 "\n", str, (uint32_t)val);
 }
 
 /**
@@ -251,7 +251,7 @@ bferror_x64(char const *const str, uint64_t const val) NOEXCEPT
 static inline void
 bferror_d8(char const *const str, uint8_t const val) NOEXCEPT
 {
-    printf("[BAREFLANK ERROR] %s: %" PRId8 "\n", str, (int32_t)val);
+    printf("[BAREFLANK ERROR] %s: %" PRId32 "\n", str, (uint32_t)val);
 }
 
 /**
@@ -265,7 +265,7 @@ bferror_d8(char const *const str, uint8_t const val) NOEXCEPT
 static inline void
 bferror_d16(char const *const str, uint16_t const val) NOEXCEPT
 {
-    printf("[BAREFLANK ERROR] %s: %" PRId16 "\n", str, (int32_t)val);
+    printf("[BAREFLANK ERROR] %s: %" PRId32 "\n", str, (uint32_t)val);
 }
 
 /**

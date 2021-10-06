@@ -72,7 +72,7 @@ main() noexcept -> bsl::exit_code
     g_pmut_mut_run = integration::initialize_16bit_vcpu(mut_vcpu);
 
     auto const ret{mut_vcpu.send(shim::KVM_RUN)};
-    integration::verify(!ret.is_neg());
+    integration::verify(ret.is_neg());
 
     mut_vcpu.close();
     mut_vm.close();

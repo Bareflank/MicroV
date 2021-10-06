@@ -1275,7 +1275,7 @@ Reserved
 
 ### 2.12.23. mv_pp_op_tsc_get_khz, OP=0x3, IDX=0x16
 
-Returns the frequency of the PP.
+Returns the frequency of the PP. If the frequency has not been set, returns 0.
 
 **Input:**
 | Register Name | Bits | Description |
@@ -1294,13 +1294,18 @@ Returns the frequency of the PP.
 
 ### 2.12.24. mv_pp_op_tsc_set_khz, OP=0x3, IDX=0x17
 
-Reserved
+Sets the frequency of the PP. This hypercall must be called before any VS can be created.
+
+**Input:**
+| Register Name | Bits | Description |
+| :------------ | :--- | :---------- |
+| REG0 | 63:0 | Set to the result of mv_handle_op_open_handle |
+| REG1 | 63:0 | The frequency in KHz |
 
 **const, uint64_t: MV_PP_OP_TSC_SET_KHZ_IDX_VAL**
 | Value | Description |
 | :---- | :---------- |
 | 0x0000000000000017 | Defines the index for mv_pp_op_tsc_set_khz |
-
 
 ## 2.13. Virtual Machine Hypercalls
 
@@ -2241,3 +2246,31 @@ On x86, only vectors 31-255 may be injected. Interrupts injected using mv_vs_op_
 | Value | Description |
 | :---- | :---------- |
 | 0x0000000000000026 | Defines the index for mv_vs_op_queue_interrupt |
+
+### 2.12.23. mv_vs_op_tsc_get_khz, OP=0x3, IDX=0x27
+
+Returns the frequency of the VS.
+
+**Input:**
+| Register Name | Bits | Description |
+| :------------ | :--- | :---------- |
+| REG0 | 63:0 | Set to the result of mv_handle_op_open_handle |
+
+**Output:**
+| Register Name | Bits | Description |
+| :------------ | :--- | :---------- |
+| REG0 | 63:0 | The resulting frequency in KHz |
+
+**const, uint64_t: MV_VS_OP_TSC_GET_KHZ_IDX_VAL**
+| Value | Description |
+| :---- | :---------- |
+| 0x0000000000000027 | Defines the index for mv_vs_op_tsc_get_khz |
+
+### 2.12.24. mv_vs_op_tsc_set_khz, OP=0x3, IDX=0x28
+
+Reserved
+
+**const, uint64_t: MV_VS_OP_TSC_SET_KHZ_IDX_VAL**
+| Value | Description |
+| :---- | :---------- |
+| 0x0000000000000028 | Defines the index for mv_vs_op_tsc_set_khz |

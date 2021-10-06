@@ -90,7 +90,7 @@ namespace hypercall
         integration::verify(mut_ret != MV_STATUS_SUCCESS);
 
         // register out of range
-        constexpr auto oreg{static_cast<mv_reg_t>(0xFFFFFFFFU)};
+        constexpr auto oreg{to_mv_reg_t(0xFFFFFFFF_u64)};
         mut_ret = mv_vs_op_reg_set_impl(hndl.get(), self.get(), oreg, val.get());
         integration::verify(mut_ret != MV_STATUS_SUCCESS);
 

@@ -512,6 +512,32 @@ namespace microv
         return true;
     }
 
+    /// <!-- description -->
+    ///   @brief Returns true if the provided TSC frequency was properly
+    ///     set. Returns false otherwise.
+    ///
+    /// <!-- inputs/outputs -->
+    ///   @param sys the bf_syscall_t to use
+    ///   @param tsc_khz the TSC frequency to verify
+    ///   @return Returns true if the provided TSC frequency was properly
+    ///     set. Returns false otherwise.
+    ///
+    [[nodiscard]] constexpr auto
+    is_tsc_khz_set(syscall::bf_syscall_t const &sys, bsl::safe_u64 const &tsc_khz) noexcept -> bool
+    {
+        if (bsl::unlikely(tsc_khz.is_zero())) {
+            bsl::error() << "the tsc frequency for pp "    // --
+                         << bsl::hex(sys.bf_tls_ppid())    // --
+                         << " was never set"               // --
+                         << bsl::endl                      // --
+                         << bsl::here();                   // --
+
+            return false;
+        }
+
+        return true;
+    }
+
     /// ------------------------------------------------------------------------
     /// Get Functions
     /// ------------------------------------------------------------------------
@@ -629,6 +655,26 @@ namespace microv
         -> bsl::safe_u16
     {
         auto const vmid{bsl::to_u16_unsafe(reg)};
+        if (bsl::unlikely(hypercall::MV_INVALID_ID == vmid)) {
+            bsl::error() << "the provided vmid "                      // --
+                         << bsl::hex(vmid)                            // --
+                         << " is MV_INVALID_ID and cannot be used"    // --
+                         << bsl::endl                                 // --
+                         << bsl::here();                              // --
+
+            return bsl::safe_u16::failure();
+        }
+
+        if (bsl::unlikely(bsl::to_umx(vmid) >= HYPERVISOR_MAX_VMS)) {
+            bsl::error() << "the provided vmid "                      // --
+                         << bsl::hex(vmid)                            // --
+                         << " is out of bounds and cannot be used"    // --
+                         << bsl::endl                                 // --
+                         << bsl::here();                              // --
+
+            return bsl::safe_u16::failure();
+        }
+
         if (bsl::unlikely(hypercall::MV_SELF_ID == vmid)) {
             bsl::error() << "the provided vmid "                     // --
                          << bsl::hex(vmid)                           // --
@@ -646,26 +692,6 @@ namespace microv
                          << " is MV_SELF_ID which cannot be used"    // --
                          << bsl::endl                                // --
                          << bsl::here();                             // --
-
-            return bsl::safe_u16::failure();
-        }
-
-        if (bsl::unlikely(hypercall::MV_INVALID_ID == vmid)) {
-            bsl::error() << "the provided vmid "                      // --
-                         << bsl::hex(vmid)                            // --
-                         << " is MV_INVALID_ID and cannot be used"    // --
-                         << bsl::endl                                 // --
-                         << bsl::here();                              // --
-
-            return bsl::safe_u16::failure();
-        }
-
-        if (bsl::unlikely(bsl::to_umx(vmid) >= HYPERVISOR_MAX_VMS)) {
-            bsl::error() << "the provided vmid "                      // --
-                         << bsl::hex(vmid)                            // --
-                         << " is out of bounds and cannot be used"    // --
-                         << bsl::endl                                 // --
-                         << bsl::here();                              // --
 
             return bsl::safe_u16::failure();
         }
@@ -895,6 +921,26 @@ namespace microv
         vp_pool_t const &vp_pool) noexcept -> bsl::safe_u16
     {
         auto const vpid{bsl::to_u16_unsafe(reg)};
+        if (bsl::unlikely(hypercall::MV_INVALID_ID == vpid)) {
+            bsl::error() << "the provided vpid "                      // --
+                         << bsl::hex(vpid)                            // --
+                         << " is MV_INVALID_ID and cannot be used"    // --
+                         << bsl::endl                                 // --
+                         << bsl::here();                              // --
+
+            return bsl::safe_u16::failure();
+        }
+
+        if (bsl::unlikely(bsl::to_umx(vpid) >= HYPERVISOR_MAX_VPS)) {
+            bsl::error() << "the provided vpid "                      // --
+                         << bsl::hex(vpid)                            // --
+                         << " is out of bounds and cannot be used"    // --
+                         << bsl::endl                                 // --
+                         << bsl::here();                              // --
+
+            return bsl::safe_u16::failure();
+        }
+
         if (bsl::unlikely(hypercall::MV_SELF_ID == vpid)) {
             bsl::error() << "the provided vpid "                     // --
                          << bsl::hex(vpid)                           // --
@@ -925,26 +971,6 @@ namespace microv
                          << " and therefore cannot be used"    // --
                          << bsl::endl                          // --
                          << bsl::here();                       // --
-
-            return bsl::safe_u16::failure();
-        }
-
-        if (bsl::unlikely(hypercall::MV_INVALID_ID == vpid)) {
-            bsl::error() << "the provided vpid "                      // --
-                         << bsl::hex(vpid)                            // --
-                         << " is MV_INVALID_ID and cannot be used"    // --
-                         << bsl::endl                                 // --
-                         << bsl::here();                              // --
-
-            return bsl::safe_u16::failure();
-        }
-
-        if (bsl::unlikely(bsl::to_umx(vpid) >= HYPERVISOR_MAX_VPS)) {
-            bsl::error() << "the provided vpid "                      // --
-                         << bsl::hex(vpid)                            // --
-                         << " is out of bounds and cannot be used"    // --
-                         << bsl::endl                                 // --
-                         << bsl::here();                              // --
 
             return bsl::safe_u16::failure();
         }
@@ -1142,7 +1168,7 @@ namespace microv
             return bsl::safe_u16::failure();
         }
 
-        if (bsl::unlikely(bsl::to_umx(vsid) >= HYPERVISOR_MAX_VPS)) {
+        if (bsl::unlikely(bsl::to_umx(vsid) >= HYPERVISOR_MAX_VSS)) {
             bsl::error() << "the provided vsid "                      // --
                          << bsl::hex(vsid)                            // --
                          << " is out of bounds and cannot be used"    // --
@@ -1175,6 +1201,26 @@ namespace microv
         vs_pool_t const &vs_pool) noexcept -> bsl::safe_u16
     {
         auto const vsid{bsl::to_u16_unsafe(reg)};
+        if (bsl::unlikely(hypercall::MV_INVALID_ID == vsid)) {
+            bsl::error() << "the provided vsid "                      // --
+                         << bsl::hex(vsid)                            // --
+                         << " is MV_INVALID_ID and cannot be used"    // --
+                         << bsl::endl                                 // --
+                         << bsl::here();                              // --
+
+            return bsl::safe_u16::failure();
+        }
+
+        if (bsl::unlikely(bsl::to_umx(vsid) >= HYPERVISOR_MAX_VSS)) {
+            bsl::error() << "the provided vsid "                      // --
+                         << bsl::hex(vsid)                            // --
+                         << " is out of bounds and cannot be used"    // --
+                         << bsl::endl                                 // --
+                         << bsl::here();                              // --
+
+            return bsl::safe_u16::failure();
+        }
+
         if (bsl::unlikely(hypercall::MV_SELF_ID == vsid)) {
             bsl::error() << "the provided vsid "                     // --
                          << bsl::hex(vsid)                           // --
@@ -1205,26 +1251,6 @@ namespace microv
                          << " and therefore cannot be used"    // --
                          << bsl::endl                          // --
                          << bsl::here();                       // --
-
-            return bsl::safe_u16::failure();
-        }
-
-        if (bsl::unlikely(hypercall::MV_INVALID_ID == vsid)) {
-            bsl::error() << "the provided vsid "                      // --
-                         << bsl::hex(vsid)                            // --
-                         << " is MV_INVALID_ID and cannot be used"    // --
-                         << bsl::endl                                 // --
-                         << bsl::here();                              // --
-
-            return bsl::safe_u16::failure();
-        }
-
-        if (bsl::unlikely(bsl::to_umx(vsid) >= HYPERVISOR_MAX_VPS)) {
-            bsl::error() << "the provided vsid "                      // --
-                         << bsl::hex(vsid)                            // --
-                         << " is out of bounds and cannot be used"    // --
-                         << bsl::endl                                 // --
-                         << bsl::here();                              // --
 
             return bsl::safe_u16::failure();
         }
@@ -1522,6 +1548,65 @@ namespace microv
         return gpa;
     }
 
+    /// <!-- description -->
+    ///   @brief Given an input register, returns a mv_mp_state_t if
+    ///     the provided register contains a valid mv_mp_state_t
+    ///     that is in range and supported. Otherwise, this function returns
+    ///     bsl::safe_u64::failure().
+    ///
+    /// <!-- inputs/outputs -->
+    ///   @param reg the register to get the TSC frequency from.
+    ///   @return Given an input register, returns a mv_mp_state_t if
+    ///     the provided register contains a valid mv_mp_state_t
+    ///     that is in range and supported. Otherwise, this function returns
+    ///     bsl::safe_u64::failure().
+    ///
+    [[nodiscard]] constexpr auto
+    get_mp_state(bsl::safe_u64 const &reg) noexcept -> hypercall::mv_mp_state_t
+    {
+        if (bsl::unlikely(reg >= bsl::to_u64(hypercall::MP_STATE_INVALID))) {
+            bsl::error() << "mp_state "                          // --
+                         << bsl::hex(reg)                        // --
+                         << " is out of range or unsupported"    // --
+                         << bsl::endl                            // --
+                         << bsl::here();                         // --
+
+            return hypercall::mv_mp_state_t::mv_mp_state_t_invalid;
+        }
+
+        return hypercall::to_mv_mp_state_t(reg);
+    }
+
+    /// <!-- description -->
+    ///   @brief Given an input register, returns a TSC frequency in KHz if
+    ///     the provided register contains a valid TSC frequency in KHz
+    ///     that is non-0. Otherwise, this function returns
+    ///     bsl::safe_u64::failure().
+    ///
+    /// <!-- inputs/outputs -->
+    ///   @param reg the register to get the TSC frequency from.
+    ///   @return Given an input register, returns a TSC frequency in KHz if
+    ///     the provided register contains a valid TSC frequency in KHz
+    ///     that is non-0. Otherwise, this function returns
+    ///     bsl::safe_u64::failure().
+    ///
+    [[nodiscard]] constexpr auto
+    get_tsc_khz(bsl::safe_u64 const &reg) noexcept -> bsl::safe_u64
+    {
+        auto const tsc_khz{reg};
+        if (bsl::unlikely(tsc_khz.is_zero())) {
+            bsl::error() << "the tsc frequency "          // --
+                         << bsl::hex(tsc_khz)             // --
+                         << " is 0 and cannot be used"    // --
+                         << bsl::endl                     // --
+                         << bsl::here();                  // --
+
+            return bsl::safe_u64::failure();
+        }
+
+        return tsc_khz;
+    }
+
     /// ------------------------------------------------------------------------
     /// Report Unsupported Functions
     /// ------------------------------------------------------------------------
@@ -1626,15 +1711,14 @@ namespace microv
         mut_vp_pool.set_inactive(mut_tls, mut_tls.parent_vpid);
         mut_vs_pool.set_inactive(mut_tls, intrinsic, mut_tls.parent_vsid);
 
-        auto const ret{mut_sys.bf_vs_op_set_active(vmid, vpid, vsid)};
-        if (bsl::unlikely(!ret)) {
-            bsl::print<bsl::V>() << bsl::here();
-            return ret;
-        }
+        bsl::expects(mut_sys.bf_vs_op_set_active(vmid, vpid, vsid));
 
         mut_vm_pool.set_active(mut_tls, vmid);
         mut_vp_pool.set_active(mut_tls, vpid);
         mut_vs_pool.set_active(mut_tls, intrinsic, vsid);
+
+        bsl::expects(mut_vs_pool.mp_state_set(
+            mut_sys, hypercall::mv_mp_state_t::mv_mp_state_t_running, vsid));
 
         return mut_sys.bf_vs_op_run_current();
     }

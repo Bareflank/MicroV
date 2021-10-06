@@ -60,6 +60,12 @@ extern "C"
 #endif
 
 #ifdef __cplusplus
+#define CONSTEXPR constexpr
+#else
+#define CONSTEXPR static inline
+#endif
+
+#ifdef __cplusplus
 #define NODISCARD [[nodiscard]]
 #else
 #ifdef __clang__

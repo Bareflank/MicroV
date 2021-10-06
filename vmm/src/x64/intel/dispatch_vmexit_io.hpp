@@ -88,9 +88,8 @@ namespace microv
         // Context: Guest VM
         // ---------------------------------------------------------------------
 
-        auto const exitqual{
-            mut_sys.bf_vs_op_read(vsid, syscall::bf_reg_t::bf_reg_t_exit_qualification)};
-        bsl::expects(exitqual.is_valid());
+        constexpr auto exitqual_idx{syscall::bf_reg_t::bf_reg_t_exit_qualification};
+        auto const exitqual{mut_sys.bf_vs_op_read(vsid, exitqual_idx)};
 
         auto const rax{mut_sys.bf_tls_rax()};
         auto const rcx{mut_sys.bf_tls_rcx()};

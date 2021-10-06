@@ -75,6 +75,7 @@ namespace microv
         vs_pool_t &mut_vs_pool) noexcept -> bsl::errc_type
     {
         constexpr auto vmid{syscall::BF_ROOT_VMID};
+        constexpr auto tsc_khz{0xFFFFFFFFFFFFFFFF_u64};
 
         auto const ret{tls_initialize(mut_tls, mut_sys, mut_page_pool, intrinsic)};
         if (bsl::unlikely(!ret)) {
@@ -103,7 +104,9 @@ namespace microv
             vmid,
             vpid,
             ppid,
+            tsc_khz,
             mut_vm_pool.slpt_spa(vmid))};
+
         if (bsl::unlikely(vsid.is_invalid())) {
             bsl::print<bsl::V>() << bsl::here();
             return bsl::errc_failure;

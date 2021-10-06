@@ -30,6 +30,7 @@
 #include <mv_constants.h>
 #include <mv_exit_io_t.h>
 #include <mv_exit_reason_t.h>
+#include <mv_mp_state_t.h>
 #include <mv_rdl_t.h>
 #include <mv_reg_t.h>
 #include <mv_translation_t.h>
@@ -138,6 +139,10 @@ extern "C"
     extern mv_status_t g_mut_mv_pp_op_set_shared_page_gpa;
     /** @brief stores the return value for mv_pp_op_msr_get_supported_list */
     extern mv_status_t g_mut_mv_pp_op_msr_get_supported_list;
+    /** @brief stores the return value for mv_pp_op_tsc_get_khz */
+    extern mv_status_t g_mut_mv_pp_op_tsc_get_khz;
+    /** @brief stores the return value for mv_pp_op_tsc_get_khz */
+    extern mv_status_t g_mut_mv_pp_op_tsc_set_khz;
 
     /**
      * <!-- description -->
@@ -219,7 +224,7 @@ extern "C"
      *     mv_rdl_entry_t.reg set to the requested MSR, the same entries are
      *     returned in the shared page with each entry's mv_rdl_entry_t.val set
      *     to 1 if the MSR is supported, and 0 if the MSR is not supported.
-
+     *
      *     This hypercall supports flag modifiers in mv_rdl_t.reg0. When
      *     MV_RDL_FLAG_ALL is enabled, the entire list of supported MSRs will be
      *     returned via the shared page and no entries must be given as input.
@@ -246,6 +251,61 @@ extern "C"
 #endif
 
         return g_mut_mv_pp_op_msr_get_supported_list;
+    }
+
+    /**
+     * <!-- description -->
+     *   @brief Returns the frequency of the PP. If the frequency has not
+     *     been set, returns 0.
+     *
+     * <!-- inputs/outputs -->
+     *   @param hndl Set to the result of mv_handle_op_open_handle
+     *   @param pmut_freq Where to return the frequency in KHz
+     *   @return Returns MV_STATUS_SUCCESS on success, MV_STATUS_FAILURE_UNKNOWN
+     *     and friends on failure.
+     */
+    NODISCARD static inline mv_status_t
+    mv_pp_op_tsc_get_khz(uint64_t const hndl, uint64_t *const pmut_freq) NOEXCEPT
+    {
+#ifdef __cplusplus
+        bsl::expects(MV_INVALID_HANDLE != hndl);
+        bsl::expects(hndl > ((uint64_t)0));
+        bsl::expects(NULLPTR != pmut_freq);
+#else
+    platform_expects(MV_INVALID_HANDLE != hndl);
+    platform_expects(hndl > ((uint64_t)0));
+    platform_expects(NULLPTR != pmut_freq);
+#endif
+
+        *pmut_freq = g_mut_val;
+        return g_mut_mv_pp_op_tsc_get_khz;
+    }
+
+    /**
+     * <!-- description -->
+     *   @brief Sets the frequency of the PP. This hypercall must be called
+     *     before any VS can be created.
+     *
+     * <!-- inputs/outputs -->
+     *   @param hndl Set to the result of mv_handle_op_open_handle
+     *   @param freq The frequency in KHz
+     *   @return Returns MV_STATUS_SUCCESS on success, MV_STATUS_FAILURE_UNKNOWN
+     *     and friends on failure.
+     */
+    NODISCARD static inline mv_status_t
+    mv_pp_op_tsc_set_khz(uint64_t const hndl, uint64_t const freq) NOEXCEPT
+    {
+#ifdef __cplusplus
+        bsl::expects(MV_INVALID_HANDLE != hndl);
+        bsl::expects(hndl > ((uint64_t)0));
+        bsl::expects(freq > ((uint64_t)0));
+#else
+    platform_expects(MV_INVALID_HANDLE != hndl);
+    platform_expects(hndl > ((uint64_t)0));
+    platform_expects(freq > ((uint64_t)0));
+#endif
+
+        return g_mut_mv_pp_op_tsc_set_khz;
     }
 
     /* -------------------------------------------------------------------------- */
@@ -611,6 +671,12 @@ extern "C"
     extern mv_status_t g_mut_mv_vs_op_fpu_get_all;
     /** @brief stores the return value for mv_vs_op_fpu_set_all */
     extern mv_status_t g_mut_mv_vs_op_fpu_set_all;
+    /** @brief stores the return value for mv_vs_op_mp_state_get */
+    extern mv_status_t g_mut_mv_vs_op_mp_state_get;
+    /** @brief stores the return value for mv_vs_op_mp_state_set */
+    extern mv_status_t g_mut_mv_vs_op_mp_state_set;
+    /** @brief stores the return value for mv_vs_op_tsc_get_khz */
+    extern mv_status_t g_mut_mv_vs_op_tsc_get_khz;
 
     /**
      * <!-- description -->
@@ -1242,6 +1308,100 @@ extern "C"
 #endif
 
         return g_mut_mv_vs_op_fpu_set_all;
+    }
+
+    /**
+     * <!-- description -->
+     *   @brief Returns the mv_mp_state_t of the VS.
+     *
+     * <!-- inputs/outputs -->
+     *   @param hndl Set to the result of mv_handle_op_open_handle
+     *   @param vsid The ID of the VS to set
+     *   @param pmut_state Where to store the new MP state
+     *   @return Returns MV_STATUS_SUCCESS on success, MV_STATUS_FAILURE_UNKNOWN
+     *     and friends on failure.
+     */
+    NODISCARD static inline mv_status_t
+    mv_vs_op_mp_state_get(
+        uint64_t const hndl, uint16_t const vsid, enum mv_mp_state_t *const pmut_state) NOEXCEPT
+    {
+#ifdef __cplusplus
+        bsl::expects(MV_INVALID_HANDLE != hndl);
+        bsl::expects(hndl > ((uint64_t)0));
+        bsl::expects((int32_t)MV_INVALID_ID != (int32_t)vsid);
+        bsl::expects(NULLPTR != pmut_state);
+#else
+    platform_expects(MV_INVALID_HANDLE != hndl);
+    platform_expects(hndl > ((uint64_t)0));
+    platform_expects((int32_t)MV_INVALID_ID != (int32_t)vsid);
+    platform_expects(NULLPTR != pmut_state);
+#endif
+
+        *pmut_state = (enum mv_mp_state_t)g_mut_val;
+        return g_mut_mv_vs_op_mp_state_get;
+    }
+
+    /**
+     * <!-- description -->
+     *   @brief Sets the mv_mp_state_t of the VS.
+     *
+     * <!-- inputs/outputs -->
+     *   @param hndl Set to the result of mv_handle_op_open_handle
+     *   @param vsid the ID of the VS to set
+     *   @param state The new MP state
+     *   @return Returns MV_STATUS_SUCCESS on success, MV_STATUS_FAILURE_UNKNOWN
+     *     and friends on failure.
+     */
+    NODISCARD static inline mv_status_t
+    mv_vs_op_mp_state_set(
+        uint64_t const hndl, uint16_t const vsid, enum mv_mp_state_t const state) NOEXCEPT
+    {
+        (void)state;
+
+#ifdef __cplusplus
+        bsl::expects(MV_INVALID_HANDLE != hndl);
+        bsl::expects(hndl > ((uint64_t)0));
+        bsl::expects((int32_t)MV_INVALID_ID != (int32_t)vsid);
+        bsl::expects((int32_t)state < (int32_t)mv_mp_state_t_invalid);
+#else
+    platform_expects(MV_INVALID_HANDLE != hndl);
+    platform_expects(hndl > ((uint64_t)0));
+    platform_expects((int32_t)MV_INVALID_ID != (int32_t)vsid);
+    platform_expects((int32_t)state < (int32_t)mv_mp_state_t_invalid);
+#endif
+
+        return g_mut_mv_vs_op_mp_state_set;
+    }
+
+    /**
+     * <!-- description -->
+     *   @brief Returns the frequency of the VS.
+     *
+     * <!-- inputs/outputs -->
+     *   @param hndl Set to the result of mv_handle_op_open_handle
+     *   @param vsid The ID of the VS to get
+     *   @param pmut_freq Where to return the frequency in KHz
+     *   @return Returns MV_STATUS_SUCCESS on success, MV_STATUS_FAILURE_UNKNOWN
+     *     and friends on failure.
+     */
+    NODISCARD static inline mv_status_t
+    mv_vs_op_tsc_get_khz(
+        uint64_t const hndl, uint16_t const vsid, uint64_t *const pmut_freq) NOEXCEPT
+    {
+#ifdef __cplusplus
+        bsl::expects(MV_INVALID_HANDLE != hndl);
+        bsl::expects(hndl > ((uint64_t)0));
+        bsl::expects((int32_t)MV_INVALID_ID != (int32_t)vsid);
+        bsl::expects(NULLPTR != pmut_freq);
+#else
+    platform_expects(MV_INVALID_HANDLE != hndl);
+    platform_expects(hndl > ((uint64_t)0));
+    platform_expects((int32_t)MV_INVALID_ID != (int32_t)vsid);
+    platform_expects(NULLPTR != pmut_freq);
+#endif
+
+        *pmut_freq = g_mut_val;
+        return g_mut_mv_vs_op_tsc_get_khz;
     }
 
 #ifdef __cplusplus

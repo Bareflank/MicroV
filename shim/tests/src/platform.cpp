@@ -26,6 +26,7 @@
 #include <platform.h>
 #include <string.h>
 
+#include <bsl/convert.hpp>
 #include <bsl/ensures.hpp>
 #include <bsl/expects.hpp>
 #include <bsl/safe_integral.hpp>
@@ -44,6 +45,11 @@ namespace shim
     extern "C" int64_t g_mut_platform_munlock{SHIM_SUCCESS};    // NOLINT
     /// @brief tells platform_interrupted to return interrupted
     extern "C" bool g_mut_platform_interrupted{};    // NOLINT
+
+    /// @brief stores the initial TSC frequency in KHz
+    constexpr auto INITIAL_TSC_FREQUENCY{42_u32};
+    /// @brief stores the TSC frequency in KHz
+    extern "C" uint32_t g_mut_tsc_khz{INITIAL_TSC_FREQUENCY.get()};
 
     /// <!-- description -->
     ///   @brief If test is false, a contract violation has occurred. This

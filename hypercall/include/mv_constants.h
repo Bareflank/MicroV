@@ -85,6 +85,14 @@ NODISCARD static inline int
  *   the future so that opening a handle will return a unique value, and
  *   all resources that are created are owned by that handle, so although
  *   it is hardcoded for now, it will not be in the future.
+ *
+ * - Note that the handle will be needed once we attempt to support more
+ *   than one userspace application at the same time, as all resources
+ *   will have to be tied to the handle so that MicroV knows which userspace
+ *   application should be attempting to use specific resources.
+ *
+ * - Once this is removed, some of the integration tests might need to be
+ *   updated.
  */
 
 /** @brief Internal to MicroV */
@@ -549,6 +557,10 @@ NODISCARD static inline int
 #define MV_VS_OP_INJECT_EXCEPTION_IDX_VAL ((uint64_t)0x0000000000000025)
 /** @brief Defines the index for mv_vs_op_queue_interrupt */
 #define MV_VS_OP_QUEUE_INTERRUPT_IDX_VAL ((uint64_t)0x0000000000000026)
+/** @brief Defines the index for mv_vs_op_tsc_get_khz */
+#define MV_VS_OP_TSC_GET_KHZ_IDX_VAL ((uint64_t)0x0000000000000027)
+/** @brief Defines the index for mv_vs_op_tsc_set_khz */
+#define MV_VS_OP_TSC_SET_KHZ_IDX_VAL ((uint64_t)0x0000000000000028)
 
 #ifdef __cplusplus
 }

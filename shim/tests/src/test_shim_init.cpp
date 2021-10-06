@@ -52,6 +52,7 @@ namespace shim
                 g_mut_mv_handle_op_open_handle = MV_HANDLE_VAL;
                 g_mut_platform_alloc_fails = {};
                 g_mut_mv_pp_op_set_shared_page_gpa = {};
+                g_mut_mv_pp_op_tsc_set_khz = {};
                 bsl::ut_then{} = [&]() noexcept {
                     bsl::ut_check(SHIM_SUCCESS == shim_init());
                 };
@@ -69,6 +70,7 @@ namespace shim
                 g_mut_mv_handle_op_open_handle = MV_HANDLE_VAL;
                 g_mut_platform_alloc_fails = {};
                 g_mut_mv_pp_op_set_shared_page_gpa = {};
+                g_mut_mv_pp_op_tsc_set_khz = {};
                 bsl::ut_then{} = [&]() noexcept {
                     bsl::ut_check(SHIM_FAILURE == shim_init());
                 };
@@ -83,6 +85,7 @@ namespace shim
                 g_mut_mv_handle_op_open_handle = MV_HANDLE_VAL;
                 g_mut_platform_alloc_fails = {};
                 g_mut_mv_pp_op_set_shared_page_gpa = {};
+                g_mut_mv_pp_op_tsc_set_khz = {};
                 bsl::ut_then{} = [&]() noexcept {
                     bsl::ut_check(SHIM_FAILURE == shim_init());
                 };
@@ -97,6 +100,7 @@ namespace shim
                 g_mut_mv_handle_op_open_handle = MV_HANDLE_VAL;
                 g_mut_platform_alloc_fails = {};
                 g_mut_mv_pp_op_set_shared_page_gpa = {};
+                g_mut_mv_pp_op_tsc_set_khz = {};
                 bsl::ut_then{} = [&]() noexcept {
                     bsl::ut_check(SHIM_FAILURE == shim_init());
                 };
@@ -111,6 +115,7 @@ namespace shim
                 g_mut_mv_handle_op_open_handle = MV_INVALID_HANDLE;
                 g_mut_platform_alloc_fails = {};
                 g_mut_mv_pp_op_set_shared_page_gpa = {};
+                g_mut_mv_pp_op_tsc_set_khz = {};
                 bsl::ut_then{} = [&]() noexcept {
                     bsl::ut_check(SHIM_FAILURE == shim_init());
                 };
@@ -125,6 +130,7 @@ namespace shim
                 g_mut_mv_handle_op_open_handle = MV_HANDLE_VAL;
                 g_mut_platform_alloc_fails = true;
                 g_mut_mv_pp_op_set_shared_page_gpa = {};
+                g_mut_mv_pp_op_tsc_set_khz = {};
                 bsl::ut_then{} = [&]() noexcept {
                     bsl::ut_check(SHIM_FAILURE == shim_init());
                 };
@@ -139,6 +145,22 @@ namespace shim
                 g_mut_mv_handle_op_open_handle = MV_HANDLE_VAL;
                 g_mut_platform_alloc_fails = {};
                 g_mut_mv_pp_op_set_shared_page_gpa = MV_STATUS_FAILURE_UNKNOWN;
+                g_mut_mv_pp_op_tsc_set_khz = {};
+                bsl::ut_then{} = [&]() noexcept {
+                    bsl::ut_check(SHIM_FAILURE == shim_init());
+                };
+            };
+        };
+
+        bsl::ut_scenario{"g_mut_mv_pp_op_tsc_set_khz fails"} = []() noexcept {
+            bsl::ut_when{} = [&]() noexcept {
+                g_mut_hypervisor_detected = true;
+                g_mut_platform_num_online_cpus = 1U;
+                g_mut_mv_id_op_version = MV_ALL_SPECS_SUPPORTED_VAL;
+                g_mut_mv_handle_op_open_handle = MV_HANDLE_VAL;
+                g_mut_platform_alloc_fails = {};
+                g_mut_mv_pp_op_set_shared_page_gpa = {};
+                g_mut_mv_pp_op_tsc_set_khz = MV_STATUS_FAILURE_UNKNOWN;
                 bsl::ut_then{} = [&]() noexcept {
                     bsl::ut_check(SHIM_FAILURE == shim_init());
                 };

@@ -73,7 +73,7 @@ namespace microv
     handle_mv_pp_op_clr_shared_page_gpa(
         syscall::bf_syscall_t &mut_sys, pp_pool_t &mut_pp_pool) noexcept -> bsl::errc_type
     {
-        mut_pp_pool.clr_shared_page_spa(mut_sys, mut_sys.bf_tls_ppid());
+        mut_pp_pool.clr_shared_page_spa(mut_sys);
         return vmexit_success_advance_ip_and_run;
     }
 
@@ -102,7 +102,7 @@ namespace microv
         auto const spa{vm_pool.gpa_to_spa(mut_sys, gpa, mut_sys.bf_tls_vmid())};
         if (bsl::unlikely(spa.is_invalid())) {
             bsl::print<bsl::V>() << bsl::here();
-            set_reg_return(mut_sys, hypercall::MV_STATUS_INVALID_INPUT_REG1);
+            set_reg_return(mut_sys, hypercall::MV_STATUS_FAILURE_UNKNOWN);
             return vmexit_failure_advance_ip_and_run;
         }
 
@@ -110,8 +110,9 @@ namespace microv
         /// - We need to detect if the SPA is being used on another PP. An
         ///   SPA can only be used once per PP, otherwise unmaps, and other
         ///   TLB related issues will occur.
+        ///
 
-        auto const ret{mut_pp_pool.set_shared_page_spa(mut_sys, spa, mut_sys.bf_tls_ppid())};
+        auto const ret{mut_pp_pool.set_shared_page_spa(mut_sys, spa)};
         if (bsl::unlikely(!ret)) {
             bsl::print<bsl::V>() << bsl::here();
             set_reg_return(mut_sys, hypercall::MV_STATUS_FAILURE_UNKNOWN);
@@ -160,6 +161,54 @@ namespace microv
     }
 
     /// <!-- description -->
+    ///   @brief Implements the mv_pp_op_tsc_get_khz hypercall
+    ///
+    /// <!-- inputs/outputs -->
+    ///   @param mut_sys the bf_syscall_t to use
+    ///   @param mut_pp_pool the pp_pool_t to use
+    ///   @return Returns bsl::errc_success on success, bsl::errc_failure
+    ///     and friends otherwise
+    ///
+    [[nodiscard]] constexpr auto
+    handle_mv_pp_op_tsc_get_khz(syscall::bf_syscall_t &mut_sys, pp_pool_t &mut_pp_pool) noexcept
+        -> bsl::errc_type
+    {
+        auto const tsc_khz{mut_pp_pool.tsc_khz_get(mut_sys)};
+        if (bsl::unlikely(tsc_khz.is_zero())) {
+            bsl::print<bsl::V>() << bsl::here();
+            set_reg_return(mut_sys, hypercall::MV_STATUS_FAILURE_UNKNOWN);
+            return vmexit_failure_advance_ip_and_run;
+        }
+
+        set_reg0(mut_sys, tsc_khz);
+        return vmexit_success_advance_ip_and_run;
+    }
+
+    /// <!-- description -->
+    ///   @brief Implements the mv_pp_op_tsc_set_khz hypercall
+    ///
+    /// <!-- inputs/outputs -->
+    ///   @param mut_sys the bf_syscall_t to use
+    ///   @param mut_pp_pool the pp_pool_t to use
+    ///   @return Returns bsl::errc_success on success, bsl::errc_failure
+    ///     and friends otherwise
+    ///
+    [[nodiscard]] constexpr auto
+    handle_mv_pp_op_tsc_set_khz(syscall::bf_syscall_t &mut_sys, pp_pool_t &mut_pp_pool) noexcept
+        -> bsl::errc_type
+    {
+        auto const tsc_khz{get_tsc_khz(get_reg1(mut_sys))};
+        if (bsl::unlikely(tsc_khz.is_invalid())) {
+            bsl::print<bsl::V>() << bsl::here();
+            set_reg_return(mut_sys, hypercall::MV_STATUS_INVALID_INPUT_REG1);
+            return vmexit_failure_advance_ip_and_run;
+        }
+
+        mut_pp_pool.tsc_khz_set(mut_sys, tsc_khz);
+        return vmexit_success_advance_ip_and_run;
+    }
+
+    /// <!-- description -->
     ///   @brief Dispatches physical processor VMCalls.
     ///
     /// <!-- inputs/outputs -->
@@ -199,13 +248,13 @@ namespace microv
 
         if (bsl::unlikely(!verify_handle(mut_sys))) {
             bsl::print<bsl::V>() << bsl::here();
-            set_reg_return(mut_sys, hypercall::MV_STATUS_FAILURE_UNKNOWN);
+            set_reg_return(mut_sys, hypercall::MV_STATUS_INVALID_INPUT_REG0);
             return vmexit_failure_advance_ip_and_run;
         }
 
         if (bsl::unlikely(!verify_root_vm(mut_sys))) {
             bsl::print<bsl::V>() << bsl::here();
-            set_reg_return(mut_sys, hypercall::MV_STATUS_FAILURE_UNKNOWN);
+            set_reg_return(mut_sys, hypercall::MV_STATUS_INVALID_PERM_DENIED);
             return vmexit_failure_advance_ip_and_run;
         }
 
@@ -243,6 +292,26 @@ namespace microv
 
             case hypercall::MV_PP_OP_MSR_GET_SUPPORTED_LIST_IDX_VAL.get(): {
                 auto const ret{handle_mv_pp_op_msr_get_supported_list(mut_sys, mut_pp_pool)};
+                if (bsl::unlikely(!ret)) {
+                    bsl::print<bsl::V>() << bsl::here();
+                    return ret;
+                }
+
+                return ret;
+            }
+
+            case hypercall::MV_PP_OP_TSC_GET_KHZ_IDX_VAL.get(): {
+                auto const ret{handle_mv_pp_op_tsc_get_khz(mut_sys, mut_pp_pool)};
+                if (bsl::unlikely(!ret)) {
+                    bsl::print<bsl::V>() << bsl::here();
+                    return ret;
+                }
+
+                return ret;
+            }
+
+            case hypercall::MV_PP_OP_TSC_SET_KHZ_IDX_VAL.get(): {
+                auto const ret{handle_mv_pp_op_tsc_set_khz(mut_sys, mut_pp_pool)};
                 if (bsl::unlikely(!ret)) {
                     bsl::print<bsl::V>() << bsl::here();
                     return ret;
