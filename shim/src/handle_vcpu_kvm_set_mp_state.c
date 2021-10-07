@@ -24,20 +24,77 @@
  * SOFTWARE.
  */
 
+#include <debug.h>
+#include <detect_hypervisor.h>
+#include <g_mut_hndl.h>
+#include <kvm_constants.h>
 #include <kvm_mp_state.h>
+#include <mv_constants.h>
+#include <mv_hypercall.h>
+#include <mv_mp_state_t.h>
 #include <mv_types.h>
+#include <platform.h>
+#include <shim_vcpu_t.h>
 
 /**
  * <!-- description -->
  *   @brief Handles the execution of kvm_set_mp_state.
  *
  * <!-- inputs/outputs -->
- *   @param pmut_ioctl_args the arguments provided by userspace
+ *   @param vcpu arguments recevied from the private data
+ *   @param args the arguments provided by userspace
  *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
  */
 NODISCARD int64_t
-handle_vcpu_kvm_set_mp_state(struct kvm_mp_state *const pmut_ioctl_args) NOEXCEPT
+handle_vcpu_kvm_set_mp_state(
+    struct shim_vcpu_t const *const vcpu, struct kvm_mp_state const *const args) NOEXCEPT
 {
-    (void)pmut_ioctl_args;
+    int32_t mp_state;
+    platform_expects(MV_INVALID_HANDLE != g_mut_hndl);
+    platform_expects(NULL != vcpu);
+    platform_expects(NULL != args);
+
+    if (detect_hypervisor()) {
+        bferror("The shim is not running in a VM. Did you forget to start Microv?");
+        return SHIM_FAILURE;
+    }
+
+    switch (args->mp_state) {
+        case KVM_MP_STATE_UNINITIALIZED: {
+            bfdebug("KVM_MP_STATE_UNINITIALIZED -> mv_mp_state_t_initial");
+            mp_state = mv_mp_state_t_initial;
+            break;
+        }
+        case KVM_MP_STATE_RUNNABLE: {
+            bfdebug("KVM_MP_STATE_RUNNABLE -> mv_mp_state_t_running");
+            mp_state = mv_mp_state_t_running;
+            break;
+        }
+        case KVM_MP_STATE_HALTED: {
+            bfdebug("KVM_MP_STATE_HALTED -> mv_mp_state_t_wait");
+            mp_state = mv_mp_state_t_wait;
+            break;
+        }
+        case KVM_MP_STATE_INIT_RECEIVED: {
+            bfdebug("KVM_MP_STATE_INIT_RECEIVED -> mv_mp_state_t_init");
+            mp_state = mv_mp_state_t_init;
+            break;
+        }
+        case KVM_MP_STATE_SIPI_RECEIVED: {
+            bfdebug("KVM_MP_STATE_SIPI_RECEIVED -> mv_mp_state_t_sipi");
+            mp_state = mv_mp_state_t_sipi;
+            break;
+        }
+        default: {
+            bferror("Invalid value received in set mp state API");
+            return SHIM_FAILURE;
+        }
+    }
+
+    if (mv_vs_op_mp_state_set(g_mut_hndl, vcpu->vsid, i32_to_mv_mp_state_t(mp_state))) {
+        bferror("mv_vs_op_mp_state_set failed");
+        return SHIM_FAILURE;
+    }
+
     return SHIM_SUCCESS;
 }

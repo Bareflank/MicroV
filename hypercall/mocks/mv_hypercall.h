@@ -137,6 +137,8 @@ extern "C"
     extern mv_status_t g_mut_mv_pp_op_clr_shared_page_gpa;
     /** @brief stores the return value for mv_pp_op_set_shared_page_gpa */
     extern mv_status_t g_mut_mv_pp_op_set_shared_page_gpa;
+    /** @brief stores the return value for mv_pp_op_cpuid_get_supported_list */
+    extern mv_status_t g_mut_mv_pp_op_cpuid_get_supported_list;
     /** @brief stores the return value for mv_pp_op_msr_get_supported_list */
     extern mv_status_t g_mut_mv_pp_op_msr_get_supported_list;
     /** @brief stores the return value for mv_pp_op_tsc_get_khz */
@@ -216,6 +218,34 @@ extern "C"
 #endif
 
         return g_mut_mv_pp_op_set_shared_page_gpa;
+    }
+
+    /**
+     * <!-- description -->
+     *   @brief Given the shared page cast as a mv_cdl_t, with each entry's
+     *     mv_cdl_entry_t.fun and mv_cdl_entry_t.idx set to the requested CPUID
+     *     leaf, the same entries are returned in the shared page with each
+     *     entry's mv_cdl_entry_t.eax, mv_cdl_entry_t.ebx, mv_cdl_entry_t.ecx
+     *     and mv_cdl_entry_t.edx set with all supported CPU features set to 1.
+     *     Any non-feature fields returned by CPUID are returned as 0.
+     *
+     * <!-- inputs/outputs -->
+     *   @param hndl Set to the result of mv_handle_op_open_handle
+     *   @return Returns MV_STATUS_SUCCESS on success, MV_STATUS_FAILURE_UNKNOWN
+     *     and friends on failure.
+     */
+    NODISCARD static inline mv_status_t
+    mv_pp_op_cpuid_get_supported_list(uint64_t const hndl) NOEXCEPT
+    {
+#ifdef __cplusplus
+        bsl::expects(MV_INVALID_HANDLE != hndl);
+        bsl::expects(hndl > ((uint64_t)0));
+#else
+    platform_expects(MV_INVALID_HANDLE != hndl);
+    platform_expects(hndl > ((uint64_t)0));
+#endif
+
+        return g_mut_mv_pp_op_cpuid_get_supported_list;
     }
 
     /**

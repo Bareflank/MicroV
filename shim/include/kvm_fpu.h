@@ -29,12 +29,35 @@
 
 #include <stdint.h>
 
+#ifdef __clang__
+#pragma clang diagnostic ignored "-Wold-style-cast"
+#endif
+
 #ifdef __cplusplus
 extern "C"
 {
 #endif
 
 #pragma pack(push, 1)
+
+/** @brief defines the size of the padding1 field */
+#define FPR_REGISTER_SIZE ((uint64_t)8)
+/** @brief defines the no of FPR registers */
+#define NO_OF_FPR_REGISTERS ((uint64_t)16)
+/** @brief defines the size of XMM register size */
+#define XMM_REGISTER_SIZE ((uint64_t)16)
+/** @brief defines the no of XMM registers */
+#define NO_OF_XMM_REGISTERS ((uint64_t)16)
+/** @brief defines the no of Register bytes */
+#define NO_OF_REGISTERS_BYTES ((uint64_t)32)
+/** @brief defines the no of Register bytes */
+#define REGISTER_SIZE ((uint64_t)1)
+/** @brief defines the total no of Register bytes */
+#define TOTAL_NO_REGISTER_SIZE (REGISTER_SIZE * NO_OF_REGISTERS_BYTES)
+/** @brief defines the total no of FPR bytes */
+#define TOTAL_NO_OF_FPR_BYTES (NO_OF_FPR_REGISTERS * FPR_REGISTER_SIZE)
+/** @brief defines the total no of XMM bytes */
+#define TOTAL_NO_OF_XMM_BYTES (NO_OF_XMM_REGISTERS * XMM_REGISTER_SIZE)
 
     /**
      * @struct kvm_fpu
@@ -44,8 +67,14 @@ extern "C"
      */
     struct kvm_fpu
     {
-        /** @brief replace me with contents from KVM API */
-        int32_t dummy;
+        /** @brief stores that value of the Floating pointer registers*/
+        uint8_t fpr[TOTAL_NO_OF_FPR_BYTES];
+        /** @brief stores that value of the registers*/
+        uint8_t registers[TOTAL_NO_REGISTER_SIZE];
+        /** @brief stores that value of the XMM registers*/
+        uint8_t xmm[TOTAL_NO_OF_XMM_BYTES];
+        /** @brief stores that value of mxscr*/
+        uint32_t mxcsr;
     };
 
 #pragma pack(pop)

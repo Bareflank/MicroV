@@ -27,6 +27,7 @@
 
 #include <bf_syscall_t.hpp>
 #include <dispatch_abi_helpers.hpp>
+#include <mv_cdl_t.hpp>
 #include <mv_reg_t.hpp>
 
 #include <bsl/convert.hpp>
@@ -312,6 +313,38 @@ namespace microv
             return false;
         }
 
+        return true;
+    }
+
+    /// <!-- description -->
+    ///   @brief Returns true if the CDL is safe to use. Returns
+    ///     false otherwise.
+    ///
+    /// <!-- inputs/outputs -->
+    ///   @param cdl the CDL to verify
+    ///   @return Returns true if the CDL is safe to use. Returns
+    ///     false otherwise.
+    ///
+    [[nodiscard]] constexpr auto
+    is_cdl_safe(hypercall::mv_cdl_t const &cdl) noexcept -> bool
+    {
+        if (bsl::unlikely(cdl.num_entries == bsl::safe_u64::magic_0())) {
+            bsl::error() << "cdl.num_entries "           // --
+                         << bsl::hex(cdl.num_entries)    // --
+                         << " is empty"                  // --
+                         << bsl::endl                    // --
+                         << bsl::here();                 // --
+            return false;
+        }
+
+        if (bsl::unlikely(cdl.num_entries > cdl.entries.size())) {
+            bsl::error() << "cdl.num_entries "           // --
+                         << bsl::hex(cdl.num_entries)    // --
+                         << " is out of range "          // --
+                         << bsl::endl                    // --
+                         << bsl::here();                 // --
+            return false;
+        }
         return true;
     }
 

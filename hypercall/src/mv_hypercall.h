@@ -206,6 +206,37 @@ extern "C"
 
     /**
      * <!-- description -->
+     *   @brief Given the shared page cast as a mv_cdl_t, with each entry's
+     *     mv_cdl_entry_t.fun and mv_cdl_entry_t.idx set to the requested CPUID
+     *     leaf, the same entries are returned in the shared page with each
+     *     entry's mv_cdl_entry_t.eax, mv_cdl_entry_t.ebx, mv_cdl_entry_t.ecx
+     *     and mv_cdl_entry_t.edx set with all supported CPU features set to 1.
+     *     Any non-feature fields returned by CPUID are returned as 0.
+     *
+     * <!-- inputs/outputs -->
+     *   @param hndl Set to the result of mv_handle_op_open_handle
+     *   @return Returns MV_STATUS_SUCCESS on success, MV_STATUS_FAILURE_UNKNOWN
+     *     and friends on failure.
+     */
+    NODISCARD static inline mv_status_t
+    mv_pp_op_cpuid_get_supported_list(uint64_t const hndl) NOEXCEPT
+    {
+        mv_status_t mut_ret;
+
+        platform_expects(MV_INVALID_HANDLE != hndl);
+        platform_expects(hndl > ((uint64_t)0));
+
+        mut_ret = mv_pp_op_cpuid_get_supported_list_impl(hndl);
+        if (mut_ret != MV_STATUS_SUCCESS) {
+            bferror("mv_pp_op_cpuid_get_supported_list failed");
+            return mut_ret;
+        }
+
+        return mut_ret;
+    }
+
+    /**
+     * <!-- description -->
      *   @brief Given the shared page cast as a mv_rdl_t, with each entry's
      *     mv_rdl_entry_t.reg set to the requested MSR, the same entries are
      *     returned in the shared page with each entry's mv_rdl_entry_t.val set

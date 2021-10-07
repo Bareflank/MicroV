@@ -51,6 +51,7 @@ namespace shim
         constinit bsl::uint16 g_mut_mv_pp_op_ppid{};
         constinit mv_status_t g_mut_mv_pp_op_clr_shared_page_gpa{};
         constinit mv_status_t g_mut_mv_pp_op_set_shared_page_gpa{};
+        constinit mv_status_t g_mut_mv_pp_op_cpuid_get_supported_list{};
         constinit mv_status_t g_mut_mv_pp_op_msr_get_supported_list{};
         constinit mv_status_t g_mut_mv_pp_op_tsc_get_khz{};
         constinit mv_status_t g_mut_mv_pp_op_tsc_set_khz{};
@@ -184,6 +185,19 @@ namespace shim
                     g_mut_mv_pp_op_set_shared_page_gpa = expected.get();
                     bsl::ut_then{} = [&]() noexcept {
                         bsl::ut_check(expected == hypercall(hndl, gpa));
+                    };
+                };
+            };
+        };
+
+        bsl::ut_scenario{"mv_pp_op_cpuid_get_supported_list"} = []() noexcept {
+            bsl::ut_given{} = [&]() noexcept {
+                constexpr auto hypercall{&mv_pp_op_cpuid_get_supported_list};
+                constexpr auto expected{42_u64};
+                bsl::ut_when{} = [&]() noexcept {
+                    g_mut_mv_pp_op_cpuid_get_supported_list = expected.get();
+                    bsl::ut_then{} = [&]() noexcept {
+                        bsl::ut_check(expected == hypercall(hndl));
                     };
                 };
             };

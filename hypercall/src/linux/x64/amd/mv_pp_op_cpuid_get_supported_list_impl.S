@@ -24,32 +24,18 @@
  * SOFTWARE.
  */
 
-#ifndef HANDLE_VCPU_KVM_GET_MP_STATE_H
-#define HANDLE_VCPU_KVM_GET_MP_STATE_H
+    .code64
+    .intel_syntax noprefix
 
-#include <kvm_mp_state.h>
-#include <mv_types.h>
-#include <shim_vcpu_t.h>
+    .globl  mv_pp_op_cpuid_get_supported_list_impl
+    .type   mv_pp_op_cpuid_get_supported_list_impl, @function
+mv_pp_op_cpuid_get_supported_list_impl:
 
-#ifdef __cplusplus
-extern "C"
-{
-#endif
+    mov rax, 0x764D000000030005
+    mov r10, rdi
+    vmmcall
 
-    /**
-     * <!-- description -->
-     *   @brief Handles the execution of kvm_get_mp_state.
-     *
-     * <!-- inputs/outputs -->
-     *   @param vcpu to pass the vsid to hypercall
-     *   @param pmut_args the arguments provided by userspace
-     *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
-     */
-    NODISCARD int64_t handle_vcpu_kvm_get_mp_state(
-        struct shim_vcpu_t const *const vcpu, struct kvm_mp_state *const pmut_args) NOEXCEPT;
+    ret
+    int 3
 
-#ifdef __cplusplus
-}
-#endif
-
-#endif
+    .size mv_pp_op_cpuid_get_supported_list_impl, .-mv_pp_op_cpuid_get_supported_list_impl

@@ -22,41 +22,35 @@
 /// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 /// SOFTWARE.
 
-#ifndef MV_CDL_ENTRY_T_HPP
-#define MV_CDL_ENTRY_T_HPP
+#include <integration_utils.hpp>
+#include <ioctl.hpp>
+#include <shim_platform_interface.hpp>
 
-#include "mv_cpuid_flag_t.hpp"    // IWYU pragma: export
+#include <bsl/convert.hpp>
+#include <bsl/enable_color.hpp>
+#include <bsl/exit_code.hpp>
+#include <bsl/safe_integral.hpp>
 
-#include <bsl/cstdint.hpp>
-
-#pragma pack(push, 1)
-
-namespace hypercall
+/// <!-- description -->
+///   @brief Provides the main entry point for this application.
+///
+/// <!-- inputs/outputs -->
+///   @return bsl::exit_success on success, bsl::exit_failure otherwise.
+///
+[[nodiscard]] auto
+main() noexcept -> bsl::exit_code
 {
-    /// <!-- description -->
-    ///   @brief See mv_cdl_t for more details
-    ///
-    struct mv_cdl_entry_t final
+    bsl::enable_color();
+    lib::ioctl mut_system_ctl{shim::DEVICE_NAME};
+    auto const vmfd{mut_system_ctl.send(shim::KVM_CREATE_VM)};
+    lib::ioctl mut_vm{bsl::to_i32(vmfd)};
+    auto const vcpufd{mut_vm.send(shim::KVM_CREATE_VCPU)};
+    lib::ioctl mut_vcpu{bsl::to_i32(vcpufd)};
+    constexpr auto mut_ret{0_i64};
     {
-        /// @brief stores the CPUID function input
-        uint32_t fun;
-        /// @brief stores the CPUID index input
-        uint32_t idx;
-        /// @brief stores an MicroV specific flags
-        mv_cpuid_flag_t flags;
-        /// @brief stores the CPUID eax output
-        uint32_t eax;
-        /// @brief stores the CPUID ebx output
-        uint32_t ebx;
-        /// @brief stores the CPUID ecx output
-        uint32_t ecx;
-        /// @brief stores the CPUID edx output
-        uint32_t edx;
-        /// @brief reserved
-        uint32_t reserved;
-    };
+        auto const tsckhz{mut_vcpu.send(shim::KVM_GET_TSC_KHZ)};
+        integration::verify(tsckhz.is_pos());
+        integration::verify(tsckhz >= mut_ret.get());
+    }
+    return bsl::exit_success;
 }
-
-#pragma pack(pop)
-
-#endif

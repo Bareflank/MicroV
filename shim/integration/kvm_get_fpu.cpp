@@ -24,9 +24,10 @@
 
 #include <integration_utils.hpp>
 #include <ioctl.hpp>
-#include <kvm_regs.hpp>
+#include <kvm_fpu.hpp>
 #include <shim_platform_interface.hpp>
 
+#include <bsl/array.hpp>
 #include <bsl/convert.hpp>
 #include <bsl/enable_color.hpp>
 #include <bsl/exit_code.hpp>
@@ -35,29 +36,16 @@
 
 namespace
 {
-    /// @brief defines the segment base we expect
-    constexpr auto EXPECTED{0x1234567890ABCDEF_u64};
-
-    /// @brief defines the expected regs information
-    constexpr shim::kvm_regs G_REGS{
-        EXPECTED.get(),
-        EXPECTED.get(),
-        EXPECTED.get(),
-        EXPECTED.get(),
-        EXPECTED.get(),
-        EXPECTED.get(),
-        EXPECTED.get(),
-        EXPECTED.get(),
-        EXPECTED.get(),
-        EXPECTED.get(),
-        EXPECTED.get(),
-        EXPECTED.get(),
-        EXPECTED.get(),
-        EXPECTED.get(),
-        EXPECTED.get(),
-        EXPECTED.get(),
-        EXPECTED.get(),
-        EXPECTED.get()};
+    /// @brief defines the Expected for registers
+    constexpr auto EXPECTED{0x12345678_u32};
+    /// @brief defines the size for fr register
+    constexpr auto MYSIZE_FR{128_u64};
+    /// @brief defines the size for registers
+    constexpr auto MYSIZE_REG{32_u64};
+    /// @brief defines the size for xmm registers
+    constexpr auto MYSIZE_XMM{256_u64};
+    /// @brief defines the Expected registers
+    constexpr auto EXPECTED_REG{0x12_u8};
 }
 
 /// <!-- description -->
@@ -66,11 +54,23 @@ namespace
 /// <!-- inputs/outputs -->
 ///   @return bsl::exit_success on success, bsl::exit_failure otherwise.
 ///
+
 [[nodiscard]] auto
 main() noexcept -> bsl::exit_code
 {
-    shim::kvm_regs mut_regs{G_REGS};
 
+    shim::kvm_fpu pmut_fpu{};
+
+    for (bsl::safe_idx mut_i{}; mut_i < MYSIZE_FR.get(); ++mut_i) {
+        *pmut_fpu.fpr.at_if(mut_i) = EXPECTED_REG.get();
+    }
+    pmut_fpu.mxcsr = EXPECTED.get();
+    for (bsl::safe_idx mut_i{}; mut_i < MYSIZE_REG.get(); ++mut_i) {
+        *pmut_fpu.registers.at_if(mut_i) = EXPECTED_REG.get();
+    }
+    for (bsl::safe_idx mut_i{}; mut_i < MYSIZE_XMM.get(); ++mut_i) {
+        *pmut_fpu.xmm.at_if(mut_i) = EXPECTED_REG.get();
+    }
     bsl::enable_color();
     lib::ioctl mut_system_ctl{shim::DEVICE_NAME};
 
@@ -82,28 +82,21 @@ main() noexcept -> bsl::exit_code
         auto const vcpufd{mut_vm.send(shim::KVM_CREATE_VCPU)};
         lib::ioctl mut_vcpu{bsl::to_i32(vcpufd)};
 
-        integration::verify(mut_vcpu.write(shim::KVM_SET_REGS, &mut_regs).is_zero());
-        mut_regs = {};
-        integration::verify(mut_vcpu.read(shim::KVM_GET_REGS, &mut_regs).is_zero());
+        integration::verify(mut_vcpu.write(shim::KVM_SET_FPU, &pmut_fpu).is_zero());
+        pmut_fpu = {};
+        integration::verify(mut_vcpu.read(shim::KVM_GET_FPU, &pmut_fpu).is_zero());
 
-        integration::verify(EXPECTED == mut_regs.rax);
-        integration::verify(EXPECTED == mut_regs.rbx);
-        integration::verify(EXPECTED == mut_regs.rcx);
-        integration::verify(EXPECTED == mut_regs.rdx);
-        integration::verify(EXPECTED == mut_regs.rsi);
-        integration::verify(EXPECTED == mut_regs.rdi);
-        integration::verify(EXPECTED == mut_regs.rsp);
-        integration::verify(EXPECTED == mut_regs.rbp);
-        integration::verify(EXPECTED == mut_regs.r8);
-        integration::verify(EXPECTED == mut_regs.r9);
-        integration::verify(EXPECTED == mut_regs.r10);
-        integration::verify(EXPECTED == mut_regs.r11);
-        integration::verify(EXPECTED == mut_regs.r12);
-        integration::verify(EXPECTED == mut_regs.r13);
-        integration::verify(EXPECTED == mut_regs.r14);
-        integration::verify(EXPECTED == mut_regs.r15);
-        integration::verify(EXPECTED == mut_regs.rip);
-        integration::verify(EXPECTED == mut_regs.rflags);
+        integration::verify(EXPECTED == pmut_fpu.mxcsr);
+
+        for (const auto &reg : pmut_fpu.registers) {
+            integration::verify(EXPECTED_REG == reg);
+        }
+        for (const auto &reg : pmut_fpu.fpr) {
+            integration::verify(EXPECTED_REG == reg);
+        }
+        for (const auto &reg : pmut_fpu.xmm) {
+            integration::verify(EXPECTED_REG == reg);
+        }
     }
 
     // Try a bunch of times
@@ -116,7 +109,7 @@ main() noexcept -> bsl::exit_code
 
         constexpr auto num_loops{0x1000_umx};
         for (bsl::safe_idx mut_i{}; mut_i < num_loops; ++mut_i) {
-            integration::verify(mut_vcpu.write(shim::KVM_SET_REGS, &mut_regs).is_zero());
+            integration::verify(mut_vcpu.read(shim::KVM_GET_FPU, &pmut_fpu).is_zero());
         }
     }
 

@@ -28,6 +28,8 @@
 #define SHIM_PLATFORM_INTERFACE_HPP
 
 #include <asm/ioctl.h>
+#include <kvm_fpu.hpp>
+#include <kvm_mp_state.hpp>
 #include <kvm_regs.hpp>
 #include <kvm_sregs.hpp>
 #include <kvm_userspace_memory_region.hpp>
@@ -134,10 +136,12 @@ namespace shim
     // constexpr bsl::safe_umx KVM_SET_CPUID2{static_cast<bsl::uintmx>(_IOW(SHIMIO.get(), 0x90, struct kvm_cpuid2))};
     // /// @brief defines KVM's KVM_SET_SIGNAL_MASK IOCTL
     // constexpr bsl::safe_umx KVM_SET_SIGNAL_MASK{static_cast<bsl::uintmx>(_IOW(SHIMIO.get(), 0x8b, struct kvm_signal_mask))};
-    // /// @brief defines KVM's KVM_GET_FPU IOCTL
-    // constexpr bsl::safe_umx KVM_GET_FPU{static_cast<bsl::uintmx>(_IOR(SHIMIO.get(), 0x8c, struct kvm_fpu))};
-    // /// @brief defines KVM's KVM_SET_FPU IOCTL
-    // constexpr bsl::safe_umx KVM_SET_FPU{static_cast<bsl::uintmx>(_IOW(SHIMIO.get(), 0x8d, struct kvm_fpu))};
+    /// @brief defines KVM's KVM_GET_FPU IOCTL
+    constexpr bsl::safe_umx KVM_GET_FPU{
+        static_cast<bsl::uintmx>(_IOR(SHIMIO.get(), 0x8c, struct kvm_fpu))};
+    /// @brief defines KVM's KVM_SET_FPU IOCTL
+    constexpr bsl::safe_umx KVM_SET_FPU{
+        static_cast<bsl::uintmx>(_IOW(SHIMIO.get(), 0x8d, struct kvm_fpu))};
     /// @brief defines KVM's KVM_CREATE_IRQCHIP IOCTL
     constexpr bsl::safe_umx KVM_CREATE_IRQCHIP{static_cast<bsl::uintmx>(_IO(SHIMIO.get(), 0x60))};
     // /// @brief defines KVM's KVM_IRQ_LINE IOCTL
@@ -167,10 +171,12 @@ namespace shim
     constexpr bsl::safe_umx KVM_SET_TSS_ADDR{static_cast<bsl::uintmx>(_IO(SHIMIO.get(), 0x47))};
     // /// @brief defines KVM's KVM_ENABLE_CAP IOCTL
     // constexpr bsl::safe_umx KVM_ENABLE_CAP{static_cast<bsl::uintmx>(_IOW(SHIMIO.get(), 0xa3, struct kvm_enable_cap))};
-    // /// @brief defines KVM's KVM_GET_MP_STATE IOCTL
-    // constexpr bsl::safe_umx KVM_GET_MP_STATE{static_cast<bsl::uintmx>(_IOR(SHIMIO.get(), 0x98, struct kvm_mp_state))};
-    // /// @brief defines KVM's KVM_SET_MP_STATE IOCTL
-    // constexpr bsl::safe_umx KVM_SET_MP_STATE{static_cast<bsl::uintmx>(_IOW(SHIMIO.get(), 0x99, struct kvm_mp_state))};
+    /// @brief defines KVM's KVM_GET_MP_STATE IOCTL
+    constexpr bsl::safe_umx KVM_GET_MP_STATE{
+        static_cast<bsl::uintmx>(_IOR(SHIMIO.get(), 0x98, struct kvm_mp_state))};
+    /// @brief defines KVM's KVM_SET_MP_STATE IOCTL
+    constexpr bsl::safe_umx KVM_SET_MP_STATE{
+        static_cast<bsl::uintmx>(_IOW(SHIMIO.get(), 0x99, struct kvm_mp_state))};
     /// @brief defines KVM's KVM_SET_IDENTITY_MAP_ADDR IOCTL
     constexpr bsl::safe_umx KVM_SET_IDENTITY_MAP_ADDR{
         static_cast<bsl::uintmx>(_IOW(SHIMIO.get(), 0x48, bsl::uint64))};
