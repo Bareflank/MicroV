@@ -45,6 +45,31 @@
 namespace microv
 {
     /// <!-- description -->
+    ///   @brief Handle emulation of port IO read/write accesses
+    ///
+    /// <!-- input/outputs -->
+    ///   @param mut_sys the bf_syscall_t to use
+    ///   @param pmut_mut_exit_io mv_exit_io_t pointer to use
+    ///   @param data_mask bitmask to apply to either the read or
+    ///     write
+    ///   @return void
+    ///
+    [[nodiscard]] constexpr auto
+    handle_io(
+        syscall::bf_syscall_t &mut_sys,
+        hypercall::mv_exit_io_t *pmut_mut_exit_io,
+        bsl::safe_u64 const &data_mask) noexcept
+    {
+        auto const rax{mut_sys.bf_tls_rax()};
+        if (hypercall::MV_EXIT_IO_OUT == pmut_mut_exit_io->type) {
+            pmut_mut_exit_io->data = (data_mask & rax).get();
+        }
+        else {
+            mut_sys.bf_tls_set_rax((data_mask & pmut_mut_exit_io->data));
+        }
+    }
+
+    /// <!-- description -->
     ///   @brief Dispatches IO VMExits.
     ///
     /// <!-- inputs/outputs -->
@@ -128,14 +153,13 @@ namespace microv
             mut_exit_io->type = hypercall::MV_EXIT_IO_OUT.get();
         }
         else {
-            bsl::error() << "MV_EXIT_IO_IN not implemented\n" << bsl::here();
-            return bsl::errc_failure;
+            mut_exit_io->type = hypercall::MV_EXIT_IO_IN.get();
         }
 
         if (((exitinfo1 & sz32_mask) >> sz32_shft).is_pos()) {
             constexpr auto data_mask{0x00000000FFFFFFFF_u64};
             mut_exit_io->size = hypercall::mv_bit_size_t::mv_bit_size_t_32;
-            mut_exit_io->data = (data_mask & rax).get();
+            handle_io(mut_sys, mut_exit_io.get(), data_mask);
         }
         else {
             bsl::touch();
@@ -144,7 +168,7 @@ namespace microv
         if (((exitinfo1 & sz16_mask) >> sz16_shft).is_pos()) {
             constexpr auto data_mask{0x000000000000FFFF_u64};
             mut_exit_io->size = hypercall::mv_bit_size_t::mv_bit_size_t_16;
-            mut_exit_io->data = (data_mask & rax).get();
+            handle_io(mut_sys, mut_exit_io.get(), data_mask);
         }
         else {
             bsl::touch();
@@ -153,7 +177,7 @@ namespace microv
         if (((exitinfo1 & sz08_mask) >> sz08_shft).is_pos()) {
             constexpr auto data_mask{0x00000000000000FF_u64};
             mut_exit_io->size = hypercall::mv_bit_size_t::mv_bit_size_t_8;
-            mut_exit_io->data = (data_mask & rax).get();
+            handle_io(mut_sys, mut_exit_io.get(), data_mask);
         }
         else {
             bsl::touch();
