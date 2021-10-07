@@ -131,6 +131,16 @@ extern "C"
 
     /**
      * <!-- description -->
+     *   @brief Implements the ABI for mv_pp_op_cpuid_get_supported_list.
+     *
+     * <!-- inputs/outputs -->
+     *   @param reg0_in n/a
+     *   @return n/a
+     */
+    NODISCARD mv_status_t mv_pp_op_cpuid_get_supported_list_impl(uint64_t const reg0_in) NOEXCEPT;
+
+    /**
+     * <!-- description -->
      *   @brief Implements the ABI for mv_pp_op_msr_get_supported_list.
      *
      * <!-- inputs/outputs -->

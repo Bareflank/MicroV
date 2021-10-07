@@ -46,6 +46,7 @@
 #include <sched.h>       // IWYU pragma: keep
 #include <sys/mman.h>    // IWYU pragma: keep
 #endif
+#include <mv_cpuid_flag_t.hpp>
 #include <basic_page_4k_t.hpp>
 #include <cstdlib>
 #include <ifmap.hpp>

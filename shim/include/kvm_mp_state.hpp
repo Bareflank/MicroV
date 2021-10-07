@@ -22,38 +22,24 @@
 /// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 /// SOFTWARE.
 
-#ifndef MV_CDL_ENTRY_T_HPP
-#define MV_CDL_ENTRY_T_HPP
-
-#include "mv_cpuid_flag_t.hpp"    // IWYU pragma: export
+#ifndef KVM_MP_STATE_HPP
+#define KVM_MP_STATE_HPP
 
 #include <bsl/cstdint.hpp>
 
 #pragma pack(push, 1)
 
-namespace hypercall
+namespace shim
 {
-    /// <!-- description -->
-    ///   @brief See mv_cdl_t for more details
+    /// @struct kvm_mp_state
     ///
-    struct mv_cdl_entry_t final
+    /// <!-- description -->
+    ///   @brief see /include/uapi/linux/kvm.h in Linux for more details.
+    ///
+    struct kvm_mp_state final
     {
-        /// @brief stores the CPUID function input
-        uint32_t fun;
-        /// @brief stores the CPUID index input
-        uint32_t idx;
-        /// @brief stores an MicroV specific flags
-        mv_cpuid_flag_t flags;
-        /// @brief stores the CPUID eax output
-        uint32_t eax;
-        /// @brief stores the CPUID ebx output
-        uint32_t ebx;
-        /// @brief stores the CPUID ecx output
-        uint32_t ecx;
-        /// @brief stores the CPUID edx output
-        uint32_t edx;
-        /// @brief reserved
-        uint32_t reserved;
+        /// @brief stores that value of the mp_state
+        bsl::uint32 mp_state;
     };
 }
 

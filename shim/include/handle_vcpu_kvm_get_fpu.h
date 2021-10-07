@@ -29,6 +29,7 @@
 
 #include <kvm_fpu.h>
 #include <mv_types.h>
+#include <shim_vcpu_t.h>
 
 #ifdef __cplusplus
 extern "C"
@@ -41,9 +42,11 @@ extern "C"
      *
      * <!-- inputs/outputs -->
      *   @param pmut_ioctl_args the arguments provided by userspace
+     *   @param vcpu to get vsid to pass to hypercall
      *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
      */
-    NODISCARD int64_t handle_vcpu_kvm_get_fpu(struct kvm_fpu *const pmut_ioctl_args) NOEXCEPT;
+    NODISCARD int64_t handle_vcpu_kvm_get_fpu(
+        struct shim_vcpu_t const *const vcpu, struct kvm_fpu *const pmut_ioctl_args) NOEXCEPT;
 
 #ifdef __cplusplus
 }

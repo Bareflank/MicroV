@@ -287,6 +287,24 @@ namespace microv
         }
 
         /// <!-- description -->
+        ///   @brief Set the list of supported CPUIDs into the shared page using
+        ///     a CDL.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param mut_sys the bf_syscall_t to use
+        ///   @param mut_cdl the mv_cdl_t in which the supported CPUID are set.
+        ///   @return bsl::exit_success on success, bsl::exit_failure otherwise.
+        ///
+        [[nodiscard]] constexpr auto
+        cpuid_get_supported_list(
+            syscall::bf_syscall_t &mut_sys, hypercall::mv_cdl_t &mut_cdl) noexcept -> bsl::errc_type
+        {
+            bsl::expects(this->id() != syscall::BF_INVALID_ID);
+
+            return m_pp_cpuid.supported_list(mut_sys, mut_cdl);
+        }
+
+        /// <!-- description -->
         ///   @brief Set the list of supported MSRs into the shared page using an RDL.
         ///
         /// <!-- inputs/outputs -->

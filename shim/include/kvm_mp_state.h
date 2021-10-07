@@ -44,8 +44,8 @@ extern "C"
      */
     struct kvm_mp_state
     {
-        /** @brief replace me with contents from KVM API */
-        int32_t dummy;
+        /** @brief the mp state of the VS to set or get */
+        uint32_t mp_state;
     };
 
 #pragma pack(pop)

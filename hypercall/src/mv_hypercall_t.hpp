@@ -232,6 +232,34 @@ namespace hypercall
         }
 
         /// <!-- description -->
+        ///   @brief Given the shared page cast as a mv_cdl_t, with each entry's
+        ///     mv_cdl_entry_t.fun and mv_cdl_entry_t.idx set to the requested
+        ///     CPUID leaf, the same entries are returned in the shared page
+        ///     with each entry's mv_cdl_entry_t.eax, mv_cdl_entry_t.ebx,
+        ///     mv_cdl_entry_t.ecx and mv_cdl_entry_t.edx set with all supported
+        ///     CPU features set to 1. Any non-feature fields returned by CPUID
+        ///     are returned as 0.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @return Returns MV_STATUS_SUCCESS on success,
+        ///    MV_STATUS_FAILURE_UNKNOWN ///     and friends on failure.
+        ///
+        [[nodiscard]] constexpr auto
+        mv_pp_op_cpuid_get_supported_list() noexcept -> bsl::errc_type
+        {
+            mv_status_t const ret{mv_pp_op_cpuid_get_supported_list_impl(m_hndl.get())};
+            if (bsl::unlikely(ret != MV_STATUS_SUCCESS)) {
+                bsl::error() << "mv_pp_op_cpuid_get_supported_list failed with status "    // --
+                             << bsl::hex(ret)                                              // --
+                             << bsl::endl                                                  // --
+                             << bsl::here();                                               // --
+                return bsl::errc_failure;
+            }
+
+            return bsl::errc_success;
+        }
+
+        /// <!-- description -->
         ///   @brief Given the shared page cast as a mv_rdl_t, with each entry's
         ///     mv_rdl_entry_t.reg set to the requested MSR, the same entries
         ///     are returned in the shared page with each entry's
