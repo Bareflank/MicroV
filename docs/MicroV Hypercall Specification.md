@@ -1671,9 +1671,26 @@ This hypercall is slow and may require a Hypercall Continuation. See Hypercall C
 **struct: mv_run_t**
 | Name | Type | Offset | Size | Description |
 | :--- | :--- | :----- | :--- | :---------- |
-| reg | mv_rdl_entry_t | 0x0 | 16 bytes | An RDL entry containing the contents of a register that should be set |
-| msr | mv_rdl_entry_t | 0x0 | 16 bytes | An RDL entry containing the contents of an MSR that should be set |
-| reserved | uint8_t | 0x10 | 4080 bytes | REVI |
+| reg0 | mv_rdl_entry_t | 0x000 | 16 bytes | An RDL entry containing the contents of a register that should be set |
+| reg1 | mv_rdl_entry_t | 0x010 | 16 bytes | An RDL entry containing the contents of a register that should be set |
+| reg2 | mv_rdl_entry_t | 0x020 | 16 bytes | An RDL entry containing the contents of a register that should be set |
+| reg3 | mv_rdl_entry_t | 0x030 | 16 bytes | An RDL entry containing the contents of a register that should be set |
+| reg4 | mv_rdl_entry_t | 0x040 | 16 bytes | An RDL entry containing the contents of a register that should be set |
+| reg5 | mv_rdl_entry_t | 0x050 | 16 bytes | An RDL entry containing the contents of a register that should be set |
+| reg6 | mv_rdl_entry_t | 0x060 | 16 bytes | An RDL entry containing the contents of a register that should be set |
+| reg7 | mv_rdl_entry_t | 0x070 | 16 bytes | An RDL entry containing the contents of a register that should be set |
+| reg8 | mv_rdl_entry_t | 0x080 | 16 bytes | An RDL entry containing the contents of a register that should be set |
+| reg9 | mv_rdl_entry_t | 0x090 | 16 bytes | An RDL entry containing the contents of a register that should be set |
+| msr0 | mv_rdl_entry_t | 0x0A0 | 16 bytes | An RDL entry containing the contents of an MSR that should be set |
+| msr1 | mv_rdl_entry_t | 0x0B0 | 16 bytes | An RDL entry containing the contents of an MSR that should be set |
+| msr2 | mv_rdl_entry_t | 0x0C0 | 16 bytes | An RDL entry containing the contents of an MSR that should be set |
+| msr3 | mv_rdl_entry_t | 0x0D0 | 16 bytes | An RDL entry containing the contents of an MSR that should be set |
+| msr4 | mv_rdl_entry_t | 0x0E0 | 16 bytes | An RDL entry containing the contents of an MSR that should be set |
+| msr5 | mv_rdl_entry_t | 0x0F0 | 16 bytes | An RDL entry containing the contents of an MSR that should be set |
+| msr6 | mv_rdl_entry_t | 0x100 | 16 bytes | An RDL entry containing the contents of an MSR that should be set |
+| msr7 | mv_rdl_entry_t | 0x110 | 16 bytes | An RDL entry containing the contents of an MSR that should be set |
+| msr8 | mv_rdl_entry_t | 0x120 | 16 bytes | An RDL entry containing the contents of an MSR that should be set |
+| msr9 | mv_rdl_entry_t | 0x130 | 16 bytes | An RDL entry containing the contents of an MSR that should be set |
 
 **enum, int32_t: mv_exit_reason_t**
 | Name | Value | Description |
