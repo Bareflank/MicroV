@@ -61,6 +61,34 @@
 
 namespace microv
 {
+    /// @brief defines the PAT MSR
+    constexpr auto MSR_PAT{0x277_u32};
+    /// @brief defines the SYSENTER_CS MSR
+    constexpr auto MSR_SYSENTER_CS{0x174_u32};
+    /// @brief defines the SYSENTER_ESP MSR
+    constexpr auto MSR_SYSENTER_ESP{0x175_u32};
+    /// @brief defines the SYSENTER_EIP MSR
+    constexpr auto MSR_SYSENTER_EIP{0x176_u32};
+    /// @brief defines the EFER MSR
+    constexpr auto MSR_EFER{0xC0000080_u32};
+    /// @brief defines the STAR MSR
+    constexpr auto MSR_STAR{0xC0000081_u32};
+    /// @brief defines the LSTAR MSR
+    constexpr auto MSR_LSTAR{0xC0000082_u32};
+    /// @brief defines the CSTAR MSR
+    constexpr auto MSR_CSTAR{0xC0000083_u32};
+    /// @brief defines the FMASK MSR
+    constexpr auto MSR_FMASK{0xC0000084_u32};
+    /// @brief defines the FS_BASE MSR
+    constexpr auto MSR_FS_BASE{0xC0000100_u32};
+    /// @brief defines the GS_BASE MSR
+    constexpr auto MSR_GS_BASE{0xC0000101_u32};
+    /// @brief defines the KERNEL_GS_BASE MSR
+    constexpr auto MSR_KERNEL_GS_BASE{0xC0000102_u32};
+
+    /// @brief stores the APIC_BASE MSR address
+    constexpr auto MSR_APIC_BASE{0x0000001B_u32};
+
     /// @class microv::vs_t
     ///
     /// <!-- description -->
@@ -1897,6 +1925,259 @@ namespace microv
                          << bsl::here();                   // --
 
             return bsl::errc_failure;
+        }
+
+        /// <!-- description -->
+        ///   @brief Returns the value of the requested MSR
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param sys the bf_syscall_t to use
+        ///   @param msr the MSR to get
+        ///   @return Returns the value of the requested MSR
+        ///
+        [[nodiscard]] constexpr auto
+        msr_get(syscall::bf_syscall_t const &sys, bsl::safe_u64 const &msr) const noexcept
+            -> bsl::safe_u64
+        {
+            bsl::expects(allocated_status_t::allocated == m_allocated);
+            bsl::expects(running_status_t::running != m_status);
+            bsl::expects(sys.bf_tls_ppid() == this->assigned_pp());
+
+            bsl::expects(msr.is_valid_and_checked());
+
+            using mk = syscall::bf_reg_t;
+
+            bsl::safe_u64 mut_ret{};
+
+            switch (bsl::to_u32_unsafe(msr).get()) {
+                case MSR_PAT.get(): {
+                    return sys.bf_vs_op_read(this->id(), mk::bf_reg_t_pat);
+                }
+                case MSR_SYSENTER_CS.get(): {
+                    return sys.bf_vs_op_read(this->id(), mk::bf_reg_t_sysenter_cs);
+                }
+                case MSR_SYSENTER_ESP.get(): {
+                    return sys.bf_vs_op_read(this->id(), mk::bf_reg_t_sysenter_esp);
+                }
+                case MSR_SYSENTER_EIP.get(): {
+                    return sys.bf_vs_op_read(this->id(), mk::bf_reg_t_sysenter_eip);
+                }
+                case MSR_EFER.get(): {
+                    constexpr auto svme_mask{0x1000_u64};
+                    mut_ret = sys.bf_vs_op_read(this->id(), mk::bf_reg_t_efer);
+                    return (mut_ret & ~(svme_mask));
+                }
+                case MSR_STAR.get(): {
+                    return sys.bf_vs_op_read(this->id(), mk::bf_reg_t_star);
+                }
+                case MSR_LSTAR.get(): {
+                    return sys.bf_vs_op_read(this->id(), mk::bf_reg_t_lstar);
+                }
+                case MSR_CSTAR.get(): {
+                    return sys.bf_vs_op_read(this->id(), mk::bf_reg_t_cstar);
+                }
+                case MSR_FMASK.get(): {
+                    return sys.bf_vs_op_read(this->id(), mk::bf_reg_t_fmask);
+                }
+                case MSR_FS_BASE.get(): {
+                    return sys.bf_vs_op_read(this->id(), mk::bf_reg_t_fs_base);
+                }
+                case MSR_GS_BASE.get(): {
+                    return sys.bf_vs_op_read(this->id(), mk::bf_reg_t_gs_base);
+                }
+                case MSR_KERNEL_GS_BASE.get(): {
+                    return sys.bf_vs_op_read(this->id(), mk::bf_reg_t_kernel_gs_base);
+                }
+
+                case MSR_APIC_BASE.get(): {
+                    return m_emulated_lapic.get_apic_base();
+                }
+
+                default: {
+                    break;
+                }
+            }
+
+            mut_ret = m_emulated_msr.get(sys, msr);
+
+            if (bsl::unlikely(!mut_ret.is_valid_and_checked())) {
+                bsl::error() << "MSR "           // --
+                             << bsl::hex(msr)    // --
+                             << " is either unsupported/invalid or not yet implemented"
+                             << bsl::endl       // --
+                             << bsl::here();    // --
+            }
+            else {
+                bsl::touch();
+            }
+
+            return mut_ret;
+        }
+
+        /// <!-- description -->
+        ///   @brief Sets the value of the requested MSR
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param mut_sys the bf_syscall_t to use
+        ///   @param msr the MSR to set
+        ///   @param val the value to set the MSR to
+        ///   @return Returns bsl::errc_success on success, bsl::errc_failure
+        ///     and friends otherwise
+        ///
+        [[nodiscard]] constexpr auto
+        msr_set(
+            syscall::bf_syscall_t &mut_sys,
+            bsl::safe_u64 const &msr,
+            bsl::safe_u64 const &val) noexcept -> bsl::errc_type
+        {
+            bsl::expects(allocated_status_t::allocated == m_allocated);
+            bsl::expects(running_status_t::running != m_status);
+            bsl::expects(mut_sys.bf_tls_ppid() == this->assigned_pp());
+
+            bsl::expects(msr.is_valid_and_checked());
+            bsl::expects(val.is_valid_and_checked());
+
+            using mk = syscall::bf_reg_t;
+
+            bsl::errc_type mut_ret{};
+
+            switch (bsl::to_u32_unsafe(msr).get()) {
+                case MSR_PAT.get(): {
+                    return mut_sys.bf_vs_op_write(this->id(), mk::bf_reg_t_pat, val);
+                }
+                case MSR_SYSENTER_CS.get(): {
+                    return mut_sys.bf_vs_op_write(this->id(), mk::bf_reg_t_sysenter_cs, val);
+                }
+                case MSR_SYSENTER_ESP.get(): {
+                    return mut_sys.bf_vs_op_write(this->id(), mk::bf_reg_t_sysenter_esp, val);
+                }
+                case MSR_SYSENTER_EIP.get(): {
+                    return mut_sys.bf_vs_op_write(this->id(), mk::bf_reg_t_sysenter_eip, val);
+                }
+                case MSR_EFER.get(): {
+                    constexpr auto svme_mask{0x1000_u64};
+                    if (bsl::unlikely((val & svme_mask).is_pos())) {
+                        bsl::error() << "MSR EFER: SVME should not be set"    // --
+                                     << bsl::endl                             // --
+                                     << bsl::here();                          // --
+                        return bsl::errc_failure;
+                    }
+                    return mut_sys.bf_vs_op_write(this->id(), mk::bf_reg_t_efer, val | svme_mask);
+                }
+                case MSR_STAR.get(): {
+                    return mut_sys.bf_vs_op_write(this->id(), mk::bf_reg_t_star, val);
+                }
+                case MSR_LSTAR.get(): {
+                    return mut_sys.bf_vs_op_write(this->id(), mk::bf_reg_t_lstar, val);
+                }
+                case MSR_CSTAR.get(): {
+                    return mut_sys.bf_vs_op_write(this->id(), mk::bf_reg_t_cstar, val);
+                }
+                case MSR_FMASK.get(): {
+                    return mut_sys.bf_vs_op_write(this->id(), mk::bf_reg_t_fmask, val);
+                }
+                case MSR_FS_BASE.get(): {
+                    return mut_sys.bf_vs_op_write(this->id(), mk::bf_reg_t_fs_base, val);
+                }
+                case MSR_GS_BASE.get(): {
+                    return mut_sys.bf_vs_op_write(this->id(), mk::bf_reg_t_gs_base, val);
+                }
+                case MSR_KERNEL_GS_BASE.get(): {
+                    return mut_sys.bf_vs_op_write(this->id(), mk::bf_reg_t_kernel_gs_base, val);
+                }
+
+                case MSR_APIC_BASE.get(): {
+                    m_emulated_lapic.set_apic_base(val);
+                    return bsl::errc_success;
+                }
+
+                default: {
+                    break;
+                }
+            }
+
+            mut_ret = m_emulated_msr.set(mut_sys, msr, val);
+
+            if (bsl::unlikely(!mut_ret)) {
+                bsl::error() << "MSR "           // --
+                             << bsl::hex(msr)    // --
+                             << " is either unsupported/invalid or not yet implemented"
+                             << bsl::endl       // --
+                             << bsl::here();    // --
+            }
+            else {
+                bsl::touch();
+            }
+
+            return mut_ret;
+        }
+
+        /// <!-- description -->
+        ///   @brief Returns the value of the requested MSRs from
+        ///     the provided RDL.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param sys the bf_syscall_t to use
+        ///   @param mut_rdl the RDL to store the requested MSR values
+        ///   @return Returns bsl::errc_success on success, bsl::errc_failure
+        ///     and friends otherwise
+        ///
+        [[nodiscard]] constexpr auto
+        msr_get_list(syscall::bf_syscall_t const &sys, hypercall::mv_rdl_t &mut_rdl) const noexcept
+            -> bsl::errc_type
+        {
+            bsl::expects(allocated_status_t::allocated == m_allocated);
+            bsl::expects(running_status_t::running != m_status);
+            bsl::expects(sys.bf_tls_ppid() == this->assigned_pp());
+            bsl::expects(mut_rdl.num_entries <= mut_rdl.entries.size());
+
+            for (bsl::safe_idx mut_i{}; mut_i < mut_rdl.num_entries; ++mut_i) {
+                auto const msr{bsl::to_u64(mut_rdl.entries.at_if(mut_i)->reg)};
+                auto const val{this->msr_get(sys, msr)};
+                if (bsl::unlikely(val.is_invalid())) {
+                    bsl::print<bsl::V>() << bsl::here();
+                    return bsl::errc_failure;
+                }
+
+                mut_rdl.entries.at_if(mut_i)->val = val.get();
+            }
+
+            return bsl::errc_success;
+        }
+
+        /// <!-- description -->
+        ///   @brief Sets the value of the requested MSRs given
+        ///     the provided RDL.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param mut_sys the bf_syscall_t to use
+        ///   @param rdl the RDL to get the requested MSR values from
+        ///   @return Returns bsl::errc_success on success, bsl::errc_failure
+        ///     and friends otherwise
+        ///
+        [[nodiscard]] constexpr auto
+        msr_set_list(syscall::bf_syscall_t &mut_sys, hypercall::mv_rdl_t const &rdl) noexcept
+            -> bsl::errc_type
+        {
+            bsl::expects(allocated_status_t::allocated == m_allocated);
+            bsl::expects(running_status_t::running != m_status);
+            bsl::expects(mut_sys.bf_tls_ppid() == this->assigned_pp());
+            bsl::expects(rdl.num_entries <= rdl.entries.size());
+
+            for (bsl::safe_idx mut_i{}; mut_i < rdl.num_entries; ++mut_i) {
+                auto const msr{bsl::to_u64(rdl.entries.at_if(mut_i)->reg)};
+                auto const val{bsl::to_u64(rdl.entries.at_if(mut_i)->val)};
+
+                auto const ret{this->msr_set(mut_sys, msr, val)};
+                if (bsl::unlikely(!ret)) {
+                    bsl::print<bsl::V>() << bsl::here();
+                    return ret;
+                }
+
+                bsl::touch();
+            }
+
+            return bsl::errc_success;
         }
 
         /// <!-- description -->
