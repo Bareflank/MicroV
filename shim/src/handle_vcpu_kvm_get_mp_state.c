@@ -67,27 +67,27 @@ handle_vcpu_kvm_get_mp_state(
 
     switch (mv_mp_state_t_to_i32(mut_state)) {
         case mv_mp_state_t_initial: {
-            bferror("mv_mp_state_t_initial\n");
+            bfdebug("mv_mp_state_t_initial\n");
             pmut_args->mp_state = KVM_MP_STATE_UNINITIALIZED;
             break;
         }
         case mv_mp_state_t_running: {
-            bferror("mv_mp_state_t_running\n");
+            bfdebug("mv_mp_state_t_running\n");
             pmut_args->mp_state = KVM_MP_STATE_RUNNABLE;
             break;
         }
         case mv_mp_state_t_wait: {
-            bferror("mv_mp_state_t_wait\n");
+            bfdebug("mv_mp_state_t_wait\n");
             pmut_args->mp_state = KVM_MP_STATE_HALTED;
             break;
         }
         case mv_mp_state_t_init: {
-            bferror("mv_mp_state_t_init\n");
+            bfdebug("mv_mp_state_t_init\n");
             pmut_args->mp_state = KVM_MP_STATE_INIT_RECEIVED;
             break;
         }
         case mv_mp_state_t_sipi: {
-            bferror("mv_mp_state_t_sipi\n");
+            bfdebug("mv_mp_state_t_sipi\n");
             pmut_args->mp_state = KVM_MP_STATE_SIPI_RECEIVED;
             break;
         }
