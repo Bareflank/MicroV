@@ -91,7 +91,7 @@ handle_vcpu_kvm_get_mp_state(
             pmut_args->mp_state = KVM_MP_STATE_SIPI_RECEIVED;
             break;
         }
-        case mv_mp_state_t_invalid: {
+        default: {
             bferror("get mp state in default ..invalid");
             return SHIM_FAILURE;
         }
