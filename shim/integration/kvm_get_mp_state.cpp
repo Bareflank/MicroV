@@ -23,7 +23,7 @@
 /// SOFTWARE.
 
 #include <integration_utils.hpp>
-#include <ioctl.hpp>
+#include <ioctl_t.hpp>
 #include <kvm_constants.hpp>
 #include <kvm_mp_state.hpp>
 #include <shim_platform_interface.hpp>
@@ -49,12 +49,12 @@ main() noexcept -> bsl::exit_code
     constexpr auto mut_sipi_state{4_u32};
 
     bsl::enable_color();
-    lib::ioctl mut_system_ctl{shim::DEVICE_NAME};
+    integration::ioctl_t mut_system_ctl{shim::DEVICE_NAME};
     auto const vmfd{mut_system_ctl.send(shim::KVM_CREATE_VM)};
-    lib::ioctl mut_vm{bsl::to_i32(vmfd)};
+    integration::ioctl_t mut_vm{bsl::to_i32(vmfd)};
 
     auto const vcpufd{mut_vm.send(shim::KVM_CREATE_VCPU)};
-    lib::ioctl mut_vcpu{bsl::to_i32(vcpufd)};
+    integration::ioctl_t mut_vcpu{bsl::to_i32(vcpufd)};
     shim::kvm_mp_state mut_mpstate{};
 
     //Initial
