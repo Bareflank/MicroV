@@ -181,7 +181,8 @@
 /** @brief defines KVM's KVM_SET_XCRS IOCTL */
 #define KVM_SET_XCRS _IOW(SHIMIO, 0xa7, struct kvm_xcrs)
 /** @brief defines KVM's KVM_GET_SUPPORTED_CPUID IOCTL */
-#define KVM_GET_SUPPORTED_CPUID _IOWR(SHIMIO, 0x05, struct kvm_cpuid2)
+#define KVM_GET_SUPPORTED_CPUID                                                                    \
+    _IOWR_LIST(SHIMIO, 0x05, struct kvm_cpuid2, struct kvm_cpuid_entry2[CPUID2_MAX_ENTRIES])
 /** @brief defines KVM's KVM_SET_GSI_ROUTING IOCTL */
 #define KVM_SET_GSI_ROUTING _IOW(SHIMIO, 0x6a, struct kvm_irq_routing)
 /** @brief defines KVM's KVM_GET_TSC_KHZ IOCTL */
