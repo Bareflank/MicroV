@@ -28,6 +28,7 @@
 #define SHIM_PLATFORM_INTERFACE_HPP
 
 #include <asm/ioctl.h>
+#include <kvm_cpuid2.hpp>
 #include <kvm_fpu.hpp>
 #include <kvm_mp_state.hpp>
 #include <kvm_msr_entry.hpp>
@@ -45,7 +46,6 @@
 // #include <kvm_clock_data.hpp>
 // #include <kvm_coalesced_mmio_zone.hpp>
 // #include <kvm_cpuid.hpp>
-// #include <kvm_cpuid2.hpp>
 // #include <kvm_create_device.hpp>
 // #include <kvm_debugregs.hpp>
 // #include <kvm_device_attr.hpp>
@@ -205,8 +205,9 @@ namespace shim
     // constexpr bsl::safe_umx KVM_GET_XCRS{static_cast<bsl::uintmx>(_IOR(SHIMIO.get(), 0xa6, struct kvm_xcrs))};
     // /// @brief defines KVM's KVM_SET_XCRS IOCTL
     // constexpr bsl::safe_umx KVM_SET_XCRS{static_cast<bsl::uintmx>(_IOW(SHIMIO.get(), 0xa7, struct kvm_xcrs))};
-    // /// @brief defines KVM's KVM_GET_SUPPORTED_CPUID IOCTL
-    // constexpr bsl::safe_umx KVM_GET_SUPPORTED_CPUID{static_cast<bsl::uintmx>(_IOWR(SHIMIO.get(), 0x05, struct kvm_cpuid2))};
+    /// @brief defines KVM's KVM_GET_SUPPORTED_CPUID IOCTL
+    constexpr bsl::safe_umx KVM_GET_SUPPORTED_CPUID{
+        static_cast<bsl::uintmx>(_IOWR_LIST(SHIMIO.get(), 0x05, struct kvm_cpuid2, struct kvm_cpuid_entry2[CPUID2_MAX_ENTRIES.get()]))};
     // /// @brief defines KVM's KVM_SET_GSI_ROUTING IOCTL
     // constexpr bsl::safe_umx KVM_SET_GSI_ROUTING{static_cast<bsl::uintmx>(_IOW(SHIMIO.get(), 0x6a, struct kvm_irq_routing))};
     /// @brief defines KVM's KVM_GET_TSC_KHZ IOCTL

@@ -31,6 +31,7 @@
 #include <mv_exit_io_t.h>
 #include <mv_exit_reason_t.h>
 #include <mv_mp_state_t.h>
+#include <mv_cdl_t.h>
 #include <mv_rdl_t.h>
 #include <mv_reg_t.h>
 #include <mv_translation_t.h>
@@ -246,6 +247,8 @@ extern "C"
     NODISCARD static inline mv_status_t
     mv_pp_op_cpuid_get_supported_list(uint64_t const hndl) NOEXCEPT
     {
+        uint64_t mut_i;
+        struct mv_cdl_entry_t mut_cdl_entry;
 #ifdef __cplusplus
         bsl::expects(MV_INVALID_HANDLE != hndl);
         bsl::expects(hndl > ((uint64_t)0));
@@ -253,7 +256,30 @@ extern "C"
     platform_expects(MV_INVALID_HANDLE != hndl);
     platform_expects(hndl > ((uint64_t)0));
 #endif
+        struct mv_cdl_t *const pmut_cdl = (struct mv_cdl_t *)g_mut_shared_pages[0];
 
+#ifdef __cplusplus
+        bsl::expects(nullptr != pmut_cdl);
+        bsl::expects(pmut_cdl->num_entries < MV_CDL_MAX_ENTRIES);
+#else
+    platform_expects(NULL != pmut_cdl);
+    platform_expects(pmut_cdl->num_entries < MV_CDL_MAX_ENTRIES);
+#endif
+        if (MV_STATUS_FAILURE_CORRUPT_NUM_ENTRIES == g_mut_mv_pp_op_msr_get_supported_list) {
+            pmut_cdl->num_entries = GARBAGE;
+            return MV_STATUS_SUCCESS;
+        }
+
+        pmut_cdl->num_entries = g_mut_val;
+        for (mut_i = ((uint64_t)0); mut_i < pmut_cdl->num_entries; ++mut_i) {
+            mut_cdl_entry.fun = ((uint32_t)g_mut_val);
+            mut_cdl_entry.idx = ((uint32_t)g_mut_val);
+            mut_cdl_entry.eax = ((uint32_t)g_mut_val);
+            mut_cdl_entry.ebx = ((uint32_t)g_mut_val);
+            mut_cdl_entry.ecx = ((uint32_t)g_mut_val);
+            mut_cdl_entry.edx = ((uint32_t)g_mut_val);
+            pmut_cdl->entries[mut_i] = mut_cdl_entry;
+        }
         return g_mut_mv_pp_op_cpuid_get_supported_list;
     }
 

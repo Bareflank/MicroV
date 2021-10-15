@@ -24,19 +24,19 @@
  * SOFTWARE.
  */
 
-#ifndef KVM_CPUID2_H
-#define KVM_CPUID2_H
+#ifndef KVM_CPUID2_HPP
+#define KVM_CPUID2_HPP
 
-#include <kvm_cpuid_entry2.h>
-#include <stdint.h>
+#include <kvm_cpuid_entry2.hpp>
 
-#ifdef __cplusplus
-extern "C"
+#include <bsl/array.hpp>
+#include <bsl/convert.hpp>
+#include <bsl/safe_integral.hpp>
+
+constexpr auto CPUID2_MAX_ENTRIES{40_u32};
+
+namespace shim
 {
-#endif
-
-#define CPUID2_MAX_ENTRIES 40
-
 #pragma pack(push, 1)
 
     /**
@@ -48,17 +48,14 @@ extern "C"
     struct kvm_cpuid2
     {
         /** @brief number of entries */
-        uint32_t nent;
+        bsl::uint32 nent;
         /** @brief padding for alignment */
-        uint32_t padding;
+        bsl::uint32 padding;
         /** @brief CPUID entries */
-        struct kvm_cpuid_entry2 entries[CPUID2_MAX_ENTRIES];
+        bsl::array<shim::kvm_cpuid_entry2, CPUID2_MAX_ENTRIES.get()> entries;
     };
+}
 
 #pragma pack(pop)
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
