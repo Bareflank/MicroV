@@ -35,7 +35,6 @@
 #include <platform.h>
 #include <shared_page_for_current_pp.h>
 #include <shim_vm_t.h>
-#include <touch.h>
 
 /**
  * <!-- description -->
@@ -116,7 +115,7 @@ handle_vm_kvm_set_user_memory_region(
         mut_size &= ~(HYPERVISOR_PAGE_SIZE - ((uint64_t)1));
     }
     else {
-        touch();
+        mv_touch();
     }
 
     if (args->memory_size > (uint64_t)INT64_MAX) {
@@ -260,7 +259,7 @@ handle_vm_kvm_set_user_memory_region(
             pmut_mut_mdl->num_entries = ((uint64_t)0);
         }
         else {
-            touch();
+            mv_touch();
         }
     }
 
@@ -270,10 +269,10 @@ handle_vm_kvm_set_user_memory_region(
             goto mv_vm_op_mmio_map_failed;
         }
 
-        touch();
+        mv_touch();
     }
     else {
-        touch();
+        mv_touch();
     }
 
     platform_mutex_unlock(&pmut_vm->mutex);
@@ -318,17 +317,17 @@ mv_vm_op_mmio_map_failed:
             pmut_mut_mdl->num_entries = ((uint64_t)0);
         }
         else {
-            touch();
+            mv_touch();
         }
     }
 
     if (((uint64_t)0) != pmut_mut_mdl->num_entries) {
         (void)mv_vm_op_mmio_unmap(g_mut_hndl, pmut_vm->id);
 
-        touch();
+        mv_touch();
     }
     else {
-        touch();
+        mv_touch();
     }
 
     platform_expects(SHIM_SUCCESS == platform_munlock((void *)mut_src, args->memory_size));

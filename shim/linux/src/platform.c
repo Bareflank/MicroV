@@ -612,3 +612,18 @@ platform_interrupted(void) NOEXCEPT
 
     return SHIM_SUCCESS;
 }
+
+/**
+ * <!-- description -->
+ *   @brief Returns the TSC frequency of the PP this is called on
+ *     in KHz.
+ *
+ * <!-- inputs/outputs -->
+ *   @return Returns the TSC frequency of the PP this is called on
+ *     in KHz.
+ */
+NODISCARD uint64_t
+platform_tsc_khz(void) NOEXCEPT
+{
+    return (uint64_t)tsc_khz;
+}

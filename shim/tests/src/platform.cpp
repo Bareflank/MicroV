@@ -46,11 +46,6 @@ namespace shim
     /// @brief tells platform_interrupted to return interrupted
     extern "C" bool g_mut_platform_interrupted{};    // NOLINT
 
-    /// @brief stores the initial TSC frequency in KHz
-    constexpr auto INITIAL_TSC_FREQUENCY{42_u32};
-    /// @brief stores the TSC frequency in KHz
-    extern "C" uint32_t g_mut_tsc_khz{INITIAL_TSC_FREQUENCY.get()};
-
     /// <!-- description -->
     ///   @brief If test is false, a contract violation has occurred. This
     ///     should be used to assert preconditions that if not meet, would
@@ -383,5 +378,20 @@ namespace shim
         }
 
         return SHIM_SUCCESS;
+    }
+
+    /// <!-- description -->
+    ///   @brief Returns the TSC frequency of the PP this is called on
+    ///     in KHz.
+    ///
+    /// <!-- inputs/outputs -->
+    ///   @return Returns the TSC frequency of the PP this is called on
+    ///     in KHz.
+    ///
+    extern "C" [[nodiscard]] auto
+    platform_tsc_khz() noexcept -> uint64_t
+    {
+        constexpr auto tsc_khz{42_u64};
+        return tsc_khz.get();
     }
 }

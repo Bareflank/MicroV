@@ -23,7 +23,7 @@
 /// SOFTWARE.
 
 #include <integration_utils.hpp>
-#include <ioctl.hpp>
+#include <ioctl_t.hpp>
 #include <kvm_run.hpp>
 #include <shim_platform_interface.hpp>
 
@@ -42,7 +42,7 @@
 main() noexcept -> bsl::exit_code
 {
     bsl::enable_color();
-    lib::ioctl mut_system_ctl{shim::DEVICE_NAME};
+    integration::ioctl_t mut_system_ctl{shim::DEVICE_NAME};
 
     auto const size{mut_system_ctl.send(shim::KVM_GET_VCPU_MMAP_SIZE)};
     integration::verify(size.is_pos());

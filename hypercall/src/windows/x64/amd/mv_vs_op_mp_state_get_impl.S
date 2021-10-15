@@ -34,7 +34,8 @@ mv_vs_op_mp_state_get_impl:
     mov r10, rcx
     mov r11, rdx
     vmmcall
-    mov [r8], r10
+    mov rcx, r10
+    mov [r8], ecx
 
     ret
     int 3

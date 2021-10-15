@@ -29,7 +29,6 @@
 #include <mv_constants.h>
 #include <mv_types.h>
 #include <platform.h>
-#include <touch.h>
 
 /**
  * <!-- description -->
@@ -48,35 +47,27 @@ handle_vm_kvm_check_extension(unsigned long mut_userargs, uint32_t *const pmut_r
 
     switch (mut_userargs) {
         case KVM_CAP_EXT_CPUID: {
-            touch();
             FALLTHROUGH;
         }
         case KVM_CAP_GET_TSC_KHZ: {
-            touch();
             FALLTHROUGH;
         }
         case KVM_CAP_TSC_DEADLINE_TIMER: {
-            touch();
             FALLTHROUGH;
         }
         case KVM_CAP_USER_MEMORY: {
-            touch();
             FALLTHROUGH;
         }
         case KVM_CAP_SET_TSS_ADDR: {
-            touch();
             FALLTHROUGH;
         }
         case KVM_CAP_MP_STATE: {
-            touch();
             FALLTHROUGH;
         }
         case KVM_CAP_DESTROY_MEMORY_REGION_WORKS: {
-            touch();
             FALLTHROUGH;
         }
         case KVM_CAP_JOIN_MEMORY_REGIONS_WORKS: {
-            touch();
             FALLTHROUGH;
         }
         case KVM_CAP_IMMEDIATE_EXIT: {
@@ -109,5 +100,6 @@ handle_vm_kvm_check_extension(unsigned long mut_userargs, uint32_t *const pmut_r
             break;
         }
     }
+
     return SHIM_SUCCESS;
 }

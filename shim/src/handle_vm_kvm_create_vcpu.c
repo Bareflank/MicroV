@@ -33,7 +33,6 @@
 #include <platform.h>
 #include <shim_vcpu_t.h>
 #include <shim_vm_t.h>
-#include <touch.h>
 
 /** just need any value to mark a VCPU as taken. will be overridden */
 #define FD_USED ((uint64_t)1)
@@ -69,7 +68,7 @@ handle_vm_kvm_create_vcpu(
             break;
         }
 
-        touch();
+        mv_touch();
     }
 
     if (mut_i >= MICROV_MAX_VCPUS) {

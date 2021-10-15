@@ -95,7 +95,6 @@ list(APPEND HEADERS
     ${CMAKE_CURRENT_LIST_DIR}/include/mv_rdl_t.hpp
     ${CMAKE_CURRENT_LIST_DIR}/include/mv_run_t.h
     ${CMAKE_CURRENT_LIST_DIR}/include/mv_run_t.hpp
-    ${CMAKE_CURRENT_LIST_DIR}/include/mv_touch.h
     ${CMAKE_CURRENT_LIST_DIR}/include/mv_translation_t.h
     ${CMAKE_CURRENT_LIST_DIR}/include/mv_translation_t.hpp
     ${CMAKE_CURRENT_LIST_DIR}/include/mv_types.h
