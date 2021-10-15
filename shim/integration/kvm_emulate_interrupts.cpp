@@ -23,7 +23,7 @@
 /// SOFTWARE.
 
 #include <integration_utils.hpp>
-#include <ioctl.hpp>
+#include <ioctl_t.hpp>
 #include <kvm_run.hpp>
 #include <shim_platform_interface.hpp>
 #include <signal.h>
@@ -64,9 +64,9 @@ main() noexcept -> bsl::exit_code
     bsl::enable_color();
     signal(SIGINT, &sig_handler);
 
-    lib::ioctl mut_system{shim::DEVICE_NAME};
-    lib::ioctl mut_vm{bsl::to_i32(mut_system.send(shim::KVM_CREATE_VM))};
-    lib::ioctl mut_vcpu{bsl::to_i32(mut_vm.send(shim::KVM_CREATE_VCPU))};
+    integration::ioctl_t mut_system{shim::DEVICE_NAME};
+    integration::ioctl_t mut_vm{bsl::to_i32(mut_system.send(shim::KVM_CREATE_VM))};
+    integration::ioctl_t mut_vcpu{bsl::to_i32(mut_vm.send(shim::KVM_CREATE_VCPU))};
 
     integration::initialize_16bit_vm(mut_vm, "vm_cross_compile/bin/16bit_endless_loop_test");
     g_pmut_mut_run = integration::initialize_16bit_vcpu(mut_vcpu);

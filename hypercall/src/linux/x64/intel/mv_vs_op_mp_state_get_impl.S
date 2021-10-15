@@ -35,7 +35,8 @@ mv_vs_op_mp_state_get_impl:
     mov r10, rdi
     mov r11, rsi
     vmcall
-    mov [rdx], r10
+    mov rdi, r10
+    mov [edx], edi
 
     ret
     int 3

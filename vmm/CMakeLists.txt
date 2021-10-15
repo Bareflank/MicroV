@@ -28,7 +28,7 @@ include(${CMAKE_CURRENT_LIST_DIR}/../cmake/write_constants.cmake)
 # Executable
 # ------------------------------------------------------------------------------
 
-add_executable(microv)
+add_executable(extension_bin)
 
 # ------------------------------------------------------------------------------
 # Includes
@@ -36,7 +36,7 @@ add_executable(microv)
 
 if(HYPERVISOR_TARGET_ARCH STREQUAL "AuthenticAMD" OR HYPERVISOR_TARGET_ARCH STREQUAL "GenuineIntel")
     if(HYPERVISOR_TARGET_ARCH STREQUAL "AuthenticAMD")
-        target_include_directories(microv PRIVATE
+        target_include_directories(extension_bin PRIVATE
             include/x64/amd
             src/x64/amd
             ../hypercall/include/x64/amd
@@ -44,21 +44,21 @@ if(HYPERVISOR_TARGET_ARCH STREQUAL "AuthenticAMD" OR HYPERVISOR_TARGET_ARCH STRE
     endif()
 
     if(HYPERVISOR_TARGET_ARCH STREQUAL "GenuineIntel")
-        target_include_directories(microv PRIVATE
+        target_include_directories(extension_bin PRIVATE
             include/x64/intel
             src/x64/intel
             ../hypercall/include/x64/intel
         )
     endif()
 
-    target_include_directories(microv PRIVATE
+    target_include_directories(extension_bin PRIVATE
         include/x64
         src/x64
         ../hypercall/include/x64
     )
 endif()
 
-target_include_directories(microv PRIVATE
+target_include_directories(extension_bin PRIVATE
     include
     src
     ../hypercall/include
@@ -203,13 +203,13 @@ list(APPEND HEADERS
 # ------------------------------------------------------------------------------
 
 if(HYPERVISOR_TARGET_ARCH STREQUAL "AuthenticAMD" OR HYPERVISOR_TARGET_ARCH STREQUAL "GenuineIntel")
-    microv_target_source(microv src/x64/intrinsic_cpuid_impl.S ${HEADERS})
-    microv_target_source(microv src/x64/intrinsic_xrstr_impl.S ${HEADERS})
-    microv_target_source(microv src/x64/intrinsic_xsave_impl.S ${HEADERS})
-    microv_target_source(microv src/x64/pause.S ${HEADERS})
+    microv_target_source(extension_bin src/x64/intrinsic_cpuid_impl.S ${HEADERS})
+    microv_target_source(extension_bin src/x64/intrinsic_xrstr_impl.S ${HEADERS})
+    microv_target_source(extension_bin src/x64/intrinsic_xsave_impl.S ${HEADERS})
+    microv_target_source(extension_bin src/x64/pause.S ${HEADERS})
 endif()
 
-microv_target_source(microv src/main.cpp ${HEADERS})
+microv_target_source(extension_bin src/main.cpp ${HEADERS})
 
 # ------------------------------------------------------------------------------
 # Definitions
@@ -228,7 +228,7 @@ target_compile_definitions(hypervisor INTERFACE
 # Libraries
 # ------------------------------------------------------------------------------
 
-target_link_libraries(microv PRIVATE
+target_link_libraries(extension_bin PRIVATE
     runtime
     bsl
     loader
@@ -241,7 +241,7 @@ target_link_libraries(microv PRIVATE
 # ------------------------------------------------------------------------------
 
 if(CMAKE_BUILD_TYPE STREQUAL RELEASE OR CMAKE_BUILD_TYPE STREQUAL MINSIZEREL)
-    add_custom_command(TARGET microv POST_BUILD COMMAND ${CMAKE_STRIP} microv)
+    add_custom_command(TARGET extension_bin POST_BUILD COMMAND ${CMAKE_STRIP} extension_bin)
 endif()
 
-install(TARGETS microv DESTINATION bin)
+install(TARGETS extension_bin DESTINATION bin)

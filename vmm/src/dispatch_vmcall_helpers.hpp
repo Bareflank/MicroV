@@ -392,7 +392,7 @@ namespace microv
     [[nodiscard]] constexpr auto
     is_rdl_msr_safe(hypercall::mv_rdl_t const &rdl) noexcept -> bool
     {
-        const auto reg0_allowed_mask = ~(hypercall::MV_RDL_FLAG_ALL);
+        constexpr auto reg0_allowed_mask{~(hypercall::MV_RDL_FLAG_ALL)};
         if (bsl::unlikely((rdl.reg0 & reg0_allowed_mask) != bsl::safe_u64::magic_0())) {
             bsl::error() << "rdl.reg0 "                  // --
                          << bsl::hex(rdl.reg0)           // --
@@ -1844,6 +1844,9 @@ namespace microv
     ///   @param mut_vm_pool the vm_pool_t to use
     ///   @param mut_vp_pool the vp_pool_t to use
     ///   @param mut_vs_pool the vs_pool_t to use
+    ///   @param advance_ip if true, the IP of the guest is advanced before
+    ///     we switch to the root. If false, not IP advancement takes
+    ///     place here.
     ///
     constexpr void
     switch_to_root(
@@ -1852,7 +1855,8 @@ namespace microv
         intrinsic_t const &intrinsic,
         vm_pool_t &mut_vm_pool,
         vp_pool_t &mut_vp_pool,
-        vs_pool_t &mut_vs_pool) noexcept
+        vs_pool_t &mut_vs_pool,
+        bool const advance_ip) noexcept
     {
         bsl::expects(!mut_sys.is_the_active_vm_the_root_vm());
         bsl::expects(mut_tls.parent_vmid != hypercall::MV_INVALID_ID);
@@ -1867,8 +1871,14 @@ namespace microv
         mut_vp_pool.set_inactive(mut_tls, vpid);
         mut_vs_pool.set_inactive(mut_tls, intrinsic, vsid);
 
-        bsl::expects(mut_sys.bf_vs_op_advance_ip_and_set_active(
-            mut_tls.parent_vmid, mut_tls.parent_vpid, mut_tls.parent_vsid));
+        if (advance_ip) {
+            bsl::expects(mut_sys.bf_vs_op_advance_ip_and_set_active(
+                mut_tls.parent_vmid, mut_tls.parent_vpid, mut_tls.parent_vsid));
+        }
+        else {
+            bsl::expects(mut_sys.bf_vs_op_set_active(
+                mut_tls.parent_vmid, mut_tls.parent_vpid, mut_tls.parent_vsid));
+        }
 
         mut_vm_pool.set_active(mut_tls, mut_tls.parent_vmid);
         mut_vp_pool.set_active(mut_tls, mut_tls.parent_vpid);
@@ -1949,7 +1959,7 @@ namespace microv
         // Context: Change To Root VM
         // ---------------------------------------------------------------------
 
-        switch_to_root(mut_tls, mut_sys, intrinsic, mut_vm_pool, mut_vp_pool, mut_vs_pool);
+        switch_to_root(mut_tls, mut_sys, intrinsic, mut_vm_pool, mut_vp_pool, mut_vs_pool, false);
 
         // ---------------------------------------------------------------------
         // Context: Root VM

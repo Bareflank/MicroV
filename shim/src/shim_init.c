@@ -34,9 +34,6 @@
 #include <platform.h>
 #include <shim_fini.h>
 
-/** @brief each platform must define this variable and set it's value */
-extern uint32_t g_mut_tsc_khz;
-
 /**
  * <!-- description -->
  *   @brief Initializes the shim on the requested cpu (i.e. PP). This is
@@ -69,7 +66,7 @@ shim_init_on_cpu(uint32_t const cpu) NOEXCEPT
         return SHIM_FAILURE;
     }
 
-    if (mv_pp_op_tsc_set_khz(g_mut_hndl, (uint64_t)g_mut_tsc_khz)) {
+    if (mv_pp_op_tsc_set_khz(g_mut_hndl, platform_tsc_khz())) {
         bferror("mv_pp_op_tsc_set_khz failed");
         return SHIM_FAILURE;
     }

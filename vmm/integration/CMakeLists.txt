@@ -27,6 +27,7 @@ list(APPEND HEADERS
 
 microv_add_vmm_integration(mv_debug_op_out HEADERS)
 microv_add_vmm_integration(mv_emulate_interrupts HEADERS)
+microv_add_vmm_integration(mv_emulate_io HEADERS)
 #microv_add_vmm_integration(mv_emulate_nmi HEADERS)
 microv_add_vmm_integration(mv_handle_op_close_handle HEADERS)
 microv_add_vmm_integration(mv_handle_op_open_handle HEADERS)
