@@ -200,9 +200,9 @@ namespace microv
             -> hypercall::mv_rdl_entry_t
         {
             bsl::discard(sys);
-            for (const auto &mut_entry : supported_msrs) {
-                if (mut_entry.reg == bsl::to_u64(msr).get()) {
-                    return mut_entry;
+            for (auto const &entry : supported_msrs) {
+                if (entry.reg == bsl::to_u64(msr).get()) {
+                    return entry;
                 }
                 bsl::touch();
             }
@@ -224,7 +224,7 @@ namespace microv
             -> bsl::errc_type
         {
             bsl::expects(mut_sys.bf_tls_ppid() == this->assigned_ppid());
-            const auto reg0_mask = ~(hypercall::MV_RDL_FLAG_ALL);
+            auto const reg0_mask = ~(hypercall::MV_RDL_FLAG_ALL);
             bsl::expects((mut_rdl.reg0 & reg0_mask) == 0_u64);
             if (bsl::unlikely(mut_rdl.reg1 >= supported_msrs.size())) {
                 bsl::error() << "rdl.reg1 "                                   // --
@@ -239,20 +239,20 @@ namespace microv
             }
 
             if ((mut_rdl.reg0 & hypercall::MV_RDL_FLAG_ALL).is_pos()) {
-                auto num_entries{(supported_msrs.size() - mut_rdl.reg1).checked()};
-                if (num_entries >= hypercall::MV_RDL_MAX_ENTRIES) {
-                    num_entries = hypercall::MV_RDL_MAX_ENTRIES;
+                auto mut_num_entries{(supported_msrs.size() - mut_rdl.reg1).checked()};
+                if (mut_num_entries >= hypercall::MV_RDL_MAX_ENTRIES) {
+                    mut_num_entries = hypercall::MV_RDL_MAX_ENTRIES;
                 }
                 else {
-                    num_entries %= hypercall::MV_RDL_MAX_ENTRIES;
-                    num_entries = num_entries.checked();
+                    mut_num_entries %= hypercall::MV_RDL_MAX_ENTRIES;
+                    mut_num_entries = mut_num_entries.checked();
                 }
-                for (bsl::safe_idx mut_i{}; mut_i < num_entries; ++mut_i) {
+                for (bsl::safe_idx mut_i{}; mut_i < mut_num_entries; ++mut_i) {
                     *mut_rdl.entries.at_if(mut_i) = *supported_msrs.at_if(mut_i + mut_rdl.reg1);
                 }
-                mut_rdl.num_entries = num_entries.get();
+                mut_rdl.num_entries = mut_num_entries.get();
                 mut_rdl.reg1 =
-                    (supported_msrs.size() - (mut_rdl.reg1 + num_entries)).checked().get();
+                    (supported_msrs.size() - (mut_rdl.reg1 + mut_num_entries)).checked().get();
             }
             else {
                 for (auto &mut_entry : mut_rdl.entries) {
@@ -263,7 +263,7 @@ namespace microv
                                      << bsl::here();
                         return bsl::errc_failure;
                     }
-                    const auto msr = bsl::to_u32(static_cast<uint32_t>(mut_entry.reg));
+                    auto const msr = bsl::to_u32(static_cast<uint32_t>(mut_entry.reg));
                     mut_entry.val = this->supported(mut_sys, msr).val;
                 }
             }

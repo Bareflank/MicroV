@@ -23,7 +23,7 @@
 /// SOFTWARE.
 
 #include <integration_utils.hpp>
-#include <ioctl.hpp>
+#include <ioctl_t.hpp>
 #include <kvm_constants.hpp>
 #include <shim_platform_interface.hpp>
 
@@ -43,170 +43,137 @@
 main() noexcept -> bsl::exit_code
 {
     bsl::enable_color();
-    lib::ioctl mut_system_ctl{shim::DEVICE_NAME};
+    integration::ioctl_t mut_system_ctl{shim::DEVICE_NAME};
     bsl::safe_i64 mut_ret{};
     auto const vmfd{mut_system_ctl.send(shim::KVM_CREATE_VM)};
-    lib::ioctl mut_vm{bsl::to_i32(vmfd)};
-    bsl::array<lib::ioctl *, 2UL> ioctls{&mut_system_ctl, &mut_vm};
-    for (auto &mut_ctl : ioctls) {
+    integration::ioctl_t mut_vm{bsl::to_i32(vmfd)};
+    bsl::array<integration::ioctl_t *, 2UL> mut_ioctls{&mut_system_ctl, &mut_vm};
+    for (auto *const pmut_ctl : mut_ioctls) {
         {
             constexpr auto capdestroymem_args{21_i64};
-            mut_ret = mut_ctl->write(
-                shim::KVM_CHECK_EXTENSION,
-                reinterpret_cast<void const *>(capdestroymem_args.get()));
+            mut_ret = pmut_ctl->write(shim::KVM_CHECK_EXTENSION, capdestroymem_args);
             integration::verify(mut_ret == shim::KVM_CAP_DESTROY_MEMORY_REGION_WORKS);
 
             constexpr auto capjoinmem_args{30_i64};
-            mut_ret = mut_ctl->write(
-                shim::KVM_CHECK_EXTENSION, reinterpret_cast<void const *>(capjoinmem_args.get()));
+            mut_ret = pmut_ctl->write(shim::KVM_CHECK_EXTENSION, capjoinmem_args);
             integration::verify(mut_ret == shim::KVM_CAP_JOIN_MEMORY_REGIONS_WORKS);
 
             constexpr auto capusermem_args{3_i64};
-            mut_ret = mut_ctl->write(
-                shim::KVM_CHECK_EXTENSION, reinterpret_cast<void const *>(capusermem_args.get()));
+            mut_ret = pmut_ctl->write(shim::KVM_CHECK_EXTENSION, capusermem_args);
             integration::verify(mut_ret == shim::KVM_CAP_USER_MEMORY);
 
             constexpr auto captss_args{4_i64};
-            mut_ret = mut_ctl->write(
-                shim::KVM_CHECK_EXTENSION, reinterpret_cast<void const *>(captss_args.get()));
+            mut_ret = pmut_ctl->write(shim::KVM_CHECK_EXTENSION, captss_args);
             integration::verify(mut_ret == shim::KVM_CAP_SET_TSS_ADDR);
 
             constexpr auto capextcpuid_args{7_i64};
-            mut_ret = mut_ctl->write(
-                shim::KVM_CHECK_EXTENSION, reinterpret_cast<void const *>(capextcpuid_args.get()));
+            mut_ret = pmut_ctl->write(shim::KVM_CHECK_EXTENSION, capextcpuid_args);
             integration::verify(mut_ret == shim::KVM_CAP_EXT_CPUID);
 
             constexpr auto capnrvcpus_args{9_i64};
-            mut_ret = mut_ctl->write(
-                shim::KVM_CHECK_EXTENSION, reinterpret_cast<void const *>(capnrvcpus_args.get()));
+            mut_ret = pmut_ctl->write(shim::KVM_CHECK_EXTENSION, capnrvcpus_args);
             integration::verify(mut_ret == shim::KVM_CAP_NR_VCPUS);
 
             constexpr auto capnrmemslots_args{10_i64};
-            mut_ret = mut_ctl->write(
-                shim::KVM_CHECK_EXTENSION,
-                reinterpret_cast<void const *>(capnrmemslots_args.get()));
+            mut_ret = pmut_ctl->write(shim::KVM_CHECK_EXTENSION, capnrmemslots_args);
             integration::verify(mut_ret == shim::KVM_CAP_NR_MEMSLOTS);
 
             constexpr auto capmpstate_args{14_i64};
-            mut_ret = mut_ctl->write(
-                shim::KVM_CHECK_EXTENSION, reinterpret_cast<void const *>(capmpstate_args.get()));
+            mut_ret = pmut_ctl->write(shim::KVM_CHECK_EXTENSION, capmpstate_args);
             integration::verify(mut_ret == shim::KVM_CAP_MP_STATE);
 
             constexpr auto capmce_args{31_i64};
-            mut_ret = mut_ctl->write(
-                shim::KVM_CHECK_EXTENSION, reinterpret_cast<void const *>(capmce_args.get()));
+            mut_ret = pmut_ctl->write(shim::KVM_CHECK_EXTENSION, capmce_args);
             integration::verify(mut_ret == shim::KVM_CAP_MCE);
 
             constexpr auto captsckhz_args{61_i64};
-            mut_ret = mut_ctl->write(
-                shim::KVM_CHECK_EXTENSION, reinterpret_cast<void const *>(captsckhz_args.get()));
+            mut_ret = pmut_ctl->write(shim::KVM_CHECK_EXTENSION, captsckhz_args);
             integration::verify(mut_ret == shim::KVM_CAP_GET_TSC_KHZ);
 
             constexpr auto capmaxvcpus_args{66_i64};
             bsl::safe_i64 mut_ret1{};
-            mut_ret1 = mut_ctl->write(
-                shim::KVM_CHECK_EXTENSION, reinterpret_cast<void const *>(capmaxvcpus_args.get()));
+            mut_ret1 = pmut_ctl->write(shim::KVM_CHECK_EXTENSION, capmaxvcpus_args);
             integration::verify(mut_ret1 == shim::KVM_CAP_MAX_VCPUS);
 
             constexpr auto capdeadlinetimer_args{72_i64};
-            mut_ret = mut_ctl->write(
-                shim::KVM_CHECK_EXTENSION,
-                reinterpret_cast<void const *>(capdeadlinetimer_args.get()));
+            mut_ret = pmut_ctl->write(shim::KVM_CHECK_EXTENSION, capdeadlinetimer_args);
             integration::verify(mut_ret == shim::KVM_CAP_TSC_DEADLINE_TIMER);
 
             constexpr auto capimmexit_args{136_i64};
-            mut_ret = mut_ctl->write(
-                shim::KVM_CHECK_EXTENSION, reinterpret_cast<void const *>(capimmexit_args.get()));
+            mut_ret = pmut_ctl->write(shim::KVM_CHECK_EXTENSION, capimmexit_args);
             integration::verify(mut_ret == shim::KVM_CAP_IMMEDIATE_EXIT);
 
             constexpr auto capmaxvcpuid_args{128_i64};
-            mut_ret = mut_ctl->write(
-                shim::KVM_CHECK_EXTENSION, reinterpret_cast<void const *>(capmaxvcpuid_args.get()));
+            mut_ret = pmut_ctl->write(shim::KVM_CHECK_EXTENSION, capmaxvcpuid_args);
             integration::verify(mut_ret == shim::KVM_CAP_MAX_VCPU_ID);
         }
         {
             constexpr auto unsupported_args{100_i64};
-            mut_ret = mut_ctl->write(
-                shim::KVM_CHECK_EXTENSION, reinterpret_cast<void const *>(unsupported_args.get()));
+            mut_ret = pmut_ctl->write(shim::KVM_CHECK_EXTENSION, unsupported_args);
             integration::verify(mut_ret == shim::KVM_CAP_UNSUPPORTED);
         }
     }
     {
         constexpr auto capdestroymem_args{21_i64};
-        mut_ret = mut_vm.write(
-            shim::KVM_CHECK_EXTENSION, reinterpret_cast<void const *>(capdestroymem_args.get()));
+        mut_ret = mut_vm.write(shim::KVM_CHECK_EXTENSION, capdestroymem_args);
         integration::verify(mut_ret == shim::KVM_CAP_DESTROY_MEMORY_REGION_WORKS);
 
         constexpr auto capjoinmem_args{30_i64};
-        mut_ret = mut_vm.write(
-            shim::KVM_CHECK_EXTENSION, reinterpret_cast<void const *>(capjoinmem_args.get()));
+        mut_ret = mut_vm.write(shim::KVM_CHECK_EXTENSION, capjoinmem_args);
         integration::verify(mut_ret == shim::KVM_CAP_JOIN_MEMORY_REGIONS_WORKS);
 
         constexpr auto capusermem_args{3_i64};
-        mut_ret = mut_vm.write(
-            shim::KVM_CHECK_EXTENSION, reinterpret_cast<void const *>(capusermem_args.get()));
+        mut_ret = mut_vm.write(shim::KVM_CHECK_EXTENSION, capusermem_args);
         integration::verify(mut_ret == shim::KVM_CAP_USER_MEMORY);
 
         constexpr auto captss_args{4_i64};
-        mut_ret = mut_vm.write(
-            shim::KVM_CHECK_EXTENSION, reinterpret_cast<void const *>(captss_args.get()));
+        mut_ret = mut_vm.write(shim::KVM_CHECK_EXTENSION, captss_args);
         integration::verify(mut_ret == shim::KVM_CAP_SET_TSS_ADDR);
 
         constexpr auto capextcpuid_args{7_i64};
-        mut_ret = mut_vm.write(
-            shim::KVM_CHECK_EXTENSION, reinterpret_cast<void const *>(capextcpuid_args.get()));
+        mut_ret = mut_vm.write(shim::KVM_CHECK_EXTENSION, capextcpuid_args);
         integration::verify(mut_ret == shim::KVM_CAP_EXT_CPUID);
 
         constexpr auto capnrvcpus_args{9_i64};
-        mut_ret = mut_vm.write(
-            shim::KVM_CHECK_EXTENSION, reinterpret_cast<void const *>(capnrvcpus_args.get()));
+        mut_ret = mut_vm.write(shim::KVM_CHECK_EXTENSION, capnrvcpus_args);
         integration::verify(mut_ret == shim::KVM_CAP_NR_VCPUS);
 
         constexpr auto capnrmemslots_args{10_i64};
-        mut_ret = mut_vm.write(
-            shim::KVM_CHECK_EXTENSION, reinterpret_cast<void const *>(capnrmemslots_args.get()));
+        mut_ret = mut_vm.write(shim::KVM_CHECK_EXTENSION, capnrmemslots_args);
         integration::verify(mut_ret == shim::KVM_CAP_NR_MEMSLOTS);
 
         constexpr auto capmpstate_args{14_i64};
-        mut_ret = mut_vm.write(
-            shim::KVM_CHECK_EXTENSION, reinterpret_cast<void const *>(capmpstate_args.get()));
+        mut_ret = mut_vm.write(shim::KVM_CHECK_EXTENSION, capmpstate_args);
         integration::verify(mut_ret == shim::KVM_CAP_MP_STATE);
 
         constexpr auto capmce_args{31_i64};
-        mut_ret = mut_vm.write(
-            shim::KVM_CHECK_EXTENSION, reinterpret_cast<void const *>(capmce_args.get()));
+        mut_ret = mut_vm.write(shim::KVM_CHECK_EXTENSION, capmce_args);
         integration::verify(mut_ret == shim::KVM_CAP_MCE);
 
         constexpr auto captsckhz_args{61_i64};
-        mut_ret = mut_vm.write(
-            shim::KVM_CHECK_EXTENSION, reinterpret_cast<void const *>(captsckhz_args.get()));
+        mut_ret = mut_vm.write(shim::KVM_CHECK_EXTENSION, captsckhz_args);
         integration::verify(mut_ret == shim::KVM_CAP_GET_TSC_KHZ);
 
         constexpr auto capmaxvcpus_args{66_i64};
         bsl::safe_i64 mut_ret1{};
-        mut_ret1 = mut_vm.write(
-            shim::KVM_CHECK_EXTENSION, reinterpret_cast<void const *>(capmaxvcpus_args.get()));
+        mut_ret1 = mut_vm.write(shim::KVM_CHECK_EXTENSION, capmaxvcpus_args);
         integration::verify(mut_ret1 == shim::KVM_CAP_MAX_VCPUS);
 
         constexpr auto capdeadlinetimer_args{72_i64};
-        mut_ret = mut_vm.write(
-            shim::KVM_CHECK_EXTENSION, reinterpret_cast<void const *>(capdeadlinetimer_args.get()));
+        mut_ret = mut_vm.write(shim::KVM_CHECK_EXTENSION, capdeadlinetimer_args);
         integration::verify(mut_ret == shim::KVM_CAP_TSC_DEADLINE_TIMER);
 
         constexpr auto capimmexit_args{136_i64};
-        mut_ret = mut_vm.write(
-            shim::KVM_CHECK_EXTENSION, reinterpret_cast<void const *>(capimmexit_args.get()));
+        mut_ret = mut_vm.write(shim::KVM_CHECK_EXTENSION, capimmexit_args);
         integration::verify(mut_ret == shim::KVM_CAP_IMMEDIATE_EXIT);
 
         constexpr auto capmaxvcpuid_args{128_i64};
-        mut_ret = mut_vm.write(
-            shim::KVM_CHECK_EXTENSION, reinterpret_cast<void const *>(capmaxvcpuid_args.get()));
+        mut_ret = mut_vm.write(shim::KVM_CHECK_EXTENSION, capmaxvcpuid_args);
         integration::verify(mut_ret == shim::KVM_CAP_MAX_VCPU_ID);
     }
     {
         constexpr auto unsupported_args{100_i64};
-        mut_ret = mut_vm.write(
-            shim::KVM_CHECK_EXTENSION, reinterpret_cast<void const *>(unsupported_args.get()));
+        mut_ret = mut_vm.write(shim::KVM_CHECK_EXTENSION, unsupported_args);
         integration::verify(mut_ret == shim::KVM_CAP_UNSUPPORTED);
     }
 

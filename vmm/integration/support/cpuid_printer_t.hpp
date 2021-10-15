@@ -1166,7 +1166,7 @@ namespace integration
                  {0x8000001BU, "Instruction Based Sampling Identifiers"},
                  {0xc0000001U, "Centaur features"}}};
 
-            for (const auto &fname : function_names) {
+            for (auto const &fname : function_names) {
                 if (fname.fun == fun) {
                     return fname.name;
                 }
@@ -1201,9 +1201,9 @@ namespace integration
             bsl::string_view const &name,
             bool const endl) const noexcept -> bsl::out<T>
         {
-            auto const *spacing{""};
+            auto const *mut_spacing{""};
             if (bitnum < 10_idx) {
-                spacing = " ";
+                mut_spacing = " ";
             }
             else {
                 bsl::touch();
@@ -1218,7 +1218,7 @@ namespace integration
                    << reg_name             // --
                    << bsl::rst             // --
                    << "]["                 // --
-                   << spacing              // --
+                   << mut_spacing          // --
                    << bsl::blu             // --
                    << bitnum               // --
                    << bsl::rst             // --
@@ -1248,35 +1248,35 @@ namespace integration
             cpu_register_t const reg,
             bsl::safe_idx const &bitnum) noexcept
         {
-            bsl::uint32 reg_val{};
-            bsl::cstr_type reg_name{};
+            bsl::uint32 mut_reg_val{};
+            bsl::cstr_type mut_reg_name{};
 
             if (REG_EAX == reg) {
-                reg_val = entry.eax;
-                reg_name = "EAX";
+                mut_reg_val = entry.eax;
+                mut_reg_name = "EAX";
             }
             else if (REG_EBX == reg) {
-                reg_val = entry.ebx;
-                reg_name = "EBX";
+                mut_reg_val = entry.ebx;
+                mut_reg_name = "EBX";
             }
             else if (REG_ECX == reg) {
-                reg_val = entry.ecx;
-                reg_name = "ECX";
+                mut_reg_val = entry.ecx;
+                mut_reg_name = "ECX";
             }
             else if (REG_EDX == reg) {
-                reg_val = entry.edx;
-                reg_name = "EDX";
+                mut_reg_val = entry.edx;
+                mut_reg_name = "EDX";
             }
 
-            auto bitmask{1_u32 << bsl::to_u32_unsafe(bitnum.get())};
-            bool is_enabled_feature{(reg_val & bitmask).is_pos()};
+            auto const bitmask{1_u32 << bsl::to_u32_unsafe(bitnum.get())};
+            bool const is_enabled_feature{(mut_reg_val & bitmask).is_pos()};
             if (!is_enabled_feature && !m_print_unsupported) {    // NOLINT
                 return;
             }
             bsl::touch();
 
-            cpu_feature_t const *feature_found{nullptr};
-            for (const auto &feature : features) {
+            cpu_feature_t const *mut_feature_found{nullptr};
+            for (auto const &feature : features) {
                 if (feature.fun != entry.fun) {
                     continue;
                 }
@@ -1292,26 +1292,32 @@ namespace integration
                 if ((feature.vendor & m_vendor).is_zero()) {
                     continue;
                 }
-                feature_found = &feature;
+                mut_feature_found = &feature;
                 break;
             }
 
             if (!is_enabled_feature) {
                 /// The feature is unsupported
 
-                if (nullptr == feature_found) {
+                if (nullptr == mut_feature_found) {
                     return;
                 }
 
                 if (m_print_unsupported) {
                     print_feature_out(
-                        bsl::debug(), entry, reg_name, bitnum, bsl::rst, feature_found->name, true);
+                        bsl::debug(),
+                        entry,
+                        mut_reg_name,
+                        bitnum,
+                        bsl::rst,
+                        mut_feature_found->name,
+                        true);
                 }
                 else {
                     bsl::touch();
                 }
             }
-            else if (nullptr == feature_found) {
+            else if (nullptr == mut_feature_found) {
                 /// The feature doesn't exist or needs to be added to the feature list
 
                 m_has_error = true;
@@ -1320,7 +1326,7 @@ namespace integration
                     print_feature_out(
                         bsl::error(),
                         entry,
-                        reg_name,
+                        mut_reg_name,
                         bitnum,
                         bsl::bold_red,
                         "Not found in feature list",
@@ -1337,10 +1343,10 @@ namespace integration
                     print_feature_out(
                         bsl::debug(),
                         entry,
-                        reg_name,
+                        mut_reg_name,
                         bitnum,
                         bsl::bold_wht,
-                        feature_found->name,
+                        mut_feature_found->name,
                         true);
                 }
                 else {
@@ -1416,10 +1422,10 @@ namespace integration
         constexpr void
         print_all_features(hypercall::mv_cdl_t const *const cdl) noexcept
         {
-            const bool has_error{m_has_error};
+            bool const has_error{m_has_error};
             for (auto mut_i{bsl::safe_idx::magic_0()}; mut_i < bsl::to_idx(cdl->num_entries);
                  ++mut_i) {
-                const auto *const entry{cdl->entries.at_if(mut_i)};
+                auto const *const entry{cdl->entries.at_if(mut_i)};
                 if (bsl::safe_u32::magic_0().get() ==
                         static_cast<uint32_t>(entry->flags) &&         // NOLINT
                     bsl::safe_u32::magic_0().get() == entry->eax &&    // NOLINT
@@ -1459,7 +1465,7 @@ namespace integration
                     REG_EDX,
                 }};
                 constexpr auto bitnum_max{32_idx};
-                for (const auto &reg : regs) {
+                for (auto const &reg : regs) {
                     for (auto mut_bitnum{bsl::safe_idx::magic_0()}; mut_bitnum < bitnum_max;
                          ++mut_bitnum) {
                         print_feature(*entry, reg, mut_bitnum);

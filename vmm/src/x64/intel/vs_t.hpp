@@ -587,7 +587,7 @@ namespace microv
             bsl::expects(mut_sys.bf_vs_op_write(vsid, mut_idx, mut_proc2_ctls));
 
             constexpr auto eptp_fields{0x1E_u64};
-            bsl::safe_umx eptp{slpt_spa | eptp_fields};
+            bsl::safe_umx const eptp{slpt_spa | eptp_fields};
 
             if (mut_sys.is_vs_a_root_vs(vsid)) {
                 constexpr auto iopm_a_idx{syscall::bf_reg_t::bf_reg_t_address_of_io_bitmap_a};

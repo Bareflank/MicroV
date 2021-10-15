@@ -82,9 +82,9 @@ namespace hypercall
 
         // Get the list of all supported CPUIDs
         {
-            const auto fun_max{bsl::to_u32(pmut_rdl0->entries.at_if(0_idx)->eax)};
-            const auto xfun_max{bsl::to_u32(pmut_rdl0->entries.at_if(1_idx)->eax)};
-            const auto num_entries{
+            auto const fun_max{bsl::to_u32(pmut_rdl0->entries.at_if(0_idx)->eax)};
+            auto const xfun_max{bsl::to_u32(pmut_rdl0->entries.at_if(1_idx)->eax)};
+            auto const num_entries{
                 bsl::to_u64(fun_max + (xfun_max - cpuid_fn8000_0000).checked()).checked()};
             integration::verify(num_entries < MV_CDL_MAX_ENTRIES);
             pmut_rdl0->num_entries = num_entries.get();
@@ -104,31 +104,31 @@ namespace hypercall
             integration::verify(mut_ret == MV_STATUS_SUCCESS);
             integration::verify(pmut_rdl0->num_entries == num_entries);
 
-            bsl::safe_u64 flags{};
-            // flags |= integration::CPUID_PRINTER_FLAG_PRINT_SUPPORTED;
-            // flags |= integration::CPUID_PRINTER_FLAG_PRINT_UNSUPPORTED;
-            flags |= integration::CPUID_PRINTER_FLAG_PRINT_ERROR;
-            integration::cpuid_printer_t cpuid_printer{};
-            cpuid_printer.print_features(pmut_rdl0, flags);
-            integration::verify(cpuid_printer.succeeded());
+            bsl::safe_u64 mut_flags{};
+            // mut_flags |= integration::CPUID_PRINTER_FLAG_PRINT_SUPPORTED;
+            // mut_flags |= integration::CPUID_PRINTER_FLAG_PRINT_UNSUPPORTED;
+            mut_flags |= integration::CPUID_PRINTER_FLAG_PRINT_ERROR;
+            integration::cpuid_printer_t mut_cpuid_printer{};
+            mut_cpuid_printer.print_features(pmut_rdl0, mut_flags);
+            integration::verify(mut_cpuid_printer.succeeded());
         }
 
         // Valid registers should be present
         {
             // Fn0000_0001h[0][EDX][ 5]: RDMSR and WRMSR support
-            bool found_rdmsr_support{};
+            bool mut_found_rdmsr_support{};
             constexpr auto rdmsr_bit{0x20_u32};
             constexpr mv_cdl_entry_t rdmsr_support{
                 .fun = cpuid_fn0000_0001.get(), .idx = 0U, .edx = rdmsr_bit.get()};
 
-            for (const auto &entry : pmut_rdl0->entries) {
+            for (auto const &entry : pmut_rdl0->entries) {
                 if ((entry.fun == rdmsr_support.fun) &&                          // NOLINT
                     (entry.idx == rdmsr_support.idx) &&                          // NOLINT
                     ((entry.edx & rdmsr_support.edx) == rdmsr_support.edx)) {    // NOLINT
-                    found_rdmsr_support = true;
+                    mut_found_rdmsr_support = true;
                 }
             }
-            integration::verify(found_rdmsr_support);
+            integration::verify(mut_found_rdmsr_support);
         }
 
         // CPU affinity test (requires more than one core)

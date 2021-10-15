@@ -307,6 +307,17 @@ namespace shim
          */
         NODISCARD int64_t platform_interrupted(void) NOEXCEPT;
 
+        /**
+         * <!-- description -->
+         *   @brief Returns the TSC frequency of the PP this is called on
+         *     in KHz.
+         *
+         * <!-- inputs/outputs -->
+         *   @return Returns the TSC frequency of the PP this is called on
+         *     in KHz.
+         */
+        NODISCARD uint64_t platform_tsc_khz(void) NOEXCEPT;
+
 #ifdef __cplusplus
     }
 }

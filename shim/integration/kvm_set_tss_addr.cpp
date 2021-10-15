@@ -23,7 +23,7 @@
 /// SOFTWARE.
 
 #include <integration_utils.hpp>
-#include <ioctl.hpp>
+#include <ioctl_t.hpp>
 #include <shim_platform_interface.hpp>
 
 #include <bsl/convert.hpp>
@@ -46,18 +46,18 @@ main() noexcept -> bsl::exit_code
     constexpr auto val{42_u64};
     bsl::safe_i64 mut_ret{};
     bsl::enable_color();
-    lib::ioctl mut_system_ctl{shim::DEVICE_NAME};
+    integration::ioctl_t mut_system_ctl{shim::DEVICE_NAME};
     /// Verify that get/set works
     {
         auto const vmfd{mut_system_ctl.send(shim::KVM_CREATE_VM)};
-        lib::ioctl mut_vm{bsl::to_i32(vmfd)};
+        integration::ioctl_t mut_vm{bsl::to_i32(vmfd)};
         mut_ret = mut_vm.write(shim::KVM_SET_TSS_ADDR, &val);
         integration::verify(mut_ret.is_zero());
     }
     // Try a bunch of times
     {
         auto const vmfd{mut_system_ctl.send(shim::KVM_CREATE_VM)};
-        lib::ioctl mut_vm{bsl::to_i32(vmfd)};
+        integration::ioctl_t mut_vm{bsl::to_i32(vmfd)};
 
         constexpr auto num_loops{0x1000_umx};
         for (bsl::safe_idx mut_i{}; mut_i < num_loops; ++mut_i) {

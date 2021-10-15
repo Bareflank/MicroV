@@ -76,7 +76,6 @@ namespace microv
     {
         /// TODO:
         /// - Need to properly handle string instructions (INS/OUTS)
-        /// - Need to properly handle IN instructions
         ///
 
         bsl::expects(!mut_sys.is_the_active_vm_the_root_vm());
@@ -99,7 +98,7 @@ namespace microv
         // Context: Change To Root VM
         // ---------------------------------------------------------------------
 
-        switch_to_root(mut_tls, mut_sys, intrinsic, mut_vm_pool, mut_vp_pool, mut_vs_pool);
+        switch_to_root(mut_tls, mut_sys, intrinsic, mut_vm_pool, mut_vp_pool, mut_vs_pool, true);
 
         // ---------------------------------------------------------------------
         // Context: Root VM
@@ -128,8 +127,7 @@ namespace microv
             mut_exit_io->type = hypercall::MV_EXIT_IO_OUT.get();
         }
         else {
-            bsl::error() << "MV_EXIT_IO_IN not implemented\n" << bsl::here();
-            return bsl::errc_failure;
+            mut_exit_io->type = hypercall::MV_EXIT_IO_IN.get();
         }
 
         if (((exitinfo1 & sz32_mask) >> sz32_shft).is_pos()) {

@@ -23,7 +23,7 @@
 /// SOFTWARE.
 
 #include <integration_utils.hpp>
-#include <ioctl.hpp>
+#include <ioctl_t.hpp>
 #include <kvm_dtable.hpp>
 #include <kvm_segment.hpp>
 #include <kvm_sregs.hpp>
@@ -134,15 +134,15 @@ main() noexcept -> bsl::exit_code
     shim::kvm_sregs mut_sregs{G_SREGS};
 
     bsl::enable_color();
-    lib::ioctl mut_system_ctl{shim::DEVICE_NAME};
+    integration::ioctl_t mut_system_ctl{shim::DEVICE_NAME};
 
     /// Verify that get/set works
     {
         auto const vmfd{mut_system_ctl.send(shim::KVM_CREATE_VM)};
-        lib::ioctl mut_vm{bsl::to_i32(vmfd)};
+        integration::ioctl_t mut_vm{bsl::to_i32(vmfd)};
 
         auto const vcpufd{mut_vm.send(shim::KVM_CREATE_VCPU)};
-        lib::ioctl mut_vcpu{bsl::to_i32(vcpufd)};
+        integration::ioctl_t mut_vcpu{bsl::to_i32(vcpufd)};
 
         integration::verify(mut_vcpu.write(shim::KVM_SET_SREGS, &mut_sregs).is_zero());
         mut_sregs = {};
@@ -188,10 +188,10 @@ main() noexcept -> bsl::exit_code
     // Try a bunch of times
     {
         auto const vmfd{mut_system_ctl.send(shim::KVM_CREATE_VM)};
-        lib::ioctl mut_vm{bsl::to_i32(vmfd)};
+        integration::ioctl_t mut_vm{bsl::to_i32(vmfd)};
 
         auto const vcpufd{mut_vm.send(shim::KVM_CREATE_VCPU)};
-        lib::ioctl mut_vcpu{bsl::to_i32(vcpufd)};
+        integration::ioctl_t mut_vcpu{bsl::to_i32(vcpufd)};
 
         constexpr auto num_loops{0x1000_umx};
         for (bsl::safe_idx mut_i{}; mut_i < num_loops; ++mut_i) {

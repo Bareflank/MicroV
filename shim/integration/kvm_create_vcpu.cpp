@@ -23,7 +23,7 @@
 /// SOFTWARE.
 
 #include <integration_utils.hpp>
-#include <ioctl.hpp>
+#include <ioctl_t.hpp>
 #include <shim_platform_interface.hpp>
 
 #include <bsl/array.hpp>
@@ -43,12 +43,12 @@
 main() noexcept -> bsl::exit_code
 {
     bsl::enable_color();
-    lib::ioctl mut_system_ctl{shim::DEVICE_NAME};
+    integration::ioctl_t mut_system_ctl{shim::DEVICE_NAME};
 
     /// Destroy in order or creation
     {
         auto const vmfd{mut_system_ctl.send(shim::KVM_CREATE_VM)};
-        lib::ioctl mut_vm{bsl::to_i32(vmfd)};
+        integration::ioctl_t mut_vm{bsl::to_i32(vmfd)};
 
         auto const vcpu1fd{mut_vm.send(shim::KVM_CREATE_VCPU)};
         auto const vcpu2fd{mut_vm.send(shim::KVM_CREATE_VCPU)};
@@ -58,9 +58,9 @@ main() noexcept -> bsl::exit_code
         integration::verify(vcpu2fd.is_pos());
         integration::verify(vcpu3fd.is_pos());
 
-        lib::ioctl mut_vcpu1{bsl::to_i32(vcpu1fd)};
-        lib::ioctl mut_vcpu2{bsl::to_i32(vcpu2fd)};
-        lib::ioctl mut_vcpu3{bsl::to_i32(vcpu3fd)};
+        integration::ioctl_t mut_vcpu1{bsl::to_i32(vcpu1fd)};
+        integration::ioctl_t mut_vcpu2{bsl::to_i32(vcpu2fd)};
+        integration::ioctl_t mut_vcpu3{bsl::to_i32(vcpu3fd)};
 
         mut_vcpu1.close();
         mut_vcpu2.close();
@@ -71,7 +71,7 @@ main() noexcept -> bsl::exit_code
     /// Destroy in reverse order
     {
         auto const vmfd{mut_system_ctl.send(shim::KVM_CREATE_VM)};
-        lib::ioctl mut_vm{bsl::to_i32(vmfd)};
+        integration::ioctl_t mut_vm{bsl::to_i32(vmfd)};
 
         auto const vcpu1fd{mut_vm.send(shim::KVM_CREATE_VCPU)};
         auto const vcpu2fd{mut_vm.send(shim::KVM_CREATE_VCPU)};
@@ -81,9 +81,9 @@ main() noexcept -> bsl::exit_code
         integration::verify(vcpu2fd.is_pos());
         integration::verify(vcpu3fd.is_pos());
 
-        lib::ioctl mut_vcpu1{bsl::to_i32(vcpu1fd)};
-        lib::ioctl mut_vcpu2{bsl::to_i32(vcpu2fd)};
-        lib::ioctl mut_vcpu3{bsl::to_i32(vcpu3fd)};
+        integration::ioctl_t mut_vcpu1{bsl::to_i32(vcpu1fd)};
+        integration::ioctl_t mut_vcpu2{bsl::to_i32(vcpu2fd)};
+        integration::ioctl_t mut_vcpu3{bsl::to_i32(vcpu3fd)};
 
         mut_vcpu3.close();
         mut_vcpu2.close();
@@ -94,7 +94,7 @@ main() noexcept -> bsl::exit_code
     // Destroy in a random order
     {
         auto const vmfd{mut_system_ctl.send(shim::KVM_CREATE_VM)};
-        lib::ioctl mut_vm{bsl::to_i32(vmfd)};
+        integration::ioctl_t mut_vm{bsl::to_i32(vmfd)};
 
         auto const vcpu1fd{mut_vm.send(shim::KVM_CREATE_VCPU)};
         auto const vcpu2fd{mut_vm.send(shim::KVM_CREATE_VCPU)};
@@ -104,9 +104,9 @@ main() noexcept -> bsl::exit_code
         integration::verify(vcpu2fd.is_pos());
         integration::verify(vcpu3fd.is_pos());
 
-        lib::ioctl mut_vcpu1{bsl::to_i32(vcpu1fd)};
-        lib::ioctl mut_vcpu2{bsl::to_i32(vcpu2fd)};
-        lib::ioctl mut_vcpu3{bsl::to_i32(vcpu3fd)};
+        integration::ioctl_t mut_vcpu1{bsl::to_i32(vcpu1fd)};
+        integration::ioctl_t mut_vcpu2{bsl::to_i32(vcpu2fd)};
+        integration::ioctl_t mut_vcpu3{bsl::to_i32(vcpu3fd)};
 
         mut_vcpu2.close();
         mut_vcpu3.close();
@@ -117,7 +117,7 @@ main() noexcept -> bsl::exit_code
     // Destroy the VM first
     {
         auto const vmfd{mut_system_ctl.send(shim::KVM_CREATE_VM)};
-        lib::ioctl mut_vm{bsl::to_i32(vmfd)};
+        integration::ioctl_t mut_vm{bsl::to_i32(vmfd)};
 
         auto const vcpu1fd{mut_vm.send(shim::KVM_CREATE_VCPU)};
         auto const vcpu2fd{mut_vm.send(shim::KVM_CREATE_VCPU)};
@@ -127,9 +127,9 @@ main() noexcept -> bsl::exit_code
         integration::verify(vcpu2fd.is_pos());
         integration::verify(vcpu3fd.is_pos());
 
-        lib::ioctl mut_vcpu1{bsl::to_i32(vcpu1fd)};
-        lib::ioctl mut_vcpu2{bsl::to_i32(vcpu2fd)};
-        lib::ioctl mut_vcpu3{bsl::to_i32(vcpu3fd)};
+        integration::ioctl_t mut_vcpu1{bsl::to_i32(vcpu1fd)};
+        integration::ioctl_t mut_vcpu2{bsl::to_i32(vcpu2fd)};
+        integration::ioctl_t mut_vcpu3{bsl::to_i32(vcpu3fd)};
 
         mut_vm.close();
         mut_vcpu3.close();
@@ -139,16 +139,16 @@ main() noexcept -> bsl::exit_code
 
     // Create VCPUs until we run out, remove some, then recreate
     {
-        bsl::array<lib::ioctl, MICROV_MAX_VCPUS.get()> mut_vcpus{};
+        bsl::array<integration::ioctl_t, MICROV_MAX_VCPUS.get()> mut_vcpus{};
 
         auto const vmfd{mut_system_ctl.send(shim::KVM_CREATE_VM)};
-        lib::ioctl mut_vm{bsl::to_i32(vmfd)};
+        integration::ioctl_t mut_vm{bsl::to_i32(vmfd)};
 
         for (auto &mut_vcpu : mut_vcpus) {
             auto const vcpufd{mut_vm.send(shim::KVM_CREATE_VCPU)};
             integration::verify(vcpufd.is_pos());
 
-            mut_vcpu = lib::ioctl{bsl::to_i32(vcpufd)};
+            mut_vcpu = integration::ioctl_t{bsl::to_i32(vcpufd)};
         }
 
         mut_vcpus.front().close();
@@ -156,13 +156,13 @@ main() noexcept -> bsl::exit_code
         auto const vcpufd{mut_vm.send(shim::KVM_CREATE_VCPU)};
         integration::verify(vcpufd.is_pos());
 
-        mut_vcpus.front() = lib::ioctl{bsl::to_i32(vcpufd)};
+        mut_vcpus.front() = integration::ioctl_t{bsl::to_i32(vcpufd)};
     }
 
     // Create VCPUs until we run out and let the kernel clean up the mess
     {
         auto const vmfd{mut_system_ctl.send(shim::KVM_CREATE_VM)};
-        lib::ioctl mut_vm{bsl::to_i32(vmfd)};
+        integration::ioctl_t mut_vm{bsl::to_i32(vmfd)};
 
         for (bsl::safe_idx mut_i{}; mut_i < MICROV_MAX_VCPUS; ++mut_i) {
             auto const vcpufd{mut_vm.send(shim::KVM_CREATE_VCPU)};
@@ -174,7 +174,7 @@ main() noexcept -> bsl::exit_code
     // larger than MICROV_MAX_VCPUS for this to work
     {
         auto const vmfd{mut_system_ctl.send(shim::KVM_CREATE_VM)};
-        lib::ioctl mut_vm{bsl::to_i32(vmfd)};
+        integration::ioctl_t mut_vm{bsl::to_i32(vmfd)};
 
         auto const vcpu1fd{mut_vm.send(shim::KVM_CREATE_VCPU)};
         auto const vcpu2fd{mut_vm.send(shim::KVM_CREATE_VCPU)};
@@ -184,9 +184,9 @@ main() noexcept -> bsl::exit_code
         integration::verify(vcpu2fd.is_pos());
         integration::verify(vcpu3fd.is_pos());
 
-        lib::ioctl mut_vcpu1{bsl::to_i32(vcpu1fd)};
-        lib::ioctl mut_vcpu2{bsl::to_i32(vcpu2fd)};
-        lib::ioctl mut_vcpu3{bsl::to_i32(vcpu3fd)};
+        integration::ioctl_t mut_vcpu1{bsl::to_i32(vcpu1fd)};
+        integration::ioctl_t mut_vcpu2{bsl::to_i32(vcpu2fd)};
+        integration::ioctl_t mut_vcpu3{bsl::to_i32(vcpu3fd)};
 
         mut_vcpu3.close();
         mut_vcpu2.close();

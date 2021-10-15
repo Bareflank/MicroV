@@ -172,45 +172,45 @@ namespace microv
         {
             bsl::expects(sys.bf_tls_ppid() == this->assigned_ppid());
 
-            auto eax{bsl::to_u64(fun)};
-            bsl::safe_u64 ebx{};
-            auto ecx{bsl::to_u64(idx)};
-            bsl::safe_u64 edx{};
+            auto mut_eax{bsl::to_u64(fun)};
+            bsl::safe_u64 mut_ebx{};
+            auto mut_ecx{bsl::to_u64(idx)};
+            bsl::safe_u64 mut_edx{};
 
-            intrinsic_t::cpuid(eax, ebx, ecx, edx);
+            intrinsic_t::cpuid(mut_eax, mut_ebx, mut_ecx, mut_edx);
 
             switch (fun.get()) {
                 case CPUID_FN0000_0000.get():
                     [[fallthrough]];
                 case CPUID_FN8000_0000.get(): {
-                    ebx = bsl::safe_u64::magic_0();
-                    ecx = bsl::safe_u64::magic_0();
-                    edx = bsl::safe_u64::magic_0();
+                    mut_ebx = bsl::safe_u64::magic_0();
+                    mut_ecx = bsl::safe_u64::magic_0();
+                    mut_edx = bsl::safe_u64::magic_0();
                     break;
                 }
 
                 case CPUID_FN0000_0001.get(): {
-                    eax = bsl::safe_u64::magic_0();
-                    ebx = bsl::safe_u64::magic_0();
-                    ecx &= CPUID_FN0000_0001_ECX;
-                    ecx |= CPUID_FN0000_0001_ECX_HYPERVISOR_BIT;
-                    edx &= CPUID_FN0000_0001_EDX;
+                    mut_eax = bsl::safe_u64::magic_0();
+                    mut_ebx = bsl::safe_u64::magic_0();
+                    mut_ecx &= CPUID_FN0000_0001_ECX;
+                    mut_ecx |= CPUID_FN0000_0001_ECX_HYPERVISOR_BIT;
+                    mut_edx &= CPUID_FN0000_0001_EDX;
                     break;
                 }
 
                 case CPUID_FN8000_0001.get(): {
-                    eax = bsl::safe_u64::magic_0();
-                    ebx = bsl::safe_u64::magic_0();
-                    ecx &= CPUID_FN8000_0001_ECX;
-                    edx &= CPUID_FN8000_0001_EDX;
+                    mut_eax = bsl::safe_u64::magic_0();
+                    mut_ebx = bsl::safe_u64::magic_0();
+                    mut_ecx &= CPUID_FN8000_0001_ECX;
+                    mut_edx &= CPUID_FN8000_0001_EDX;
                     break;
                 }
 
                 default: {
-                    eax = {};
-                    ebx = {};
-                    ecx = {};
-                    edx = {};
+                    mut_eax = {};
+                    mut_ebx = {};
+                    mut_ecx = {};
+                    mut_edx = {};
                     break;
                 }
             }
@@ -218,10 +218,10 @@ namespace microv
             return {
                 .fun = fun.get(),
                 .idx = idx.get(),
-                .eax = bsl::to_u32_unsafe(eax).get(),
-                .ebx = bsl::to_u32_unsafe(ebx).get(),
-                .ecx = bsl::to_u32_unsafe(ecx).get(),
-                .edx = bsl::to_u32_unsafe(edx).get(),
+                .eax = bsl::to_u32_unsafe(mut_eax).get(),
+                .ebx = bsl::to_u32_unsafe(mut_ebx).get(),
+                .ecx = bsl::to_u32_unsafe(mut_ecx).get(),
+                .edx = bsl::to_u32_unsafe(mut_edx).get(),
             };
         }
 
@@ -241,11 +241,10 @@ namespace microv
         {
             bsl::expects(sys.bf_tls_ppid() == this->assigned_ppid());
 
-            // for (auto &mut_entry : mut_cdl.entries) {
             for (bsl::safe_idx mut_i{}; mut_i < mut_cdl.num_entries; ++mut_i) {
-                auto *mut_entry{mut_cdl.entries.at_if(mut_i)};
-                *mut_entry =
-                    supported(sys, bsl::to_u32(mut_entry->fun), bsl::to_u32(mut_entry->idx));
+                auto *const pmut_entry{mut_cdl.entries.at_if(mut_i)};
+                *pmut_entry =
+                    supported(sys, bsl::to_u32(pmut_entry->fun), bsl::to_u32(pmut_entry->idx));
             }
 
             return bsl::errc_success;

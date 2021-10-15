@@ -36,27 +36,43 @@ extern "C"
 {
 #endif
 
-#ifdef __cplusplus
-#pragma clang diagnostic ignored "-Wold-style-cast"
-#endif
-
-    /** @brief Defines the type used for returning status from a hypercall */
-    typedef uint64_t mv_status_t;
-
-#ifdef __cplusplus
-#define FALLTHROUGH [[fallthrough]]
-#else
 #ifdef __clang__
-#define FALLTHROUGH __attribute__((fallthrough))
-#else
-#define FALLTHROUGH
-#endif
+#pragma clang diagnostic ignored "-Wold-style-cast"
+#pragma clang diagnostic ignored "-Wcast-align"
+#pragma clang diagnostic ignored "-Wcast-qual"
 #endif
 
 #ifdef __cplusplus
 #define NOEXCEPT noexcept
 #else
 #define NOEXCEPT
+#endif
+
+    /** @brief Defines the type used for returning status from a hypercall */
+    typedef uint64_t mv_status_t;
+
+    /**
+     * <!-- description -->
+     *   @brief See bsl::touch() for more information.
+     */
+    static inline void
+    mv_touch(void) NOEXCEPT
+    {}
+
+#ifdef __cplusplus
+#define FALLTHROUGH [[fallthrough]]
+#else
+#ifdef __clang__
+#define FALLTHROUGH                                                                                \
+    mv_touch();                                                                                    \
+    __attribute__((__fallthrough__))
+#elif defined(__GNUC__)
+#define FALLTHROUGH                                                                                \
+    mv_touch();                                                                                    \
+    __attribute__((__fallthrough__))
+#else
+#define FALLTHROUGH
+#endif
 #endif
 
 #ifdef __cplusplus

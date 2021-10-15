@@ -22,9 +22,9 @@
 /// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 /// SOFTWARE.
 
-#include <ifmap.hpp>
+#include <ifmap_t.hpp>
 #include <integration_utils.hpp>
-#include <ioctl.hpp>
+#include <ioctl_t.hpp>
 #include <kvm_regs.hpp>
 #include <kvm_run.hpp>
 #include <kvm_run_io.hpp>
@@ -50,23 +50,23 @@ main() noexcept -> bsl::exit_code
     bsl::safe_i64 mut_ret{};
 
     bsl::enable_color();
-    lib::ioctl mut_system_ctl{shim::DEVICE_NAME};
+    integration::ioctl_t mut_system_ctl{shim::DEVICE_NAME};
 
     auto const vmfd{mut_system_ctl.send(shim::KVM_CREATE_VM)};
-    lib::ioctl mut_vm{bsl::to_i32(vmfd)};
+    integration::ioctl_t mut_vm{bsl::to_i32(vmfd)};
 
-    lib::ifmap const vm_image{"vm_cross_compile/bin/16bit_io_test"};
+    integration::ifmap_t const vm_image{"vm_cross_compile/bin/16bit_io_test"};
     integration::verify(!vm_image.empty());
 
-    shim::kvm_userspace_memory_region region{};
-    region.memory_size = vm_image.size().get();
-    region.userspace_addr = vm_image.data();
+    shim::kvm_userspace_memory_region mut_region{};
+    mut_region.memory_size = vm_image.size().get();
+    mut_region.userspace_addr = vm_image.data();
 
-    mut_ret = mut_vm.write(shim::KVM_SET_USER_MEMORY_REGION, &region);
+    mut_ret = mut_vm.write(shim::KVM_SET_USER_MEMORY_REGION, &mut_region);
     integration::verify(mut_ret.is_zero());
 
     auto const vcpufd{mut_vm.send(shim::KVM_CREATE_VCPU)};
-    lib::ioctl mut_vcpu{bsl::to_i32(vcpufd)};
+    integration::ioctl_t mut_vcpu{bsl::to_i32(vcpufd)};
 
     auto const kvm_run_size{mut_system_ctl.send(shim::KVM_GET_VCPU_MMAP_SIZE)};
     integration::verify(kvm_run_size.is_pos());

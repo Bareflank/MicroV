@@ -23,7 +23,7 @@
 /// SOFTWARE.
 
 #include <integration_utils.hpp>
-#include <ioctl.hpp>
+#include <ioctl_t.hpp>
 #include <kvm_fpu.hpp>
 #include <shim_platform_interface.hpp>
 
@@ -58,43 +58,43 @@ namespace
 [[nodiscard]] auto
 main() noexcept -> bsl::exit_code
 {
-    shim::kvm_fpu pmut_fpu{};
+    shim::kvm_fpu mut_fpu{};
 
     for (bsl::safe_idx mut_i{}; mut_i < MYSIZE_FR.get(); ++mut_i) {
-        *pmut_fpu.fpr.at_if(mut_i) = EXPECTED_REG.get();
+        *mut_fpu.fpr.at_if(mut_i) = EXPECTED_REG.get();
     }
-    pmut_fpu.mxcsr = EXPECTED.get();
+    mut_fpu.mxcsr = EXPECTED.get();
     for (bsl::safe_idx mut_i{}; mut_i < MYSIZE_REG.get(); ++mut_i) {
-        *pmut_fpu.registers.at_if(mut_i) = EXPECTED_REG.get();
+        *mut_fpu.registers.at_if(mut_i) = EXPECTED_REG.get();
     }
     for (bsl::safe_idx mut_i{}; mut_i < MYSIZE_XMM.get(); ++mut_i) {
-        *pmut_fpu.xmm.at_if(mut_i) = EXPECTED_REG.get();
+        *mut_fpu.xmm.at_if(mut_i) = EXPECTED_REG.get();
     }
 
     bsl::enable_color();
-    lib::ioctl mut_system_ctl{shim::DEVICE_NAME};
+    integration::ioctl_t mut_system_ctl{shim::DEVICE_NAME};
 
     /// Verify that get/set works
     {
         auto const vmfd{mut_system_ctl.send(shim::KVM_CREATE_VM)};
-        lib::ioctl mut_vm{bsl::to_i32(vmfd)};
+        integration::ioctl_t mut_vm{bsl::to_i32(vmfd)};
 
         auto const vcpufd{mut_vm.send(shim::KVM_CREATE_VCPU)};
-        lib::ioctl mut_vcpu{bsl::to_i32(vcpufd)};
+        integration::ioctl_t mut_vcpu{bsl::to_i32(vcpufd)};
 
-        integration::verify(mut_vcpu.write(shim::KVM_SET_FPU, &pmut_fpu).is_zero());
-        pmut_fpu = {};
-        integration::verify(mut_vcpu.read(shim::KVM_GET_FPU, &pmut_fpu).is_zero());
+        integration::verify(mut_vcpu.write(shim::KVM_SET_FPU, &mut_fpu).is_zero());
+        mut_fpu = {};
+        integration::verify(mut_vcpu.read(shim::KVM_GET_FPU, &mut_fpu).is_zero());
 
-        integration::verify(EXPECTED == pmut_fpu.mxcsr);
+        integration::verify(EXPECTED == mut_fpu.mxcsr);
 
-        for (const auto &reg : pmut_fpu.registers) {
+        for (auto const &reg : mut_fpu.registers) {
             integration::verify(EXPECTED_REG == reg);
         }
-        for (const auto &reg : pmut_fpu.fpr) {
+        for (auto const &reg : mut_fpu.fpr) {
             integration::verify(EXPECTED_REG == reg);
         }
-        for (const auto &reg : pmut_fpu.xmm) {
+        for (auto const &reg : mut_fpu.xmm) {
             integration::verify(EXPECTED_REG == reg);
         }
     }
@@ -102,14 +102,14 @@ main() noexcept -> bsl::exit_code
     // Try a bunch of times
     {
         auto const vmfd{mut_system_ctl.send(shim::KVM_CREATE_VM)};
-        lib::ioctl mut_vm{bsl::to_i32(vmfd)};
+        integration::ioctl_t mut_vm{bsl::to_i32(vmfd)};
 
         auto const vcpufd{mut_vm.send(shim::KVM_CREATE_VCPU)};
-        lib::ioctl mut_vcpu{bsl::to_i32(vcpufd)};
+        integration::ioctl_t mut_vcpu{bsl::to_i32(vcpufd)};
 
         constexpr auto num_loops{0x1000_umx};
         for (bsl::safe_idx mut_i{}; mut_i < num_loops; ++mut_i) {
-            integration::verify(mut_vcpu.write(shim::KVM_SET_FPU, &pmut_fpu).is_zero());
+            integration::verify(mut_vcpu.write(shim::KVM_SET_FPU, &mut_fpu).is_zero());
         }
     }
 

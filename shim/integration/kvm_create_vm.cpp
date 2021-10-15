@@ -23,7 +23,7 @@
 /// SOFTWARE.
 
 #include <integration_utils.hpp>
-#include <ioctl.hpp>
+#include <ioctl_t.hpp>
 #include <shim_platform_interface.hpp>
 
 #include <bsl/convert.hpp>
@@ -41,7 +41,7 @@
 main() noexcept -> bsl::exit_code
 {
     bsl::enable_color();
-    lib::ioctl mut_system_ctl{shim::DEVICE_NAME};
+    integration::ioctl_t mut_system_ctl{shim::DEVICE_NAME};
 
     // Destroy in order of creation
     {
@@ -53,9 +53,9 @@ main() noexcept -> bsl::exit_code
         integration::verify(vm2fd.is_pos());
         integration::verify(vm3fd.is_pos());
 
-        lib::ioctl mut_vm1{bsl::to_i32(vm1fd)};
-        lib::ioctl mut_vm2{bsl::to_i32(vm2fd)};
-        lib::ioctl mut_vm3{bsl::to_i32(vm3fd)};
+        integration::ioctl_t mut_vm1{bsl::to_i32(vm1fd)};
+        integration::ioctl_t mut_vm2{bsl::to_i32(vm2fd)};
+        integration::ioctl_t mut_vm3{bsl::to_i32(vm3fd)};
 
         mut_vm1.close();
         mut_vm2.close();
@@ -72,9 +72,9 @@ main() noexcept -> bsl::exit_code
         integration::verify(vm2fd.is_pos());
         integration::verify(vm3fd.is_pos());
 
-        lib::ioctl mut_vm1{bsl::to_i32(vm1fd)};
-        lib::ioctl mut_vm2{bsl::to_i32(vm2fd)};
-        lib::ioctl mut_vm3{bsl::to_i32(vm3fd)};
+        integration::ioctl_t mut_vm1{bsl::to_i32(vm1fd)};
+        integration::ioctl_t mut_vm2{bsl::to_i32(vm2fd)};
+        integration::ioctl_t mut_vm3{bsl::to_i32(vm3fd)};
 
         mut_vm3.close();
         mut_vm2.close();
@@ -91,9 +91,9 @@ main() noexcept -> bsl::exit_code
         integration::verify(vm2fd.is_pos());
         integration::verify(vm3fd.is_pos());
 
-        lib::ioctl mut_vm1{bsl::to_i32(vm1fd)};
-        lib::ioctl mut_vm2{bsl::to_i32(vm2fd)};
-        lib::ioctl mut_vm3{bsl::to_i32(vm3fd)};
+        integration::ioctl_t mut_vm1{bsl::to_i32(vm1fd)};
+        integration::ioctl_t mut_vm2{bsl::to_i32(vm2fd)};
+        integration::ioctl_t mut_vm3{bsl::to_i32(vm3fd)};
 
         mut_vm2.close();
         mut_vm1.close();
