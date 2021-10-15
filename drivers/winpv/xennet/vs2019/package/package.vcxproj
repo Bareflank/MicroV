@@ -37,6 +37,46 @@
   <PropertyGroup Condition="'$(Platform)'=='x64'">
     <ArchiveDir>..\..\$(SolutionName)\x64</ArchiveDir>
   </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Windows 10 Debug|Win32'">
+    <DriverSign>
+      <FileDigestAlgorithm>SHA256</FileDigestAlgorithm>
+    </DriverSign>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Windows 10 Release|Win32'">
+    <DriverSign>
+      <FileDigestAlgorithm>SHA256</FileDigestAlgorithm>
+    </DriverSign>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Windows 8 Debug|Win32'">
+    <DriverSign>
+      <FileDigestAlgorithm>SHA256</FileDigestAlgorithm>
+    </DriverSign>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Windows 8 Release|Win32'">
+    <DriverSign>
+      <FileDigestAlgorithm>SHA256</FileDigestAlgorithm>
+    </DriverSign>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Windows 10 Debug|x64'">
+    <DriverSign>
+      <FileDigestAlgorithm>SHA256</FileDigestAlgorithm>
+    </DriverSign>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Windows 10 Release|x64'">
+    <DriverSign>
+      <FileDigestAlgorithm>SHA256</FileDigestAlgorithm>
+    </DriverSign>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Windows 8 Debug|x64'">
+    <DriverSign>
+      <FileDigestAlgorithm>SHA256</FileDigestAlgorithm>
+    </DriverSign>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Windows 8 Release|x64'">
+    <DriverSign>
+      <FileDigestAlgorithm>SHA256</FileDigestAlgorithm>
+    </DriverSign>
+  </ItemDefinitionGroup>
   <ItemGroup>
     <ProjectReference Include="..\xennet\xennet.vcxproj">
       <Project>{97D9942B-5EA3-488C-B512-C96E5D077F8E}</Project>

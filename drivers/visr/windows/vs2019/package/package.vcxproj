@@ -35,6 +35,16 @@
   <PropertyGroup Condition="'$(Platform)'=='x64'">
     <ArchiveDir>..\..\$(SolutionName)\x64</ArchiveDir>
   </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Windows 10 Debug|x64'">
+    <DriverSign>
+      <FileDigestAlgorithm>SHA256</FileDigestAlgorithm>
+    </DriverSign>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Windows 10 Release|x64'">
+    <DriverSign>
+      <FileDigestAlgorithm>SHA256</FileDigestAlgorithm>
+    </DriverSign>
+  </ItemDefinitionGroup>
   <ItemGroup>
     <ProjectReference Include="..\visr\visr.vcxproj">
       <Project>{9299115C-8A76-408B-B25B-BB3571EA196A}</Project>
@@ -42,14 +52,12 @@
     <FilesToPackage Include="..\visr\visr.inf" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
-  <ImportGroup Label="ExtensionTargets"></ImportGroup>
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
   <ItemGroup>
     <PackageFiles Include="$(OutDir)\$(ProjectName)\*" />
   </ItemGroup>
   <Target Name="Archive" AfterTargets="TestSign">
-    <Copy
-       SourceFiles="@(PackageFiles)"
-       DestinationFiles="@(PackageFiles->'$(ArchiveDir)\%(FileName)%(Extension)')"
-    />
+    <Copy SourceFiles="@(PackageFiles)" DestinationFiles="@(PackageFiles->'$(ArchiveDir)\%(FileName)%(Extension)')" />
   </Target>
 </Project>

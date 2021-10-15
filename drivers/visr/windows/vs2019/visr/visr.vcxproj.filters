@@ -40,6 +40,9 @@
     <ClCompile Include="..\..\driver.c" />
   </ItemGroup>
   <ItemGroup>
-    <Inf Include="visr.inf" />
+    <ResourceCompile Include="..\..\visr.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <MASM Include="..\..\intrinsics.asm" />
   </ItemGroup>
 </Project>

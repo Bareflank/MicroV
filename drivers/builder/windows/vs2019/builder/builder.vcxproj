@@ -1,5 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
-
 <!--
 #
 # Copyright (C) 2019 Assured Information Security, Inc.
@@ -24,7 +23,6 @@
 
 # Visual Studio 15
 -->
-
 <Project DefaultTargets="Build" ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="..\configs.props" />
   <PropertyGroup Label="PropertySheets">
@@ -40,11 +38,11 @@
   <Import Project="..\targets.props" />
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <PropertyGroup>
-      <RunCodeAnalysis>true</RunCodeAnalysis>
-      <EnableInf2cat>false</EnableInf2cat>
-      <IntDir>..\$(ProjectName)\$(ConfigurationName)\$(Platform)\</IntDir>
-      <OutDir>..\$(ConfigurationName)\$(Platform)\</OutDir>
-      <IncludePath>..\..\..\..\..\deps\hypervisor\bfsdk\include;..\..\..\..\..\deps\hypervisor\bfelf_loader\include;..\..\..\..\..\include;..\..\..\..\..\deps\xen\xen\include\public;..\..\..\;..\..\;$(IncludePath)</IncludePath>
+    <RunCodeAnalysis>true</RunCodeAnalysis>
+    <EnableInf2cat>false</EnableInf2cat>
+    <IntDir>..\$(ProjectName)\$(ConfigurationName)\$(Platform)\</IntDir>
+    <OutDir>..\$(ConfigurationName)\$(Platform)\</OutDir>
+    <IncludePath>..\..\..\..\..\deps\hypervisor\bfsdk\include;..\..\..\..\..\deps\hypervisor\bfelf_loader\include;..\..\..\..\..\include;..\..\..\..\..\deps\xen\xen\include\public;..\..\..\;..\..\;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup>
     <SignMode>TestSign</SignMode>
@@ -62,6 +60,12 @@
     <ClCompile>
       <PreprocessorDefinitions>__x86_64__;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
+    <DriverSign>
+      <FileDigestAlgorithm Condition="'$(Configuration)|$(Platform)'=='Windows 10 Debug|x64'">SHA256</FileDigestAlgorithm>
+    </DriverSign>
+    <DriverSign>
+      <FileDigestAlgorithm Condition="'$(Configuration)|$(Platform)'=='Windows 10 Release|x64'">SHA256</FileDigestAlgorithm>
+    </DriverSign>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)'=='Release'">
     <ClCompile>
@@ -94,7 +98,3 @@
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
 </Project>
-
-
-
-

@@ -40,11 +40,29 @@
     <ClCompile>
       <PreprocessorDefinitions>__i386__;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
+    <DriverSign>
+      <FileDigestAlgorithm Condition="'$(Configuration)|$(Platform)'=='Windows 10 Debug|Win32'">SHA256</FileDigestAlgorithm>
+    </DriverSign>
+    <DriverSign>
+      <FileDigestAlgorithm Condition="'$(Configuration)|$(Platform)'=='Windows 10 Release|Win32'">SHA256</FileDigestAlgorithm>
+    </DriverSign>
+    <DriverSign>
+      <FileDigestAlgorithm Condition="'$(Configuration)|$(Platform)'=='Windows 8 Debug|Win32'">SHA256</FileDigestAlgorithm>
+    </DriverSign>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Platform)'=='x64'">
     <ClCompile>
       <PreprocessorDefinitions>__x86_64__;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
+    <DriverSign>
+      <FileDigestAlgorithm Condition="'$(Configuration)|$(Platform)'=='Windows 10 Debug|x64'">SHA256</FileDigestAlgorithm>
+    </DriverSign>
+    <DriverSign>
+      <FileDigestAlgorithm Condition="'$(Configuration)|$(Platform)'=='Windows 10 Release|x64'">SHA256</FileDigestAlgorithm>
+    </DriverSign>
+    <DriverSign>
+      <FileDigestAlgorithm Condition="'$(Configuration)|$(Platform)'=='Windows 8 Debug|x64'">SHA256</FileDigestAlgorithm>
+    </DriverSign>
   </ItemDefinitionGroup>
   <ItemGroup>
     <FilesToPackage Include="$(TargetPath)" />

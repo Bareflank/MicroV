@@ -43,11 +43,29 @@
     <ClCompile>
       <PreprocessorDefinitions>__i386__;%(PreprocessorDefinitions);_X86_</PreprocessorDefinitions>
     </ClCompile>
+    <DriverSign>
+      <FileDigestAlgorithm Condition="'$(Configuration)|$(Platform)'=='Windows 10 Debug|Win32'">SHA256</FileDigestAlgorithm>
+    </DriverSign>
+    <DriverSign>
+      <FileDigestAlgorithm Condition="'$(Configuration)|$(Platform)'=='Windows 10 Release|Win32'">SHA256</FileDigestAlgorithm>
+    </DriverSign>
+    <DriverSign>
+      <FileDigestAlgorithm Condition="'$(Configuration)|$(Platform)'=='Windows 8 Debug|Win32'">SHA256</FileDigestAlgorithm>
+    </DriverSign>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Platform)'=='x64'">
     <ClCompile>
       <PreprocessorDefinitions>__x86_64__;%(PreprocessorDefinitions);_AMD64_</PreprocessorDefinitions>
     </ClCompile>
+    <DriverSign>
+      <FileDigestAlgorithm Condition="'$(Configuration)|$(Platform)'=='Windows 10 Debug|x64'">SHA256</FileDigestAlgorithm>
+    </DriverSign>
+    <DriverSign>
+      <FileDigestAlgorithm Condition="'$(Configuration)|$(Platform)'=='Windows 10 Release|x64'">SHA256</FileDigestAlgorithm>
+    </DriverSign>
+    <DriverSign>
+      <FileDigestAlgorithm Condition="'$(Configuration)|$(Platform)'=='Windows 8 Debug|x64'">SHA256</FileDigestAlgorithm>
+    </DriverSign>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)'=='Windows 8 Release'">
     <ClCompile>
@@ -55,6 +73,12 @@
       <WholeProgramOptimization>true</WholeProgramOptimization>
       <AdditionalOptions>/Qspectre %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
+    <DriverSign>
+      <FileDigestAlgorithm Condition="'$(Configuration)|$(Platform)'=='Windows 8 Release|Win32'">SHA256</FileDigestAlgorithm>
+    </DriverSign>
+    <DriverSign>
+      <FileDigestAlgorithm Condition="'$(Configuration)|$(Platform)'=='Windows 8 Release|x64'">SHA256</FileDigestAlgorithm>
+    </DriverSign>
   </ItemDefinitionGroup>
   <ItemGroup>
     <FilesToPackage Include="$(TargetPath)" />
