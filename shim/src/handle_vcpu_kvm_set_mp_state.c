@@ -49,7 +49,7 @@ NODISCARD int64_t
 handle_vcpu_kvm_set_mp_state(
     struct shim_vcpu_t const *const vcpu, struct kvm_mp_state const *const args) NOEXCEPT
 {
-    int32_t mp_state;
+    int32_t mut_mpstate;
     platform_expects(MV_INVALID_HANDLE != g_mut_hndl);
     platform_expects(NULL != vcpu);
     platform_expects(NULL != args);
@@ -62,27 +62,27 @@ handle_vcpu_kvm_set_mp_state(
     switch (args->mp_state) {
         case KVM_MP_STATE_UNINITIALIZED: {
             bfdebug("KVM_MP_STATE_UNINITIALIZED -> mv_mp_state_t_initial");
-            mp_state = mv_mp_state_t_initial;
+            mut_mpstate = mv_mp_state_t_initial;
             break;
         }
         case KVM_MP_STATE_RUNNABLE: {
             bfdebug("KVM_MP_STATE_RUNNABLE -> mv_mp_state_t_running");
-            mp_state = mv_mp_state_t_running;
+            mut_mpstate = mv_mp_state_t_running;
             break;
         }
         case KVM_MP_STATE_HALTED: {
             bfdebug("KVM_MP_STATE_HALTED -> mv_mp_state_t_wait");
-            mp_state = mv_mp_state_t_wait;
+            mut_mpstate = mv_mp_state_t_wait;
             break;
         }
         case KVM_MP_STATE_INIT_RECEIVED: {
             bfdebug("KVM_MP_STATE_INIT_RECEIVED -> mv_mp_state_t_init");
-            mp_state = mv_mp_state_t_init;
+            mut_mpstate = mv_mp_state_t_init;
             break;
         }
         case KVM_MP_STATE_SIPI_RECEIVED: {
             bfdebug("KVM_MP_STATE_SIPI_RECEIVED -> mv_mp_state_t_sipi");
-            mp_state = mv_mp_state_t_sipi;
+            mut_mpstate = mv_mp_state_t_sipi;
             break;
         }
         default: {
@@ -91,7 +91,7 @@ handle_vcpu_kvm_set_mp_state(
         }
     }
 
-    if (mv_vs_op_mp_state_set(g_mut_hndl, vcpu->vsid, i32_to_mv_mp_state_t(mp_state))) {
+    if (mv_vs_op_mp_state_set(g_mut_hndl, vcpu->vsid, i32_to_mv_mp_state_t(mut_mpstate))) {
         bferror("mv_vs_op_mp_state_set failed");
         return SHIM_FAILURE;
     }
