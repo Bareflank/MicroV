@@ -132,6 +132,8 @@
     - [2.15.31. mv_vs_op_mp_state_set, OP=0x6, IDX=0x24](#21531-mv_vs_op_mp_state_set-op0x6-idx0x24)
     - [2.15.32. mv_vs_op_inject_exception, OP=0x6, IDX=0x25](#21532-mv_vs_op_inject_exception-op0x6-idx0x25)
     - [2.15.33. mv_vs_op_queue_interrupt, OP=0x6, IDX=0x26](#21533-mv_vs_op_queue_interrupt-op0x6-idx0x26)
+    - [2.12.23. mv_vs_op_tsc_get_khz, OP=0x3, IDX=0x27](#21223-mv_vs_op_tsc_get_khz-op0x3-idx0x27)
+    - [2.12.24. mv_vs_op_tsc_set_khz, OP=0x3, IDX=0x28](#21224-mv_vs_op_tsc_set_khz-op0x3-idx0x28)
 
 # 1. Introduction
 
@@ -2226,6 +2228,7 @@ On x86, only vectors 0-31 may be injected.
 | REG1 | 15:0 | The ID of the VS to inject the exception into |
 | REG1 | 63:16 | REVI |
 | REG2 | 63:0 | The vector to inject |
+| REG3 | 63:0 | The error code to inject (if applicable) |
 
 **const, uint64_t: MV_VS_OP_INJECT_EXCEPTION_IDX_VAL**
 | Value | Description |

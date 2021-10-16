@@ -435,9 +435,6 @@ namespace integration
                      << bsl::ylw << bsl::hex(sum) << bsl::rst    // --
                      << bsl::endl;                               // --
 
-        auto const gpa{hypercall::to_gpa(mut_vm_image.data(), core0)};
-        mut_vm_image.set_gpa(gpa);
-
         return mut_vm_image;
     }
 
@@ -460,7 +457,7 @@ namespace integration
         pmut_mdl->num_entries = {};
         for (bsl::safe_idx mut_i{}; mut_i < vm_image.size(); mut_i += inc) {
             auto const dst{(phys + bsl::to_u64(mut_i)).checked()};
-            auto const src{(vm_image.gpa() + bsl::to_u64(mut_i)).checked()};
+            auto const src{hypercall::to_gpa(vm_image.view().at_if(mut_i), core0)};
 
             pmut_mdl->entries.at_if(bsl::to_idx(pmut_mdl->num_entries))->dst = dst.get();
             pmut_mdl->entries.at_if(bsl::to_idx(pmut_mdl->num_entries))->src = src.get();

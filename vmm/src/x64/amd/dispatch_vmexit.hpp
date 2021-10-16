@@ -62,6 +62,8 @@ namespace microv
     constexpr auto EXIT_REASON_INTR{0x60_u64};
     /// @brief defines the NMI exit reason code
     constexpr auto EXIT_REASON_NMI{0x61_u64};
+    /// @brief defines the INTR Window exit reason code
+    constexpr auto EXIT_REASON_INTR_WINDOW{0x64_u64};
     /// @brief defines the NMI exit reason code
     constexpr auto EXIT_REASON_CR0_SPECIAL{0x65_u64};
     /// @brief defines the CPUID exit reason code
@@ -123,6 +125,21 @@ namespace microv
 
             case EXIT_REASON_NMI.get(): {
                 mut_ret = dispatch_vmexit_nmi(
+                    gs,
+                    mut_tls,
+                    mut_sys,
+                    mut_page_pool,
+                    intrinsic,
+                    mut_pp_pool,
+                    mut_vm_pool,
+                    mut_vp_pool,
+                    mut_vs_pool,
+                    vsid);
+                break;
+            }
+
+            case EXIT_REASON_INTR_WINDOW.get(): {
+                mut_ret = dispatch_vmexit_intr_window(
                     gs,
                     mut_tls,
                     mut_sys,

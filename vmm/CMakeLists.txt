@@ -164,7 +164,7 @@ list(APPEND HEADERS
     ${CMAKE_CURRENT_LIST_DIR}/include/page_2m_t.hpp
     ${CMAKE_CURRENT_LIST_DIR}/include/page_4k_t.hpp
     ${CMAKE_CURRENT_LIST_DIR}/include/pause.hpp
-    ${CMAKE_CURRENT_LIST_DIR}/include/queue.hpp
+    ${CMAKE_CURRENT_LIST_DIR}/include/queue_t.hpp
     ${CMAKE_CURRENT_LIST_DIR}/include/running_status_t.hpp
     ${CMAKE_CURRENT_LIST_DIR}/include/tls_t.hpp
     ${CMAKE_CURRENT_LIST_DIR}/src/alloc_bitmap.hpp

@@ -794,6 +794,28 @@ namespace microv
         }
 
         /// <!-- description -->
+        ///   @brief Injects an interrupt into the vs_t. DO NOT USE THIS
+        ///     OUTSIDE OF AN INTERRUPT WINDOW VMEXIT. This functions is
+        ///     only intended to be used by an interrupt window exit. If
+        ///     you want to add an interrupt to a VS, you need to queue
+        ///     it for injection. Otherwise, you could end up overwriting
+        ///     a pending exception, or accidentally attempting to inject
+        ///     an interrupt when the guest has interrupts masked.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param mut_sys the bf_syscall_t to use
+        ///   @param vsid the vsid to use
+        ///   @return Returns bsl::errc_success on success, bsl::errc_failure
+        ///     and friends otherwise.
+        ///
+        [[nodiscard]] constexpr auto
+        inject_next_interrupt(syscall::bf_syscall_t &mut_sys, bsl::safe_u16 const &vsid) noexcept
+            -> bsl::errc_type
+        {
+            return this->get_vs(vsid)->inject_next_interrupt(mut_sys);
+        }
+
+        /// <!-- description -->
         ///   @brief Returns the requested vs_t's TSC frequency in KHz.
         ///
         /// <!-- inputs/outputs -->

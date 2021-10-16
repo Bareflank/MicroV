@@ -22,8 +22,8 @@
 /// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 /// SOFTWARE.
 
-#ifndef DISPATCH_VMEXIT_EXTERNAL_INTERRUPT_WINDOW_HPP
-#define DISPATCH_VMEXIT_EXTERNAL_INTERRUPT_WINDOW_HPP
+#ifndef DISPATCH_VMEXIT_INTR_WINDOW_HPP
+#define DISPATCH_VMEXIT_INTR_WINDOW_HPP
 
 #include <bf_syscall_t.hpp>
 #include <gs_t.hpp>
@@ -54,13 +54,13 @@ namespace microv
     ///   @param pp_pool the pp_pool_t to use
     ///   @param vm_pool the vm_pool_t to use
     ///   @param vp_pool the vp_pool_t to use
-    ///   @param vs_pool the vs_pool_t to use
+    ///   @param mut_vs_pool the vs_pool_t to use
     ///   @param vsid the ID of the VS that generated the VMExit
     ///   @return Returns bsl::errc_success on success, bsl::errc_failure
     ///     and friends otherwise
     ///
     [[nodiscard]] constexpr auto
-    dispatch_vmexit_external_interrupt_window(
+    dispatch_vmexit_intr_window(
         gs_t const &gs,
         tls_t const &tls,
         syscall::bf_syscall_t &mut_sys,
@@ -69,7 +69,7 @@ namespace microv
         pp_pool_t const &pp_pool,
         vm_pool_t const &vm_pool,
         vp_pool_t const &vp_pool,
-        vs_pool_t const &vs_pool,
+        vs_pool_t &mut_vs_pool,
         bsl::safe_u16 const &vsid) noexcept -> bsl::errc_type
     {
         bsl::discard(gs);
@@ -80,12 +80,10 @@ namespace microv
         bsl::discard(pp_pool);
         bsl::discard(vm_pool);
         bsl::discard(vp_pool);
-        bsl::discard(vs_pool);
         bsl::discard(vsid);
 
-        bsl::error() << "dispatch_vmexit_external_interrupt_window not implemented\n"
-                     << bsl::here();
-        return bsl::errc_failure;
+        bsl::expects(mut_vs_pool.inject_next_interrupt(mut_sys, vsid));
+        return vmexit_success_run;
     }
 }
 

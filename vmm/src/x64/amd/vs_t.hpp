@@ -46,7 +46,7 @@
 #include <page_4k_t.hpp>
 #include <page_pool_t.hpp>
 #include <pp_pool_t.hpp>
-#include <queue.hpp>
+#include <queue_t.hpp>
 #include <running_status_t.hpp>
 #include <tls_t.hpp>
 
@@ -137,7 +137,7 @@ namespace microv
         bsl::safe_u64 m_clock{};
 
         /// @brief stores a queue of interrupts that need to be injected
-        queue<bsl::safe_u64, MICROV_INTERRUPT_QUEUE_SIZE.get()> m_interrupt_queue{};
+        queue_t<bsl::safe_u64, MICROV_INTERRUPT_QUEUE_SIZE.get()> m_interrupt_queue{};
 
         /// <!-- description -->
         ///   @brief Initializes the VS to start as a 16bit guest.
@@ -2477,6 +2477,43 @@ namespace microv
             bsl::expects(mut_sys.bf_vs_op_write(this->id(), vint_a_idx, vint_a_val));
 
             return m_interrupt_queue.push(vector);
+        }
+
+        /// <!-- description -->
+        ///   @brief Injects an interrupt into the vs_t. DO NOT USE THIS
+        ///     OUTSIDE OF AN INTERRUPT WINDOW VMEXIT. This functions is
+        ///     only intended to be used by an interrupt window exit. If
+        ///     you want to add an interrupt to a VS, you need to queue
+        ///     it for injection. Otherwise, you could end up overwriting
+        ///     a pending exception, or accidentally attempting to inject
+        ///     an interrupt when the guest has interrupts masked.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param mut_sys the bf_syscall_t to use
+        ///   @return Returns bsl::errc_success on success, bsl::errc_failure
+        ///     and friends otherwise.
+        ///
+        [[nodiscard]] constexpr auto
+        inject_next_interrupt(syscall::bf_syscall_t &mut_sys) noexcept -> bsl::errc_type
+        {
+            bsl::safe_u64 mut_vector{};
+            constexpr auto idx{syscall::bf_reg_t::bf_reg_t_eventinj};
+
+            bsl::expects(allocated_status_t::allocated == m_allocated);
+            bsl::expects(running_status_t::running != m_status);
+            bsl::expects(mut_sys.bf_tls_ppid() == this->assigned_pp());
+            bsl::expects(!m_interrupt_queue.empty());
+
+            bsl::expects(m_interrupt_queue.pop(mut_vector));
+            bsl::expects(mut_vector.is_valid_and_checked());
+
+            if (m_interrupt_queue.empty()) {
+                constexpr auto vint_a_idx{syscall::bf_reg_t::bf_reg_t_virtual_interrupt_a};
+                bsl::expects(mut_sys.bf_vs_op_write(this->id(), vint_a_idx, {}));
+            }
+
+            constexpr auto valid{0x80000000_u64};
+            return mut_sys.bf_vs_op_write(this->id(), idx, mut_vector | valid);
         }
 
         /// <!-- description -->

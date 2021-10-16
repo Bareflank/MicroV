@@ -1492,6 +1492,79 @@ namespace hypercall
         }
 
         /// <!-- description -->
+        ///   @brief Injects an exception into the VS immediately. On x86, only
+        ///     vectors 0-31 may be injected.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param vsid The ID of the VS to inject the exception into
+        ///   @param vector The vector to inject
+        ///   @param ec The error code to inject (if applicable)
+        ///   @return Returns MV_STATUS_SUCCESS on success, MV_STATUS_FAILURE_UNKNOWN
+        ///     and friends on failure.
+        ///
+        [[nodiscard]] constexpr auto
+        mv_vs_op_inject_exception(
+            bsl::safe_u16 const vsid, bsl::safe_u64 const &vector, bsl::safe_u64 const &ec) noexcept
+            -> bsl::errc_type
+        {
+            bsl::expects(vsid.is_valid_and_checked());
+            bsl::expects(vsid != MV_INVALID_ID);
+
+            mv_status_t const ret{
+                mv_vs_op_inject_exception_impl(m_hndl.get(), vsid.get(), vector.get(), ec.get())};
+            if (bsl::unlikely(ret != MV_STATUS_SUCCESS)) {
+                bsl::error() << "mv_vs_op_inject_exception failed with status "    // --
+                             << bsl::hex(ret)                                      // --
+                             << bsl::endl                                          // --
+                             << bsl::here();                                       // --
+
+                return bsl::errc_failure;
+            }
+
+            return bsl::errc_success;
+        }
+
+        /// <!-- description -->
+        ///   @brief Queues an interrupt in the VS for injection. The interrupt will
+        ///     only be injected into the VS once the VS is capable of processing
+        ///     the interrupt.
+        ///
+        ///     On x86, only vectors 31-255 may be injected. Interrupts injected
+        ///     using mv_vs_op_queue_interrupt bypass the emulated LAPIC, IOAPIC
+        ///     and PIC. If these emulated devices are in use, interrupts should be
+        ///     injected using these devices instead of the
+        ///     mv_vs_op_queue_interrupt, otherwise the guest's view of these
+        ///     emulated devices will not match the interrupt currently being
+        ///     processed.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param vsid The ID of the VS to queue the interrupt into
+        ///   @param vector The vector to queue
+        ///   @return Returns MV_STATUS_SUCCESS on success, MV_STATUS_FAILURE_UNKNOWN
+        ///     and friends on failure.
+        ///
+        [[nodiscard]] constexpr auto
+        mv_vs_op_queue_interrupt(bsl::safe_u16 const vsid, bsl::safe_u64 const &vector) noexcept
+            -> bsl::errc_type
+        {
+            bsl::expects(vsid.is_valid_and_checked());
+            bsl::expects(vsid != MV_INVALID_ID);
+
+            mv_status_t const ret{
+                mv_vs_op_queue_interrupt_impl(m_hndl.get(), vsid.get(), vector.get())};
+            if (bsl::unlikely(ret != MV_STATUS_SUCCESS)) {
+                bsl::error() << "mv_vs_op_queue_interrupt failed with status "    // --
+                             << bsl::hex(ret)                                     // --
+                             << bsl::endl                                         // --
+                             << bsl::here();                                      // --
+
+                return bsl::errc_failure;
+            }
+
+            return bsl::errc_success;
+        }
+
+        /// <!-- description -->
         ///   @brief Returns the frequency of the VS.
         ///
         /// <!-- inputs/outputs -->

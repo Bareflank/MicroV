@@ -41,6 +41,7 @@ _start:
      * - Load the GDT.
      */
     lgdt [gdtr]
+    lidt [idtr]
 
     /**
      * NOTE:
@@ -111,8 +112,57 @@ gdt_start:
     .quad 0x0000000000000000
     .quad 0x00CF9A000000FFFF    /* CS */
     .quad 0x00CF93000000FFFF    /* ES, SS, DS, FS, GS */
-    .quad 0x00000000FFFFFFFF
+    .quad 0x0000890001000068
 gdt_end:
+
+idtr:
+    .word   idt_end - idt_start - 1
+    .quad   idt_start
+idt_start:
+
+    /* exception vectors */
+    .quad 0x0000000000000000    /* vector 0 */
+    .quad 0x0000000000000000    /* vector 1 */
+    .quad 0x0000000000000000    /* vector 2 */
+    .quad 0x0000000000000000    /* vector 3 */
+    .quad 0x0000000000000000    /* vector 4 */
+    .quad 0x0000000000000000    /* vector 5 */
+    .quad 0x0000000000000000    /* vector 6 */
+    .quad 0x0000000000000000    /* vector 7 */
+    .quad 0x0000000000000000    /* vector 8 */
+    .quad 0x0000000000000000    /* vector 9 */
+    .quad 0x0000000000000000    /* vector 10 */
+    .quad 0x0000000000000000    /* vector 11 */
+    .quad 0x0000000000000000    /* vector 12 */
+    .quad 0x0000000000000000    /* vector 13 */
+    .quad 0x0000000000000000    /* vector 14 */
+    .quad 0x0000000000000000    /* vector 15 */
+    .quad 0x0000000000000000    /* vector 16 */
+    .quad 0x0000000000000000    /* vector 17 */
+    .quad 0x0000000000000000    /* vector 18 */
+    .quad 0x0000000000000000    /* vector 19 */
+    .quad 0x0000000000000000    /* vector 20 */
+    .quad 0x0000000000000000    /* vector 21 */
+    .quad 0x0000000000000000    /* vector 22 */
+    .quad 0x0000000000000000    /* vector 23 */
+    .quad 0x0000000000000000    /* vector 24 */
+    .quad 0x0000000000000000    /* vector 25 */
+    .quad 0x0000000000000000    /* vector 26 */
+    .quad 0x0000000000000000    /* vector 27 */
+    .quad 0x0000000000000000    /* vector 28 */
+    .quad 0x0000000000000000    /* vector 29 */
+    .quad 0x0000000000000000    /* vector 30 */
+    .quad 0x0000000000000000    /* vector 31 */
+
+    /* intr vectors */
+    .word isr32
+    .word 0x0008
+    .word 0x8E00
+    .word 0x0000
+
+    .zero 0x1000
+
+idt_end:
 
 stack_begin:
     .zero 0x1000
@@ -127,12 +177,28 @@ stack_end:
 
 main:
     xor ax, ax
-    push eax
-    pop eax
+    sti
 
 loop:
+    mov ax, 0x23
 	out 0x10, ax
-	inc ax
 	jmp loop
 
     .size main, .-main
+
+
+
+    .code32
+    .intel_syntax noprefix
+
+    .globl  isr32
+    .type   isr32, @function
+isr32:
+
+    push eax
+
+    mov ax, 0x42
+	out 0x11, ax
+	iret
+
+    .size isr32, .-isr32
