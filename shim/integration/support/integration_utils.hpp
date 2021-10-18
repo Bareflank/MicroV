@@ -170,6 +170,19 @@ namespace integration
 
         return pmut_run;
     }
+    /// <!-- description -->
+    ///   @brief this function is a substitute for ioctl to be used in
+    ///     integration testing.
+    ///
+    /// <!-- inputs/outputs -->
+    ///   @param fd input as vcpufd or system fd
+    ///   @param request used for ioctl id
+    ///   @return Returns the failure with int32
+    [[nodiscard]] constexpr auto
+    platform_ioctl(bsl::int32 const fd, bsl::uint64 const request) noexcept -> bsl::int32
+    {
+        return ::ioctl(fd, request, nullptr);
+    }
 }
 
 #endif

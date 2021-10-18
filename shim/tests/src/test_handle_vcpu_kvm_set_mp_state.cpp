@@ -24,9 +24,12 @@
 
 #include "../../include/handle_vcpu_kvm_set_mp_state.h"
 
+#include <helpers.hpp>
 #include <kvm_mp_state.h>
-#include <mv_types.h>
+#include <shim_vcpu_t.h>
 
+#include <bsl/convert.hpp>
+#include <bsl/safe_integral.hpp>
 #include <bsl/ut.hpp>
 
 namespace shim
@@ -43,18 +46,119 @@ namespace shim
     [[nodiscard]] constexpr auto
     tests() noexcept -> bsl::exit_code
     {
-        bsl::ut_scenario{"description"} = []() noexcept {
+        init_tests();
+        constexpr auto handle{&handle_vcpu_kvm_set_mp_state};
+
+        bsl::ut_scenario{"hypervisor not detected"} = []() noexcept {
             bsl::ut_given{} = [&]() noexcept {
+                shim_vcpu_t const vcpu{};
                 kvm_mp_state mut_args{};
                 bsl::ut_when{} = [&]() noexcept {
+                    g_mut_hypervisor_detected = false;
                     bsl::ut_then{} = [&]() noexcept {
-                        bsl::ut_check(SHIM_SUCCESS == handle_vcpu_kvm_set_mp_state(&mut_args));
+                        bsl::ut_check(SHIM_FAILURE == handle(&vcpu, &mut_args));
+                    };
+                    bsl::ut_cleanup{} = [&]() noexcept {
+                        g_mut_hypervisor_detected = true;
                     };
                 };
             };
         };
 
-        return bsl::ut_success();
+        bsl::ut_scenario{"g_mut_mv_vs_op_mp_state_set failure"} = []() noexcept {
+            bsl::ut_given{} = [&]() noexcept {
+                shim_vcpu_t const vcpu{};
+                kvm_mp_state mut_args{};
+                bsl::ut_when{} = [&]() noexcept {
+                    g_mut_mv_vs_op_mp_state_set = MV_STATUS_FAILURE_UNKNOWN;
+                    bsl::ut_then{} = [&]() noexcept {
+                        bsl::ut_check(SHIM_FAILURE == handle(&vcpu, &mut_args));
+                    };
+                    bsl::ut_cleanup{} = [&]() noexcept {
+                        g_mut_mv_vs_op_mp_state_set = {};
+                    };
+                };
+            };
+        };
+        bsl::ut_scenario{"ms_vs_op_mp_set_state Success"} = []() noexcept {
+            bsl::ut_given{} = [&]() noexcept {
+                constexpr auto initialstate{0_u32};
+                shim_vcpu_t const vcpu{};
+                kvm_mp_state mut_args{};
+                mut_args.mp_state = initialstate.get();
+                bsl::ut_when{} = [&]() noexcept {
+                    bsl::ut_then{} = [&]() noexcept {
+                        bsl::ut_check(SHIM_SUCCESS == handle(&vcpu, &mut_args));
+                    };
+                };
+            };
+        };
+        bsl::ut_scenario{"ms_vs_op_mp_set_state Success"} = []() noexcept {
+            bsl::ut_given{} = [&]() noexcept {
+                constexpr auto runningstate{1_u32};
+                shim_vcpu_t const vcpu{};
+                kvm_mp_state mut_args{};
+                mut_args.mp_state = runningstate.get();
+                bsl::ut_when{} = [&]() noexcept {
+                    bsl::ut_then{} = [&]() noexcept {
+                        bsl::ut_check(SHIM_SUCCESS == handle(&vcpu, &mut_args));
+                    };
+                };
+            };
+        };
+        bsl::ut_scenario{"ms_vs_op_mp_set_state Success"} = []() noexcept {
+            bsl::ut_given{} = [&]() noexcept {
+                constexpr auto waitstate{2_u32};
+                shim_vcpu_t const vcpu{};
+                kvm_mp_state mut_args{};
+                mut_args.mp_state = waitstate.get();
+                bsl::ut_when{} = [&]() noexcept {
+                    bsl::ut_then{} = [&]() noexcept {
+                        bsl::ut_check(SHIM_SUCCESS == handle(&vcpu, &mut_args));
+                    };
+                };
+            };
+        };
+        bsl::ut_scenario{"ms_vs_op_mp_set_state Success"} = []() noexcept {
+            bsl::ut_given{} = [&]() noexcept {
+                constexpr auto initstate{3_u32};
+                shim_vcpu_t const vcpu{};
+                kvm_mp_state mut_args{};
+                mut_args.mp_state = initstate.get();
+                bsl::ut_when{} = [&]() noexcept {
+                    bsl::ut_then{} = [&]() noexcept {
+                        bsl::ut_check(SHIM_SUCCESS == handle(&vcpu, &mut_args));
+                    };
+                };
+            };
+        };
+        bsl::ut_scenario{"ms_vs_op_mp_set_state Success"} = []() noexcept {
+            bsl::ut_given{} = [&]() noexcept {
+                constexpr auto sipistate{4_u32};
+                shim_vcpu_t const vcpu{};
+                kvm_mp_state mut_args{};
+                mut_args.mp_state = sipistate.get();
+                bsl::ut_when{} = [&]() noexcept {
+                    bsl::ut_then{} = [&]() noexcept {
+                        bsl::ut_check(SHIM_SUCCESS == handle(&vcpu, &mut_args));
+                    };
+                };
+            };
+        };
+        bsl::ut_scenario{"ms_vs_op_mp_set_state Failure"} = []() noexcept {
+            bsl::ut_given{} = [&]() noexcept {
+                constexpr auto invalidstate{10_u32};
+                shim_vcpu_t const vcpu{};
+                kvm_mp_state mut_args{};
+                mut_args.mp_state = invalidstate.get();
+                bsl::ut_when{} = [&]() noexcept {
+                    bsl::ut_then{} = [&]() noexcept {
+                        bsl::ut_check(SHIM_FAILURE == handle(&vcpu, &mut_args));
+                    };
+                };
+            };
+        };
+        return fini_tests();
     }
 }
 
