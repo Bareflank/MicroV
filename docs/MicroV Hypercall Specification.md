@@ -105,9 +105,10 @@
       - [2.15.9.3. mv_exit_reason_t_hlt](#21593-mv_exit_reason_t_hlt)
       - [2.15.9.4. mv_exit_reason_t_io](#21594-mv_exit_reason_t_io)
       - [2.15.9.5. mv_exit_reason_t_mmio](#21595-mv_exit_reason_t_mmio)
-      - [2.15.9.5. mv_exit_reason_t_msr](#21595-mv_exit_reason_t_msr)
-      - [2.15.9.5. mv_exit_reason_t_interrupt](#21595-mv_exit_reason_t_interrupt)
-      - [2.15.9.5. mv_exit_reason_t_nmi](#21595-mv_exit_reason_t_nmi)
+      - [2.15.9.6. mv_exit_reason_t_msr](#21596-mv_exit_reason_t_msr)
+      - [2.15.9.7. mv_exit_reason_t_interrupt](#21597-mv_exit_reason_t_interrupt)
+      - [2.15.9.8. mv_exit_reason_t_interrupt_window](#21598-mv_exit_reason_t_interrupt_window)
+      - [2.15.9.9. mv_exit_reason_t_nmi](#21599-mv_exit_reason_t_nmi)
     - [2.15.10. mv_vs_op_cpuid_get, OP=0x6, IDX=0x9](#21510-mv_vs_op_cpuid_get-op0x6-idx0x9)
     - [2.15.11. mv_vs_op_cpuid_set, OP=0x6, IDX=0xA](#21511-mv_vs_op_cpuid_set-op0x6-idx0xa)
     - [2.15.12. mv_vs_op_cpuid_get_list, OP=0x6, IDX=0xB](#21512-mv_vs_op_cpuid_get_list-op0x6-idx0xb)
@@ -1691,7 +1692,8 @@ This hypercall is slow and may require a Hypercall Continuation. See Hypercall C
 | mv_exit_reason_t_mmio | 4 | a MMIO event has occurred |
 | mv_exit_reason_t_msr | 5 | a MSR event has occurred |
 | mv_exit_reason_t_interrupt | 6 | an interrupt event has occurred |
-| mv_exit_reason_t_nmi | 7 | an NMI event has occurred |
+| mv_exit_reason_t_interrupt_window | 7 | an interrupt window event has occurred |
+| mv_exit_reason_t_nmi | 8 | an NMI event has occurred |
 
 **Input:**
 | Register Name | Bits | Description |
@@ -1837,7 +1839,7 @@ Note that the registers that are returned are not written back. Any changes made
 | reg30 | uint64_t | 0x110 | 8 bytes | system dependent register value |
 | reg31 | uint64_t | 0x118 | 8 bytes | system dependent register value |
 
-#### 2.15.9.5. mv_exit_reason_t_msr
+#### 2.15.9.6. mv_exit_reason_t_msr
 
 If mv_vs_op_run returns success with an exit reason of mv_exit_reason_t_msr, it means that the VM has executed an rdmsr or wrmsr that MicroV does not know how to handle, and the MSR is permissable, meaning guest software is allowed to read/write the value of the MSR.
 
@@ -1857,11 +1859,15 @@ If mv_vs_op_run returns success with an exit reason of mv_exit_reason_t_msr, it 
 | msr | mv_rdl_entry_t | 0x0 | 16 bytes | The MSR and it's value (wrmsr only, REVI for rdmsr) |
 | flags | uint64_t | 0x10 | 8 bytes | The MV_EXIT_MSR flags |
 
-#### 2.15.9.5. mv_exit_reason_t_interrupt
+#### 2.15.9.7. mv_exit_reason_t_interrupt
 
 If mv_vs_op_run returns success with an exit reason of mv_exit_reason_t_interrupt, it means that MicroV needed to inject an interrupt into the VM that executed mv_vs_op_run. There is nothing for software to do other than execute mv_vs_op_run again.
 
-#### 2.15.9.5. mv_exit_reason_t_nmi
+#### 2.15.9.8. mv_exit_reason_t_interrupt_window
+
+If mv_vs_op_run returns success with an exit reason of mv_exit_reason_t_interrupt_window, it means that the interrupt window is open allowing the VMM to inject an interrupt into the VM.
+
+#### 2.15.9.9. mv_exit_reason_t_nmi
 
 If mv_vs_op_run returns success with an exit reason of mv_exit_reason_t_nmi, it means that MicroV needed to inject an NMI into the VM that executed mv_vs_op_run. There is nothing for software to do other than execute mv_vs_op_run again.
 
