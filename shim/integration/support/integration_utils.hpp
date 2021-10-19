@@ -34,6 +34,7 @@
 #include <kvm_sregs.hpp>
 #include <kvm_userspace_memory_region.hpp>
 #include <shim_platform_interface.hpp>
+#include <sys/ioctl.h>
 
 #include <bsl/debug.hpp>
 #include <bsl/errc_type.hpp>
@@ -181,7 +182,7 @@ namespace integration
     [[nodiscard]] constexpr auto
     platform_ioctl(bsl::int32 const fd, bsl::uint64 const request) noexcept -> bsl::int32
     {
-        return ::ioctl(fd, request, nullptr);
+        return ioctl(fd, request, nullptr);
     }
 }
 

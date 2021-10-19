@@ -87,7 +87,7 @@ handle_vcpu_kvm_get_mp_state(
             break;
         }
         default: {
-            bferror_x32("get mp state in default ..invalid", mv_mp_state_t_to_i32(mut_state));
+            bferror_x64("get mp state in default ..invalid", mv_mp_state_t_to_u64(mut_state));
             return SHIM_FAILURE;
         }
     }
