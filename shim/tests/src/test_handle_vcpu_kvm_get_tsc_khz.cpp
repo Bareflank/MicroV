@@ -24,8 +24,9 @@
 
 #include "../../include/handle_vcpu_kvm_get_tsc_khz.h"
 
-#include <mv_types.h>
+#include <helpers.hpp>
 
+#include <bsl/safe_integral.hpp>
 #include <bsl/ut.hpp>
 
 namespace shim
@@ -42,17 +43,36 @@ namespace shim
     [[nodiscard]] constexpr auto
     tests() noexcept -> bsl::exit_code
     {
-        bsl::ut_scenario{"description"} = []() noexcept {
+        init_tests();
+        constexpr auto handle{&handle_vcpu_kvm_get_tsc_khz};
+
+        bsl::ut_scenario{"ms_vs_op_mp_get_state fails"} = []() noexcept {
             bsl::ut_given{} = [&]() noexcept {
+                bsl::safe_u64 mut_tsckhz{};
                 bsl::ut_when{} = [&]() noexcept {
+                    g_mut_mv_pp_op_tsc_get_khz = MV_STATUS_FAILURE_UNKNOWN;
                     bsl::ut_then{} = [&]() noexcept {
-                        bsl::ut_check(SHIM_SUCCESS == handle_vcpu_kvm_get_tsc_khz());
+                        bsl::ut_check(SHIM_FAILURE == handle(mut_tsckhz.data()));
+                    };
+                    bsl::ut_cleanup{} = [&]() noexcept {
+                        g_mut_mv_pp_op_tsc_get_khz = {};
                     };
                 };
             };
         };
 
-        return bsl::ut_success();
+        bsl::ut_scenario{"vcpu_kvm_get_tsc_khz Success"} = []() noexcept {
+            bsl::ut_given{} = [&]() noexcept {
+                bsl::safe_u64 mut_tsckhz{};
+                bsl::ut_when{} = [&]() noexcept {
+                    bsl::ut_then{} = [&]() noexcept {
+                        bsl::ut_check(SHIM_SUCCESS == handle(mut_tsckhz.data()));
+                        bsl::ut_check(mut_tsckhz >= bsl::safe_u64::magic_0());
+                    };
+                };
+            };
+        };
+        return fini_tests();
     }
 }
 

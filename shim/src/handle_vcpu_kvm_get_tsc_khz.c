@@ -24,17 +24,30 @@
  * SOFTWARE.
  */
 
+#include <debug.h>
+#include <g_mut_hndl.h>
+#include <mv_constants.h>
+#include <mv_hypercall.h>
 #include <mv_types.h>
+#include <platform.h>
 
 /**
  * <!-- description -->
  *   @brief Handles the execution of kvm_get_tsc_khz.
  *
  * <!-- inputs/outputs -->
+ *   @param pmut_tsc_khz returns the virtual tsc khz  
  *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
  */
 NODISCARD int64_t
-handle_vcpu_kvm_get_tsc_khz(void) NOEXCEPT
+handle_vcpu_kvm_get_tsc_khz(uint64_t *const pmut_tsc_khz) NOEXCEPT
 {
+    platform_expects(MV_INVALID_HANDLE != g_mut_hndl);
+    platform_expects(NULL != pmut_tsc_khz);
+
+    if (mv_pp_op_tsc_get_khz(g_mut_hndl, pmut_tsc_khz)) {
+        bferror("mv_pp_op_tsc_get_khz failed");
+        return SHIM_FAILURE;
+    }
     return SHIM_SUCCESS;
 }

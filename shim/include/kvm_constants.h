@@ -66,6 +66,16 @@ extern "C"
 #define KVM_CAP_IMMEDIATE_EXIT 136
 /** @brief defines MICROV_MAX_MCE_BANKS  */
 #define MICROV_MAX_MCE_BANKS 32
+/** @brief defines KVM_MP_STATE_RUNNABLE for mp state */
+#define KVM_MP_STATE_RUNNABLE 0
+/** @brief defines KVM_MP_STATE_UNINITIALIZED for mp state */
+#define KVM_MP_STATE_UNINITIALIZED 1
+/** @brief defines KVM_MP_STATE_INIT_RECEIVED for mp state */
+#define KVM_MP_STATE_INIT_RECEIVED 2
+/** @brief defines KVM_MP_STATE_HALTED for mp state */
+#define KVM_MP_STATE_HALTED 3
+/** @brief defines KVM_MP_STATE_SIPI_RECEIVED for mp state */
+#define KVM_MP_STATE_SIPI_RECEIVED 4
 
 #pragma pack(pop)
 

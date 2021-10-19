@@ -63,6 +63,16 @@ namespace shim
     constexpr auto KVM_CAP_UNSUPPORTED{0_i64};
     /// @brief defines the size of the KVM_CAP_IMMEDIATE_EXIT
     constexpr auto KVM_CAP_IMMEDIATE_EXIT{1_i64};
+    /// @brief defines the size of the KVM_MP_INITIAL_STATE
+    constexpr auto KVM_MP_RUNNING_STATE{0_u32};
+    /// @brief defines the size of the KVM_MP_RUNNING_STATE
+    constexpr auto KVM_MP_UNINITIALIZED_STATE{1_u32};
+    /// @brief defines the size of the KVM_MP_WAIT_STATE
+    constexpr auto KVM_MP_INIT_RECEIVED_STATE{2_u32};
+    /// @brief defines the size of the KVM_MP_INIT_STATE
+    constexpr auto KVM_MP_HALTED_STATE{3_u32};
+    /// @brief defines the size of the KVM_MP_SIPI_STATE
+    constexpr auto KVM_MP_SIPI_STATE{4_u32};
 
 }
 #pragma pack(pop)

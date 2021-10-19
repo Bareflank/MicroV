@@ -39,9 +39,10 @@ extern "C"
      *   @brief Handles the execution of kvm_get_tsc_khz.
      *
      * <!-- inputs/outputs -->
+     *   @param pmut_tsc_khz returns the virtual tsc khz
      *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
      */
-    NODISCARD int64_t handle_vcpu_kvm_get_tsc_khz(void) NOEXCEPT;
+    NODISCARD int64_t handle_vcpu_kvm_get_tsc_khz(uint64_t *const pmut_tsc_khz) NOEXCEPT;
 
 #ifdef __cplusplus
 }
