@@ -46,9 +46,11 @@
 #include <sched.h>       // IWYU pragma: keep
 #include <sys/mman.h>    // IWYU pragma: keep
 #endif
+
+#include <mv_cpuid_flag_t.hpp>    // IWYU pragma: keep
 #include <basic_page_4k_t.hpp>
 #include <cstdlib>
-#include <ifmap.hpp>
+#include <ifmap_t.hpp>
 #include <mv_constants.hpp>
 #include <mv_exit_reason_t.hpp>
 #include <mv_hypercall_t.hpp>
@@ -57,14 +59,14 @@
 #include <mv_reg_t.hpp>
 #include <mv_translation_t.hpp>
 
-#include <bsl/array.hpp>    // for array
+#include <bsl/array.hpp>
 #include <bsl/convert.hpp>
 #include <bsl/debug.hpp>
 #include <bsl/errc_type.hpp>
-#include <bsl/expects.hpp>     // for expects
-#include <bsl/safe_idx.hpp>    // for safe_idx, operator<
+#include <bsl/expects.hpp>
+#include <bsl/safe_idx.hpp>
 #include <bsl/safe_integral.hpp>
-#include <bsl/string_view.hpp>    // for string_view
+#include <bsl/string_view.hpp>
 #include <bsl/touch.hpp>
 #include <bsl/unlikely.hpp>
 
@@ -120,12 +122,12 @@ namespace integration
     inline void
     set_affinity(bsl::safe_u64 const &core) noexcept
     {
-        cpu_set_t mask;
+        cpu_set_t mut_mask;
 
-        CPU_ZERO(&mask);               // NOLINT
-        CPU_SET(core.get(), &mask);    // NOLINT
+        CPU_ZERO(&mut_mask);               // NOLINT
+        CPU_SET(core.get(), &mut_mask);    // NOLINT
 
-        bsl::expects(0 == sched_setaffinity(0, sizeof(mask), &mask));
+        bsl::expects(0 == sched_setaffinity(0, sizeof(mut_mask), &mut_mask));
     }
 
     /// <!-- description -->
@@ -409,9 +411,9 @@ namespace integration
     ///   @return the resulting VM image
     ///
     [[nodiscard]] constexpr auto
-    load_vm(bsl::string_view const &filename) noexcept -> lib::ifmap
+    load_vm(bsl::string_view const &filename) noexcept -> ifmap_t
     {
-        lib::ifmap mut_vm_image{filename};
+        ifmap_t mut_vm_image{filename};
         integration::verify(!mut_vm_image.empty());
 
         /// NOTE:
@@ -447,8 +449,7 @@ namespace integration
     ///   @param vmid the ID of the VM to map the image to
     ///
     constexpr void
-    map_vm(
-        lib::ifmap const &vm_image, bsl::safe_u64 const &phys, bsl::safe_u16 const &vmid) noexcept
+    map_vm(ifmap_t const &vm_image, bsl::safe_u64 const &phys, bsl::safe_u16 const &vmid) noexcept
     {
         constexpr auto inc{bsl::to_idx(HYPERVISOR_PAGE_SIZE)};
 

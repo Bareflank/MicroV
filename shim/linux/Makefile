@@ -148,6 +148,8 @@ ifneq ($(KERNELRELEASE),)
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_handle_op_open_handle_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_id_op_version_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_pp_op_clr_shared_page_gpa_impl.o
+        $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_pp_op_cpuid_get_supported_list_impl.o
+        $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_pp_op_msr_get_supported_list_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_pp_op_ppid_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_pp_op_set_shared_page_gpa_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_pp_op_tsc_get_khz_impl.o
@@ -170,6 +172,8 @@ ifneq ($(KERNELRELEASE),)
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_vs_op_msr_get_list_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_vs_op_msr_set_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_vs_op_msr_set_list_impl.o
+		$(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_vs_op_fpu_get_all_impl.o
+		$(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_vs_op_fpu_set_all_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_vs_op_reg_get_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_vs_op_reg_get_list_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_vs_op_reg_set_impl.o
@@ -203,6 +207,8 @@ ifneq ($(KERNELRELEASE),)
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_handle_op_open_handle_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_id_op_version_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_pp_op_clr_shared_page_gpa_impl.o
+        $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_pp_op_cpuid_get_supported_list_impl.o
+        $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_pp_op_msr_get_supported_list_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_pp_op_ppid_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_pp_op_set_shared_page_gpa_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_pp_op_tsc_get_khz_impl.o
@@ -225,6 +231,8 @@ ifneq ($(KERNELRELEASE),)
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_vs_op_msr_get_list_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_vs_op_msr_set_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_vs_op_msr_set_list_impl.o
+		$(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_vs_op_fpu_get_all_impl.o
+		$(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_vs_op_fpu_set_all_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_vs_op_reg_get_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_vs_op_reg_get_list_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_vs_op_reg_set_impl.o

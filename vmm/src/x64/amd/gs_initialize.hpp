@@ -82,12 +82,12 @@ namespace microv
             return bsl::errc_failure;
         }
 
-        for (auto &elem : mut_gs.guest_iopm) {
-            elem = bsl::safe_u8::max_value().get();
+        for (auto &mut_elem : mut_gs.guest_iopm) {
+            mut_elem = bsl::safe_u8::max_value().get();
         }
 
-        for (auto &elem : mut_gs.guest_msrpm) {
-            elem = bsl::safe_u8::max_value().get();
+        for (auto &mut_elem : mut_gs.guest_msrpm) {
+            mut_elem = bsl::safe_u8::max_value().get();
         }
 
         return bsl::errc_success;

@@ -25,7 +25,7 @@
 #ifndef MV_CDL_ENTRY_T_HPP
 #define MV_CDL_ENTRY_T_HPP
 
-#include <mv_cpuid_flag_t.hpp>    // IWYU pragma: export
+#include <mv_cpuid_flag_t.hpp>    // IWYU pragma: no_include "mv_cpuid_flag_t.hpp"
 
 #include <bsl/cstdint.hpp>
 

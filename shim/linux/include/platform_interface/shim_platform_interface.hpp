@@ -136,10 +136,12 @@ namespace shim
     // constexpr bsl::safe_umx KVM_SET_CPUID2{static_cast<bsl::uintmx>(_IOW(SHIMIO.get(), 0x90, struct kvm_cpuid2))};
     // /// @brief defines KVM's KVM_SET_SIGNAL_MASK IOCTL
     // constexpr bsl::safe_umx KVM_SET_SIGNAL_MASK{static_cast<bsl::uintmx>(_IOW(SHIMIO.get(), 0x8b, struct kvm_signal_mask))};
-    // /// @brief defines KVM's KVM_GET_FPU IOCTL
-    // constexpr bsl::safe_umx KVM_GET_FPU{static_cast<bsl::uintmx>(_IOR(SHIMIO.get(), 0x8c, struct kvm_fpu))};
-    // /// @brief defines KVM's KVM_SET_FPU IOCTL
-    // constexpr bsl::safe_umx KVM_SET_FPU{static_cast<bsl::uintmx>(_IOW(SHIMIO.get(), 0x8d, struct kvm_fpu))};
+    /// @brief defines KVM's KVM_GET_FPU IOCTL
+    constexpr bsl::safe_umx KVM_GET_FPU{
+        static_cast<bsl::uintmx>(_IOR(SHIMIO.get(), 0x8c, struct kvm_fpu))};
+    /// @brief defines KVM's KVM_SET_FPU IOCTL
+    constexpr bsl::safe_umx KVM_SET_FPU{
+        static_cast<bsl::uintmx>(_IOW(SHIMIO.get(), 0x8d, struct kvm_fpu))};
     /// @brief defines KVM's KVM_CREATE_IRQCHIP IOCTL
     constexpr bsl::safe_umx KVM_CREATE_IRQCHIP{static_cast<bsl::uintmx>(_IO(SHIMIO.get(), 0x60))};
     // /// @brief defines KVM's KVM_IRQ_LINE IOCTL

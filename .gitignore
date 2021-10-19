@@ -71,6 +71,7 @@ shim/**/*.mod.cmd
 shim/**/*.o
 shim/**/*.o.cmd
 shim/**/*.cmd
+shim/**/*.dwo
 
 hypercall/**/*.symvers
 hypercall/**/*.order

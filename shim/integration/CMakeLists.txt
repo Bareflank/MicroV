@@ -23,6 +23,7 @@ include(${CMAKE_CURRENT_LIST_DIR}/../../cmake/function/microv_add_integration.cm
 
 list(APPEND HEADERS
     ${CMAKE_CURRENT_LIST_DIR}/support/integration_utils.hpp
+    ${CMAKE_CURRENT_LIST_DIR}/support/cpuid_printer_t.hpp
 )
 
 microv_add_shim_integration(kvm_create_vcpu HEADERS)

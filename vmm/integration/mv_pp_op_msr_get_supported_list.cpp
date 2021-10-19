@@ -52,9 +52,9 @@ namespace hypercall
     tests() noexcept -> bsl::exit_code
     {
         mv_status_t mut_ret{};
-        const mv_rdl_entry_t star{.reg = 0xC0000081UL, .val = bsl::safe_u64::magic_1().get()};
-        const mv_rdl_entry_t pat{.reg = 0x00000277UL, .val = bsl::safe_u64::magic_1().get()};
-        const mv_rdl_entry_t apic_base{.reg = 0x0000001BUL, .val = bsl::safe_u64::magic_1().get()};
+        mv_rdl_entry_t const star{.reg = 0xC0000081UL, .val = bsl::safe_u64::magic_1().get()};
+        mv_rdl_entry_t const pat{.reg = 0x00000277UL, .val = bsl::safe_u64::magic_1().get()};
+        mv_rdl_entry_t const apic_base{.reg = 0x0000001BUL, .val = bsl::safe_u64::magic_1().get()};
 
         integration::initialize_globals();
         auto *const pmut_rdl0{to_0<mv_rdl_t>()};
@@ -94,26 +94,26 @@ namespace hypercall
 
         // Valid registers should be present
         {
-            bool found_star{false};
-            bool found_pat{false};
-            bool found_apic_base{false};
+            bool mut_found_star{false};
+            bool mut_found_pat{false};
+            bool mut_found_apic_base{false};
             for (bsl::safe_idx mut_i{}; mut_i < pmut_rdl0->num_entries; ++mut_i) {
                 if (pmut_rdl0->entries.at_if(mut_i)->reg == star.reg) {
                     integration::verify(1UL == pmut_rdl0->entries.at_if(mut_i)->val);
-                    found_star = true;
+                    mut_found_star = true;
                 }
                 else if (pmut_rdl0->entries.at_if(mut_i)->reg == pat.reg) {
                     integration::verify(1UL == pmut_rdl0->entries.at_if(mut_i)->val);
-                    found_pat = true;
+                    mut_found_pat = true;
                 }
                 else if (pmut_rdl0->entries.at_if(mut_i)->reg == apic_base.reg) {
                     integration::verify(1UL == pmut_rdl0->entries.at_if(mut_i)->val);
-                    found_apic_base = true;
+                    mut_found_apic_base = true;
                 }
             }
-            integration::verify(found_star);
-            integration::verify(found_pat);
-            integration::verify(found_apic_base);
+            integration::verify(mut_found_star);
+            integration::verify(mut_found_pat);
+            integration::verify(mut_found_apic_base);
         }
 
         // CPU affinity test (requires more than one core)
@@ -161,9 +161,9 @@ namespace hypercall
             }
 #endif
 
-            auto idx{MV_RDL_MAX_ENTRIES};
+            auto mut_idx{MV_RDL_MAX_ENTRIES};
             while (pmut_rdl0->reg1 != bsl::safe_u64::magic_0()) {
-                pmut_rdl0->reg1 = idx.get();
+                pmut_rdl0->reg1 = mut_idx.get();
                 pmut_rdl0->num_entries = 0UL;
                 integration::verify(mut_hvc.mv_pp_op_msr_get_supported_list());
                 integration::verify(pmut_rdl0->num_entries > bsl::safe_u64::magic_0());
@@ -171,11 +171,11 @@ namespace hypercall
 #ifdef INTEGRATION_MOCK
                 for (mut_i = 0_idx; mut_i < pmut_rdl0->num_entries; ++mut_i) {
                     integration::verify(
-                        supported_msrs.at_if(idx.get() + mut_i)->reg ==
+                        supported_msrs.at_if(mut_idx.get() + mut_i)->reg ==
                         pmut_rdl0->entries.at_if(mut_i)->reg);
                 }
 #endif
-                idx = (idx + MV_RDL_MAX_ENTRIES).checked();
+                mut_idx = (mut_idx + MV_RDL_MAX_ENTRIES).checked();
             }
         }
 

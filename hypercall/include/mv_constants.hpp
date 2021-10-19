@@ -139,13 +139,6 @@ namespace hypercall
     constexpr auto MV_MAP_FLAG_WRITE_PROTECTED{0x8000000000000000_u64};
 
     // -------------------------------------------------------------------------
-    // CDL Flags
-    // -------------------------------------------------------------------------
-
-    /// @brief Indicates the hypervisor should return all supported CPUIDs
-    constexpr auto MV_CDL_FLAG_ALL{0x0000000000000001_u64};
-
-    // -------------------------------------------------------------------------
     // Special IDs
     // -------------------------------------------------------------------------
 
@@ -419,7 +412,7 @@ namespace hypercall
     constexpr auto MV_PP_OP_SET_SHARED_PAGE_GPA_IDX_VAL{0x0000000000000003_u64};
     /// @brief Defines the index for mv_pp_op_cpuid_get_supported
     constexpr auto MV_PP_OP_CPUID_GET_SUPPORTED_IDX_VAL{0x0000000000000004_u64};
-    /// @brief Defines the index for mv_pp_op_cpuid_get_supported
+    /// @brief Defines the index for mv_pp_op_cpuid_get_supported_list
     constexpr auto MV_PP_OP_CPUID_GET_SUPPORTED_LIST_IDX_VAL{0x0000000000000005_u64};
     /// @brief Defines the index for mv_pp_op_cpuid_get_permissable
     constexpr auto MV_PP_OP_CPUID_GET_PERMISSABLE_IDX_VAL{0x0000000000000006_u64};

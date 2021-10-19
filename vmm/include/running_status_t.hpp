@@ -22,15 +22,26 @@
 /// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 /// SOFTWARE.
 
-#ifndef RUNNING_STATUS_T_HPP
-#define RUNNING_STATUS_T_HPP
+#ifndef RUNNING_STATUS_HPP
+#define RUNNING_STATUS_HPP
 
-#include <basic_running_status_t.hpp>
+#include <bsl/convert.hpp>
+#include <bsl/safe_integral.hpp>
 
 namespace microv
 {
-    /// @brief defines the running_status_t used by MicroV
-    using running_status_t = lib::basic_running_status_t;
+    /// <!-- description -->
+    ///   @brief Defines the running status of a vs_t
+    ///
+    enum class running_status_t : bsl::uint8
+    {
+        /// @brief defines the initial state for a vs_t
+        initial = (0_u8).get(),
+        /// @brief defines the running state for a vs_t
+        running = (1_u8).get(),
+        /// @brief defines the handling_vmexit state for a vs_t
+        handling_vmexit = (2_u8).get(),
+    };
 }
 
 #endif

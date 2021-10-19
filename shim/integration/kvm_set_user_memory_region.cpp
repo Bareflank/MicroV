@@ -22,9 +22,9 @@
 /// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 /// SOFTWARE.
 
-#include <ifmap.hpp>
+#include <ifmap_t.hpp>
 #include <integration_utils.hpp>
-#include <ioctl.hpp>
+#include <ioctl_t.hpp>
 #include <kvm_userspace_memory_region.hpp>
 #include <shim_platform_interface.hpp>
 
@@ -43,9 +43,9 @@
 main() noexcept -> bsl::exit_code
 {
     bsl::enable_color();
-    lib::ioctl mut_system_ctl{shim::DEVICE_NAME};
+    integration::ioctl_t mut_system_ctl{shim::DEVICE_NAME};
 
-    lib::ifmap const vm_image{"vm_cross_compile/bin/16bit_io_test"};
+    integration::ifmap_t const vm_image{"vm_cross_compile/bin/16bit_io_test"};
     integration::verify(!vm_image.empty());
 
     /// TODO:
@@ -54,16 +54,16 @@ main() noexcept -> bsl::exit_code
 
     {
         auto const vmfd{mut_system_ctl.send(shim::KVM_CREATE_VM)};
-        lib::ioctl mut_vm{bsl::to_i32(vmfd)};
+        integration::ioctl_t mut_vm{bsl::to_i32(vmfd)};
 
-        shim::kvm_userspace_memory_region region{};
-        region.slot = {};
-        region.flags = {};
-        region.guest_phys_addr = {};
-        region.memory_size = vm_image.size().get();
-        region.userspace_addr = vm_image.data();
+        shim::kvm_userspace_memory_region mut_region{};
+        mut_region.slot = {};
+        mut_region.flags = {};
+        mut_region.guest_phys_addr = {};
+        mut_region.memory_size = vm_image.size().get();
+        mut_region.userspace_addr = vm_image.data();
 
-        auto const ret{mut_vm.write(shim::KVM_SET_USER_MEMORY_REGION, &region)};
+        auto const ret{mut_vm.write(shim::KVM_SET_USER_MEMORY_REGION, &mut_region)};
         integration::verify(ret.is_zero());
 
         mut_vm.close();
@@ -72,17 +72,17 @@ main() noexcept -> bsl::exit_code
     // Unaligned size success
     {
         auto const vmfd{mut_system_ctl.send(shim::KVM_CREATE_VM)};
-        lib::ioctl mut_vm{bsl::to_i32(vmfd)};
+        integration::ioctl_t mut_vm{bsl::to_i32(vmfd)};
 
         constexpr auto size{0x42_u64};
-        shim::kvm_userspace_memory_region region{};
-        region.slot = {};
-        region.flags = {};
-        region.guest_phys_addr = {};
-        region.memory_size = size.get();
-        region.userspace_addr = vm_image.data();
+        shim::kvm_userspace_memory_region mut_region{};
+        mut_region.slot = {};
+        mut_region.flags = {};
+        mut_region.guest_phys_addr = {};
+        mut_region.memory_size = size.get();
+        mut_region.userspace_addr = vm_image.data();
 
-        auto const ret{mut_vm.write(shim::KVM_SET_USER_MEMORY_REGION, &region)};
+        auto const ret{mut_vm.write(shim::KVM_SET_USER_MEMORY_REGION, &mut_region)};
         integration::verify(ret.is_zero());
 
         mut_vm.close();
@@ -91,17 +91,17 @@ main() noexcept -> bsl::exit_code
     // Size out of bounds
     {
         auto const vmfd{mut_system_ctl.send(shim::KVM_CREATE_VM)};
-        lib::ioctl mut_vm{bsl::to_i32(vmfd)};
+        integration::ioctl_t mut_vm{bsl::to_i32(vmfd)};
 
         constexpr auto size{0xFFFFFFFFFFFFF000_u64};
-        shim::kvm_userspace_memory_region region{};
-        region.slot = {};
-        region.flags = {};
-        region.guest_phys_addr = {};
-        region.memory_size = size.get();
-        region.userspace_addr = vm_image.data();
+        shim::kvm_userspace_memory_region mut_region{};
+        mut_region.slot = {};
+        mut_region.flags = {};
+        mut_region.guest_phys_addr = {};
+        mut_region.memory_size = size.get();
+        mut_region.userspace_addr = vm_image.data();
 
-        auto const ret{mut_vm.write(shim::KVM_SET_USER_MEMORY_REGION, &region)};
+        auto const ret{mut_vm.write(shim::KVM_SET_USER_MEMORY_REGION, &mut_region)};
         integration::verify(ret.is_neg());
 
         mut_vm.close();
@@ -110,17 +110,17 @@ main() noexcept -> bsl::exit_code
     // Deleting a slot is not implemented yet (size 0)
     {
         auto const vmfd{mut_system_ctl.send(shim::KVM_CREATE_VM)};
-        lib::ioctl mut_vm{bsl::to_i32(vmfd)};
+        integration::ioctl_t mut_vm{bsl::to_i32(vmfd)};
 
         constexpr auto size{0x0_u64};
-        shim::kvm_userspace_memory_region region{};
-        region.slot = {};
-        region.flags = {};
-        region.guest_phys_addr = {};
-        region.memory_size = size.get();
-        region.userspace_addr = vm_image.data();
+        shim::kvm_userspace_memory_region mut_region{};
+        mut_region.slot = {};
+        mut_region.flags = {};
+        mut_region.guest_phys_addr = {};
+        mut_region.memory_size = size.get();
+        mut_region.userspace_addr = vm_image.data();
 
-        auto const ret{mut_vm.write(shim::KVM_SET_USER_MEMORY_REGION, &region)};
+        auto const ret{mut_vm.write(shim::KVM_SET_USER_MEMORY_REGION, &mut_region)};
         integration::verify(ret.is_neg());
 
         mut_vm.close();
@@ -129,17 +129,17 @@ main() noexcept -> bsl::exit_code
     // Unaligned gpa
     {
         auto const vmfd{mut_system_ctl.send(shim::KVM_CREATE_VM)};
-        lib::ioctl mut_vm{bsl::to_i32(vmfd)};
+        integration::ioctl_t mut_vm{bsl::to_i32(vmfd)};
 
         constexpr auto gpa{0x42_u64};
-        shim::kvm_userspace_memory_region region{};
-        region.slot = {};
-        region.flags = {};
-        region.guest_phys_addr = gpa.get();
-        region.memory_size = vm_image.size().get();
-        region.userspace_addr = vm_image.data();
+        shim::kvm_userspace_memory_region mut_region{};
+        mut_region.slot = {};
+        mut_region.flags = {};
+        mut_region.guest_phys_addr = gpa.get();
+        mut_region.memory_size = vm_image.size().get();
+        mut_region.userspace_addr = vm_image.data();
 
-        auto const ret{mut_vm.write(shim::KVM_SET_USER_MEMORY_REGION, &region)};
+        auto const ret{mut_vm.write(shim::KVM_SET_USER_MEMORY_REGION, &mut_region)};
         integration::verify(ret.is_neg());
 
         mut_vm.close();
@@ -148,17 +148,17 @@ main() noexcept -> bsl::exit_code
     // gpa out of bounds
     {
         auto const vmfd{mut_system_ctl.send(shim::KVM_CREATE_VM)};
-        lib::ioctl mut_vm{bsl::to_i32(vmfd)};
+        integration::ioctl_t mut_vm{bsl::to_i32(vmfd)};
 
         constexpr auto gpa{0xFFFFFFFFFFFFF000_u64};
-        shim::kvm_userspace_memory_region region{};
-        region.slot = {};
-        region.flags = {};
-        region.guest_phys_addr = gpa.get();
-        region.memory_size = vm_image.size().get();
-        region.userspace_addr = vm_image.data();
+        shim::kvm_userspace_memory_region mut_region{};
+        mut_region.slot = {};
+        mut_region.flags = {};
+        mut_region.guest_phys_addr = gpa.get();
+        mut_region.memory_size = vm_image.size().get();
+        mut_region.userspace_addr = vm_image.data();
 
-        auto const ret{mut_vm.write(shim::KVM_SET_USER_MEMORY_REGION, &region)};
+        auto const ret{mut_vm.write(shim::KVM_SET_USER_MEMORY_REGION, &mut_region)};
         integration::verify(ret.is_neg());
 
         mut_vm.close();
@@ -167,17 +167,17 @@ main() noexcept -> bsl::exit_code
     // address unaligned
     {
         auto const vmfd{mut_system_ctl.send(shim::KVM_CREATE_VM)};
-        lib::ioctl mut_vm{bsl::to_i32(vmfd)};
+        integration::ioctl_t mut_vm{bsl::to_i32(vmfd)};
 
         constexpr auto addr{0x42_u64};
-        shim::kvm_userspace_memory_region region{};
-        region.slot = {};
-        region.flags = {};
-        region.guest_phys_addr = {};
-        region.memory_size = vm_image.size().get();
-        region.userspace_addr = reinterpret_cast<void *>(addr.get());
+        shim::kvm_userspace_memory_region mut_region{};
+        mut_region.slot = {};
+        mut_region.flags = {};
+        mut_region.guest_phys_addr = {};
+        mut_region.memory_size = vm_image.size().get();
+        mut_region.userspace_addr = reinterpret_cast<void *>(addr.get());
 
-        auto const ret{mut_vm.write(shim::KVM_SET_USER_MEMORY_REGION, &region)};
+        auto const ret{mut_vm.write(shim::KVM_SET_USER_MEMORY_REGION, &mut_region)};
         integration::verify(ret.is_neg());
 
         mut_vm.close();
@@ -186,16 +186,16 @@ main() noexcept -> bsl::exit_code
     // NULL address
     {
         auto const vmfd{mut_system_ctl.send(shim::KVM_CREATE_VM)};
-        lib::ioctl mut_vm{bsl::to_i32(vmfd)};
+        integration::ioctl_t mut_vm{bsl::to_i32(vmfd)};
 
-        shim::kvm_userspace_memory_region region{};
-        region.slot = {};
-        region.flags = {};
-        region.guest_phys_addr = {};
-        region.memory_size = vm_image.size().get();
-        region.userspace_addr = {};
+        shim::kvm_userspace_memory_region mut_region{};
+        mut_region.slot = {};
+        mut_region.flags = {};
+        mut_region.guest_phys_addr = {};
+        mut_region.memory_size = vm_image.size().get();
+        mut_region.userspace_addr = {};
 
-        auto const ret{mut_vm.write(shim::KVM_SET_USER_MEMORY_REGION, &region)};
+        auto const ret{mut_vm.write(shim::KVM_SET_USER_MEMORY_REGION, &mut_region)};
         integration::verify(ret.is_neg());
 
         mut_vm.close();
@@ -204,17 +204,17 @@ main() noexcept -> bsl::exit_code
     // The shim has a limited number of slots
     {
         auto const vmfd{mut_system_ctl.send(shim::KVM_CREATE_VM)};
-        lib::ioctl mut_vm{bsl::to_i32(vmfd)};
+        integration::ioctl_t mut_vm{bsl::to_i32(vmfd)};
 
         constexpr auto invalid_slot{0xFFFF_u32};
-        shim::kvm_userspace_memory_region region{};
-        region.slot = invalid_slot.get();
-        region.flags = {};
-        region.guest_phys_addr = {};
-        region.memory_size = vm_image.size().get();
-        region.userspace_addr = vm_image.data();
+        shim::kvm_userspace_memory_region mut_region{};
+        mut_region.slot = invalid_slot.get();
+        mut_region.flags = {};
+        mut_region.guest_phys_addr = {};
+        mut_region.memory_size = vm_image.size().get();
+        mut_region.userspace_addr = vm_image.data();
 
-        auto const ret{mut_vm.write(shim::KVM_SET_USER_MEMORY_REGION, &region)};
+        auto const ret{mut_vm.write(shim::KVM_SET_USER_MEMORY_REGION, &mut_region)};
         integration::verify(ret.is_neg());
 
         mut_vm.close();
@@ -223,19 +223,19 @@ main() noexcept -> bsl::exit_code
     // Modifying a slot is not supported yet
     {
         auto const vmfd{mut_system_ctl.send(shim::KVM_CREATE_VM)};
-        lib::ioctl mut_vm{bsl::to_i32(vmfd)};
+        integration::ioctl_t mut_vm{bsl::to_i32(vmfd)};
 
-        shim::kvm_userspace_memory_region region{};
-        region.slot = {};
-        region.flags = {};
-        region.guest_phys_addr = {};
-        region.memory_size = vm_image.size().get();
-        region.userspace_addr = vm_image.data();
+        shim::kvm_userspace_memory_region mut_region{};
+        mut_region.slot = {};
+        mut_region.flags = {};
+        mut_region.guest_phys_addr = {};
+        mut_region.memory_size = vm_image.size().get();
+        mut_region.userspace_addr = vm_image.data();
 
-        auto const ret1{mut_vm.write(shim::KVM_SET_USER_MEMORY_REGION, &region)};
+        auto const ret1{mut_vm.write(shim::KVM_SET_USER_MEMORY_REGION, &mut_region)};
         integration::verify(ret1.is_zero());
 
-        auto const ret2{mut_vm.write(shim::KVM_SET_USER_MEMORY_REGION, &region)};
+        auto const ret2{mut_vm.write(shim::KVM_SET_USER_MEMORY_REGION, &mut_region)};
         integration::verify(ret2.is_neg());
 
         mut_vm.close();
@@ -244,17 +244,17 @@ main() noexcept -> bsl::exit_code
     // Multiple address spaces are not supported
     {
         auto const vmfd{mut_system_ctl.send(shim::KVM_CREATE_VM)};
-        lib::ioctl mut_vm{bsl::to_i32(vmfd)};
+        integration::ioctl_t mut_vm{bsl::to_i32(vmfd)};
 
         constexpr auto invalid_slot{0x10000_u32};
-        shim::kvm_userspace_memory_region region{};
-        region.slot = invalid_slot.get();
-        region.flags = {};
-        region.guest_phys_addr = {};
-        region.memory_size = vm_image.size().get();
-        region.userspace_addr = vm_image.data();
+        shim::kvm_userspace_memory_region mut_region{};
+        mut_region.slot = invalid_slot.get();
+        mut_region.flags = {};
+        mut_region.guest_phys_addr = {};
+        mut_region.memory_size = vm_image.size().get();
+        mut_region.userspace_addr = vm_image.data();
 
-        auto const ret{mut_vm.write(shim::KVM_SET_USER_MEMORY_REGION, &region)};
+        auto const ret{mut_vm.write(shim::KVM_SET_USER_MEMORY_REGION, &mut_region)};
         integration::verify(ret.is_neg());
 
         mut_vm.close();

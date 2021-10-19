@@ -113,6 +113,6 @@ list(APPEND AARCH64_DEFINES
 # Tests
 # ------------------------------------------------------------------------------
 
-add_subdirectory(include)
-add_subdirectory(mocks)
-add_subdirectory(src)
+add_subdirectory(include/template)
+add_subdirectory(mocks/template)
+add_subdirectory(src/template)

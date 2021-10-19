@@ -26,8 +26,12 @@
 #define PP_CPUID_T_HPP
 
 #include <bf_syscall_t.hpp>
+#include <cpuid.hpp>
 #include <gs_t.hpp>
 #include <intrinsic_t.hpp>
+#include <mv_cdl_entry_t.hpp>
+#include <mv_cdl_t.hpp>
+#include <mv_constants.hpp>
 #include <tls_t.hpp>
 
 #include <bsl/debug.hpp>
@@ -144,6 +148,107 @@ namespace microv
         /// - permissable(): Given a function (EAX) and index (ECX)
         ///   returns a mv_cpuid_entry_t. For now, return supported().
         ///
+
+        /// <!-- description -->
+        ///   @brief  Given a function (EAX) and index (ECX)
+        ///    returns a mv_cdl_entry_t. Any feature that is supported
+        ///    is enabled in the resulting values of eax, ebx, ecx and
+        ///    edx. Any non-feature bits should be returned as 0. By
+        ///    "supported", we mean that the hardware HAS this feature,
+        ///    and MicroV allows the guest to use this feature. When
+        ///    the guest calls CPUID, MicroV will return supported.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param sys the bf_syscall_t to use
+        ///   @param fun the CPUID function
+        ///   @param idx the CPUID index
+        ///   @return Returns mv_cdl_entry_t
+        ///
+        [[nodiscard]] constexpr auto
+        supported(
+            syscall::bf_syscall_t const &sys,
+            bsl::safe_u32 const &fun,
+            bsl::safe_u32 const &idx) const noexcept -> hypercall::mv_cdl_entry_t
+        {
+            bsl::expects(sys.bf_tls_ppid() == this->assigned_ppid());
+
+            auto mut_eax{bsl::to_u64(fun)};
+            bsl::safe_u64 mut_ebx{};
+            auto mut_ecx{bsl::to_u64(idx)};
+            bsl::safe_u64 mut_edx{};
+
+            intrinsic_t::cpuid(mut_eax, mut_ebx, mut_ecx, mut_edx);
+
+            switch (fun.get()) {
+                case CPUID_FN0000_0000.get():
+                    [[fallthrough]];
+                case CPUID_FN8000_0000.get(): {
+                    mut_ebx = bsl::safe_u64::magic_0();
+                    mut_ecx = bsl::safe_u64::magic_0();
+                    mut_edx = bsl::safe_u64::magic_0();
+                    break;
+                }
+
+                case CPUID_FN0000_0001.get(): {
+                    mut_eax = bsl::safe_u64::magic_0();
+                    mut_ebx = bsl::safe_u64::magic_0();
+                    mut_ecx &= CPUID_FN0000_0001_ECX;
+                    mut_ecx |= CPUID_FN0000_0001_ECX_HYPERVISOR_BIT;
+                    mut_edx &= CPUID_FN0000_0001_EDX;
+                    break;
+                }
+
+                case CPUID_FN8000_0001.get(): {
+                    mut_eax = bsl::safe_u64::magic_0();
+                    mut_ebx = bsl::safe_u64::magic_0();
+                    mut_ecx &= CPUID_FN8000_0001_ECX;
+                    mut_edx &= CPUID_FN8000_0001_EDX;
+                    break;
+                }
+
+                default: {
+                    mut_eax = {};
+                    mut_ebx = {};
+                    mut_ecx = {};
+                    mut_edx = {};
+                    break;
+                }
+            }
+
+            return {
+                .fun = fun.get(),
+                .idx = idx.get(),
+                .eax = bsl::to_u32_unsafe(mut_eax).get(),
+                .ebx = bsl::to_u32_unsafe(mut_ebx).get(),
+                .ecx = bsl::to_u32_unsafe(mut_ecx).get(),
+                .edx = bsl::to_u32_unsafe(mut_edx).get(),
+            };
+        }
+
+        /// <!-- description -->
+        ///   @brief Set the list of supported CPUIDs into the shared page using
+        ///    a CDL.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param sys the bf_syscall_t to use
+        ///   @param mut_cdl the mv_cdl_t in which the supported MSR are set.
+        ///   @return Returns bsl::errc_success on success, bsl::errc_failure
+        ///    otherwise.
+        ///
+        [[nodiscard]] constexpr auto
+        supported_list(syscall::bf_syscall_t const &sys, hypercall::mv_cdl_t &mut_cdl)
+            const noexcept -> bsl::errc_type
+        {
+            bsl::expects(sys.bf_tls_ppid() == this->assigned_ppid());
+
+            for (bsl::safe_idx mut_i{}; mut_i < mut_cdl.num_entries; ++mut_i) {
+                auto *const pmut_entry{mut_cdl.entries.at_if(mut_i)};
+                *pmut_entry =
+                    supported(sys, bsl::to_u32(pmut_entry->fun), bsl::to_u32(pmut_entry->idx));
+            }
+
+            return bsl::errc_success;
+        }
     };
 }
 

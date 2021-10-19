@@ -593,6 +593,85 @@ namespace microv
         }
 
         /// <!-- description -->
+        ///   @brief Returns the value of the requested MSR
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param sys the bf_syscall_t to use
+        ///   @param msr the MSR to get
+        ///   @param vsid the ID of the vs_t to query
+        ///   @return Returns the value of the requested MSR
+        ///
+        [[nodiscard]] constexpr auto
+        msr_get(
+            syscall::bf_syscall_t const &sys,
+            bsl::safe_u64 const &msr,
+            bsl::safe_u16 const &vsid) const noexcept -> bsl::safe_u64
+        {
+            return this->get_vs(vsid)->msr_get(sys, msr);
+        }
+
+        /// <!-- description -->
+        ///   @brief Sets the value of the requested MSR
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param mut_sys the bf_syscall_t to use
+        ///   @param msr the MSR to set
+        ///   @param val the value to set the MSR to
+        ///   @param vsid the ID of the vs_t to set
+        ///   @return Returns bsl::errc_success on success, bsl::errc_failure
+        ///     and friends otherwise
+        ///
+        [[nodiscard]] constexpr auto
+        msr_set(
+            syscall::bf_syscall_t &mut_sys,
+            bsl::safe_u64 const &msr,
+            bsl::safe_u64 const &val,
+            bsl::safe_u16 const &vsid) noexcept -> bsl::errc_type
+        {
+            return this->get_vs(vsid)->msr_set(mut_sys, msr, val);
+        }
+
+        /// <!-- description -->
+        ///   @brief Returns the value of the requested MSRs from
+        ///     the provided RDL.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param sys the bf_syscall_t to use
+        ///   @param mut_rdl the RDL to store the requested MSR values
+        ///   @param vsid the ID of the vs_t to query
+        ///   @return Returns bsl::errc_success on success, bsl::errc_failure
+        ///     and friends otherwise
+        ///
+        [[nodiscard]] constexpr auto
+        msr_get_list(
+            syscall::bf_syscall_t const &sys,
+            hypercall::mv_rdl_t &mut_rdl,
+            bsl::safe_u16 const &vsid) const noexcept -> bsl::errc_type
+        {
+            return this->get_vs(vsid)->msr_get_list(sys, mut_rdl);
+        }
+
+        /// <!-- description -->
+        ///   @brief Sets the value of the requested MSRs given
+        ///     the provided RDL.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param mut_sys the bf_syscall_t to use
+        ///   @param rdl the RDL to get the requested MSR values from
+        ///   @param vsid the ID of the vs_t to set
+        ///   @return Returns bsl::errc_success on success, bsl::errc_failure
+        ///     and friends otherwise
+        ///
+        [[nodiscard]] constexpr auto
+        msr_set_list(
+            syscall::bf_syscall_t &mut_sys,
+            hypercall::mv_rdl_t const &rdl,
+            bsl::safe_u16 const &vsid) noexcept -> bsl::errc_type
+        {
+            return this->get_vs(vsid)->msr_set_list(mut_sys, rdl);
+        }
+
+        /// <!-- description -->
         ///   @brief Injects an exception into the vs_t. Unlike interrupts,
         ///     exceptions cannot be masked, and therefore, the exception is
         ///     immediately injected.

@@ -95,7 +95,6 @@ list(APPEND HEADERS
     ${CMAKE_CURRENT_LIST_DIR}/include/mv_rdl_t.hpp
     ${CMAKE_CURRENT_LIST_DIR}/include/mv_run_t.h
     ${CMAKE_CURRENT_LIST_DIR}/include/mv_run_t.hpp
-    ${CMAKE_CURRENT_LIST_DIR}/include/mv_touch.h
     ${CMAKE_CURRENT_LIST_DIR}/include/mv_translation_t.h
     ${CMAKE_CURRENT_LIST_DIR}/include/mv_translation_t.hpp
     ${CMAKE_CURRENT_LIST_DIR}/include/mv_types.h
@@ -120,6 +119,7 @@ if(HYPERVISOR_TARGET_ARCH STREQUAL "AuthenticAMD" OR HYPERVISOR_TARGET_ARCH STRE
             microv_target_source(hypercall src/windows/x64/amd/mv_handle_op_open_handle_impl.S ${HEADERS})
             microv_target_source(hypercall src/windows/x64/amd/mv_id_op_version_impl.S ${HEADERS})
             microv_target_source(hypercall src/windows/x64/amd/mv_pp_op_clr_shared_page_gpa_impl.S ${HEADERS})
+            microv_target_source(hypercall src/windows/x64/amd/mv_pp_op_cpuid_get_supported_list_impl.S ${HEADERS})
             microv_target_source(hypercall src/windows/x64/amd/mv_pp_op_ppid_impl.S ${HEADERS})
             microv_target_source(hypercall src/windows/x64/amd/mv_pp_op_set_shared_page_gpa_impl.S ${HEADERS})
             microv_target_source(hypercall src/windows/x64/amd/mv_pp_op_msr_get_supported_list_impl.S ${HEADERS})
@@ -161,6 +161,7 @@ if(HYPERVISOR_TARGET_ARCH STREQUAL "AuthenticAMD" OR HYPERVISOR_TARGET_ARCH STRE
             microv_target_source(hypercall src/linux/x64/amd/mv_handle_op_open_handle_impl.S ${HEADERS})
             microv_target_source(hypercall src/linux/x64/amd/mv_id_op_version_impl.S ${HEADERS})
             microv_target_source(hypercall src/linux/x64/amd/mv_pp_op_clr_shared_page_gpa_impl.S ${HEADERS})
+            microv_target_source(hypercall src/linux/x64/amd/mv_pp_op_cpuid_get_supported_list_impl.S ${HEADERS})
             microv_target_source(hypercall src/linux/x64/amd/mv_pp_op_ppid_impl.S ${HEADERS})
             microv_target_source(hypercall src/linux/x64/amd/mv_pp_op_set_shared_page_gpa_impl.S ${HEADERS})
             microv_target_source(hypercall src/linux/x64/amd/mv_pp_op_msr_get_supported_list_impl.S ${HEADERS})
@@ -206,6 +207,7 @@ if(HYPERVISOR_TARGET_ARCH STREQUAL "AuthenticAMD" OR HYPERVISOR_TARGET_ARCH STRE
             microv_target_source(hypercall src/windows/x64/intel/mv_handle_op_open_handle_impl.S ${HEADERS})
             microv_target_source(hypercall src/windows/x64/intel/mv_id_op_version_impl.S ${HEADERS})
             microv_target_source(hypercall src/windows/x64/intel/mv_pp_op_clr_shared_page_gpa_impl.S ${HEADERS})
+            microv_target_source(hypercall src/windows/x64/amd/mv_pp_op_cpuid_get_supported_list_impl.S ${HEADERS})
             microv_target_source(hypercall src/windows/x64/intel/mv_pp_op_ppid_impl.S ${HEADERS})
             microv_target_source(hypercall src/windows/x64/intel/mv_pp_op_set_shared_page_gpa_impl.S ${HEADERS})
             microv_target_source(hypercall src/windows/x64/intel/mv_pp_op_msr_get_supported_list_impl.S ${HEADERS})
@@ -247,6 +249,7 @@ if(HYPERVISOR_TARGET_ARCH STREQUAL "AuthenticAMD" OR HYPERVISOR_TARGET_ARCH STRE
             microv_target_source(hypercall src/linux/x64/intel/mv_handle_op_open_handle_impl.S ${HEADERS})
             microv_target_source(hypercall src/linux/x64/intel/mv_id_op_version_impl.S ${HEADERS})
             microv_target_source(hypercall src/linux/x64/intel/mv_pp_op_clr_shared_page_gpa_impl.S ${HEADERS})
+            microv_target_source(hypercall src/linux/x64/intel/mv_pp_op_cpuid_get_supported_list_impl.S ${HEADERS})
             microv_target_source(hypercall src/linux/x64/intel/mv_pp_op_ppid_impl.S ${HEADERS})
             microv_target_source(hypercall src/linux/x64/intel/mv_pp_op_set_shared_page_gpa_impl.S ${HEADERS})
             microv_target_source(hypercall src/linux/x64/intel/mv_pp_op_msr_get_supported_list_impl.S ${HEADERS})

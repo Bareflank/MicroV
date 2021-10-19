@@ -218,7 +218,7 @@ namespace microv
         [[nodiscard]] constexpr auto
         slpt_spa() const noexcept -> bsl::safe_u64
         {
-            return m_slpt.phys();
+            return m_slpt.spa();
         }
 
         /// <!-- description -->
@@ -259,7 +259,7 @@ namespace microv
                 ///   failed map operation.
                 ///
                 auto const ret{
-                    m_slpt.map_page(tls, mut_page_pool, gpa, spa, MAP_PAGE_RWE, false, mut_sys)};
+                    m_slpt.map(tls, mut_page_pool, gpa, spa, MAP_PAGE_RWE, false, mut_sys)};
 
                 if (bsl::unlikely(ret == bsl::errc_already_exists)) {
                     bsl::error() << "mdl entry "                   // --
@@ -317,7 +317,7 @@ namespace microv
                 ///   4k. For now we only support 4k pages.
                 ///
 
-                mut_ret = m_slpt.unmap(tls, mut_page_pool, gpa, mut_sys);
+                mut_ret = m_slpt.unmap(tls, mut_page_pool, gpa);
                 if (bsl::unlikely(!mut_ret)) {
                     bsl::print<bsl::V>() << bsl::here();
                     return mut_ret;
