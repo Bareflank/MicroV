@@ -233,7 +233,6 @@ dispatch_system_kvm_get_msr_index_list(
     struct kvm_msr_list __user *const user_args)
 {
     struct kvm_msr_list mut_args;
-    uint32_t __user *pmut_mut_user_indices;
     int64_t mut_ret;
     uint64_t mut_alloc_size;
 
@@ -242,35 +241,44 @@ dispatch_system_kvm_get_msr_index_list(
         return -EINVAL;
     }
 
-    mut_alloc_size = mut_args.nmsrs * sizeof(*mut_args.indices);
+    if (mut_args.nmsrs > 0) {
+        mut_alloc_size = mut_args.nmsrs * sizeof(*mut_args.indices);
+    }
+    else {
+        mut_alloc_size = sizeof(*mut_args.indices);
+    }
+
     if (mut_alloc_size > HYPERVISOR_PAGE_SIZE) {
         bferror("requested nmsrs too big");
         return -ENOMEM;
     }
 
-    pmut_mut_user_indices = mut_args.indices;
     mut_args.indices = vzalloc(mut_alloc_size);
-
     if (NULL == mut_args.indices) {
         bferror("vzalloc failed");
         return -ENOMEM;
     }
 
-    mut_ret = -EINVAL;
-    if (handle_system_kvm_get_msr_index_list(&mut_args)) {
+    mut_ret = handle_system_kvm_get_msr_index_list(&mut_args);
+    if (SHIM_2BIG == mut_ret) {
+        if (platform_copy_to_user(
+                user_args, &mut_args, sizeof(mut_args.nmsrs))) {
+            bferror("platform_copy_to_user nmsrs failed");
+            mut_ret = -EINVAL;
+        }
+
+        goto out;
+    }
+    else if (mut_ret) {
         bferror("handle_system_kvm_get_msr_index_list failed");
         goto out;
     }
 
-    if (platform_copy_to_user(user_args, &mut_args, sizeof(mut_args.nmsrs))) {
-        bferror("platform_copy_to_user nmsrs failed");
-        goto out;
-    }
-
     if (platform_copy_to_user(
-            pmut_mut_user_indices,
-            mut_args.indices,
-            mut_args.nmsrs * sizeof(*mut_args.indices))) {
+            user_args,
+            &mut_args,
+            sizeof(mut_args.nmsrs) +
+                mut_args.nmsrs * sizeof(*mut_args.indices))) {
         bferror("platform_copy_to_user indices failed");
         goto out;
     }

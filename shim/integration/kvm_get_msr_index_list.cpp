@@ -63,6 +63,18 @@ main() noexcept -> bsl::exit_code
             mut_system_ctl.write(shim::KVM_GET_MSR_INDEX_LIST, &mut_msr_list).is_neg());
     }
 
+    // nmsrs is too small
+    {
+        mut_msr_list.nmsrs = bsl::safe_u32::magic_0().get();
+        mut_msr_list.indices = mut_msr_indices.front_if();
+
+        integration::verify(
+            mut_system_ctl.write(shim::KVM_GET_MSR_INDEX_LIST, &mut_msr_list).is_neg());
+
+        auto mut_nmsrs{bsl::to_u32(mut_msr_list.nmsrs)};
+        integration::verify(mut_nmsrs > bsl::safe_u32::magic_0());
+    }
+
     {
         mut_msr_list.nmsrs = init_nmsrs.get();
         mut_msr_list.indices = mut_msr_indices.front_if();
@@ -100,6 +112,9 @@ main() noexcept -> bsl::exit_code
 
     // Try a bunch of times
     {
+        mut_msr_list.nmsrs = init_nmsrs.get();
+        mut_msr_list.indices = mut_msr_indices.front_if();
+
         constexpr auto num_loops{0x1000_umx};
         for (bsl::safe_idx mut_i{}; mut_i < num_loops; ++mut_i) {
             integration::verify(

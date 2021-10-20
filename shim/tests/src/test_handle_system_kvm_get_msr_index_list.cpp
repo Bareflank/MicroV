@@ -169,7 +169,7 @@ namespace shim
                     mut_args.indices = g_mut_msr_indices.front_if();
                     g_mut_val = VAL64.get();
                     bsl::ut_then{} = [&]() noexcept {
-                        bsl::ut_check(SHIM_FAILURE == handle(&mut_args));
+                        bsl::ut_check(SHIM_2BIG == handle(&mut_args));
                     };
                     bsl::ut_cleanup{} = [&]() noexcept {
                         g_mut_val = {};
