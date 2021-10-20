@@ -771,6 +771,101 @@ namespace microv
         {
             return this->get_vs(vsid)->tsc_khz_get();
         }
+
+        /// <!-- description -->
+        ///   @brief Returns the registers of the requested CPUID into
+        ///     the provided CDL entry.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param mut_sys the bf_syscall_t to use
+        ///   @param vsid the ID of the vs_t to query
+        ///   @param mut_cdl_entry the mv_cdl_entry_t to read the CPUID into
+        ///   @return Returns the value of the requested CPUID
+        ///
+        [[nodiscard]] static constexpr auto
+        cpuid_get(
+            syscall::bf_syscall_t &mut_sys,
+            bsl::safe_u16 const &vsid,
+            hypercall::mv_cdl_entry_t &mut_cdl_entry) noexcept -> bsl::safe_u64
+        {
+            bsl::discard(mut_sys);
+            bsl::discard(vsid);
+            bsl::discard(mut_cdl_entry);
+
+            bsl::error() << "cpuid_get: Not yet implemented"    // --
+                         << bsl::endl                           // --
+                         << bsl::here();                        // --
+
+            return bsl::safe_u64::failure();
+        }
+
+        /// <!-- description -->
+        ///   @brief Sets the registers of the requested CPUID given
+        ///     the provided CDL entry.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param mut_sys the bf_syscall_t to use
+        ///   @param vsid the ID of the vs_t to set
+        ///   @param cdl_entry the mv_cdl_entry_t to set the CPUID from
+        ///   @return Returns bsl::errc_success on success, bsl::errc_failure
+        ///     and friends otherwise
+        ///
+        [[nodiscard]] static constexpr auto
+        cpuid_set(
+            syscall::bf_syscall_t &mut_sys,
+            bsl::safe_u16 const &vsid,
+            hypercall::mv_cdl_entry_t const &cdl_entry) noexcept -> bsl::errc_type
+        {
+            bsl::discard(mut_sys);
+            bsl::discard(vsid);
+            bsl::discard(cdl_entry);
+
+            bsl::error() << "cpuid_set: Not yet implemented"    // --
+                         << bsl::endl                           // --
+                         << bsl::here();                        // --
+
+            return bsl::errc_failure;
+        }
+
+        /// <!-- description -->
+        ///   @brief Returns the registers of the requested CPUIDs from the
+        ///     provided CDL.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param mut_sys the bf_syscall_t to use
+        ///   @param vsid the ID of the vs_t to query
+        ///   @param mut_cdl the CDL to store the requested CPUID values
+        ///   @return Returns bsl::errc_success on success, bsl::errc_failure
+        ///     and friends otherwise
+        ///
+        [[nodiscard]] constexpr auto
+        cpuid_get_list(
+            syscall::bf_syscall_t &mut_sys,
+            bsl::safe_u16 const &vsid,
+            hypercall::mv_cdl_t &mut_cdl) const noexcept -> bsl::errc_type
+        {
+            return this->get_vs(vsid)->cpuid_get_list(mut_sys, mut_cdl);
+        }
+
+        /// <!-- description -->
+        ///   @brief Sets the registers of the requested CPUIDs given the
+        ///     provided CDL.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param sys the bf_syscall_t to use
+        ///   @param vsid the ID of the vs_t to set
+        ///   @param cdl the CDL to get the requested CPUID values from
+        ///   @return Returns bsl::errc_success on success, bsl::errc_failure
+        ///     and friends otherwise
+        ///
+        [[nodiscard]] constexpr auto
+        cpuid_set_list(
+            syscall::bf_syscall_t const &sys,
+            bsl::safe_u16 const &vsid,
+            hypercall::mv_cdl_t const &cdl) noexcept -> bsl::errc_type
+        {
+            return this->get_vs(vsid)->cpuid_set_list(sys, cdl);
+        }
     };
 }
 
