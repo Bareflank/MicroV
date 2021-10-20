@@ -571,6 +571,54 @@ namespace hypercall
         bsl::uint64 const reg0_in,
         bsl::uint16 const reg1_in,
         bsl::uint64 *const pmut_reg0_out) noexcept -> mv_status_t::value_type;
+
+    /// <!-- description -->
+    ///   @brief Implements the ABI for mv_vs_op_cpuid_get.
+    ///
+    /// <!-- inputs/outputs -->
+    ///   @param reg0_in n/a
+    ///   @param reg1_in n/a
+    ///   @return n/a
+    ///
+    extern "C" [[nodiscard]] auto
+    mv_vs_op_cpuid_get_impl(bsl::uint64 const reg0_in, bsl::uint16 const reg1_in) noexcept
+        -> mv_status_t::value_type;
+
+    /// <!-- description -->
+    ///   @brief Implements the ABI for mv_vs_op_cpuid_set.
+    ///
+    /// <!-- inputs/outputs -->
+    ///   @param reg0_in n/a
+    ///   @param reg1_in n/a
+    ///   @return n/a
+    ///
+    extern "C" [[nodiscard]] auto
+    mv_vs_op_cpuid_set_impl(bsl::uint64 const reg0_in, bsl::uint16 const reg1_in) noexcept
+        -> mv_status_t::value_type;
+
+    /// <!-- description -->
+    ///   @brief Implements the ABI for mv_vs_op_cpuid_get_list.
+    ///
+    /// <!-- inputs/outputs -->
+    ///   @param reg0_in n/a
+    ///   @param reg1_in n/a
+    ///   @return n/a
+    ///
+    extern "C" [[nodiscard]] auto
+    mv_vs_op_cpuid_get_list_impl(bsl::uint64 const reg0_in, bsl::uint16 const reg1_in) noexcept
+        -> mv_status_t::value_type;
+
+    /// <!-- description -->
+    ///   @brief Implements the ABI for mv_vs_op_cpuid_set_list.
+    ///
+    /// <!-- inputs/outputs -->
+    ///   @param reg0_in n/a
+    ///   @param reg1_in n/a
+    ///   @return n/a
+    ///
+    extern "C" [[nodiscard]] auto
+    mv_vs_op_cpuid_set_list_impl(bsl::uint64 const reg0_in, bsl::uint16 const reg1_in) noexcept
+        -> mv_status_t::value_type;
 }
 
 #endif

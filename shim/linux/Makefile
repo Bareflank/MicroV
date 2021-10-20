@@ -163,6 +163,10 @@ ifneq ($(KERNELRELEASE),)
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_vp_op_destroy_vp_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_vp_op_vmid_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_vp_op_vpid_impl.o
+        $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_vs_op_cpuid_get_list_impl.o
+        $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_vs_op_cpuid_get_impl.o
+        $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_vs_op_cpuid_set_list_impl.o
+        $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_vs_op_cpuid_set_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_vs_op_create_vs_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_vs_op_destroy_vs_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_vs_op_gla_to_gpa_impl.o
@@ -222,6 +226,10 @@ ifneq ($(KERNELRELEASE),)
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_vp_op_destroy_vp_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_vp_op_vmid_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_vp_op_vpid_impl.o
+        $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_vs_op_cpuid_get_list_impl.o
+        $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_vs_op_cpuid_get_impl.o
+        $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_vs_op_cpuid_set_list_impl.o
+        $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_vs_op_cpuid_set_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_vs_op_create_vs_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_vs_op_destroy_vs_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_vs_op_gla_to_gpa_impl.o

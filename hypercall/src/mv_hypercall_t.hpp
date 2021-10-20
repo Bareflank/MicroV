@@ -1519,6 +1519,143 @@ namespace hypercall
 
             return mut_freq;
         }
+
+        /// <!-- description -->
+        ///   @brief Given the shared page cast as a single mv_cdl_entry_t, with
+        ///      mv_cdl_entry_t.fun and mv_cdl_entry_t.idx set to the requested
+        ///      CPUID leaf, the same mv_cdl_entry_t is returned in the shared
+        ///      page with mv_cdl_entry_t.eax, mv_cdl_entry_t.ebx,
+        ///      mv_cdl_entry_t.ecx and mv_cdl_entry_t.edx set to the value seen
+        ///      by the VS as if CPUID were executed.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param vsid The ID of the VS to query
+        ///   @return Returns the value read from the MSR
+        ///
+        [[nodiscard]] constexpr auto
+        mv_vs_op_cpuid_get(bsl::safe_u16 const &vsid) noexcept -> bsl::safe_u64
+        {
+            bsl::safe_u64 mut_val{};
+
+            bsl::expects(vsid.is_valid_and_checked());
+            bsl::expects(vsid != MV_INVALID_ID);
+
+            mv_status_t const ret{mv_vs_op_cpuid_get_impl(m_hndl.get(), vsid.get())};
+            if (bsl::unlikely(ret != MV_STATUS_SUCCESS)) {
+                bsl::error() << "mv_vs_op_cpuid_get failed with status "    // --
+                             << bsl::hex(ret)                               // --
+                             << bsl::endl                                   // --
+                             << bsl::here();                                // --
+
+                return bsl::safe_u64::failure();
+            }
+
+            return mut_val;
+        }
+
+        /// <!-- description -->
+        ///   @brief Given the shared page cast as a single mv_cdl_entry_t, with
+        ///     mv_cdl_entry_t.fun and mv_cdl_entry_t.idx set to the requested
+        ///     CPUID leaf, any feature bit in mv_cdl_entry_t.eax,
+        ///     mv_cdl_entry_t.ebx, mv_cdl_entry_t.ecx and mv_cdl_entry_t.edx
+        ///     set to 0 will disable the CPU feature for the requested VS.
+        ///     Any feature bit set to 1 is ignored by MicroV (meaning the CPU
+        ///     feature is left unmodified). Any non-feature bits are ignored.
+        ///     Note that mv_vs_op_cpuid_set can only be used to disabled CPU
+        ///     features. CPU features that are enabled are determined by
+        ///     hardware and MicroV's support for this hardware.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param vsid The ID of the VS to set
+        ///   @return Returns MV_STATUS_SUCCESS on success, MV_STATUS_FAILURE_UNKNOWN
+        ///     and friends on failure.
+        ///
+        [[nodiscard]] constexpr auto
+        mv_vs_op_cpuid_set(bsl::safe_u16 const &vsid) noexcept -> bsl::errc_type
+        {
+            bsl::expects(vsid.is_valid_and_checked());
+            bsl::expects(vsid != MV_INVALID_ID);
+
+            mv_status_t const ret{mv_vs_op_cpuid_set_impl(m_hndl.get(), vsid.get())};
+            if (bsl::unlikely(ret != MV_STATUS_SUCCESS)) {
+                bsl::error() << "mv_vs_op_cpuid_set failed with status "    // --
+                             << bsl::hex(ret)                               // --
+                             << bsl::endl                                   // --
+                             << bsl::here();                                // --
+
+                return bsl::errc_failure;
+            }
+
+            return bsl::errc_success;
+        }
+
+        /// <!-- description -->
+        ///   @brief Given the shared page cast as a mv_cdl_t, with each entry's
+        ///     mv_cdl_entry_t.fun and mv_cdl_entry_t.idx set to the requested
+        ///     CPUID leaf, the same entries are returned in the shared page
+        ///     with each entry's mv_cdl_entry_t.eax, mv_cdl_entry_t.ebx,
+        ///     mv_cdl_entry_t.ecx and mv_cdl_entry_t.edx set to the value seen
+        ///     by the VS as if CPUID were executed.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param vsid The ID of the VS to query
+        ///   @return Returns MV_STATUS_SUCCESS on success, MV_STATUS_FAILURE_UNKNOWN
+        ///     and friends on failure.
+        ///
+        [[nodiscard]] constexpr auto
+        mv_vs_op_cpuid_get_list(bsl::safe_u16 const &vsid) noexcept -> bsl::errc_type
+        {
+            bsl::expects(vsid.is_valid_and_checked());
+            bsl::expects(vsid != MV_INVALID_ID);
+
+            mv_status_t const ret{mv_vs_op_cpuid_get_list_impl(m_hndl.get(), vsid.get())};
+            if (bsl::unlikely(ret != MV_STATUS_SUCCESS)) {
+                bsl::error() << "mv_vs_op_cpuid_get_list failed with status "    // --
+                             << bsl::hex(ret)                                    // --
+                             << bsl::endl                                        // --
+                             << bsl::here();                                     // --
+
+                return bsl::errc_failure;
+            }
+
+            return bsl::errc_success;
+        }
+
+        /// <!-- description -->
+        ///   @brief Given the shared page cast as a mv_cdl_t, with each entry's
+        ///     mv_cdl_entry_t.fun and mv_cdl_entry_t.idx set to the requested
+        ///     CPUID leaf, any feature bit in entry's mv_cdl_entry_t.eax,
+        ///     mv_cdl_entry_t.ebx, mv_cdl_entry_t.ecx and mv_cdl_entry_t.edx
+        ///     set to 0 will disable the CPU feature for the requested VS. Any
+        ///     feature bit set to 1 is ignored by MicroV (meaning the CPU
+        ///     feature is left unmodified). Any non-feature bits are ignored.
+        ///     Note that mv_vs_op_cpuid_set can only be used to disabled CPU
+        ///     features. CPU features that are enabled are determined by
+        ///     hardware and MicroV's support for this hardware.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param vsid The ID of the VS to set
+        ///   @return Returns MV_STATUS_SUCCESS on success, MV_STATUS_FAILURE_UNKNOWN
+        ///     and friends on failure.
+        ///
+        [[nodiscard]] constexpr auto
+        mv_vs_op_cpuid_set_list(bsl::safe_u16 const vsid) noexcept -> bsl::errc_type
+        {
+            bsl::expects(vsid.is_valid_and_checked());
+            bsl::expects(vsid != MV_INVALID_ID);
+
+            mv_status_t const ret{mv_vs_op_cpuid_set_list_impl(m_hndl.get(), vsid.get())};
+            if (bsl::unlikely(ret != MV_STATUS_SUCCESS)) {
+                bsl::error() << "mv_vs_op_cpuid_set_list failed with status "    // --
+                             << bsl::hex(ret)                                    // --
+                             << bsl::endl                                        // --
+                             << bsl::here();                                     // --
+
+                return bsl::errc_failure;
+            }
+
+            return bsl::errc_success;
+        }
     };
 }
 
