@@ -27,7 +27,6 @@
 #include <mv_hypercall_impl.hpp>
 #include <mv_hypercall_t.hpp>
 #include <mv_rdl_t.hpp>
-#include <mv_reg_t.hpp>
 #include <mv_types.hpp>
 
 #include <bsl/array.hpp>
@@ -95,16 +94,6 @@ namespace hypercall
         // register unsupported
         constexpr auto unsupported_msr{0xFFFFFFFF_u64};
         pmut_rdl0->entries.front().reg = unsupported_msr.get();
-        mut_ret = mv_vs_op_msr_set_list_impl(hndl.get(), self.get());
-        integration::verify(mut_ret != MV_STATUS_SUCCESS);
-
-        // register invalid
-        pmut_rdl0->entries.front().reg = to_u64(mv_reg_t::mv_reg_t_invalid).get();
-        mut_ret = mv_vs_op_msr_set_list_impl(hndl.get(), self.get());
-        integration::verify(mut_ret != MV_STATUS_SUCCESS);
-
-        // register out of range
-        pmut_rdl0->entries.front().reg = ~to_u64(mv_reg_t::mv_reg_t_invalid).get();
         mut_ret = mv_vs_op_msr_set_list_impl(hndl.get(), self.get());
         integration::verify(mut_ret != MV_STATUS_SUCCESS);
 
