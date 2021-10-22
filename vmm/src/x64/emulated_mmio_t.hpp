@@ -247,7 +247,7 @@ namespace microv
 
                 auto const gpa{bsl::to_u64(entry->dst)};
                 auto const spa{this->gpa_to_spa(mut_sys, bsl::to_u64(entry->src))};
-
+                auto const flags{bsl::to_u64(entry->flags)};
                 /// TODO:
                 /// - Add support for entries that have a size greater than
                 ///   4k. For now we only support 4k pages.
@@ -258,8 +258,7 @@ namespace microv
                 ///   because guest software will not attempt to undo a
                 ///   failed map operation.
                 ///
-                auto const ret{
-                    m_slpt.map(tls, mut_page_pool, gpa, spa, MAP_PAGE_RWE, false, mut_sys)};
+                auto const ret{m_slpt.map(tls, mut_page_pool, gpa, spa, flags, false, mut_sys)};
 
                 if (bsl::unlikely(ret == bsl::errc_already_exists)) {
                     bsl::error() << "mdl entry "                   // --
