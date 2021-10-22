@@ -98,22 +98,6 @@ namespace shim
             };
         };
 
-        bsl::ut_scenario{"indices too small"} = []() noexcept {
-            bsl::ut_given{} = [&]() noexcept {
-                kvm_msr_list mut_args{};
-                bsl::ut_when{} = [&]() noexcept {
-                    g_mut_val = VAL64.get();
-                    mut_args.nmsrs = bsl::safe_u32::magic_0().get();
-                    bsl::ut_then{} = [&]() noexcept {
-                        bsl::ut_check(SHIM_FAILURE == handle(&mut_args));
-                    };
-                    bsl::ut_cleanup{} = [&]() noexcept {
-                        g_mut_val = {};
-                    };
-                };
-            };
-        };
-
         bsl::ut_scenario{"mv_pp_op_msr_get_supported_list corrupts num_entries"} = []() noexcept {
             bsl::ut_given{} = [&]() noexcept {
                 kvm_msr_list mut_args{};
@@ -153,7 +137,7 @@ namespace shim
                     mut_args.nmsrs = INIT_NMSRS.get();
                     g_mut_val = VAL64.get();
                     bsl::ut_then{} = [&]() noexcept {
-                        bsl::ut_check(SHIM_FAILURE == handle(&mut_args));
+                        bsl::ut_check(SHIM_2BIG == handle(&mut_args));
                     };
                     bsl::ut_cleanup{} = [&]() noexcept {
                         g_mut_val = {};

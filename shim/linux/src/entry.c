@@ -248,7 +248,17 @@ dispatch_system_kvm_get_msr_index_list(
         return -ENOMEM;
     }
 
-    if (handle_system_kvm_get_msr_index_list(&mut_args)) {
+    mut_ret = handle_system_kvm_get_msr_index_list(&mut_args);
+    if (SHIM_2BIG == mut_ret) {
+        if (platform_copy_to_user(
+                user_args, &mut_args, sizeof(mut_args.nmsrs))) {
+            bferror("platform_copy_to_user nmsrs failed");
+            return -EINVAL;
+        }
+
+        return -E2BIG;
+    }
+    else if (mut_ret) {
         bferror("handle_system_kvm_get_msr_index_list failed");
         return -EINVAL;
     }
