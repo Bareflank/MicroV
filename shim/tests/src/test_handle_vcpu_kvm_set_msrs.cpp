@@ -24,13 +24,18 @@
 
 #include "../../include/handle_vcpu_kvm_set_msrs.h"
 
+#include <helpers.hpp>
 #include <kvm_msrs.h>
-#include <mv_types.h>
+#include <shim_vcpu_t.h>
 
+#include <bsl/convert.hpp>
+#include <bsl/safe_integral.hpp>
 #include <bsl/ut.hpp>
 
 namespace shim
 {
+    constexpr auto VAL32{2_u32};
+
     /// <!-- description -->
     ///   @brief Used to execute the actual checks. We put the checks in this
     ///     function so that we can validate the tests both at compile-time
@@ -43,18 +48,52 @@ namespace shim
     [[nodiscard]] constexpr auto
     tests() noexcept -> bsl::exit_code
     {
-        bsl::ut_scenario{"description"} = []() noexcept {
+        init_tests();
+        constexpr auto handle{&handle_vcpu_kvm_set_msrs};
+
+        bsl::ut_scenario{"success"} = []() noexcept {
             bsl::ut_given{} = [&]() noexcept {
+                shim_vcpu_t const vcpu{};
                 kvm_msrs mut_args{};
                 bsl::ut_when{} = [&]() noexcept {
+                    mut_args.nmsrs = VAL32.get();
                     bsl::ut_then{} = [&]() noexcept {
-                        bsl::ut_check(SHIM_SUCCESS == handle_vcpu_kvm_set_msrs(&mut_args));
+                        bsl::ut_check(SHIM_SUCCESS == handle(&vcpu, &mut_args));
                     };
                 };
             };
         };
-
-        return bsl::ut_success();
+        bsl::ut_scenario{"hypervisor not detected"} = []() noexcept {
+            bsl::ut_given{} = [&]() noexcept {
+                shim_vcpu_t const vcpu{};
+                kvm_msrs mut_args{};
+                bsl::ut_when{} = [&]() noexcept {
+                    g_mut_hypervisor_detected = false;
+                    bsl::ut_then{} = [&]() noexcept {
+                        bsl::ut_check(SHIM_FAILURE == handle(&vcpu, &mut_args));
+                    };
+                    bsl::ut_cleanup{} = [&]() noexcept {
+                        g_mut_hypervisor_detected = true;
+                    };
+                };
+            };
+        };
+        bsl::ut_scenario{"mv_vs_op_msr_set_list fails"} = []() noexcept {
+            bsl::ut_given{} = [&]() noexcept {
+                shim_vcpu_t const vcpu{};
+                kvm_msrs mut_args{};
+                bsl::ut_when{} = [&]() noexcept {
+                    g_mut_mv_vs_op_msr_set_list = MV_STATUS_FAILURE_UNKNOWN;
+                    bsl::ut_then{} = [&]() noexcept {
+                        bsl::ut_check(SHIM_FAILURE == handle(&vcpu, &mut_args));
+                    };
+                    bsl::ut_cleanup{} = [&]() noexcept {
+                        g_mut_mv_vs_op_msr_set_list = {};
+                    };
+                };
+            };
+        };
+        return fini_tests();
     }
 }
 
