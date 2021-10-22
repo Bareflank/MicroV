@@ -94,7 +94,8 @@
 /** @brief defines KVM's KVM_CREATE_VM IOCTL */
 #define KVM_CREATE_VM _IO(SHIMIO, 0x01)
 /** @brief defines KVM's KVM_GET_MSR_INDEX_LIST IOCTL */
-#define KVM_GET_MSR_INDEX_LIST _IOWR(SHIMIO, 0x02, struct kvm_msr_list)
+#define KVM_GET_MSR_INDEX_LIST                                                                     \
+    _IOWR_LIST(SHIMIO, 0x02, struct kvm_msr_list, uint32_t[MSR_LIST_MAX_INDICES])
 /** @brief defines KVM's KVM_GET_MSR_FEATURE_INDEX_LIST IOCTL */
 #define KVM_GET_MSR_FEATURE_INDEX_LIST _IOWR(SHIMIO, 0x0a, struct kvm_msr_list)
 /** @brief defines KVM's KVM_CHECK_EXTENSION IOCTL */
