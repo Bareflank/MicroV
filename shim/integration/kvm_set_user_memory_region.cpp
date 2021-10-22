@@ -201,6 +201,84 @@ main() noexcept -> bsl::exit_code
         mut_vm.close();
     }
 
+    // non-canonical address below the canonical boundary
+    {
+        auto const vmfd{mut_system_ctl.send(shim::KVM_CREATE_VM)};
+        integration::ioctl_t mut_vm{bsl::to_i32(vmfd)};
+        constexpr auto non_canonical_address{0xFFFF7FFFFFFFFFFF_u64};
+        shim::kvm_userspace_memory_region mut_region{};
+        mut_region.slot = {};
+        mut_region.flags = {};
+        mut_region.guest_phys_addr = {};
+        mut_region.memory_size = vm_image.size().get();
+        mut_region.userspace_addr = reinterpret_cast<void *>(non_canonical_address.get());
+
+        auto const ret{mut_vm.write(shim::KVM_SET_USER_MEMORY_REGION, &mut_region)};
+        integration::verify(ret.is_neg());
+
+        mut_vm.close();
+    }
+
+    // non-canonical address above the canonical boundary
+    {
+        auto const vmfd{mut_system_ctl.send(shim::KVM_CREATE_VM)};
+        integration::ioctl_t mut_vm{bsl::to_i32(vmfd)};
+        constexpr auto non_canonical_address{0x0008000000000000_u64};
+        shim::kvm_userspace_memory_region mut_region{};
+        mut_region.slot = {};
+        mut_region.flags = {};
+        mut_region.guest_phys_addr = {};
+        mut_region.memory_size = vm_image.size().get();
+        mut_region.userspace_addr = reinterpret_cast<void *>(non_canonical_address.get());
+
+        auto const ret{mut_vm.write(shim::KVM_SET_USER_MEMORY_REGION, &mut_region)};
+        integration::verify(ret.is_neg());
+
+        mut_vm.close();
+    }
+
+    // canonical address on the higher canonical boundary
+    {
+        auto const vmfd{mut_system_ctl.send(shim::KVM_CREATE_VM)};
+        integration::ioctl_t mut_vm{bsl::to_i32(vmfd)};
+        constexpr auto non_canonical_address{0xFFFF800000000000_u64};
+        shim::kvm_userspace_memory_region mut_region{};
+        mut_region.slot = {};
+        mut_region.flags = {};
+        mut_region.guest_phys_addr = {};
+        mut_region.memory_size = vm_image.size().get();
+        mut_region.userspace_addr = reinterpret_cast<void *>(non_canonical_address.get());
+
+        auto const ret{mut_vm.write(shim::KVM_SET_USER_MEMORY_REGION, &mut_region)};
+        // This fails on platform_virt_to_phys, but none of the error paths distinguish
+        // between error type. This test should verify ret.is_zero(). Might have to add
+        // flags for the shim to short circuit.
+        integration::verify(ret.is_neg());
+
+        mut_vm.close();
+    }
+
+    // canonical address on the lower canonical boundary
+    {
+        auto const vmfd{mut_system_ctl.send(shim::KVM_CREATE_VM)};
+        integration::ioctl_t mut_vm{bsl::to_i32(vmfd)};
+        constexpr auto non_canonical_address{0x0007FFFFFFFFFFFF_u64};
+        shim::kvm_userspace_memory_region mut_region{};
+        mut_region.slot = {};
+        mut_region.flags = {};
+        mut_region.guest_phys_addr = {};
+        mut_region.memory_size = vm_image.size().get();
+        mut_region.userspace_addr = reinterpret_cast<void *>(non_canonical_address.get());
+
+        auto const ret{mut_vm.write(shim::KVM_SET_USER_MEMORY_REGION, &mut_region)};
+        // This fails on platform_virt_to_phys, but none of the error paths distinguish
+        // between error type. This test should verify ret.is_zero(). Might have to add
+        // flags for the shim to short circuit.
+        integration::verify(ret.is_neg());
+
+        mut_vm.close();
+    }
+
     // The shim has a limited number of slots
     {
         auto const vmfd{mut_system_ctl.send(shim::KVM_CREATE_VM)};

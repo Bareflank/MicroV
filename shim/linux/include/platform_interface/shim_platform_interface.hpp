@@ -79,6 +79,17 @@
 // #include <kvm_xen_hvm_config.hpp>
 // #include <kvm_xsave.hpp>
 
+/**
+ * @brief Hack for defining ioctl commands that require structs
+ * with zero-length arrays. This is usually for ioctls that return
+ * a list.
+ *
+ * It is just like _IOWR, except it subtracts the size of a pointer
+ * from the size of the struct passed.
+ */
+#define _IOWR_LIST(type, nr, size)                                                                 \
+    _IOC(_IOC_READ | _IOC_WRITE, (type), (nr), sizeof(size) - sizeof(void *))
+
 namespace shim
 {
     /// @brief magic number for KVM IOCTLs
@@ -95,7 +106,7 @@ namespace shim
     constexpr bsl::safe_umx KVM_CREATE_VM{static_cast<bsl::uintmx>(_IO(SHIMIO.get(), 0x01))};
     /// @brief defines KVM's KVM_GET_MSR_INDEX_LIST IOCTL
     constexpr bsl::safe_umx KVM_GET_MSR_INDEX_LIST{
-        static_cast<bsl::uintmx>(_IOWR(SHIMIO.get(), 0x02, struct kvm_msr_list))};
+        static_cast<bsl::uintmx>(_IOWR_LIST(SHIMIO.get(), 0x02, struct kvm_msr_list))};
     // /// @brief defines KVM's KVM_GET_MSR_FEATURE_INDEX_LIST IOCTL
     // constexpr bsl::safe_umx KVM_GET_MSR_FEATURE_INDEX_LIST{static_cast<bsl::uintmx>(_IOWR(SHIMIO.get(), 0x0a, struct kvm_msr_list))};
     /// @brief defines KVM's KVM_CHECK_EXTENSION IOCTL
