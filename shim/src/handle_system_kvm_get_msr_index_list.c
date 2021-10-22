@@ -57,11 +57,6 @@ handle_system_kvm_get_msr_index_list(struct kvm_msr_list *const pmut_ioctl_args)
         return SHIM_FAILURE;
     }
 
-    if (NULL == pmut_ioctl_args->indices) {
-        bferror("indices not allocated");
-        return SHIM_FAILURE;
-    }
-
     platform_expects(MV_INVALID_HANDLE != g_mut_hndl);
 
     do {

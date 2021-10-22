@@ -51,13 +51,11 @@ main() noexcept -> bsl::exit_code
 
     bsl::enable_color();
     integration::ioctl_t mut_system_ctl{shim::DEVICE_NAME};
-    bsl::array<bsl::uint32, bsl::uintmx(init_nmsrs.get())> mut_msr_indices{};
 
     // nmsrs is too big
     {
         mut_msr_list.nmsrs = HYPERVISOR_PAGE_SIZE.get();
         mut_msr_list.nmsrs++;
-        mut_msr_list.indices = mut_msr_indices.front_if();
 
         integration::verify(
             mut_system_ctl.write(shim::KVM_GET_MSR_INDEX_LIST, &mut_msr_list).is_neg());
@@ -65,7 +63,6 @@ main() noexcept -> bsl::exit_code
 
     {
         mut_msr_list.nmsrs = init_nmsrs.get();
-        mut_msr_list.indices = mut_msr_indices.front_if();
 
         integration::verify(
             mut_system_ctl.write(shim::KVM_GET_MSR_INDEX_LIST, &mut_msr_list).is_zero());
@@ -82,13 +79,13 @@ main() noexcept -> bsl::exit_code
         auto mut_nmsrs{bsl::to_idx(mut_msr_list.nmsrs)};
 
         for (bsl::safe_idx mut_i{}; mut_i < mut_nmsrs; ++mut_i) {
-            if (star_val == mut_msr_list.indices[mut_i.get()]) {
+            if (star_val == *mut_msr_list.indices.at_if(mut_i)) {
                 mut_found_star = true;
             }
-            else if (pat_val == mut_msr_list.indices[mut_i.get()]) {
+            else if (pat_val == *mut_msr_list.indices.at_if(mut_i)) {
                 mut_found_pat = true;
             }
-            else if (apic_base_val == mut_msr_list.indices[mut_i.get()]) {
+            else if (apic_base_val == *mut_msr_list.indices.at_if(mut_i)) {
                 mut_found_apic_base = true;
             }
         }

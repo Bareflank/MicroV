@@ -27,7 +27,11 @@
 #ifndef KVM_MSR_LIST_HPP
 #define KVM_MSR_LIST_HPP
 
-#include <bsl/cstdint.hpp>
+#include <bsl/array.hpp>
+#include <bsl/convert.hpp>
+#include <bsl/safe_integral.hpp>
+
+constexpr auto MSR_LIST_MAX_INDICES{128_u32};
 
 namespace shim
 {
@@ -45,7 +49,7 @@ namespace shim
         bsl::uint32 nmsrs;
 
         /** @brief array containing the indices of supported MSRs */
-        bsl::uint32 *indices;
+        bsl::array<bsl::uint32, MSR_LIST_MAX_INDICES.get()> indices;
     };
 }
 
