@@ -24,43 +24,38 @@
  * SOFTWARE.
  */
 
-#ifndef MV_CPUID_FLAG_T_H
-#define MV_CPUID_FLAG_T_H
+#ifndef KVM_CPUID2_HPP
+#define KVM_CPUID2_HPP
 
-#ifdef __cplusplus
-extern "C"
+#include <kvm_cpuid_entry2.hpp>
+
+#include <bsl/array.hpp>
+#include <bsl/convert.hpp>
+#include <bsl/safe_integral.hpp>
+
+constexpr auto CPUID2_MAX_ENTRIES{40_u32};
+
+namespace shim
 {
-#endif
+#pragma pack(push, 1)
 
-#ifdef __cplusplus
     /**
+     * @struct kvm_cpuid2
+     *
      * <!-- description -->
-     *   @brief Defines CPUID flags
+     *   @brief see /include/uapi/linux/kvm.h in Linux for more details.
      */
-    enum mv_cpuid_flag_t : int32_t
-#else
-/**
-     * <!-- description -->
-     *   @brief Defines CPUID flags
-     */
-enum mv_cpuid_flag_t
-#endif
+    struct kvm_cpuid2
     {
-        /** @brief reserved */
-        mv_cpuid_flag_reserved = 0,
+        /** @brief number of entries */
+        bsl::uint32 nent;
+        /** @brief padding for alignment */
+        bsl::uint32 padding;
+        /** @brief CPUID entries */
+        bsl::array<shim::kvm_cpuid_entry2, CPUID2_MAX_ENTRIES.get()> entries;
     };
-
-/** @brief integer version of mv_bit_size_t_8 */
-#define BIT_SIZE_8 ((int32_t)mv_bit_size_t_8)
-/** @brief integer version of mv_bit_size_t_16 */
-#define BIT_SIZE_16 ((int32_t)mv_bit_size_t_16)
-/** @brief integer version of mv_bit_size_t_32 */
-#define BIT_SIZE_32 ((int32_t)mv_bit_size_t_32)
-/** @brief integer version of mv_bit_size_t_64 */
-#define BIT_SIZE_64 ((int32_t)mv_bit_size_t_64)
-
-#ifdef __cplusplus
 }
-#endif
+
+#pragma pack(pop)
 
 #endif

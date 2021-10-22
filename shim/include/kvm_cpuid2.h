@@ -27,12 +27,15 @@
 #ifndef KVM_CPUID2_H
 #define KVM_CPUID2_H
 
+#include <kvm_cpuid_entry2.h>
 #include <stdint.h>
 
 #ifdef __cplusplus
 extern "C"
 {
 #endif
+
+#define CPUID2_MAX_ENTRIES 40
 
 #pragma pack(push, 1)
 
@@ -44,8 +47,12 @@ extern "C"
      */
     struct kvm_cpuid2
     {
-        /** @brief replace me with contents from KVM API */
-        int32_t dummy;
+        /** @brief number of entries */
+        uint32_t nent;
+        /** @brief padding for alignment */
+        uint32_t padding;
+        /** @brief CPUID entries */
+        struct kvm_cpuid_entry2 entries[CPUID2_MAX_ENTRIES];
     };
 
 #pragma pack(pop)

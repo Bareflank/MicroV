@@ -33,6 +33,7 @@
 #include <handle_system_kvm_get_api_version.h>
 #include <handle_system_kvm_get_msr_index_list.h>
 #include <handle_system_kvm_get_msrs.h>
+#include <handle_system_kvm_get_supported_cpuid.h>
 #include <handle_system_kvm_get_vcpu_mmap_size.h>
 #include <handle_vcpu_kvm_get_fpu.h>
 #include <handle_vcpu_kvm_get_mp_state.h>
@@ -233,12 +234,12 @@ dispatch_system_kvm_get_msr_feature_index_list(
 
 static long
 dispatch_system_kvm_get_msr_index_list(
-    struct kvm_msr_list __user *const user_args)
+    struct kvm_msr_list __user *const pmut_user_args)
 {
     struct kvm_msr_list mut_args;
     int64_t mut_ret;
 
-    if (platform_copy_from_user(&mut_args, user_args, sizeof(mut_args))) {
+    if (platform_copy_from_user(&mut_args, pmut_user_args, sizeof(mut_args))) {
         bferror("platform_copy_from_user failed");
         return -EINVAL;
     }
@@ -251,7 +252,7 @@ dispatch_system_kvm_get_msr_index_list(
     mut_ret = handle_system_kvm_get_msr_index_list(&mut_args);
     if (SHIM_2BIG == mut_ret) {
         if (platform_copy_to_user(
-                user_args, &mut_args, sizeof(mut_args.nmsrs))) {
+                pmut_user_args, &mut_args, sizeof(mut_args.nmsrs))) {
             bferror("platform_copy_to_user nmsrs failed");
             return -EINVAL;
         }
@@ -264,7 +265,7 @@ dispatch_system_kvm_get_msr_index_list(
     }
 
     if (platform_copy_to_user(
-            user_args,
+            pmut_user_args,
             &mut_args,
             sizeof(mut_args.nmsrs) +
                 mut_args.nmsrs * sizeof(*mut_args.indices))) {
@@ -283,10 +284,47 @@ dispatch_system_kvm_get_msrs(struct kvm_msrs *const ioctl_args)
 }
 
 static long
-dispatch_system_kvm_get_supported_cpuid(struct kvm_cpuid2 *const ioctl_args)
+dispatch_system_kvm_get_supported_cpuid(
+    struct kvm_cpuid2 __user *const pmut_user_args)
 {
-    (void)ioctl_args;
-    return -EINVAL;
+    struct kvm_cpuid2 mut_args;
+    int64_t mut_ret;
+
+    if (platform_copy_from_user(&mut_args, pmut_user_args, sizeof(mut_args))) {
+        bferror("platform_copy_from_user failed");
+        return -EINVAL;
+    }
+
+    if (mut_args.nent > CPUID2_MAX_ENTRIES) {
+        bferror("caller nent exceeds CPUID2_MAX_ENTRIES");
+        return -ENOMEM;
+    }
+
+    mut_ret = handle_system_kvm_get_supported_cpuid(&mut_args);
+    if (SHIM_2BIG == mut_ret) {
+        if (platform_copy_to_user(
+                pmut_user_args, &mut_args, sizeof(mut_args.nent))) {
+            bferror("platform_copy_to_user nent failed");
+            return -EINVAL;
+        }
+
+        return -E2BIG;
+    }
+    else if (mut_ret) {
+        bferror("handle_system_kvm_get_msr_index_list failed");
+        return -EINVAL;
+    }
+
+    if (platform_copy_to_user(
+            pmut_user_args,
+            &mut_args,
+            sizeof(mut_args.nent) +
+                mut_args.nent * sizeof(*mut_args.entries))) {
+        bferror("platform_copy_to_user failed");
+        return -EINVAL;
+    }
+
+    return 0;
 }
 
 static long
