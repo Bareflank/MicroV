@@ -72,6 +72,30 @@ get_slot_as(uint32_t const slot) NOEXCEPT
 
 /**
  * <!-- description -->
+ *   @brief Translates KVM_MEM_* flags to MV_MAP_FLAG* flags
+ *
+ * <!-- inputs/outputs -->
+ *   @param flags KVM memory flag in the set_user_memory_region
+ *   @return Returns the microv equivalent flag for the kvm flag
+ */
+NODISCARD static inline uint64_t
+kvm_to_mv_page_flags(uint32_t const flags) NOEXCEPT
+{
+    uint64_t mut_flags = ((uint64_t)0);
+    if (flags & ((uint32_t)KVM_MEM_READONLY)) {
+        // Anticipate that we'll have to provide RE access here
+        // in reality
+        mut_flags |= MV_MAP_FLAG_READ_ACCESS;
+    }
+    else {
+        mv_touch();
+    }
+
+    return mut_flags;
+}
+
+/**
+ * <!-- description -->
  *   @brief Handles the execution of kvm_set_user_memory_region.
  *
  * <!-- inputs/outputs -->
@@ -83,6 +107,8 @@ NODISCARD int64_t
 handle_vm_kvm_set_user_memory_region(
     struct kvm_userspace_memory_region const *const args, struct shim_vm_t *const pmut_vm) NOEXCEPT
 {
+    uint64_t const high_canonical_boundary = ((uint64_t)0xFFFF800000000000ULL);
+    uint64_t const low_canonical_boundary = ((uint64_t)0x00007FFFFFFFFFFFULL);
     struct mv_mdl_t *pmut_mut_mdl;
 
     int64_t mut_i;
@@ -92,6 +118,7 @@ handle_vm_kvm_set_user_memory_region(
     uint32_t mut_slot_as;
     uint64_t mut_dst;
     uint64_t mut_src;
+    uint64_t const flags = kvm_to_mv_page_flags(args->flags);
 
     platform_expects(NULL != args);
     platform_expects(NULL != pmut_vm);
@@ -124,7 +151,7 @@ handle_vm_kvm_set_user_memory_region(
     }
 
     if (((uint64_t)0) == args->memory_size) {
-        bferror("deleting an existing slot is currently not implemeneted");
+        bferror("deleting an existing slot is currently not implemented");
         return SHIM_FAILURE;
     }
 
@@ -148,18 +175,26 @@ handle_vm_kvm_set_user_memory_region(
         return SHIM_FAILURE;
     }
 
-    /// TODO:
-    /// - Check to make sure that the userspace address that was provided
-    ///   is canonical. Otherwise MicroV will get mad.
-    ///
+    if (high_canonical_boundary < args->userspace_addr) {
+        if (low_canonical_boundary <= args->userspace_addr) {
+            mv_touch();
+        }
+        else {
+            bferror("args->userspace_addr is not a canonical address");
+            return SHIM_FAILURE;
+        }
+    }
+    else {
+        mv_touch();
+    }
+
+    // Don't support KVM_MEM_LOG_DIRTY_PAGES right now
+    if (args->flags & ~((uint32_t)KVM_MEM_READONLY)) {
+        return SHIM_FAILURE;
+    }
 
     /// TODO:
-    /// - Check to make sure that the provided flags are supported by MicroV
-    ///   and then construct the MicroV flags as required.
-    ///
-
-    /// TODO:
-    /// - Check to make sure that non of the slots overlap. This is not
+    /// - Check to make sure that none of the slots overlap. This is not
     ///   allowed by the KVM API, and even if it were, MicroV would get
     ///   mad as it doesn't allow this either.
     ///
@@ -231,14 +266,8 @@ handle_vm_kvm_set_user_memory_region(
         pmut_mut_mdl->entries[pmut_mut_mdl->num_entries].dst = dst;
         pmut_mut_mdl->entries[pmut_mut_mdl->num_entries].src = src;
         pmut_mut_mdl->entries[pmut_mut_mdl->num_entries].bytes = HYPERVISOR_PAGE_SIZE;
+        pmut_mut_mdl->entries[pmut_mut_mdl->num_entries].flags = flags;
         ++pmut_mut_mdl->num_entries;
-
-        /// TODO:
-        /// - Need to add support for memory flags. Right now, MicroV ignores
-        ///   the flags field and always sets the memory to RWE. This needs
-        ///   to be fixed, and then we will need to translate the KVM flags
-        ///   to MicroV flags here and send them up properly.
-        ///
 
         /// TODO:
         /// - Right now MicroV assumes that every entry is 4k in size.
