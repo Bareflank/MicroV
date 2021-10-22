@@ -30,7 +30,9 @@
 #include <asm/ioctl.h>
 #include <kvm_fpu.hpp>
 #include <kvm_mp_state.hpp>
+#include <kvm_msr_entry.hpp>
 #include <kvm_msr_list.hpp>
+#include <kvm_msrs.hpp>
 #include <kvm_regs.hpp>
 #include <kvm_sregs.hpp>
 #include <kvm_userspace_memory_region.hpp>
@@ -78,6 +80,16 @@
 // #include <kvm_xcrs.hpp>
 // #include <kvm_xen_hvm_config.hpp>
 // #include <kvm_xsave.hpp>
+/**
+ * @brief Hack for defining ioctl commands that require structs
+ * with zero-length arrays. This is usually for ioctls that return
+ * a list.
+ *
+ * It is just like _IOWR, except it subtracts the size of a pointer
+ * from the size of the struct passed.
+ */
+#define _IOWR_LIST(type, nr, size, sub_size)                                                       \
+    _IOC(_IOC_READ | _IOC_WRITE, (type), (nr), sizeof(size) - sizeof(sub_size))
 
 namespace shim
 {
@@ -125,10 +137,12 @@ namespace shim
     // constexpr bsl::safe_umx KVM_TRANSLATE{static_cast<bsl::uintmx>(_IOWR(SHIMIO.get(), 0x85, struct kvm_translation))};
     // /// @brief defines KVM's KVM_INTERRUPT IOCTL
     // constexpr bsl::safe_umx KVM_INTERRUPT{static_cast<bsl::uintmx>(_IOW(SHIMIO.get(), 0x86, struct kvm_interrupt))};
-    // /// @brief defines KVM's KVM_GET_MSRS IOCTL
-    // constexpr bsl::safe_umx KVM_GET_MSRS{static_cast<bsl::uintmx>(_IOWR(SHIMIO.get(), 0x88, struct kvm_msrs))};
-    // /// @brief defines KVM's KVM_SET_MSRS IOCTL
-    // constexpr bsl::safe_umx KVM_SET_MSRS{static_cast<bsl::uintmx>(_IOW(SHIMIO.get(), 0x89, struct kvm_msrs))};
+    /// @brief defines KVM's KVM_GET_MSRS IOCTL
+    constexpr bsl::safe_umx KVM_GET_MSRS{static_cast<bsl::uintmx>(_IOWR_LIST(
+        SHIMIO.get(), 0x88, struct kvm_msrs, struct kvm_msr_entry[MV_RDL_MAX_ENTRIES.get()]))};
+    /// @brief defines KVM's KVM_SET_MSRS IOCTL
+    constexpr bsl::safe_umx KVM_SET_MSRS{
+        static_cast<bsl::uintmx>(_IOW(SHIMIO.get(), 0x89, struct kvm_msrs))};
     // /// @brief defines KVM's KVM_SET_CPUID IOCTL
     // constexpr bsl::safe_umx KVM_SET_CPUID{static_cast<bsl::uintmx>(_IOW(SHIMIO.get(), 0x8a, struct kvm_cpuid))};
     // /// @brief defines KVM's KVM_GET_CPUID2 IOCTL
