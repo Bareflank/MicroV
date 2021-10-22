@@ -34,6 +34,8 @@ extern "C"
 {
 #endif
 
+#define MSR_LIST_MAX_INDICES 128
+
 #pragma pack(push, 1)
 
     /**
@@ -48,7 +50,7 @@ extern "C"
         uint32_t nmsrs;
 
         /** @brief array containing the indices of supported MSRs */
-        uint32_t *indices;
+        uint32_t indices[MSR_LIST_MAX_INDICES];
     };
 
 #pragma pack(pop)

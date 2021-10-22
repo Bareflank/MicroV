@@ -106,8 +106,8 @@ namespace shim
     /// @brief defines KVM's KVM_CREATE_VM IOCTL
     constexpr bsl::safe_umx KVM_CREATE_VM{static_cast<bsl::uintmx>(_IO(SHIMIO.get(), 0x01))};
     /// @brief defines KVM's KVM_GET_MSR_INDEX_LIST IOCTL
-    constexpr bsl::safe_umx KVM_GET_MSR_INDEX_LIST{
-        static_cast<bsl::uintmx>(_IOWR(SHIMIO.get(), 0x02, struct kvm_msr_list))};
+    constexpr bsl::safe_umx KVM_GET_MSR_INDEX_LIST{static_cast<bsl::uintmx>(
+        _IOWR_LIST(SHIMIO.get(), 0x02, struct kvm_msr_list, uint32_t[MSR_LIST_MAX_INDICES.get()]))};
     // /// @brief defines KVM's KVM_GET_MSR_FEATURE_INDEX_LIST IOCTL
     // constexpr bsl::safe_umx KVM_GET_MSR_FEATURE_INDEX_LIST{static_cast<bsl::uintmx>(_IOWR(SHIMIO.get(), 0x0a, struct kvm_msr_list))};
     /// @brief defines KVM's KVM_CHECK_EXTENSION IOCTL
