@@ -78,6 +78,17 @@
 /** @brief defines the /dev name of the shim */
 #define SHIM_DEVICE_NAME "/dev/microv_shim"
 
+/**
+ * @brief Hack for defining ioctl commands that require structs
+ * with zero-length arrays. This is usually for ioctls that return
+ * a list. We will use arrays with defined length instead.
+ *
+ * It is just like _IOWR, except it takes a second type argument and
+ * subtracts its size from the size of the first type.
+ */
+#define _IOWR_LIST(type, nr, size, size_arr)                                                       \
+    _IOC(_IOC_READ | _IOC_WRITE, (type), (nr), sizeof(size) - sizeof(size_arr))
+
 /** @brief defines KVM's KVM_GET_API_VERSION IOCTL */
 #define KVM_GET_API_VERSION _IO(SHIMIO, 0x00)
 /** @brief defines KVM's KVM_CREATE_VM IOCTL */

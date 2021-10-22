@@ -79,6 +79,17 @@
 // #include <kvm_xen_hvm_config.hpp>
 // #include <kvm_xsave.hpp>
 
+/**
+ * @brief Hack for defining ioctl commands that require structs
+ * with zero-length arrays. This is usually for ioctls that return
+ * a list. We will use arrays with defined length instead.
+ *
+ * It is just like _IOWR, except it takes a second type argument and
+ * subtracts its size from the size of the first type.
+ */
+#define _IOWR_LIST(type, nr, size, size_arr)                                                       \
+    _IOC(_IOC_READ | _IOC_WRITE, (type), (nr), sizeof(size) - sizeof(size_arr))
+
 namespace shim
 {
     /// @brief magic number for KVM IOCTLs
