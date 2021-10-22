@@ -36,6 +36,9 @@ extern "C"
 
 #pragma pack(push, 1)
 
+#define KVM_MEM_LOG_DIRTY_PAGES (1UL << 0)
+#define KVM_MEM_READONLY (1UL << 1)
+
     /**
      * @struct kvm_userspace_memory_region
      *
