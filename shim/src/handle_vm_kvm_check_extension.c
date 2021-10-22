@@ -90,10 +90,6 @@ handle_vm_kvm_check_extension(unsigned long mut_userargs, uint32_t *const pmut_r
             *pmut_ret = (uint32_t)INT16_MAX;
             break;
         }
-        case KVM_CAP_MCE: {
-            *pmut_ret = (uint32_t)MICROV_MAX_MCE_BANKS;
-            break;
-        }
         default: {
             bfdebug_x64("Unsupported Extension userargs", mut_userargs);
             *pmut_ret = (uint32_t)0;
