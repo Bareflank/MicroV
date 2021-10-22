@@ -35,11 +35,6 @@ extern "C"
 {
 #endif
 
-/** @brief TBD */
-#define KVM_MEM_LOG_DIRTY_PAGES (((uint64_t)1) << ((uint64_t)0))
-/** @brief allows a slot to be read-only */
-#define KVM_MEM_READONLY (((uint64_t)1) << ((uint64_t)1))
-
     /**
      * <!-- description -->
      *   @brief Handles the execution of kvm_set_user_memory_region.
