@@ -43,7 +43,8 @@ extern "C"
      *   @param pmut_ioctl_args the arguments provided by userspace
      *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
      */
-    NODISCARD int64_t handle_vcpu_kvm_set_cpuid2(struct kvm_cpuid2 *const pmut_ioctl_args) NOEXCEPT;
+    NODISCARD int64_t handle_vcpu_kvm_set_cpuid2(
+        struct shim_vcpu_t const *const vcpu, struct kvm_cpuid2 *const pmut_ioctl_args) NOEXCEPT;
 
 #ifdef __cplusplus
 }

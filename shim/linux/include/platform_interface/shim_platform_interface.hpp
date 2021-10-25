@@ -151,8 +151,9 @@ namespace shim
     // constexpr bsl::safe_umx KVM_SET_CPUID{static_cast<bsl::uintmx>(_IOW(SHIMIO.get(), 0x8a, struct kvm_cpuid))};
     // /// @brief defines KVM's KVM_GET_CPUID2 IOCTL
     // constexpr bsl::safe_umx KVM_GET_CPUID2{static_cast<bsl::uintmx>(_IOWR(SHIMIO.get(), 0x91, struct kvm_cpuid2))};
-    // /// @brief defines KVM's KVM_SET_CPUID2 IOCTL
-    // constexpr bsl::safe_umx KVM_SET_CPUID2{static_cast<bsl::uintmx>(_IOW(SHIMIO.get(), 0x90, struct kvm_cpuid2))};
+    /// @brief defines KVM's KVM_SET_CPUID2 IOCTL
+    constexpr bsl::safe_umx KVM_SET_CPUID2{static_cast<bsl::uintmx>(_IOW_LIST(
+        SHIMIO.get(), 0x90, struct kvm_cpuid2, struct kvm_cpuid_entry2[CPUID2_MAX_ENTRIES.get()]))};
     // /// @brief defines KVM's KVM_SET_SIGNAL_MASK IOCTL
     // constexpr bsl::safe_umx KVM_SET_SIGNAL_MASK{static_cast<bsl::uintmx>(_IOW(SHIMIO.get(), 0x8b, struct kvm_signal_mask))};
     /// @brief defines KVM's KVM_GET_FPU IOCTL

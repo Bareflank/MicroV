@@ -135,7 +135,8 @@
 /** @brief defines KVM's KVM_GET_CPUID2 IOCTL */
 #define KVM_GET_CPUID2 _IOWR(SHIMIO, 0x91, struct kvm_cpuid2)
 /** @brief defines KVM's KVM_SET_CPUID2 IOCTL */
-#define KVM_SET_CPUID2 _IOW(SHIMIO, 0x90, struct kvm_cpuid2)
+#define KVM_SET_CPUID2                                                                             \
+    _IOW_LIST(SHIMIO, 0x90, struct kvm_cpuid2, struct kvm_cpuid_entry2[CPUID2_MAX_ENTRIES])
 /** @brief defines KVM's KVM_SET_SIGNAL_MASK IOCTL */
 #define KVM_SET_SIGNAL_MASK _IOW(SHIMIO, 0x8b, struct kvm_signal_mask)
 /** @brief defines KVM's KVM_GET_FPU IOCTL */

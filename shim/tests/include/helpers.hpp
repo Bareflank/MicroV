@@ -91,6 +91,8 @@ namespace shim
         constinit mv_status_t g_mut_mv_vs_op_reg_set{};            // NOLINT
         constinit mv_status_t g_mut_mv_vs_op_reg_get_list{};       // NOLINT
         constinit mv_status_t g_mut_mv_vs_op_reg_set_list{};       // NOLINT
+        constinit mv_status_t g_mut_mv_vs_op_cpuid_get_list{};     // NOLINT
+        constinit mv_status_t g_mut_mv_vs_op_cpuid_set_list{};     // NOLINT
         constinit mv_status_t g_mut_mv_vs_op_msr_get{};            // NOLINT
         constinit mv_status_t g_mut_mv_vs_op_msr_set{};            // NOLINT
         constinit mv_status_t g_mut_mv_vs_op_msr_get_list{};       // NOLINT
