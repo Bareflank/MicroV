@@ -81,6 +81,9 @@
 #define _IOWR_LIST(type, nr, size, sub_size)                                                       \
     _IOC(_IOC_READ | _IOC_WRITE, (type), (nr), sizeof(size) - sizeof(sub_size))
 
+#define _IOW_LIST(type, nr, size, sub_size)                                                       \
+    _IOC(_IOC_WRITE, (type), (nr), sizeof(size) - sizeof(sub_size))
+
 /** @brief defines KVM's KVM_GET_API_VERSION IOCTL */
 #define KVM_GET_API_VERSION _IO(SHIMIO, 0x00)
 /** @brief defines KVM's KVM_CREATE_VM IOCTL */
@@ -124,7 +127,7 @@
 /** @brief defines KVM's KVM_GET_CPUID2 IOCTL */
 #define KVM_GET_CPUID2 _IOWR(SHIMIO, 0x91, struct kvm_cpuid2)
 /** @brief defines KVM's KVM_SET_CPUID2 IOCTL */
-#define KVM_SET_CPUID2 _IOW(SHIMIO, 0x90, struct kvm_cpuid2)
+#define KVM_SET_CPUID2 _IOW_LIST(SHIMIO, 0x90, struct kvm_cpuid2, struct kvm_cpuid_entry2[CPUID2_MAX_ENTRIES])
 /** @brief defines KVM's KVM_SET_SIGNAL_MASK IOCTL */
 #define KVM_SET_SIGNAL_MASK _IOW(SHIMIO, 0x8b, struct kvm_signal_mask)
 /** @brief defines KVM's KVM_GET_FPU IOCTL */

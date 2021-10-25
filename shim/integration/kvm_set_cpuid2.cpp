@@ -24,11 +24,10 @@
 
 #include <integration_utils.hpp>
 #include <ioctl_t.hpp>
-#include <kvm_cpuid2.h>
-#include <kvm_cpuid_entry2.h>
+#include <kvm_cpuid2.hpp>
+#include <kvm_cpuid_entry2.hpp>
 #include <shim_platform_interface.hpp>
 
-#include <bsl/array.hpp>
 #include <bsl/convert.hpp>
 #include <bsl/enable_color.hpp>
 #include <bsl/exit_code.hpp>
@@ -44,53 +43,74 @@
 [[nodiscard]] auto
 main() noexcept -> bsl::exit_code
 {
+    constexpr auto CPUID_FN0000_0001{0x00000001_u32};
+    constexpr auto CPUID_FN8000_0001{0x80000001_u32};
     constexpr auto init_nent{0x20_u32};
-    constexpr auto cpuid_fn0000_0001{0x00000001_u32};
     shim::kvm_cpuid2 mut_cpuid2{};
+    shim::kvm_cpuid_entry2 mut_fn0000_0001{};
+    shim::kvm_cpuid_entry2 mut_fn8000_0001{};
 
     bsl::enable_color();
     integration::ioctl_t mut_system_ctl{shim::DEVICE_NAME};
 
     {
-        mut_cpuid2.nent = init_nent.get();
+        auto const vmfd{mut_system_ctl.send(shim::KVM_CREATE_VM)};
+        integration::ioctl_t mut_vm{bsl::to_i32(vmfd)};
 
+        auto const vcpufd{mut_vm.send(shim::KVM_CREATE_VCPU)};
+        integration::ioctl_t mut_vcpu{bsl::to_i32(vcpufd)};
+
+        mut_cpuid2.nent = init_nent.get();
         integration::verify(
             mut_system_ctl.write(shim::KVM_GET_SUPPORTED_CPUID, &mut_cpuid2).is_zero());
 
-        auto nent{bsl::to_u32(mut_cpuid2.nent)};
-        integration::verify(nent > bsl::safe_u32::magic_0());
-    }
-
-    // Valid registers should be present
-    {
-        // Fn0000_0001h[0][EDX][ 5]: RDMSR and WRMSR support
-        bool found_rdmsr_support{};
-        constexpr auto rdmsr_bit{0x20_u32};
-        constexpr shim::kvm_cpuid_entry2 rdmsr_support{
-            .function = cpuid_fn0000_0001.get(), .index = 0U, .edx = rdmsr_bit.get()};
         auto mut_nent{bsl::to_idx(mut_cpuid2.nent)};
         shim::kvm_cpuid_entry2 mut_entry{};
 
         for (bsl::safe_idx mut_i{}; mut_i < mut_nent; ++mut_i) {
             mut_entry = *mut_cpuid2.entries.at_if(mut_i);
 
-            bsl::print() << "fun = " << mut_entry.function << bsl::endl;
-
-            if ((mut_entry.function == rdmsr_support.function) &&                // NOLINT
-                (mut_entry.index == rdmsr_support.index) &&                      // NOLINT
-                ((mut_entry.edx & rdmsr_support.edx) == rdmsr_support.edx)) {    // NOLINT
-                found_rdmsr_support = true;
+            if (mut_entry.function == CPUID_FN0000_0001.get()) {
+                mut_fn0000_0001 = mut_entry;
+            } else if (mut_entry.function == CPUID_FN8000_0001.get()) {
+                mut_fn8000_0001 = mut_entry;
+            } else {
+                bsl::touch();
             }
         }
-        integration::verify(found_rdmsr_support);
+
+        // Disable features
+        mut_fn0000_0001.ecx = bsl::safe_u32::magic_0().get();
+        mut_fn8000_0001.ecx = bsl::safe_u32::magic_0().get();
+
+        mut_cpuid2.entries.at_if(0_idx)->function = mut_fn0000_0001.function;
+        mut_cpuid2.entries.at_if(0_idx)->eax = mut_fn0000_0001.eax;
+        mut_cpuid2.entries.at_if(0_idx)->ebx = mut_fn0000_0001.ebx;
+        mut_cpuid2.entries.at_if(0_idx)->ebx = mut_fn0000_0001.ecx;
+        mut_cpuid2.entries.at_if(0_idx)->edx = mut_fn0000_0001.edx;
+
+        mut_cpuid2.entries.at_if(1_idx)->function = mut_fn8000_0001.function;
+        mut_cpuid2.entries.at_if(1_idx)->eax = mut_fn8000_0001.eax;
+        mut_cpuid2.entries.at_if(1_idx)->ebx = mut_fn8000_0001.ebx;
+        mut_cpuid2.entries.at_if(1_idx)->ebx = mut_fn8000_0001.ecx;
+        mut_cpuid2.entries.at_if(1_idx)->edx = mut_fn8000_0001.edx;
+
+        mut_cpuid2.nent = (2_u32).get();
+
+        integration::verify(mut_vcpu.write(shim::KVM_SET_CPUID2, &mut_cpuid2).is_zero());
     }
 
     // Try a bunch of times
     {
+        auto const vmfd{mut_system_ctl.send(shim::KVM_CREATE_VM)};
+        integration::ioctl_t mut_vm{bsl::to_i32(vmfd)};
+
+        auto const vcpufd{mut_vm.send(shim::KVM_CREATE_VCPU)};
+        integration::ioctl_t mut_vcpu{bsl::to_i32(vcpufd)};
+
         constexpr auto num_loops{0x1000_umx};
         for (bsl::safe_idx mut_i{}; mut_i < num_loops; ++mut_i) {
-            integration::verify(
-                mut_system_ctl.write(shim::KVM_GET_SUPPORTED_CPUID, &mut_cpuid2).is_zero());
+            integration::verify(mut_vcpu.write(shim::KVM_SET_CPUID2, &mut_cpuid2).is_zero());
         }
     }
 

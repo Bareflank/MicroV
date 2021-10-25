@@ -43,17 +43,6 @@ namespace shim
     [[nodiscard]] constexpr auto
     tests() noexcept -> bsl::exit_code
     {
-        bsl::ut_scenario{"description"} = []() noexcept {
-            bsl::ut_given{} = [&]() noexcept {
-                kvm_cpuid2 mut_args{};
-                bsl::ut_when{} = [&]() noexcept {
-                    bsl::ut_then{} = [&]() noexcept {
-                        bsl::ut_check(SHIM_SUCCESS == handle_vcpu_kvm_set_cpuid2(&mut_args));
-                    };
-                };
-            };
-        };
-
         return bsl::ut_success();
     }
 }
