@@ -24,8 +24,10 @@
  * SOFTWARE.
  */
 
+#include <debug.h>
 #include <kvm_clock_data.h>
 #include <mv_types.h>
+#include <platform.h>
 
 /**
  * <!-- description -->
@@ -38,6 +40,9 @@
 NODISCARD int64_t
 handle_vm_kvm_set_clock(struct kvm_clock_data *const pmut_ioctl_args) NOEXCEPT
 {
-    (void)pmut_ioctl_args;
+    platform_expects(NULL != pmut_ioctl_args);
+
+    bferror_x64("clock value: ", pmut_ioctl_args->clock);
+
     return SHIM_SUCCESS;
 }

@@ -173,8 +173,8 @@ namespace shim
     // constexpr bsl::safe_umx KVM_XEN_HVM_CONFIG{static_cast<bsl::uintmx>(_IOW(SHIMIO.get(), 0x7a, struct kvm_xen_hvm_config))};
     /// @brief defines KVM's KVM_GET_CLOCK IOCTL
     constexpr bsl::safe_umx KVM_GET_CLOCK{static_cast<bsl::uintmx>(_IOR(SHIMIO.get(), 0x7c, struct kvm_clock_data))};
-    // /// @brief defines KVM's KVM_SET_CLOCK IOCTL
-    // constexpr bsl::safe_umx KVM_SET_CLOCK{static_cast<bsl::uintmx>(_IOW(SHIMIO.get(), 0x7b, struct kvm_clock_data))};
+    /// @brief defines KVM's KVM_SET_CLOCK IOCTL
+    constexpr bsl::safe_umx KVM_SET_CLOCK{static_cast<bsl::uintmx>(_IOW(SHIMIO.get(), 0x7b, struct kvm_clock_data))};
     // /// @brief defines KVM's KVM_GET_VCPU_EVENTS IOCTL
     // constexpr bsl::safe_umx KVM_GET_VCPU_EVENTS{static_cast<bsl::uintmx>(_IOR(SHIMIO.get(), 0x9f, struct kvm_vcpu_events))};
     // /// @brief defines KVM's KVM_SET_VCPU_EVENTS IOCTL
