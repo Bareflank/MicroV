@@ -52,6 +52,7 @@
 #include <handle_vm_kvm_create_vcpu.h>
 #include <handle_vm_kvm_destroy_vcpu.h>
 #include <handle_vm_kvm_get_clock.h>
+#include <handle_vm_kvm_set_clock.h>
 #include <handle_vm_kvm_set_user_memory_region.h>
 #include <linux/anon_inodes.h>
 #include <linux/kernel.h>
@@ -665,8 +666,19 @@ dispatch_vm_kvm_set_boot_cpu_id(void)
 static long
 dispatch_vm_kvm_set_clock(struct kvm_clock_data *const ioctl_args)
 {
-    (void)ioctl_args;
-    return -EINVAL;
+    struct kvm_clock_data mut_args;
+
+    if (platform_copy_from_user(&mut_args, ioctl_args, sizeof(*ioctl_args))) {
+        bferror("platform_copy_from_user failed");
+        return -EINVAL;
+    }
+
+    if (handle_vm_kvm_set_clock(&mut_args)) {
+        bferror("handle_vm_kvm_get_clock failed");
+        return -EINVAL;
+    }
+
+    return 0;
 }
 
 static long
