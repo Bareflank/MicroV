@@ -27,6 +27,7 @@
 #ifndef MOCKS_MV_HYPERCALL_H
 #define MOCKS_MV_HYPERCALL_H
 
+#include <mv_cdl_t.h>
 #include <mv_constants.h>
 #include <mv_exit_io_t.h>
 #include <mv_exit_reason_t.h>
@@ -764,6 +765,18 @@ extern "C"
     extern mv_status_t g_mut_mv_vs_op_mp_state_set;
     /** @brief stores the return value for mv_vs_op_tsc_get_khz */
     extern mv_status_t g_mut_mv_vs_op_tsc_get_khz;
+    /** @brief stores the return value for mv_vs_op_cpuid_get */
+    extern mv_status_t g_mut_mv_vs_op_cpuid_get;
+    /** @brief stores the out value of the shared page for mv_vs_op_cpuid_get */
+    extern struct mv_cdl_entry_t g_mut_mv_vs_op_cpuid_get_entry;
+    /** @brief stores the return value for mv_vs_op_cpuid_set */
+    extern mv_status_t g_mut_mv_vs_op_cpuid_set;
+    /** @brief stores the return value for mv_vs_op_cpuid_get_list */
+    extern mv_status_t g_mut_mv_vs_op_cpuid_get_list;
+    /** @brief stores the out value of the shared page for mv_vs_op_cpuid_get_list */
+    extern struct mv_cdl_entry_t g_mut_mv_vs_op_cpuid_get_list_entry;
+    /** @brief stores the return value for mv_vs_op_cpuid_set_list */
+    extern mv_status_t g_mut_mv_vs_op_cpuid_set_list;
 
     /**
      * <!-- description -->
@@ -1489,6 +1502,154 @@ extern "C"
 
         *pmut_freq = g_mut_val;
         return g_mut_mv_vs_op_tsc_get_khz;
+    }
+
+    /**
+     * <!-- description -->
+     *   @brief Given the shared page cast as a single mv_cdl_entry_t, with
+     *    mv_cdl_entry_t.fun and mv_cdl_entry_t.idx set to the requested CPUID
+     *    leaf, the same mv_cdl_entry_t is returned in the shared page with
+     *    mv_cdl_entry_t.eax, mv_cdl_entry_t.ebx, mv_cdl_entry_t.ecx and
+     *    mv_cdl_entry_t.edx set to the value seen by the VS as if CPUID were
+     *    executed.
+     *
+     * <!-- inputs/outputs -->
+     *   @param hndl Set to the result of mv_handle_op_open_handle
+     *   @param vsid The ID of the VS to query
+     *   @return Returns MV_STATUS_SUCCESS on success, MV_STATUS_FAILURE_UNKNOWN
+     *     and friends on failure.
+     */
+    NODISCARD static inline mv_status_t
+    mv_vs_op_cpuid_get(uint64_t const hndl, uint16_t const vsid) NOEXCEPT
+    {
+        struct mv_cdl_entry_t *const pmut_out = (struct mv_cdl_entry_t *const)g_mut_shared_pages[0];
+
+#ifdef __cplusplus
+        bsl::expects(MV_INVALID_HANDLE != hndl);
+        bsl::expects(hndl > ((uint64_t)0));
+        bsl::expects((int32_t)MV_INVALID_ID != (int32_t)vsid);
+#else
+    platform_expects(MV_INVALID_HANDLE != hndl);
+    platform_expects(hndl > ((uint64_t)0));
+    platform_expects((int32_t)MV_INVALID_ID != (int32_t)vsid);
+#endif
+
+        *pmut_out = g_mut_mv_vs_op_cpuid_get_entry;
+
+        return g_mut_mv_vs_op_cpuid_get;
+    }
+
+    /**
+     * <!-- description -->
+     *   @brief Given the shared page cast as a single mv_cdl_entry_t, with
+     *    mv_cdl_entry_t.fun and mv_cdl_entry_t.idx set to the requested CPUID
+     *    leaf, any feature bit in mv_cdl_entry_t.eax, mv_cdl_entry_t.ebx,
+     *    mv_cdl_entry_t.ecx and mv_cdl_entry_t.edx set to 0 will disable the
+     *    CPU feature for the requested VS. Any feature bit set to 1 is ignored
+     *    by MicroV (meaning the CPU feature is left unmodified). Any
+     *    non-feature bits are ignored. Note that mv_vs_op_cpuid_set can only be
+     *    used to disabled CPU features. CPU features that are enabled are
+     *    determined by hardware and MicroV's support for this hardware.
+     *
+     * <!-- inputs/outputs -->
+     *   @param hndl Set to the result of mv_handle_op_open_handle
+     *   @param vsid The ID of the VS to set
+     *   @return Returns MV_STATUS_SUCCESS on success, MV_STATUS_FAILURE_UNKNOWN
+     *     and friends on failure.
+     */
+    NODISCARD static inline mv_status_t
+    mv_vs_op_cpuid_set(uint64_t const hndl, uint16_t const vsid) NOEXCEPT
+    {
+
+#ifdef __cplusplus
+        bsl::expects(MV_INVALID_HANDLE != hndl);
+        bsl::expects(hndl > ((uint64_t)0));
+        bsl::expects((int32_t)MV_INVALID_ID != (int32_t)vsid);
+#else
+    platform_expects(MV_INVALID_HANDLE != hndl);
+    platform_expects(hndl > ((uint64_t)0));
+    platform_expects((int32_t)MV_INVALID_ID != (int32_t)vsid);
+#endif
+
+        return g_mut_mv_vs_op_cpuid_set;
+    }
+
+    /**
+     * <!-- description -->
+     *   @brief Given the shared page cast as a mv_cdl_t, with each entry's
+     *    mv_cdl_entry_t.fun and mv_cdl_entry_t.idx set to the requested CPUID
+     *    leaf, the same entries are returned in the shared page with each
+     *    entry's mv_cdl_entry_t.eax, mv_cdl_entry_t.ebx, mv_cdl_entry_t.ecx and
+     *    mv_cdl_entry_t.edx set to the value seen by the VS as if CPUID were
+     *    executed.
+     *
+     * <!-- inputs/outputs -->
+     *   @param hndl Set to the result of mv_handle_op_open_handle
+     *   @param vsid The ID of the VS to query
+     *   @return Returns MV_STATUS_SUCCESS on success, MV_STATUS_FAILURE_UNKNOWN
+     *     and friends on failure.
+     */
+    NODISCARD static inline mv_status_t
+    mv_vs_op_cpuid_get_list(uint64_t const hndl, uint16_t const vsid) NOEXCEPT
+    {
+        uint64_t mut_i;
+
+#ifdef __cplusplus
+        bsl::expects(MV_INVALID_HANDLE != hndl);
+        bsl::expects(hndl > ((uint64_t)0));
+        bsl::expects((int32_t)MV_INVALID_ID != (int32_t)vsid);
+#else
+    platform_expects(MV_INVALID_HANDLE != hndl);
+    platform_expects(hndl > ((uint64_t)0));
+    platform_expects((int32_t)MV_INVALID_ID != (int32_t)vsid);
+#endif
+
+        struct mv_cdl_t *const pmut_out = (struct mv_cdl_t *)g_mut_shared_pages[0];
+
+#ifdef __cplusplus
+        bsl::expects(nullptr != pmut_out);
+        bsl::expects(pmut_out->num_entries < MV_RDL_MAX_ENTRIES);
+#else
+    platform_expects(NULL != pmut_out);
+    platform_expects(pmut_out->num_entries < MV_RDL_MAX_ENTRIES);
+#endif
+
+        for (mut_i = ((uint64_t)0); mut_i < pmut_out->num_entries; ++mut_i) {
+            pmut_out->entries[mut_i] = g_mut_mv_vs_op_cpuid_get_list_entry;
+        }
+
+        return g_mut_mv_vs_op_cpuid_get_list;
+    }
+
+    /**
+     * <!-- description -->
+     *   @brief This hypercall tells MicroV to set the values of multiple
+     *     requested CPUIDs using a Register Descriptor List (RDL) in the shared
+     *     page. For this ABI, the reg field of each mv_rdl_entry_t refers to
+     *     the index of the CPUID. The val field refers to the value to set the
+     *     requested CPUID in that entry to. This ABI does not use any of the
+     *     reg 0-7 fields in the mv_rdl_t.
+     *
+     * <!-- inputs/outputs -->
+     *   @param hndl Set to the result of mv_handle_op_open_handle
+     *   @param vsid The ID of the VS to set
+     *   @return Returns MV_STATUS_SUCCESS on success, MV_STATUS_FAILURE_UNKNOWN
+     *     and friends on failure.
+     */
+    NODISCARD static inline mv_status_t
+    mv_vs_op_cpuid_set_list(uint64_t const hndl, uint16_t const vsid) NOEXCEPT
+    {
+#ifdef __cplusplus
+        bsl::expects(MV_INVALID_HANDLE != hndl);
+        bsl::expects(hndl > ((uint64_t)0));
+        bsl::expects((int32_t)MV_INVALID_ID != (int32_t)vsid);
+#else
+    platform_expects(MV_INVALID_HANDLE != hndl);
+    platform_expects(hndl > ((uint64_t)0));
+    platform_expects((int32_t)MV_INVALID_ID != (int32_t)vsid);
+#endif
+
+        return g_mut_mv_vs_op_cpuid_set_list;
     }
 
 #ifdef __cplusplus

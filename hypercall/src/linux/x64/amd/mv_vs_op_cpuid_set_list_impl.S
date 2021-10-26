@@ -24,45 +24,19 @@
  * SOFTWARE.
  */
 
-#ifndef MV_CPUID_FLAG_T_H
-#define MV_CPUID_FLAG_T_H
+    .code64
+    .intel_syntax noprefix
 
-#include <stdint.h>
+    .globl  mv_vs_op_cpuid_set_list_impl
+    .type   mv_vs_op_cpuid_set_list_impl, @function
+mv_vs_op_cpuid_set_list_impl:
 
-#ifdef __cplusplus
-extern "C"
-{
-#endif
+    mov rax, 0x764D00000006000C
+    mov r10, rdi
+    mov r11, rsi
+    vmmcall
 
-#ifdef __cplusplus
-    /**
-     * <!-- description -->
-     *   @brief Defines CPUID flags
-     */
-    enum mv_cpuid_flag_t : int32_t
-#else
-/**
-     * <!-- description -->
-     *   @brief Defines CPUID flags
-     */
-enum mv_cpuid_flag_t
-#endif
-    {
-        /** @brief reserved */
-        mv_cpuid_flag_reserved = 0,
-    };
+    ret
+    int 3
 
-/** @brief integer version of mv_bit_size_t_8 */
-#define BIT_SIZE_8 ((int32_t)mv_bit_size_t_8)
-/** @brief integer version of mv_bit_size_t_16 */
-#define BIT_SIZE_16 ((int32_t)mv_bit_size_t_16)
-/** @brief integer version of mv_bit_size_t_32 */
-#define BIT_SIZE_32 ((int32_t)mv_bit_size_t_32)
-/** @brief integer version of mv_bit_size_t_64 */
-#define BIT_SIZE_64 ((int32_t)mv_bit_size_t_64)
-
-#ifdef __cplusplus
-}
-#endif
-
-#endif
+    .size mv_vs_op_cpuid_set_list_impl, .-mv_vs_op_cpuid_set_list_impl

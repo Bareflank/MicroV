@@ -572,6 +572,54 @@ extern "C"
     NODISCARD mv_status_t mv_vs_op_tsc_get_khz_impl(
         uint64_t const reg0_in, uint16_t const reg1_in, uint64_t *const pmut_reg0_out) NOEXCEPT;
 
+    /**
+     * <!-- description -->
+     *   @brief Implements the ABI for mv_vs_op_cpuid_get.
+     *
+     * <!-- inputs/outputs -->
+     *   @param reg0_in n/a
+     *   @param reg1_in n/a
+     *   @return n/a
+     */
+    NODISCARD mv_status_t
+    mv_vs_op_cpuid_get_impl(uint64_t const reg0_in, uint16_t const reg1_in) NOEXCEPT;
+
+    /**
+     * <!-- description -->
+     *   @brief Implements the ABI for mv_vs_op_cpuid_set.
+     *
+     * <!-- inputs/outputs -->
+     *   @param reg0_in n/a
+     *   @param reg1_in n/a
+     *   @return n/a
+     */
+    NODISCARD mv_status_t
+    mv_vs_op_cpuid_set_impl(uint64_t const reg0_in, uint16_t const reg1_in) NOEXCEPT;
+
+    /**
+     * <!-- description -->
+     *   @brief Implements the ABI for mv_vs_op_cpuid_get_list.
+     *
+     * <!-- inputs/outputs -->
+     *   @param reg0_in n/a
+     *   @param reg1_in n/a
+     *   @return n/a
+     */
+    NODISCARD mv_status_t
+    mv_vs_op_cpuid_get_list_impl(uint64_t const reg0_in, uint16_t const reg1_in) NOEXCEPT;
+
+    /**
+     * <!-- description -->
+     *   @brief Implements the ABI for mv_vs_op_cpuid_set_list.
+     *
+     * <!-- inputs/outputs -->
+     *   @param reg0_in n/a
+     *   @param reg1_in n/a
+     *   @return n/a
+     */
+    NODISCARD mv_status_t
+    mv_vs_op_cpuid_set_list_impl(uint64_t const reg0_in, uint16_t const reg1_in) NOEXCEPT;
+
 #ifdef __cplusplus
 }
 #endif

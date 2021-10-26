@@ -37,8 +37,13 @@ extern "C"
 
 #pragma pack(push, 1)
 
+#ifdef __cplusplus
+/** @brief defines the max number of entires in the CDL */
+#define MV_CDL_MAX_ENTRIES (static_cast<uint64_t>(125))
+#else
 /** @brief defines the max number of entires in the CDL */
 #define MV_CDL_MAX_ENTRIES ((uint64_t)125)
+#endif
 
     /**
      * <!-- description -->

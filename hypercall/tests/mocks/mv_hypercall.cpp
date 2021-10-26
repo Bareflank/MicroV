@@ -24,6 +24,7 @@
 
 #include "../../mocks/mv_hypercall.h"
 
+#include <mv_cdl_t.h>
 #include <mv_constants.h>
 #include <mv_exit_io_t.h>
 #include <mv_exit_reason_t.h>
@@ -33,6 +34,7 @@
 #include <mv_types.h>
 
 #include <bsl/convert.hpp>
+#include <bsl/safe_idx.hpp>
 #include <bsl/safe_integral.hpp>
 #include <bsl/ut.hpp>
 
@@ -88,6 +90,12 @@ namespace shim
         constinit mv_status_t g_mut_mv_vs_op_mp_state_get{};
         constinit mv_status_t g_mut_mv_vs_op_mp_state_set{};
         constinit mv_status_t g_mut_mv_vs_op_tsc_get_khz{};
+        constinit mv_status_t g_mut_mv_vs_op_cpuid_get{};
+        constinit mv_cdl_entry_t g_mut_mv_vs_op_cpuid_get_entry{};
+        constinit mv_status_t g_mut_mv_vs_op_cpuid_set{};
+        constinit mv_status_t g_mut_mv_vs_op_cpuid_get_list{};
+        constinit mv_cdl_entry_t g_mut_mv_vs_op_cpuid_get_list_entry{};
+        constinit mv_status_t g_mut_mv_vs_op_cpuid_set_list{};
 
         extern bool g_mut_hypervisor_detected;
         extern bool g_mut_platform_alloc_fails;
@@ -640,6 +648,102 @@ namespace shim
                 constexpr auto expected{42_u64};
                 bsl::ut_when{} = [&]() noexcept {
                     g_mut_mv_vs_op_fpu_set_all = expected.get();
+                    bsl::ut_then{} = [&]() noexcept {
+                        bsl::ut_check(expected == hypercall(hndl, {}));
+                    };
+                };
+            };
+        };
+
+        bsl::ut_scenario{"mv_vs_op_cpuid_get"} = []() noexcept {
+            bsl::ut_given{} = [&]() noexcept {
+                constexpr auto hypercall{&mv_vs_op_cpuid_get};
+                constexpr auto expected{42_u32};
+                mv_cdl_entry_t mut_cdl_entry{};
+                bsl::ut_when{} = [&]() noexcept {
+                    g_mut_shared_pages[0] = &mut_cdl_entry;
+                    g_mut_val = bsl::to_u64(expected).get();
+                    g_mut_mv_vs_op_cpuid_get = bsl::to_u64(expected.get()).get();
+                    g_mut_mv_vs_op_cpuid_get_entry = {
+                        .fun = expected.get(),
+                        .idx = expected.get(),
+                        .eax = expected.get(),
+                        .ebx = expected.get(),
+                        .ecx = expected.get(),
+                        .edx = expected.get(),
+                    };
+                    bsl::ut_then{} = [&]() noexcept {
+                        bsl::ut_check(bsl::to_u64(expected) == hypercall(hndl, {}));
+                        bsl::ut_check(expected == mut_cdl_entry.fun);
+                        bsl::ut_check(expected == mut_cdl_entry.idx);
+                        bsl::ut_check(expected == mut_cdl_entry.eax);
+                        bsl::ut_check(expected == mut_cdl_entry.ebx);
+                        bsl::ut_check(expected == mut_cdl_entry.ecx);
+                        bsl::ut_check(expected == mut_cdl_entry.edx);
+                    };
+                };
+            };
+        };
+
+        bsl::ut_scenario{"mv_vs_op_cpuid_set"} = []() noexcept {
+            bsl::ut_given{} = [&]() noexcept {
+                constexpr auto hypercall{&mv_vs_op_cpuid_set};
+                constexpr auto expected{42_u64};
+                bsl::ut_when{} = [&]() noexcept {
+                    g_mut_mv_vs_op_cpuid_set = expected.get();
+                    bsl::ut_then{} = [&]() noexcept {
+                        bsl::ut_check(expected == hypercall(hndl, {}));
+                    };
+                };
+            };
+        };
+
+        bsl::ut_scenario{"mv_vs_op_cpuid_get_list"} = []() noexcept {
+            bsl::ut_given{} = [&]() noexcept {
+                constexpr auto hypercall{&mv_vs_op_cpuid_get_list};
+                constexpr auto expected{42_u32};
+                constexpr struct mv_cdl_entry_t expected_entry
+                {
+                    .fun = expected.get(), .idx = expected.get(), .eax = expected.get(),
+                    .ebx = expected.get(), .ecx = expected.get(), .edx = expected.get()
+                };
+                mv_cdl_t mut_cdl{};
+                bsl::ut_when{} = [&]() noexcept {
+                    mut_cdl.num_entries = bsl::safe_u64::magic_2().get();
+                    g_mut_shared_pages[0] = &mut_cdl;
+                    g_mut_val = bsl::to_u64(expected).get();
+                    g_mut_mv_vs_op_cpuid_get_list = bsl::to_u64(expected).get();
+                    g_mut_mv_vs_op_cpuid_get_list_entry = expected_entry;
+                    bsl::ut_then{} = [&]() noexcept {
+                        auto mut_i{bsl::safe_idx::magic_0()};
+                        for (; mut_i < bsl::safe_idx::magic_2(); ++mut_i) {
+                            bsl::ut_check(bsl::to_u64(expected) == hypercall(hndl, {}));
+                            bsl::ut_check(expected_entry.fun == mut_cdl.entries[mut_i.get()].fun);
+                            bsl::ut_check(expected_entry.idx == mut_cdl.entries[mut_i.get()].idx);
+                            bsl::ut_check(expected_entry.eax == mut_cdl.entries[mut_i.get()].eax);
+                            bsl::ut_check(expected_entry.ebx == mut_cdl.entries[mut_i.get()].ebx);
+                            bsl::ut_check(expected_entry.ecx == mut_cdl.entries[mut_i.get()].ecx);
+                            bsl::ut_check(expected_entry.edx == mut_cdl.entries[mut_i.get()].edx);
+                        }
+                        ++mut_i;
+                        bsl::ut_check(bsl::to_u64(expected) == hypercall(hndl, {}));
+                        bsl::ut_check(expected_entry.fun != mut_cdl.entries[mut_i.get()].fun);
+                        bsl::ut_check(expected_entry.idx != mut_cdl.entries[mut_i.get()].idx);
+                        bsl::ut_check(expected_entry.eax != mut_cdl.entries[mut_i.get()].eax);
+                        bsl::ut_check(expected_entry.ebx != mut_cdl.entries[mut_i.get()].ebx);
+                        bsl::ut_check(expected_entry.ecx != mut_cdl.entries[mut_i.get()].ecx);
+                        bsl::ut_check(expected_entry.edx != mut_cdl.entries[mut_i.get()].edx);
+                    };
+                };
+            };
+        };
+
+        bsl::ut_scenario{"mv_vs_op_cpuid_set_list"} = []() noexcept {
+            bsl::ut_given{} = [&]() noexcept {
+                constexpr auto hypercall{&mv_vs_op_cpuid_set_list};
+                constexpr auto expected{42_u64};
+                bsl::ut_when{} = [&]() noexcept {
+                    g_mut_mv_vs_op_cpuid_set_list = expected.get();
                     bsl::ut_then{} = [&]() noexcept {
                         bsl::ut_check(expected == hypercall(hndl, {}));
                     };
