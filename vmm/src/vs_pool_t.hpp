@@ -632,6 +632,40 @@ namespace microv
         }
 
         /// <!-- description -->
+        ///   @brief Returns the value of the clock
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param sys the bf_syscall_t to use
+        ///   @param vsid the ID of the vs_t to query
+        ///   @return Returns the value of the requested MSR
+        ///
+        [[nodiscard]] constexpr auto
+        clock_get(syscall::bf_syscall_t const &sys, bsl::safe_u16 const &vsid) const noexcept
+            -> bsl::safe_u64
+        {
+            return this->get_vs(vsid)->clock_get(sys);
+        }
+
+        /// <!-- description -->
+        ///   @brief Sets the value of the clock
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param mut_sys the bf_syscall_t to use
+        ///   @param clock the clock value to set
+        ///   @param vsid the ID of the vs_t to set
+        ///   @return Returns bsl::errc_success on success, bsl::errc_failure
+        ///     and friends otherwise
+        ///
+        [[nodiscard]] constexpr auto
+        clock_set(
+            syscall::bf_syscall_t &mut_sys,
+            bsl::safe_u64 const &clock,
+            bsl::safe_u16 const &vsid) noexcept -> bsl::errc_type
+        {
+            return this->get_vs(vsid)->clock_set(mut_sys, clock);
+        }
+
+        /// <!-- description -->
         ///   @brief Returns the value of the requested MSRs from
         ///     the provided RDL.
         ///

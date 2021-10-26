@@ -24,40 +24,25 @@
  * SOFTWARE.
  */
 
-#include <debug.h>
-#include <detect_hypervisor.h>
-#include <g_mut_hndl.h>
-#include <kvm_clock_data.h>
-#include <mv_constants.h>
-#include <mv_hypercall.h>
-#include <mv_rdl_t.h>
-#include <mv_reg_t.h>
-#include <mv_types.h>
-#include <platform.h>
-#include <shim_vcpu_t.h>
+    .code64
+    .intel_syntax noprefix
 
-/**
- * <!-- description -->
- *   @brief Handles the execution of kvm_set_clock.
- *
- * <!-- inputs/outputs -->
- *   @param pmut_ioctl_args the arguments provided by userspace
- *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
- */
-NODISCARD int64_t
-handle_vm_kvm_set_clock(const uint16_t vsid, struct kvm_clock_data *const pmut_ioctl_args) NOEXCEPT
-{
-    platform_expects(NULL != pmut_ioctl_args);
+    .globl  mv_vs_op_clock_get_impl
+    .type   mv_vs_op_clock_get_impl, @function
+mv_vs_op_clock_get_impl:
 
-    if (detect_hypervisor()) {
-        bferror("The shim is not running in a VM. Did you forget to start MicroV?");
-        return SHIM_FAILURE;
-    }
+    push r12
 
-    if (mv_vs_op_clock_set(g_mut_hndl, vsid, pmut_ioctl_args->clock)) {
-        bferror("mv_vs_op_reg_get_list failed");
-        return SHIM_FAILURE;
-    }
+    mov rax, 0x764D000000060029
+    mov r10, rdi
+    mov r11, rsi
+    mov r12, rdx
+    vmcall
+    mov [rdx], r10
+	
+    pop r12
 
-    return SHIM_SUCCESS;
-}
+    ret
+    int 3
+
+    .size mv_vs_op_clock_get_impl, .-mv_vs_op_clock_get_impl

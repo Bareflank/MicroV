@@ -185,6 +185,8 @@ ifneq ($(KERNELRELEASE),)
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_vs_op_run_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_vs_op_tsc_get_khz_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_vs_op_tsc_set_khz_impl.o
+		$(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_vs_op_clock_get_impl.o
+		$(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_vs_op_clock_set_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_vs_op_vmid_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_vs_op_vpid_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/amd/mv_vs_op_vsid_impl.o
@@ -248,6 +250,8 @@ ifneq ($(KERNELRELEASE),)
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_vs_op_run_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_vs_op_tsc_get_khz_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_vs_op_tsc_set_khz_impl.o
+		$(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_vs_op_clock_get_impl.o
+		$(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_vs_op_clock_set_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_vs_op_vmid_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_vs_op_vpid_impl.o
         $(TARGET_MODULE)-objs += ../../hypercall/src/linux/x64/intel/mv_vs_op_vsid_impl.o

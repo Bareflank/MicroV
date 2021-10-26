@@ -541,6 +541,10 @@ namespace hypercall
     constexpr auto MV_VS_OP_TSC_GET_KHZ_IDX_VAL{0x0000000000000027_u64};
     /// @brief Defines the index for mv_vs_op_tsc_set_khz
     constexpr auto MV_VS_OP_TSC_SET_KHZ_IDX_VAL{0x0000000000000028_u64};
+    /// @brief Defines the index for mv_vs_op_clock_get
+    constexpr auto MV_VS_OP_CLOCK_GET{0x0000000000000029_u64};
+    /// @brief Defines the index for mv_vs_op_clock_set
+    constexpr auto MV_VS_OP_CLOCK_SET{0x0000000000000030_u64};
 }
 
 #endif

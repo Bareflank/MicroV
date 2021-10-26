@@ -788,6 +788,10 @@ extern "C"
     extern mv_status_t g_mut_mv_vs_op_mp_state_set;
     /** @brief stores the return value for mv_vs_op_tsc_get_khz */
     extern mv_status_t g_mut_mv_vs_op_tsc_get_khz;
+    /** @brief stores the return value for mv_vs_op_clock_get */
+    // extern mv_status_t g_mut_mv_vs_op_clock_get;
+    /** @brief stores the return value for mv_vs_op_clock_set */
+    extern mv_status_t g_mut_mv_vs_op_clock_set;
     /** @brief stores the return value for mv_vs_op_cpuid_get */
     extern mv_status_t g_mut_mv_vs_op_cpuid_get;
     /** @brief stores the out value of the shared page for mv_vs_op_cpuid_get */
@@ -1525,6 +1529,66 @@ extern "C"
 
         *pmut_freq = g_mut_val;
         return g_mut_mv_vs_op_tsc_get_khz;
+    }
+
+    /**
+     * <!-- description -->
+     *   @brief This hypercall tells MicroV to return the value of the clock.
+     *
+     * <!-- inputs/outputs -->
+     *   @param hndl Set to the result of mv_handle_op_open_handle
+     *   @param vsid The ID of the VS to query
+     *   @param pmut_val The value of the clock
+     *   @return Returns MV_STATUS_SUCCESS on success, MV_STATUS_FAILURE_UNKNOWN
+     *     and friends on failure.
+     */
+    NODISCARD static inline mv_status_t
+    mv_vs_op_clock_get(uint64_t const hndl, uint16_t const vsid, uint64_t *const pmut_val) NOEXCEPT
+    {
+
+#ifdef __cplusplus
+        bsl::expects(MV_INVALID_HANDLE != hndl);
+        bsl::expects(hndl > ((uint64_t)0));
+        bsl::expects((int32_t)MV_INVALID_ID != (int32_t)vsid);
+        bsl::expects(NULLPTR != pmut_val);
+#else
+    platform_expects(MV_INVALID_HANDLE != hndl);
+    platform_expects(hndl > ((uint64_t)0));
+    platform_expects((int32_t)MV_INVALID_ID != (int32_t)vsid);
+    platform_expects(NULLPTR != pmut_val);
+#endif
+
+        *pmut_val = 0;
+        return 0;
+    }
+
+    /**
+     * <!-- description -->
+     *   @brief This hypercall tells MicroV to set the value of a
+     *     clock.
+     *
+     * <!-- inputs/outputs -->
+     *   @param hndl Set to the result of mv_handle_op_open_handle
+     *   @param vsid The ID of the VS to set
+     *   @param clock The value of the clock to set
+     *   @return Returns MV_STATUS_SUCCESS on success, MV_STATUS_FAILURE_UNKNOWN
+     *     and friends on failure.
+     */
+    NODISCARD static inline mv_status_t
+    mv_vs_op_clock_set(uint64_t const hndl, uint16_t const vsid, uint64_t const clock) NOEXCEPT
+    {
+        (void)clock;
+#ifdef __cplusplus
+        bsl::expects(MV_INVALID_HANDLE != hndl);
+        bsl::expects(hndl > ((uint64_t)0));
+        bsl::expects((int32_t)MV_INVALID_ID != (int32_t)vsid);
+#else
+    platform_expects(MV_INVALID_HANDLE != hndl);
+    platform_expects(hndl > ((uint64_t)0));
+    platform_expects((int32_t)MV_INVALID_ID != (int32_t)vsid);
+#endif
+
+        return 0;
     }
 
     /**
