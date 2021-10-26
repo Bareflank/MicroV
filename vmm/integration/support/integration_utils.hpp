@@ -48,6 +48,7 @@
 #endif
 
 #include <mv_cpuid_flag_t.hpp>    // IWYU pragma: keep
+#include <basic_map_page_flags.hpp>
 #include <basic_page_4k_t.hpp>
 #include <cstdlib>
 #include <ifmap_t.hpp>
@@ -463,6 +464,8 @@ namespace integration
 
             pmut_mdl->entries.at_if(bsl::to_idx(pmut_mdl->num_entries))->dst = dst.get();
             pmut_mdl->entries.at_if(bsl::to_idx(pmut_mdl->num_entries))->src = src.get();
+            pmut_mdl->entries.at_if(bsl::to_idx(pmut_mdl->num_entries))->flags =
+                lib::BASIC_MAP_PAGE_RWE.get();
             pmut_mdl->entries.at_if(bsl::to_idx(pmut_mdl->num_entries))->bytes = inc.get();
             ++pmut_mdl->num_entries;
 
