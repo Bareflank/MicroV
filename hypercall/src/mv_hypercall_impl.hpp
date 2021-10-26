@@ -573,6 +573,34 @@ namespace hypercall
         bsl::uint64 *const pmut_reg0_out) noexcept -> mv_status_t::value_type;
 
     /// <!-- description -->
+    ///   @brief Implements the ABI for mv_vs_op_clock_get.
+    ///
+    /// <!-- inputs/outputs -->
+    ///   @param reg0_in n/a
+    ///   @param reg1_in vsid to target for the clock_get call
+    ///   @param pmut_reg0_out clock value retrieved from the call
+    ///   @return n/a
+    ///
+    extern "C" [[nodiscard]] auto mv_vs_op_clock_get_impl(
+        bsl::uint64 const reg0_in,
+        bsl::uint16 const reg1_in,
+        bsl::uint64 *const pmut_reg0_out) noexcept -> mv_status_t::value_type;
+
+    /// <!-- description -->
+    ///   @brief Implements the ABI for mv_vs_op_clock_set.
+    ///
+    /// <!-- inputs/outputs -->
+    ///   @param reg0_in n/a
+    ///   @param reg1_in vsid to target for the clock_set call
+    ///   @param reg2_in clock value to set for the vsid
+    ///   @return n/a
+    ///
+    extern "C" [[nodiscard]] auto mv_vs_op_clock_set_impl(
+        bsl::uint64 const reg0_in,
+        bsl::uint16 const reg1_in,
+        bsl::uint64 const reg2_in) noexcept -> mv_status_t::value_type;
+
+    /// <!-- description -->
     ///   @brief Implements the ABI for mv_vs_op_cpuid_get.
     ///
     /// <!-- inputs/outputs -->

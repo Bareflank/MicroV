@@ -46,10 +46,13 @@ main() noexcept -> bsl::exit_code
     auto const vmfd{mut_system_ctl.send(shim::KVM_CREATE_VM)};
     integration::ioctl_t mut_vm{bsl::to_i32(vmfd)};
 
+    auto const vcpufd{mut_vm.send(shim::KVM_CREATE_VCPU)};
+    integration::ioctl_t mut_vcpu{bsl::to_i32(vcpufd)};
+
     shim::kvm_clock_data mut_clock_data;
-    mut_clock_data.clock = 0xfeedbeef;
+    mut_clock_data.clock = 0xdeadbeef;
     mut_clock_data.flags = 2;
-    integration::verify(mut_vm.write(shim::KVM_SET_CLOCK, &mut_clock_data).is_zero());
+    integration::verify(mut_vcpu.write(shim::KVM_SET_CLOCK, &mut_clock_data).is_zero());
 
     return bsl::exit_success;
 }

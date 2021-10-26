@@ -574,6 +574,36 @@ extern "C"
 
     /**
      * <!-- description -->
+     *   @brief Implements the ABI for mv_vs_op_clock_get.
+     *
+     * <!-- inputs/outputs -->
+     *   @param reg0_in n/a
+     *   @param reg1_in vsid to target for the clock_get call
+     *   @param pmut_reg0_out clock value retrieved from the call
+     *   @return n/a
+     */
+    NODISCARD mv_status_t mv_vs_op_clock_get_impl(
+        uint64_t const reg0_in,
+        uint16_t const reg1_in,
+        uint64_t *const pmut_reg0_out) NOEXCEPT;
+
+    /**
+     * <!-- description -->
+     *   @brief Implements the ABI for mv_vs_op_clock_set.
+     *
+     * <!-- inputs/outputs -->
+     *   @param reg0_in n/a
+     *   @param reg1_in vsid to target for the clock_set call
+     *   @param reg2_in clock value to set for the vsid
+     *   @return n/a
+     */
+    NODISCARD mv_status_t mv_vs_op_clock_set_impl(
+        uint64_t const reg0_in,
+        uint16_t const reg1_in,
+        uint64_t const reg2_in) NOEXCEPT;
+
+    /**
+     * <!-- description -->
      *   @brief Implements the ABI for mv_vs_op_cpuid_get.
      *
      * <!-- inputs/outputs -->

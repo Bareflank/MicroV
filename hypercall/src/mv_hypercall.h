@@ -1399,6 +1399,68 @@ extern "C"
 
     /**
      * <!-- description -->
+     *   @brief This hypercall tells MicroV to return the value of the clock.
+     *
+     * <!-- inputs/outputs -->
+     *   @param hndl Set to the result of mv_handle_op_open_handle
+     *   @param vsid The ID of the VS to query
+     *   @param pmut_val The value of the clock
+     *   @return Returns MV_STATUS_SUCCESS on success, MV_STATUS_FAILURE_UNKNOWN
+     *     and friends on failure.
+     */
+    NODISCARD static inline mv_status_t
+    mv_vs_op_clock_get(
+        uint64_t const hndl,
+        uint16_t const vsid,
+        uint64_t *const pmut_val) NOEXCEPT
+    {
+        mv_status_t mut_ret;
+
+        platform_expects(MV_INVALID_HANDLE != hndl);
+        platform_expects(hndl > ((uint64_t)0));
+        platform_expects(NULLPTR != pmut_val);
+
+        mut_ret = mv_vs_op_clock_get_impl(hndl, vsid, pmut_val);
+        if (mut_ret) {
+            bferror("mv_vs_op_clock_get failed");
+            return mut_ret;
+        }
+
+        return mut_ret;
+    }
+
+    /**
+     * <!-- description -->
+     *   @brief This hypercall tells MicroV to set the value of a
+     *     clock.
+     *
+     * <!-- inputs/outputs -->
+     *   @param hndl Set to the result of mv_handle_op_open_handle
+     *   @param vsid The ID of the VS to set
+     *   @param clock The value of the clock to set
+     *   @return Returns MV_STATUS_SUCCESS on success, MV_STATUS_FAILURE_UNKNOWN
+     *     and friends on failure.
+     */
+    NODISCARD static inline mv_status_t
+    mv_vs_op_clock_set(
+        uint64_t const hndl, uint16_t const vsid, uint64_t const clock) NOEXCEPT
+    {
+        mv_status_t mut_ret;
+
+        platform_expects(MV_INVALID_HANDLE != hndl);
+        platform_expects(hndl > ((uint64_t)0));
+
+        mut_ret = mv_vs_op_clock_set_impl(hndl, vsid, clock);
+        if (mut_ret) {
+            bferror("mv_vs_op_clock_set failed");
+            return mut_ret;
+        }
+
+        return mut_ret;
+    }
+
+    /**
+     * <!-- description -->
      *   @brief Given the shared page cast as a single mv_cdl_entry_t, with
      *    mv_cdl_entry_t.fun and mv_cdl_entry_t.idx set to the requested CPUID
      *    leaf, the same mv_cdl_entry_t is returned in the shared page with

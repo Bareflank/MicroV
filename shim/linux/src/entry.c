@@ -531,17 +531,37 @@ handle_vm_kvm_create_vcpu_failed:
 }
 
 static long
-dispatch_vm_kvm_get_clock(struct kvm_clock_data *const ioctl_args)
+dispatch_vm_kvm_get_clock(struct kvm_clock_data *const ioctl_args, struct shim_vcpu_t *const pmut_vcpu)
 {
     struct kvm_clock_data mut_args;
+    platform_expects(NULL != pmut_vcpu);
 
-    if (handle_vm_kvm_get_clock(&mut_args)) {
+    if (handle_vm_kvm_get_clock(pmut_vcpu->vsid, &mut_args)) {
         bferror("handle_vm_kvm_get_clock failed");
         return -EINVAL;
     }
 
     if (platform_copy_to_user(ioctl_args, &mut_args, sizeof(*ioctl_args))) {
         bferror("platform_copy_from_user failed");
+        return -EINVAL;
+    }
+
+    return 0;
+}
+
+static long
+dispatch_vm_kvm_set_clock(struct kvm_clock_data *const ioctl_args, struct shim_vcpu_t *const pmut_vcpu)
+{
+    struct kvm_clock_data mut_args;
+    platform_expects(NULL != pmut_vcpu);
+    
+    if (platform_copy_from_user(&mut_args, ioctl_args, sizeof(*ioctl_args))) {
+        bferror("platform_copy_from_user failed");
+        return -EINVAL;
+    }
+
+    if (handle_vm_kvm_set_clock(pmut_vcpu->vsid, &mut_args)) {
+        bferror("handle_vm_kvm_set_clock failed");
         return -EINVAL;
     }
 
@@ -636,24 +656,6 @@ static long
 dispatch_vm_kvm_set_boot_cpu_id(void)
 {
     return -EINVAL;
-}
-
-static long
-dispatch_vm_kvm_set_clock(struct kvm_clock_data *const ioctl_args)
-{
-    struct kvm_clock_data mut_args;
-
-    if (platform_copy_from_user(&mut_args, ioctl_args, sizeof(*ioctl_args))) {
-        bferror("platform_copy_from_user failed");
-        return -EINVAL;
-    }
-
-    if (handle_vm_kvm_set_clock(&mut_args)) {
-        bferror("handle_vm_kvm_get_clock failed");
-        return -EINVAL;
-    }
-
-    return 0;
 }
 
 static long
@@ -798,11 +800,6 @@ dev_unlocked_ioctl_vm(
             return dispatch_vm_kvm_create_vcpu(pmut_mut_vm);
         }
 
-        case KVM_GET_CLOCK: {
-            return dispatch_vm_kvm_get_clock(
-                (struct kvm_clock_data *)ioctl_args);
-        }
-
         case KVM_GET_DEBUGREGS: {
             return dispatch_vm_kvm_get_debugregs(
                 (struct kvm_debugregs *)ioctl_args);
@@ -862,11 +859,6 @@ dev_unlocked_ioctl_vm(
 
         case KVM_SET_BOOT_CPU_ID: {
             return dispatch_vm_kvm_set_boot_cpu_id();
-        }
-
-        case KVM_SET_CLOCK: {
-            return dispatch_vm_kvm_set_clock(
-                (struct kvm_clock_data *)ioctl_args);
         }
 
         case KVM_SET_DEBUGREGS: {
@@ -1486,6 +1478,18 @@ dev_unlocked_ioctl_vcpu(
                 return -EINVAL;
             }
             return dispatch_vcpu_kvm_get_tsc_khz();
+        }
+
+        case KVM_GET_CLOCK: {
+            return dispatch_vm_kvm_get_clock(
+                (struct kvm_clock_data *)ioctl_args,
+                pmut_mut_vcpu);
+        }
+
+        case KVM_SET_CLOCK: {
+            return dispatch_vm_kvm_set_clock(
+                (struct kvm_clock_data *)ioctl_args,
+                pmut_mut_vcpu);
         }
 
         case KVM_GET_VCPU_EVENTS: {

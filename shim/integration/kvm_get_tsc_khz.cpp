@@ -51,6 +51,7 @@ main() noexcept -> bsl::exit_code
         auto const tsckhz{mut_vcpu.send(shim::KVM_GET_TSC_KHZ)};
         integration::verify(tsckhz.is_pos());
         integration::verify(tsckhz >= mut_ret.get());
+	bsl::print() << tsckhz << bsl::endl;
     }
     return bsl::exit_success;
 }
