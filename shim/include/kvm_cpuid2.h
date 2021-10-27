@@ -35,7 +35,7 @@ extern "C"
 {
 #endif
 
-#define CPUID2_MAX_ENTRIES 40
+#define CPUID2_MAX_ENTRIES 100
 
 #pragma pack(push, 1)
 
