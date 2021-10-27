@@ -180,9 +180,15 @@ namespace microv
             intrinsic_t::cpuid(mut_eax, mut_ebx, mut_ecx, mut_edx);
 
             switch (fun.get()) {
-                case CPUID_FN0000_0000.get():
-                    [[fallthrough]];
+                case CPUID_FN0000_0000.get(): {
+                    mut_eax = bsl::to_u64(CPUID_FN0000_0001);
+                    mut_ebx = bsl::safe_u64::magic_0();
+                    mut_ecx = bsl::safe_u64::magic_0();
+                    mut_edx = bsl::safe_u64::magic_0();
+                    break;
+                }
                 case CPUID_FN8000_0000.get(): {
+                    mut_eax = bsl::to_u64(CPUID_FN8000_0001);
                     mut_ebx = bsl::safe_u64::magic_0();
                     mut_ecx = bsl::safe_u64::magic_0();
                     mut_edx = bsl::safe_u64::magic_0();
