@@ -83,12 +83,10 @@ kvm_to_mv_page_flags(uint32_t const flags) NOEXCEPT
 {
     uint64_t mut_flags = ((uint64_t)0);
     if (flags & ((uint32_t)KVM_MEM_READONLY)) {
-        // Anticipate that we'll have to provide RE access here
-        // in reality
-        mut_flags |= MV_MAP_FLAG_READ_ACCESS;
+        mut_flags |= (MV_MAP_FLAG_READ_ACCESS|MV_MAP_FLAG_EXECUTE_ACCESS);
     }
     else {
-        mv_touch();
+        mut_flags |= (MV_MAP_FLAG_READ_ACCESS|MV_MAP_FLAG_WRITE_ACCESS|MV_MAP_FLAG_EXECUTE_ACCESS);
     }
 
     return mut_flags;
