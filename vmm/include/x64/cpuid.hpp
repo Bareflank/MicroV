@@ -36,8 +36,10 @@ namespace microv
     constexpr auto CPUID_NUM_STD_INDEXES{1_idx};
     /// @brief the vendor-id and largest standard function CPUID
     constexpr auto CPUID_FN0000_0000{0x00000000_u32};
-    /// @brief the standard feature information CPUID
+    /// @brief the standard feature information CPUID function
     constexpr auto CPUID_FN0000_0001{0x00000001_u32};
+    /// @brief the Cache Descriptors CPUID function
+    constexpr auto CPUID_FN0000_0002{0x00000002_u32};
 
     /// @brief the total number of extended CPUID functions supported
     constexpr auto CPUID_NUM_EXT_FUNCTIONS{5_idx};

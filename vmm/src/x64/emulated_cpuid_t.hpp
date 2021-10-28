@@ -65,62 +65,6 @@ namespace microv
             m_ext_leaves{};
 
         /// <!-- description -->
-        ///   @brief Sets up a leaf
-        ///
-        /// <!-- inputs/outputs -->
-        ///   @param fun the CPUID function to use
-        ///   @param idx the CPUID index to use
-        ///   @param eax_mask the mask applied to the EAX register
-        ///   @param eax_enable_mask the enable mask applied to the EAX register
-        ///   @param ebx_mask the mask applied to the EBX register
-        ///   @param ebx_enable_mask the enable mask applied to the EBX register
-        ///   @param ecx_mask the mask applied to the ECX register
-        ///   @param ecx_enable_mask the enable mask applied to the ECX register
-        ///   @param edx_mask the mask applied to the EDX register
-        ///   @param edx_enable_mask the enable mask applied to the EDX register
-        ///
-        constexpr void
-        setup_leaf(
-            bsl::safe_u32 const &fun,
-            bsl::safe_u64 const &idx,
-            bsl::safe_u64 const &eax_mask,
-            bsl::safe_u64 const &eax_enable_mask,
-            bsl::safe_u64 const &ebx_mask,
-            bsl::safe_u64 const &ebx_enable_mask,
-            bsl::safe_u64 const &ecx_mask,
-            bsl::safe_u64 const &ecx_enable_mask,
-            bsl::safe_u64 const &edx_mask,
-            bsl::safe_u64 const &edx_enable_mask) noexcept
-        {
-            auto const idx_i{bsl::to_idx(idx)};
-
-            hypercall::mv_cdl_entry_t *pmut_mut_entry{};
-
-            if (fun < CPUID_FN8000_0000) {
-                auto const fun_i{bsl::to_idx(fun)};
-                pmut_mut_entry = m_std_leaves.at_if(fun_i)->at_if(idx_i);
-            }
-            else {
-                auto const fun_i{bsl::to_idx((fun - CPUID_FN8000_0000).checked())};
-                pmut_mut_entry = m_ext_leaves.at_if(fun_i)->at_if(idx_i);
-            }
-
-            auto mut_eax{bsl::to_u64(fun)};
-            bsl::safe_u64 mut_ebx{};
-            auto mut_ecx{idx};
-            bsl::safe_u64 mut_edx{};
-
-            intrinsic_t::cpuid(mut_eax, mut_ebx, mut_ecx, mut_edx);
-
-            pmut_mut_entry->fun = fun.get();
-            pmut_mut_entry->idx = bsl::to_u32_unsafe(idx).get();
-            pmut_mut_entry->eax = bsl::to_u32_unsafe(((mut_eax)&eax_mask) | eax_enable_mask).get();
-            pmut_mut_entry->ebx = bsl::to_u32_unsafe(((mut_ebx)&ebx_mask) | ebx_enable_mask).get();
-            pmut_mut_entry->ecx = bsl::to_u32_unsafe(((mut_ecx)&ecx_mask) | ecx_enable_mask).get();
-            pmut_mut_entry->edx = bsl::to_u32_unsafe(((mut_edx)&edx_mask) | edx_enable_mask).get();
-        }
-
-        /// <!-- description -->
         ///   @brief Prints a leaf
         ///
         /// <!-- inputs/outputs -->
@@ -236,32 +180,78 @@ namespace microv
             bsl::expects(vsid != syscall::BF_INVALID_ID);
             bsl::expects(vsid == this->assigned_vsid());
 
-            constexpr auto z{0_u64};
-            constexpr auto m{bsl::safe_u64::max_value()};
+            constexpr auto num_fun{4_umx};
+            bsl::array<bsl::safe_u32, num_fun.get()> funs{{
+                CPUID_FN0000_0000,
+                CPUID_FN0000_0001,
+                CPUID_FN8000_0000,
+                CPUID_FN8000_0001,
+            }};
 
-            // clang-format off
-            setup_leaf(CPUID_FN0000_0000, z, m, z, m, z, m, z, m, z);
+            for (auto const &fun : funs) {
+                bsl::safe_u64 mut_eax{bsl::to_u64(fun)};
+                bsl::safe_u64 mut_ebx{};
+                bsl::safe_u64 mut_ecx{};
+                bsl::safe_u64 mut_edx{};
 
-            setup_leaf(
-                CPUID_FN0000_0001, z,
-                m, z,
-                m, z,
-                CPUID_FN0000_0001_ECX, CPUID_FN0000_0001_ECX_HYPERVISOR_BIT,
-                CPUID_FN0000_0001_EDX, z);
+                intrinsic_t::cpuid(mut_eax, mut_ebx, mut_ecx, mut_edx);
 
-            setup_leaf(CPUID_FN8000_0000, z, m, z, m, z, m, z, m, z);
+                /// NOTE:
+                ///
+                /// Any changes inside this switch block will need to be reflected
+                /// in pp_cpuid_t.
+                ///
+                switch (fun.get()) {
+                    case CPUID_FN0000_0000.get(): {
+                        mut_eax = bsl::to_u64(CPUID_FN0000_0001);
+                        // passthrough ebx
+                        // passthrough ecx
+                        // passthrough edx
+                        break;
+                    }
 
-            setup_leaf(
-                CPUID_FN8000_0001, z,
-                m, z,
-                z, z,
-                CPUID_FN8000_0001_ECX, z,
-                CPUID_FN8000_0001_EDX, z);
+                    case CPUID_FN0000_0001.get(): {
+                        // passthrough eax
+                        // passthrough ebx
+                        mut_ecx &= CPUID_FN0000_0001_ECX;
+                        mut_ecx |= CPUID_FN0000_0001_ECX_HYPERVISOR_BIT;
+                        mut_edx &= CPUID_FN0000_0001_EDX;
+                        break;
+                    }
 
-            setup_leaf(CPUID_FN8000_0002, z, m, z, m, z, m, z, m, z);
-            setup_leaf(CPUID_FN8000_0003, z, m, z, m, z, m, z, m, z);
-            setup_leaf(CPUID_FN8000_0004, z, m, z, m, z, m, z, m, z);
-            // clang-format on
+                    case CPUID_FN0000_0002.get(): {
+                        // passthrough eax
+                        // passthrough ebx
+                        // passthrough ecx
+                        // passthrough edx
+                        break;
+                    }
+
+                    case CPUID_FN8000_0000.get(): {
+                        mut_eax = bsl::to_u64(CPUID_FN8000_0001);
+                        // passthrough ebx
+                        // passthrough ecx
+                        // passthrough edx
+                        break;
+                    }
+
+                    case CPUID_FN8000_0001.get(): {
+                        // passthrough eax
+                        // passthrough ebx
+                        mut_ecx &= CPUID_FN8000_0001_ECX;
+                        mut_edx &= CPUID_FN8000_0001_EDX;
+                        break;
+                    }
+
+                    default: {
+                        bsl::error() << "Error setting emulated CPUID "    // --
+                                     << bsl::hex(fun)                      // --
+                                     << bsl::endl                          // --
+                                     << bsl::here();                       // --
+                        break;
+                    }
+                }
+            }
         }
 
         /// <!-- description -->
@@ -540,15 +530,16 @@ namespace microv
                 case ((bsl::to_u64(CPUID_FN0000_0001) << upper32) | cpuid_index_0).get(): {
                     auto *const pmut_entry{
                         m_std_leaves.at_if(mut_i)->at_if(bsl::to_idx(entry.idx))};
-                    if (entry.eax != bsl::safe_u32::magic_0()) {
+
+                    pmut_entry->ecx &= entry.ecx;
+                    pmut_entry->edx &= entry.edx;
+
+                    if (entry.eax != pmut_entry->eax) {
                         break;
                     }
                     if (entry.ebx != bsl::safe_u32::magic_0()) {
                         break;
                     }
-
-                    pmut_entry->ecx &= entry.ecx;
-                    pmut_entry->edx &= entry.edx;
 
                     return bsl::errc_success;
                 }
@@ -556,15 +547,16 @@ namespace microv
                 case ((bsl::to_u64(CPUID_FN8000_0001) << upper32) | cpuid_index_0).get(): {
                     auto *const pmut_entry{
                         m_ext_leaves.at_if(mut_i)->at_if(bsl::to_idx(entry.idx))};
+
+                    pmut_entry->ecx &= entry.ecx;
+                    pmut_entry->edx &= entry.edx;
+
                     if (entry.eax != bsl::safe_u32::magic_0()) {
                         break;
                     }
                     if (entry.ebx != bsl::safe_u32::magic_0()) {
                         break;
                     }
-
-                    pmut_entry->ecx &= entry.ecx;
-                    pmut_entry->edx &= entry.edx;
 
                     return bsl::errc_success;
                 }
@@ -576,7 +568,7 @@ namespace microv
 
             print_leaf(bsl::error(), entry);
 
-            return bsl::errc_failure;
+            return bsl::errc_success;
         }
 
         /// <!-- description -->

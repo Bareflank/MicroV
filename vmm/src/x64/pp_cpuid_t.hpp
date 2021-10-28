@@ -179,16 +179,14 @@ namespace microv
 
             intrinsic_t::cpuid(mut_eax, mut_ebx, mut_ecx, mut_edx);
 
+            /// NOTE:
+            ///
+            /// Any changes inside this switch block will need to be reflected
+            /// in emulated_cpuid_t.
+            ///
             switch (fun.get()) {
                 case CPUID_FN0000_0000.get(): {
                     mut_eax = bsl::to_u64(CPUID_FN0000_0001);
-                    mut_ebx = bsl::safe_u64::magic_0();
-                    mut_ecx = bsl::safe_u64::magic_0();
-                    mut_edx = bsl::safe_u64::magic_0();
-                    break;
-                }
-                case CPUID_FN8000_0000.get(): {
-                    mut_eax = bsl::to_u64(CPUID_FN8000_0001);
                     mut_ebx = bsl::safe_u64::magic_0();
                     mut_ecx = bsl::safe_u64::magic_0();
                     mut_edx = bsl::safe_u64::magic_0();
@@ -201,6 +199,18 @@ namespace microv
                     mut_ecx &= CPUID_FN0000_0001_ECX;
                     mut_ecx |= CPUID_FN0000_0001_ECX_HYPERVISOR_BIT;
                     mut_edx &= CPUID_FN0000_0001_EDX;
+                    break;
+                }
+
+                case CPUID_FN0000_0002.get(): {
+                    break;
+                }
+
+                case CPUID_FN8000_0000.get(): {
+                    mut_eax = bsl::to_u64(CPUID_FN8000_0001);
+                    mut_ebx = bsl::safe_u64::magic_0();
+                    mut_ecx = bsl::safe_u64::magic_0();
+                    mut_edx = bsl::safe_u64::magic_0();
                     break;
                 }
 
