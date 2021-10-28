@@ -51,6 +51,8 @@
 #include <handle_vm_kvm_check_extension.h>
 #include <handle_vm_kvm_create_vcpu.h>
 #include <handle_vm_kvm_destroy_vcpu.h>
+#include <handle_vm_kvm_get_clock.h>
+#include <handle_vm_kvm_set_clock.h>
 #include <handle_vm_kvm_set_user_memory_region.h>
 #include <linux/anon_inodes.h>
 #include <linux/kernel.h>
@@ -531,8 +533,19 @@ handle_vm_kvm_create_vcpu_failed:
 static long
 dispatch_vm_kvm_get_clock(struct kvm_clock_data *const ioctl_args)
 {
-    (void)ioctl_args;
-    return -EINVAL;
+    struct kvm_clock_data mut_args;
+
+    if (handle_vm_kvm_get_clock(&mut_args)) {
+        bferror("handle_vm_kvm_get_clock failed");
+        return -EINVAL;
+    }
+
+    if (platform_copy_to_user(ioctl_args, &mut_args, sizeof(*ioctl_args))) {
+        bferror("platform_copy_from_user failed");
+        return -EINVAL;
+    }
+
+    return 0;
 }
 
 static long
@@ -628,8 +641,19 @@ dispatch_vm_kvm_set_boot_cpu_id(void)
 static long
 dispatch_vm_kvm_set_clock(struct kvm_clock_data *const ioctl_args)
 {
-    (void)ioctl_args;
-    return -EINVAL;
+    struct kvm_clock_data mut_args;
+
+    if (platform_copy_from_user(&mut_args, ioctl_args, sizeof(*ioctl_args))) {
+        bferror("platform_copy_from_user failed");
+        return -EINVAL;
+    }
+
+    if (handle_vm_kvm_set_clock(&mut_args)) {
+        bferror("handle_vm_kvm_get_clock failed");
+        return -EINVAL;
+    }
+
+    return 0;
 }
 
 static long
@@ -1379,7 +1403,7 @@ static long
 dispatch_vcpu_kvm_x86_set_mce(struct kvm_x86_mce *const ioctl_args)
 {
     (void)ioctl_args;
-    return -EINVAL;
+    return -EINVAL; 
 }
 
 static long
