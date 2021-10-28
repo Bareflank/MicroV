@@ -1240,12 +1240,17 @@ dispatch_vcpu_kvm_set_msrs(
         return -EINVAL;
     }
 
+    if (0 == mut_args.nmsrs) {
+        /* Nothing to do */
+        return 0;
+    }
+
     if (handle_vcpu_kvm_set_msrs(vcpu, &mut_args)) {
         bferror("handle_vcpu_kvm_set_msrs failed");
         return -EINVAL;
     }
 
-    return 0;
+    return mut_args.nmsrs;
 }
 
 static long
