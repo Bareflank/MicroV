@@ -145,7 +145,7 @@ namespace shim
         SHIMIO.get(), 0x88, struct kvm_msrs, struct kvm_msr_entry[MV_RDL_MAX_ENTRIES.get()]))};
     /// @brief defines KVM's KVM_SET_MSRS IOCTL
     constexpr bsl::safe_umx KVM_SET_MSRS{
-        static_cast<bsl::uintmx>(_IOW(SHIMIO.get(), 0x89, struct kvm_msrs))};
+        static_cast<bsl::uintmx>(_IOW_LIST(SHIMIO.get(), 0x89, struct kvm_msrs, struct kvm_msr_entry[MV_RDL_MAX_ENTRIES.get()]))};
     // /// @brief defines KVM's KVM_SET_CPUID IOCTL
     // constexpr bsl::safe_umx KVM_SET_CPUID{static_cast<bsl::uintmx>(_IOW(SHIMIO.get(), 0x8a, struct kvm_cpuid))};
     // /// @brief defines KVM's KVM_GET_CPUID2 IOCTL
