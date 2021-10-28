@@ -1649,7 +1649,7 @@ extern "C"
     platform_expects((int32_t)MV_INVALID_ID != (int32_t)vsid);
 #endif
 
-        return g_mut_mv_vs_op_cpuid_set_list;
+        return MV_STATUS_SUCCESS;
     }
 
 #ifdef __cplusplus

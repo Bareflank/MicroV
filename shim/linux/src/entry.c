@@ -42,6 +42,7 @@
 #include <handle_vcpu_kvm_get_sregs.h>
 #include <handle_vcpu_kvm_get_tsc_khz.h>
 #include <handle_vcpu_kvm_run.h>
+#include <handle_vcpu_kvm_set_cpuid2.h>
 #include <handle_vcpu_kvm_set_fpu.h>
 #include <handle_vcpu_kvm_set_mp_state.h>
 #include <handle_vcpu_kvm_set_msrs.h>
@@ -1133,10 +1134,55 @@ dispatch_vcpu_kvm_set_cpuid(struct kvm_cpuid *const ioctl_args)
 }
 
 static long
-dispatch_vcpu_kvm_set_cpuid2(struct kvm_cpuid2 *const ioctl_args)
+dispatch_vcpu_kvm_set_cpuid2(struct shim_vcpu_t const *const vcpu, struct kvm_cpuid2 *const pmut_user_args)
 {
-    (void)ioctl_args;
-    return -EINVAL;
+    struct kvm_cpuid2 *pmut_mut_args;
+    int64_t mut_ret;
+
+    pmut_mut_args = vzalloc(sizeof(*pmut_mut_args));
+    if (NULL == pmut_mut_args) {
+        bferror("vzalloc failed");
+        return -ENOMEM;
+    }
+
+    mut_ret = -EFAULT;
+    if (platform_copy_from_user(
+            pmut_mut_args,
+            pmut_user_args,
+            sizeof(*pmut_mut_args) - sizeof(pmut_mut_args->entries))) {
+        bferror("platform_copy_from_user failed");
+        goto out_free;
+    }
+
+    mut_ret = -E2BIG;
+    if (pmut_mut_args->nent > CPUID2_MAX_ENTRIES) {
+        bferror("nent is greater than CPUID2_MAX_ENTRIES");
+        goto out_free;
+    }
+
+    mut_ret = -EFAULT;
+    if (platform_copy_from_user(
+            pmut_mut_args->entries,
+            pmut_user_args->entries,
+            pmut_mut_args->nent * sizeof(pmut_mut_args->entries[0]))) {
+        bferror("platform_copy_from_user entries failed");
+        goto out_free;
+    }
+
+    mut_ret = -EINVAL;
+    if (handle_vcpu_kvm_set_cpuid2(vcpu, pmut_mut_args)) {
+        bferror("handle_vcpu_kvm_set_cpuid2 failed");
+        goto out_free;
+    }
+
+    mut_ret = 0;
+
+out_free:
+    if (pmut_mut_args) {
+        vfree(pmut_mut_args);
+    }
+
+    return mut_ret;
 }
 
 static long
@@ -1449,7 +1495,7 @@ dev_unlocked_ioctl_vcpu(
 
         case KVM_SET_CPUID2: {
             return dispatch_vcpu_kvm_set_cpuid2(
-                (struct kvm_cpuid2 *)ioctl_args);
+                pmut_mut_vcpu, (struct kvm_cpuid2 *)ioctl_args);
         }
 
         case KVM_SET_FPU: {
