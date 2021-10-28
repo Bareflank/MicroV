@@ -64,8 +64,6 @@ extern "C"
 #define KVM_CAP_MAX_VCPU_ID 128
 /** @brief defines KVM_CAP_IMMEDIATE_EXIT for check extension */
 #define KVM_CAP_IMMEDIATE_EXIT 136
-/** @brief defines MICROV_MAX_MCE_BANKS  */
-#define MICROV_MAX_MCE_BANKS 32
 /** @brief defines KVM_MP_STATE_RUNNABLE for mp state */
 #define KVM_MP_STATE_RUNNABLE 0
 /** @brief defines KVM_MP_STATE_UNINITIALIZED for mp state */
