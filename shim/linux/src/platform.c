@@ -32,6 +32,7 @@
 #include <constants.h>
 #include <debug.h>
 #include <linux/cpu.h>
+#include <linux/local_lock.h>
 #include <linux/mm.h>
 #include <linux/sched/mm.h>
 #include <linux/sched/signal.h>
@@ -647,4 +648,24 @@ NODISCARD uint64_t
 platform_tsc_khz(void) NOEXCEPT
 {
     return (uint64_t)tsc_khz;
+}
+
+/**
+ * <!-- description -->
+ *   @brief Disable IRQs
+ */
+void
+platform_irq_disable() NOEXCEPT
+{
+    arch_local_irq_disable();
+}
+
+/**
+ * <!-- description -->
+ *   @brief Enable IRQs
+ */
+void
+platform_irq_enable() NOEXCEPT
+{
+    arch_local_irq_enable();
 }

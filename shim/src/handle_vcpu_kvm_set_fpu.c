@@ -49,6 +49,7 @@ NODISCARD int64_t
 handle_vcpu_kvm_set_fpu(
     struct shim_vcpu_t const *const vcpu, struct kvm_fpu const *const args) NOEXCEPT
 {
+    int64_t mut_ret = SHIM_FAILURE;
     struct mv_fpu_state_t *pmut_mut_fpu;
     platform_expects(MV_INVALID_HANDLE != g_mut_hndl);
     platform_expects(NULL != vcpu);
@@ -69,8 +70,13 @@ handle_vcpu_kvm_set_fpu(
 
     if (mv_vs_op_fpu_set_all(g_mut_hndl, vcpu->vsid)) {
         bferror("mv_vs_op_reg_set_all failed");
-        return SHIM_FAILURE;
+        goto release_shared_page;
     }
 
-    return SHIM_SUCCESS;
+    mut_ret = SHIM_SUCCESS;
+
+release_shared_page:
+    release_shared_page_for_current_pp();
+
+    return mut_ret;
 }

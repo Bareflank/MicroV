@@ -48,18 +48,20 @@ NODISCARD int64_t
 handle_vcpu_kvm_set_cpuid2(
     struct shim_vcpu_t const *const vcpu, struct kvm_cpuid2 *const pmut_ioctl_args) NOEXCEPT
 {
+    int64_t mut_ret = SHIM_FAILURE;
     uint64_t mut_i;
     uint64_t mut_num_entries = ((uint64_t)0);
-
-    struct mv_cdl_t *const pmut_cdl = (struct mv_cdl_t *)shared_page_for_current_pp();
-    platform_expects(NULL != pmut_cdl);
+    struct mv_cdl_t *mut_cdl;
 
     if (detect_hypervisor()) {
         bferror("The shim is not running in a VM. Did you forget to start MicroV?");
-        return SHIM_FAILURE;
+        goto ret;
     }
 
     platform_expects(MV_INVALID_HANDLE != g_mut_hndl);
+
+    mut_cdl = (struct mv_cdl_t *)shared_page_for_current_pp();
+    platform_expects(NULL != mut_cdl);
 
     for (mut_i = ((uint64_t)0); mut_i < pmut_ioctl_args->nent; ++mut_i) {
         /* Do not allow QEMU to set hypervisor cpuid leaves. */
@@ -67,22 +69,28 @@ handle_vcpu_kvm_set_cpuid2(
             continue;
         }
 
-        pmut_cdl->entries[mut_num_entries].fun = pmut_ioctl_args->entries[mut_i].function;
-        pmut_cdl->entries[mut_num_entries].idx = pmut_ioctl_args->entries[mut_i].index;
-        pmut_cdl->entries[mut_num_entries].eax = pmut_ioctl_args->entries[mut_i].eax;
-        pmut_cdl->entries[mut_num_entries].ebx = pmut_ioctl_args->entries[mut_i].ebx;
-        pmut_cdl->entries[mut_num_entries].ecx = pmut_ioctl_args->entries[mut_i].ecx;
-        pmut_cdl->entries[mut_num_entries].edx = pmut_ioctl_args->entries[mut_i].edx;
+        mut_cdl->entries[mut_num_entries].fun = pmut_ioctl_args->entries[mut_i].function;
+        mut_cdl->entries[mut_num_entries].idx = pmut_ioctl_args->entries[mut_i].index;
+        mut_cdl->entries[mut_num_entries].eax = pmut_ioctl_args->entries[mut_i].eax;
+        mut_cdl->entries[mut_num_entries].ebx = pmut_ioctl_args->entries[mut_i].ebx;
+        mut_cdl->entries[mut_num_entries].ecx = pmut_ioctl_args->entries[mut_i].ecx;
+        mut_cdl->entries[mut_num_entries].edx = pmut_ioctl_args->entries[mut_i].edx;
 
         ++mut_num_entries;
     }
 
-    pmut_cdl->num_entries = mut_num_entries;
+    mut_cdl->num_entries = mut_num_entries;
 
     if (mv_vs_op_cpuid_set_list(g_mut_hndl, vcpu->vsid)) {
         bferror("mv_vs_op_cpuid_set_list failed");
-        return SHIM_FAILURE;
+        goto release_shared_page;
     }
 
-    return SHIM_SUCCESS;
+    mut_ret = SHIM_SUCCESS;
+
+release_shared_page:
+    release_shared_page_for_current_pp();
+
+ret:
+    return mut_ret;
 }

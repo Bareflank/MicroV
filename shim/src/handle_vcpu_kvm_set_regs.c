@@ -86,6 +86,7 @@ NODISCARD int64_t
 handle_vcpu_kvm_set_regs(
     struct shim_vcpu_t const *const vcpu, struct kvm_regs const *const args) NOEXCEPT
 {
+    int64_t mut_ret = SHIM_FAILURE;
     struct mv_rdl_t *pmut_mut_rdl;
     struct mv_rdl_entry_t const *mut_src_entry;
     struct mv_rdl_entry_t *pmut_mut_dst_entry;
@@ -96,7 +97,7 @@ handle_vcpu_kvm_set_regs(
 
     if (detect_hypervisor()) {
         bferror("The shim is not running in a VM. Did you forget to start MicroV?");
-        return SHIM_FAILURE;
+        goto ret;
     }
 
     pmut_mut_rdl = (struct mv_rdl_t *)shared_page_for_current_pp();
@@ -229,8 +230,14 @@ handle_vcpu_kvm_set_regs(
 
     if (mv_vs_op_reg_set_list(g_mut_hndl, vcpu->vsid)) {
         bferror("mv_vs_op_reg_set_list failed");
-        return SHIM_FAILURE;
+        goto release_shared_page;
     }
 
-    return SHIM_SUCCESS;
+    mut_ret = SHIM_SUCCESS;
+
+release_shared_page:
+    release_shared_page_for_current_pp();
+
+ret:
+    return mut_ret;
 }

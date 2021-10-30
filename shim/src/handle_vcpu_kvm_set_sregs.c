@@ -173,6 +173,7 @@ set_kvm_segment_attrib(struct kvm_segment const *const seg, uint64_t *const pmut
 NODISCARD static int64_t
 handle_reg_list(struct shim_vcpu_t const *const vcpu, struct kvm_sregs const *const args) NOEXCEPT
 {
+    int64_t mut_ret = SHIM_FAILURE;
     struct mv_rdl_entry_t const *mut_src_entry;
     struct mv_rdl_entry_t *pmut_mut_dst_entry;
 
@@ -444,10 +445,15 @@ handle_reg_list(struct shim_vcpu_t const *const vcpu, struct kvm_sregs const *co
 
     if (mv_vs_op_reg_set_list(g_mut_hndl, vcpu->vsid)) {
         bferror("mv_vs_op_reg_set_list failed");
-        return SHIM_FAILURE;
+        goto release_shared_page;
     }
 
-    return SHIM_SUCCESS;
+    mut_ret = SHIM_SUCCESS;
+
+release_shared_page:
+    release_shared_page_for_current_pp();
+
+    return mut_ret;
 }
 
 /**
@@ -462,6 +468,7 @@ handle_reg_list(struct shim_vcpu_t const *const vcpu, struct kvm_sregs const *co
 NODISCARD static int64_t
 handle_msr_list(struct shim_vcpu_t const *const vcpu, struct kvm_sregs const *const args) NOEXCEPT
 {
+    int64_t mut_ret = SHIM_FAILURE;
     struct mv_rdl_entry_t const *mut_src_entry;
     struct mv_rdl_entry_t *pmut_mut_dst_entry;
 
@@ -499,10 +506,15 @@ handle_msr_list(struct shim_vcpu_t const *const vcpu, struct kvm_sregs const *co
 
     if (mv_vs_op_msr_set_list(g_mut_hndl, vcpu->vsid)) {
         bferror("mv_vs_op_msr_set_list failed");
-        return SHIM_FAILURE;
+        goto release_shared_page;
     }
 
-    return SHIM_SUCCESS;
+    mut_ret = SHIM_SUCCESS;
+
+release_shared_page:
+    release_shared_page_for_current_pp();
+
+    return mut_ret;
 }
 
 #if 0

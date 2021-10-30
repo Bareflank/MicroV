@@ -29,7 +29,7 @@ if [ -z ${INITRD_PATH+x} ]; then
   INITRD_PATH="$(pwd)/vm_cross_compile/bin/initrd.cpio.gz"
 fi
 
-TASKSET="taskset 4" # pin qemu to CPU #2
+# TASKSET="taskset 4" # pin qemu to CPU #2
 
 echo STRACE_PATH=${STRACE_PATH}
 echo QEMU_PATH=${QEMU_PATH}

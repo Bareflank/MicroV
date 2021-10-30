@@ -322,6 +322,18 @@ namespace shim
          */
         NODISCARD uint64_t platform_tsc_khz(void) NOEXCEPT;
 
+        /**
+         * <!-- description -->
+         *   @brief Disable IRQs
+         */
+        void platform_irq_disable(void) NOEXCEPT;
+
+        /**
+         * <!-- description -->
+         *   @brief Enable IRQs
+         */
+        void platform_irq_enable(void) NOEXCEPT;
+
 #ifdef __cplusplus
     }
 }

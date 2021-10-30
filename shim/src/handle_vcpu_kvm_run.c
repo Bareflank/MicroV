@@ -132,6 +132,8 @@ handle_vcpu_kvm_run_unknown(struct shim_vcpu_t *const pmut_vcpu) NOEXCEPT
 NODISCARD static int64_t
 handle_vcpu_kvm_run_io(struct shim_vcpu_t *const pmut_vcpu) NOEXCEPT
 {
+    int64_t mut_ret = SHIM_FAILURE;
+
     struct mv_exit_io_t *const pmut_exit_io = (struct mv_exit_io_t *)shared_page_for_current_pp();
     platform_expects(NULL != pmut_exit_io);
 
@@ -148,7 +150,8 @@ handle_vcpu_kvm_run_io(struct shim_vcpu_t *const pmut_vcpu) NOEXCEPT
 
         default: {
             bferror_x64("type is invalid/unsupported", pmut_exit_io->type);
-            return return_failure(pmut_vcpu);
+            mut_ret = return_failure(pmut_vcpu);
+            goto release_shared_page;
         }
     }
 
@@ -177,7 +180,8 @@ handle_vcpu_kvm_run_io(struct shim_vcpu_t *const pmut_vcpu) NOEXCEPT
         case mv_bit_size_t_64:
         default: {
             bferror_d32("size is invalid", (uint32_t)pmut_exit_io->size);
-            return return_failure(pmut_vcpu);
+            mut_ret = return_failure(pmut_vcpu);
+            goto release_shared_page;
         }
     }
 
@@ -186,7 +190,8 @@ handle_vcpu_kvm_run_io(struct shim_vcpu_t *const pmut_vcpu) NOEXCEPT
     }
     else {
         bferror_d32("addr is invalid", (uint32_t)pmut_exit_io->size);
-        return return_failure(pmut_vcpu);
+        mut_ret = return_failure(pmut_vcpu);
+        goto release_shared_page;
     }
 
     if (pmut_exit_io->reps < INT32_MAX) {
@@ -194,11 +199,17 @@ handle_vcpu_kvm_run_io(struct shim_vcpu_t *const pmut_vcpu) NOEXCEPT
     }
     else {
         bferror_x64("reps is invalid", pmut_exit_io->reps);
-        return return_failure(pmut_vcpu);
+        mut_ret = return_failure(pmut_vcpu);
+        goto release_shared_page;
     }
 
     pmut_vcpu->run->exit_reason = KVM_EXIT_IO;
-    return SHIM_SUCCESS;
+    mut_ret = SHIM_SUCCESS;
+
+release_shared_page:
+    release_shared_page_for_current_pp();
+
+    return mut_ret;
 }
 
 /**

@@ -86,6 +86,7 @@ NODISCARD int64_t
 handle_vcpu_kvm_get_regs(
     struct shim_vcpu_t const *const vcpu, struct kvm_regs *const pmut_args) NOEXCEPT
 {
+    int64_t mut_ret = SHIM_FAILURE;
     uint64_t mut_i;
 
     struct mv_rdl_t *pmut_mut_rdl;
@@ -98,7 +99,7 @@ handle_vcpu_kvm_get_regs(
 
     if (detect_hypervisor()) {
         bferror("The shim is not running in a VM. Did you forget to start MicroV?");
-        return SHIM_FAILURE;
+        goto ret;
     }
 
     pmut_mut_rdl = (struct mv_rdl_t *)shared_page_for_current_pp();
@@ -121,12 +122,12 @@ handle_vcpu_kvm_get_regs(
 
     if (mv_vs_op_reg_get_list(g_mut_hndl, vcpu->vsid)) {
         bferror("mv_vs_op_reg_get_list failed");
-        return SHIM_FAILURE;
+        goto release_shared_page;
     }
 
     if (pmut_mut_rdl->num_entries >= MV_RDL_MAX_ENTRIES) {
         bferror("the RDL's num_entries is no longer valid");
-        return SHIM_FAILURE;
+        goto release_shared_page;
     }
 
     for (mut_i = ((uint64_t)0); mut_i < pmut_mut_rdl->num_entries; ++mut_i) {
@@ -230,12 +231,18 @@ handle_vcpu_kvm_get_regs(
 
         if (((uint64_t)0) != mut_src_entry->reg) {
             bferror("unknown mv_reg_t returned by MicroV");
-            return SHIM_FAILURE;
+            goto release_shared_page;
         }
 
         bferror("MicroV returned a num_entries that does not match the shim's");
-        return SHIM_FAILURE;
+        goto release_shared_page;
     }
 
-    return SHIM_SUCCESS;
+    mut_ret = SHIM_SUCCESS;
+
+release_shared_page:
+    release_shared_page_for_current_pp();
+
+ret:
+    return mut_ret;
 }

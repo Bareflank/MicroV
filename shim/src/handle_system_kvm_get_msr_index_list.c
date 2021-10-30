@@ -48,19 +48,20 @@
 NODISCARD int64_t
 handle_system_kvm_get_msr_index_list(struct kvm_msr_list *const pmut_ioctl_args) NOEXCEPT
 {
-    int64_t mut_ret;
+    int64_t mut_ret = SHIM_FAILURE;
     int64_t mut_i;
     uint32_t mut_nmsrs = ((uint32_t)0);
-
-    struct mv_rdl_t *const pmut_rdl = (struct mv_rdl_t *)shared_page_for_current_pp();
-    platform_expects(NULL != pmut_rdl);
+    struct mv_rdl_t *pmut_rdl;
 
     if (detect_hypervisor()) {
         bferror("The shim is not running in a VM. Did you forget to start MicroV?");
-        return SHIM_FAILURE;
+        goto ret;
     }
 
     platform_expects(MV_INVALID_HANDLE != g_mut_hndl);
+
+    pmut_rdl = (struct mv_rdl_t *)shared_page_for_current_pp();
+    platform_expects(NULL != pmut_rdl);
 
     do {
         pmut_rdl->reg0 = MV_RDL_FLAG_ALL;
@@ -68,12 +69,12 @@ handle_system_kvm_get_msr_index_list(struct kvm_msr_list *const pmut_ioctl_args)
 
         if (mv_pp_op_msr_get_supported_list(g_mut_hndl)) {
             bferror("mv_pp_op_msr_get_supported_list failed");
-            return SHIM_FAILURE;
+            goto release_shared_page;
         }
 
         if (pmut_rdl->num_entries >= MV_RDL_MAX_ENTRIES) {
             bferror("the RDL's num_entries is no longer valid");
-            return SHIM_FAILURE;
+            goto release_shared_page;
         }
 
         /**
@@ -91,6 +92,8 @@ handle_system_kvm_get_msr_index_list(struct kvm_msr_list *const pmut_ioctl_args)
         }
     } while (((uint64_t)0) != pmut_rdl->reg1);
 
+    release_shared_page_for_current_pp();
+
     if (mut_nmsrs > pmut_ioctl_args->nmsrs) {
         mut_ret = SHIM_2BIG;
     }
@@ -99,6 +102,11 @@ handle_system_kvm_get_msr_index_list(struct kvm_msr_list *const pmut_ioctl_args)
     }
 
     pmut_ioctl_args->nmsrs = mut_nmsrs;
+    goto ret;
 
+release_shared_page:
+    release_shared_page_for_current_pp();
+
+ret:
     return mut_ret;
 }

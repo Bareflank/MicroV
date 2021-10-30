@@ -38,11 +38,20 @@ extern "C"
      * <!-- description -->
      *   @brief Returns the shared page for the current PP. Note that this
      *     cannot be called until shim_init has completed.
+     *     When done using the shared page, the caller must call
+     *     release_shared_page_for_current_pp().
      *
      * <!-- inputs/outputs -->
      *   @return  Returns the shared page for the current PP
      */
     NODISCARD void *shared_page_for_current_pp(void) NOEXCEPT;
+
+    /**
+     * <!-- description -->
+     *   @brief Releases the shared page. Note that this
+     *     cannot be called until shim_init has completed.
+     */
+    void release_shared_page_for_current_pp(void) NOEXCEPT;
 
 #ifdef __cplusplus
 }

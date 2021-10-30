@@ -49,38 +49,47 @@ NODISCARD int64_t
 handle_vcpu_kvm_get_msrs(
     struct shim_vcpu_t const *const vcpu, struct kvm_msrs *const pmut_args) NOEXCEPT
 {
+    int64_t mut_ret = SHIM_FAILURE;
     uint64_t mut_i;
+    struct mv_rdl_t *mut_rdl;
+
     platform_expects(MV_INVALID_HANDLE != g_mut_hndl);
     platform_expects(NULL != vcpu);
     platform_expects(NULL != pmut_args);
 
     if (detect_hypervisor()) {
         bferror("The shim is not running in a VM. Did you forget to start MicorV?");
-        return SHIM_FAILURE;
+        goto ret;
     }
 
-    struct mv_rdl_t *const pmut_rdl = (struct mv_rdl_t *)shared_page_for_current_pp();
-    platform_expects(NULL != pmut_rdl);
+    mut_rdl = (struct mv_rdl_t *)shared_page_for_current_pp();
+    platform_expects(NULL != mut_rdl);
 
-    pmut_rdl->num_entries = (uint64_t)pmut_args->nmsrs;
+    mut_rdl->num_entries = (uint64_t)pmut_args->nmsrs;
 
-    for (mut_i = ((uint64_t)0); mut_i < pmut_rdl->num_entries; ++mut_i) {
-        pmut_rdl->entries[mut_i].reg = (uint64_t)pmut_args->entries[mut_i].index;
+    for (mut_i = ((uint64_t)0); mut_i < mut_rdl->num_entries; ++mut_i) {
+        mut_rdl->entries[mut_i].reg = (uint64_t)pmut_args->entries[mut_i].index;
     }
 
     if (mv_vs_op_msr_get_list(g_mut_hndl, vcpu->vsid)) {
         bferror("mv_vs_op_msr_get_list failed");
-        return SHIM_FAILURE;
+        goto release_shared_page;
     }
 
-    if (pmut_rdl->num_entries != (uint64_t)pmut_args->nmsrs) {
+    if (mut_rdl->num_entries != (uint64_t)pmut_args->nmsrs) {
         bferror("The RDL's num_entries is no longer valid");
-        return SHIM_FAILURE;
+        goto release_shared_page;
     }
 
-    for (mut_i = ((uint64_t)0); mut_i < pmut_rdl->num_entries; ++mut_i) {
-        pmut_args->entries[mut_i].data = pmut_rdl->entries[mut_i].val;
+    for (mut_i = ((uint64_t)0); mut_i < mut_rdl->num_entries; ++mut_i) {
+        pmut_args->entries[mut_i].data = mut_rdl->entries[mut_i].val;
     }
 
-    return SHIM_SUCCESS;
+    mut_ret = SHIM_SUCCESS;
+
+release_shared_page:
+    release_shared_page_for_current_pp();
+
+ret:
+    return mut_ret;
 }

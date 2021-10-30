@@ -49,7 +49,10 @@ NODISCARD int64_t
 handle_vcpu_kvm_get_fpu(
     struct shim_vcpu_t const *const vcpu, struct kvm_fpu *const pmut_ioctl_args) NOEXCEPT
 {
+    int64_t mut_ret;
     struct mv_fpu_state_t *pmut_mut_fpu;
+
+    mut_ret = SHIM_FAILURE;
 
     platform_expects(MV_INVALID_HANDLE != g_mut_hndl);
     platform_expects(NULL != vcpu);
@@ -57,7 +60,7 @@ handle_vcpu_kvm_get_fpu(
 
     if (detect_hypervisor()) {
         bferror("The shim is not running in a VM. Did you forget to start MicroV?");
-        return SHIM_FAILURE;
+        goto ret;
     }
 
     pmut_mut_fpu = (struct mv_fpu_state_t *)shared_page_for_current_pp();
@@ -65,7 +68,7 @@ handle_vcpu_kvm_get_fpu(
 
     if (mv_vs_op_fpu_get_all(g_mut_hndl, vcpu->vsid)) {
         bferror("mv_vs_op_reg_get_all failed");
-        return SHIM_FAILURE;
+        goto release_shared_page;
     }
 
     platform_memcpy(pmut_ioctl_args->registers, pmut_mut_fpu->registers, NO_OF_REGISTERS_BYTES);
@@ -73,5 +76,11 @@ handle_vcpu_kvm_get_fpu(
     platform_memcpy(pmut_ioctl_args->fpr, pmut_mut_fpu->fpr, TOTAL_NO_OF_FPR_BYTES);
     platform_memcpy(pmut_ioctl_args->xmm, pmut_mut_fpu->xmm, TOTAL_NO_OF_XMM_BYTES);
 
-    return SHIM_SUCCESS;
+    mut_ret = SHIM_SUCCESS;
+
+release_shared_page:
+    release_shared_page_for_current_pp();
+
+ret:
+    return mut_ret;
 }

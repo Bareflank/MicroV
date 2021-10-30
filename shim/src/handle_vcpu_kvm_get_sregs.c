@@ -172,6 +172,7 @@ set_kvm_segment_attrib(uint64_t const attrib, struct kvm_segment *const pmut_seg
 NODISCARD static int64_t
 handle_reg_list(struct shim_vcpu_t const *const vcpu, struct kvm_sregs *const pmut_args) NOEXCEPT
 {
+    int64_t mut_ret = SHIM_FAILURE;
     uint64_t mut_i;
     struct mv_rdl_entry_t const *mut_src_entry;
     struct mv_rdl_entry_t *pmut_mut_dst_entry;
@@ -196,12 +197,12 @@ handle_reg_list(struct shim_vcpu_t const *const vcpu, struct kvm_sregs *const pm
 
     if (mv_vs_op_reg_get_list(g_mut_hndl, vcpu->vsid)) {
         bferror("mv_vs_op_reg_get_list failed");
-        return SHIM_FAILURE;
+        goto release_shared_page;
     }
 
     if (pmut_rdl->num_entries >= MV_RDL_MAX_ENTRIES) {
         bferror("the RDL's num_entries is no longer valid");
-        return SHIM_FAILURE;
+        goto release_shared_page;
     }
 
     for (mut_i = ((uint64_t)0); mut_i < pmut_rdl->num_entries; ++mut_i) {
@@ -420,14 +421,19 @@ handle_reg_list(struct shim_vcpu_t const *const vcpu, struct kvm_sregs *const pm
 
         if (((uint64_t)0) != mut_src_entry->reg) {
             bferror("unknown mv_reg_t returned by MicroV");
-            return SHIM_FAILURE;
+            goto release_shared_page;
         }
 
         bferror("MicroV returned a num_entries that does not match the shim's");
-        return SHIM_FAILURE;
+        goto release_shared_page;
     }
 
-    return SHIM_SUCCESS;
+    mut_ret = SHIM_SUCCESS;
+
+release_shared_page:
+    release_shared_page_for_current_pp();
+
+    return mut_ret;
 }
 
 /**
@@ -442,6 +448,7 @@ handle_reg_list(struct shim_vcpu_t const *const vcpu, struct kvm_sregs *const pm
 NODISCARD static int64_t
 handle_msr_list(struct shim_vcpu_t const *const vcpu, struct kvm_sregs *const pmut_args) NOEXCEPT
 {
+    int64_t mut_ret = SHIM_FAILURE;
     uint64_t mut_i;
     struct mv_rdl_entry_t const *mut_src_entry;
     struct mv_rdl_entry_t *pmut_mut_dst_entry;
@@ -466,12 +473,12 @@ handle_msr_list(struct shim_vcpu_t const *const vcpu, struct kvm_sregs *const pm
 
     if (mv_vs_op_msr_get_list(g_mut_hndl, vcpu->vsid)) {
         bferror("mv_vs_op_msr_get_list failed");
-        return SHIM_FAILURE;
+        goto release_shared_page;
     }
 
     if (pmut_rdl->num_entries >= MV_RDL_MAX_ENTRIES) {
         bferror("the RDL's num_entries is no longer valid");
-        return SHIM_FAILURE;
+        goto release_shared_page;
     }
 
     for (mut_i = ((uint64_t)0); mut_i < pmut_rdl->num_entries; ++mut_i) {
@@ -495,14 +502,19 @@ handle_msr_list(struct shim_vcpu_t const *const vcpu, struct kvm_sregs *const pm
 
         if (((uint64_t)0) != mut_src_entry->reg) {
             bferror("unknown MSR returned by MicroV");
-            return SHIM_FAILURE;
+            goto release_shared_page;
         }
 
         bferror("MicroV returned a num_entries that does not match the shim's");
-        return SHIM_FAILURE;
+        goto release_shared_page;
     }
 
-    return SHIM_SUCCESS;
+    mut_ret = SHIM_SUCCESS;
+
+release_shared_page:
+    release_shared_page_for_current_pp();
+
+    return mut_ret;
 }
 
 #if 0

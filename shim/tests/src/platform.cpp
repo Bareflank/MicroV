@@ -408,4 +408,20 @@ namespace shim
         constexpr auto tsc_khz{42_u64};
         return tsc_khz.get();
     }
+
+    ///
+    /// <!-- description -->
+    ///   @brief Disable IRQs
+    ///
+    extern "C" void
+    platform_irq_disable() noexcept
+    {}
+
+    ///
+    /// <!-- description -->
+    ///   @brief Enable IRQs
+    ///
+    void
+    platform_irq_enable() noexcept
+    {}
 }
