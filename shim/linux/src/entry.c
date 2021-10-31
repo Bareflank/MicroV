@@ -290,44 +290,60 @@ static long
 dispatch_system_kvm_get_supported_cpuid(
     struct kvm_cpuid2 __user *const pmut_user_args)
 {
-    struct kvm_cpuid2 mut_args;
+    struct kvm_cpuid2 *mut_args;
     int64_t mut_ret;
 
-    if (platform_copy_from_user(&mut_args, pmut_user_args, sizeof(mut_args))) {
-        bferror("platform_copy_from_user failed");
-        return -EINVAL;
-    }
-
-    if (mut_args.nent > CPUID2_MAX_ENTRIES) {
-        bferror("caller nent exceeds CPUID2_MAX_ENTRIES");
+    mut_args = platform_alloc(sizeof(*mut_args));
+    if (!mut_args) {
+        bferror("failed to allocated kvm_cpuid2");
         return -ENOMEM;
     }
 
-    mut_ret = handle_system_kvm_get_supported_cpuid(&mut_args);
+    if (platform_copy_from_user(mut_args, pmut_user_args, sizeof(*mut_args))) {
+        bferror("platform_copy_from_user failed");
+        mut_ret = -EINVAL;
+        goto FAILED;
+    }
+
+    if (mut_args->nent > CPUID2_MAX_ENTRIES) {
+        bferror("caller nent exceeds CPUID2_MAX_ENTRIES");
+        mut_ret = -ENOMEM;
+        goto FAILED;
+    }
+
+    mut_ret = handle_system_kvm_get_supported_cpuid(mut_args);
     if (SHIM_2BIG == mut_ret) {
         if (platform_copy_to_user(
-                pmut_user_args, &mut_args, sizeof(mut_args.nent))) {
+                pmut_user_args, mut_args, sizeof(mut_args->nent))) {
             bferror("platform_copy_to_user nent failed");
-            return -EINVAL;
+            mut_ret = -EINVAL;
+            goto FAILED;
         }
 
-        return -E2BIG;
+        mut_ret = -E2BIG;
+        goto FAILED;
     }
     else if (mut_ret) {
         bferror("handle_system_kvm_get_msr_index_list failed");
-        return -EINVAL;
+        mut_ret = -EINVAL;
+        goto FAILED;
     }
 
     if (platform_copy_to_user(
             pmut_user_args,
-            &mut_args,
-            sizeof(mut_args.nent) +
-                mut_args.nent * sizeof(*mut_args.entries))) {
+            mut_args,
+            sizeof(mut_args->nent) +
+                mut_args->nent * sizeof(*mut_args->entries))) {
         bferror("platform_copy_to_user failed");
-        return -EINVAL;
+        mut_ret = -EINVAL;
+        goto FAILED;
     }
 
     return 0;
+
+FAILED:
+    platform_free(mut_args, sizeof(*mut_args));
+    return mut_ret;
 }
 
 static long
@@ -1001,20 +1017,26 @@ static long
 dispatch_vcpu_kvm_get_msrs(
     struct shim_vcpu_t const *const vcpu, struct kvm_msrs *const user_args)
 {
-    struct kvm_msrs mut_args;
+    struct kvm_msrs *mut_args;
     uint64_t const size = sizeof(mut_args);
 
-    if (handle_vcpu_kvm_get_msrs(vcpu, &mut_args)) {
+    mut_args = platform_alloc(size);
+    if (!mut_args) {
+        bferror("failed to allocated memory for kvm_msrs");
+        return -ENOMEM;
+    }
+
+    if (handle_vcpu_kvm_get_msrs(vcpu, mut_args)) {
         bferror("handle_vcpu_kvm_get_msrs failed");
         return -EINVAL;
     }
 
-    if (platform_copy_to_user(user_args, &mut_args, size)) {
+    if (platform_copy_to_user(user_args, mut_args, size)) {
         bferror("platform_copy_to_user failed");
         return -EINVAL;
     }
 
-    return (long)mut_args.nmsrs;
+    return (long)mut_args->nmsrs;
 }
 
 static long
@@ -1264,30 +1286,46 @@ dispatch_vcpu_kvm_set_msrs(
     struct shim_vcpu_t const *const vcpu, struct kvm_msrs *const user_args)
 {
 
-    struct kvm_msrs mut_args;
-    uint64_t const size = sizeof(mut_args);
+    struct kvm_msrs *mut_args;
+    uint64_t const size = sizeof(*mut_args);
+    uint32_t mut_nmsrs = 0;
+
+    mut_args = platform_alloc(size);
+    if(!mut_args) {
+        bferror("failed to allocate kvm_msrs");
+        return -ENOMEM;
+    }
 
     if (NULL == user_args) {
         bferror("user_args are null");
-        return -EINVAL;
+        mut_nmsrs = -EINVAL;
+        goto CLEANUP;
     }
 
-    if (platform_copy_from_user(&mut_args, user_args, size)) {
+    if (platform_copy_from_user(mut_args, user_args, size)) {
         bferror("platform_copy_from_user failed");
-        return -EINVAL;
+        mut_nmsrs = -EINVAL;
+        goto CLEANUP;
     }
 
-    if (0 == mut_args.nmsrs) {
+    if (0 == mut_args->nmsrs) {
         /* Nothing to do */
-        return 0;
+        mut_nmsrs = 0;
+        goto CLEANUP;
     }
 
-    if (handle_vcpu_kvm_set_msrs(vcpu, &mut_args)) {
+    if (handle_vcpu_kvm_set_msrs(vcpu, mut_args)) {
         bferror("handle_vcpu_kvm_set_msrs failed");
-        return -EINVAL;
+        mut_nmsrs = -EINVAL;
+        goto CLEANUP;
     }
 
-    return mut_args.nmsrs;
+    mut_nmsrs = mut_args->nmsrs;
+
+CLEANUP:
+    platform_free(mut_args, sizeof(*mut_args));
+
+    return mut_nmsrs;
 }
 
 static long
