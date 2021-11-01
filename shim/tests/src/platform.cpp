@@ -27,6 +27,7 @@
 #include <string.h>
 
 #include <bsl/convert.hpp>
+#include <bsl/discard.hpp>
 #include <bsl/ensures.hpp>
 #include <bsl/expects.hpp>
 #include <bsl/safe_integral.hpp>
@@ -202,13 +203,19 @@ namespace shim
     /// <!-- inputs/outputs -->
     ///   @param pmut_ptr a pointer to the memory to lock
     ///   @param num the number of bytes to lock.
+    ///   @param pmut_mut_os_info OS specific information.
     ///   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
     ///
     extern "C" [[nodiscard]] auto
-    platform_mlock(void *const pmut_ptr, uint64_t const num) noexcept -> int64_t
+    platform_mlock(
+        void *const pmut_ptr, bsl::uint64 const num, bsl::uint64 *pmut_mut_os_info) noexcept
+        -> int64_t
     {
         bsl::expects(nullptr != pmut_ptr);
         bsl::expects(bsl::safe_u64::magic_0() != num);
+        bsl::expects(nullptr != pmut_mut_os_info);
+
+        bsl::discard(pmut_mut_os_info);
 
         return g_mut_platform_mlock;
     }
@@ -221,13 +228,17 @@ namespace shim
     /// <!-- inputs/outputs -->
     ///   @param pmut_ptr a pointer to the memory to unlock
     ///   @param num the number of bytes to unlock.
+    ///   @param os_info OS specific information.
     ///   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
     ///
     extern "C" [[nodiscard]] auto
-    platform_munlock(void *const pmut_ptr, uint64_t const num) noexcept -> int64_t
+    platform_munlock(
+        void *const pmut_ptr, bsl::uint64 const num, bsl::uint64 const os_info) noexcept -> int64_t
     {
+        (void)os_info;
         bsl::expects(nullptr != pmut_ptr);
         bsl::expects(bsl::safe_u64::magic_0() != num);
+        bsl::expects(bsl::safe_u64::magic_0() != os_info);
 
         return g_mut_platform_munlock;
     }
