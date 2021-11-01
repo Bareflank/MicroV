@@ -76,6 +76,7 @@ extern "C"
      */
     struct kvm_run
     {
+        /* in */
         /** @brief TODO */
         uint8_t request_interrupt_window;
         /** @brief TODO */
@@ -83,6 +84,7 @@ extern "C"
         /** @brief TODO */
         uint8_t padding1[KVM_RUN_PADDING1_SIZE];
 
+        /* out */
         /** @brief TODO */
         uint32_t exit_reason;
         /** @brief TODO */
@@ -92,6 +94,7 @@ extern "C"
         /** @brief TODO */
         uint16_t flags;
 
+        /* in (pre_kvm_run), out (post_kvm_run) */
         /** @brief TODO */
         uint64_t cr8;
         /** @brief TODO */

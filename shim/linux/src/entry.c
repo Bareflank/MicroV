@@ -1223,12 +1223,27 @@ dispatch_vcpu_kvm_nmi(void)
 static long
 dispatch_vcpu_kvm_run(struct shim_vcpu_t *const vcpu)
 {
-    if (handle_vcpu_kvm_run(vcpu)) {
-        bferror("handle_vcpu_kvm_run failed");
-        return -EINVAL;
+    long mut_ret;
+
+    switch (handle_vcpu_kvm_run(vcpu)) {
+        case SHIM_SUCCESS: {
+            mut_ret = 0;
+            break;
+        }
+
+        case SHIM_INTERRUPTED: {
+            mut_ret = -EINTR;
+            break;
+        }
+
+        default: {
+            bferror("handle_vcpu_kvm_run failed");
+            mut_ret = -EINVAL;
+            break;
+        }
     }
 
-    return 0;
+    return mut_ret;
 }
 
 static long
