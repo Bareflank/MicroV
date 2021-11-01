@@ -133,6 +133,9 @@ namespace microv
         /// @brief stores the TSC frequency in KHz of this vs_t
         bsl::safe_u64 m_tsc_khz{};
 
+        /// @brief stores the clock value of this vs_t
+        bsl::safe_u64 m_clock{};
+
         /// @brief stores a queue of interrupts that need to be injected
         queue<bsl::safe_u64, MICROV_INTERRUPT_QUEUE_SIZE.get()> m_interrupt_queue{};
 
@@ -2483,6 +2486,48 @@ namespace microv
             bsl::ensures(m_tsc_khz.is_valid_and_checked());
             bsl::ensures(m_tsc_khz.is_pos());
             return m_tsc_khz;
+        }
+
+        /// <!-- description -->
+        ///   @brief Sets the value of the clock
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param mut_sys the bf_syscall_t to use
+        ///   @return Returns bsl::errc_success on success, bsl::errc_failure
+        ///     and friends otherwise
+        ///
+        [[nodiscard]] constexpr auto
+        clock_get(
+            const syscall::bf_syscall_t &mut_sys) const noexcept -> bsl::safe_u64
+        {
+            bsl::expects(allocated_status_t::allocated == m_allocated);
+            bsl::expects(running_status_t::running != m_status);
+            bsl::expects(mut_sys.bf_tls_ppid() == this->assigned_pp());
+
+            return bsl::safe_u64{m_clock};
+        }
+
+        /// <!-- description -->
+        ///   @brief Sets the value of the clock
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param mut_sys the bf_syscall_t to use
+        ///   @param clock the value to set the clock to
+        ///   @return Returns bsl::errc_success on success, bsl::errc_failure
+        ///     and friends otherwise
+        ///
+        [[nodiscard]] constexpr auto
+        clock_set(
+            syscall::bf_syscall_t &mut_sys,
+            bsl::safe_u64 const &clock) noexcept -> bsl::errc_type
+        {
+            bsl::expects(allocated_status_t::allocated == m_allocated);
+            bsl::expects(running_status_t::running != m_status);
+            bsl::expects(mut_sys.bf_tls_ppid() == this->assigned_pp());
+
+            bsl::errc_type mut_ret{0};
+            m_clock = clock;
+            return mut_ret;
         }
     };
 }
