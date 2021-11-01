@@ -205,8 +205,9 @@ namespace shim
     ///   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
     ///
     extern "C" [[nodiscard]] auto
-    platform_mlock(void *const pmut_ptr, uint64_t const num) noexcept -> int64_t
+    platform_mlock(void *const pmut_ptr, uint64_t const num, uint64_t *os_info) noexcept -> int64_t
     {
+        (void)os_info;
         bsl::expects(nullptr != pmut_ptr);
         bsl::expects(bsl::safe_u64::magic_0() != num);
 
@@ -224,8 +225,9 @@ namespace shim
     ///   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
     ///
     extern "C" [[nodiscard]] auto
-    platform_munlock(void *const pmut_ptr, uint64_t const num) noexcept -> int64_t
+    platform_munlock(void *const pmut_ptr, uint64_t const num, uint64_t os_info) noexcept -> int64_t
     {
+        (void)os_info;
         bsl::expects(nullptr != pmut_ptr);
         bsl::expects(bsl::safe_u64::magic_0() != num);
 
