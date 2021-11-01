@@ -66,7 +66,7 @@ handle_system_kvm_get_supported_cpuid(struct kvm_cpuid2 *const pmut_ioctl_args) 
         return SHIM_FAILURE;
     }
 
-    if (!pmut_ioctl_args->entries) {
+    if (!((struct kvm_cpuid_entry2 *)pmut_ioctl_args->entries)) {
         bferror("entries array not allocated");
         return SHIM_FAILURE;
     }
