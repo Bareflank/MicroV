@@ -55,6 +55,8 @@ run() {
     -cpu host \
     -drive format=raw,file=fat:rw:$BUILD_DIR/vm_storage \
     -bios $BUILD_DIR/OVMF_CODE.fd \
+    -chardev stdio,id=char0,mux=on,logfile=$BUILD_DIR/qemu_efi.log,signal=off \
+    -serial chardev:char0 -mon chardev=char0 \
     -m size=64M \
     -nographic
 }
@@ -71,6 +73,8 @@ run_linux() {
     -kernel ${KERNEL_PATH} \
     -initrd ${INITRD_PATH} \
     -append "console=uart,io,0x3F8,115200n8,keep" \
+    -chardev stdio,id=char0,mux=on,logfile=$BUILD_DIR/qemu_linux.log,signal=off \
+    -serial chardev:char0 -mon chardev=char0 \
     -m size=64M \
     -nographic
 }
