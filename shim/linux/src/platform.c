@@ -291,7 +291,6 @@ platform_mlock(void *const pmut_ptr, uint64_t const num, uint64_t *pmut_os_info)
     platform_expects(((uint64_t)0) != num);
     platform_expects(((void *)0) != pmut_os_info);
 
-    //pages = kvmalloc_array(page_count, sizeof(struct page *), GFP_KERNEL);
     pages = platform_alloc(page_count * sizeof(struct page *));
     if (!pages) {
         bferror("failed to allocate page structures for mlock");
@@ -318,6 +317,7 @@ platform_mlock(void *const pmut_ptr, uint64_t const num, uint64_t *pmut_os_info)
     rc = pin_user_pages_fast((uintptr_t)pmut_ptr, num >> HYPERVISOR_PAGE_SHIFT, 0, pages);
     if (rc < 0) {
         bferror_x64("pin user pages fast ", rc);
+        platform_free(pages, page_count * sizeof(struct page *));
         return SHIM_FAILURE;
     }
 
