@@ -336,10 +336,7 @@ dispatch_system_kvm_get_supported_cpuid(
                 mut_args->nent * sizeof(*mut_args->entries))) {
         bferror("platform_copy_to_user failed");
         mut_ret = -EINVAL;
-        goto FAILED;
     }
-
-    return 0;
 
 FAILED:
     platform_free(mut_args, sizeof(*mut_args));
