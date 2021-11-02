@@ -22,6 +22,7 @@
 /// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 /// SOFTWARE.
 
+#include <mv_constants.h>
 #include <mv_types.h>
 #include <platform.h>
 #include <string.h>
@@ -238,6 +239,8 @@ namespace shim
         (void)os_info;
         bsl::expects(nullptr != pmut_ptr);
         bsl::expects(bsl::safe_u64::magic_0() != num);
+        bsl::expects(
+            bsl::safe_u64::magic_0() == ((HYPERVISOR_PAGE_SIZE - bsl::safe_u64::magic_1()) & num));
         bsl::expects(bsl::safe_u64::magic_0() != os_info);
 
         return g_mut_platform_munlock;

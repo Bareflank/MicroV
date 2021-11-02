@@ -344,7 +344,7 @@ remove_memory_region(
     mut_slot_as = get_slot_as(args->slot);
     mut_dst = pmut_vm->slots[mut_slot_id].guest_phys_addr;
     mut_src = pmut_vm->slots[mut_slot_id].userspace_addr;
-    mut_size = pmut_vm->slots[mut_slot_id].memory_size;
+    mut_size = (int64_t)pmut_vm->slots[mut_slot_id].memory_size;
 
     pmut_mut_mdl->num_entries = ((uint64_t)0);
 
@@ -499,6 +499,7 @@ handle_vm_kvm_set_user_memory_region(
         }
         else {
             bferror("can't modify a slot with a new size");
+            mut_rc = SHIM_FAILURE;
             goto RESIZE_SLOT_FAIL;
         }
     }

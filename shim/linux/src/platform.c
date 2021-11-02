@@ -29,6 +29,7 @@
 #include <asm/io.h>
 #include <asm/pgtable.h>
 #include <asm/pgtable_types.h>
+#include <constants.h>
 #include <debug.h>
 #include <linux/cpu.h>
 #include <linux/mm.h>
@@ -288,10 +289,13 @@ platform_mlock(
 {
     struct page **pages = NULL;
     int rc = 0;
-    uint64_t page_count = (num / PAGE_SIZE) + 1;
+    uint64_t page_count = (num >> HYPERVISOR_PAGE_SHIFT);
 
     platform_expects(((void *)0) != pmut_ptr);
     platform_expects(((uint64_t)0) != num);
+    platform_expects(
+        ((uint64_t)0) == ((HYPERVISOR_PAGE_SIZE - (uint64_t)1) & num));
+    platform_expects(((void *)0) != pmut_mut_os_info);
 
     pages = platform_alloc(page_count * sizeof(struct page *));
     if (!pages) {
@@ -316,14 +320,15 @@ platform_mlock(
     /// - also maybe get_user_pages_fast(). See platform_virt_to_phys_user
     ///   as it uses this, and we might not actually need mlock.
     ///
-    rc = pin_user_pages_fast((uintptr_t)pmut_ptr, num / PAGE_SIZE, 0, pages);
+    rc = pin_user_pages_fast(
+        (uintptr_t)pmut_ptr, num >> HYPERVISOR_PAGE_SHIFT, 0, pages);
     if (rc < 0) {
         bferror_x64("pin user pages fast ", rc);
         platform_free(pages, page_count * sizeof(struct page *));
         return SHIM_FAILURE;
     }
 
-    *ppmut_mut_os_info = (uint64_t)pages;
+    *pmut_mut_os_info = (uintptr_t)pages;
 
     return SHIM_SUCCESS;
 }
@@ -345,10 +350,12 @@ platform_munlock(
     void *const pmut_ptr, uint64_t const num, uint64_t const os_info) NOEXCEPT
 {
     struct page **pages = (struct page **)os_info;
-    uint64_t page_count = (num / PAGE_SIZE);
+    uint64_t page_count = (num >> HYPERVISOR_PAGE_SHIFT);
 
     platform_expects(((void *)0) != pmut_ptr);
     platform_expects(((uint64_t)0) != num);
+    platform_expects(
+        ((uint64_t)0) == ((HYPERVISOR_PAGE_SIZE - (uint64_t)1) & num));
     platform_expects(((void *)0) != pages);
 
     unpin_user_pages(pages, page_count);
