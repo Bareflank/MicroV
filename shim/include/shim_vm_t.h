@@ -66,6 +66,9 @@ extern "C"
 
         /** @brief stores the memory slots associated with this VM */
         struct kvm_userspace_memory_region slots[MICROV_MAX_SLOTS];
+
+        /** @brief stores os specific memory pointers (currently necessary for m[un]lock )*/
+        uintptr_t os_info[MICROV_MAX_SLOTS];
     };
 
 #pragma pack(pop)
