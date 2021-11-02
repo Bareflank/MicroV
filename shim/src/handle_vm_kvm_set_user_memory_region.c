@@ -205,7 +205,7 @@ add_memory_region(
     platform_memcpy(&(pmut_vm->slots[mut_slot_id]), args, sizeof(pmut_vm->slots[mut_slot_id]));
 
     pmut_mut_mdl->num_entries = ((uint64_t)0);
-    if (platform_mlock((void *)(mut_src), (uint64_t)mut_size, &(pmut_mut_mdl->reserved1))) {
+    if (platform_mlock((void *)(mut_src), (uint64_t)mut_size, &(pmut_vm->os_info[mut_slot_id]))) {
         bferror("platform_mlock failed");
         goto platform_mlock_failed;
     }
@@ -314,7 +314,7 @@ mv_vm_op_mmio_map_failed:
 
     platform_expects(
         SHIM_SUCCESS ==
-        platform_munlock((void *)mut_src, args->memory_size, pmut_mut_mdl->reserved1));
+        platform_munlock((void *)mut_src, args->memory_size, pmut_vm->os_info[mut_slot_id]));
 platform_mlock_failed:
 
     return SHIM_FAILURE;
@@ -348,7 +348,7 @@ remove_memory_region(
 
     pmut_mut_mdl->num_entries = ((uint64_t)0);
 
-    if (platform_mlock((void *)(mut_src), (uint64_t)mut_size, &(pmut_mut_mdl->reserved1))) {
+    if (platform_mlock((void *)(mut_src), (uint64_t)mut_size, &(pmut_vm->os_info[mut_slot_id]))) {
         bferror("platform_mlock failed");
         goto platform_mlock_failed;
     }
@@ -383,7 +383,7 @@ remove_memory_region(
 
 platform_mlock_failed:
     platform_expects(
-        SHIM_SUCCESS == platform_munlock((void *)mut_src, mut_size, pmut_mut_mdl->reserved1));
+        SHIM_SUCCESS == platform_munlock((void *)mut_src, mut_size, pmut_vm->os_info[mut_slot_id]));
 
     pmut_vm->slots[mut_slot_id].memory_size = 0;
 

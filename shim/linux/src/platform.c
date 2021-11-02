@@ -347,7 +347,7 @@ platform_mlock(
  */
 NODISCARD int64_t
 platform_munlock(
-    void *const pmut_ptr, uint64_t const num, uint64_t const os_info) NOEXCEPT
+    void *const pmut_ptr, uint64_t const num, uintptr_t const os_info) NOEXCEPT
 {
     struct page **pages = (struct page **)os_info;
     uint64_t page_count = (num >> HYPERVISOR_PAGE_SHIFT);
