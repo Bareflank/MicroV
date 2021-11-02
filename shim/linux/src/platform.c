@@ -29,6 +29,7 @@
 #include <asm/io.h>
 #include <asm/pgtable.h>
 #include <asm/pgtable_types.h>
+#include <constants.h>
 #include <debug.h>
 #include <linux/cpu.h>
 #include <linux/mm.h>
@@ -280,14 +281,15 @@ platform_memcpy(
  *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
  */
 NODISCARD int64_t
-platform_mlock(void *const pmut_ptr, uint64_t const num, uint64_t *os_info) NOEXCEPT
+platform_mlock(void *const pmut_ptr, uint64_t const num, uint64_t *pmut_os_info) NOEXCEPT
 {
     struct page **pages = NULL;
     int rc = 0;
-    uint64_t page_count = (num/PAGE_SIZE) + 1;
+    uint64_t page_count = (num >> HYPERVISOR_PAGE_SHIFT) + 1;
 
     platform_expects(((void *)0) != pmut_ptr);
     platform_expects(((uint64_t)0) != num);
+    platform_expects(((void *)0) != pmut_os_info);
 
     //pages = kvmalloc_array(page_count, sizeof(struct page *), GFP_KERNEL);
     pages = platform_alloc(page_count * sizeof(struct page *));
@@ -313,13 +315,13 @@ platform_mlock(void *const pmut_ptr, uint64_t const num, uint64_t *os_info) NOEX
     /// - also maybe get_user_pages_fast(). See platform_virt_to_phys_user
     ///   as it uses this, and we might not actually need mlock.
     ///
-    rc = pin_user_pages_fast((uintptr_t)pmut_ptr, num/PAGE_SIZE, 0, pages);
+    rc = pin_user_pages_fast((uintptr_t)pmut_ptr, num >> HYPERVISOR_PAGE_SHIFT, 0, pages);
     if (rc < 0) {
         bferror_x64("pin user pages fast ", rc);
         return SHIM_FAILURE;
     }
 
-    *os_info = (uint64_t)pages;
+    *pmut_os_info = (uint64_t)pages;
 
     return SHIM_SUCCESS;
 }
@@ -336,10 +338,10 @@ platform_mlock(void *const pmut_ptr, uint64_t const num, uint64_t *os_info) NOEX
  *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
  */
 NODISCARD int64_t
-platform_munlock(void *const pmut_ptr, uint64_t const num, uint64_t os_info) NOEXCEPT
+platform_munlock(void *const pmut_ptr, uint64_t const num, uint64_t const os_info) NOEXCEPT
 {
     struct page **pages = (struct page **)os_info;
-    uint64_t page_count = (num/PAGE_SIZE);
+    uint64_t page_count = (num >> HYPERVISOR_PAGE_SHIFT) + 1;
 
     platform_expects(((void *)0) != pmut_ptr);
     platform_expects(((uint64_t)0) != num);
