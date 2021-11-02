@@ -45,7 +45,7 @@ extern "C"
     struct kvm_ioeventfd
     {
         /** @brief replace me with contents from KVM API */
-        int32_t dummy;
+        uint8_t dummy[8 + 8 + 4 + 4 + 4 + 36];
     };
 
 #pragma pack(pop)

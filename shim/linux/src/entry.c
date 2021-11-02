@@ -658,6 +658,7 @@ static long
 dispatch_vm_kvm_ioeventfd(struct kvm_ioeventfd *const ioctl_args)
 {
     (void)ioctl_args;
+    bfdebug("KVM_IOEVENTFD is currently not implemented");
     return -EINVAL;
 }
 
@@ -1191,6 +1192,7 @@ static long
 dispatch_vcpu_kvm_interrupt(struct kvm_interrupt *const ioctl_args)
 {
     (void)ioctl_args;
+    bferror("KVM_INTERRUPT is not yet implemented");
     return -EINVAL;
 }
 
@@ -1249,7 +1251,7 @@ dispatch_vcpu_kvm_set_cpuid2(
 
     mut_ret = -E2BIG;
     if (pmut_mut_args->nent > CPUID2_MAX_ENTRIES) {
-        bferror("nent is greater than CPUID2_MAX_ENTRIES");
+        bfdebug("nent is greater than CPUID2_MAX_ENTRIES");
         goto out_free;
     }
 
@@ -1708,7 +1710,7 @@ dev_unlocked_ioctl_vcpu(
         }
 
         default: {
-            bferror_x64("invalid ioctl cmd", cmd);
+            bferror_x64("invalid vcpu ioctl cmd", cmd);
             return -EINVAL;
         }
     };

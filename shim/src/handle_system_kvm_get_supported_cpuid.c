@@ -93,7 +93,7 @@ handle_system_kvm_get_supported_cpuid(struct kvm_cpuid2 *const pmut_ioctl_args) 
     }
 
     if (pmut_cdl->num_entries > ((uint64_t)pmut_ioctl_args->nent)) {
-        bferror("CDL entries is larger than kvm_cpuid2 entries");
+        bfdebug("CDL entries is larger than kvm_cpuid2 entries");
         pmut_ioctl_args->nent = ((uint32_t)pmut_cdl->num_entries);
         return SHIM_2BIG;
     }
