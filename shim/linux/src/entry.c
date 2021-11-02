@@ -299,7 +299,7 @@ dispatch_system_kvm_get_supported_cpuid(
         return -ENOMEM;
     }
 
-    if (platform_copy_from_user(mut_args, pmut_user_args, sizeof(*mut_args))) {
+    if (platform_copy_from_user(&mut_args->nent, pmut_user_args, sizeof(mut_args->nent))) {
         bferror("platform_copy_from_user failed");
         mut_ret = -EINVAL;
         goto FAILED;
@@ -308,6 +308,15 @@ dispatch_system_kvm_get_supported_cpuid(
     if (mut_args->nent > CPUID2_MAX_ENTRIES) {
         bferror("caller nent exceeds CPUID2_MAX_ENTRIES");
         mut_ret = -ENOMEM;
+        goto FAILED;
+    }
+
+    if (platform_copy_from_user(mut_args, pmut_user_args,
+            sizeof(mut_args->nent) +
+            sizeof(mut_args->padding) +
+                mut_args->nent * sizeof(mut_args->entries[0]))) {
+        bferror("platform_copy_from_user failed");
+        mut_ret = -EINVAL;
         goto FAILED;
     }
 
