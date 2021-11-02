@@ -36,7 +36,6 @@ macro(add_vmlinux NAME)
         COMMAND sync
         VERBATIM
     )
-    # install(TARGETS ${NAME} DESTINATION bin)
 endmacro(add_vmlinux)
 
 macro(add_userspace NAME)
@@ -45,6 +44,7 @@ macro(add_userspace NAME)
 endmacro(add_userspace)
 
 add_vmlinux(release)
+add_vmlinux(debug)
 
 add_userspace(init init.cpp)
 

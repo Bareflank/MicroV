@@ -22,7 +22,7 @@ if [ -z ${BUILD_DIR+x} ]; then
 fi
 
 if [ -z ${KERNEL_PATH+x} ]; then
-  KERNEL_PATH="$(pwd)/vm_cross_compile/bin/bzImage-release"
+  KERNEL_PATH="$(pwd)/vm_cross_compile/bin/bzImage-debug"
 fi
 
 if [ -z ${INITRD_PATH+x} ]; then
