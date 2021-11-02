@@ -40,7 +40,7 @@ namespace shim
     /// @brief defines the total size of the REGISTER bytes
     constexpr auto REGISTER_SIZE{1_umx};
     /// @brief defines the total size of the number of REGISTER bytes
-    constexpr auto NO_OF_REGISTER_SIZE{32_umx};
+    constexpr auto NO_OF_REGISTER_SIZE{24_umx};
     /// @brief defines the no of XMM registers
     constexpr auto NO_OF_XMM_REGISTERS{16_umx};
     /// @brief defines the size of the XMM REGISTER
@@ -59,14 +59,16 @@ namespace shim
     ///
     struct kvm_fpu final
     {
-        /** @brief stores that value of the Floating pointer registers*/
+        /// @brief stores that value of the Floating pointer registers
         bsl::array<bsl::uint8, TOTAL_NO_OF_FPR_BYTES.get()> fpr;
-        /** @brief stores that value of the registers*/
+        /// @brief stores that value of the registers
         bsl::array<bsl::uint8, TOTAL_NO_OF_REGISTER_BYTES.get()> registers;
-        /** @brief stores that value of the XMM registers*/
+        /// @brief stores that value of the XMM registers
         bsl::array<bsl::uint8, TOTAL_NO_OF_XMM_BYTES.get()> xmm;
-        /** @brief stores that value of mxscr*/
+        /// @brief stores that value of mxscr
         bsl::uint32 mxcsr;
+        /// @brief padding
+        bsl::uint32 pad;
     };
 
 }

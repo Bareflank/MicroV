@@ -52,7 +52,7 @@ extern "C"
     {
         /** @brief number of msrs in entries */
         uint32_t nmsrs;
-        /** @brief number of pad in entries */
+        /** @brief padding */
         uint32_t pad;
         /** @brief defines array of entries*/
         struct kvm_msr_entry entries[MV_RDL_MAX_ENTRIES];

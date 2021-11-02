@@ -45,9 +45,9 @@ namespace shim
     ///
     struct kvm_msrs final
     {
-        /** @brief number of msrs in entries */
+        /// @brief number of msrs in entries
         bsl::uint32 nmsrs;
-        /** @brief number of pad in entries */
+        /// @brief padding
         bsl::uint32 pad;
         /// @brief stores each entry in the RDL
         bsl::array<shim::kvm_msr_entry, MV_RDL_MAX_ENTRIES.get()> entries;

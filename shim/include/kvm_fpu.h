@@ -49,7 +49,7 @@ extern "C"
 /** @brief defines the no of XMM registers */
 #define NO_OF_XMM_REGISTERS ((uint64_t)16)
 /** @brief defines the no of Register bytes */
-#define NO_OF_REGISTERS_BYTES ((uint64_t)32)
+#define NO_OF_REGISTERS_BYTES ((uint64_t)24)
 /** @brief defines the no of Register bytes */
 #define REGISTER_SIZE ((uint64_t)1)
 /** @brief defines the total no of Register bytes */
@@ -75,6 +75,8 @@ extern "C"
         uint8_t xmm[TOTAL_NO_OF_XMM_BYTES];
         /** @brief stores that value of mxscr*/
         uint32_t mxcsr;
+        /** @brief padding */
+        uint32_t pad;
     };
 
 #pragma pack(pop)
