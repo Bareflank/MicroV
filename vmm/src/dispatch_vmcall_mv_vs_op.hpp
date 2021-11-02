@@ -791,6 +791,69 @@ namespace microv
     }
 
     /// <!-- description -->
+    ///   @brief Implements the mv_vs_op_msr_get hypercall
+    ///
+    /// <!-- inputs/outputs -->
+    ///   @param mut_sys the bf_syscall_t to use
+    ///   @param mut_vs_pool the vs_pool_t to use
+    ///   @return Returns bsl::errc_success on success, bsl::errc_failure
+    ///     and friends otherwise
+    ///
+    [[nodiscard]] constexpr auto
+    handle_mv_vs_op_clock_get(syscall::bf_syscall_t &mut_sys, vs_pool_t &mut_vs_pool) noexcept
+        -> bsl::errc_type
+    {
+        auto const vsid{get_allocated_non_self_vsid(mut_sys, get_reg1(mut_sys), mut_vs_pool)};
+        if (bsl::unlikely(vsid.is_invalid())) {
+            bsl::print<bsl::V>() << bsl::here();
+            set_reg_return(mut_sys, hypercall::MV_STATUS_INVALID_INPUT_REG1);
+            return vmexit_failure_advance_ip_and_run;
+        }
+
+        auto const val{mut_vs_pool.clock_get(mut_sys, vsid)};
+        if (bsl::unlikely(val.is_invalid())) {
+            bsl::print<bsl::V>() << bsl::here();
+            set_reg_return(mut_sys, hypercall::MV_STATUS_FAILURE_UNKNOWN);
+            return vmexit_failure_advance_ip_and_run;
+        }
+
+        set_reg0(mut_sys, val);
+        return vmexit_success_advance_ip_and_run;
+    }
+
+    /// <!-- description -->
+    ///   @brief Implements the mv_vs_op_msr_set hypercall
+    ///
+    /// <!-- inputs/outputs -->
+    ///   @param mut_sys the bf_syscall_t to use
+    ///   @param mut_vs_pool the vs_pool_t to use
+    ///   @return Returns bsl::errc_success on success, bsl::errc_failure
+    ///     and friends otherwise
+    ///
+    [[nodiscard]] constexpr auto
+    handle_mv_vs_op_clock_set(syscall::bf_syscall_t &mut_sys, vs_pool_t &mut_vs_pool) noexcept
+        -> bsl::errc_type
+    {
+        bsl::errc_type mut_ret{};
+
+        auto const vsid{get_allocated_non_self_vsid(mut_sys, get_reg1(mut_sys), mut_vs_pool)};
+        if (bsl::unlikely(vsid.is_invalid())) {
+            bsl::print<bsl::V>() << bsl::here();
+            set_reg_return(mut_sys, hypercall::MV_STATUS_INVALID_INPUT_REG1);
+            return vmexit_failure_advance_ip_and_run;
+        }
+
+        mut_ret = mut_vs_pool.clock_set(mut_sys, get_reg2(mut_sys), vsid);
+        if (bsl::unlikely(!mut_ret)) {
+            bsl::print<bsl::V>() << bsl::here();
+            set_reg_return(mut_sys, hypercall::MV_STATUS_FAILURE_UNKNOWN);
+            return vmexit_failure_advance_ip_and_run;
+        }
+
+        return vmexit_success_advance_ip_and_run;
+    }
+
+    /// <!-- description -->
     ///   @brief Implements the handle_mv_vs_op_cpuid_get hypercall
     ///
     /// <!-- inputs/outputs -->
@@ -1220,6 +1283,26 @@ namespace microv
 
             case hypercall::MV_VS_OP_CPUID_SET_LIST_IDX_VAL.get(): {
                 auto const ret{handle_mv_vs_op_cpuid_set_list(mut_sys, mut_pp_pool, mut_vs_pool)};
+                if (bsl::unlikely(!ret)) {
+                    bsl::print<bsl::V>() << bsl::here();
+                    return ret;
+                }
+
+                return ret;
+            }
+
+            case hypercall::MV_VS_OP_CLOCK_GET.get(): {
+                auto const ret{handle_mv_vs_op_clock_get(mut_sys, mut_vs_pool)};
+                if (bsl::unlikely(!ret)) {
+                    bsl::print<bsl::V>() << bsl::here();
+                    return ret;
+                }
+
+                return ret;
+            }
+
+            case hypercall::MV_VS_OP_CLOCK_SET.get(): {
+                auto const ret{handle_mv_vs_op_clock_set(mut_sys, mut_vs_pool)};
                 if (bsl::unlikely(!ret)) {
                     bsl::print<bsl::V>() << bsl::here();
                     return ret;

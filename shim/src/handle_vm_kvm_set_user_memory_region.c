@@ -83,75 +83,36 @@ kvm_to_mv_page_flags(uint32_t const flags) NOEXCEPT
 {
     uint64_t mut_flags = ((uint64_t)0);
     if (flags & ((uint32_t)KVM_MEM_READONLY)) {
-        // Anticipate that we'll have to provide RE access here
-        // in reality
-        mut_flags |= MV_MAP_FLAG_READ_ACCESS;
+        mut_flags |= (MV_MAP_FLAG_READ_ACCESS|MV_MAP_FLAG_EXECUTE_ACCESS);
     }
     else {
-        mv_touch();
+        mut_flags |= (MV_MAP_FLAG_READ_ACCESS|MV_MAP_FLAG_WRITE_ACCESS|MV_MAP_FLAG_EXECUTE_ACCESS);
     }
 
     return mut_flags;
 }
 
-/**
- * <!-- description -->
- *   @brief Handles the execution of kvm_set_user_memory_region.
- *
- * <!-- inputs/outputs -->
- *   @param args the arguments provided by userspace
- *   @param pmut_vm pmut_vm the VM to modify
- *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
- */
 NODISCARD int64_t
-handle_vm_kvm_set_user_memory_region(
-    struct kvm_userspace_memory_region const *const args, struct shim_vm_t *const pmut_vm) NOEXCEPT
+set_user_memory_region_is_valid(struct kvm_userspace_memory_region const *const args, struct shim_vm_t *const pmut_vm) NOEXCEPT
 {
-    uint64_t const high_canonical_boundary = ((uint64_t)0xFFFF800000000000ULL);
-    uint64_t const low_canonical_boundary = ((uint64_t)0x00007FFFFFFFFFFFULL);
-    struct mv_mdl_t *pmut_mut_mdl;
-
-    int64_t mut_i;
     int64_t mut_size;
-
     uint32_t mut_slot_id;
     uint32_t mut_slot_as;
     uint64_t mut_dst;
     uint64_t mut_src;
-    uint64_t const flags = kvm_to_mv_page_flags(args->flags);
 
-    platform_expects(NULL != args);
-    platform_expects(NULL != pmut_vm);
-
-    if (detect_hypervisor()) {
-        bferror("The shim is not running in a VM. Did you forget to start MicroV?");
-        return SHIM_FAILURE;
-    }
-
-    pmut_mut_mdl = (struct mv_mdl_t *)shared_page_for_current_pp();
-    platform_expects(NULL != pmut_mut_mdl);
+    uint64_t const high_canonical_boundary = ((uint64_t)0xFFFF800000000000ULL);
+    uint64_t const low_canonical_boundary = ((uint64_t)0x00007FFFFFFFFFFFULL);
 
     mut_slot_id = get_slot_id(args->slot);
     mut_slot_as = get_slot_as(args->slot);
     mut_dst = args->guest_phys_addr;
     mut_src = args->userspace_addr;
     mut_size = (int64_t)args->memory_size;
-
-    if (!mv_is_page_aligned(args->memory_size)) {
-        mut_size += HYPERVISOR_PAGE_SIZE;
-        mut_size &= ~(HYPERVISOR_PAGE_SIZE - ((uint64_t)1));
-    }
-    else {
-        mv_touch();
-    }
+    (void) pmut_vm;
 
     if (args->memory_size > (uint64_t)INT64_MAX) {
         bferror("args->memory_size is out of bounds");
-        return SHIM_FAILURE;
-    }
-
-    if (((uint64_t)0) == args->memory_size) {
-        bferror("deleting an existing slot is currently not implemented");
         return SHIM_FAILURE;
     }
 
@@ -209,51 +170,43 @@ handle_vm_kvm_set_user_memory_region(
         return SHIM_FAILURE;
     }
 
-    platform_mutex_lock(&pmut_vm->mutex);
-    if (((uint64_t)0) != pmut_vm->slots[mut_slot_id].memory_size) {
+    return 0;
+}
 
-        /// NOTE:
-        /// - Only add support for this if it is actually something that
-        ///   QEMU or rust-vmm are doing. Likely, slots will be modified
-        ///   during migration, but outside of that, slots should be
-        ///   static, so hopefully this is never needed.
-        ///
-        /// - The reason that we don't want to do this is it will require
-        ///   that we run mv_vm_op_mmio_unmap. This function is simple
-        ///   enough except for the fact that it will require an IPI to
-        ///   flush remote PPs once SMP support is added to the guest.
-        ///
-        /// - On AMD, we can state that we only support Zen 3 and above
-        ///   which means that we can use the remote TLB flush instructions
-        ///   from AMD. On Intel, handling IPIs is not as bad because we
-        ///   can repurpose INIT and trap on it. On AMD, this is not as
-        ///   simple, and so the remote TLB flush instructions are the
-        ///   way to handle this.
-        ///
-        /// - If we do need to handle this, keep in mind that this
-        ///   function has to be operated on in reverse. That include
-        ///   unpinning memory that is no longer needed by the guest VM.
-        ///
+NODISCARD int64_t
+add_memory_region(struct kvm_userspace_memory_region const *const args, struct shim_vm_t *const pmut_vm) NOEXCEPT
+{
+    struct mv_mdl_t *pmut_mut_mdl;
 
-        /// NOTE:
-        /// - Whe modifying a memory slot, we need to make sure that the
-        ///   slot size is not changed. Basically, we are allowed to
-        ///   delete, change flags, etc... but you are not allowed to
-        ///   change the size.
-        ///
+    int64_t mut_i;
+    int64_t mut_size;
 
-        bferror("modifying an existing slot is currently not implemeneted");
-        return SHIM_FAILURE;
-    }
+    uint32_t mut_slot_id;
+    uint32_t mut_slot_as;
+    uint64_t mut_dst;
+    uint64_t mut_src;
+    uint64_t const flags = kvm_to_mv_page_flags(args->flags);
 
-    pmut_vm->slots[mut_slot_id] = *args;
+    platform_expects(NULL != args);
+    platform_expects(NULL != pmut_vm);
 
-    if (platform_mlock((void *)mut_src, args->memory_size)) {
-        bferror("platform_mlock failed");
-        goto platform_mlock_failed;
-    }
+    pmut_mut_mdl = (struct mv_mdl_t *)shared_page_for_current_pp();
+    platform_expects(NULL != pmut_mut_mdl);
+
+    mut_slot_id = get_slot_id(args->slot);
+    mut_slot_as = get_slot_as(args->slot);
+    mut_dst = args->guest_phys_addr;
+    mut_src = args->userspace_addr;
+    mut_size = (int64_t)args->memory_size;
+
+    platform_memcpy(&(pmut_vm->slots[mut_slot_id]), args, sizeof(pmut_vm->slots[mut_slot_id]));
 
     pmut_mut_mdl->num_entries = ((uint64_t)0);
+    if (platform_mlock((void *)(mut_src), (uint64_t)mut_size, &(pmut_vm->os_info[mut_slot_id]))) {
+            bferror("platform_mlock failed");
+            goto platform_mlock_failed;
+    }
+
     for (mut_i = ((int64_t)0); mut_i < mut_size; mut_i += (int64_t)HYPERVISOR_PAGE_SIZE) {
         uint64_t const dst = mut_dst + (uint64_t)mut_i;
         uint64_t const src = platform_virt_to_phys_user(mut_src + (uint64_t)mut_i);
@@ -284,7 +237,6 @@ handle_vm_kvm_set_user_memory_region(
                 bferror("mv_vm_op_mmio_map failed");
                 goto mv_vm_op_mmio_map_failed;
             }
-
             pmut_mut_mdl->num_entries = ((uint64_t)0);
         }
         else {
@@ -304,9 +256,7 @@ handle_vm_kvm_set_user_memory_region(
         mv_touch();
     }
 
-    platform_mutex_unlock(&pmut_vm->mutex);
     return SHIM_SUCCESS;
-
 mv_vm_op_mmio_map_failed:
 
     /// NOTE:
@@ -359,9 +309,195 @@ mv_vm_op_mmio_map_failed:
         mv_touch();
     }
 
-    platform_expects(SHIM_SUCCESS == platform_munlock((void *)mut_src, args->memory_size));
+    platform_expects(SHIM_SUCCESS == platform_munlock((void *)mut_src, args->memory_size, pmut_vm->os_info[mut_slot_id]));
 platform_mlock_failed:
 
-    platform_mutex_unlock(&pmut_vm->mutex);
     return SHIM_FAILURE;
+}
+
+NODISCARD int64_t
+remove_memory_region(struct kvm_userspace_memory_region const *const args, struct shim_vm_t *const pmut_vm) NOEXCEPT
+{
+    struct mv_mdl_t *pmut_mut_mdl;
+
+    int64_t mut_i;
+    int64_t mut_size;
+
+    uint32_t mut_slot_id;
+    uint32_t mut_slot_as;
+    uint64_t mut_dst;
+    uint64_t mut_src;
+
+    platform_expects(NULL != args);
+    platform_expects(NULL != pmut_vm);
+
+    pmut_mut_mdl = (struct mv_mdl_t *)shared_page_for_current_pp();
+    platform_expects(NULL != pmut_mut_mdl);
+
+    mut_slot_id = get_slot_id(args->slot);
+    mut_slot_as = get_slot_as(args->slot);
+    mut_dst = pmut_vm->slots[mut_slot_id].guest_phys_addr;
+    mut_src = pmut_vm->slots[mut_slot_id].userspace_addr;
+    mut_size = (int64_t)pmut_vm->slots[mut_slot_id].memory_size;
+
+    pmut_mut_mdl->num_entries = ((uint64_t)0);
+
+    if (platform_mlock((void *)(mut_src), (uint64_t)mut_size, &(pmut_vm->os_info[mut_slot_id]))) {
+            bferror("platform_mlock failed");
+            goto platform_mlock_failed;
+    }
+
+    for (mut_i = ((int64_t)0); mut_i < mut_size; mut_i += (int64_t)HYPERVISOR_PAGE_SIZE) {
+        uint64_t const dst = mut_dst + (uint64_t)mut_i;
+        uint64_t const src = platform_virt_to_phys((void *)(mut_src + (uint64_t)mut_i));
+
+        pmut_mut_mdl->entries[pmut_mut_mdl->num_entries].dst = dst;
+        pmut_mut_mdl->entries[pmut_mut_mdl->num_entries].src = src;
+        pmut_mut_mdl->entries[pmut_mut_mdl->num_entries].bytes = HYPERVISOR_PAGE_SIZE;
+        ++pmut_mut_mdl->num_entries;
+
+        if (pmut_mut_mdl->num_entries >= MV_MDL_MAX_ENTRIES) {
+            (void)mv_vm_op_mmio_unmap(g_mut_hndl, pmut_vm->id);
+
+            pmut_mut_mdl->num_entries = ((uint64_t)0);
+        }
+        else {
+            mv_touch();
+        }
+    }
+
+    if (((uint64_t)0) != pmut_mut_mdl->num_entries) {
+        (void)mv_vm_op_mmio_unmap(g_mut_hndl, pmut_vm->id);
+
+        mv_touch();
+    }
+    else {
+        mv_touch();
+    }
+
+platform_mlock_failed:
+    platform_expects(SHIM_SUCCESS == platform_munlock((void *)mut_src, mut_size, pmut_vm->os_info[mut_slot_id]));
+
+    pmut_vm->slots[mut_slot_id].memory_size = 0;
+
+    return 0;
+}
+
+NODISCARD int64_t
+modify_memory_region(struct kvm_userspace_memory_region const *const args, struct shim_vm_t *const pmut_vm) NOEXCEPT
+{
+    platform_expects(NULL != args);
+    platform_expects(NULL != pmut_vm);
+
+    /// NOTE:
+    /// - Only add support for this if it is actually something that
+    ///   QEMU or rust-vmm are doing. Likely, slots will be modified
+    ///   during migration, but outside of that, slots should be
+    ///   static, so hopefully this is never needed.
+    ///
+    /// - The reason that we don't want to do this is it will require
+    ///   that we run mv_vm_op_mmio_unmap. This function is simple
+    ///   enough except for the fact that it will require an IPI to
+    ///   flush remote PPs once SMP support is added to the guest.
+    ///
+    /// - On AMD, we can state that we only support Zen 3 and above
+    ///   which means that we can use the remote TLB flush instructions
+    ///   from AMD. On Intel, handling IPIs is not as bad because we
+    ///   can repurpose INIT and trap on it. On AMD, this is not as
+    ///   simple, and so the remote TLB flush instructions are the
+    ///   way to handle this.
+    ///
+    /// - If we do need to handle this, keep in mind that this
+    ///   function has to be operated on in reverse. That include
+    ///   unpinning memory that is no longer needed by the guest VM.
+    ///
+
+    /// NOTE:
+    /// - Whe modifying a memory slot, we need to make sure that the
+    ///   slot size is not changed. Basically, we are allowed to
+    ///   delete, change flags, etc... but you are not allowed to
+    ///   change the size.
+    ///
+    if(SHIM_FAILURE == remove_memory_region(args, pmut_vm)) {
+        bferror("failed to reset memory region for modify_memory_region");
+        return SHIM_FAILURE;
+    }
+
+    return add_memory_region(args, pmut_vm);
+}
+
+/**
+ * <!-- description -->
+ *   @brief Handles the execution of kvm_set_user_memory_region.
+ *
+ * <!-- inputs/outputs -->
+ *   @param args the arguments provided by userspace
+ *   @param pmut_vm pmut_vm the VM to modify
+ *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
+ */
+NODISCARD int64_t
+handle_vm_kvm_set_user_memory_region(
+    struct kvm_userspace_memory_region const *const args, struct shim_vm_t *const pmut_vm) NOEXCEPT
+{
+    struct mv_mdl_t *pmut_mut_mdl;
+
+    int64_t mut_rc;
+    int64_t mut_size;
+
+    uint32_t mut_slot_id;
+    uint32_t mut_slot_as;
+    uint64_t mut_dst;
+    uint64_t mut_src;
+
+    platform_expects(NULL != args);
+    platform_expects(NULL != pmut_vm);
+
+    if (detect_hypervisor()) {
+        bferror("The shim is not running in a VM. Did you forget to start MicroV?");
+        return SHIM_FAILURE;
+    }
+
+    pmut_mut_mdl = (struct mv_mdl_t *)shared_page_for_current_pp();
+    platform_expects(NULL != pmut_mut_mdl);
+
+    mut_slot_id = get_slot_id(args->slot);
+    mut_slot_as = get_slot_as(args->slot);
+    mut_dst = args->guest_phys_addr;
+    mut_src = args->userspace_addr;
+    mut_size = (int64_t)args->memory_size;
+
+    if (!mv_is_page_aligned(args->memory_size)) {
+        mut_size += HYPERVISOR_PAGE_SIZE;
+        mut_size &= ~(HYPERVISOR_PAGE_SIZE - ((uint64_t)1));
+    }
+    else {
+        mv_touch();
+    }
+
+    if(SHIM_FAILURE == set_user_memory_region_is_valid(args, pmut_vm)) {
+        bferror("invalid set_user_memory_region request");
+        return SHIM_FAILURE;
+    }
+
+    platform_mutex_lock(&pmut_vm->mutex);
+
+    // If the slot size isn't zero, it's occupied so treat as a modification
+    if (((uint64_t)0) != pmut_vm->slots[mut_slot_id].memory_size) {
+        if (args->memory_size == pmut_vm->slots[mut_slot_id].memory_size) {
+            mut_rc = modify_memory_region(args, pmut_vm);
+        } else if (((uint64_t)0) == args->memory_size) {
+            mut_rc = remove_memory_region(args, pmut_vm);
+        } else {
+            bferror("can't modify a slot with a new size");
+            mut_rc = SHIM_FAILURE;
+            goto RESIZE_SLOT_FAIL;
+        }
+    } else {
+        // Add memory region to slot
+        mut_rc = add_memory_region(args, pmut_vm);
+    }
+RESIZE_SLOT_FAIL:
+
+    platform_mutex_unlock(&pmut_vm->mutex);
+    return mut_rc;
 }

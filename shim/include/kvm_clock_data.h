@@ -34,6 +34,8 @@ extern "C"
 {
 #endif
 
+#define KVM_CLOCK_TSC_STABLE 2
+
 #pragma pack(push, 1)
 
     /**
@@ -44,8 +46,14 @@ extern "C"
      */
     struct kvm_clock_data
     {
-        /** @brief replace me with contents from KVM API */
-        int32_t dummy;
+        /** @brief value of the clock */
+        uint64_t clock;
+
+        /** @brief clock flags */
+        uint32_t flags;
+
+        /** @brief unused padding for alignment */
+        uint32_t pad[9];
     };
 
 #pragma pack(pop)

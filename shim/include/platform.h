@@ -173,7 +173,7 @@ namespace shim
          *   @param num the number of bytes to lock.
          *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
          */
-        NODISCARD int64_t platform_mlock(void *const pmut_ptr, uint64_t const num) NOEXCEPT;
+        NODISCARD int64_t platform_mlock(void *const pmut_ptr, uint64_t const num, uintptr_t *pmut_os_info) NOEXCEPT;
 
         /**
          * <!-- description -->
@@ -186,7 +186,7 @@ namespace shim
          *   @param num the number of bytes to unlock.
          *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
          */
-        NODISCARD int64_t platform_munlock(void *const pmut_ptr, uint64_t const num) NOEXCEPT;
+        NODISCARD int64_t platform_munlock(void *const pmut_ptr, uint64_t const num, uintptr_t const os_info) NOEXCEPT;
 
         /**
          * <!-- description -->

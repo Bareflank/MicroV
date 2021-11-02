@@ -50,17 +50,16 @@ handle_vcpu_kvm_set_msrs(
     struct shim_vcpu_t const *const vcpu, struct kvm_msrs const *const args) NOEXCEPT
 {
     uint64_t mut_i;
+    struct mv_rdl_t *const pmut_rdl = (struct mv_rdl_t *)shared_page_for_current_pp();
     platform_expects(MV_INVALID_HANDLE != g_mut_hndl);
     platform_expects(NULL != vcpu);
     platform_expects(NULL != args);
+    platform_expects(NULL != pmut_rdl);
 
     if (detect_hypervisor()) {
         bferror("The shim is not running in a VM. Did you forget to start MicroV?");
         return SHIM_FAILURE;
     }
-
-    struct mv_rdl_t *const pmut_rdl = (struct mv_rdl_t *)shared_page_for_current_pp();
-    platform_expects(NULL != pmut_rdl);
 
     pmut_rdl->num_entries = (uint64_t)args->nmsrs;
 

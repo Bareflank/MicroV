@@ -51,6 +51,8 @@
 #include <handle_vm_kvm_check_extension.h>
 #include <handle_vm_kvm_create_vcpu.h>
 #include <handle_vm_kvm_destroy_vcpu.h>
+#include <handle_vm_kvm_get_clock.h>
+#include <handle_vm_kvm_set_clock.h>
 #include <handle_vm_kvm_set_user_memory_region.h>
 #include <linux/anon_inodes.h>
 #include <linux/kernel.h>
@@ -288,44 +290,67 @@ static long
 dispatch_system_kvm_get_supported_cpuid(
     struct kvm_cpuid2 __user *const pmut_user_args)
 {
-    struct kvm_cpuid2 mut_args;
-    int64_t mut_ret;
+    struct kvm_cpuid2 *mut_args;
+    int64_t mut_ret = 0;
 
-    if (platform_copy_from_user(&mut_args, pmut_user_args, sizeof(mut_args))) {
-        bferror("platform_copy_from_user failed");
-        return -EINVAL;
-    }
-
-    if (mut_args.nent > CPUID2_MAX_ENTRIES) {
-        bferror("caller nent exceeds CPUID2_MAX_ENTRIES");
+    mut_args = platform_alloc(sizeof(*mut_args));
+    if (!mut_args) {
+        bferror("failed to allocated kvm_cpuid2");
         return -ENOMEM;
     }
 
-    mut_ret = handle_system_kvm_get_supported_cpuid(&mut_args);
+    if (platform_copy_from_user(&mut_args->nent, pmut_user_args, sizeof(mut_args->nent))) {
+        bferror("platform_copy_from_user failed");
+        mut_ret = -EINVAL;
+        goto OUT_FREE;
+    }
+
+    if (mut_args->nent > CPUID2_MAX_ENTRIES) {
+        bferror("caller nent exceeds CPUID2_MAX_ENTRIES");
+        mut_ret = -ENOMEM;
+        goto OUT_FREE;
+    }
+
+    if (platform_copy_from_user(mut_args, pmut_user_args,
+            sizeof(mut_args->nent) +
+            sizeof(mut_args->padding) +
+                mut_args->nent * sizeof(mut_args->entries[0]))) {
+        bferror("platform_copy_from_user failed");
+        mut_ret = -EINVAL;
+        goto OUT_FREE;
+    }
+
+    mut_ret = handle_system_kvm_get_supported_cpuid(mut_args);
     if (SHIM_2BIG == mut_ret) {
         if (platform_copy_to_user(
-                pmut_user_args, &mut_args, sizeof(mut_args.nent))) {
+                pmut_user_args, mut_args, sizeof(mut_args->nent))) {
             bferror("platform_copy_to_user nent failed");
-            return -EINVAL;
+            mut_ret = -EINVAL;
+            goto OUT_FREE;
         }
 
-        return -E2BIG;
+        mut_ret = -E2BIG;
+        goto OUT_FREE;
     }
     else if (mut_ret) {
         bferror("handle_system_kvm_get_msr_index_list failed");
-        return -EINVAL;
+        mut_ret = -EINVAL;
+        goto OUT_FREE;
     }
 
     if (platform_copy_to_user(
             pmut_user_args,
-            &mut_args,
-            sizeof(mut_args.nent) +
-                mut_args.nent * sizeof(*mut_args.entries))) {
+            mut_args,
+            sizeof(mut_args->nent) +
+            sizeof(mut_args->padding) +
+                mut_args->nent * sizeof(*mut_args->entries))) {
         bferror("platform_copy_to_user failed");
-        return -EINVAL;
+        mut_ret = -EINVAL;
     }
 
-    return 0;
+OUT_FREE:
+    platform_free(mut_args, sizeof(*mut_args));
+    return mut_ret;
 }
 
 static long
@@ -529,10 +554,41 @@ handle_vm_kvm_create_vcpu_failed:
 }
 
 static long
-dispatch_vm_kvm_get_clock(struct kvm_clock_data *const ioctl_args)
+dispatch_vm_kvm_get_clock(struct kvm_clock_data *const ioctl_args, struct shim_vcpu_t *const pmut_vcpu)
 {
-    (void)ioctl_args;
-    return -EINVAL;
+    struct kvm_clock_data mut_args;
+    platform_expects(NULL != pmut_vcpu);
+
+    if (handle_vm_kvm_get_clock(pmut_vcpu->vsid, &mut_args)) {
+        bferror("handle_vm_kvm_get_clock failed");
+        return -EINVAL;
+    }
+
+    if (platform_copy_to_user(ioctl_args, &mut_args, sizeof(*ioctl_args))) {
+        bferror("platform_copy_from_user failed");
+        return -EINVAL;
+    }
+
+    return 0;
+}
+
+static long
+dispatch_vm_kvm_set_clock(struct kvm_clock_data *const ioctl_args, struct shim_vcpu_t *const pmut_vcpu)
+{
+    struct kvm_clock_data mut_args;
+    platform_expects(NULL != pmut_vcpu);
+    
+    if (platform_copy_from_user(&mut_args, ioctl_args, sizeof(*ioctl_args))) {
+        bferror("platform_copy_from_user failed");
+        return -EINVAL;
+    }
+
+    if (handle_vm_kvm_set_clock(pmut_vcpu->vsid, &mut_args)) {
+        bferror("handle_vm_kvm_set_clock failed");
+        return -EINVAL;
+    }
+
+    return 0;
 }
 
 static long
@@ -622,13 +678,6 @@ dispatch_vm_kvm_reinject_control(void)
 static long
 dispatch_vm_kvm_set_boot_cpu_id(void)
 {
-    return -EINVAL;
-}
-
-static long
-dispatch_vm_kvm_set_clock(struct kvm_clock_data *const ioctl_args)
-{
-    (void)ioctl_args;
     return -EINVAL;
 }
 
@@ -774,11 +823,6 @@ dev_unlocked_ioctl_vm(
             return dispatch_vm_kvm_create_vcpu(pmut_mut_vm);
         }
 
-        case KVM_GET_CLOCK: {
-            return dispatch_vm_kvm_get_clock(
-                (struct kvm_clock_data *)ioctl_args);
-        }
-
         case KVM_GET_DEBUGREGS: {
             return dispatch_vm_kvm_get_debugregs(
                 (struct kvm_debugregs *)ioctl_args);
@@ -838,11 +882,6 @@ dev_unlocked_ioctl_vm(
 
         case KVM_SET_BOOT_CPU_ID: {
             return dispatch_vm_kvm_set_boot_cpu_id();
-        }
-
-        case KVM_SET_CLOCK: {
-            return dispatch_vm_kvm_set_clock(
-                (struct kvm_clock_data *)ioctl_args);
         }
 
         case KVM_SET_DEBUGREGS: {
@@ -985,20 +1024,34 @@ static long
 dispatch_vcpu_kvm_get_msrs(
     struct shim_vcpu_t const *const vcpu, struct kvm_msrs *const user_args)
 {
-    struct kvm_msrs mut_args;
+    struct kvm_msrs *mut_args;
+    uint32_t mut_nmsrs = 0;
     uint64_t const size = sizeof(mut_args);
 
-    if (handle_vcpu_kvm_get_msrs(vcpu, &mut_args)) {
+    mut_args = platform_alloc(size);
+    if (!mut_args) {
+        bferror("failed to allocated memory for kvm_msrs");
+        return -ENOMEM;
+    }
+
+    if (handle_vcpu_kvm_get_msrs(vcpu, mut_args)) {
         bferror("handle_vcpu_kvm_get_msrs failed");
-        return -EINVAL;
+        mut_nmsrs = (uint32_t)-EINVAL;
+        goto OUT_FREE;
+    } else {
+        mut_nmsrs = mut_args->nmsrs;
     }
 
-    if (platform_copy_to_user(user_args, &mut_args, size)) {
+    if (platform_copy_to_user(user_args, mut_args, size)) {
         bferror("platform_copy_to_user failed");
-        return -EINVAL;
+        mut_nmsrs = (uint32_t)-EINVAL;
+        goto OUT_FREE;
     }
 
-    return (long)mut_args.nmsrs;
+OUT_FREE:
+    platform_free(mut_args, sizeof(*mut_args));
+
+    return (long)mut_nmsrs;
 }
 
 static long
@@ -1248,30 +1301,46 @@ dispatch_vcpu_kvm_set_msrs(
     struct shim_vcpu_t const *const vcpu, struct kvm_msrs *const user_args)
 {
 
-    struct kvm_msrs mut_args;
-    uint64_t const size = sizeof(mut_args);
+    struct kvm_msrs *mut_args;
+    uint64_t const size = sizeof(*mut_args);
+    uint32_t mut_nmsrs = 0;
+
+    mut_args = platform_alloc(size);
+    if(!mut_args) {
+        bferror("failed to allocate kvm_msrs");
+        return -ENOMEM;
+    }
 
     if (NULL == user_args) {
         bferror("user_args are null");
-        return -EINVAL;
+        mut_nmsrs = -EINVAL;
+        goto OUT_FREE;
     }
 
-    if (platform_copy_from_user(&mut_args, user_args, size)) {
+    if (platform_copy_from_user(mut_args, user_args, size)) {
         bferror("platform_copy_from_user failed");
-        return -EINVAL;
+        mut_nmsrs = -EINVAL;
+        goto OUT_FREE;
     }
 
-    if (0 == mut_args.nmsrs) {
+    if (0 == mut_args->nmsrs) {
         /* Nothing to do */
-        return 0;
+        mut_nmsrs = 0;
+        goto OUT_FREE;
     }
 
-    if (handle_vcpu_kvm_set_msrs(vcpu, &mut_args)) {
+    if (handle_vcpu_kvm_set_msrs(vcpu, mut_args)) {
         bferror("handle_vcpu_kvm_set_msrs failed");
-        return -EINVAL;
+        mut_nmsrs = -EINVAL;
+        goto OUT_FREE;
     }
 
-    return mut_args.nmsrs;
+    mut_nmsrs = mut_args->nmsrs;
+
+OUT_FREE:
+    platform_free(mut_args, sizeof(*mut_args));
+
+    return mut_nmsrs;
 }
 
 static long
@@ -1379,7 +1448,7 @@ static long
 dispatch_vcpu_kvm_x86_set_mce(struct kvm_x86_mce *const ioctl_args)
 {
     (void)ioctl_args;
-    return -EINVAL;
+    return -EINVAL; 
 }
 
 static long
@@ -1462,6 +1531,18 @@ dev_unlocked_ioctl_vcpu(
                 return -EINVAL;
             }
             return dispatch_vcpu_kvm_get_tsc_khz();
+        }
+
+        case KVM_GET_CLOCK: {
+            return dispatch_vm_kvm_get_clock(
+                (struct kvm_clock_data *)ioctl_args,
+                pmut_mut_vcpu);
+        }
+
+        case KVM_SET_CLOCK: {
+            return dispatch_vm_kvm_set_clock(
+                (struct kvm_clock_data *)ioctl_args,
+                pmut_mut_vcpu);
         }
 
         case KVM_GET_VCPU_EVENTS: {

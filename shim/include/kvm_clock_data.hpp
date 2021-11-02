@@ -24,30 +24,37 @@
  * SOFTWARE.
  */
 
-#ifndef HANDLE_VM_KVM_GET_CLOCK_H
-#define HANDLE_VM_KVM_GET_CLOCK_H
+#ifndef KVM_CLOCK_DATA_HPP
+#define KVM_CLOCK_DATA_HPP
 
-#include <kvm_clock_data.h>
-#include <mv_types.h>
+#include <bsl/array.hpp>
+#include <bsl/convert.hpp>
+#include <bsl/safe_integral.hpp>
 
-#ifdef __cplusplus
-extern "C"
+constexpr auto CLOCK_TSC_STABLE{2_u32};
+constexpr auto PADDING{9_u32};
+
+namespace shim
 {
-#endif
+#pragma pack(push, 1)
 
     /**
-     * <!-- description -->
-     *   @brief Handles the execution of kvm_get_clock.
+     * @struct kvm_clock_data
      *
-     * <!-- inputs/outputs -->
-     *   @param pmut_ioctl_args the arguments provided by userspace
-     *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
+     * <!-- description -->
+     *   @brief see /include/uapi/linux/kvm.h in Linux for more details.
      */
-    NODISCARD int64_t
-    handle_vm_kvm_get_clock(const uint16_t vsid, struct kvm_clock_data *const pmut_ioctl_args) NOEXCEPT;
-
-#ifdef __cplusplus
+    struct kvm_clock_data
+    {
+        /** @brief value of the clock data */
+        bsl::uint64 clock;
+        /** @brief clock flags */
+        bsl::uint32 flags;
+        /** @brief CPUID entries */
+        bsl::array<bsl::uint32, PADDING.get()> pad;
+    };
 }
-#endif
+
+#pragma pack(pop)
 
 #endif

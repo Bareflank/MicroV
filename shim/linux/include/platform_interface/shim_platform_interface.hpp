@@ -28,6 +28,7 @@
 #define SHIM_PLATFORM_INTERFACE_HPP
 
 #include <asm/ioctl.h>
+#include <kvm_clock_data.hpp>
 #include <kvm_cpuid2.hpp>
 #include <kvm_fpu.hpp>
 #include <kvm_mp_state.hpp>
@@ -170,10 +171,10 @@ namespace shim
     // constexpr bsl::safe_umx KVM_SET_IRQCHIP{static_cast<bsl::uintmx>(_IOR(SHIMIO.get(), 0x63, struct kvm_irqchip))};
     // /// @brief defines KVM's KVM_XEN_HVM_CONFIG IOCTL
     // constexpr bsl::safe_umx KVM_XEN_HVM_CONFIG{static_cast<bsl::uintmx>(_IOW(SHIMIO.get(), 0x7a, struct kvm_xen_hvm_config))};
-    // /// @brief defines KVM's KVM_GET_CLOCK IOCTL
-    // constexpr bsl::safe_umx KVM_GET_CLOCK{static_cast<bsl::uintmx>(_IOR(SHIMIO.get(), 0x7c, struct kvm_clock_data))};
-    // /// @brief defines KVM's KVM_SET_CLOCK IOCTL
-    // constexpr bsl::safe_umx KVM_SET_CLOCK{static_cast<bsl::uintmx>(_IOW(SHIMIO.get(), 0x7b, struct kvm_clock_data))};
+    /// @brief defines KVM's KVM_GET_CLOCK IOCTL
+    constexpr bsl::safe_umx KVM_GET_CLOCK{static_cast<bsl::uintmx>(_IOR(SHIMIO.get(), 0x7c, struct kvm_clock_data))};
+    /// @brief defines KVM's KVM_SET_CLOCK IOCTL
+    constexpr bsl::safe_umx KVM_SET_CLOCK{static_cast<bsl::uintmx>(_IOW(SHIMIO.get(), 0x7b, struct kvm_clock_data))};
     // /// @brief defines KVM's KVM_GET_VCPU_EVENTS IOCTL
     // constexpr bsl::safe_umx KVM_GET_VCPU_EVENTS{static_cast<bsl::uintmx>(_IOR(SHIMIO.get(), 0x9f, struct kvm_vcpu_events))};
     // /// @brief defines KVM's KVM_SET_VCPU_EVENTS IOCTL

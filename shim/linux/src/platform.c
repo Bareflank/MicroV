@@ -29,6 +29,7 @@
 #include <asm/io.h>
 #include <asm/pgtable.h>
 #include <asm/pgtable_types.h>
+#include <constants.h>
 #include <debug.h>
 #include <linux/cpu.h>
 #include <linux/mm.h>
@@ -280,10 +281,21 @@ platform_memcpy(
  *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
  */
 NODISCARD int64_t
-platform_mlock(void *const pmut_ptr, uint64_t const num) NOEXCEPT
+platform_mlock(void *const pmut_ptr, uint64_t const num, uintptr_t *pmut_os_info) NOEXCEPT
 {
+    struct page **pages = NULL;
+    int rc = 0;
+    uint64_t page_count = (num >> HYPERVISOR_PAGE_SHIFT) + 1;
+
     platform_expects(((void *)0) != pmut_ptr);
     platform_expects(((uint64_t)0) != num);
+    platform_expects(((void *)0) != pmut_os_info);
+
+    pages = platform_alloc(page_count * sizeof(struct page *));
+    if (!pages) {
+        bferror("failed to allocate page structures for mlock");
+        return SHIM_FAILURE;
+    }
 
     /// TODO:
     /// - This needs to be implemented. For now, we use such small amounts
@@ -302,6 +314,14 @@ platform_mlock(void *const pmut_ptr, uint64_t const num) NOEXCEPT
     /// - also maybe get_user_pages_fast(). See platform_virt_to_phys_user
     ///   as it uses this, and we might not actually need mlock.
     ///
+    rc = pin_user_pages_fast((uintptr_t)pmut_ptr, num >> HYPERVISOR_PAGE_SHIFT, 0, pages);
+    if (rc < 0) {
+        bferror_x64("pin user pages fast ", rc);
+        platform_free(pages, page_count * sizeof(struct page *));
+        return SHIM_FAILURE;
+    }
+
+    *pmut_os_info = (uintptr_t)pages;
 
     return SHIM_SUCCESS;
 }
@@ -318,28 +338,18 @@ platform_mlock(void *const pmut_ptr, uint64_t const num) NOEXCEPT
  *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
  */
 NODISCARD int64_t
-platform_munlock(void *const pmut_ptr, uint64_t const num) NOEXCEPT
+platform_munlock(void *const pmut_ptr, uint64_t const num, uintptr_t const os_info) NOEXCEPT
 {
+    struct page **pages = (struct page **)os_info;
+    uint64_t page_count = (num >> HYPERVISOR_PAGE_SHIFT) + 1;
+
     platform_expects(((void *)0) != pmut_ptr);
     platform_expects(((uint64_t)0) != num);
+    platform_expects(((void *)0) != pages);
 
-    /// TODO:
-    /// - This needs to be implemented. For now, we use such small amounts
-    ///   of memory that this is not a problem, but in the future it
-    ///   will be.
-    ///
-    /// - Making a call to a syscall from the kernel will not work. On
-    ///   newer kernels, pin_user_pages() seems like a good option, but
-    ///   that API was just added and is not available for Ubuntu 20.04.
-    ///
-    /// - get_user_pages() is likely the way that this will have to be
-    ///   implemented. This is what the IOMMU code uses, and it has to
-    ///   do something similar here. Either way, I do not see this being
-    ///   and easy function to implement.
-    ///
-    /// - also maybe get_user_pages_fast(). See platform_virt_to_phys_user
-    ///   as it uses this, and we might not actually need mlock.
-    ///
+    unpin_user_pages(pages, page_count);
+
+    platform_free(pages, num);
 
     return SHIM_SUCCESS;
 }

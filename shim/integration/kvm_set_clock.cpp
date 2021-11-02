@@ -24,9 +24,10 @@
 
 #include <integration_utils.hpp>
 #include <ioctl_t.hpp>
+#include <kvm_constants.hpp>
 #include <shim_platform_interface.hpp>
 
-#include <bsl/convert.hpp>
+#include <bsl/debug.hpp>
 #include <bsl/enable_color.hpp>
 #include <bsl/exit_code.hpp>
 #include <bsl/safe_integral.hpp>
@@ -44,14 +45,14 @@ main() noexcept -> bsl::exit_code
     integration::ioctl_t mut_system_ctl{shim::DEVICE_NAME};
     auto const vmfd{mut_system_ctl.send(shim::KVM_CREATE_VM)};
     integration::ioctl_t mut_vm{bsl::to_i32(vmfd)};
+
     auto const vcpufd{mut_vm.send(shim::KVM_CREATE_VCPU)};
     integration::ioctl_t mut_vcpu{bsl::to_i32(vcpufd)};
-    constexpr auto mut_ret{0_i64};
-    {
-        auto const tsckhz{mut_vcpu.send(shim::KVM_GET_TSC_KHZ)};
-        integration::verify(tsckhz.is_pos());
-        integration::verify(tsckhz >= mut_ret.get());
-	bsl::print() << tsckhz << bsl::endl;
-    }
+
+    shim::kvm_clock_data mut_clock_data;
+    mut_clock_data.clock = 0xdeadbeef;
+    mut_clock_data.flags = 2;
+    integration::verify(mut_vcpu.write(shim::KVM_SET_CLOCK, &mut_clock_data).is_zero());
+
     return bsl::exit_success;
 }

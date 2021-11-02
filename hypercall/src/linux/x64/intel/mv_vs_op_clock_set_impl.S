@@ -24,30 +24,24 @@
  * SOFTWARE.
  */
 
-#ifndef HANDLE_VM_KVM_GET_CLOCK_H
-#define HANDLE_VM_KVM_GET_CLOCK_H
+    .code64
+    .intel_syntax noprefix
 
-#include <kvm_clock_data.h>
-#include <mv_types.h>
+    .globl  mv_vs_op_clock_set_impl
+    .type   mv_vs_op_clock_set_impl, @function
+mv_vs_op_clock_set_impl:
 
-#ifdef __cplusplus
-extern "C"
-{
-#endif
+    push r12
 
-    /**
-     * <!-- description -->
-     *   @brief Handles the execution of kvm_get_clock.
-     *
-     * <!-- inputs/outputs -->
-     *   @param pmut_ioctl_args the arguments provided by userspace
-     *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
-     */
-    NODISCARD int64_t
-    handle_vm_kvm_get_clock(const uint16_t vsid, struct kvm_clock_data *const pmut_ioctl_args) NOEXCEPT;
+    mov rax, 0x764D000000060030
+    mov r10, rdi
+    mov r11, rsi
+    mov r12, rdx
+    vmcall
 
-#ifdef __cplusplus
-}
-#endif
+    pop r12
 
-#endif
+    ret
+    int 3
+
+    .size mv_vs_op_clock_set_impl, .-mv_vs_op_clock_set_impl
