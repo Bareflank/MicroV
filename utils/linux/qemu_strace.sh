@@ -29,6 +29,8 @@ if [ -z ${INITRD_PATH+x} ]; then
   INITRD_PATH="$(pwd)/vm_cross_compile/bin/initrd.cpio.gz"
 fi
 
+TASKSET="taskset 4" # pin qemu to CPU #2
+
 echo STRACE_PATH=${STRACE_PATH}
 echo QEMU_PATH=${QEMU_PATH}
 echo BUILD_DIR=${BUILD_DIR}
@@ -50,7 +52,7 @@ run() {
   echo Exit console with: ctrl + a, x
 
   $STRACE_PATH/strace -f -o $BUILD_DIR/strace.log  \
-  $QEMU_PATH/qemu-system-x86_64 \
+  $TASKSET $QEMU_PATH/qemu-system-x86_64 \
     -machine type=q35,accel=kvm \
     -cpu host \
     -drive format=raw,file=fat:rw:$BUILD_DIR/vm_storage \
@@ -66,7 +68,7 @@ run_linux() {
 
   echo Exit console with: ctrl + a, x
 
-  $STRACE_PATH/strace -f -o $BUILD_DIR/strace.log  \
+  $TASKSET $STRACE_PATH/strace -f -o $BUILD_DIR/strace.log  \
   $QEMU_PATH/qemu-system-x86_64 \
     -machine type=q35,accel=kvm \
     -cpu host \
