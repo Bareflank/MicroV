@@ -137,11 +137,10 @@ namespace microv
         ///   @return Returns the value of the emulated MSR. If the MSR isn't
         ///    emulated bsl::safe_u64::failure() is returned instead.
         ///
-        [[nodiscard]] constexpr auto
-        get(syscall::bf_syscall_t const &sys, bsl::safe_u64 const &msr) const noexcept
-            -> bsl::safe_u64
+        [[nodiscard]] static constexpr auto
+        get(syscall::bf_syscall_t const &sys, bsl::safe_u64 const &msr) noexcept -> bsl::safe_u64
         {
-            bsl::expects(sys.bf_tls_vsid() == this->assigned_vsid());
+            bsl::discard(sys);
             bsl::discard(msr);
 
             return bsl::safe_u64::failure();
@@ -157,12 +156,12 @@ namespace microv
         ///   @return Returns bsl::errc_success on success, bsl::errc_failure
         ///     and friends otherwise
         ///
-        [[nodiscard]] constexpr auto
+        [[nodiscard]] static constexpr auto
         set(syscall::bf_syscall_t const &sys,
             bsl::safe_u64 const &msr,
-            bsl::safe_u64 const &val) const noexcept -> bsl::errc_type
+            bsl::safe_u64 const &val) noexcept -> bsl::errc_type
         {
-            bsl::expects(sys.bf_tls_vsid() == this->assigned_vsid());
+            bsl::discard(sys);
             bsl::discard(msr);
             bsl::discard(val);
 
