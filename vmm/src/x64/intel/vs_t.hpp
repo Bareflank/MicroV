@@ -2235,14 +2235,18 @@ namespace microv
             bsl::expects(mut_rdl.num_entries <= mut_rdl.entries.size());
 
             for (bsl::safe_idx mut_i{}; mut_i < mut_rdl.num_entries; ++mut_i) {
-                auto const msr{bsl::to_u64(mut_rdl.entries.at_if(mut_i)->reg)};
+                auto mut_ent{mut_rdl.entries.at_if(mut_i)};
+                auto const msr{bsl::to_u64(mut_ent->reg)};
                 auto const val{this->msr_get(sys, msr)};
-                if (bsl::unlikely(val.is_invalid())) {
-                    bsl::print<bsl::V>() << bsl::here();
-                    return bsl::errc_failure;
-                }
 
-                mut_rdl.entries.at_if(mut_i)->val = val.get();
+                if (bsl::unlikely(val.is_invalid())) {
+                    constexpr auto upper_one_bit{0x80000000_u64};
+                    mut_ent->reg = (msr | upper_one_bit).get();
+                    mut_ent->val = bsl::safe_u64::magic_0().get();
+                }
+                else {
+                    mut_ent->val = val.get();
+                }
             }
 
             return bsl::errc_success;
@@ -2272,12 +2276,7 @@ namespace microv
                 auto const val{bsl::to_u64(rdl.entries.at_if(mut_i)->val)};
 
                 auto const ret{this->msr_set(mut_sys, msr, val)};
-                if (bsl::unlikely(!ret)) {
-                    bsl::print<bsl::V>() << bsl::here();
-                    return ret;
-                }
-
-                bsl::touch();
+                bsl::discard(ret);
             }
 
             return bsl::errc_success;

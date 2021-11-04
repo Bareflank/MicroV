@@ -2043,7 +2043,7 @@ This hypercall tells MicroV to set the value of a requested MSR.
 
 ### 2.15.20. mv_vs_op_msr_get_list, OP=0x6, IDX=0x19
 
-This hypercall tells MicroV to return the values of multiple requested MSRs using a Register Descriptor List (RDL) in the shared page. For this ABI, the reg field of each mv_rdl_entry_t refers to the index of the MSR. The val field refers to the returned value of the requested MSR in that entry. This ABI does not use any of the reg 0-7 fields in the mv_rdl_t.
+This hypercall tells MicroV to return the values of multiple requested MSRs using a Register Descriptor List (RDL) in the shared page. For this ABI, the reg field of each mv_rdl_entry_t refers to the index of the MSR. The val field refers to the returned value of the requested MSR in that entry. Any MSRs that are not supported in the entries list will have the 64th bit set in mv_rdl_entry_t.reg allowing this hypercall to succeed with unsupported MSRs. This ABI does not use any of the reg 0-7 fields in the mv_rdl_t.
 
 *Input:**
 | Register Name | Bits | Description |
