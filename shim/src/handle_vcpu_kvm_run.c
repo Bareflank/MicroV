@@ -283,7 +283,14 @@ handle_vcpu_kvm_run(struct shim_vcpu_t *const pmut_vcpu) NOEXCEPT
                 continue;
             }
 
+            case mv_exit_reason_t_shutdown: {
+                bferror("run: shutdown exit");
+                pmut_vcpu->run->exit_reason = KVM_EXIT_SHUTDOWN;
+                return SHIM_SUCCESS;
+            }
+
             default: {
+                bferror_x64("unhandled exit reason: ", mut_exit_reason);
                 break;
             }
         }

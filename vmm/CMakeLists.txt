@@ -124,6 +124,7 @@ if(HYPERVISOR_TARGET_ARCH STREQUAL "AuthenticAMD" OR HYPERVISOR_TARGET_ARCH STRE
         ${CMAKE_CURRENT_LIST_DIR}/src/x64/dispatch_vmexit_nmi.hpp
         ${CMAKE_CURRENT_LIST_DIR}/src/x64/dispatch_vmexit_rdmsr.hpp
         ${CMAKE_CURRENT_LIST_DIR}/src/x64/dispatch_vmexit_sipi.hpp
+        ${CMAKE_CURRENT_LIST_DIR}/src/x64/dispatch_vmexit_shutdown.hpp
         ${CMAKE_CURRENT_LIST_DIR}/src/x64/dispatch_vmexit_triple_fault.hpp
         ${CMAKE_CURRENT_LIST_DIR}/src/x64/dispatch_vmexit_wrmsr.hpp
         ${CMAKE_CURRENT_LIST_DIR}/src/x64/emulated_cpuid_t.hpp

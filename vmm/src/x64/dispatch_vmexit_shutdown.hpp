@@ -22,9 +22,10 @@
 /// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 /// SOFTWARE.
 
-#ifndef DISPATCH_VMEXIT_TRIPLE_FAULT_HPP
-#define DISPATCH_VMEXIT_TRIPLE_FAULT_HPP
+#ifndef DISPATCH_VMEXIT_INTR_HPP
+#define DISPATCH_VMEXIT_INTR_HPP
 
+#include <bf_debug_ops.hpp>
 #include <bf_syscall_t.hpp>
 #include <gs_t.hpp>
 #include <intrinsic_t.hpp>
@@ -43,7 +44,7 @@
 namespace microv
 {
     /// <!-- description -->
-    ///   @brief Dispatches triple fault VMExits.
+    ///   @brief Dispatches SHUTDOWN VMExits.
     ///
     /// <!-- inputs/outputs -->
     ///   @param gs the gs_t to use
@@ -60,7 +61,7 @@ namespace microv
     ///     and friends otherwise
     ///
     [[nodiscard]] constexpr auto
-    dispatch_vmexit_triple_fault(
+    dispatch_vmexit_shutdown(
         gs_t const &gs,
         tls_t &mut_tls,
         syscall::bf_syscall_t &mut_sys,

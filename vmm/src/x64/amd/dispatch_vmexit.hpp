@@ -70,6 +70,8 @@ namespace microv
     constexpr auto EXIT_REASON_CPUID{0x72_u64};
     /// @brief defines the IO exit reason code
     constexpr auto EXIT_REASON_IO{0x7B_u64};
+    /// @brief defines the SHUTDOWN exit reason code
+    constexpr auto EXIT_REASON_SHUTDOWN{0x7f_u64};
     /// @brief defines the VMCALL exit reason code
     constexpr auto EXIT_REASON_VMCALL{0x81_u64};
 
@@ -186,6 +188,21 @@ namespace microv
 
             case EXIT_REASON_IO.get(): {
                 mut_ret = dispatch_vmexit_io(
+                    gs,
+                    mut_tls,
+                    mut_sys,
+                    mut_page_pool,
+                    intrinsic,
+                    mut_pp_pool,
+                    mut_vm_pool,
+                    mut_vp_pool,
+                    mut_vs_pool,
+                    vsid);
+                break;
+            }
+
+            case EXIT_REASON_SHUTDOWN.get(): {
+                mut_ret = dispatch_vmexit_triple_fault(
                     gs,
                     mut_tls,
                     mut_sys,

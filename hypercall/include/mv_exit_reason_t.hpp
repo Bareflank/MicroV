@@ -53,6 +53,8 @@ namespace hypercall
         mv_exit_reason_t_interrupt_window = 7,
         /// @brief an nmi event has occurred
         mv_exit_reason_t_nmi = 8,
+        /// @brief a shutdown event has occurred
+        mv_exit_reason_t_shutdown = 9,
     };
 
     /// <!-- description -->
@@ -126,6 +128,8 @@ namespace hypercall
         to_i32(mv_exit_reason_t::mv_exit_reason_t_interrupt_window)};
     /// @brief integer version of mv_exit_reason_t_nmi
     constexpr auto EXIT_REASON_NMI{to_i32(mv_exit_reason_t::mv_exit_reason_t_nmi)};
+    /// @brief integer version of mv_exit_reason_t_shutdown
+    constexpr auto EXIT_REASON_SHUTDOWN{to_i32(mv_exit_reason_t::mv_exit_reason_t_shutdown)};
 }
 
 #endif
