@@ -1195,7 +1195,7 @@ Given a requested MSR, a 1 is returned if the MSR is supported, and a 0 is retur
 
 Given the shared page cast as a mv_rdl_t, with each entry's mv_rdl_entry_t.reg set to the requested MSR, the same entries are returned in the shared page with each entry's mv_rdl_entry_t.val set to 1 if the MSR is supported, and 0 if the MSR is not supported.
 
-This hypercall supports flag modifiers in mv_rdl_t.reg0. When MV_RDL_FLAG_ALL is enabled, the entire list of supported MSRs will be returned via the shared page and no entries must be given as input. If the entire list doesn't fit in the shared page, this hypercall will output in mv_rdl_t.reg1 the number of entries that are left allowing to make subsequent continuation calls by providing the current index of entries to resume from in mv_rdl_t.reg1 as input, i.e. mv_rdl_t.reg1 should be incremented by MV_RDL_MAX_ENTRIES.
+This hypercall supports flag modifiers in mv_rdl_t.reg0. When MV_RDL_FLAG_ALL is enabled, the entire list of supported MSRs will be returned via the shared page and no entries must be given as input. If the entire list doesn't fit in the shared page, this hypercall will output in mv_rdl_t.reg1 the number of entries that are left allowing to make subsequent continuation calls by providing the current entry index to resume from in mv_rdl_t.reg1 as input. i.e. as input, mv_rdl_t.reg1 is the resume index and it should be set to 0 before the first call and incremented by MV_RDL_MAX_ENTRIES on subsequent calls. As output, mv_rdl_t.reg1 is the number of entries left.
 
 **Input:**
 | Register Name | Bits | Description |

@@ -242,10 +242,7 @@ dispatch_system_kvm_get_msr_index_list(
     struct kvm_msr_list mut_args;
     int64_t mut_ret;
 
-    if (platform_copy_from_user(
-            &mut_args,
-            user_args,
-            sizeof(mut_args) - sizeof(mut_args.indices))) {
+    if (platform_copy_from_user(&mut_args, user_args, sizeof(mut_args.nmsrs))) {
         bferror("platform_copy_from_user failed");
         return -EINVAL;
     }

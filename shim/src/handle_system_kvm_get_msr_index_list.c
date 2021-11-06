@@ -63,9 +63,12 @@ handle_system_kvm_get_msr_index_list(struct kvm_msr_list *const pmut_ioctl_args)
     pmut_rdl = (struct mv_rdl_t *)shared_page_for_current_pp();
     platform_expects(NULL != pmut_rdl);
 
+    pmut_rdl->reg1 = ((uint64_t)0);
+
     do {
         pmut_rdl->reg0 = MV_RDL_FLAG_ALL;
         pmut_rdl->num_entries = ((uint64_t)0);
+        pmut_rdl->reg1 = mut_nmsrs;
 
         if (mv_pp_op_msr_get_supported_list(g_mut_hndl)) {
             bferror("mv_pp_op_msr_get_supported_list failed");
@@ -77,35 +80,26 @@ handle_system_kvm_get_msr_index_list(struct kvm_msr_list *const pmut_ioctl_args)
             goto release_shared_page;
         }
 
-        /**
-         * If the provided buffer is not large enough to fit all the MSRs, we still
-         * need to calculate the total number, and set the nmsrs field correctly.
-         */
-        if (pmut_rdl->num_entries + ((uint64_t)mut_nmsrs) > ((uint64_t)pmut_ioctl_args->nmsrs)) {
-            mut_nmsrs += pmut_rdl->num_entries;
-        }
-        else {
-            for (mut_i = ((int64_t)0); mut_i < ((int64_t)pmut_rdl->num_entries); ++mut_i) {
-                pmut_ioctl_args->indices[mut_nmsrs] = ((uint32_t)pmut_rdl->entries[mut_i].reg);
-                ++mut_nmsrs;
+        if (mut_nmsrs == 0U) {
+            /* Check if the provided buffer is large enough to fit all MSRs */
+            if (pmut_rdl->num_entries + pmut_rdl->reg1 > pmut_ioctl_args->nmsrs) {
+                mut_nmsrs = (uint32_t)(pmut_rdl->num_entries + pmut_rdl->reg1);
+                mut_ret = SHIM_2BIG;
+                goto release_shared_page;
             }
+        }
+
+        for (mut_i = ((int64_t)0); mut_i < ((int64_t)pmut_rdl->num_entries); ++mut_i) {
+            pmut_ioctl_args->indices[mut_nmsrs] = ((uint32_t)pmut_rdl->entries[mut_i].reg);
+            ++mut_nmsrs;
         }
     } while (((uint64_t)0) != pmut_rdl->reg1);
 
-    release_shared_page_for_current_pp();
-
-    if (mut_nmsrs > pmut_ioctl_args->nmsrs) {
-        mut_ret = SHIM_2BIG;
-    }
-    else {
-        mut_ret = SHIM_SUCCESS;
-    }
-
-    pmut_ioctl_args->nmsrs = mut_nmsrs;
-    goto ret;
+    mut_ret = SHIM_SUCCESS;
 
 release_shared_page:
     release_shared_page_for_current_pp();
+    pmut_ioctl_args->nmsrs = mut_nmsrs;
 
 ret:
     return mut_ret;

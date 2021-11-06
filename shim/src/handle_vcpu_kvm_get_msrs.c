@@ -65,6 +65,9 @@ handle_vcpu_kvm_get_msrs(
     mut_rdl = (struct mv_rdl_t *)shared_page_for_current_pp();
     platform_expects(NULL != mut_rdl);
 
+    mut_rdl->reg0 = (uint64_t)0;
+    mut_rdl->reg1 = (uint64_t)0;
+
     mut_rdl->num_entries = (uint64_t)pmut_args->nmsrs;
 
     for (mut_i = ((uint64_t)0); mut_i < mut_rdl->num_entries; ++mut_i) {

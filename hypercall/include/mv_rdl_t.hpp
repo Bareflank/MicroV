@@ -59,9 +59,9 @@ namespace hypercall
     ///
     struct mv_rdl_t final
     {
-        /// @brief ABI dependent. REVI if unused
+        /// @brief ABI dependent. REVZ if unused
         uint64_t reg0;
-        /// @brief ABI dependent. REVI if unused
+        /// @brief ABI dependent. REVZ if unused
         uint64_t reg1;
         /// @brief ABI dependent. REVI if unused
         uint64_t reg2;
