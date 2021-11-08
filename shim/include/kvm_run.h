@@ -59,6 +59,8 @@ extern "C"
 #define KVM_EXIT_HLT 5U
 /** @brief defines KVM_EXIT_MMIO kvm_run.exit_reason */
 #define KVM_EXIT_MMIO 6U
+/** @brief defines KVM_EXIT_IRQ_WINDOW_OPEN kvm_run.exit_reason */
+#define KVM_EXIT_IRQ_WINDOW_OPEN 7U
 /** @brief defines KVM_EXIT_SHUTDOWN kvm_run.exit_reason */
 #define KVM_EXIT_SHUTDOWN 8U
 /** @brief defines KVM_EXIT_FAIL_ENTRY kvm_run.exit_reason */

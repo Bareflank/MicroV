@@ -44,8 +44,8 @@ extern "C"
      */
     struct kvm_interrupt
     {
-        /** @brief replace me with contents from KVM API */
-        int32_t dummy;
+        /** @brief stores the value of the irq */
+        uint32_t irq;
     };
 
 #pragma pack(pop)

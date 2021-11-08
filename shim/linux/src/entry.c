@@ -41,6 +41,7 @@
 #include <handle_vcpu_kvm_get_regs.h>
 #include <handle_vcpu_kvm_get_sregs.h>
 #include <handle_vcpu_kvm_get_tsc_khz.h>
+#include <handle_vcpu_kvm_interrupt.h>
 #include <handle_vcpu_kvm_run.h>
 #include <handle_vcpu_kvm_set_cpuid2.h>
 #include <handle_vcpu_kvm_set_fpu.h>
@@ -1186,11 +1187,25 @@ dispatch_vcpu_kvm_get_xsave(struct kvm_xsave *const ioctl_args)
 }
 
 static long
-dispatch_vcpu_kvm_interrupt(struct kvm_interrupt *const ioctl_args)
+dispatch_vcpu_kvm_interrupt(
+    struct shim_vcpu_t const *const vcpu,
+    struct kvm_interrupt *const pmut_user_args)
 {
-    (void)ioctl_args;
-    bferror("KVM_INTERRUPT is not yet implemented");
-    return -EINVAL;
+    struct kvm_interrupt mut_args;
+
+    bferror("KVM_INTERRUPT is called");
+
+    if (platform_copy_from_user(&mut_args, pmut_user_args, sizeof(mut_args))) {
+        bferror("kvm_interrupt failed to copy from user");
+        return -EFAULT;
+    }
+
+    if (handle_vcpu_kvm_interrupt(vcpu, &mut_args)) {
+        bferror("handle_vcpu_kvm_interrupt failed");
+        return -EINVAL;
+    }
+
+    return 0;
 }
 
 static long
@@ -1597,7 +1612,7 @@ dev_unlocked_ioctl_vcpu(
 
         case KVM_INTERRUPT: {
             return dispatch_vcpu_kvm_interrupt(
-                (struct kvm_interrupt *)ioctl_args);
+                pmut_mut_vcpu, (struct kvm_interrupt *)ioctl_args);
         }
 
         case KVM_KVMCLOCK_CTRL: {

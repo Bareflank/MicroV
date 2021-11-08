@@ -24,8 +24,14 @@
  * SOFTWARE.
  */
 
+#include <debug.h>
+#include <detect_hypervisor.h>
+#include <g_mut_hndl.h>
 #include <kvm_interrupt.h>
+#include <mv_constants.h>
+#include <mv_hypercall.h>
 #include <mv_types.h>
+#include <shim_vcpu_t.h>
 
 /**
  * <!-- description -->
@@ -36,8 +42,26 @@
  *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
  */
 NODISCARD int64_t
-handle_vcpu_kvm_interrupt(struct kvm_interrupt *const pmut_ioctl_args) NOEXCEPT
+handle_vcpu_kvm_interrupt(
+    struct shim_vcpu_t const *const vcpu, struct kvm_interrupt *const pmut_ioctl_args) NOEXCEPT
 {
-    (void)pmut_ioctl_args;
+    const uint32_t max_irqs = 256;
+
+    if (detect_hypervisor()) {
+        bferror("The shim is not running in a VM. Did you forget to start MicroV?");
+        return SHIM_FAILURE;
+    }
+
+    platform_expects(MV_INVALID_HANDLE != g_mut_hndl);
+
+    if (max_irqs <= pmut_ioctl_args->irq) {
+        bferror("vcpu_kvm_interrupt failed: irq out of range");
+        return SHIM_FAILURE;
+    }
+
+    if (mv_vs_op_queue_interrupt(g_mut_hndl, vcpu->vsid, pmut_ioctl_args->irq)) {
+        return SHIM_FAILURE;
+    }
+
     return SHIM_SUCCESS;
 }

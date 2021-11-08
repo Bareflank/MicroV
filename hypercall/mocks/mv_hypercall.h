@@ -786,6 +786,8 @@ extern "C"
     extern mv_status_t g_mut_mv_vs_op_mp_state_get;
     /** @brief stores the return value for mv_vs_op_mp_state_set */
     extern mv_status_t g_mut_mv_vs_op_mp_state_set;
+    /** @brief stores the return value for mv_vs_op_queue_interrupt */
+    extern mv_status_t g_mut_mv_vs_op_queue_interrupt;
     /** @brief stores the return value for mv_vs_op_tsc_get_khz */
     extern mv_status_t g_mut_mv_vs_op_tsc_get_khz;
     /** @brief stores the return value for mv_vs_op_clock_get */
@@ -1498,6 +1500,46 @@ extern "C"
 #endif
 
         return g_mut_mv_vs_op_mp_state_set;
+    }
+
+    /**
+     * <!-- description -->
+     *   @brief Queues an interrupt in the VS for injection. The interrupt will
+     *     only be injected into the VS once the VS is capable of processing
+     *     the interrupt.
+     *
+     *     On x86, only vectors 31-255 may be injected. Interrupts injected
+     *     using mv_vs_op_queue_interrupt bypass the emulated LAPIC, IOAPIC
+     *     and PIC. If these emulated devices are in use, interrupts should be
+     *     injected using these devices instead of the
+     *     mv_vs_op_queue_interrupt, otherwise the guest's view of these
+     *     emulated devices will not match the interrupt currently being
+     *     processed.
+     *
+     * <!-- inputs/outputs -->
+     *   @param hndl Set to the result of mv_handle_op_open_handle
+     *   @param vsid The ID of the VS to queue the interrupt into
+     *   @param vector The vector to queue
+     *   @return Returns MV_STATUS_SUCCESS on success, MV_STATUS_FAILURE_UNKNOWN
+     *     and friends on failure.
+     */
+    NODISCARD static inline mv_status_t
+    mv_vs_op_queue_interrupt(
+        uint64_t const hndl, uint16_t const vsid, uint64_t const vector) NOEXCEPT
+    {
+        (void)vector;
+
+#ifdef __cplusplus
+        bsl::expects(MV_INVALID_HANDLE != hndl);
+        bsl::expects(hndl > ((uint64_t)0));
+        bsl::expects((int32_t)MV_INVALID_ID != (int32_t)vsid);
+#else
+    platform_expects(MV_INVALID_HANDLE != hndl);
+    platform_expects(hndl > ((uint64_t)0));
+    platform_expects((int32_t)MV_INVALID_ID != (int32_t)vsid);
+#endif
+
+        return g_mut_mv_vs_op_queue_interrupt;
     }
 
     /**

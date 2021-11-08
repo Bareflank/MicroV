@@ -24,6 +24,7 @@
 
 #include "../../include/handle_vcpu_kvm_interrupt.h"
 
+#include <helpers.hpp>
 #include <kvm_interrupt.h>
 #include <mv_types.h>
 
@@ -46,9 +47,10 @@ namespace shim
         bsl::ut_scenario{"description"} = []() noexcept {
             bsl::ut_given{} = [&]() noexcept {
                 kvm_interrupt mut_args{};
+                struct shim_vcpu_t const vcpu{};
                 bsl::ut_when{} = [&]() noexcept {
                     bsl::ut_then{} = [&]() noexcept {
-                        bsl::ut_check(SHIM_SUCCESS == handle_vcpu_kvm_interrupt(&mut_args));
+                        bsl::ut_check(SHIM_SUCCESS == handle_vcpu_kvm_interrupt(&vcpu, &mut_args));
                     };
                 };
             };
