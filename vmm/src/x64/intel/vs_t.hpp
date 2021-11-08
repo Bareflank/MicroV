@@ -45,7 +45,7 @@
 #include <mv_translation_t.hpp>
 #include <page_pool_t.hpp>
 #include <pp_pool_t.hpp>
-#include <queue.hpp>
+#include <queue_t.hpp>
 #include <running_status_t.hpp>
 #include <tls_t.hpp>
 
@@ -133,7 +133,7 @@ namespace microv
         bsl::safe_u64 m_clock{};
 
         /// @brief stores a queue of interrupts that need to be injected
-        queue<bsl::safe_u64, MICROV_INTERRUPT_QUEUE_SIZE.get()> m_interrupt_queue{};
+        queue_t<bsl::safe_u64, MICROV_INTERRUPT_QUEUE_SIZE.get()> m_interrupt_queue{};
 
         /// <!-- description -->
         ///   @brief Initializes the VS to start as a 16bit guest.
@@ -2500,7 +2500,57 @@ namespace microv
             bsl::expects(mut_sys.bf_tls_ppid() == this->assigned_pp());
             bsl::expects(vector.is_valid_and_checked());
 
+            auto const ctls_idx{syscall::bf_reg_t::bf_reg_t_primary_proc_based_vm_execution_ctls};
+            auto const ctls_val{mut_sys.bf_vs_op_read(this->id(), ctls_idx)};
+
+            constexpr auto set_interrupt_window{0x4_u64};
+            bsl::expects(
+                mut_sys.bf_vs_op_write(this->id(), ctls_idx, ctls_val | set_interrupt_window));
+
             return m_interrupt_queue.push(vector);
+        }
+
+        /// <!-- description -->
+        ///   @brief Injects an interrupt into the vs_t. DO NOT USE THIS
+        ///     OUTSIDE OF AN INTERRUPT WINDOW VMEXIT. This functions is
+        ///     only intended to be used by an interrupt window exit. If
+        ///     you want to add an interrupt to a VS, you need to queue
+        ///     it for injection. Otherwise, you could end up overwriting
+        ///     a pending exception, or accidentally attempting to inject
+        ///     an interrupt when the guest has interrupts masked.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param mut_sys the bf_syscall_t to use
+        ///   @return Returns bsl::errc_success on success, bsl::errc_failure
+        ///     and friends otherwise.
+        ///
+        [[nodiscard]] constexpr auto
+        inject_next_interrupt(syscall::bf_syscall_t &mut_sys) noexcept -> bsl::errc_type
+        {
+            bsl::expects(allocated_status_t::allocated == m_allocated);
+            bsl::expects(running_status_t::running != m_status);
+            bsl::expects(mut_sys.bf_tls_ppid() == this->assigned_pp());
+            bsl::expects(!m_interrupt_queue.empty());
+
+            bsl::safe_u64 mut_vector{};
+            bsl::expects(m_interrupt_queue.pop(mut_vector));
+            bsl::expects(mut_vector.is_valid_and_checked());
+
+            if (m_interrupt_queue.empty()) {
+                auto const ctls_idx{
+                    syscall::bf_reg_t::bf_reg_t_primary_proc_based_vm_execution_ctls};
+                auto const ctls_val{mut_sys.bf_vs_op_read(this->id(), ctls_idx)};
+
+                constexpr auto set_interrupt_window{0x4_u64};
+                bsl::expects(
+                    mut_sys.bf_vs_op_write(this->id(), ctls_idx, ctls_val & ~set_interrupt_window));
+            }
+
+            constexpr auto info_val{0x80000000_u64};
+            constexpr auto info_idx{
+                syscall::bf_reg_t::bf_reg_t_vmentry_interrupt_information_field};
+
+            return mut_sys.bf_vs_op_write(this->id(), info_idx, info_val | mut_vector);
         }
 
         /// <!-- description -->
