@@ -27,7 +27,6 @@
 #include <helpers.hpp>
 #include <kvm_msr_list.h>
 
-#include <bsl/array.hpp>
 #include <bsl/convert.hpp>
 #include <bsl/safe_integral.hpp>
 #include <bsl/ut.hpp>
@@ -36,7 +35,6 @@ namespace shim
 {
     constexpr auto VAL64{42_u64};
     constexpr auto INIT_NMSRS{0x10_u32};
-    bsl::array<bsl::uint32, bsl::uintmx(INIT_NMSRS.get())> g_mut_msr_indices{};
 
     /// <!-- description -->
     ///   @brief Used to execute the actual checks. We put the checks in this
@@ -57,7 +55,6 @@ namespace shim
             bsl::ut_given{} = [&]() noexcept {
                 kvm_msr_list mut_args{};
                 bsl::ut_when{} = [&]() noexcept {
-                    mut_args.indices = g_mut_msr_indices.front_if();
                     mut_args.nmsrs = INIT_NMSRS.get();
                     g_mut_val = bsl::safe_u64::magic_2().get();
                     bsl::ut_then{} = [&]() noexcept {
@@ -71,7 +68,6 @@ namespace shim
             bsl::ut_given{} = [&]() noexcept {
                 kvm_msr_list mut_args{};
                 bsl::ut_when{} = [&]() noexcept {
-                    mut_args.indices = g_mut_msr_indices.front_if();
                     mut_args.nmsrs = INIT_NMSRS.get();
                     g_mut_val = bsl::safe_u64::magic_2().get();
                     g_mut_mv_pp_op_msr_get_supported_list = MV_STATUS_FAILURE_SET_RDL_REG1;
@@ -86,42 +82,17 @@ namespace shim
             };
         };
 
-        bsl::ut_scenario{"indices not allocated"} = []() noexcept {
-            bsl::ut_given{} = [&]() noexcept {
-                kvm_msr_list mut_args{};
-                bsl::ut_when{} = [&]() noexcept {
-                    mut_args.nmsrs = INIT_NMSRS.get();
-                    bsl::ut_then{} = [&]() noexcept {
-                        bsl::ut_check(SHIM_FAILURE == handle(&mut_args));
-                    };
-                };
-            };
-        };
-
         bsl::ut_scenario{"hypervisor not detected"} = []() noexcept {
             bsl::ut_given{} = [&]() noexcept {
                 kvm_msr_list mut_args{};
                 bsl::ut_when{} = [&]() noexcept {
                     g_mut_hypervisor_detected = false;
                     mut_args.nmsrs = INIT_NMSRS.get();
-                    mut_args.indices = g_mut_msr_indices.front_if();
                     bsl::ut_then{} = [&]() noexcept {
                         bsl::ut_check(SHIM_FAILURE == handle(&mut_args));
                     };
                     bsl::ut_cleanup{} = [&]() noexcept {
                         g_mut_hypervisor_detected = true;
-                    };
-                };
-            };
-        };
-
-        bsl::ut_scenario{"indices too small"} = []() noexcept {
-            bsl::ut_given{} = [&]() noexcept {
-                kvm_msr_list mut_args{};
-                bsl::ut_when{} = [&]() noexcept {
-                    mut_args.nmsrs = bsl::safe_u32::magic_0().get();
-                    bsl::ut_then{} = [&]() noexcept {
-                        bsl::ut_check(SHIM_FAILURE == handle(&mut_args));
                     };
                 };
             };
@@ -133,7 +104,6 @@ namespace shim
                 bsl::ut_when{} = [&]() noexcept {
                     g_mut_mv_pp_op_msr_get_supported_list = MV_STATUS_FAILURE_CORRUPT_NUM_ENTRIES;
                     mut_args.nmsrs = INIT_NMSRS.get();
-                    mut_args.indices = g_mut_msr_indices.front_if();
                     bsl::ut_then{} = [&]() noexcept {
                         bsl::ut_check(SHIM_FAILURE == handle(&mut_args));
                     };
@@ -150,7 +120,6 @@ namespace shim
                 bsl::ut_when{} = [&]() noexcept {
                     g_mut_mv_pp_op_msr_get_supported_list = VAL64.get();
                     mut_args.nmsrs = INIT_NMSRS.get();
-                    mut_args.indices = g_mut_msr_indices.front_if();
                     bsl::ut_then{} = [&]() noexcept {
                         bsl::ut_check(SHIM_FAILURE == handle(&mut_args));
                     };
@@ -166,10 +135,9 @@ namespace shim
                 kvm_msr_list mut_args{};
                 bsl::ut_when{} = [&]() noexcept {
                     mut_args.nmsrs = INIT_NMSRS.get();
-                    mut_args.indices = g_mut_msr_indices.front_if();
                     g_mut_val = VAL64.get();
                     bsl::ut_then{} = [&]() noexcept {
-                        bsl::ut_check(SHIM_FAILURE == handle(&mut_args));
+                        bsl::ut_check(SHIM_2BIG == handle(&mut_args));
                     };
                     bsl::ut_cleanup{} = [&]() noexcept {
                         g_mut_val = {};

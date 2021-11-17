@@ -233,54 +233,46 @@ dispatch_system_kvm_get_msr_index_list(
     struct kvm_msr_list __user *const user_args)
 {
     struct kvm_msr_list mut_args;
-    uint32_t __user *pmut_mut_user_indices;
     int64_t mut_ret;
-    uint64_t mut_alloc_size;
 
-    if (platform_copy_from_user(&mut_args, user_args, sizeof(mut_args))) {
+    if (platform_copy_from_user(
+            &mut_args,
+            user_args,
+            sizeof(mut_args) - sizeof(mut_args.indices))) {
         bferror("platform_copy_from_user failed");
         return -EINVAL;
     }
 
-    mut_alloc_size = mut_args.nmsrs * sizeof(*mut_args.indices);
-    if (mut_alloc_size > HYPERVISOR_PAGE_SIZE) {
-        bferror("requested nmsrs too big");
+    if (mut_args.nmsrs > MSR_LIST_MAX_INDICES) {
+        bferror("caller nmsrs exceeds MSR_LIST_MAX_INDICES");
         return -ENOMEM;
     }
 
-    pmut_mut_user_indices = mut_args.indices;
-    mut_args.indices = vzalloc(mut_alloc_size);
+    mut_ret = handle_system_kvm_get_msr_index_list(&mut_args);
+    if (SHIM_2BIG == mut_ret) {
+        if (platform_copy_to_user(
+                user_args, &mut_args, sizeof(mut_args.nmsrs))) {
+            bferror("platform_copy_to_user nmsrs failed");
+            return -EINVAL;
+        }
 
-    if (NULL == mut_args.indices) {
-        bferror("vzalloc failed");
-        return -ENOMEM;
+        return -E2BIG;
     }
-
-    mut_ret = -EINVAL;
-    if (handle_system_kvm_get_msr_index_list(&mut_args)) {
+    else if (mut_ret) {
         bferror("handle_system_kvm_get_msr_index_list failed");
-        goto out;
-    }
-
-    if (platform_copy_to_user(user_args, &mut_args, sizeof(mut_args.nmsrs))) {
-        bferror("platform_copy_to_user nmsrs failed");
-        goto out;
+        return -EINVAL;
     }
 
     if (platform_copy_to_user(
-            pmut_mut_user_indices,
-            mut_args.indices,
-            mut_args.nmsrs * sizeof(*mut_args.indices))) {
+            user_args,
+            &mut_args,
+            sizeof(mut_args.nmsrs) +
+                mut_args.nmsrs * sizeof(*mut_args.indices))) {
         bferror("platform_copy_to_user indices failed");
-        goto out;
+        return -EINVAL;
     }
 
-    mut_ret = 0;
-out:
-    if (mut_args.indices)
-        vfree(mut_args.indices);
-
-    return mut_ret;
+    return 0;
 }
 
 static long

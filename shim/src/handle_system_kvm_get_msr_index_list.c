@@ -41,11 +41,14 @@
  *
  * <!-- inputs/outputs -->
  *   @param pmut_ioctl_args the arguments provided by userspace
- *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
+ *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure, and SHIM_2BIG when
+ *      the number of MSRs is greater than what was set in nmsrs. When SHIM_2BIG is
+ *      returned, the correct number of MSRs is set in the nmsrs field.
  */
 NODISCARD int64_t
 handle_system_kvm_get_msr_index_list(struct kvm_msr_list *const pmut_ioctl_args) NOEXCEPT
 {
+    int64_t mut_ret;
     int64_t mut_i;
     uint32_t mut_nmsrs = ((uint32_t)0);
 
@@ -54,11 +57,6 @@ handle_system_kvm_get_msr_index_list(struct kvm_msr_list *const pmut_ioctl_args)
 
     if (detect_hypervisor()) {
         bferror("The shim is not running in a VM. Did you forget to start MicroV?");
-        return SHIM_FAILURE;
-    }
-
-    if (NULL == pmut_ioctl_args->indices) {
-        bferror("indices not allocated");
         return SHIM_FAILURE;
     }
 
@@ -78,18 +76,29 @@ handle_system_kvm_get_msr_index_list(struct kvm_msr_list *const pmut_ioctl_args)
             return SHIM_FAILURE;
         }
 
+        /**
+         * If the provided buffer is not large enough to fit all the MSRs, we still
+         * need to calculate the total number, and set the nmsrs field correctly.
+         */
         if (pmut_rdl->num_entries + ((uint64_t)mut_nmsrs) > ((uint64_t)pmut_ioctl_args->nmsrs)) {
-            bferror("number of MSRs is larger than kvm_msr_list indices");
-            return SHIM_FAILURE;
+            mut_nmsrs += pmut_rdl->num_entries;
         }
-
-        for (mut_i = ((int64_t)0); mut_i < ((int64_t)pmut_rdl->num_entries); ++mut_i) {
-            pmut_ioctl_args->indices[mut_nmsrs] = ((uint32_t)pmut_rdl->entries[mut_i].reg);
-            ++mut_nmsrs;
+        else {
+            for (mut_i = ((int64_t)0); mut_i < ((int64_t)pmut_rdl->num_entries); ++mut_i) {
+                pmut_ioctl_args->indices[mut_nmsrs] = ((uint32_t)pmut_rdl->entries[mut_i].reg);
+                ++mut_nmsrs;
+            }
         }
     } while (((uint64_t)0) != pmut_rdl->reg1);
 
+    if (mut_nmsrs > pmut_ioctl_args->nmsrs) {
+        mut_ret = SHIM_2BIG;
+    }
+    else {
+        mut_ret = SHIM_SUCCESS;
+    }
+
     pmut_ioctl_args->nmsrs = mut_nmsrs;
 
-    return SHIM_SUCCESS;
+    return mut_ret;
 }

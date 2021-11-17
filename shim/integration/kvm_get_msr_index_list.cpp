@@ -51,21 +51,20 @@ main() noexcept -> bsl::exit_code
 
     bsl::enable_color();
     integration::ioctl_t mut_system_ctl{shim::DEVICE_NAME};
-    bsl::array<bsl::uint32, bsl::uintmx(init_nmsrs.get())> mut_msr_indices{};
 
-    // nmsrs is too big
+    // nmsrs is too small
     {
-        mut_msr_list.nmsrs = HYPERVISOR_PAGE_SIZE.get();
-        mut_msr_list.nmsrs++;
-        mut_msr_list.indices = mut_msr_indices.front_if();
+        mut_msr_list.nmsrs = bsl::safe_u32::magic_0().get();
 
         integration::verify(
             mut_system_ctl.write(shim::KVM_GET_MSR_INDEX_LIST, &mut_msr_list).is_neg());
+
+        auto mut_nmsrs{bsl::to_u32(mut_msr_list.nmsrs)};
+        integration::verify(mut_nmsrs > bsl::safe_u32::magic_0());
     }
 
     {
         mut_msr_list.nmsrs = init_nmsrs.get();
-        mut_msr_list.indices = mut_msr_indices.front_if();
 
         integration::verify(
             mut_system_ctl.write(shim::KVM_GET_MSR_INDEX_LIST, &mut_msr_list).is_zero());
@@ -82,13 +81,13 @@ main() noexcept -> bsl::exit_code
         auto mut_nmsrs{bsl::to_idx(mut_msr_list.nmsrs)};
 
         for (bsl::safe_idx mut_i{}; mut_i < mut_nmsrs; ++mut_i) {
-            if (star_val == mut_msr_list.indices[mut_i.get()]) {
+            if (star_val == *mut_msr_list.indices.at_if(mut_i)) {
                 mut_found_star = true;
             }
-            else if (pat_val == mut_msr_list.indices[mut_i.get()]) {
+            else if (pat_val == *mut_msr_list.indices.at_if(mut_i)) {
                 mut_found_pat = true;
             }
-            else if (apic_base_val == mut_msr_list.indices[mut_i.get()]) {
+            else if (apic_base_val == *mut_msr_list.indices.at_if(mut_i)) {
                 mut_found_apic_base = true;
             }
         }
@@ -100,6 +99,8 @@ main() noexcept -> bsl::exit_code
 
     // Try a bunch of times
     {
+        mut_msr_list.nmsrs = init_nmsrs.get();
+
         constexpr auto num_loops{0x1000_umx};
         for (bsl::safe_idx mut_i{}; mut_i < num_loops; ++mut_i) {
             integration::verify(
