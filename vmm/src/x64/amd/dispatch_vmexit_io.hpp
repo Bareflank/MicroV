@@ -161,9 +161,10 @@ namespace microv
 
         if (((exitinfo1 & reps_mask) >> reps_shft).is_pos()) {
             mut_exit_io->reps = rcx.get();
+            bsl::debug() << "IO string reps " << bsl::hex(rcx) << bsl::endl;
         }
         else {
-            mut_exit_io->reps = {};
+            mut_exit_io->reps = bsl::safe_u64::magic_1().get();
         }
 
         set_reg_return(mut_sys, hypercall::MV_STATUS_SUCCESS);

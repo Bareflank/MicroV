@@ -130,11 +130,9 @@ handle_vcpu_kvm_run_unknown(struct shim_vcpu_t *const pmut_vcpu) NOEXCEPT
  *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
  */
 NODISCARD static int64_t
-handle_vcpu_kvm_run_io(struct shim_vcpu_t *const pmut_vcpu) NOEXCEPT
+handle_vcpu_kvm_run_io(
+    struct shim_vcpu_t *const pmut_vcpu, struct mv_exit_io_t *pmut_exit_io) NOEXCEPT
 {
-    int64_t mut_ret = SHIM_FAILURE;
-
-    struct mv_exit_io_t *const pmut_exit_io = (struct mv_exit_io_t *)shared_page_for_current_pp();
     platform_expects(NULL != pmut_exit_io);
 
     switch (pmut_exit_io->type) {
@@ -150,8 +148,7 @@ handle_vcpu_kvm_run_io(struct shim_vcpu_t *const pmut_vcpu) NOEXCEPT
 
         default: {
             bferror_x64("type is invalid/unsupported", pmut_exit_io->type);
-            mut_ret = return_failure(pmut_vcpu);
-            goto release_shared_page;
+            return return_failure(pmut_vcpu);
         }
     }
 
@@ -180,8 +177,7 @@ handle_vcpu_kvm_run_io(struct shim_vcpu_t *const pmut_vcpu) NOEXCEPT
         case mv_bit_size_t_64:
         default: {
             bferror_d32("size is invalid", (uint32_t)pmut_exit_io->size);
-            mut_ret = return_failure(pmut_vcpu);
-            goto release_shared_page;
+            return return_failure(pmut_vcpu);
         }
     }
 
@@ -190,8 +186,7 @@ handle_vcpu_kvm_run_io(struct shim_vcpu_t *const pmut_vcpu) NOEXCEPT
     }
     else {
         bferror_d32("addr is invalid", (uint32_t)pmut_exit_io->size);
-        mut_ret = return_failure(pmut_vcpu);
-        goto release_shared_page;
+        return return_failure(pmut_vcpu);
     }
 
     if (pmut_exit_io->reps < INT32_MAX) {
@@ -199,17 +194,94 @@ handle_vcpu_kvm_run_io(struct shim_vcpu_t *const pmut_vcpu) NOEXCEPT
     }
     else {
         bferror_x64("reps is invalid", pmut_exit_io->reps);
-        mut_ret = return_failure(pmut_vcpu);
-        goto release_shared_page;
+        return return_failure(pmut_vcpu);
     }
 
     pmut_vcpu->run->exit_reason = KVM_EXIT_IO;
-    mut_ret = SHIM_SUCCESS;
+    return SHIM_SUCCESS;
+}
 
-release_shared_page:
-    release_shared_page_for_current_pp();
+/**
+ * <!-- description -->
+ *   @brief Prepares the guest on IO intercepts before a run operation.
+ *
+ * <!-- inputs/outputs -->
+ *   @param pmut_vcpu the VCPU associated with the IOCTL
+ *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
+ */
+NODISCARD int64_t
+pre_run_op_io(struct shim_vcpu_t *const pmut_vcpu, struct mv_exit_io_t *pmut_exit_io) NOEXCEPT
+{
+    platform_expects(NULL != pmut_vcpu);
+    platform_expects(NULL != pmut_vcpu->run);
+    platform_expects(KVM_EXIT_IO == pmut_vcpu->run->exit_reason);
+    platform_expects(NULL != pmut_exit_io);
 
-    return mut_ret;
+    if (pmut_vcpu->run->io.direction != KVM_EXIT_IO_IN) {
+        return SHIM_SUCCESS;
+    }
+
+    pmut_exit_io->type = MV_EXIT_IO_IN;
+    pmut_exit_io->addr = pmut_vcpu->run->io.port;
+    pmut_exit_io->reps = pmut_vcpu->run->io.count;
+
+    switch (pmut_vcpu->run->io.size) {
+        case 1: {
+            pmut_exit_io->size = mv_bit_size_t_8;
+            pmut_exit_io->data = (uint64_t)pmut_vcpu->run->io.data8;
+            break;
+        }
+        case 2: {
+            pmut_exit_io->size = mv_bit_size_t_16;
+            pmut_exit_io->data = (uint64_t)pmut_vcpu->run->io.data16;
+            break;
+        }
+        case 4: {
+            pmut_exit_io->size = mv_bit_size_t_32;
+            pmut_exit_io->data = (uint64_t)pmut_vcpu->run->io.data32;
+            break;
+        }
+        default: {
+            bferror_x8("invalid io size", pmut_vcpu->run->io.size);
+            return SHIM_FAILURE;
+        }
+    }
+
+    return SHIM_SUCCESS;
+}
+
+/**
+ * <!-- description -->
+ *   @brief Prepares the guest before a run operation.
+ *
+ * <!-- inputs/outputs -->
+ *   @param pmut_vcpu the VCPU associated with the IOCTL
+ *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
+ */
+NODISCARD int64_t
+pre_run_op(struct shim_vcpu_t *const pmut_vcpu, void *pmut_exit) NOEXCEPT
+{
+    platform_expects(NULL != pmut_vcpu);
+    platform_expects(NULL != pmut_vcpu->run);
+    platform_expects(NULL != pmut_exit);
+
+    switch (pmut_vcpu->run->exit_reason) {
+        case KVM_EXIT_IO: {
+            return pre_run_op_io(pmut_vcpu, (struct mv_exit_io_t *)pmut_exit);
+        }
+
+        case KVM_EXIT_INTR: {
+            return SHIM_SUCCESS;
+        }
+
+        default: {
+            break;
+        }
+    }
+
+    bferror_x64("pre_run_op: unhandled exit reason", pmut_vcpu->run->exit_reason);
+
+    return SHIM_FAILURE;
 }
 
 /**
@@ -223,7 +295,10 @@ release_shared_page:
 NODISCARD int64_t
 handle_vcpu_kvm_run(struct shim_vcpu_t *const pmut_vcpu) NOEXCEPT
 {
+    int64_t mut_ret;
     enum mv_exit_reason_t mut_exit_reason;
+    void *pmut_exit;
+
     platform_expects(NULL != pmut_vcpu);
     platform_expects(NULL != pmut_vcpu->run);
 
@@ -232,38 +307,49 @@ handle_vcpu_kvm_run(struct shim_vcpu_t *const pmut_vcpu) NOEXCEPT
         return return_failure(pmut_vcpu);
     }
 
+    pmut_exit = shared_page_for_current_pp();
+
     while (0 == (int32_t)pmut_vcpu->run->immediate_exit) {
         if (platform_interrupted()) {
             break;
         }
 
+        mut_ret = pre_run_op(pmut_vcpu, pmut_exit);
+        if (SHIM_FAILURE == mut_ret) {
+            bferror("pre_run_op failed");
+            goto release_shared_page;
+        }
+
         mut_exit_reason = mv_vs_op_run(g_mut_hndl, pmut_vcpu->vsid);
         switch ((int32_t)mut_exit_reason) {
             case mv_exit_reason_t_failure: {
-                return handle_vcpu_kvm_run_failure(pmut_vcpu);
+                mut_ret = handle_vcpu_kvm_run_failure(pmut_vcpu);
+                goto release_shared_page;
             }
 
             case mv_exit_reason_t_unknown: {
-                return handle_vcpu_kvm_run_unknown(pmut_vcpu);
+                mut_ret = handle_vcpu_kvm_run_unknown(pmut_vcpu);
+                goto release_shared_page;
             }
 
             case mv_exit_reason_t_hlt: {
-                bferror("mv_exit_reason_t_hlt currently not implemented\n");
-                return return_failure(pmut_vcpu);
+                mut_ret = return_failure(pmut_vcpu);
+                goto release_shared_page;
             }
 
             case mv_exit_reason_t_io: {
-                return handle_vcpu_kvm_run_io(pmut_vcpu);
+                mut_ret = handle_vcpu_kvm_run_io(pmut_vcpu, pmut_exit);
+                goto release_shared_page;
             }
 
             case mv_exit_reason_t_mmio: {
-                bferror("mv_exit_reason_t_mmio currently not implemented\n");
-                return return_failure(pmut_vcpu);
+                mut_ret = return_failure(pmut_vcpu);
+                goto release_shared_page;
             }
 
             case mv_exit_reason_t_msr: {
-                bferror("mv_exit_reason_t_msr currently not implemented\n");
-                return return_failure(pmut_vcpu);
+                mut_ret = return_failure(pmut_vcpu);
+                goto release_shared_page;
             }
 
             case mv_exit_reason_t_interrupt: {
@@ -284,9 +370,9 @@ handle_vcpu_kvm_run(struct shim_vcpu_t *const pmut_vcpu) NOEXCEPT
             }
 
             case mv_exit_reason_t_shutdown: {
-                bferror("run: shutdown exit");
                 pmut_vcpu->run->exit_reason = KVM_EXIT_SHUTDOWN;
-                return SHIM_SUCCESS;
+                mut_ret = SHIM_SUCCESS;
+                goto release_shared_page;
             }
 
             default: {
@@ -296,9 +382,15 @@ handle_vcpu_kvm_run(struct shim_vcpu_t *const pmut_vcpu) NOEXCEPT
         }
 
         bferror("mv_vs_op_run returned with an unsupported exit reason\n");
-        return return_failure(pmut_vcpu);
+        mut_ret = return_failure(pmut_vcpu);
+        goto release_shared_page;
     }
 
     pmut_vcpu->run->exit_reason = KVM_EXIT_INTR;
-    return SHIM_INTERRUPTED;
+    mut_ret = SHIM_INTERRUPTED;
+
+release_shared_page:
+    release_shared_page_for_current_pp();
+
+    return mut_ret;
 }
