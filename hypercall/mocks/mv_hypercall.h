@@ -27,6 +27,7 @@
 #ifndef MOCKS_MV_HYPERCALL_H
 #define MOCKS_MV_HYPERCALL_H
 
+#include <mv_cdl_t.h>
 #include <mv_constants.h>
 #include <mv_exit_io_t.h>
 #include <mv_exit_reason_t.h>
@@ -62,6 +63,10 @@ extern "C"
 #define MV_STATUS_FAILURE_CORRUPT_NUM_ENTRIES ((mv_status_t)0x1234567800000003U)
 /** tells the list APIs to set reg1 in rdl */
 #define MV_STATUS_FAILURE_SET_RDL_REG1 ((mv_status_t)0x1234567800000004U)
+/** tells the mock to fail next time it is called, but succeed this time */
+#define MV_STATUS_FAILURE_FAIL_NEXT_CALL ((mv_status_t)0x1234567800000005U)
+/** tells the mock to fail on this call */
+#define MV_STATUS_FAILURE_FAIL_THIS_CALL ((mv_status_t)0x1234567800000006U)
 
     /** @brief stores a value that can be returned by certain hypercalls */
     extern uint64_t g_mut_val;
@@ -246,6 +251,11 @@ extern "C"
     NODISCARD static inline mv_status_t
     mv_pp_op_cpuid_get_supported_list(uint64_t const hndl) NOEXCEPT
     {
+        uint32_t const init_fun = ((uint32_t)0x00000000U);
+        uint32_t const init_xfun = ((uint32_t)0x80000000U);
+        uint64_t mut_i;
+        uint32_t mut_fun;
+        struct mv_cdl_entry_t mut_cdl_entry;
 #ifdef __cplusplus
         bsl::expects(MV_INVALID_HANDLE != hndl);
         bsl::expects(hndl > ((uint64_t)0));
@@ -253,6 +263,46 @@ extern "C"
     platform_expects(MV_INVALID_HANDLE != hndl);
     platform_expects(hndl > ((uint64_t)0));
 #endif
+        struct mv_cdl_t *const pmut_cdl = (struct mv_cdl_t *)g_mut_shared_pages[0];
+
+#ifdef __cplusplus
+        bsl::expects(nullptr != pmut_cdl);
+        bsl::expects(pmut_cdl->num_entries < MV_CDL_MAX_ENTRIES);
+#else
+    platform_expects(NULL != pmut_cdl);
+    platform_expects(pmut_cdl->num_entries < MV_CDL_MAX_ENTRIES);
+#endif
+
+        if (MV_STATUS_FAILURE_CORRUPT_NUM_ENTRIES == g_mut_mv_pp_op_cpuid_get_supported_list) {
+            pmut_cdl->num_entries = GARBAGE;
+            return MV_STATUS_SUCCESS;
+        }
+
+        for (mut_i = ((uint64_t)0); mut_i < pmut_cdl->num_entries; ++mut_i) {
+            mut_fun = pmut_cdl->entries[mut_i].fun;
+
+            if (init_fun == mut_fun) {
+                mut_cdl_entry.eax = init_fun + ((uint32_t)g_mut_val);
+            }
+            else if (init_xfun == mut_fun) {
+                mut_cdl_entry.eax = init_xfun + ((uint32_t)g_mut_val);
+            }
+            else {
+                mut_cdl_entry.idx = ((uint32_t)g_mut_val);
+                mut_cdl_entry.eax = ((uint32_t)g_mut_val);
+                mut_cdl_entry.ebx = ((uint32_t)g_mut_val);
+                mut_cdl_entry.ecx = ((uint32_t)g_mut_val);
+                mut_cdl_entry.edx = ((uint32_t)g_mut_val);
+            }
+
+            mut_cdl_entry.fun = mut_fun;
+            pmut_cdl->entries[mut_i] = mut_cdl_entry;
+        }
+
+        if (MV_STATUS_FAILURE_FAIL_NEXT_CALL == g_mut_mv_pp_op_cpuid_get_supported_list) {
+            g_mut_mv_pp_op_cpuid_get_supported_list = MV_STATUS_FAILURE_FAIL_THIS_CALL;
+            return SHIM_SUCCESS;
+        }
 
         return g_mut_mv_pp_op_cpuid_get_supported_list;
     }

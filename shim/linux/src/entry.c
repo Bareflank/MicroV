@@ -32,6 +32,7 @@
 #include <handle_system_kvm_destroy_vm.h>
 #include <handle_system_kvm_get_api_version.h>
 #include <handle_system_kvm_get_msr_index_list.h>
+#include <handle_system_kvm_get_supported_cpuid.h>
 #include <handle_system_kvm_get_vcpu_mmap_size.h>
 #include <handle_vcpu_kvm_get_fpu.h>
 #include <handle_vcpu_kvm_get_mp_state.h>
@@ -283,10 +284,69 @@ dispatch_system_kvm_get_msrs(struct kvm_msrs *const ioctl_args)
 }
 
 static long
-dispatch_system_kvm_get_supported_cpuid(struct kvm_cpuid2 *const ioctl_args)
+dispatch_system_kvm_get_supported_cpuid(
+    struct kvm_cpuid2 __user *const pmut_user_args)
 {
-    (void)ioctl_args;
-    return -EINVAL;
+    struct kvm_cpuid2 *pmut_mut_args;
+    int64_t mut_ret;
+
+    pmut_mut_args = vzalloc(sizeof(*pmut_mut_args));
+    if (NULL == pmut_mut_args) {
+        bferror("vzalloc failed");
+        return -ENOMEM;
+    }
+
+    mut_ret = -EINVAL;
+    if (platform_copy_from_user(
+            pmut_mut_args,
+            pmut_user_args,
+            sizeof(*pmut_mut_args) - sizeof(pmut_mut_args->entries))) {
+        bferror("platform_copy_from_user failed");
+        goto out_free;
+    }
+
+    mut_ret = -ENOMEM;
+    if (pmut_mut_args->nent > CPUID2_MAX_ENTRIES) {
+        bferror("caller nent exceeds CPUID2_MAX_ENTRIES");
+        goto out_free;
+    }
+
+    mut_ret = handle_system_kvm_get_supported_cpuid(pmut_mut_args);
+    if (SHIM_2BIG == mut_ret) {
+        if (platform_copy_to_user(
+                pmut_user_args, pmut_mut_args, sizeof(pmut_mut_args->nent))) {
+            bferror("platform_copy_to_user nent failed");
+            mut_ret = -EINVAL;
+        }
+        else {
+            mut_ret = -E2BIG;
+        }
+
+        goto out_free;
+    }
+    else if (mut_ret) {
+        bferror("handle_system_kvm_get_msr_index_list failed");
+        goto out_free;
+    }
+
+    mut_ret = -EINVAL;
+    if (platform_copy_to_user(
+            pmut_user_args,
+            pmut_mut_args,
+            sizeof(pmut_mut_args->nent) +
+                pmut_mut_args->nent * sizeof(*pmut_mut_args->entries))) {
+        bferror("platform_copy_to_user failed");
+        goto out_free;
+    }
+
+    mut_ret = 0;
+
+out_free:
+    if (pmut_mut_args) {
+        vfree(pmut_mut_args);
+    }
+
+    return mut_ret;
 }
 
 static long
