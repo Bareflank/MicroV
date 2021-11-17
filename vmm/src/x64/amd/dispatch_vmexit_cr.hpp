@@ -43,6 +43,90 @@
 
 namespace microv
 {
+    [[nodiscard]] constexpr auto
+    helper_vcpu_reg(syscall::bf_syscall_t &mut_sys, bsl::safe_u64 const &reg_idx) noexcept
+        -> bsl::safe_u64
+    {
+        constexpr auto rax_idx{0_u64};
+        constexpr auto rcx_idx{1_u64};
+        // constexpr auto rdx_idx{2_u64};
+        constexpr auto rbx_idx{3_u64};
+        // constexpr auto rsp_idx{4_u64};
+        // constexpr auto rbp_idx{5_u64};
+        constexpr auto rsi_idx{6_u64};
+        constexpr auto rdi_idx{7_u64};
+        constexpr auto r8_idx{8_u64};
+        constexpr auto r9_idx{9_u64};
+        constexpr auto r10_idx{10_u64};
+        constexpr auto r11_idx{11_u64};
+        constexpr auto r12_idx{12_u64};
+        // constexpr auto r13_idx{13_u64};
+        // constexpr auto r14_idx{14_u64};
+        // constexpr auto r15_idx{15_u64};
+        // constexpr auto rip_idx{16_u64};
+        // constexpr auto num_reg_idxs{17_u64};
+
+        switch (reg_idx.get()) {
+            case rax_idx.get(): {
+                return mut_sys.bf_tls_rax();
+            }
+            case rcx_idx.get(): {
+                return mut_sys.bf_tls_rcx();
+            }
+            case rbx_idx.get(): {
+                return mut_sys.bf_tls_rbx();
+            }
+            // case rsp_idx.get(): {
+            //     return mut_sys.bf_tls_rsp();
+            // }
+            // case rbp_idx.get(): {
+            //     return mut_sys.bf_tls_rbp();
+            // }
+            case rsi_idx.get(): {
+                return mut_sys.bf_tls_rsi();
+            }
+            case rdi_idx.get(): {
+                return mut_sys.bf_tls_rdi();
+            }
+            case r8_idx.get(): {
+                return mut_sys.bf_tls_r8();
+            }
+            case r9_idx.get(): {
+                return mut_sys.bf_tls_r9();
+            }
+            case r10_idx.get(): {
+                return mut_sys.bf_tls_r10();
+            }
+            case r11_idx.get(): {
+                return mut_sys.bf_tls_r11();
+            }
+            case r12_idx.get(): {
+                return mut_sys.bf_tls_r12();
+            }
+                // case r13_idx.get(): {
+                //     return mut_sys.bf_tls_13();
+                // }
+                // case r14_idx.get(): {
+                //     return mut_sys.bf_tls_14();
+                // }
+                // case r15_idx.get(): {
+                //     return mut_sys.bf_tls_15();
+                // }
+                // case rip_idx.get(): {
+                //     return mut_sys.bf_tls_rip();
+                // }
+
+            default: {
+                break;
+            }
+        }
+        bsl::error() << "incorrect register index "    // --
+                     << bsl::hex(reg_idx)              // --
+                     << bsl::endl;                     // --
+
+        return bsl::safe_u64::failure();
+    }
+
     /// <!-- description -->
     ///   @brief Dispatches control register VMExits.
     ///
@@ -76,6 +160,7 @@ namespace microv
         bsl::safe_u16 const &vsid) noexcept -> bsl::errc_type
     {
         constexpr auto gpr_mask{0x00000000FFFFFFFF_u64};
+        constexpr auto reg_mask{0xF_u64};
 
         bsl::discard(gs);
         bsl::discard(tls);
@@ -92,9 +177,16 @@ namespace microv
         auto const exitinfo1{mut_sys.bf_vs_op_read(vsid, syscall::bf_reg_t::bf_reg_t_exitinfo1)};
         bsl::expects(exitinfo1.is_valid());
 
-        auto const cr0_val{gpr_mask & mut_sys.bf_tls_rax()};
         auto const cr0_idx{syscall::bf_reg_t::bf_reg_t_cr0};
+
+        auto const cr0_val_old{mut_sys.bf_vs_op_read(vsid, cr0_idx)};
+        bsl::expects(cr0_val_old.is_valid());
+
+        auto const cr0_val{gpr_mask & helper_vcpu_reg(mut_sys, exitinfo1 & reg_mask)};
+        bsl::expects(cr0_val.is_valid());
+
         bsl::expects(mut_sys.bf_vs_op_write(vsid, cr0_idx, cr0_val));
+        bsl::expects(mut_sys.bf_vm_op_tlb_flush(mut_sys.bf_tls_vmid()));
 
         return vmexit_success_advance_ip_and_run;
     }

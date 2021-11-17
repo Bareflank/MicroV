@@ -280,7 +280,7 @@ namespace microv
                 bsl::touch();
             }
 
-            return bsl::errc_success;
+            return mut_sys.bf_vm_op_tlb_flush(this->assigned_vmid());
         }
 
         /// <!-- description -->

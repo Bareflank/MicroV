@@ -2472,6 +2472,8 @@ namespace microv
             bsl::expects(mut_sys.bf_tls_ppid() == this->assigned_pp());
             bsl::expects(vector.is_valid_and_checked());
 
+            bsl::debug() << "queue interrupt called (enabling interrupt window exits)" << bsl::endl;
+
             constexpr auto vint_a_val{0x000000FF010F0100_u64};
             constexpr auto vint_a_idx{syscall::bf_reg_t::bf_reg_t_virtual_interrupt_a};
             bsl::expects(mut_sys.bf_vs_op_write(this->id(), vint_a_idx, vint_a_val));
