@@ -94,19 +94,6 @@ namespace microv
         auto const rax{mut_sys.bf_tls_rax()};
         auto const rcx{mut_sys.bf_tls_rcx()};
 
-        // ---------------------------------------------------------------------
-        // Context: Change To Root VM
-        // ---------------------------------------------------------------------
-
-        switch_to_root(mut_tls, mut_sys, intrinsic, mut_vm_pool, mut_vp_pool, mut_vs_pool, true);
-
-        // ---------------------------------------------------------------------
-        // Context: Root VM
-        // ---------------------------------------------------------------------
-
-        auto mut_exit_io{mut_pp_pool.shared_page<hypercall::mv_exit_io_t>(mut_sys)};
-        bsl::expects(mut_exit_io.is_valid());
-
         constexpr auto port_mask{0xFFFF0000_u64};
         constexpr auto port_shft{16_u64};
         constexpr auto reps_mask{0x00000008_u64};
@@ -121,7 +108,22 @@ namespace microv
         constexpr auto sz08_mask{0x00000010_u64};
         constexpr auto sz08_shft{4_u64};
 
-        mut_exit_io->addr = ((exitinfo1 & port_mask) >> port_shft).get();
+        auto const addr{(exitinfo1 & port_mask) >> port_shft};
+
+        // ---------------------------------------------------------------------
+        // Context: Change To Root VM
+        // ---------------------------------------------------------------------
+
+        switch_to_root(mut_tls, mut_sys, intrinsic, mut_vm_pool, mut_vp_pool, mut_vs_pool, true);
+
+        // ---------------------------------------------------------------------
+        // Context: Root VM
+        // ---------------------------------------------------------------------
+
+        auto mut_exit_io{mut_pp_pool.shared_page<hypercall::mv_exit_io_t>(mut_sys)};
+        bsl::expects(mut_exit_io.is_valid());
+
+        mut_exit_io->addr = addr.get();
 
         if (((exitinfo1 & type_mask) >> type_shft).is_zero()) {
             mut_exit_io->type = hypercall::MV_EXIT_IO_OUT.get();
