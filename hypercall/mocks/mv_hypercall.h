@@ -1032,6 +1032,11 @@ extern "C"
                 return (enum mv_exit_reason_t)mv_exit_reason_t_interrupt;
             }
 
+            case mv_exit_reason_t_interrupt_window: {
+                g_mut_mv_vs_op_run = (enum mv_exit_reason_t)mv_exit_reason_t_failure;
+                return (enum mv_exit_reason_t)mv_exit_reason_t_interrupt_window;
+            }
+
             case mv_exit_reason_t_nmi: {
                 g_mut_mv_vs_op_run = (enum mv_exit_reason_t)mv_exit_reason_t_failure;
                 return (enum mv_exit_reason_t)mv_exit_reason_t_nmi;
