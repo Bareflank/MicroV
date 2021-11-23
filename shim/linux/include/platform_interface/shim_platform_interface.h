@@ -89,6 +89,17 @@
 #define _IOWR_LIST(type, nr, size, size_arr)                                                       \
     _IOC(_IOC_READ | _IOC_WRITE, (type), (nr), sizeof(size) - sizeof(size_arr))
 
+/**
+ * @brief Hack for defining ioctl commands that require structs
+ * with zero-length arrays. This is usually for ioctls that return
+ * a list. We will use arrays with defined length instead.
+ *
+ * It is just like _IOW, except it takes a second type argument and
+ * subtracts its size from the size of the first type.
+ */
+#define _IOW_LIST(type, nr, size, sub_size)                                                        \
+    _IOC(_IOC_WRITE, (type), (nr), sizeof(size) - sizeof(sub_size))
+
 /** @brief defines KVM's KVM_GET_API_VERSION IOCTL */
 #define KVM_GET_API_VERSION _IO(SHIMIO, 0x00)
 /** @brief defines KVM's KVM_CREATE_VM IOCTL */
@@ -126,7 +137,8 @@
 //#define KVM_GET_MSRS _IOWR(SHIMIO, 0x88, struct kvm_msrs)
 /** @brief defines KVM's KVM_SET_MSRS IOCTL */
 //#define KVM_SET_MSRS _IOWR_LIST(SHIMIO, 0x89, struct kvm_msrs, struct kvm_msr_entry[MV_RDL_MAX_ENTRIES])
-#define KVM_SET_MSRS _IOW(SHIMIO, 0x89, struct kvm_msrs)
+#define KVM_SET_MSRS                                                                               \
+    _IOW_LIST(SHIMIO, 0x89, struct kvm_msrs, struct kvm_msr_entry[MV_RDL_MAX_ENTRIES])
 /** @brief defines KVM's KVM_SET_CPUID IOCTL */
 #define KVM_SET_CPUID _IOW(SHIMIO, 0x8a, struct kvm_cpuid)
 /** @brief defines KVM's KVM_GET_CPUID2 IOCTL */
