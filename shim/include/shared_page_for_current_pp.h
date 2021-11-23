@@ -44,6 +44,13 @@ extern "C"
      */
     NODISCARD void *shared_page_for_current_pp(void) NOEXCEPT;
 
+    /**
+     * <!-- description -->
+     *   @brief Releases the shared page. Note that this
+     *     cannot be called until shim_init has completed.
+     */
+    void release_shared_page_for_current_pp(void) NOEXCEPT;
+
 #ifdef __cplusplus
 }
 #endif

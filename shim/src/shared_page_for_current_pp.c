@@ -43,3 +43,16 @@ shared_page_for_current_pp(void) NOEXCEPT
     platform_ensures(((void *)0) != pmut_ptr);
     return pmut_ptr;
 }
+
+/**
+ * <!-- description -->
+ *   @brief Releases the shared page. Note that this
+ *     cannot be called until shim_init has completed.
+ *     When done using the shared page, the caller must call
+ *     release_shared_page_for_current_pp().
+ */
+void
+release_shared_page_for_current_pp(void) NOEXCEPT
+{
+    platform_irq_enable();
+}
