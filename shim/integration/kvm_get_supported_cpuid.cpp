@@ -24,7 +24,8 @@
 
 #include <integration_utils.hpp>
 #include <ioctl_t.hpp>
-#include <kvm_msr_list.hpp>
+#include <kvm_cpuid2.hpp>
+#include <kvm_cpuid_entry2.hpp>
 #include <shim_platform_interface.hpp>
 
 #include <bsl/array.hpp>
@@ -43,68 +44,50 @@
 [[nodiscard]] auto
 main() noexcept -> bsl::exit_code
 {
-    shim::kvm_msr_list mut_msr_list{};
-    constexpr auto star_val{0xC0000081_u32};
-    constexpr auto pat_val{0x00000277_u32};
-    constexpr auto apic_base_val{0x0000001B_u32};
-    constexpr auto init_nmsrs{0x10_u32};
+    constexpr auto init_nent{0x20_u32};
+    constexpr auto cpuid_fn0000_0001{0x00000001_u32};
+    shim::kvm_cpuid2 mut_cpuid2{};
 
     bsl::enable_color();
     integration::ioctl_t mut_system_ctl{shim::DEVICE_NAME};
 
-    // nmsrs is too small
     {
-        mut_msr_list.nmsrs = bsl::safe_u32::magic_0().get();
+        mut_cpuid2.nent = init_nent.get();
 
         integration::verify(
-            mut_system_ctl.write(shim::KVM_GET_MSR_INDEX_LIST, &mut_msr_list).is_neg());
+            mut_system_ctl.write(shim::KVM_GET_SUPPORTED_CPUID, &mut_cpuid2).is_zero());
 
-        auto mut_nmsrs{bsl::to_u32(mut_msr_list.nmsrs)};
-        integration::verify(mut_nmsrs > bsl::safe_u32::magic_0());
-    }
-
-    {
-        mut_msr_list.nmsrs = init_nmsrs.get();
-
-        integration::verify(
-            mut_system_ctl.write(shim::KVM_GET_MSR_INDEX_LIST, &mut_msr_list).is_zero());
-
-        auto mut_nmsrs{bsl::to_u32(mut_msr_list.nmsrs)};
-        integration::verify(mut_nmsrs > bsl::safe_u32::magic_0());
+        auto mut_nent{bsl::to_u32(mut_cpuid2.nent)};
+        integration::verify(mut_nent > bsl::safe_u32::magic_0());
     }
 
     // Valid registers should be present
     {
-        bool mut_found_star{false};
-        bool mut_found_pat{false};
-        bool mut_found_apic_base{false};
-        auto mut_nmsrs{bsl::to_idx(mut_msr_list.nmsrs)};
+        // Fn0000_0001h[0][EDX][ 5]: RDMSR and WRMSR support
+        bool mut_found_rdmsr_support{};
+        constexpr auto rdmsr_bit{0x20_u32};
+        constexpr shim::kvm_cpuid_entry2 rdmsr_support{
+            .function = cpuid_fn0000_0001.get(), .index = 0U, .edx = rdmsr_bit.get()};
+        auto mut_nent{bsl::to_idx(mut_cpuid2.nent)};
+        shim::kvm_cpuid_entry2 mut_entry{};
 
-        for (bsl::safe_idx mut_i{}; mut_i < mut_nmsrs; ++mut_i) {
-            if (star_val == *mut_msr_list.indices.at_if(mut_i)) {
-                mut_found_star = true;
-            }
-            else if (pat_val == *mut_msr_list.indices.at_if(mut_i)) {
-                mut_found_pat = true;
-            }
-            else if (apic_base_val == *mut_msr_list.indices.at_if(mut_i)) {
-                mut_found_apic_base = true;
+        for (bsl::safe_idx mut_i{}; mut_i < mut_nent; ++mut_i) {
+            mut_entry = *mut_cpuid2.entries.at_if(mut_i);
+            if ((mut_entry.function == rdmsr_support.function) &&                // NOLINT
+                (mut_entry.index == rdmsr_support.index) &&                      // NOLINT
+                ((mut_entry.edx & rdmsr_support.edx) == rdmsr_support.edx)) {    // NOLINT
+                mut_found_rdmsr_support = true;
             }
         }
-
-        integration::verify(mut_found_star);
-        integration::verify(mut_found_pat);
-        integration::verify(mut_found_apic_base);
+        integration::verify(mut_found_rdmsr_support);
     }
 
     // Try a bunch of times
     {
-        mut_msr_list.nmsrs = init_nmsrs.get();
-
         constexpr auto num_loops{0x1000_umx};
         for (bsl::safe_idx mut_i{}; mut_i < num_loops; ++mut_i) {
             integration::verify(
-                mut_system_ctl.write(shim::KVM_GET_MSR_INDEX_LIST, &mut_msr_list).is_zero());
+                mut_system_ctl.write(shim::KVM_GET_SUPPORTED_CPUID, &mut_cpuid2).is_zero());
         }
     }
 

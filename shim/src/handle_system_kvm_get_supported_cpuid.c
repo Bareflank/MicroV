@@ -24,8 +24,17 @@
  * SOFTWARE.
  */
 
+#include <debug.h>
+#include <detect_hypervisor.h>
+#include <g_mut_hndl.h>
 #include <kvm_cpuid2.h>
+#include <kvm_cpuid_entry2.h>
+#include <mv_cdl_t.h>
+#include <mv_constants.h>
+#include <mv_hypercall.h>
 #include <mv_types.h>
+#include <platform.h>
+#include <shared_page_for_current_pp.h>
 
 /**
  * <!-- description -->
@@ -33,11 +42,90 @@
  *
  * <!-- inputs/outputs -->
  *   @param pmut_ioctl_args the arguments provided by userspace
- *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
+ *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure, and SHIM_2BIG when
+ *      the number of CPUID entries is greater than what was set in nent. When SHIM_2BIG is
+ *      returned, the correct number of CPUID entries is set in the nent field.
  */
 NODISCARD int64_t
 handle_system_kvm_get_supported_cpuid(struct kvm_cpuid2 *const pmut_ioctl_args) NOEXCEPT
 {
-    (void)pmut_ioctl_args;
+    uint32_t const init_fun = ((uint32_t)0x00000000);
+    uint32_t const init_xfun = ((uint32_t)0x80000000);
+    uint32_t mut_fun = init_fun;
+    uint32_t mut_xfun = init_xfun;
+    uint32_t mut_fun_max;
+    uint32_t mut_xfun_max;
+    uint64_t mut_i;
+    struct mv_cdl_entry_t mut_cdl_entry;
+
+    struct mv_cdl_t *const pmut_cdl = (struct mv_cdl_t *)shared_page_for_current_pp();
+    platform_expects(NULL != pmut_cdl);
+
+    if (detect_hypervisor()) {
+        bferror("The shim is not running in a VM. Did you forget to start MicroV?");
+        return SHIM_FAILURE;
+    }
+
+    /* Start by getting the largest function and largest extended function */
+    pmut_cdl->num_entries = ((uint64_t)2);
+    pmut_cdl->entries[0].fun = mut_fun;
+    pmut_cdl->entries[1].fun = mut_xfun;
+
+    platform_expects(MV_INVALID_HANDLE != g_mut_hndl);
+    if (mv_pp_op_cpuid_get_supported_list(g_mut_hndl)) {
+        bferror("mv_pp_op_cpuid_get_supported_list failed");
+        return SHIM_FAILURE;
+    }
+
+    if (pmut_cdl->num_entries >= MV_CDL_MAX_ENTRIES) {
+        bferror("num_entries exceeds MV_CDL_MAX_ENTRIES");
+        return SHIM_FAILURE;
+    }
+
+    /* Calculate the new num_entries */
+    mut_fun_max = pmut_cdl->entries[0].eax;
+    mut_xfun_max = pmut_cdl->entries[1].eax;
+    pmut_cdl->num_entries = ((uint64_t)(mut_fun_max + mut_xfun_max - init_xfun));
+
+    if (pmut_cdl->num_entries >= MV_CDL_MAX_ENTRIES) {
+        bferror("calculated num_entries exceeds MV_CDL_MAX_ENTRIES");
+        return SHIM_FAILURE;
+    }
+
+    if (pmut_cdl->num_entries > ((uint64_t)pmut_ioctl_args->nent)) {
+        bferror("CDL entries is larger than kvm_cpuid2 entries");
+        pmut_ioctl_args->nent = ((uint32_t)pmut_cdl->num_entries);
+        return SHIM_2BIG;
+    }
+
+    mut_i = ((uint64_t)0);
+    for (; mut_fun < mut_fun_max; ++mut_fun) {
+        pmut_cdl->entries[mut_i].fun = mut_fun;
+        ++mut_i;
+    }
+
+    for (; mut_xfun < mut_xfun_max; ++mut_xfun) {
+        pmut_cdl->entries[mut_i].fun = mut_xfun;
+        ++mut_i;
+    }
+
+    platform_expects(MV_INVALID_HANDLE != g_mut_hndl);
+    if (mv_pp_op_cpuid_get_supported_list(g_mut_hndl)) {
+        bferror("mv_pp_op_cpuid_get_supported_list failed");
+        return SHIM_FAILURE;
+    }
+
+    for (mut_i = ((uint64_t)0); mut_i < ((uint64_t)pmut_cdl->num_entries); ++mut_i) {
+        mut_cdl_entry = pmut_cdl->entries[mut_i];
+        pmut_ioctl_args->entries[mut_i].function = mut_cdl_entry.fun;
+        pmut_ioctl_args->entries[mut_i].index = mut_cdl_entry.idx;
+        pmut_ioctl_args->entries[mut_i].flags = mut_cdl_entry.flags;
+        pmut_ioctl_args->entries[mut_i].eax = mut_cdl_entry.eax;
+        pmut_ioctl_args->entries[mut_i].ebx = mut_cdl_entry.ebx;
+        pmut_ioctl_args->entries[mut_i].ecx = mut_cdl_entry.ecx;
+        pmut_ioctl_args->entries[mut_i].edx = mut_cdl_entry.edx;
+    }
+    pmut_ioctl_args->nent = ((uint32_t)pmut_cdl->num_entries);
+
     return SHIM_SUCCESS;
 }

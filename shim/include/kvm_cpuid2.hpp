@@ -1,5 +1,3 @@
-/* SPDX-License-Identifier: SPDX-License-Identifier: GPL-2.0 OR MIT */
-
 /**
  * @copyright
  * Copyright (C) 2020 Assured Information Security, Inc.
@@ -26,33 +24,38 @@
  * SOFTWARE.
  */
 
-#ifndef TYPES_H
-#define TYPES_H
+#ifndef KVM_CPUID2_HPP
+#define KVM_CPUID2_HPP
 
-#include <inttypes.h>    // IWYU pragma: export
-#include <stddef.h>      // IWYU pragma: export
-#include <stdint.h>      // IWYU pragma: export
+#include <kvm_cpuid_entry2.hpp>
 
-/**
- * @brief Returned by a shim function when a function succeeds.
- */
-#define SHIM_SUCCESS ((int64_t)0)
+#include <bsl/array.hpp>
+#include <bsl/convert.hpp>
+#include <bsl/safe_integral.hpp>
 
-/**
- * @brief Returned by a shim function when an error occurs.
- */
-#define SHIM_FAILURE ((int64_t)-1)
+constexpr auto CPUID2_MAX_ENTRIES{128_u32};
 
-/**
- * @brief Returned by a shim function when an the current process
- *   has been interrupted.
- */
-#define SHIM_INTERRUPTED ((int64_t)-2)
+namespace shim
+{
+#pragma pack(push, 1)
 
-/**
- * @brief Returned by a shim function when a provided data structure
- *   is not large enough to hold the return data.
- */
-#define SHIM_2BIG ((int64_t)-3)
+    /**
+     * @struct kvm_cpuid2
+     *
+     * <!-- description -->
+     *   @brief see /include/uapi/linux/kvm.h in Linux for more details.
+     */
+    struct kvm_cpuid2 final
+    {
+        /** @brief number of entries */
+        bsl::uint32 nent;
+        /** @brief padding for alignment */
+        bsl::uint32 padding;
+        /** @brief CPUID entries */
+        bsl::array<shim::kvm_cpuid_entry2, CPUID2_MAX_ENTRIES.get()> entries;
+    };
+}
+
+#pragma pack(pop)
 
 #endif

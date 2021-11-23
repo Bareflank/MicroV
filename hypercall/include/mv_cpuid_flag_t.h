@@ -27,6 +27,8 @@
 #ifndef MV_CPUID_FLAG_T_H
 #define MV_CPUID_FLAG_T_H
 
+#include <stdint.h>
+
 #ifdef __cplusplus
 extern "C"
 {
@@ -37,13 +39,13 @@ extern "C"
      * <!-- description -->
      *   @brief Defines CPUID flags
      */
-    enum mv_cpuid_flag : int32_t
+    enum mv_cpuid_flag_t : int32_t
 #else
 /**
      * <!-- description -->
      *   @brief Defines CPUID flags
      */
-enum mv_cpuid_flag
+enum mv_cpuid_flag_t
 #endif
     {
         /** @brief reserved */

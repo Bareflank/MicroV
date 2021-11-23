@@ -50,4 +50,9 @@
  */
 #define SHIM_INTERRUPTED ((int64_t)-EINTR)
 
+/**
+ * @brief Returned by a shim function when a provided data structure
+ *   is not large enough to hold the return data.
+ */
+#define SHIM_2BIG ((int64_t)-E2BIG)
 #endif

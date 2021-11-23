@@ -28,6 +28,8 @@
 #define SHIM_PLATFORM_INTERFACE_HPP
 
 #include <asm/ioctl.h>
+#include <kvm_cpuid2.hpp>
+#include <kvm_cpuid_entry2.hpp>
 #include <kvm_fpu.hpp>
 #include <kvm_mp_state.hpp>
 #include <kvm_msr_entry.hpp>
@@ -45,7 +47,6 @@
 // #include <kvm_clock_data.hpp>
 // #include <kvm_coalesced_mmio_zone.hpp>
 // #include <kvm_cpuid.hpp>
-// #include <kvm_cpuid2.hpp>
 // #include <kvm_create_device.hpp>
 // #include <kvm_debugregs.hpp>
 // #include <kvm_device_attr.hpp>
@@ -91,6 +92,17 @@
 #define _IOWR_LIST(type, nr, size, sub_size)                                                       \
     _IOC(_IOC_READ | _IOC_WRITE, (type), (nr), sizeof(size) - sizeof(sub_size))
 
+/**
+ * @brief Hack for defining ioctl commands that require structs
+ * with zero-length arrays. This is usually for ioctls that return
+ * a list. We will use arrays with defined length instead.
+ *
+ * It is just like _IOWR, except it takes a second type argument and
+ * subtracts its size from the size of the first type.
+ */
+#define _IOWR_LIST(type, nr, size, size_arr)                                                       \
+    _IOC(_IOC_READ | _IOC_WRITE, (type), (nr), sizeof(size) - sizeof(size_arr))
+
 namespace shim
 {
     /// @brief magic number for KVM IOCTLs
@@ -106,8 +118,8 @@ namespace shim
     /// @brief defines KVM's KVM_CREATE_VM IOCTL
     constexpr bsl::safe_umx KVM_CREATE_VM{static_cast<bsl::uintmx>(_IO(SHIMIO.get(), 0x01))};
     /// @brief defines KVM's KVM_GET_MSR_INDEX_LIST IOCTL
-    constexpr bsl::safe_umx KVM_GET_MSR_INDEX_LIST{
-        static_cast<bsl::uintmx>(_IOWR(SHIMIO.get(), 0x02, struct kvm_msr_list))};
+    constexpr bsl::safe_umx KVM_GET_MSR_INDEX_LIST{static_cast<bsl::uintmx>(
+        _IOWR_LIST(SHIMIO.get(), 0x02, struct kvm_msr_list, uint32_t[MSR_LIST_MAX_INDICES.get()]))};
     // /// @brief defines KVM's KVM_GET_MSR_FEATURE_INDEX_LIST IOCTL
     // constexpr bsl::safe_umx KVM_GET_MSR_FEATURE_INDEX_LIST{static_cast<bsl::uintmx>(_IOWR(SHIMIO.get(), 0x0a, struct kvm_msr_list))};
     /// @brief defines KVM's KVM_CHECK_EXTENSION IOCTL
@@ -205,8 +217,9 @@ namespace shim
     // constexpr bsl::safe_umx KVM_GET_XCRS{static_cast<bsl::uintmx>(_IOR(SHIMIO.get(), 0xa6, struct kvm_xcrs))};
     // /// @brief defines KVM's KVM_SET_XCRS IOCTL
     // constexpr bsl::safe_umx KVM_SET_XCRS{static_cast<bsl::uintmx>(_IOW(SHIMIO.get(), 0xa7, struct kvm_xcrs))};
-    // /// @brief defines KVM's KVM_GET_SUPPORTED_CPUID IOCTL
-    // constexpr bsl::safe_umx KVM_GET_SUPPORTED_CPUID{static_cast<bsl::uintmx>(_IOWR(SHIMIO.get(), 0x05, struct kvm_cpuid2))};
+    /// @brief defines KVM's KVM_GET_SUPPORTED_CPUID IOCTL
+    constexpr bsl::safe_umx KVM_GET_SUPPORTED_CPUID{static_cast<bsl::uintmx>(_IOWR_LIST(
+        SHIMIO.get(), 0x05, struct kvm_cpuid2, struct kvm_cpuid_entry2[CPUID2_MAX_ENTRIES.get()]))};
     // /// @brief defines KVM's KVM_SET_GSI_ROUTING IOCTL
     // constexpr bsl::safe_umx KVM_SET_GSI_ROUTING{static_cast<bsl::uintmx>(_IOW(SHIMIO.get(), 0x6a, struct kvm_irq_routing))};
     /// @brief defines KVM's KVM_GET_TSC_KHZ IOCTL

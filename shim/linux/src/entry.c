@@ -33,6 +33,7 @@
 #include <handle_system_kvm_get_api_version.h>
 #include <handle_system_kvm_get_msr_index_list.h>
 #include <handle_system_kvm_get_msrs.h>
+#include <handle_system_kvm_get_supported_cpuid.h>
 #include <handle_system_kvm_get_vcpu_mmap_size.h>
 #include <handle_vcpu_kvm_get_fpu.h>
 #include <handle_vcpu_kvm_get_mp_state.h>
@@ -236,54 +237,46 @@ dispatch_system_kvm_get_msr_index_list(
     struct kvm_msr_list __user *const user_args)
 {
     struct kvm_msr_list mut_args;
-    uint32_t __user *pmut_mut_user_indices;
     int64_t mut_ret;
-    uint64_t mut_alloc_size;
 
-    if (platform_copy_from_user(&mut_args, user_args, sizeof(mut_args))) {
+    if (platform_copy_from_user(
+            &mut_args,
+            user_args,
+            sizeof(mut_args) - sizeof(mut_args.indices))) {
         bferror("platform_copy_from_user failed");
         return -EINVAL;
     }
 
-    mut_alloc_size = mut_args.nmsrs * sizeof(*mut_args.indices);
-    if (mut_alloc_size > HYPERVISOR_PAGE_SIZE) {
-        bferror("requested nmsrs too big");
+    if (mut_args.nmsrs > MSR_LIST_MAX_INDICES) {
+        bferror("caller nmsrs exceeds MSR_LIST_MAX_INDICES");
         return -ENOMEM;
     }
 
-    pmut_mut_user_indices = mut_args.indices;
-    mut_args.indices = vzalloc(mut_alloc_size);
+    mut_ret = handle_system_kvm_get_msr_index_list(&mut_args);
+    if (SHIM_2BIG == mut_ret) {
+        if (platform_copy_to_user(
+                user_args, &mut_args, sizeof(mut_args.nmsrs))) {
+            bferror("platform_copy_to_user nmsrs failed");
+            return -EINVAL;
+        }
 
-    if (NULL == mut_args.indices) {
-        bferror("vzalloc failed");
-        return -ENOMEM;
+        return -E2BIG;
     }
-
-    mut_ret = -EINVAL;
-    if (handle_system_kvm_get_msr_index_list(&mut_args)) {
+    else if (mut_ret) {
         bferror("handle_system_kvm_get_msr_index_list failed");
-        goto out;
-    }
-
-    if (platform_copy_to_user(user_args, &mut_args, sizeof(mut_args.nmsrs))) {
-        bferror("platform_copy_to_user nmsrs failed");
-        goto out;
+        return -EINVAL;
     }
 
     if (platform_copy_to_user(
-            pmut_mut_user_indices,
-            mut_args.indices,
-            mut_args.nmsrs * sizeof(*mut_args.indices))) {
+            user_args,
+            &mut_args,
+            sizeof(mut_args.nmsrs) +
+                mut_args.nmsrs * sizeof(*mut_args.indices))) {
         bferror("platform_copy_to_user indices failed");
-        goto out;
+        return -EINVAL;
     }
 
-    mut_ret = 0;
-out:
-    if (mut_args.indices)
-        vfree(mut_args.indices);
-
-    return mut_ret;
+    return 0;
 }
 
 static long
@@ -294,10 +287,69 @@ dispatch_system_kvm_get_msrs(struct kvm_msrs *const ioctl_args)
 }
 
 static long
-dispatch_system_kvm_get_supported_cpuid(struct kvm_cpuid2 *const ioctl_args)
+dispatch_system_kvm_get_supported_cpuid(
+    struct kvm_cpuid2 __user *const pmut_user_args)
 {
-    (void)ioctl_args;
-    return -EINVAL;
+    struct kvm_cpuid2 *pmut_mut_args;
+    int64_t mut_ret;
+
+    pmut_mut_args = vzalloc(sizeof(*pmut_mut_args));
+    if (NULL == pmut_mut_args) {
+        bferror("vzalloc failed");
+        return -ENOMEM;
+    }
+
+    mut_ret = -EINVAL;
+    if (platform_copy_from_user(
+            pmut_mut_args,
+            pmut_user_args,
+            sizeof(*pmut_mut_args) - sizeof(pmut_mut_args->entries))) {
+        bferror("platform_copy_from_user failed");
+        goto out_free;
+    }
+
+    mut_ret = -ENOMEM;
+    if (pmut_mut_args->nent > CPUID2_MAX_ENTRIES) {
+        bferror("caller nent exceeds CPUID2_MAX_ENTRIES");
+        goto out_free;
+    }
+
+    mut_ret = handle_system_kvm_get_supported_cpuid(pmut_mut_args);
+    if (SHIM_2BIG == mut_ret) {
+        if (platform_copy_to_user(
+                pmut_user_args, pmut_mut_args, sizeof(pmut_mut_args->nent))) {
+            bferror("platform_copy_to_user nent failed");
+            mut_ret = -EINVAL;
+        }
+        else {
+            mut_ret = -E2BIG;
+        }
+
+        goto out_free;
+    }
+    else if (mut_ret) {
+        bferror("handle_system_kvm_get_msr_index_list failed");
+        goto out_free;
+    }
+
+    mut_ret = -EINVAL;
+    if (platform_copy_to_user(
+            pmut_user_args,
+            pmut_mut_args,
+            sizeof(pmut_mut_args->nent) +
+                pmut_mut_args->nent * sizeof(*pmut_mut_args->entries))) {
+        bferror("platform_copy_to_user failed");
+        goto out_free;
+    }
+
+    mut_ret = 0;
+
+out_free:
+    if (pmut_mut_args) {
+        vfree(pmut_mut_args);
+    }
+
+    return mut_ret;
 }
 
 static long
