@@ -51,17 +51,17 @@ handle_vcpu_kvm_get_msrs(
 {
     int64_t mut_ret = SHIM_FAILURE;
     uint64_t mut_i;
-    struct mv_rdl_t *mut_rdl;
+    struct mv_rdl_t *pmut_rdl;
     platform_expects(MV_INVALID_HANDLE != g_mut_hndl);
     platform_expects(NULL != vcpu);
     platform_expects(NULL != pmut_args);
 
     if (detect_hypervisor()) {
         bferror("The shim is not running in a VM. Did you forget to start MicorV?");
-        return SHIM_FAILURE;
+        goto ret;
     }
 
-    struct mv_rdl_t *const pmut_rdl = (struct mv_rdl_t *)shared_page_for_current_pp();
+    pmut_rdl = (struct mv_rdl_t *)shared_page_for_current_pp();
     platform_expects(NULL != pmut_rdl);
 
     pmut_rdl->num_entries = (uint64_t)pmut_args->nmsrs;

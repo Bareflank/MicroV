@@ -24,6 +24,7 @@
  * SOFTWARE.
  */
 
+#include <debug.h>
 #include <g_mut_shared_pages.h>
 #include <mv_types.h>
 #include <platform.h>
@@ -32,6 +33,8 @@
  * <!-- description -->
  *   @brief Returns the shared page for the current PP. Note that this
  *     cannot be called until shim_init has completed.
+ *     When done using the shared page, the caller must call
+ *     release_shared_page_for_current_pp()
  *
  * <!-- inputs/outputs -->
  *   @return  Returns the shared page for the current PP
@@ -39,7 +42,24 @@
 NODISCARD void *
 shared_page_for_current_pp(void) NOEXCEPT
 {
-    void *const pmut_ptr = g_mut_shared_pages[platform_current_cpu()];
+    void *pmut_ptr;
+
+    platform_irq_disable();
+    bfdebug_d32("shared_page_for_current_pp this cpu ", platform_current_cpu());
+
+    pmut_ptr = g_mut_shared_pages[platform_current_cpu()];
     platform_ensures(((void *)0) != pmut_ptr);
     return pmut_ptr;
+}
+
+/**
+ * <!-- description -->
+ *   @brief Releases the shared page. Note that this
+ *     cannot be called until shim_init has completed.
+ */
+void
+release_shared_page_for_current_pp(void) NOEXCEPT
+{
+    bfdebug_d32("release_shared_page_for_current_pp this cpu ", platform_current_cpu());
+    platform_irq_enable();
 }

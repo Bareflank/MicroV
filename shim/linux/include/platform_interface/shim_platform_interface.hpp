@@ -88,8 +88,14 @@
  * It is just like _IOWR, except it subtracts the size of a pointer
  * from the size of the struct passed.
  */
+
+/** @brief defines the _IOWR_LIST */
 #define _IOWR_LIST(type, nr, size, sub_size)                                                       \
     _IOC(_IOC_READ | _IOC_WRITE, (type), (nr), sizeof(size) - sizeof(sub_size))
+
+/** @brief defines the _IOW_LIST */
+#define _IOW_LIST(type, nr, size, sub_size)                                                       \
+    _IOC(_IOC_WRITE, (type), (nr), sizeof(size) - sizeof(sub_size))
 
 namespace shim
 {
@@ -142,7 +148,8 @@ namespace shim
         SHIMIO.get(), 0x88, struct kvm_msrs, struct kvm_msr_entry[MV_RDL_MAX_ENTRIES.get()]))};
     /// @brief defines KVM's KVM_SET_MSRS IOCTL
     constexpr bsl::safe_umx KVM_SET_MSRS{
-        static_cast<bsl::uintmx>(_IOW(SHIMIO.get(), 0x89, struct kvm_msrs))};
+        static_cast<bsl::uintmx>(_IOW_LIST(SHIMIO.get(), 0x89, struct kvm_msrs, struct kvm_msr_entry[MV_RDL_MAX_ENTRIES.get()]))};
+    
     // /// @brief defines KVM's KVM_SET_CPUID IOCTL
     // constexpr bsl::safe_umx KVM_SET_CPUID{static_cast<bsl::uintmx>(_IOW(SHIMIO.get(), 0x8a, struct kvm_cpuid))};
     // /// @brief defines KVM's KVM_GET_CPUID2 IOCTL

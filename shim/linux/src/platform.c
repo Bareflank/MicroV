@@ -627,3 +627,23 @@ platform_tsc_khz(void) NOEXCEPT
 {
     return (uint64_t)tsc_khz;
 }
+
+/**
+ * <!-- description -->
+ *   @brief Disable IRQs
+ */
+void platform_irq_disable() NOEXCEPT
+{
+    local_irq_disable();
+    bfdebug_d32("-- irq_disable on cpu", platform_current_cpu());
+}
+
+/**
+ * <!-- description -->
+ *   @brief Enable IRQs
+ */
+void platform_irq_enable() NOEXCEPT
+{
+    bfdebug_d32("-- irq_enable on cpu", platform_current_cpu());
+    local_irq_enable();
+}
