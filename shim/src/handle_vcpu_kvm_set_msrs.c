@@ -51,7 +51,7 @@ handle_vcpu_kvm_set_msrs(
 {
     int64_t mut_ret = SHIM_FAILURE;
     uint64_t mut_i;
-    struct mv_rdl_t *pmut_rdl;
+    struct mv_rdl_t *mut_rdl;
     platform_expects(MV_INVALID_HANDLE != g_mut_hndl);
     platform_expects(NULL != vcpu);
     platform_expects(NULL != args);
@@ -61,14 +61,14 @@ handle_vcpu_kvm_set_msrs(
         goto ret;
     }
 
-    pmut_rdl = (struct mv_rdl_t *)shared_page_for_current_pp();
-    platform_expects(NULL != pmut_rdl);
+    mut_rdl = (struct mv_rdl_t *)shared_page_for_current_pp();
+    platform_expects(NULL != mut_rdl);
 
-    pmut_rdl->num_entries = (uint64_t)args->nmsrs;
+    mut_rdl->num_entries = (uint64_t)args->nmsrs;
 
-    for (mut_i = ((uint64_t)0); mut_i < pmut_rdl->num_entries; ++mut_i) {
-        pmut_rdl->entries[mut_i].reg = (uint64_t)args->entries[mut_i].index;
-        pmut_rdl->entries[mut_i].val = args->entries[mut_i].data;
+    for (mut_i = ((uint64_t)0); mut_i < mut_rdl->num_entries; ++mut_i) {
+        mut_rdl->entries[mut_i].reg = (uint64_t)args->entries[mut_i].index;
+        mut_rdl->entries[mut_i].val = args->entries[mut_i].data;
     }
 
     if (mv_vs_op_msr_set_list(g_mut_hndl, vcpu->vsid)) {
