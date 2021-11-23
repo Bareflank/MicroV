@@ -1267,8 +1267,8 @@ dispatch_vcpu_kvm_set_msrs(
     struct shim_vcpu_t const *const vcpu, struct kvm_msrs *const user_args)
 {
 
-    struct kvm_msrs *mut_args;
-    uint64_t const size = sizeof(*mut_args);
+    struct kvm_msrs mut_args;
+    uint64_t const size = sizeof(mut_args);
     uint32_t mut_nmsrs = 0;
 
     mut_args = platform_alloc(size);
@@ -1295,7 +1295,7 @@ dispatch_vcpu_kvm_set_msrs(
         goto OUT_FREE;
     }
 
-    if (handle_vcpu_kvm_set_msrs(vcpu, &mut_args)) {
+    if (handle_vcpu_kvm_set_msrs(vcpu, mut_args)) {
         bferror("handle_vcpu_kvm_set_msrs failed");
         mut_nmsrs = -EINVAL;
         goto OUT_FREE;
