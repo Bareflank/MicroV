@@ -29,6 +29,7 @@
 
 #include <kvm_msrs.h>
 #include <mv_types.h>
+#include <shim_vcpu_t.h>
 
 #ifdef __cplusplus
 extern "C"
@@ -40,10 +41,12 @@ extern "C"
      *   @brief Handles the execution of kvm_set_msrs.
      *
      * <!-- inputs/outputs -->
-     *   @param pmut_ioctl_args the arguments provided by userspace
+     *   @param vcpu arguments received from private data 
+     *   @param args the arguments provided by userspace
      *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
      */
-    NODISCARD int64_t handle_vcpu_kvm_set_msrs(struct kvm_msrs *const pmut_ioctl_args) NOEXCEPT;
+    NODISCARD int64_t handle_vcpu_kvm_set_msrs(
+        struct shim_vcpu_t const *const vcpu, struct kvm_msrs const *const args) NOEXCEPT;
 
 #ifdef __cplusplus
 }
