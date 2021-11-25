@@ -30,6 +30,10 @@
 #include <mv_rdl_entry_t.h>    // IWYU pragma: export
 #include <stdint.h>
 
+#ifdef __clang__
+#pragma clang diagnostic ignored "-Wold-style-cast"
+#endif
+
 #ifdef __cplusplus
 extern "C"
 {

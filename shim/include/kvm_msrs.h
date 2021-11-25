@@ -27,7 +27,13 @@
 #ifndef KVM_MSRS_H
 #define KVM_MSRS_H
 
+#include <kvm_msr_entry.h>
+#include <mv_rdl_t.h>
 #include <stdint.h>
+
+#ifdef __clang__
+#pragma clang diagnostic ignored "-Wold-style-cast"
+#endif
 
 #ifdef __cplusplus
 extern "C"
@@ -44,8 +50,12 @@ extern "C"
      */
     struct kvm_msrs
     {
-        /** @brief replace me with contents from KVM API */
-        int32_t dummy;
+        /** @brief number of msrs in entries */
+        uint32_t nmsrs;
+        /** @brief number of pad in entries */
+        uint32_t pad;
+        /** @brief defines array of entries*/
+        struct kvm_msr_entry entries[MV_RDL_MAX_ENTRIES];
     };
 
 #pragma pack(pop)
