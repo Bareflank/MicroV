@@ -24,29 +24,35 @@
  * SOFTWARE.
  */
 
-#ifndef HANDLE_VCPU_KVM_GET_MSRS_H
-#define HANDLE_VCPU_KVM_GET_MSRS_H
+#ifndef KVM_MSR_ENTRY_H
+#define KVM_MSR_ENTRY_H
 
-#include <kvm_msrs.h>
-#include <mv_types.h>
-#include <shim_vcpu_t.h>
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C"
 {
 #endif
 
+#pragma pack(push, 1)
+
     /**
-     * <!-- description -->
-     *   @brief Handles the execution of kvm_get_msrs.
+     * @struct kvm_msr_entry
      *
-     * <!-- inputs/outputs -->
-     *   @param vcpu to get vsid to pass to hypercall
-     *   @param pmut_args the arguments provided by userspace
-     *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
+     * <!-- description -->
+     *   @brief see /include/uapi/linux/kvm.h in Linux for more details.
      */
-    NODISCARD int64_t handle_vcpu_kvm_get_msrs(
-        struct shim_vcpu_t const *const vcpu, struct kvm_msrs *const pmut_args) NOEXCEPT;
+    struct kvm_msr_entry
+    {
+        /** @brief defines index for msr entries */
+        uint32_t index;
+        /** @brief defines reserved for msr entries */
+        uint32_t reserved;
+        /** @brief defines data for msr entries*/
+        uint64_t data;
+    };
+
+#pragma pack(pop)
 
 #ifdef __cplusplus
 }
