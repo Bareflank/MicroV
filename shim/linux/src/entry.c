@@ -33,15 +33,18 @@
 #include <handle_system_kvm_get_api_version.h>
 #include <handle_system_kvm_get_msr_index_list.h>
 #include <handle_system_kvm_get_supported_cpuid.h>
+#include <handle_system_kvm_get_msrs.h>
 #include <handle_system_kvm_get_vcpu_mmap_size.h>
 #include <handle_vcpu_kvm_get_fpu.h>
 #include <handle_vcpu_kvm_get_mp_state.h>
+#include <handle_vcpu_kvm_get_msrs.h>
 #include <handle_vcpu_kvm_get_regs.h>
 #include <handle_vcpu_kvm_get_sregs.h>
 #include <handle_vcpu_kvm_get_tsc_khz.h>
 #include <handle_vcpu_kvm_run.h>
 #include <handle_vcpu_kvm_set_fpu.h>
 #include <handle_vcpu_kvm_set_mp_state.h>
+#include <handle_vcpu_kvm_set_msrs.h>
 #include <handle_vcpu_kvm_set_regs.h>
 #include <handle_vcpu_kvm_set_sregs.h>
 #include <handle_vm_kvm_check_extension.h>
@@ -1003,10 +1006,23 @@ dispatch_vcpu_kvm_get_mp_state(
 }
 
 static long
-dispatch_vcpu_kvm_get_msrs(struct kvm_msrs *const ioctl_args)
+dispatch_vcpu_kvm_get_msrs(
+    struct shim_vcpu_t const *const vcpu, struct kvm_msrs *const user_args)
 {
-    (void)ioctl_args;
-    return -EINVAL;
+    struct kvm_msrs mut_args;
+    uint64_t const size = sizeof(mut_args);
+
+    if (handle_vcpu_kvm_get_msrs(vcpu, &mut_args)) {
+        bferror("handle_vcpu_kvm_get_msrs failed");
+        return -EINVAL;
+    }
+
+    if (platform_copy_to_user(user_args, &mut_args, size)) {
+        bferror("platform_copy_to_user failed");
+        return -EINVAL;
+    }
+
+    return (long)mut_args.nmsrs;
 }
 
 static long
@@ -1207,10 +1223,29 @@ dispatch_vcpu_kvm_set_mp_state(
 }
 
 static long
-dispatch_vcpu_kvm_set_msrs(struct kvm_msrs *const ioctl_args)
+dispatch_vcpu_kvm_set_msrs(
+    struct shim_vcpu_t const *const vcpu, struct kvm_msrs *const user_args)
 {
-    (void)ioctl_args;
-    return -EINVAL;
+
+    struct kvm_msrs mut_args;
+    uint64_t const size = sizeof(mut_args);
+
+    if (NULL == user_args) {
+        bferror("user_args are null");
+        return -EINVAL;
+    }
+
+    if (platform_copy_from_user(&mut_args, user_args, size)) {
+        bferror("platform_copy_from_user failed");
+        return -EINVAL;
+    }
+
+    if (handle_vcpu_kvm_set_msrs(vcpu, &mut_args)) {
+        bferror("handle_vcpu_kvm_set_msrs failed");
+        return -EINVAL;
+    }
+
+    return 0;
 }
 
 static long
@@ -1366,7 +1401,8 @@ dev_unlocked_ioctl_vcpu(
         }
 
         case KVM_GET_MSRS: {
-            return dispatch_vcpu_kvm_get_msrs((struct kvm_msrs *)ioctl_args);
+            return dispatch_vcpu_kvm_get_msrs(
+                pmut_mut_vcpu, (struct kvm_msrs *)ioctl_args);
         }
 
         case KVM_GET_NESTED_STATE: {
@@ -1442,7 +1478,6 @@ dev_unlocked_ioctl_vcpu(
         }
 
         case KVM_SET_FPU: {
-            bferror("in KVM_set_fpu");
             return dispatch_vcpu_kvm_set_fpu(
                 pmut_mut_vcpu, (struct kvm_fpu *)ioctl_args);
         }
@@ -1463,7 +1498,8 @@ dev_unlocked_ioctl_vcpu(
         }
 
         case KVM_SET_MSRS: {
-            return dispatch_vcpu_kvm_set_msrs((struct kvm_msrs *)ioctl_args);
+            return dispatch_vcpu_kvm_set_msrs(
+                pmut_mut_vcpu, (struct kvm_msrs *)ioctl_args);
         }
 
         case KVM_SET_NESTED_STATE: {
