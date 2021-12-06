@@ -268,11 +268,11 @@ jobs:
       with:
         name: microv_drivers_nocerts
         path: |
-          microv/drivers/builder/windows/builder/x64/*
-          microv/drivers/visr/windows/visr/x64/*
-          microv/drivers/winpv/xenbus/xenbus/x64/*
-          microv/drivers/winpv/xennet/xennet/x64/*
-          microv/drivers/winpv/xenvif/xenvif/x64/*
-          microv/drivers/winpv/xeniface/xeniface/x64/*
+          microv/drivers/builder/windows/vs2019/Windows10Release/x64/package/*
+          microv/drivers/visr/windows/vs2019/Windows10Release/x64/package/*
+          microv/drivers/winpv/xenbus/vs2019/Windows10Release/x64/package/*
+          microv/drivers/winpv/xennet/vs2019/Windows10Release/x64/package/*
+          microv/drivers/winpv/xenvif/vs2019/Windows10Release/x64/package/*
+          microv/drivers/winpv/xeniface/vs2019/Windows10Release/x64/package/*
           microv/drivers/winpv/xeniface/include/xencontrol.h
           microv/drivers/winpv/xeniface/include/xeniface_ioctls.h
