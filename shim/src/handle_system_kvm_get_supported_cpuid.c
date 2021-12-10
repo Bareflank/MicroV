@@ -58,7 +58,7 @@ handle_system_kvm_get_supported_cpuid(struct kvm_cpuid2 *const pmut_ioctl_args) 
     uint32_t mut_xfun_max;
     uint64_t mut_i;
     struct mv_cdl_entry_t mut_cdl_entry;
-    struct mv_cdl_t *pmut_cdl;
+    struct mv_cdl_t *pmut_mut_cdl;
 
     platform_expects(NULL != pmut_ioctl_args);
 
@@ -67,13 +67,13 @@ handle_system_kvm_get_supported_cpuid(struct kvm_cpuid2 *const pmut_ioctl_args) 
         goto ret;
     }
 
-    pmut_cdl = (struct mv_cdl_t *)shared_page_for_current_pp();
-    platform_expects(NULL != pmut_cdl);
+    pmut_mut_cdl = (struct mv_cdl_t *)shared_page_for_current_pp();
+    platform_expects(NULL != pmut_mut_cdl);
 
     /* Start by getting the largest function and largest extended function */
-    pmut_cdl->num_entries = ((uint64_t)2);
-    pmut_cdl->entries[0].fun = mut_fun;
-    pmut_cdl->entries[1].fun = mut_xfun;
+    pmut_mut_cdl->num_entries = ((uint64_t)2);
+    pmut_mut_cdl->entries[0].fun = mut_fun;
+    pmut_mut_cdl->entries[1].fun = mut_xfun;
 
     platform_expects(MV_INVALID_HANDLE != g_mut_hndl);
     if (mv_pp_op_cpuid_get_supported_list(g_mut_hndl)) {
@@ -81,36 +81,36 @@ handle_system_kvm_get_supported_cpuid(struct kvm_cpuid2 *const pmut_ioctl_args) 
         goto release_shared_page;
     }
 
-    if (pmut_cdl->num_entries >= MV_CDL_MAX_ENTRIES) {
+    if (pmut_mut_cdl->num_entries >= MV_CDL_MAX_ENTRIES) {
         bferror("num_entries exceeds MV_CDL_MAX_ENTRIES");
         return SHIM_FAILURE;
     }
 
     /* Calculate the new num_entries */
-    mut_fun_max = pmut_cdl->entries[0].eax;
-    mut_xfun_max = pmut_cdl->entries[1].eax;
-    pmut_cdl->num_entries = ((uint64_t)(mut_fun_max + mut_xfun_max - init_xfun));
+    mut_fun_max = pmut_mut_cdl->entries[0].eax;
+    mut_xfun_max = pmut_mut_cdl->entries[1].eax;
+    pmut_mut_cdl->num_entries = ((uint64_t)(mut_fun_max + mut_xfun_max - init_xfun));
 
-    if (pmut_cdl->num_entries >= MV_CDL_MAX_ENTRIES) {
+    if (pmut_mut_cdl->num_entries >= MV_CDL_MAX_ENTRIES) {
         bferror("calculated num_entries exceeds MV_CDL_MAX_ENTRIES");
         goto release_shared_page;
     }
 
-    if (pmut_cdl->num_entries > ((uint64_t)pmut_ioctl_args->nent)) {
+    if (pmut_mut_cdl->num_entries > ((uint64_t)pmut_ioctl_args->nent)) {
         bfdebug("CDL entries is larger than kvm_cpuid2 entries");
-        pmut_ioctl_args->nent = ((uint32_t)pmut_cdl->num_entries);
+        pmut_ioctl_args->nent = ((uint32_t)pmut_mut_cdl->num_entries);
         mut_ret = SHIM_2BIG;
         goto release_shared_page;
     }
 
     mut_i = ((uint64_t)0);
     for (; mut_fun < mut_fun_max; ++mut_fun) {
-        pmut_cdl->entries[mut_i].fun = mut_fun;
+        pmut_mut_cdl->entries[mut_i].fun = mut_fun;
         ++mut_i;
     }
 
     for (; mut_xfun < mut_xfun_max; ++mut_xfun) {
-        pmut_cdl->entries[mut_i].fun = mut_xfun;
+        pmut_mut_cdl->entries[mut_i].fun = mut_xfun;
         ++mut_i;
     }
 
@@ -121,8 +121,8 @@ handle_system_kvm_get_supported_cpuid(struct kvm_cpuid2 *const pmut_ioctl_args) 
         goto release_shared_page;
     }
 
-    for (mut_i = ((uint64_t)0); mut_i < ((uint64_t)pmut_cdl->num_entries); ++mut_i) {
-        mut_cdl_entry = pmut_cdl->entries[mut_i];
+    for (mut_i = ((uint64_t)0); mut_i < ((uint64_t)pmut_mut_cdl->num_entries); ++mut_i) {
+        mut_cdl_entry = pmut_mut_cdl->entries[mut_i];
         pmut_ioctl_args->entries[mut_i].function = mut_cdl_entry.fun;
         pmut_ioctl_args->entries[mut_i].index = mut_cdl_entry.idx;
         pmut_ioctl_args->entries[mut_i].flags = mut_cdl_entry.flags;
@@ -131,7 +131,7 @@ handle_system_kvm_get_supported_cpuid(struct kvm_cpuid2 *const pmut_ioctl_args) 
         pmut_ioctl_args->entries[mut_i].ecx = mut_cdl_entry.ecx;
         pmut_ioctl_args->entries[mut_i].edx = mut_cdl_entry.edx;
     }
-    pmut_ioctl_args->nent = ((uint32_t)pmut_cdl->num_entries);
+    pmut_ioctl_args->nent = ((uint32_t)pmut_mut_cdl->num_entries);
 
     mut_ret = SHIM_SUCCESS;
 

@@ -20,25 +20,31 @@
 // SOFTWARE.
 
 #pragma GCC diagnostic ignored "-Wunused-result"
-
-#include <stdio.h>
+#include <cstdio>
+#include <ctime>
+#include <iostream>
 #include <sys/mount.h>
-#include <time.h>
 #include <unistd.h>
 
-int
-main(void)
+/**
+ * <!-- description -->
+ *   @brief main function
+ *
+ * <!-- inputs/outputs -->
+ *   @return //none
+ */
+[[nodiscard]] auto
+main() noexcept -> int32_t
 {
-    mount("proc", "/proc", "proc", 0, "");
+    mount("proc", "/proc", "proc", __u_long(0), "");
+    freopen("/dev/ttyprintk", "w", stdout);    //NOLINT
+    freopen("/dev/ttyprintk", "w", stderr);    //NOLINT
 
-    freopen("/dev/ttyprintk", "w", stdout);
-    freopen("/dev/ttyprintk", "w", stderr);
+    while (true) {
+        auto rawtime = time(nullptr);           //NOLINT
+        auto *loctime = localtime(&rawtime);    //NOLINT
 
-    while (1) {
-        auto rawtime = time(nullptr);
-        auto loctime = localtime(&rawtime);
-
-        printf("hello from init: %s", asctime(loctime));
-        sleep(1);
+        std::cout << "hello from init: " << asctime(loctime);
+        sleep(uint32_t(1));
     }
 }

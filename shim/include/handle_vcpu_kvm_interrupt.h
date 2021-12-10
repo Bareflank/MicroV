@@ -41,6 +41,7 @@ extern "C"
      *   @brief Handles the execution of kvm_interrupt.
      *
      * <!-- inputs/outputs -->
+     *   @param vcpu arguments received from private data
      *   @param pmut_ioctl_args the arguments provided by userspace
      *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
      */

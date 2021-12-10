@@ -42,14 +42,14 @@
 NODISCARD void *
 shared_page_for_current_pp(void) NOEXCEPT
 {
-    void *pmut_ptr;
+    void *pmut_mut_ptr;
 
     platform_irq_disable();
 
-    pmut_ptr = g_mut_shared_pages[platform_current_cpu()];
-    platform_ensures(((void *)0) != pmut_ptr);
+    pmut_mut_ptr = g_mut_shared_pages[platform_current_cpu()];
+    platform_ensures(((void *)0) != pmut_mut_ptr);
 
-    return pmut_ptr;
+    return pmut_mut_ptr;
 }
 
 /**

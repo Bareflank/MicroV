@@ -93,24 +93,26 @@ kvm_to_mv_page_flags(uint32_t const flags) NOEXCEPT
     return mut_flags;
 }
 
+/// <!-- description -->
+///   @brief set_user_memory_region_is_valid for this application.
+///
+/// <!-- inputs/outputs -->
+///   @param args struct kvm_userspace_memory_region to use
+///   @param pmut_vm struct shim_vm_t to use
+///   @return bsl::exit_success on success, bsl::exit_failure otherwise.
+///
 NODISCARD int64_t
 set_user_memory_region_is_valid(
     struct kvm_userspace_memory_region const *const args, struct shim_vm_t *const pmut_vm) NOEXCEPT
 {
-    int64_t mut_size;
     uint32_t mut_slot_id;
     uint32_t mut_slot_as;
-    uint64_t mut_dst;
-    uint64_t mut_src;
 
     uint64_t const high_canonical_boundary = ((uint64_t)0xFFFF800000000000ULL);
     uint64_t const low_canonical_boundary = ((uint64_t)0x00007FFFFFFFFFFFULL);
 
     mut_slot_id = get_slot_id(args->slot);
     mut_slot_as = get_slot_as(args->slot);
-    mut_dst = args->guest_phys_addr;
-    mut_src = args->userspace_addr;
-    mut_size = (int64_t)args->memory_size;
     (void)pmut_vm;
 
     if (args->memory_size > (uint64_t)INT64_MAX) {
@@ -177,9 +179,17 @@ set_user_memory_region_is_valid(
         return SHIM_FAILURE;
     }
 
-    return 0;
+    return (int64_t)0;
 }
 
+/// <!-- description -->
+///   @brief add_memory_region for this application.
+///
+/// <!-- inputs/outputs -->
+///   @param args struct kvm_userspace_memory_region to use
+///   @param pmut_vm struct shim_vm_t to use
+///   @return bsl::exit_success on success, bsl::exit_failure otherwise.
+///
 NODISCARD int64_t
 add_memory_region(
     struct kvm_userspace_memory_region const *const args, struct shim_vm_t *const pmut_vm) NOEXCEPT
@@ -191,7 +201,6 @@ add_memory_region(
     int64_t mut_size;
 
     uint32_t mut_slot_id;
-    uint32_t mut_slot_as;
     uint64_t mut_dst;
     uint64_t mut_src;
     uint64_t const flags = kvm_to_mv_page_flags(args->flags);
@@ -200,7 +209,6 @@ add_memory_region(
     platform_expects(NULL != pmut_vm);
 
     mut_slot_id = get_slot_id(args->slot);
-    mut_slot_as = get_slot_as(args->slot);
     mut_dst = args->guest_phys_addr;
     mut_src = args->userspace_addr;
     mut_size = (int64_t)args->memory_size;
@@ -332,6 +340,14 @@ ret:
     return mut_ret;
 }
 
+/// <!-- description -->
+///   @brief remove_memory_region for this application.
+///
+/// <!-- inputs/outputs -->
+///   @param args struct kvm_userspace_memory_region to use
+///   @param pmut_vm struct shim_vm_t to use
+///   @return bsl::exit_success on success, bsl::exit_failure otherwise.
+///
 NODISCARD int64_t
 remove_memory_region(
     struct kvm_userspace_memory_region const *const args, struct shim_vm_t *const pmut_vm) NOEXCEPT
@@ -344,7 +360,6 @@ remove_memory_region(
     int64_t mut_size;
 
     uint32_t mut_slot_id;
-    uint32_t mut_slot_as;
     uint64_t mut_dst;
     uint64_t mut_src;
 
@@ -355,7 +370,6 @@ remove_memory_region(
     platform_expects(NULL != pmut_mut_mdl);
 
     mut_slot_id = get_slot_id(args->slot);
-    mut_slot_as = get_slot_as(args->slot);
     mut_dst = pmut_vm->slots[mut_slot_id].guest_phys_addr;
     mut_src = pmut_vm->slots[mut_slot_id].userspace_addr;
     mut_size = (int64_t)pmut_vm->slots[mut_slot_id].memory_size;
@@ -395,7 +409,7 @@ remove_memory_region(
         mv_touch();
     }
 
-    mut_ret = SHIM_SUCCESS;
+    mut_ret = (int64_t)SHIM_SUCCESS;
 
 release_shared_page:
     release_shared_page_for_current_pp();
@@ -403,11 +417,19 @@ release_shared_page:
     platform_expects(
         SHIM_SUCCESS ==
         platform_munlock((void *)mut_src, (uint64_t)mut_size, pmut_vm->os_info[mut_slot_id]));
-    pmut_vm->slots[mut_slot_id].memory_size = 0;
+    pmut_vm->slots[mut_slot_id].memory_size = (uint64_t)0;
 
     return mut_ret;
 }
 
+/// <!-- description -->
+///   @brief modify_memory_region for this application.
+///
+/// <!-- inputs/outputs -->
+///   @param args struct kvm_userspace_memory_region to use
+///   @param pmut_vm struct shim_vm_t to use
+///   @return bsl::exit_success on success, bsl::exit_failure otherwise.
+///
 NODISCARD int64_t
 modify_memory_region(
     struct kvm_userspace_memory_region const *const args, struct shim_vm_t *const pmut_vm) NOEXCEPT
@@ -466,12 +488,7 @@ handle_vm_kvm_set_user_memory_region(
     struct kvm_userspace_memory_region const *const args, struct shim_vm_t *const pmut_vm) NOEXCEPT
 {
     int64_t mut_rc;
-    int64_t mut_size;
-
     uint32_t mut_slot_id;
-    uint32_t mut_slot_as;
-    uint64_t mut_dst;
-    uint64_t mut_src;
 
     platform_expects(NULL != args);
     platform_expects(NULL != pmut_vm);
@@ -482,10 +499,6 @@ handle_vm_kvm_set_user_memory_region(
     }
 
     mut_slot_id = get_slot_id(args->slot);
-    mut_slot_as = get_slot_as(args->slot);
-    mut_dst = args->guest_phys_addr;
-    mut_src = args->userspace_addr;
-    mut_size = (int64_t)args->memory_size;
 
     if (SHIM_FAILURE == set_user_memory_region_is_valid(args, pmut_vm)) {
         bferror("invalid set_user_memory_region request");

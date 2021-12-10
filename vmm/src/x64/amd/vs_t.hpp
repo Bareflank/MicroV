@@ -2188,17 +2188,17 @@ namespace microv
             bsl::expects(mut_rdl.num_entries <= mut_rdl.entries.size());
 
             for (bsl::safe_idx mut_i{}; mut_i < mut_rdl.num_entries; ++mut_i) {
-                auto mut_ent{mut_rdl.entries.at_if(mut_i)};
-                auto const msr{bsl::to_u64(mut_ent->reg)};
+                auto *pmut_mut_ent{mut_rdl.entries.at_if(mut_i)};
+                auto const msr{bsl::to_u64(pmut_mut_ent->reg)};
                 auto const val{this->msr_get(sys, msr)};
 
                 if (bsl::unlikely(val.is_invalid())) {
                     constexpr auto upper_one_bit{0x80000000_u64};
-                    mut_ent->reg = (msr | upper_one_bit).get();
-                    mut_ent->val = bsl::safe_u64::magic_0().get();
+                    pmut_mut_ent->reg = (msr | upper_one_bit).get();
+                    pmut_mut_ent->val = bsl::safe_u64::magic_0().get();
                 }
                 else {
-                    mut_ent->val = val.get();
+                    pmut_mut_ent->val = val.get();
                 }
             }
 
@@ -2515,6 +2515,9 @@ namespace microv
                 constexpr auto vint_a_idx{syscall::bf_reg_t::bf_reg_t_virtual_interrupt_a};
                 bsl::expects(mut_sys.bf_vs_op_write(this->id(), vint_a_idx, {}));
             }
+            else {
+                bsl::touch();
+            }
 
             constexpr auto valid{0x80000000_u64};
             return mut_sys.bf_vs_op_write(this->id(), idx, mut_vector | valid);
@@ -2538,16 +2541,16 @@ namespace microv
         ///   @brief Sets the value of the clock
         ///
         /// <!-- inputs/outputs -->
-        ///   @param mut_sys the bf_syscall_t to use
+        ///   @param m_mut_sys the bf_syscall_t to use
         ///   @return Returns bsl::errc_success on success, bsl::errc_failure
         ///     and friends otherwise
         ///
         [[nodiscard]] constexpr auto
-        clock_get(const syscall::bf_syscall_t &mut_sys) const noexcept -> bsl::safe_u64
+        clock_get(syscall::bf_syscall_t const &m_mut_sys) const noexcept -> bsl::safe_u64
         {
             bsl::expects(allocated_status_t::allocated == m_allocated);
             bsl::expects(running_status_t::running != m_status);
-            bsl::expects(mut_sys.bf_tls_ppid() == this->assigned_pp());
+            bsl::expects(m_mut_sys.bf_tls_ppid() == this->assigned_pp());
 
             return bsl::safe_u64{m_clock};
         }

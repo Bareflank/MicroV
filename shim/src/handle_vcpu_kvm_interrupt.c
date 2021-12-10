@@ -38,6 +38,7 @@
  *   @brief Handles the execution of kvm_interrupt.
  *
  * <!-- inputs/outputs -->
+ *   @param vcpu arguments received from private data
  *   @param pmut_ioctl_args the arguments provided by userspace
  *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
  */
@@ -45,7 +46,7 @@ NODISCARD int64_t
 handle_vcpu_kvm_interrupt(
     struct shim_vcpu_t const *const vcpu, struct kvm_interrupt *const pmut_ioctl_args) NOEXCEPT
 {
-    const uint32_t max_irqs = 256;
+    uint32_t const max_irqs = (uint32_t)256;
 
     if (detect_hypervisor()) {
         bferror("The shim is not running in a VM. Did you forget to start MicroV?");
@@ -59,7 +60,7 @@ handle_vcpu_kvm_interrupt(
         return SHIM_FAILURE;
     }
 
-    if (mv_vs_op_queue_interrupt(g_mut_hndl, vcpu->vsid, pmut_ioctl_args->irq)) {
+    if (mv_vs_op_queue_interrupt(g_mut_hndl, vcpu->vsid, (uint64_t)pmut_ioctl_args->irq)) {
         return SHIM_FAILURE;
     }
 

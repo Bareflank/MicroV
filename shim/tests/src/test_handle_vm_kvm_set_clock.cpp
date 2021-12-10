@@ -48,7 +48,8 @@ namespace shim
                 kvm_clock_data mut_args{};
                 bsl::ut_when{} = [&]() noexcept {
                     bsl::ut_then{} = [&]() noexcept {
-                        bsl::ut_check(SHIM_SUCCESS == handle_vm_kvm_set_clock(0, &mut_args));
+                        bsl::ut_check(
+                            SHIM_SUCCESS == handle_vm_kvm_set_clock((uint16_t)0, &mut_args));
                     };
                 };
             };

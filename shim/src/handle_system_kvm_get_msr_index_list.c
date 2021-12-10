@@ -51,7 +51,7 @@ handle_system_kvm_get_msr_index_list(struct kvm_msr_list *const pmut_ioctl_args)
     int64_t mut_ret = SHIM_FAILURE;
     int64_t mut_i;
     uint32_t mut_nmsrs = ((uint32_t)0);
-    struct mv_rdl_t *pmut_rdl;
+    struct mv_rdl_t *pmut_mut_rdl;
 
     if (detect_hypervisor()) {
         bferror("The shim is not running in a VM. Did you forget to start MicroV?");
@@ -60,40 +60,45 @@ handle_system_kvm_get_msr_index_list(struct kvm_msr_list *const pmut_ioctl_args)
 
     platform_expects(MV_INVALID_HANDLE != g_mut_hndl);
 
-    pmut_rdl = (struct mv_rdl_t *)shared_page_for_current_pp();
-    platform_expects(NULL != pmut_rdl);
+    pmut_mut_rdl = (struct mv_rdl_t *)shared_page_for_current_pp();
+    platform_expects(NULL != pmut_mut_rdl);
 
-    pmut_rdl->reg1 = ((uint64_t)0);
+    pmut_mut_rdl->reg1 = ((uint64_t)0);
 
     do {
-        pmut_rdl->reg0 = MV_RDL_FLAG_ALL;
-        pmut_rdl->num_entries = ((uint64_t)0);
-        pmut_rdl->reg1 = mut_nmsrs;
+        pmut_mut_rdl->reg0 = MV_RDL_FLAG_ALL;
+        pmut_mut_rdl->num_entries = ((uint64_t)0);
+        pmut_mut_rdl->reg1 = (uint64_t)mut_nmsrs;
 
         if (mv_pp_op_msr_get_supported_list(g_mut_hndl)) {
             bferror("mv_pp_op_msr_get_supported_list failed");
             goto release_shared_page;
         }
 
-        if (pmut_rdl->num_entries >= MV_RDL_MAX_ENTRIES) {
+        if (pmut_mut_rdl->num_entries >= MV_RDL_MAX_ENTRIES) {
             bferror("the RDL's num_entries is no longer valid");
             goto release_shared_page;
         }
 
-        if (mut_nmsrs == 0U) {
+        if (0U == mut_nmsrs) {
             /* Check if the provided buffer is large enough to fit all MSRs */
-            if (pmut_rdl->num_entries + pmut_rdl->reg1 > pmut_ioctl_args->nmsrs) {
-                mut_nmsrs = (uint32_t)(pmut_rdl->num_entries + pmut_rdl->reg1);
+            if (pmut_mut_rdl->num_entries + pmut_mut_rdl->reg1 >
+                (unsigned long)pmut_ioctl_args->nmsrs) {
+                mut_nmsrs = (uint32_t)(pmut_mut_rdl->num_entries + pmut_mut_rdl->reg1);
                 mut_ret = SHIM_2BIG;
                 goto release_shared_page;
             }
+            mv_touch();
+        }
+        else {
+            mv_touch();
         }
 
-        for (mut_i = ((int64_t)0); mut_i < ((int64_t)pmut_rdl->num_entries); ++mut_i) {
-            pmut_ioctl_args->indices[mut_nmsrs] = ((uint32_t)pmut_rdl->entries[mut_i].reg);
+        for (mut_i = ((int64_t)0); mut_i < ((int64_t)pmut_mut_rdl->num_entries); ++mut_i) {
+            pmut_ioctl_args->indices[mut_nmsrs] = ((uint32_t)pmut_mut_rdl->entries[mut_i].reg);
             ++mut_nmsrs;
         }
-    } while (((uint64_t)0) != pmut_rdl->reg1);
+    } while (((uint64_t)0) != pmut_mut_rdl->reg1);
 
     mut_ret = SHIM_SUCCESS;
 

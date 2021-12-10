@@ -51,7 +51,7 @@ handle_vcpu_kvm_get_msrs(
 {
     int64_t mut_ret = SHIM_FAILURE;
     uint64_t mut_i;
-    struct mv_rdl_t *mut_rdl;
+    struct mv_rdl_t *pmut_mut_rdl;
 
     platform_expects(MV_INVALID_HANDLE != g_mut_hndl);
     platform_expects(NULL != vcpu);
@@ -62,16 +62,16 @@ handle_vcpu_kvm_get_msrs(
         goto ret;
     }
 
-    mut_rdl = (struct mv_rdl_t *)shared_page_for_current_pp();
-    platform_expects(NULL != mut_rdl);
+    pmut_mut_rdl = (struct mv_rdl_t *)shared_page_for_current_pp();
+    platform_expects(NULL != pmut_mut_rdl);
 
-    mut_rdl->reg0 = (uint64_t)0;
-    mut_rdl->reg1 = (uint64_t)0;
+    pmut_mut_rdl->reg0 = (uint64_t)0;
+    pmut_mut_rdl->reg1 = (uint64_t)0;
 
-    mut_rdl->num_entries = (uint64_t)pmut_args->nmsrs;
+    pmut_mut_rdl->num_entries = (uint64_t)pmut_args->nmsrs;
 
-    for (mut_i = ((uint64_t)0); mut_i < mut_rdl->num_entries; ++mut_i) {
-        mut_rdl->entries[mut_i].reg = (uint64_t)pmut_args->entries[mut_i].index;
+    for (mut_i = ((uint64_t)0); mut_i < pmut_mut_rdl->num_entries; ++mut_i) {
+        pmut_mut_rdl->entries[mut_i].reg = (uint64_t)pmut_args->entries[mut_i].index;
     }
 
     if (mv_vs_op_msr_get_list(g_mut_hndl, vcpu->vsid)) {
@@ -79,13 +79,13 @@ handle_vcpu_kvm_get_msrs(
         goto release_shared_page;
     }
 
-    if (mut_rdl->num_entries != (uint64_t)pmut_args->nmsrs) {
+    if (pmut_mut_rdl->num_entries != (uint64_t)pmut_args->nmsrs) {
         bferror("The RDL's num_entries is no longer valid");
         goto release_shared_page;
     }
 
-    for (mut_i = ((uint64_t)0); mut_i < mut_rdl->num_entries; ++mut_i) {
-        pmut_args->entries[mut_i].data = mut_rdl->entries[mut_i].val;
+    for (mut_i = ((uint64_t)0); mut_i < pmut_mut_rdl->num_entries; ++mut_i) {
+        pmut_args->entries[mut_i].data = pmut_mut_rdl->entries[mut_i].val;
     }
 
     mut_ret = SHIM_SUCCESS;

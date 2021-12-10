@@ -43,6 +43,14 @@
 
 namespace microv
 {
+    /// <!-- description -->
+    ///   @brief Helper function for vcpu register.
+    ///
+    /// <!-- inputs/outputs -->
+    ///   @param mut_sys the bf_syscall_t to use
+    ///   @param reg_idx the safe_u64 to use
+    ///   @return Returns bsl::errc_success on success, bsl::errc_failure
+    ///
     [[nodiscard]] constexpr auto
     helper_vcpu_reg(syscall::bf_syscall_t &mut_sys, bsl::safe_u64 const &reg_idx) noexcept
         -> bsl::safe_u64
