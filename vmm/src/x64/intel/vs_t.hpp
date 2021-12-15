@@ -530,6 +530,7 @@ namespace microv
             bsl::expects(vsid != syscall::BF_INVALID_ID);
             bsl::expects(allocated_status_t::deallocated == m_allocated);
             bsl::expects(running_status_t::initial == m_status);
+            bsl::expects(m_interrupt_queue.empty());
 
             bsl::expects(vmid.is_valid_and_checked());
             bsl::expects(vmid != syscall::BF_INVALID_ID);
@@ -709,6 +710,7 @@ namespace microv
             m_assigned_vmid = {};
             m_allocated = allocated_status_t::deallocated;
             m_status = running_status_t::initial;
+            m_interrupt_queue = {};
 
             if (!sys.is_vs_a_root_vs(this->id())) {
                 bsl::debug<bsl::V>()                                   // --
