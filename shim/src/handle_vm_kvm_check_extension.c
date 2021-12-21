@@ -28,7 +28,6 @@
 #include <kvm_constants.h>
 #include <mv_constants.h>
 #include <mv_types.h>
-#include <mv_hypercall.h>
 #include <platform.h>
 
 /**
