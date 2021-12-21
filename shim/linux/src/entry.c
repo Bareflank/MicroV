@@ -37,6 +37,7 @@
 #include <handle_system_kvm_get_vcpu_mmap_size.h>
 #include <handle_vcpu_kvm_get_fpu.h>
 #include <handle_vcpu_kvm_get_mp_state.h>
+#include <handle_vm_kvm_create_pit2.h>
 #include <handle_vcpu_kvm_get_msrs.h>
 #include <handle_vcpu_kvm_get_regs.h>
 #include <handle_vcpu_kvm_get_sregs.h>
@@ -512,10 +513,15 @@ dispatch_kvm_create_irqchip(void)
 }
 
 static long
-dispatch_vm_kvm_create_pit2(struct kvm_pit_config *const ioctl_args)
+dispatch_vm_kvm_create_pit2(struct shim_vm_t *const pmut_vm, struct kvm_pit_config *const user_args)
 {
-    (void)ioctl_args;
-    return -EINVAL;
+    uint32_t ret;
+
+    if(handle_vm_kvm_create_pit2(pmut_vm, user_args)) {
+        bferror("handle_vm_kvm_create_pit2 failed");
+        return -EINVAL;
+    }
+    return (long)ret;
 }
 
 static long
@@ -790,8 +796,7 @@ dev_unlocked_ioctl_vm(
         }
 
         case KVM_CREATE_PIT2: {
-            return dispatch_vm_kvm_create_pit2(
-                (struct kvm_pit_config *)ioctl_args);
+            return dispatch_vm_kvm_create_pit2(pmut_mut_vm,(struct kvm_pit_config *)ioctl_args);
         }
 
         case KVM_CREATE_VCPU: {
