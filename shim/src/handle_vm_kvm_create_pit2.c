@@ -28,6 +28,7 @@
 #include <g_mut_hndl.h>
 #include <kvm_pit_config.h>
 #include <mv_constants.h>
+#include <mv_types.h>
 #include <platform.h>
 #include <shim_vm_t.h>
 
