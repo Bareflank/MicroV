@@ -73,7 +73,7 @@ namespace shim
                 shim_vm_t vm{};
                 kvm_pit_config mut_args{};
                 bsl::ut_when{} = [&]() noexcept {
-                mut_args.flag=VAL32.get();
+                    mut_args.flag = VAL32.get();
                     bsl::ut_then{} = [&]() noexcept {
                         bsl::ut_check(SHIM_FAILURE == handle_vm_kvm_create_pit2(&vm, &mut_args));
                     };
@@ -85,14 +85,14 @@ namespace shim
                 shim_vm_t vm{};
                 kvm_pit_config mut_args{};
                 bsl::ut_when{} = [&]() noexcept {
-                mut_args.flag=SUCCESSVAL32.get();
+                    mut_args.flag = SUCCESSVAL32.get();
                     bsl::ut_then{} = [&]() noexcept {
                         bsl::ut_check(SHIM_SUCCESS == handle_vm_kvm_create_pit2(&vm, &mut_args));
                     };
                 };
             };
         };
-        
+
         return fini_tests();
     }
 }

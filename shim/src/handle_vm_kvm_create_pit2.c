@@ -26,9 +26,10 @@
 #include <debug.h>
 #include <detect_hypervisor.h>
 #include <g_mut_hndl.h>
-#include <mv_constants.h>
 #include <kvm_pit_config.h>
+#include <mv_constants.h>
 #include <mv_types.h>
+#include <platform.h>
 #include <shim_vm_t.h>
 
 /**
@@ -42,11 +43,12 @@
  *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
  */
 NODISCARD int64_t
-mv_vp_op_create_pit2(uint64_t const hndl,uint16_t const vmid,uint32_t const user_args) {
+mv_vp_op_create_pit2(uint64_t const hndl, uint16_t const vmid, uint32_t const user_args)
+{
     (void)hndl;
     (void)vmid;
     (void)user_args;
-return SHIM_SUCCESS;
+    return SHIM_SUCCESS;
 }
 /**
  * <!-- description -->
@@ -58,7 +60,8 @@ return SHIM_SUCCESS;
  *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
  */
 NODISCARD int64_t
-handle_vm_kvm_create_pit2(struct shim_vm_t *const pmut_vm,struct kvm_pit_config *const pmut_ioctl_args) NOEXCEPT
+handle_vm_kvm_create_pit2(
+    struct shim_vm_t *const pmut_vm, struct kvm_pit_config *const pmut_ioctl_args) NOEXCEPT
 {
     platform_expects(MV_INVALID_HANDLE != g_mut_hndl);
     platform_expects(NULL != pmut_vm);

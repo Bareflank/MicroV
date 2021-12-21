@@ -44,8 +44,8 @@ extern "C"
      *   @param pmut_ioctl_args the arguments provided by userspace
      *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
      */
-    NODISCARD int64_t
-    handle_vm_kvm_create_pit2(struct shim_vm_t *const pmut_vm, struct kvm_pit_config *const pmut_ioctl_args) NOEXCEPT;
+    NODISCARD int64_t handle_vm_kvm_create_pit2(
+        struct shim_vm_t *const pmut_vm, struct kvm_pit_config *const pmut_ioctl_args) NOEXCEPT;
 
 #ifdef __cplusplus
 }

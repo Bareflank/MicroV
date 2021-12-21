@@ -40,8 +40,8 @@ extern "C"
 
 #pragma pack(push, 1)
 
-    /** @brief defines the pad_size */
-    #define PAD_SIZE ((uint64_t)15)
+/** @brief defines the pad_size */
+#define PAD_SIZE ((uint64_t)15)
 
     /**
      * @struct kvm_pit_config
