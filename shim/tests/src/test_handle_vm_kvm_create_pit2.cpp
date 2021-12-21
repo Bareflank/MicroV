@@ -26,7 +26,6 @@
 
 #include <helpers.hpp>
 #include <kvm_pit_config.h>
-#include <mv_types.h>
 #include <shim_vm_t.h>
 
 #include <bsl/convert.hpp>
