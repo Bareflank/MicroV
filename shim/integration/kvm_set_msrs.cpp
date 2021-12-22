@@ -44,7 +44,7 @@ namespace
     /// @brief defines the size for entries in RDL
     constexpr auto MYSIZE_ENTRIES{1_u64};
     /// @brief defines the register index we expect
-    constexpr auto EXPECTED_INDEX{0x00_u32};
+    constexpr auto EXPECTED_INDEX{0x277_u32};
     /// @brief defines the register data we expect
     constexpr auto EXPECTED_DATA{0x42_u64};
 }
@@ -79,10 +79,10 @@ main() noexcept -> bsl::exit_code
         auto const vcpufd{mut_vm.send(shim::KVM_CREATE_VCPU)};
         integration::ioctl_t mut_vcpu{bsl::to_i32(vcpufd)};
 
-        integration::verify(mut_vcpu.write(shim::KVM_SET_MSRS, &mut_msrs).is_zero());
-        mut_msrs = {};
-        auto const ret{bsl::to_u32(mut_vcpu.read(shim::KVM_GET_MSRS, &mut_msrs))};
+        auto const ret1{bsl::to_u32(mut_vcpu.write(shim::KVM_SET_MSRS, &mut_msrs))};
+        integration::verify(ret1 >= EXPECTED_NMSRS.get());
 
+        auto const ret{bsl::to_u32(mut_vcpu.read(shim::KVM_GET_MSRS, &mut_msrs))};
         integration::verify(ret == EXPECTED_NMSRS.get());
         integration::verify(EXPECTED_NMSRS == mut_msrs.nmsrs);
         integration::verify(EXPECTED_PAD == mut_msrs.pad);
@@ -102,7 +102,8 @@ main() noexcept -> bsl::exit_code
 
         constexpr auto num_loops{0x1000_umx};
         for (bsl::safe_idx mut_i{}; mut_i < num_loops; ++mut_i) {
-            integration::verify(mut_vcpu.write(shim::KVM_SET_MSRS, &mut_msrs).is_zero());
+            auto const ret1{bsl::to_u32(mut_vcpu.write(shim::KVM_SET_MSRS, &mut_msrs))};
+            integration::verify(ret1 == EXPECTED_NMSRS.get());
         }
     }
 
