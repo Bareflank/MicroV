@@ -517,6 +517,13 @@ dispatch_vm_kvm_create_pit2(
     struct shim_vm_t *const pmut_vm, struct kvm_pit_config *const user_args)
 {
     uint32_t ret;
+    struct kvm_pit_config mut_args;
+    uint64_t const size = sizeof(mut_args);
+
+    if (platform_copy_from_user(&mut_args, user_args, size)) {
+        bferror("platform_copy_from_user failed");
+        return -EINVAL;
+    }
 
     if (handle_vm_kvm_create_pit2(pmut_vm, user_args)) {
         bferror("handle_vm_kvm_create_pit2 failed");
