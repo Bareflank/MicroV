@@ -1076,6 +1076,7 @@ extern "C"
 
         return mut_ret;
     }
+
     /**
      * <!-- description -->
      *   @brief Handles the execution of mv_vp_op_create_pit2.
@@ -1088,13 +1089,15 @@ extern "C"
      *     and friends on failure.
      */
     NODISCARD static inline mv_status_t
-    mv_vp_op_create_pit2(uint64_t const hndl, uint16_t const vmid, uint32_t const user_args)
+    mv_vp_op_create_pit2(uint64_t const hndl, uint16_t const vmid, uint32_t const user_args) NOEXCEPT
     {
+        bferror("mv_vp_op_create_pit2 not yet implemented");
         (void)hndl;
         (void)vmid;
         (void)user_args;
-        return (uint64_t)0;
+        return (uint64_t)MV_STATUS_SUCCESS;
     }
+
     /**
      * <!-- description -->
      *   @brief This hypercall tells MicroV to set the values of multiple
