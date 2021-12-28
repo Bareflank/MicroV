@@ -1180,7 +1180,8 @@ extern "C"
      *     and friends on failure.
      */
     NODISCARD static inline mv_status_t
-    mv_vp_op_create_pit2(uint64_t const hndl, uint16_t const vmid, uint32_t const user_args) NOEXCEPT
+    mv_vp_op_create_pit2(
+        uint64_t const hndl, uint16_t const vmid, uint32_t const user_args) NOEXCEPT
     {
         (void)hndl;
         (void)vmid;
