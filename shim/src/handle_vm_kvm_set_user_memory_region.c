@@ -118,6 +118,11 @@ set_user_memory_region_is_valid(
         return SHIM_FAILURE;
     }
 
+    if (!mv_is_page_aligned(args->memory_size)) {
+        bferror("args->memory_size is not 4k page aligned");
+        return SHIM_FAILURE;
+    }
+
     if (!mv_is_page_aligned(args->guest_phys_addr)) {
         bferror("args->guest_phys_addr is not 4k page aligned");
         return SHIM_FAILURE;
@@ -481,14 +486,6 @@ handle_vm_kvm_set_user_memory_region(
     mut_dst = args->guest_phys_addr;
     mut_src = args->userspace_addr;
     mut_size = (int64_t)args->memory_size;
-
-    if (!mv_is_page_aligned(args->memory_size)) {
-        mut_size += HYPERVISOR_PAGE_SIZE;
-        mut_size &= ~(HYPERVISOR_PAGE_SIZE - ((uint64_t)1));
-    }
-    else {
-        mv_touch();
-    }
 
     if (SHIM_FAILURE == set_user_memory_region_is_valid(args, pmut_vm)) {
         bferror("invalid set_user_memory_region request");
