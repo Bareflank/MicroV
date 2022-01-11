@@ -129,7 +129,7 @@ namespace hypercall
 
             constexpr auto expected_addr{0x10_u64};
             constexpr auto expected_data{0x02_u64};
-            constexpr auto expected_reps{0x00_u64};
+            constexpr auto expected_reps{0x01_u64};
             constexpr auto expected_type{0x01_u64};
             constexpr auto expected_size{mv_bit_size_t::mv_bit_size_t_16};
 

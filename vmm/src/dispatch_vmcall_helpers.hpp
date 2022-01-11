@@ -28,6 +28,7 @@
 #include <bf_syscall_t.hpp>
 #include <dispatch_abi_helpers.hpp>
 #include <mv_cdl_t.hpp>
+#include <mv_exit_io_t.hpp>
 #include <mv_reg_t.hpp>
 
 #include <bsl/convert.hpp>
@@ -1685,6 +1686,7 @@ namespace microv
     ///   @param mut_tls the tls_t to use
     ///   @param mut_sys the bf_syscall_t to use
     ///   @param intrinsic the intrinsic_t to use
+    ///   @param mut_pp_pool the pp_pool_t to use
     ///   @param mut_vm_pool the vm_pool_t to use
     ///   @param mut_vp_pool the vp_pool_t to use
     ///   @param mut_vs_pool the vs_pool_t to use
@@ -1697,6 +1699,7 @@ namespace microv
         tls_t &mut_tls,
         syscall::bf_syscall_t &mut_sys,
         intrinsic_t const &intrinsic,
+        pp_pool_t &mut_pp_pool,
         vm_pool_t &mut_vm_pool,
         vp_pool_t &mut_vp_pool,
         vs_pool_t &mut_vs_pool,
@@ -1734,6 +1737,25 @@ namespace microv
                          << bsl::here();                       // --
 
             return bsl::errc_failure;
+        }
+
+        constexpr auto vmexit_reason_io{0x7B_u64};
+        auto const exitcode{mut_sys.bf_vs_op_read(vsid, syscall::bf_reg_t::bf_reg_t_exitcode)};
+        bsl::expects(exitcode.is_valid());
+        switch (exitcode.get()) {
+            case vmexit_reason_io.get(): {
+                auto mut_exit_io{mut_pp_pool.shared_page<hypercall::mv_exit_io_t>(mut_sys)};
+                bsl::expects(mut_exit_io.is_valid());
+                if (hypercall::MV_EXIT_IO_IN.get() != mut_exit_io->type) {
+                    break;
+                }
+                auto const io_data{bsl::to_u64(mut_exit_io->data)};
+                bsl::expects(
+                    mut_sys.bf_vs_op_write(vsid, syscall::bf_reg_t::bf_reg_t_rax, io_data));
+                break;
+            }
+            default:
+                break;
         }
 
         mut_tls.parent_vmid = mut_sys.bf_tls_vmid();

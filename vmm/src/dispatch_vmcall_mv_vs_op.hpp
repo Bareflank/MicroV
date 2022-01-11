@@ -285,6 +285,7 @@ namespace microv
     ///   @param mut_tls the tls_t to use
     ///   @param mut_sys the bf_syscall_t to use
     ///   @param intrinsic the intrinsic_t to use
+    ///   @param mut_pp_pool the pp_pool_t to use
     ///   @param mut_vm_pool the vm_pool_t to use
     ///   @param mut_vp_pool the vp_pool_t to use
     ///   @param mut_vs_pool the vs_pool_t to use
@@ -296,6 +297,7 @@ namespace microv
         tls_t &mut_tls,
         syscall::bf_syscall_t &mut_sys,
         intrinsic_t const &intrinsic,
+        pp_pool_t &mut_pp_pool,
         vm_pool_t &mut_vm_pool,
         vp_pool_t &mut_vp_pool,
         vs_pool_t &mut_vs_pool) noexcept -> bsl::errc_type
@@ -307,8 +309,8 @@ namespace microv
             return vmexit_failure_advance_ip_and_run;
         }
 
-        auto const ret{
-            run_guest(mut_tls, mut_sys, intrinsic, mut_vm_pool, mut_vp_pool, mut_vs_pool, vsid)};
+        auto const ret{run_guest(
+            mut_tls, mut_sys, intrinsic, mut_pp_pool, mut_vm_pool, mut_vp_pool, mut_vs_pool, vsid)};
 
         if (bsl::unlikely(!ret)) {
             bsl::print<bsl::V>() << bsl::here();
@@ -1176,7 +1178,13 @@ namespace microv
 
             case hypercall::MV_VS_OP_RUN_IDX_VAL.get(): {
                 auto const ret{handle_mv_vs_op_run(
-                    mut_tls, mut_sys, intrinsic, mut_vm_pool, mut_vp_pool, mut_vs_pool)};
+                    mut_tls,
+                    mut_sys,
+                    intrinsic,
+                    mut_pp_pool,
+                    mut_vm_pool,
+                    mut_vp_pool,
+                    mut_vs_pool)};
                 if (bsl::unlikely(!ret)) {
                     bsl::print<bsl::V>() << bsl::here();
                     return ret;
