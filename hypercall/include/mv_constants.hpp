@@ -129,7 +129,7 @@ namespace hypercall
     constexpr auto MV_MAP_FLAG_UNCACHEABLE_MINUS{0x0400000000000000_u64};
     /// @brief Indicates the map is mapped as WC
     constexpr auto MV_MAP_FLAG_WRITE_COMBINING{0x0800000000000000_u64};
-    /// @brief Indicates the map is mapped as WC+
+    /// @brief Indicates the map is mapped as WC
     constexpr auto MV_MAP_FLAG_WRITE_COMBINING_PLUS{0x1000000000000000_u64};
     /// @brief Indicates the map is mapped as WT
     constexpr auto MV_MAP_FLAG_WRITE_THROUGH{0x2000000000000000_u64};

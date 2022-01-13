@@ -21,11 +21,11 @@
 /// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 /// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 /// SOFTWARE.
-
 #include "../../include/handle_vm_kvm_set_irqchip.h"
+#include "shim_vm_t.h"
 
+#include <helpers.hpp>
 #include <kvm_irqchip.h>
-#include <mv_types.h>
 
 #include <bsl/ut.hpp>
 
@@ -43,12 +43,47 @@ namespace shim
     [[nodiscard]] constexpr auto
     tests() noexcept -> bsl::exit_code
     {
-        bsl::ut_scenario{"description"} = []() noexcept {
+        init_tests();
+        bsl::ut_scenario{"set irqchip when irqchip is created already"} = []() noexcept {
             bsl::ut_given{} = [&]() noexcept {
+                shim_vm_t mut_vm{};
+                mut_vm.is_irqchip_created = true;
                 kvm_irqchip mut_args{};
                 bsl::ut_when{} = [&]() noexcept {
                     bsl::ut_then{} = [&]() noexcept {
-                        bsl::ut_check(SHIM_SUCCESS == handle_vm_kvm_set_irqchip(&mut_args));
+                        bsl::ut_check(
+                            SHIM_SUCCESS == handle_vm_kvm_set_irqchip(&mut_vm, &mut_args));
+                    };
+                };
+            };
+        };
+
+        bsl::ut_scenario{"set irqchip when irqchip is not created already"} = []() noexcept {
+            bsl::ut_given{} = [&]() noexcept {
+                shim_vm_t mut_vm{};
+                mut_vm.is_irqchip_created = false;
+                kvm_irqchip mut_args{};
+                bsl::ut_when{} = [&]() noexcept {
+                    bsl::ut_then{} = [&]() noexcept {
+                        bsl::ut_check(
+                            SHIM_FAILURE == handle_vm_kvm_set_irqchip(&mut_vm, &mut_args));
+                    };
+                };
+            };
+        };
+
+        bsl::ut_scenario{"hypervisor not detected"} = []() noexcept {
+            bsl::ut_given{} = [&]() noexcept {
+                shim_vm_t mut_vm{};
+                kvm_irqchip mut_args{};
+                bsl::ut_when{} = [&]() noexcept {
+                    g_mut_hypervisor_detected = false;
+                    bsl::ut_then{} = [&]() noexcept {
+                        bsl::ut_check(
+                            SHIM_FAILURE == handle_vm_kvm_set_irqchip(&mut_vm, &mut_args));
+                    };
+                    bsl::ut_cleanup{} = [&]() noexcept {
+                        g_mut_hypervisor_detected = true;
                     };
                 };
             };
