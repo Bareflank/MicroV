@@ -167,6 +167,25 @@ jobs:
         ninja unittest
       shell: bash
 
+  Shim:
+    runs-on: ubuntu-20.04
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        path: microv
+    - name: Setup
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y clang lld cmake ninja-build
+      shell: bash
+    - name: Validate Shim Driver Build
+      run: |
+        mkdir build && cd build
+        cmake -GNinja -DCMAKE_CXX_COMPILER="clang++" -DCMAKE_BUILD_TYPE=RELEASE -DBUILD_EXAMPLES=ON ../microv
+        ninja shim_clean
+        ninja shim_build
+      shell: bash
+
   Codecov:
     runs-on: ubuntu-20.04
     steps:
