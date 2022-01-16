@@ -36,6 +36,7 @@
 #include <handle_system_kvm_get_supported_cpuid.h>
 #include <handle_system_kvm_get_vcpu_mmap_size.h>
 #include <handle_vcpu_kvm_get_fpu.h>
+#include <handle_vcpu_kvm_get_lapic.h>
 #include <handle_vcpu_kvm_get_mp_state.h>
 #include <handle_vcpu_kvm_get_msrs.h>
 #include <handle_vcpu_kvm_get_regs.h>
@@ -43,6 +44,7 @@
 #include <handle_vcpu_kvm_get_tsc_khz.h>
 #include <handle_vcpu_kvm_run.h>
 #include <handle_vcpu_kvm_set_fpu.h>
+#include <handle_vcpu_kvm_set_lapic.h>
 #include <handle_vcpu_kvm_set_mp_state.h>
 #include <handle_vcpu_kvm_set_msrs.h>
 #include <handle_vcpu_kvm_set_regs.h>
@@ -976,10 +978,27 @@ dispatch_vcpu_kvm_get_fpu(
 }
 
 static long
-dispatch_vcpu_kvm_get_lapic(struct kvm_lapic_state *const ioctl_args)
+dispatch_vcpu_kvm_get_lapic(
+    struct shim_vcpu_t const *const vcpu,
+    struct kvm_lapic_state *const user_args)
 {
-    (void)ioctl_args;
-    return -EINVAL;
+    struct kvm_lapic_state mut_args;
+
+    if (NULL == user_args) {
+        bferror("user_args are null");
+        return -EINVAL;
+    }
+
+    if (handle_vcpu_kvm_get_lapic(vcpu, &mut_args)) {
+        bferror("handle_vcpu_kvm_get_lapic failed");
+        return -EINVAL;
+    }
+
+    if (platform_copy_to_user(user_args, &mut_args, sizeof(mut_args))) {
+        bferror("platform_copy_to_user failed");
+        return -EINVAL;
+    }
+    return 0;
 }
 
 static long
@@ -1230,10 +1249,28 @@ dispatch_vcpu_kvm_set_guest_debug(struct kvm_guest_debug *const ioctl_args)
 }
 
 static long
-dispatch_vcpu_kvm_set_lapic(struct kvm_lapic_state *const ioctl_args)
+dispatch_vcpu_kvm_set_lapic(
+    struct shim_vcpu_t const *const vcpu,
+    struct kvm_lapic_state *const user_args)
 {
-    (void)ioctl_args;
-    return -EINVAL;
+    struct kvm_lapic_state mut_args;
+
+    if (NULL == user_args) {
+        bferror("user_args are null");
+        return -EINVAL;
+    }
+
+    if (platform_copy_from_user(&mut_args, user_args, sizeof(mut_args))) {
+        bferror("platform_copy_from_user failed");
+        return -EINVAL;
+    }
+
+    if (handle_vcpu_kvm_set_lapic(vcpu, &mut_args)) {
+        bferror("handle_vcpu_kvm_set_lapic failed");
+        return -EINVAL;
+    }
+
+    return 0;
 }
 
 static long
@@ -1451,7 +1488,7 @@ dev_unlocked_ioctl_vcpu(
 
         case KVM_GET_LAPIC: {
             return dispatch_vcpu_kvm_get_lapic(
-                (struct kvm_lapic_state *)ioctl_args);
+                pmut_mut_vcpu, (struct kvm_lapic_state *)ioctl_args);
         }
 
         case KVM_GET_MP_STATE: {
@@ -1548,7 +1585,7 @@ dev_unlocked_ioctl_vcpu(
 
         case KVM_SET_LAPIC: {
             return dispatch_vcpu_kvm_set_lapic(
-                (struct kvm_lapic_state *)ioctl_args);
+                pmut_mut_vcpu, (struct kvm_lapic_state *)ioctl_args);
         }
 
         case KVM_SET_MP_STATE: {
