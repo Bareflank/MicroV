@@ -29,6 +29,7 @@
 
 #include <kvm_msi.h>
 #include <mv_types.h>
+#include <shim_vm_t.h>
 
 #ifdef __cplusplus
 extern "C"
@@ -40,10 +41,12 @@ extern "C"
      *   @brief Handles the execution of kvm_signal_msi.
      *
      * <!-- inputs/outputs -->
-     *   @param pmut_ioctl_args the arguments provided by userspace
-     *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
+     *  @param pmut_vm the argumento hold vm details of type shim_vm_t
+     *  @param pmut_ioctl_args the arguments provided by userspace
+     *  @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
      */
-    NODISCARD int64_t handle_vm_kvm_signal_msi(struct kvm_msi *const pmut_ioctl_args) NOEXCEPT;
+    NODISCARD int64_t handle_vm_kvm_signal_msi(
+        struct shim_vm_t *const pmut_vm, struct kvm_msi *const pmut_ioctl_args) NOEXCEPT;
 
 #ifdef __cplusplus
 }
