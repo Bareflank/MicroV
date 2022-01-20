@@ -493,10 +493,10 @@ namespace hypercall
     constexpr auto MV_VS_OP_CPUID_GET_IDX_VAL{0x0000000000000009_u64};
     /// @brief Defines the index for mv_vs_op_cpuid_set
     constexpr auto MV_VS_OP_CPUID_SET_IDX_VAL{0x000000000000000A_u64};
-    /// @brief Defines the index for mv_vs_op_cpuid_get_all
-    constexpr auto MV_VS_OP_CPUID_GET_ALL_IDX_VAL{0x000000000000000B_u64};
-    /// @brief Defines the index for mv_vs_op_cpuid_set_all
-    constexpr auto MV_VS_OP_CPUID_SET_ALL_IDX_VAL{0x000000000000000C_u64};
+    /// @brief Defines the index for mv_vs_op_cpuid_get_list
+    constexpr auto MV_VS_OP_CPUID_GET_LIST_IDX_VAL{0x000000000000000B_u64};
+    /// @brief Defines the index for mv_vs_op_cpuid_set_list
+    constexpr auto MV_VS_OP_CPUID_SET_LIST_IDX_VAL{0x000000000000000C_u64};
     /// @brief Defines the index for mv_vs_op_reg_get
     constexpr auto MV_VS_OP_REG_GET_IDX_VAL{0x000000000000000D_u64};
     /// @brief Defines the index for mv_vs_op_reg_set

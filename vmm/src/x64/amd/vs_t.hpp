@@ -609,6 +609,8 @@ namespace microv
                 this->init_as_16bit_guest(mut_sys);
             }
 
+            this->m_emulated_cpuid.allocate(gs, tls, mut_sys, intrinsic, vsid);
+
             m_assigned_vmid = ~vmid;
             m_assigned_vpid = ~vpid;
             m_assigned_ppid = ~ppid;
@@ -961,6 +963,49 @@ namespace microv
             }
 
             return m_emulated_cpuid.get(mut_sys, intrinsic);
+        }
+
+        /// <!-- description -->
+        ///   @brief Reads CPUID for this vs_t and returns the results
+        ///     in the provided CDL.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param mut_sys the bf_syscall_t to use
+        ///   @param mut_cdl the mv_cdl_t to read the CPUID into
+        ///   @return Returns bsl::errc_success on success, bsl::errc_failure
+        ///     and friends otherwise
+        ///
+        [[nodiscard]] constexpr auto
+        cpuid_get_list(syscall::bf_syscall_t &mut_sys, hypercall::mv_cdl_t &mut_cdl) const noexcept
+            -> bsl::errc_type
+        {
+            bsl::expects(allocated_status_t::allocated == m_allocated);
+            bsl::expects(running_status_t::running != m_status);
+            bsl::expects(mut_sys.bf_tls_ppid() == this->assigned_pp());
+            bsl::expects(!mut_sys.is_vs_a_root_vs(this->id()));
+
+            return m_emulated_cpuid.get_list(mut_sys, mut_cdl);
+        }
+
+        /// <!-- description -->
+        ///   @brief Reads CPUID for this vs_t and returns the results
+        ///     in the provided CDL.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param sys the bf_syscall_t to use
+        ///   @param cdl the mv_cdl_t to read the CPUID into
+        ///   @return Returns bsl::errc_success on success, bsl::errc_failure
+        ///     and friends otherwise
+        ///
+        [[nodiscard]] constexpr auto
+        cpuid_set_list(syscall::bf_syscall_t const &sys, hypercall::mv_cdl_t const &cdl) noexcept
+            -> bsl::errc_type
+        {
+            bsl::expects(allocated_status_t::allocated == m_allocated);
+            bsl::expects(running_status_t::running != m_status);
+            bsl::expects(sys.bf_tls_ppid() == this->assigned_pp());
+
+            return m_emulated_cpuid.set_list(sys, cdl);
         }
 
         /// <!-- description -->

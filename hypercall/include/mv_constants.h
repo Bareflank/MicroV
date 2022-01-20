@@ -506,10 +506,10 @@ NODISCARD static inline int
 #define MV_VS_OP_CPUID_GET_IDX_VAL ((uint64_t)0x0000000000000009)
 /** @brief Defines the index for mv_vs_op_cpuid_set */
 #define MV_VS_OP_CPUID_SET_IDX_VAL ((uint64_t)0x000000000000000A)
-/** @brief Defines the index for mv_vs_op_cpuid_get_all */
-#define MV_VS_OP_CPUID_GET_ALL_IDX_VAL ((uint64_t)0x000000000000000B)
-/** @brief Defines the index for mv_vs_op_cpuid_set_all */
-#define MV_VS_OP_CPUID_SET_ALL_IDX_VAL ((uint64_t)0x000000000000000C)
+/** @brief Defines the index for mv_vs_op_cpuid_get_list */
+#define MV_VS_OP_CPUID_GET_LIST_IDX_VAL ((uint64_t)0x000000000000000B)
+/** @brief Defines the index for mv_vs_op_cpuid_set_list */
+#define MV_VS_OP_CPUID_SET_LIST_IDX_VAL ((uint64_t)0x000000000000000C)
 /** @brief Defines the index for mv_vs_op_reg_get */
 #define MV_VS_OP_REG_GET_IDX_VAL ((uint64_t)0x000000000000000D)
 /** @brief Defines the index for mv_vs_op_reg_set */
