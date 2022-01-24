@@ -58,7 +58,8 @@ namespace hypercall
 
         {
             constexpr auto initial_port10_val{0x42_u16};
-            auto mut_port10{initial_port10_val};
+            auto mut_port10_val{initial_port10_val};
+            constexpr auto mut_port10_addr{0x10_u64};
             auto *const pmut_exit_io{to_0<mv_exit_io_t>()};
 
             auto const vmid{mut_hvc.mv_vm_op_create_vm()};
@@ -84,6 +85,7 @@ namespace hypercall
             mut_exit_reason = integration::run_until_non_interrupt_exit(vsid);
             integration::verify(mut_exit_reason == mv_exit_reason_t::mv_exit_reason_t_io);
             integration::verify(pmut_exit_io->type == MV_EXIT_IO_IN);
+            integration::verify(mut_port10_addr.get() == pmut_exit_io->addr);
 
             /// NOTE:
             /// - The guest ran IN. Which means that it wants to read from the
@@ -111,7 +113,7 @@ namespace hypercall
             constexpr auto ax_mask{0xFFFFFFFFFFFF0000_u64};
             bsl::safe_u64 mut_rax{pmut_exit_io->data};
             mut_rax &= ax_mask;
-            mut_rax |= bsl::to_u64(mut_port10);
+            mut_rax |= bsl::to_u64(mut_port10_val);
 
             /// NOTE:
             /// - No need to use checked() or .is_poisoned() here because
@@ -133,7 +135,7 @@ namespace hypercall
             ///     can be set when we run instead of needing two hypercalls
             ///
 
-            integration::verify(mut_hvc.mv_vs_op_reg_set(vsid, mv_reg_t::mv_reg_t_rax, mut_rax));
+            pmut_exit_io->data = mut_rax.get();
 
             /// NOTE:
             /// - Now, all we need to do is run the guest again and wait for
@@ -143,6 +145,7 @@ namespace hypercall
             mut_exit_reason = integration::run_until_non_interrupt_exit(vsid);
             integration::verify(mut_exit_reason == mv_exit_reason_t::mv_exit_reason_t_io);
             integration::verify(pmut_exit_io->type == MV_EXIT_IO_OUT);
+            integration::verify(mut_port10_addr.get() == pmut_exit_io->addr);
 
             /// NOTE:
             /// - Lets print the value of RAX to show that the guest read
@@ -155,6 +158,9 @@ namespace hypercall
                          << ", data: "                                              // --
                          << bsl::blu << bsl::hex(pmut_exit_io->data) << bsl::rst    // --
                          << bsl::endl;                                              // --
+
+            mut_port10_val = (++mut_port10_val).checked();
+            integration::verify(mut_port10_val.get() == bsl::to_u16_unsafe(pmut_exit_io->data));
 
             /// NOTE:
             /// - Normally, the next step would be to store this new value

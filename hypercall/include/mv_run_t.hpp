@@ -25,6 +25,8 @@
 #ifndef MV_RUN_T_HPP
 #define MV_RUN_T_HPP
 
+#include "mv_rdl_entry_t.hpp"    // IWYU pragma: export
+
 #include <bsl/array.hpp>
 #include <bsl/convert.hpp>
 #include <bsl/safe_integral.hpp>
@@ -34,13 +36,54 @@
 namespace hypercall
 {
     /// @brief defines the max number of entires in the MDL
-    constexpr auto MV_RUN_MAX_RESERVED{0x1000_u64};
+    constexpr auto MV_RUN_MAX_RESERVED{0xEC0_u64};
 
     /// <!-- description -->
     ///   @brief TODO
     ///
     struct mv_run_t final
     {
+        /// @brief stores the mv_rdl_entry_t
+        mv_rdl_entry_t reg0;
+        /// @brief stores the mv_rdl_entry_t
+        mv_rdl_entry_t reg1;
+        /// @brief stores the mv_rdl_entry_t
+        mv_rdl_entry_t reg2;
+        /// @brief stores the mv_rdl_entry_t
+        mv_rdl_entry_t reg3;
+        /// @brief stores the mv_rdl_entry_t
+        mv_rdl_entry_t reg4;
+        /// @brief stores the mv_rdl_entry_t
+        mv_rdl_entry_t reg5;
+        /// @brief stores the mv_rdl_entry_t
+        mv_rdl_entry_t reg6;
+        /// @brief stores the mv_rdl_entry_t
+        mv_rdl_entry_t reg7;
+        /// @brief stores the mv_rdl_entry_t
+        mv_rdl_entry_t reg8;
+        /// @brief stores the mv_rdl_entry_t
+        mv_rdl_entry_t reg9;
+        /// @brief stores the mv_rdl_entry_t
+        mv_rdl_entry_t msr0;
+        /// @brief stores the mv_rdl_entry_t
+        mv_rdl_entry_t msr1;
+        /// @brief stores the mv_rdl_entry_t
+        mv_rdl_entry_t msr2;
+        /// @brief stores the mv_rdl_entry_t
+        mv_rdl_entry_t msr3;
+        /// @brief stores the mv_rdl_entry_t
+        mv_rdl_entry_t msr4;
+        /// @brief stores the mv_rdl_entry_t
+        mv_rdl_entry_t msr5;
+        /// @brief stores the mv_rdl_entry_t
+        mv_rdl_entry_t msr6;
+        /// @brief stores the mv_rdl_entry_t
+        mv_rdl_entry_t msr7;
+        /// @brief stores the mv_rdl_entry_t
+        mv_rdl_entry_t msr8;
+        /// @brief stores the mv_rdl_entry_t
+        mv_rdl_entry_t msr9;
+
         /// @brief reserved
         bsl::array<bsl::uint8, MV_RUN_MAX_RESERVED.get()> reserved;
     };
