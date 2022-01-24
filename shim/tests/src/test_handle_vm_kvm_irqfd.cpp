@@ -23,9 +23,10 @@
 /// SOFTWARE.
 
 #include "../../include/handle_vm_kvm_irqfd.h"
+#include "shim_vm_t.h"
 
+#include <helpers.hpp>
 #include <kvm_irqfd.h>
-#include <mv_types.h>
 
 #include <bsl/ut.hpp>
 
@@ -43,12 +44,30 @@ namespace shim
     [[nodiscard]] constexpr auto
     tests() noexcept -> bsl::exit_code
     {
+        init_tests();
         bsl::ut_scenario{"description"} = []() noexcept {
             bsl::ut_given{} = [&]() noexcept {
                 kvm_irqfd mut_args{};
+                shim_vm_t mut_vm{};
                 bsl::ut_when{} = [&]() noexcept {
                     bsl::ut_then{} = [&]() noexcept {
-                        bsl::ut_check(SHIM_SUCCESS == handle_vm_kvm_irqfd(&mut_args));
+                        bsl::ut_check(SHIM_SUCCESS == handle_vm_kvm_irqfd(&mut_vm, &mut_args));
+                    };
+                };
+            };
+        };
+
+        bsl::ut_scenario{"hypervisor not detected"} = []() noexcept {
+            bsl::ut_given{} = [&]() noexcept {
+                kvm_irqfd mut_args{};
+                shim_vm_t mut_vm{};
+                bsl::ut_when{} = [&]() noexcept {
+                    g_mut_hypervisor_detected = false;
+                    bsl::ut_then{} = [&]() noexcept {
+                        bsl::ut_check(SHIM_FAILURE == handle_vm_kvm_irqfd(&mut_vm, &mut_args));
+                    };
+                    bsl::ut_cleanup{} = [&]() noexcept {
+                        g_mut_hypervisor_detected = true;
                     };
                 };
             };
