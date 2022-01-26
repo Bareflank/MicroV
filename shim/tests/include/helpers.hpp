@@ -100,6 +100,7 @@ namespace shim
         constinit mv_status_t g_mut_mv_vs_op_mp_state_get{};       // NOLINT
         constinit mv_status_t g_mut_mv_vs_op_mp_state_set{};       // NOLINT
         constinit mv_status_t g_mut_mv_vs_op_tsc_get_khz{};        // NOLINT
+        constinit mv_status_t g_mut_mv_vp_op_create_pit2{};        // NOLINT
 
         extern bool g_mut_hypervisor_detected;
         extern bool g_mut_platform_alloc_fails;
