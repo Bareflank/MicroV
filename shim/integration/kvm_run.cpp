@@ -118,7 +118,7 @@ main() noexcept -> bsl::exit_code
     integration::verify(expected_size == pmut_run->io.size);
     integration::verify(expected_port == pmut_run->io.port);
     integration::verify(expected_count == pmut_run->io.count);
-    integration::verify(expected_data == pmut_run->io.data16);
+    integration::verify(expected_data == bsl::to_u16_unsafe(pmut_run->io.reg0));
 
     mut_vcpu.close();
     mut_vm.close();

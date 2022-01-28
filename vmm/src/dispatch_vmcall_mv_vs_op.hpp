@@ -309,8 +309,36 @@ namespace microv
             return vmexit_failure_advance_ip_and_run;
         }
 
-        auto const ret{run_guest(
-            mut_tls, mut_sys, intrinsic, mut_pp_pool, mut_vm_pool, mut_vp_pool, mut_vs_pool, vsid)};
+        {
+            auto const run{mut_pp_pool.shared_page<hypercall::mv_run_t>(mut_sys)};
+            if (bsl::unlikely(run.is_invalid())) {
+                bsl::print<bsl::V>() << bsl::here();
+                set_reg_return(mut_sys, hypercall::MV_STATUS_FAILURE_UNKNOWN);
+                return vmexit_failure_advance_ip_and_run;
+            }
+
+            // TODO: is run safe?
+
+            auto const ret{set_guest_state(
+                mut_tls,
+                mut_sys,
+                intrinsic,
+                mut_pp_pool,
+                mut_vm_pool,
+                mut_vp_pool,
+                mut_vs_pool,
+                vsid,
+                *run)};
+
+            if (bsl::unlikely(!ret)) {
+                bsl::print<bsl::V>() << bsl::here();
+                set_reg_return(mut_sys, hypercall::MV_STATUS_FAILURE_UNKNOWN);
+                return vmexit_failure_advance_ip_and_run;
+            }
+        }
+
+        auto const ret = run_guest(
+            mut_tls, mut_sys, intrinsic, mut_pp_pool, mut_vm_pool, mut_vp_pool, mut_vs_pool, vsid);
 
         if (bsl::unlikely(!ret)) {
             bsl::print<bsl::V>() << bsl::here();

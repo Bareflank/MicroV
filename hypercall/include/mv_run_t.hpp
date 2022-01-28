@@ -35,54 +35,27 @@
 
 namespace hypercall
 {
+    /// @brief defines the max number of register entries
+    constexpr auto MV_RUN_MAX_REG_ENTRIES{0xA_u64};
+    /// @brief defines the max number of MSR entries
+    constexpr auto MV_RUN_MAX_MSR_ENTRIES{0xA_u64};
     /// @brief defines the max number of entires in the MDL
-    constexpr auto MV_RUN_MAX_RESERVED{0xEC0_u64};
+    constexpr auto MV_RUN_MAX_RESERVED{0xEB0_u64};
 
     /// <!-- description -->
     ///   @brief TODO
     ///
     struct mv_run_t final
     {
-        /// @brief stores the mv_rdl_entry_t
-        mv_rdl_entry_t reg0;
-        /// @brief stores the mv_rdl_entry_t
-        mv_rdl_entry_t reg1;
-        /// @brief stores the mv_rdl_entry_t
-        mv_rdl_entry_t reg2;
-        /// @brief stores the mv_rdl_entry_t
-        mv_rdl_entry_t reg3;
-        /// @brief stores the mv_rdl_entry_t
-        mv_rdl_entry_t reg4;
-        /// @brief stores the mv_rdl_entry_t
-        mv_rdl_entry_t reg5;
-        /// @brief stores the mv_rdl_entry_t
-        mv_rdl_entry_t reg6;
-        /// @brief stores the mv_rdl_entry_t
-        mv_rdl_entry_t reg7;
-        /// @brief stores the mv_rdl_entry_t
-        mv_rdl_entry_t reg8;
-        /// @brief stores the mv_rdl_entry_t
-        mv_rdl_entry_t reg9;
-        /// @brief stores the mv_rdl_entry_t
-        mv_rdl_entry_t msr0;
-        /// @brief stores the mv_rdl_entry_t
-        mv_rdl_entry_t msr1;
-        /// @brief stores the mv_rdl_entry_t
-        mv_rdl_entry_t msr2;
-        /// @brief stores the mv_rdl_entry_t
-        mv_rdl_entry_t msr3;
-        /// @brief stores the mv_rdl_entry_t
-        mv_rdl_entry_t msr4;
-        /// @brief stores the mv_rdl_entry_t
-        mv_rdl_entry_t msr5;
-        /// @brief stores the mv_rdl_entry_t
-        mv_rdl_entry_t msr6;
-        /// @brief stores the mv_rdl_entry_t
-        mv_rdl_entry_t msr7;
-        /// @brief stores the mv_rdl_entry_t
-        mv_rdl_entry_t msr8;
-        /// @brief stores the mv_rdl_entry_t
-        mv_rdl_entry_t msr9;
+        /// @brief stores the number of REG entries
+        uint64_t num_reg_entries;
+        /// @brief stores the REG entries
+        bsl::array<mv_rdl_entry_t, MV_RUN_MAX_REG_ENTRIES.get()> reg_entries;
+
+        /// @brief stores the number of MSR entries
+        uint64_t num_msr_entries;
+        /// @brief stores the MSR entries
+        bsl::array<mv_rdl_entry_t, MV_RUN_MAX_MSR_ENTRIES.get()> msr_entries;
 
         /// @brief reserved
         bsl::array<bsl::uint8, MV_RUN_MAX_RESERVED.get()> reserved;

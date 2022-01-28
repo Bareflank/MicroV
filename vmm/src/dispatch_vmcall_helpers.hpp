@@ -1670,6 +1670,109 @@ namespace microv
     /// ------------------------------------------------------------------------
 
     /// <!-- description -->
+    ///   @brief Set the guest state from an mv_run_t.
+    ///
+    /// <!-- notes -->
+    ///   @note This function does not return
+    ///
+    /// <!-- inputs/outputs -->
+    ///   @param mut_tls the tls_t to use
+    ///   @param mut_sys the bf_syscall_t to use
+    ///   @param intrinsic the intrinsic_t to use
+    ///   @param pp_pool the pp_pool_t to use
+    ///   @param vm_pool the vm_pool_t to use
+    ///   @param vp_pool the vp_pool_t to use
+    ///   @param mut_vs_pool the vs_pool_t to use
+    ///   @param vsid the ID of the VS to run
+    ///   @param run the mv_run_t to set the guest from
+    ///   @return Returns bsl::errc_success on success, bsl::errc_failure
+    ///     and friends otherwise
+    ///
+    [[nodiscard]] constexpr auto
+    set_guest_state(
+        tls_t &mut_tls,
+        syscall::bf_syscall_t &mut_sys,
+        intrinsic_t const &intrinsic,
+        pp_pool_t const &pp_pool,
+        vm_pool_t const &vm_pool,
+        vp_pool_t const &vp_pool,
+        vs_pool_t &mut_vs_pool,
+        bsl::safe_u16 const &vsid,
+        hypercall::mv_run_t const &run) noexcept -> bsl::errc_type
+    {
+        bsl::expects(!mut_sys.is_vs_a_root_vs(vsid));
+        bsl::expects(mut_tls.parent_vmid == hypercall::MV_INVALID_ID);
+        bsl::expects(mut_tls.parent_vpid == hypercall::MV_INVALID_ID);
+        bsl::expects(mut_tls.parent_vsid == hypercall::MV_INVALID_ID);
+
+        bsl::discard(intrinsic);
+        bsl::discard(pp_pool);
+        bsl::discard(vm_pool);
+
+        auto const vpid{mut_vs_pool.assigned_vp(vsid)};
+        auto const vp_active{vp_pool.is_active(vpid)};
+        if (bsl::unlikely(!vp_active.is_invalid())) {
+            bsl::error() << "vp "                              // --
+                         << bsl::hex(vpid)                     // --
+                         << " is already active on PP "        // --
+                         << bsl::hex(vp_active)                // --
+                         << " and therefore cannot be used"    // --
+                         << bsl::endl                          // --
+                         << bsl::here();                       // --
+
+            return bsl::errc_failure;
+        }
+
+        auto const vs_active{mut_vs_pool.is_active(vsid)};
+        if (bsl::unlikely(!vs_active.is_invalid())) {
+            bsl::error() << "vs "                              // --
+                         << bsl::hex(vsid)                     // --
+                         << " is already active on PP "        // --
+                         << bsl::hex(vs_active)                // --
+                         << " and therefore cannot be used"    // --
+                         << bsl::endl                          // --
+                         << bsl::here();                       // --
+
+            return bsl::errc_failure;
+        }
+
+        bsl::expects(run.num_reg_entries <= hypercall::MV_RUN_MAX_REG_ENTRIES.get());
+        bsl::expects(run.num_msr_entries <= hypercall::MV_RUN_MAX_MSR_ENTRIES.get());
+
+        for (bsl::safe_idx mut_i{}; mut_i < run.num_reg_entries; ++mut_i) {
+            auto const reg{bsl::to_u64(run.reg_entries.at_if(mut_i)->reg)};
+            auto const val{bsl::to_u64(run.reg_entries.at_if(mut_i)->val)};
+
+            auto const ret{mut_vs_pool.reg_set(mut_sys, reg, val, vsid)};
+            if (bsl::unlikely(ret != bsl::errc_success)) {
+                bsl::error() << "set_guest_state failed to set register"    // --
+                             << bsl::endl                                   // --
+                             << bsl::here();                                // --
+                return ret;
+            }
+
+            bsl::touch();
+        }
+
+        for (bsl::safe_idx mut_i{}; mut_i < run.num_msr_entries; ++mut_i) {
+            auto const msr{bsl::to_u64(run.msr_entries.at_if(mut_i)->reg)};
+            auto const val{bsl::to_u64(run.msr_entries.at_if(mut_i)->val)};
+
+            auto const ret{mut_vs_pool.msr_set(mut_sys, msr, val, vsid)};
+            if (bsl::unlikely(ret != bsl::errc_success)) {
+                bsl::error() << "set_guest_state failed to set msr"    // --
+                             << bsl::endl                              // --
+                             << bsl::here();                           // --
+                return ret;
+            }
+
+            bsl::touch();
+        }
+
+        return bsl::errc_success;
+    }
+
+    /// <!-- description -->
     ///   @brief Run's a guest vs_t. When a guest VM is run, it becomes a
     ///     child, and the current VM, VP and VS become parents. The next
     ///     time that MicroV executes, it will be from the VMExit handler.
@@ -1686,7 +1789,7 @@ namespace microv
     ///   @param mut_tls the tls_t to use
     ///   @param mut_sys the bf_syscall_t to use
     ///   @param intrinsic the intrinsic_t to use
-    ///   @param mut_pp_pool the pp_pool_t to use
+    ///   @param pp_pool the pp_pool_t to use
     ///   @param mut_vm_pool the vm_pool_t to use
     ///   @param mut_vp_pool the vp_pool_t to use
     ///   @param mut_vs_pool the vs_pool_t to use
@@ -1699,7 +1802,7 @@ namespace microv
         tls_t &mut_tls,
         syscall::bf_syscall_t &mut_sys,
         intrinsic_t const &intrinsic,
-        pp_pool_t &mut_pp_pool,
+        pp_pool_t const &pp_pool,
         vm_pool_t &mut_vm_pool,
         vp_pool_t &mut_vp_pool,
         vs_pool_t &mut_vs_pool,
@@ -1709,6 +1812,8 @@ namespace microv
         bsl::expects(mut_tls.parent_vmid == hypercall::MV_INVALID_ID);
         bsl::expects(mut_tls.parent_vpid == hypercall::MV_INVALID_ID);
         bsl::expects(mut_tls.parent_vsid == hypercall::MV_INVALID_ID);
+
+        bsl::discard(pp_pool);
 
         auto const vmid{mut_vs_pool.assigned_vm(vsid)};
         auto const vpid{mut_vs_pool.assigned_vp(vsid)};
@@ -1737,25 +1842,6 @@ namespace microv
                          << bsl::here();                       // --
 
             return bsl::errc_failure;
-        }
-
-        constexpr auto vmexit_reason_io{0x7B_u64};
-        auto const exitcode{mut_sys.bf_vs_op_read(vsid, syscall::bf_reg_t::bf_reg_t_exitcode)};
-        bsl::expects(exitcode.is_valid());
-        switch (exitcode.get()) {
-            case vmexit_reason_io.get(): {
-                auto mut_exit_io{mut_pp_pool.shared_page<hypercall::mv_exit_io_t>(mut_sys)};
-                bsl::expects(mut_exit_io.is_valid());
-                if (hypercall::MV_EXIT_IO_IN.get() != mut_exit_io->type) {
-                    break;
-                }
-                auto const io_data{bsl::to_u64(mut_exit_io->data)};
-                bsl::expects(
-                    mut_sys.bf_vs_op_write(vsid, syscall::bf_reg_t::bf_reg_t_rax, io_data));
-                break;
-            }
-            default:
-                break;
         }
 
         mut_tls.parent_vmid = mut_sys.bf_tls_vmid();

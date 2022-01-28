@@ -132,28 +132,16 @@ namespace microv
             mut_exit_io->type = hypercall::MV_EXIT_IO_IN.get();
         }
 
+        mut_exit_io->data = rax.get();
+
         if (((exitinfo1 & sz32_mask) >> sz32_shft).is_pos()) {
-            constexpr auto data_mask{0x00000000FFFFFFFF_u64};
             mut_exit_io->size = hypercall::mv_bit_size_t::mv_bit_size_t_32;
-            mut_exit_io->data = (data_mask & rax).get();
         }
-        else {
-            bsl::touch();
-        }
-
-        if (((exitinfo1 & sz16_mask) >> sz16_shft).is_pos()) {
-            constexpr auto data_mask{0x000000000000FFFF_u64};
+        else if (((exitinfo1 & sz16_mask) >> sz16_shft).is_pos()) {
             mut_exit_io->size = hypercall::mv_bit_size_t::mv_bit_size_t_16;
-            mut_exit_io->data = (data_mask & rax).get();
         }
-        else {
-            bsl::touch();
-        }
-
-        if (((exitinfo1 & sz08_mask) >> sz08_shft).is_pos()) {
-            constexpr auto data_mask{0x00000000000000FF_u64};
+        else if (((exitinfo1 & sz08_mask) >> sz08_shft).is_pos()) {
             mut_exit_io->size = hypercall::mv_bit_size_t::mv_bit_size_t_8;
-            mut_exit_io->data = (data_mask & rax).get();
         }
         else {
             bsl::touch();

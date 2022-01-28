@@ -37,6 +37,8 @@ namespace shim
     constexpr auto KVM_EXIT_IO_IN{0x00_u8};
     /// @brief n/a
     constexpr auto KVM_EXIT_IO_OUT{0x01_u8};
+    /// @brief n/a
+    constexpr auto KVM_EXIT_IO_MAX_DATA_SIZE{0x270_umx};
 
     /// <!-- description -->
     ///   @brief TODO
@@ -54,12 +56,18 @@ namespace shim
         /// @brief TODO
         bsl::uint64 data_offset;
 
-        /// @brief stores the data when the size is 1 byte
-        bsl::uint8 data8;
-        /// @brief stores the data when the size is 2 bytes
-        bsl::uint16 data16;
-        /// @brief stores the data when the size is 4 bytes
-        bsl::uint32 data32;
+        /**
+         * <!-- description -->
+         *   @brief TODO
+         */
+        // NOLINTNEXTLINE(bsl-decl-forbidden)
+        union
+        {
+            /// @brief stores the data
+            bsl::array<bsl::uint8, KVM_EXIT_IO_MAX_DATA_SIZE.get()> data;
+            /// @brief stores the data from the target register
+            bsl::uint64 reg0;
+        };
     };
 }
 

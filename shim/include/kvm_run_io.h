@@ -40,6 +40,8 @@ extern "C"
 #define KVM_EXIT_IO_IN ((uint8_t)0x00)
 /** @brief n/a */
 #define KVM_EXIT_IO_OUT ((uint8_t)0x01)
+/** @brief n/a */
+#define KVM_EXIT_IO_MAX_DATA_SIZE ((uint8_t)0x270)
 
     /**
      * <!-- description -->
@@ -58,12 +60,18 @@ extern "C"
         /** @brief TODO */
         uint64_t data_offset;
 
-        /** @brief stores the data when the size is 1 byte */
-        uint8_t data8;
-        /** @brief stores the data when the size is 2 bytes */
-        uint16_t data16;
-        /** @brief stores the data when the size is 4 bytes */
-        uint32_t data32;
+        /**
+         * <!-- description -->
+         *   @brief TODO
+         */
+        // NOLINTNEXTLINE(bsl-decl-forbidden)
+        union
+        {
+            /** @brief stores the data */
+            uint8_t data[KVM_EXIT_IO_MAX_DATA_SIZE];
+            /** @brief stores the data from the target register */
+            uint64_t reg0;
+        };
     };
 
 #pragma pack(pop)

@@ -37,8 +37,12 @@ extern "C"
 
 #pragma pack(push, 1)
 
+/** @brief defines the max number of register entries */
+#define MV_RUN_MAX_REG_ENTRIES ((uint64_t)0xA)
+/** @brief defines the max number of MSR entries */
+#define MV_RUN_MAX_MSR_ENTRIES ((uint64_t)0xA)
 /** @brief defines the max number of reserved entries */
-#define MV_RUN_MAX_RESERVED ((uint64_t)0xEC0)
+#define MV_RUN_MAX_RESERVED ((uint64_t)0xEB0)
 
     /**
      * <!-- description -->
@@ -46,46 +50,15 @@ extern "C"
      */
     struct mv_run_t
     {
-        /** @brief stores the mv_rdl_entry_t */
-        mv_rdl_entry_t reg0;
-        /** @brief stores the mv_rdl_entry_t */
-        mv_rdl_entry_t reg1;
-        /** @brief stores the mv_rdl_entry_t */
-        mv_rdl_entry_t reg2;
-        /** @brief stores the mv_rdl_entry_t */
-        mv_rdl_entry_t reg3;
-        /** @brief stores the mv_rdl_entry_t */
-        mv_rdl_entry_t reg4;
-        /** @brief stores the mv_rdl_entry_t */
-        mv_rdl_entry_t reg5;
-        /** @brief stores the mv_rdl_entry_t */
-        mv_rdl_entry_t reg6;
-        /** @brief stores the mv_rdl_entry_t */
-        mv_rdl_entry_t reg7;
-        /** @brief stores the mv_rdl_entry_t */
-        mv_rdl_entry_t reg8;
-        /** @brief stores the mv_rdl_entry_t */
-        mv_rdl_entry_t reg9;
-        /** @brief stores the mv_rdl_entry_t */
-        mv_rdl_entry_t msr0;
-        /** @brief stores the mv_rdl_entry_t */
-        mv_rdl_entry_t msr1;
-        /** @brief stores the mv_rdl_entry_t */
-        mv_rdl_entry_t msr2;
-        /** @brief stores the mv_rdl_entry_t */
-        mv_rdl_entry_t msr3;
-        /** @brief stores the mv_rdl_entry_t */
-        mv_rdl_entry_t msr4;
-        /** @brief stores the mv_rdl_entry_t */
-        mv_rdl_entry_t msr5;
-        /** @brief stores the mv_rdl_entry_t */
-        mv_rdl_entry_t msr6;
-        /** @brief stores the mv_rdl_entry_t */
-        mv_rdl_entry_t msr7;
-        /** @brief stores the mv_rdl_entry_t */
-        mv_rdl_entry_t msr8;
-        /** @brief stores the mv_rdl_entry_t */
-        mv_rdl_entry_t msr9;
+        /** @brief stores the number of REG entries */
+        uint64_t num_reg_entries;
+        /** @brief stores the REG entries */
+        struct mv_rdl_entry_t reg_entries[MV_RUN_MAX_REG_ENTRIES];
+
+        /** @brief stores the number of MSR entries */
+        uint64_t num_msr_entries;
+        /** @brief stores the MSR entries */
+        struct mv_rdl_entry_t msr_entries[MV_RUN_MAX_MSR_ENTRIES];
 
         /** @brief reserved */
         uint8_t reserved[MV_RUN_MAX_RESERVED];

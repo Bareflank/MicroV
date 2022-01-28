@@ -36,6 +36,8 @@
 #include <mv_exit_io_t.h>
 #include <mv_exit_reason_t.h>
 #include <mv_hypercall.h>
+#include <mv_reg_t.h>
+#include <mv_run_t.h>
 #include <mv_types.h>
 #include <platform.h>
 #include <shared_page_for_current_pp.h>
@@ -156,25 +158,22 @@ handle_vcpu_kvm_run_io(
         }
     }
 
+    pmut_vcpu->run->io.reg0 = pmut_exit_io->data;
+    pmut_vcpu->run->io.data_offset = get_offset(pmut_vcpu, &pmut_vcpu->run->io.reg0);
+
     switch ((int32_t)pmut_exit_io->size) {
         case mv_bit_size_t_8: {
             pmut_vcpu->run->io.size = ((uint8_t)1);
-            pmut_vcpu->run->io.data8 = (uint8_t)pmut_exit_io->data;
-            pmut_vcpu->run->io.data_offset = get_offset(pmut_vcpu, &pmut_vcpu->run->io.data8);
             break;
         }
 
         case mv_bit_size_t_16: {
             pmut_vcpu->run->io.size = ((uint8_t)2);
-            pmut_vcpu->run->io.data16 = (uint16_t)pmut_exit_io->data;
-            pmut_vcpu->run->io.data_offset = get_offset(pmut_vcpu, &pmut_vcpu->run->io.data16);
             break;
         }
 
         case mv_bit_size_t_32: {
             pmut_vcpu->run->io.size = ((uint8_t)4);
-            pmut_vcpu->run->io.data32 = (uint32_t)pmut_exit_io->data;
-            pmut_vcpu->run->io.data_offset = get_offset(pmut_vcpu, &pmut_vcpu->run->io.data32);
             break;
         }
 
@@ -211,40 +210,36 @@ handle_vcpu_kvm_run_io(
  *
  * <!-- inputs/outputs -->
  *   @param pmut_vcpu the VCPU associated with the IOCTL
- *   @param pmut_exit_io pointer of type struct mv_exit_io_t to use
+ *   @param pmut_mv_run pointer of type struct mv_run_t to use
  *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
  */
 NODISCARD int64_t
-pre_run_op_io(struct shim_vcpu_t *const pmut_vcpu, struct mv_exit_io_t *const pmut_exit_io) NOEXCEPT
+pre_run_op_io(struct shim_vcpu_t *const pmut_vcpu, struct mv_run_t *const pmut_mv_run) NOEXCEPT
 {
     platform_expects(NULL != pmut_vcpu);
     platform_expects(NULL != pmut_vcpu->run);
     platform_expects(KVM_EXIT_IO == pmut_vcpu->run->exit_reason);
-    platform_expects(NULL != pmut_exit_io);
+    platform_expects(NULL != pmut_mv_run);
 
     if (KVM_EXIT_IO_IN != (int)pmut_vcpu->run->io.direction) {
         return SHIM_SUCCESS;
     }
     mv_touch();
 
-    pmut_exit_io->type = MV_EXIT_IO_IN;
-    pmut_exit_io->addr = (uint64_t)pmut_vcpu->run->io.port;
-    pmut_exit_io->reps = (uint64_t)pmut_vcpu->run->io.count;
+    // TODO: pmut_exit_io->reps = (uint64_t)pmut_vcpu->run->io.count;
+
+    pmut_mv_run->num_reg_entries = (uint64_t)1U;
+    pmut_mv_run->reg_entries[0].reg = (uint64_t)mv_reg_t_rax;
+    pmut_mv_run->reg_entries[0].val = pmut_vcpu->run->io.reg0;
 
     switch ((int)pmut_vcpu->run->io.size) {
         case 1: {
-            pmut_exit_io->size = (enum mv_bit_size_t)mv_bit_size_t_8;
-            pmut_exit_io->data = (uint64_t)pmut_vcpu->run->io.data8;
             break;
         }
         case 2: {
-            pmut_exit_io->size = (enum mv_bit_size_t)mv_bit_size_t_16;
-            pmut_exit_io->data = (uint64_t)pmut_vcpu->run->io.data16;
             break;
         }
         case 4: {
-            pmut_exit_io->size = (enum mv_bit_size_t)mv_bit_size_t_32;
-            pmut_exit_io->data = (uint64_t)pmut_vcpu->run->io.data32;
             break;
         }
         default: {
@@ -262,19 +257,22 @@ pre_run_op_io(struct shim_vcpu_t *const pmut_vcpu, struct mv_exit_io_t *const pm
  *
  * <!-- inputs/outputs -->
  *   @param pmut_vcpu the VCPU associated with the IOCTL
- *   @param pmut_exit the vcpu exit
+ *   @param pmut_mv_run pointer of type struct mv_run_t to use
  *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
  */
 NODISCARD int64_t
-pre_run_op(struct shim_vcpu_t *const pmut_vcpu, void *const pmut_exit) NOEXCEPT
+pre_run_op(struct shim_vcpu_t *const pmut_vcpu, struct mv_run_t *const pmut_mv_run) NOEXCEPT
 {
     platform_expects(NULL != pmut_vcpu);
     platform_expects(NULL != pmut_vcpu->run);
-    platform_expects(NULL != pmut_exit);
+    platform_expects(NULL != pmut_mv_run);
+
+    pmut_mv_run->num_reg_entries = (uint64_t)0U;
+    pmut_mv_run->num_msr_entries = (uint64_t)0U;
 
     switch (pmut_vcpu->run->exit_reason) {
         case KVM_EXIT_IO: {
-            return pre_run_op_io(pmut_vcpu, (struct mv_exit_io_t *)pmut_exit);
+            return pre_run_op_io(pmut_vcpu, pmut_mv_run);
         }
 
         case KVM_EXIT_INTR: {
@@ -321,7 +319,7 @@ handle_vcpu_kvm_run(struct shim_vcpu_t *const pmut_vcpu) NOEXCEPT
             break;
         }
 
-        mut_ret = pre_run_op(pmut_vcpu, pmut_mut_exit);
+        mut_ret = pre_run_op(pmut_vcpu, (struct mv_run_t*)pmut_mut_exit);
         if (SHIM_FAILURE == mut_ret) {
             bferror("pre_run_op failed");
             goto release_shared_page;
