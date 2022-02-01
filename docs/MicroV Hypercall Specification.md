@@ -311,7 +311,7 @@ A register descriptor list (RDL) describes a list of registers that either need 
 **const, uint64_t: MV_RDL_MAX_ENTRIES**
 | Value | Description |
 | :---- | :---------- |
-| 250 | Defines the max number of entires in the RDL |
+| 250 | Defines the max number of entries in the RDL |
 
 **struct: mv_rdl_entry_t**
 | Name | Type | Offset | Size | Description |
@@ -345,7 +345,7 @@ A memory descriptor list (MDL) describes a discontiguous region of guest physica
 **const, uint64_t: MV_MDL_MAX_ENTRIES**
 | Value | Description |
 | :---- | :---------- |
-| 125 | Defines the max number of entires in the MDL |
+| 125 | Defines the max number of entries in the MDL |
 
 **struct: mv_mdl_entry_t**
 | Name | Type | Offset | Size | Description |
@@ -381,7 +381,7 @@ A CPUID descriptor list (CDL) describes a list of CPUID leaves that either need 
 **const, uint64_t: MV_CDL_MAX_ENTRIES**
 | Value | Description |
 | :---- | :---------- |
-| 125 | Defines the max number of entires in the CDL |
+| 125 | Defines the max number of entries in the CDL |
 
 **enum, int32_t: mv_cpuid_flag_t**
 | Name | Value | Description |
@@ -1658,29 +1658,24 @@ This hypercall executes a VM's VP using the requested VS. The VM and VP that are
 **Warning:**<br>
 This hypercall is slow and may require a Hypercall Continuation. See Hypercall Continuations for more information.
 
+**const, uint64_t: MV_RUN_MAX_REG_ENTRIES**
+| Value | Description |
+| :---- | :---------- |
+| 10 | Defines the max number of entries in the RDL |
+
+**const, uint64_t: MV_RUN_MAX_MSR_ENTRIES**
+| Value | Description |
+| :---- | :---------- |
+| 10 | Defines the max number of entries in the RDL |
+
 **struct: mv_run_t**
-| Name | Type | Offset | Size | Description |
-| :--- | :--- | :----- | :--- | :---------- |
-| reg0 | mv_rdl_entry_t | 0x000 | 16 bytes | An RDL entry containing the contents of a register that should be set |
-| reg1 | mv_rdl_entry_t | 0x010 | 16 bytes | An RDL entry containing the contents of a register that should be set |
-| reg2 | mv_rdl_entry_t | 0x020 | 16 bytes | An RDL entry containing the contents of a register that should be set |
-| reg3 | mv_rdl_entry_t | 0x030 | 16 bytes | An RDL entry containing the contents of a register that should be set |
-| reg4 | mv_rdl_entry_t | 0x040 | 16 bytes | An RDL entry containing the contents of a register that should be set |
-| reg5 | mv_rdl_entry_t | 0x050 | 16 bytes | An RDL entry containing the contents of a register that should be set |
-| reg6 | mv_rdl_entry_t | 0x060 | 16 bytes | An RDL entry containing the contents of a register that should be set |
-| reg7 | mv_rdl_entry_t | 0x070 | 16 bytes | An RDL entry containing the contents of a register that should be set |
-| reg8 | mv_rdl_entry_t | 0x080 | 16 bytes | An RDL entry containing the contents of a register that should be set |
-| reg9 | mv_rdl_entry_t | 0x090 | 16 bytes | An RDL entry containing the contents of a register that should be set |
-| msr0 | mv_rdl_entry_t | 0x0A0 | 16 bytes | An RDL entry containing the contents of an MSR that should be set |
-| msr1 | mv_rdl_entry_t | 0x0B0 | 16 bytes | An RDL entry containing the contents of an MSR that should be set |
-| msr2 | mv_rdl_entry_t | 0x0C0 | 16 bytes | An RDL entry containing the contents of an MSR that should be set |
-| msr3 | mv_rdl_entry_t | 0x0D0 | 16 bytes | An RDL entry containing the contents of an MSR that should be set |
-| msr4 | mv_rdl_entry_t | 0x0E0 | 16 bytes | An RDL entry containing the contents of an MSR that should be set |
-| msr5 | mv_rdl_entry_t | 0x0F0 | 16 bytes | An RDL entry containing the contents of an MSR that should be set |
-| msr6 | mv_rdl_entry_t | 0x100 | 16 bytes | An RDL entry containing the contents of an MSR that should be set |
-| msr7 | mv_rdl_entry_t | 0x110 | 16 bytes | An RDL entry containing the contents of an MSR that should be set |
-| msr8 | mv_rdl_entry_t | 0x120 | 16 bytes | An RDL entry containing the contents of an MSR that should be set |
-| msr9 | mv_rdl_entry_t | 0x130 | 16 bytes | An RDL entry containing the contents of an MSR that should be set |
+| Name            | Type                                   | Offset | Size          | Description                      |
+|:----------------|:---------------------------------------|:-------|:--------------|:---------------------------------|
+| num_reg_entries | uint64_t                               | 0x00   | 8 bytes       | The number of entries in the RDL |
+| reg_entries     | mv_rdl_entry_t[MV_RUN_MAX_REG_ENTRIES] | 0x08   | ABI dependent | Each entry in the RDL            |
+| num_msr_entries | uint64_t                               | 0x58   | 8 bytes       | The number of entries in the RDL |
+| msr_entries     | mv_rdl_entry_t[MV_RUN_MAX_MSR_ENTRIES] | 0x60   | ABI dependent | Each entry in the RDL            |
+| reserved        | uint64_t                               | 0xB0   | 3776 bytes    | REVI                             |
 
 **enum, int32_t: mv_exit_reason_t**
 | Name | Value | Description |
