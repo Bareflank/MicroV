@@ -158,7 +158,7 @@ handle_vcpu_kvm_run_io(
         }
     }
 
-    pmut_vcpu->run->io.reg0 = pmut_exit_io->data;
+    pmut_vcpu->run->io.reg0 = *io_to_u64(pmut_exit_io->data);
     pmut_vcpu->run->io.data_offset = get_offset(pmut_vcpu, &pmut_vcpu->run->io.reg0);
 
     switch ((int32_t)pmut_exit_io->size) {
@@ -226,11 +226,26 @@ pre_run_op_io(struct shim_vcpu_t *const pmut_vcpu, struct mv_run_t *const pmut_m
     }
     mv_touch();
 
-    // TODO: pmut_exit_io->reps = (uint64_t)pmut_vcpu->run->io.count;
+    if (1U == pmut_vcpu->run->io.count) {
+        pmut_mv_run->num_reg_entries = (uint64_t)1U;
+        pmut_mv_run->reg_entries[0].reg = (uint64_t)mv_reg_t_rax;
+        pmut_mv_run->reg_entries[0].val = pmut_vcpu->run->io.reg0;
+    }
+    else if ((uint32_t)MV_RUN_MAX_MEM_REGION_SIZE < pmut_vcpu->run->io.count) {
+        bferror_d32("FIXME: PIO size too big.", pmut_vcpu->run->io.count);
+        // TODO: Implement run_op continuation
+        return SHIM_FAILURE;
+    }
+    else {
+        uint64_t const sz = (uint64_t)pmut_vcpu->run->io.count * (uint64_t)pmut_vcpu->run->io.size;
+        uint64_t const dst = (uint64_t)0x42U;
 
-    pmut_mv_run->num_reg_entries = (uint64_t)1U;
-    pmut_mv_run->reg_entries[0].reg = (uint64_t)mv_reg_t_rax;
-    pmut_mv_run->reg_entries[0].val = pmut_vcpu->run->io.reg0;
+        pmut_mv_run->mdl_entry.bytes = sz;
+        pmut_mv_run->mdl_entry.dst = dst;    // FIXME
+
+        platform_memcpy(pmut_mv_run->mem, pmut_vcpu->run->io.data, sz);
+        bferror("FIXME: PIO address destination");
+    }
 
     switch ((int)pmut_vcpu->run->io.size) {
         case 1: {
@@ -319,7 +334,7 @@ handle_vcpu_kvm_run(struct shim_vcpu_t *const pmut_vcpu) NOEXCEPT
             break;
         }
 
-        mut_ret = pre_run_op(pmut_vcpu, (struct mv_run_t*)pmut_mut_exit);
+        mut_ret = pre_run_op(pmut_vcpu, (struct mv_run_t *)pmut_mut_exit);
         if (SHIM_FAILURE == mut_ret) {
             bferror("pre_run_op failed");
             goto release_shared_page;

@@ -102,7 +102,7 @@ namespace hypercall
                             << "addr "                                                  // --
                             << bsl::hex(pmut_exit_io->addr)                             // --
                             << " data "                                                 // --
-                            << bsl::hex(pmut_exit_io->data)                             // --
+                            << bsl::hex(to_u64(pmut_exit_io->data.data()))              // --
                             << " reps "                                                 // --
                             << bsl::hex(pmut_exit_io->reps)                             // --
                             << " type "                                                 // --

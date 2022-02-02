@@ -81,8 +81,9 @@ namespace hypercall
             bsl::print() << "IO port: "                                             // --
                          << bsl::cyn << bsl::hex(pmut_exit_io->addr) << bsl::rst    // --
                          << ", data: "                                              // --
-                         << bsl::blu << bsl::hex(pmut_exit_io->data) << bsl::rst    // --
-                         << bsl::endl;                                              // --
+                         << bsl::blu << bsl::hex(to_u64(pmut_exit_io->data.data()))
+                         << bsl::rst      // --
+                         << bsl::endl;    // --
 
             integration::verify(mut_hvc.mv_vs_op_destroy_vs(vsid));
             integration::verify(mut_hvc.mv_vp_op_destroy_vp(vpid));

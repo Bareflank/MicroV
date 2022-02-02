@@ -164,7 +164,7 @@ namespace shim
                     mut_vcpu.run = new kvm_run();    // NOLINT
                     g_mut_mv_vs_op_run = mv_exit_reason_t_io;
                     g_mut_mv_vs_op_run_io.addr = addr.get();
-                    g_mut_mv_vs_op_run_io.data = data.get();
+                    *io_to_u64(g_mut_mv_vs_op_run_io.data) = data.get();
                     g_mut_mv_vs_op_run_io.reps = reps.get();
                     g_mut_mv_vs_op_run_io.type = type.get();
                     g_mut_mv_vs_op_run_io.size = size;
@@ -191,7 +191,7 @@ namespace shim
                     mut_vcpu.run = new kvm_run();    // NOLINT
                     g_mut_mv_vs_op_run = mv_exit_reason_t_io;
                     g_mut_mv_vs_op_run_io.addr = addr.get();
-                    g_mut_mv_vs_op_run_io.data = data.get();
+                    *io_to_u64(g_mut_mv_vs_op_run_io.data) = data.get();
                     g_mut_mv_vs_op_run_io.reps = reps.get();
                     g_mut_mv_vs_op_run_io.type = type.get();
                     g_mut_mv_vs_op_run_io.size = size;
@@ -218,7 +218,7 @@ namespace shim
                     mut_vcpu.run = new kvm_run();    // NOLINT
                     g_mut_mv_vs_op_run = mv_exit_reason_t_io;
                     g_mut_mv_vs_op_run_io.addr = addr.get();
-                    g_mut_mv_vs_op_run_io.data = data.get();
+                    *io_to_u64(g_mut_mv_vs_op_run_io.data) = data.get();
                     g_mut_mv_vs_op_run_io.reps = reps.get();
                     g_mut_mv_vs_op_run_io.type = type.get();
                     g_mut_mv_vs_op_run_io.size = size;
@@ -244,7 +244,7 @@ namespace shim
                     mut_vcpu.run = new kvm_run();    // NOLINT
                     g_mut_mv_vs_op_run = mv_exit_reason_t_io;
                     g_mut_mv_vs_op_run_io.addr = addr.get();
-                    g_mut_mv_vs_op_run_io.data = data.get();
+                    *io_to_u64(g_mut_mv_vs_op_run_io.data) = data.get();
                     g_mut_mv_vs_op_run_io.reps = reps.get();
                     g_mut_mv_vs_op_run_io.type = type.get();
                     g_mut_mv_vs_op_run_io.size = size;
@@ -271,7 +271,7 @@ namespace shim
                     mut_vcpu.run = new kvm_run();    // NOLINT
                     g_mut_mv_vs_op_run = mv_exit_reason_t_io;
                     g_mut_mv_vs_op_run_io.addr = addr.get();
-                    g_mut_mv_vs_op_run_io.data = data.get();
+                    *io_to_u64(g_mut_mv_vs_op_run_io.data) = data.get();
                     g_mut_mv_vs_op_run_io.reps = reps.get();
                     g_mut_mv_vs_op_run_io.type = type.get();
                     g_mut_mv_vs_op_run_io.size = size;
@@ -298,7 +298,7 @@ namespace shim
                     mut_vcpu.run = new kvm_run();    // NOLINT
                     g_mut_mv_vs_op_run = mv_exit_reason_t_io;
                     g_mut_mv_vs_op_run_io.addr = addr.get();
-                    g_mut_mv_vs_op_run_io.data = data.get();
+                    *io_to_u64(g_mut_mv_vs_op_run_io.data) = data.get();
                     g_mut_mv_vs_op_run_io.reps = reps.get();
                     g_mut_mv_vs_op_run_io.type = type.get();
                     g_mut_mv_vs_op_run_io.size = size;
@@ -325,7 +325,7 @@ namespace shim
                     mut_vcpu.run = new kvm_run();    // NOLINT
                     g_mut_mv_vs_op_run = mv_exit_reason_t_io;
                     g_mut_mv_vs_op_run_io.addr = addr.get();
-                    g_mut_mv_vs_op_run_io.data = data.get();
+                    *io_to_u64(g_mut_mv_vs_op_run_io.data) = data.get();
                     g_mut_mv_vs_op_run_io.reps = reps.get();
                     g_mut_mv_vs_op_run_io.type = type.get();
                     g_mut_mv_vs_op_run_io.size = size;
@@ -351,7 +351,7 @@ namespace shim
                     mut_vcpu.run = new kvm_run();    // NOLINT
                     g_mut_mv_vs_op_run = mv_exit_reason_t_io;
                     g_mut_mv_vs_op_run_io.addr = addr.get();
-                    g_mut_mv_vs_op_run_io.data = data.get();
+                    *io_to_u64(g_mut_mv_vs_op_run_io.data) = data.get();
                     g_mut_mv_vs_op_run_io.reps = reps.get();
                     g_mut_mv_vs_op_run_io.type = type.get();
                     g_mut_mv_vs_op_run_io.size = size;
@@ -377,7 +377,7 @@ namespace shim
                     mut_vcpu.run = new kvm_run();    // NOLINT
                     g_mut_mv_vs_op_run = mv_exit_reason_t_io;
                     g_mut_mv_vs_op_run_io.addr = addr.get();
-                    g_mut_mv_vs_op_run_io.data = data.get();
+                    *io_to_u64(g_mut_mv_vs_op_run_io.data) = data.get();
                     g_mut_mv_vs_op_run_io.reps = reps.get();
                     g_mut_mv_vs_op_run_io.type = type.get();
                     g_mut_mv_vs_op_run_io.size = size;
@@ -403,7 +403,7 @@ namespace shim
                     mut_vcpu.run = new kvm_run();    // NOLINT
                     g_mut_mv_vs_op_run = mv_exit_reason_t_io;
                     g_mut_mv_vs_op_run_io.addr = addr.get();
-                    g_mut_mv_vs_op_run_io.data = data.get();
+                    *io_to_u64(g_mut_mv_vs_op_run_io.data) = data.get();
                     g_mut_mv_vs_op_run_io.reps = reps.get();
                     g_mut_mv_vs_op_run_io.type = type.get();
                     g_mut_mv_vs_op_run_io.size = size;

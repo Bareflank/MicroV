@@ -83,7 +83,7 @@ namespace hypercall
 
             auto *const pmut_exit_io{to_0<mv_exit_io_t>()};
             integration::verify(pmut_exit_io->addr == expected_addr);
-            integration::verify(pmut_exit_io->data == expected_data);
+            integration::verify(to_u64(pmut_exit_io->data.data()) == expected_data);
             integration::verify(pmut_exit_io->reps == expected_reps);
             integration::verify(pmut_exit_io->type == expected_type);
             integration::verify(pmut_exit_io->size == expected_size);

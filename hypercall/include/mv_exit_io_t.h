@@ -41,6 +41,8 @@ extern "C"
 #define MV_EXIT_IO_IN ((uint64_t)0x0000000000000000)
 /** @brief The mv_exit_io_t defines an output access */
 #define MV_EXIT_IO_OUT ((uint64_t)0x0000000000000001)
+/** @brief The mv_exit_io_t defines the max data capacity */
+#define MV_EXIT_IO_MAX_DATA ((uint64_t)0x0000000000000FE4)
 
     /**
      * <!-- description -->
@@ -50,15 +52,28 @@ extern "C"
     {
         /** @brief stores the address of the IO register */
         uint64_t addr;
-        /** @brief stores the data to read/write */
-        uint64_t data;
         /** @brief stores the number of repetitions to make */
         uint64_t reps;
         /** @brief stores MV_EXIT_IO flags */
         uint64_t type;
         /** @brief stores defines the bit size of the dst */
         enum mv_bit_size_t size;
+        /** @brief stores the data to read/write */
+        uint8_t data[MV_EXIT_IO_MAX_DATA];
     };
+
+    /** <!-- description -->
+     *    @brief Returns bsl::to_u64(reinterpret_cast<bsl::uintmx>(ptr))
+     *
+     *  <!-- inputs/outputs -->
+     *    @param pmut_mut_arr the pointer to convert to a bsl::safe_u64
+     *    @return Returns bsl::to_u64(reinterpret_cast<bsl::uintmx>(ptr))
+     */
+    NODISCARD CONSTEXPR uint64_t *
+    io_to_u64(uint8_t pmut_mut_arr[]) NOEXCEPT
+    {
+        return (uint64_t *)&pmut_mut_arr[0];
+    }
 
 #pragma pack(pop)
 

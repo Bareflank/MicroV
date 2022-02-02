@@ -335,6 +335,8 @@ namespace microv
                 set_reg_return(mut_sys, hypercall::MV_STATUS_FAILURE_UNKNOWN);
                 return vmexit_failure_advance_ip_and_run;
             }
+
+            bsl::touch();
         }
 
         auto const ret = run_guest(

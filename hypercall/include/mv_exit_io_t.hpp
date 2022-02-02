@@ -39,6 +39,8 @@ namespace hypercall
     constexpr auto MV_EXIT_IO_IN{0x0000000000000000_u64};
     /// @brief The mv_exit_io_t defines an output access
     constexpr auto MV_EXIT_IO_OUT{0x0000000000000001_u64};
+    /// @brief The mv_exit_io_t defines the max data capacity
+    constexpr auto MV_EXIT_IO_MAX_DATA{0x0000000000000FE4_u64};
 
     /// <!-- description -->
     ///   @brief See mv_vs_op_run for more details
@@ -47,15 +49,33 @@ namespace hypercall
     {
         /// @brief stores the address of the IO register
         bsl::uint64 addr;
-        /// @brief stores the data to read/write
-        bsl::uint64 data;
         /// @brief stores the number of repetitions to make
         bsl::uint64 reps;
         /// @brief stores MV_EXIT_IO flags
         bsl::uint64 type;
         /// @brief stores defines the bit size of the dst
         mv_bit_size_t size;
+        /// @brief stores the data to read/write
+        bsl::array<bsl::uint8, MV_EXIT_IO_MAX_DATA.get()> data;
     };
+
+    /// <!-- description -->
+    ///   @brief Returns bsl::to_u64(reinterpret_cast<bsl::uintmx>(ptr))
+    ///
+    /// <!-- inputs/outputs -->
+    ///   @tparam T the type of element being encapsulated.
+    ///   @tparam N the total number of elements in the array. Cannot be 0
+    ///   @param mut_buf the pointer to convert to a bsl::safe_u64
+    ///   @return Returns bsl::to_u64(reinterpret_cast<bsl::uintmx>(ptr))
+    ///
+    template<typename T, bsl::uintmx N>
+    [[nodiscard]] constexpr auto
+    io_to_u64(bsl::array<T, N> &mut_buf) noexcept -> bsl::uint64 &
+    {
+        // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
+        return reinterpret_cast<bsl::uint64 &>(*mut_buf.data());
+    }
+
 }
 
 #pragma pack(pop)

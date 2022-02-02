@@ -112,7 +112,7 @@ namespace hypercall
             ///
 
             constexpr auto ax_mask{0xFFFFFFFFFFFF0000_u64};
-            bsl::safe_u64 mut_rax{pmut_exit_io->data};
+            bsl::safe_u64 mut_rax{to_u64(pmut_exit_io->data.data())};
             mut_rax &= ax_mask;
             mut_rax |= bsl::to_u64(mut_port10);
 
@@ -154,11 +154,11 @@ namespace hypercall
             ///   value back to our fake port. We should see 0x43.
             ///
 
-            bsl::print() << "IO port: "                                             // --
-                         << bsl::cyn << bsl::hex(pmut_exit_io->addr) << bsl::rst    // --
-                         << ", data: "                                              // --
-                         << bsl::blu << bsl::hex(pmut_exit_io->data) << bsl::rst    // --
-                         << bsl::endl;                                              // --
+            bsl::print() << "IO port: "                                                        // --
+                         << bsl::cyn << bsl::hex(pmut_exit_io->addr) << bsl::rst               // --
+                         << ", data: "                                                         // --
+                         << bsl::blu << bsl::hex(io_to_u64(pmut_exit_io->data)) << bsl::rst    // --
+                         << bsl::endl;                                                         // --
 
             // mut_port10_val = (++mut_port10_val).checked();
             // integration::verify(mut_port10_val.get() == bsl::to_u16_unsafe(pmut_exit_io->data));

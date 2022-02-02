@@ -25,6 +25,7 @@
 #ifndef MV_RUN_T_HPP
 #define MV_RUN_T_HPP
 
+#include "mv_mdl_entry_t.hpp"
 #include "mv_rdl_entry_t.hpp"    // IWYU pragma: export
 
 #include <bsl/array.hpp>
@@ -40,7 +41,7 @@ namespace hypercall
     /// @brief defines the max number of MSR entries
     constexpr auto MV_RUN_MAX_MSR_ENTRIES{0xA_u64};
     /// @brief defines the max number of entires in the MDL
-    constexpr auto MV_RUN_MAX_RESERVED{0xEB0_u64};
+    constexpr auto MV_RUN_MAX_MEM_REGION_SIZE{0xE90_u64};
 
     /// <!-- description -->
     ///   @brief TODO
@@ -57,8 +58,10 @@ namespace hypercall
         /// @brief stores the MSR entries
         bsl::array<mv_rdl_entry_t, MV_RUN_MAX_MSR_ENTRIES.get()> msr_entries;
 
-        /// @brief reserved
-        bsl::array<bsl::uint8, MV_RUN_MAX_RESERVED.get()> reserved;
+        /** @brief stores the MDL entry */
+        mv_mdl_entry_t mdl_entry;
+        /** @brief stores the memory region buffer */
+        bsl::array<bsl::uint8, MV_RUN_MAX_MEM_REGION_SIZE.get()> mem;
     };
 }
 

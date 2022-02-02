@@ -27,6 +27,7 @@
 #ifndef MV_RUN_T
 #define MV_RUN_T
 
+#include <mv_mdl_entry_t.h>
 #include <mv_rdl_entry_t.h>
 #include <stdint.h>
 
@@ -41,8 +42,8 @@ extern "C"
 #define MV_RUN_MAX_REG_ENTRIES ((uint64_t)0xA)
 /** @brief defines the max number of MSR entries */
 #define MV_RUN_MAX_MSR_ENTRIES ((uint64_t)0xA)
-/** @brief defines the max number of reserved entries */
-#define MV_RUN_MAX_RESERVED ((uint64_t)0xEB0)
+/** @brief defines the largest possible size for the memory region */
+#define MV_RUN_MAX_MEM_REGION_SIZE ((uint64_t)0xE90)
 
     /**
      * <!-- description -->
@@ -60,8 +61,10 @@ extern "C"
         /** @brief stores the MSR entries */
         struct mv_rdl_entry_t msr_entries[MV_RUN_MAX_MSR_ENTRIES];
 
-        /** @brief reserved */
-        uint8_t reserved[MV_RUN_MAX_RESERVED];
+        /** @brief stores the MDL entry */
+        struct mv_mdl_entry_t mdl_entry;
+        /** @brief stores the memory region buffer */
+        uint8_t mem[MV_RUN_MAX_MEM_REGION_SIZE];
     };
 
 #pragma pack(pop)

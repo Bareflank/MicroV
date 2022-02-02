@@ -74,10 +74,6 @@ namespace microv
         vs_pool_t &mut_vs_pool,
         bsl::safe_u16 const &vsid) noexcept -> bsl::errc_type
     {
-        /// TODO:
-        /// - Need to properly handle string instructions (INS/OUTS)
-        ///
-
         bsl::expects(!mut_sys.is_the_active_vm_the_root_vm());
 
         bsl::discard(gs);
@@ -100,6 +96,8 @@ namespace microv
         constexpr auto reps_shft{3_u64};
         constexpr auto type_mask{0x00000001_u64};
         constexpr auto type_shft{0_u64};
+        constexpr auto strn_mask{0x00000004_u64};
+        constexpr auto strn_shft{2_u64};
 
         constexpr auto sz32_mask{0x00000040_u64};
         constexpr auto sz32_shft{6_u64};
@@ -132,7 +130,14 @@ namespace microv
             mut_exit_io->type = hypercall::MV_EXIT_IO_IN.get();
         }
 
-        mut_exit_io->data = rax.get();
+        if (((exitinfo1 & strn_mask) >> strn_shft).is_zero()) {
+            bsl::error() << "FIXME: add missing string implementation"    // --
+                         << bsl::endl                                     // --
+                         << bsl::here();                                  // --
+        }
+        else {
+            hypercall::io_to_u64(mut_exit_io->data) = rax.get();
+        }
 
         if (((exitinfo1 & sz32_mask) >> sz32_shft).is_pos()) {
             mut_exit_io->size = hypercall::mv_bit_size_t::mv_bit_size_t_32;
