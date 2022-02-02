@@ -24,9 +24,9 @@
 
 #include "../../include/handle_vcpu_kvm_interrupt.h"
 
-#include <helpers.hpp>
+#include <helpers.hpp>    // IWYU pragma: keep
 #include <kvm_interrupt.h>
-#include <mv_types.h>
+#include <shim_vcpu_t.h>
 
 #include <bsl/ut.hpp>
 

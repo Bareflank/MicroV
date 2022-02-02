@@ -28,6 +28,7 @@
 #include <mv_hypercall_t.hpp>
 #include <mv_reg_t.hpp>
 
+#include <bsl/array.hpp>
 #include <bsl/convert.hpp>
 #include <bsl/debug.hpp>
 #include <bsl/enable_color.hpp>

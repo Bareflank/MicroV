@@ -67,6 +67,7 @@
 #include <bsl/expects.hpp>
 #include <bsl/safe_idx.hpp>
 #include <bsl/safe_integral.hpp>
+#include <bsl/span.hpp>
 #include <bsl/string_view.hpp>
 #include <bsl/touch.hpp>
 #include <bsl/unlikely.hpp>

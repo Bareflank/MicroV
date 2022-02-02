@@ -31,26 +31,28 @@
 #include <bsl/convert.hpp>
 #include <bsl/safe_integral.hpp>
 
-constexpr auto CLOCK_TSC_STABLE{2_u32};
-constexpr auto PADDING{9_u32};
+#pragma pack(push, 1)
 
 namespace shim
 {
-#pragma pack(push, 1)
+    /// @brief defines the clock tsc stable
+    constexpr auto CLOCK_TSC_STABLE{2_u64};
+    /// @brief padding
+    constexpr auto PADDING{9_u64};
 
-    /**
-     * @struct kvm_clock_data
-     *
-     * <!-- description -->
-     *   @brief see /include/uapi/linux/kvm.h in Linux for more details.
-     */
+    ///
+    /// @struct kvm_clock_data
+    ///
+    /// <!-- description -->
+    ///   @brief see /include/uapi/linux/kvm.h in Linux for more details.
+    ///
     struct kvm_clock_data
     {
-        /** @brief value of the clock data */
+        /// @brief value of the clock data
         bsl::uint64 clock;
-        /** @brief clock flags */
+        /// @brief clock flags
         bsl::uint32 flags;
-        /** @brief CPUID entries */
+        /// @brief CPUID entries
         bsl::array<bsl::uint32, PADDING.get()> pad;
     };
 }

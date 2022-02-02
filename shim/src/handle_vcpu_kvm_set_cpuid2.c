@@ -28,6 +28,7 @@
 #include <detect_hypervisor.h>
 #include <g_mut_hndl.h>
 #include <kvm_cpuid2.h>
+#include <kvm_cpuid_entry2.h>
 #include <mv_cdl_t.h>
 #include <mv_constants.h>
 #include <mv_hypercall.h>

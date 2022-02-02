@@ -28,13 +28,9 @@
 #include <detect_hypervisor.h>
 #include <g_mut_hndl.h>
 #include <kvm_clock_data.h>
-#include <mv_constants.h>
 #include <mv_hypercall.h>
-#include <mv_rdl_t.h>
-#include <mv_reg_t.h>
 #include <mv_types.h>
 #include <platform.h>
-#include <shim_vcpu_t.h>
 
 /**
  * <!-- description -->

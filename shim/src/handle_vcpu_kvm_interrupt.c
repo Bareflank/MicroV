@@ -31,6 +31,7 @@
 #include <mv_constants.h>
 #include <mv_hypercall.h>
 #include <mv_types.h>
+#include <platform.h>
 #include <shim_vcpu_t.h>
 
 /**

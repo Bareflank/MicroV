@@ -22,12 +22,13 @@
 /// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 /// SOFTWARE.
 
+#include "kvm_clock_data.hpp"
+
 #include <integration_utils.hpp>
 #include <ioctl_t.hpp>
-#include <kvm_constants.hpp>
 #include <shim_platform_interface.hpp>
 
-#include <bsl/debug.hpp>
+#include <bsl/convert.hpp>
 #include <bsl/enable_color.hpp>
 #include <bsl/exit_code.hpp>
 #include <bsl/safe_integral.hpp>

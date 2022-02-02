@@ -27,6 +27,7 @@
 
 #include <mv_bit_size_t.hpp>
 
+#include <bsl/array.hpp>
 #include <bsl/convert.hpp>
 #include <bsl/safe_integral.hpp>
 

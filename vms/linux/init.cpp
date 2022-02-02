@@ -20,10 +20,12 @@
 // SOFTWARE.
 
 #pragma GCC diagnostic ignored "-Wunused-result"
+#include <cstdint>
 #include <cstdio>
 #include <ctime>
 #include <iostream>
 #include <sys/mount.h>
+#include <sys/types.h>
 #include <unistd.h>
 
 /**

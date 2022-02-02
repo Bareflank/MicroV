@@ -28,11 +28,13 @@
 #include <kvm_cpuid_entry2.hpp>
 #include <shim_platform_interface.hpp>
 
+#include <bsl/array.hpp>
 #include <bsl/convert.hpp>
 #include <bsl/enable_color.hpp>
 #include <bsl/exit_code.hpp>
 #include <bsl/safe_idx.hpp>
 #include <bsl/safe_integral.hpp>
+#include <bsl/touch.hpp>
 
 /// <!-- description -->
 ///   @brief Provides the main entry point for this application.

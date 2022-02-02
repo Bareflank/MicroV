@@ -24,6 +24,9 @@
  * SOFTWARE.
  */
 
+#include "mv_mdl_entry_t.h"
+#include "mv_rdl_entry_t.h"
+
 #include <debug.h>
 #include <detect_hypervisor.h>
 #include <g_mut_hndl.h>
@@ -362,7 +365,7 @@ handle_vcpu_kvm_run(struct shim_vcpu_t *const pmut_vcpu) NOEXCEPT
 
             case mv_exit_reason_t_interrupt_window: {
                 bferror("run: interrupt window exit");
-                platform_expects(pmut_vcpu->run->request_interrupt_window);
+                platform_expects(!!pmut_vcpu->run->request_interrupt_window);
                 // pmut_vcpu->run->if_flag = (uint8_t)1;
                 pmut_vcpu->run->ready_for_interrupt_injection = (uint8_t)1;
                 pmut_vcpu->run->exit_reason = KVM_EXIT_IRQ_WINDOW_OPEN;

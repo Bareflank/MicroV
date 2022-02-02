@@ -28,6 +28,7 @@
 #include <mv_exit_reason_t.hpp>
 #include <mv_hypercall_t.hpp>
 
+#include <bsl/array.hpp>
 #include <bsl/convert.hpp>
 #include <bsl/enable_color.hpp>
 #include <bsl/exit_code.hpp>

@@ -24,7 +24,6 @@
  * SOFTWARE.
  */
 
-#include <debug.h>
 #include <g_mut_shared_pages.h>
 #include <mv_types.h>
 #include <platform.h>

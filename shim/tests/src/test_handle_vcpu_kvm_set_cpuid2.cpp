@@ -26,6 +26,7 @@
 
 #include <kvm_cpuid2.h>
 #include <mv_types.h>
+#include <shim_vcpu_t.h>
 
 #include <bsl/ut.hpp>
 
@@ -43,6 +44,18 @@ namespace shim
     [[nodiscard]] constexpr auto
     tests() noexcept -> bsl::exit_code
     {
+        bsl::ut_scenario{"description"} = []() noexcept {
+            bsl::ut_given{} = [&]() noexcept {
+                kvm_cpuid2 mut_args{};
+                shim_vcpu_t const vcpu{};
+                bsl::ut_when{} = [&]() noexcept {
+                    bsl::ut_then{} = [&]() noexcept {
+                        bsl::ut_check(SHIM_SUCCESS == handle_vcpu_kvm_set_cpuid2(&vcpu, &mut_args));
+                    };
+                };
+            };
+        };
+
         return bsl::ut_success();
     }
 }

@@ -22,16 +22,19 @@
 /// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 /// SOFTWARE.
 
+#include <cstdlib>
 #include <integration_utils.hpp>
-#include <mv_bit_size_t.hpp>
 #include <mv_exit_io_t.hpp>
 #include <mv_exit_reason_t.hpp>
 #include <mv_hypercall_t.hpp>
 
+#include <bsl/array.hpp>
 #include <bsl/convert.hpp>
+#include <bsl/debug.hpp>
 #include <bsl/enable_color.hpp>
 #include <bsl/exit_code.hpp>
 #include <bsl/safe_integral.hpp>
+#include <bsl/touch.hpp>
 
 namespace hypercall
 {

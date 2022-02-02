@@ -25,6 +25,7 @@
 #ifndef KVM_RUN_IO_HPP
 #define KVM_RUN_IO_HPP
 
+#include <bsl/array.hpp>
 #include <bsl/convert.hpp>
 #include <bsl/safe_integral.hpp>
 

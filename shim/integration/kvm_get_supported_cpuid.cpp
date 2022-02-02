@@ -30,6 +30,7 @@
 
 #include <bsl/array.hpp>
 #include <bsl/convert.hpp>
+#include <bsl/debug.hpp>
 #include <bsl/enable_color.hpp>
 #include <bsl/exit_code.hpp>
 #include <bsl/safe_idx.hpp>
