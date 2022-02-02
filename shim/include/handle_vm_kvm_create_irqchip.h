@@ -28,6 +28,7 @@
 #define HANDLE_VM_KVM_CREATE_IRQCHIP_H
 
 #include <mv_types.h>
+#include <shim_vm_t.h>
 
 #ifdef __cplusplus
 extern "C"
@@ -36,12 +37,15 @@ extern "C"
 
     /**
      * <!-- description -->
-     *   @brief Handles the execution of kvm_create_irqchip.
+     *   @brief Handles the execution of handle_vm_kvm_create_irqchip.
      *
      * <!-- inputs/outputs -->
+     *   @param pmut_vm the argument to hold vm details of type shim_vm_t
      *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
      */
-    NODISCARD int64_t handle_vm_kvm_create_irqchip(void) NOEXCEPT;
+    NODISCARD int64_t handle_vm_kvm_create_irqchip(struct shim_vm_t *const pmut_vm) NOEXCEPT;
+    // NODISCARD int64_t handle_vm_kvm_create_irqchip(
+    //     struct shim_vm_t *const pmut_vm, struct shim_virqchip_t **const pmut_virqchip) NOEXCEPT;
 
 #ifdef __cplusplus
 }
