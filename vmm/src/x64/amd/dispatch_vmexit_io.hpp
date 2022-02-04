@@ -130,7 +130,7 @@ namespace microv
             mut_exit_io->type = hypercall::MV_EXIT_IO_IN.get();
         }
 
-        if (((exitinfo1 & strn_mask) >> strn_shft).is_zero()) {
+        if (!((exitinfo1 & strn_mask) >> strn_shft).is_zero()) {
             bsl::error() << "FIXME: add missing string implementation"    // --
                          << bsl::endl                                     // --
                          << bsl::here();                                  // --
@@ -160,12 +160,12 @@ namespace microv
             mut_exit_io->reps = bsl::safe_u64::magic_1().get();
         }
 
-        // if (((exitinfo1 & type_mask) >> type_shft).is_zero()) {
-        //     bsl::debug() << __FILE__ << " OUT " << " port=" << bsl::hex(mut_exit_io->addr) << " data=" << bsl::hex(mut_exit_io->data) << " size=" << bsl::hex(static_cast<bsl::uint32>(mut_exit_io->size)) << bsl::endl;
-        // }
-        // else {
-        //     bsl::debug() << __FILE__ << " IN " << " port=" << bsl::hex(mut_exit_io->addr) << " data=" << bsl::hex(mut_exit_io->data) << " size=" << bsl::hex(static_cast<bsl::uint32>(mut_exit_io->size)) << bsl::endl;
-        // }
+        if (((exitinfo1 & type_mask) >> type_shft).is_zero()) {
+            bsl::debug() << __FILE__ << " OUT " << " port=" << bsl::hex(mut_exit_io->addr) << " data=" << bsl::hex(hypercall::io_to_u64(mut_exit_io->data)) << " size=" << bsl::hex(static_cast<bsl::uint32>(mut_exit_io->size)) << bsl::endl;
+        }
+        else {
+            bsl::debug() << __FILE__ << " IN " << " port=" << bsl::hex(mut_exit_io->addr) << " data=" << bsl::hex(hypercall::io_to_u64(mut_exit_io->data)) << " size=" << bsl::hex(static_cast<bsl::uint32>(mut_exit_io->size)) << bsl::endl;
+        }
         
         set_reg_return(mut_sys, hypercall::MV_STATUS_SUCCESS);
         set_reg0(mut_sys, bsl::to_u64(hypercall::EXIT_REASON_IO));
