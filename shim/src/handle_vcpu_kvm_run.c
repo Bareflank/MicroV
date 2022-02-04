@@ -304,6 +304,71 @@ pre_run_op_io(struct shim_vcpu_t *const pmut_vcpu, struct mv_run_t *const pmut_m
 
 /**
  * <!-- description -->
+ *   @brief Prepares the guest on MMIO intercepts before a run operation.
+ *
+ * <!-- inputs/outputs -->
+ *   @param pmut_vcpu the VCPU associated with the IOCTL
+ *   @param pmut_mv_run pointer of type struct mv_run_t to use
+ *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
+ */
+NODISCARD int64_t
+pre_run_op_mmio(struct shim_vcpu_t *const pmut_vcpu, struct mv_run_t *const pmut_mv_run) NOEXCEPT
+{
+    platform_expects(NULL != pmut_vcpu);
+    platform_expects(NULL != pmut_vcpu->run);
+    platform_expects(KVM_EXIT_MMIO == pmut_vcpu->run->exit_reason);
+    platform_expects(NULL != pmut_mv_run);
+
+    bfdebug_log("pre_run_op_mmio\n");
+
+    if (pmut_vcpu->run->mmio.is_write) {
+        // Nothing to do here for write operations
+        return SHIM_SUCCESS;
+    }
+    mv_touch();
+    bfdebug_log("pre_run_op_mmio: it was a read operation\n");
+
+    if ((uint32_t)KVM_RUN_MMIO_DATA_SIZE < pmut_vcpu->run->mmio.len) {
+        bferror_d32("FIXME: MMIO size too big.", pmut_vcpu->run->mmio.len);
+        // TODO: Implement run_op continuation
+        return SHIM_FAILURE;
+    } else {
+        //FIXME assume read into eax right now...
+        pmut_mv_run->num_reg_entries = (uint64_t)1U;
+        pmut_mv_run->reg_entries[0].reg = (uint64_t)mv_reg_t_rax;
+        // Assume it is an 8-byte read??
+        pmut_mv_run->reg_entries[0].val = *((uint64_t*)pmut_vcpu->run->mmio.data);
+
+
+        // pmut_mv_run->reg_entries[1].reg = (uint64_t)mv_reg_t_rip;
+        // pmut_mv_run->reg_entries[1].val = *((uint64_t*)pmut_vcpu->run->mmio.data);
+        bfdebug_log("assume it was a read into eax, val=0x%llx\n", (uint64_t)pmut_mv_run->reg_entries[0].val);
+    }
+
+    switch ((int)pmut_vcpu->run->mmio.len) {
+        case 1: {
+            break;
+        }
+        case 2: {
+            break;
+        }
+        case 4: {
+            break;
+        }
+        case 8: {
+            break;
+        }
+        default: {
+            bferror_x8("invalid mmio size", pmut_vcpu->run->mmio.len);
+            return SHIM_FAILURE;
+        }
+    }
+
+    return SHIM_SUCCESS;
+}
+
+/**
+ * <!-- description -->
  *   @brief Prepares the guest before a run operation.
  *
  * <!-- inputs/outputs -->
@@ -324,6 +389,10 @@ pre_run_op(struct shim_vcpu_t *const pmut_vcpu, struct mv_run_t *const pmut_mv_r
     switch (pmut_vcpu->run->exit_reason) {
         case KVM_EXIT_IO: {
             return pre_run_op_io(pmut_vcpu, pmut_mv_run);
+        }
+
+        case KVM_EXIT_MMIO: {
+            return pre_run_op_mmio(pmut_vcpu, pmut_mv_run);
         }
 
         case KVM_EXIT_INTR: {
