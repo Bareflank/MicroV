@@ -396,17 +396,17 @@ namespace microv
         ///     syscall layer and stores the results in the same registers.
         ///
         /// <!-- inputs/outputs -->
-        ///   @param sys the bf_syscall_t to use
+        ///   @param mut_sys the bf_syscall_t to use
         ///   @param intrinsic the intrinsic_t to use
         ///   @return Returns bsl::errc_success on success, bsl::errc_failure
         ///     and friends otherwise. If the PP was asked to promote the VS,
         ///     vmexit_success_promote is returned.
         ///
         [[nodiscard]] static constexpr auto
-        get(syscall::bf_syscall_t const &sys, intrinsic_t const &intrinsic) noexcept
+        get(syscall::bf_syscall_t &mut_sys, intrinsic_t const &intrinsic) noexcept
             -> bsl::errc_type
         {
-            bsl::discard(sys);
+            bsl::discard(mut_sys);
             bsl::discard(intrinsic);
 
             /// NOTE:
@@ -442,7 +442,19 @@ namespace microv
             ///   don't calculate it like we do with the root.
             ///
 
-            bsl::error() << "get not implemented\n" << bsl::here();
+            bsl::error() << __FILE__ << "emulated_cpuid_t::get not implemented yet!!\n" << bsl::here();
+
+            auto mut_rax{mut_sys.bf_tls_rax()};
+            auto mut_rbx{mut_sys.bf_tls_rbx()};
+            auto mut_rcx{mut_sys.bf_tls_rcx()};
+            auto mut_rdx{mut_sys.bf_tls_rdx()};
+            intrinsic.cpuid(mut_rax, mut_rbx, mut_rcx, mut_rdx);
+
+            mut_sys.bf_tls_set_rax(mut_rax);
+            mut_sys.bf_tls_set_rbx(mut_rbx);
+            mut_sys.bf_tls_set_rcx(mut_rcx);
+            mut_sys.bf_tls_set_rdx(mut_rdx);
+
             return bsl::errc_failure;
         }
 
@@ -491,6 +503,7 @@ namespace microv
                 }
             }
 
+            bsl::debug() << __FILE__ << " " << __FUNCTION__ << " " << bsl::endl;
             print_leaf(bsl::error(), mut_entry);
 
             return bsl::errc_failure;
@@ -531,6 +544,10 @@ namespace microv
                     auto *const pmut_entry{
                         m_std_leaves.at_if(mut_i)->at_if(bsl::to_idx(entry.idx))};
 
+                    bsl::debug() << "Setting CPUID_FN0000_0001 = [" << bsl::endl;
+                    print_leaf(bsl::debug(), entry);
+
+
                     pmut_entry->ecx &= entry.ecx;
                     pmut_entry->edx &= entry.edx;
 
@@ -566,6 +583,7 @@ namespace microv
                 }
             }
 
+            bsl::debug() << __FILE__ << " " << __FUNCTION__ << " " << bsl::endl;
             print_leaf(bsl::error(), entry);
 
             return bsl::errc_success;
@@ -615,6 +633,7 @@ namespace microv
         set_list(syscall::bf_syscall_t const &sys, hypercall::mv_cdl_t const &cdl) noexcept
             -> bsl::errc_type
         {
+            bsl::debug() << __FILE__ << " " << __FUNCTION__ << bsl::endl;
             for (bsl::safe_idx mut_i{}; mut_i < cdl.num_entries; ++mut_i) {
                 auto const &entry{*cdl.entries.at_if(mut_i)};
                 if (bsl::unlikely(!set(sys, entry))) {

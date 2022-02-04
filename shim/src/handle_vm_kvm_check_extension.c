@@ -90,6 +90,48 @@ handle_vm_kvm_check_extension(unsigned long mut_userargs, uint32_t *const pmut_r
             *pmut_ret = (uint32_t)INT16_MAX;
             break;
         }
+
+        // These are the set of capabilities we specifically don't support
+        // Verified w/ qemu/kvm that it is ok to say we don't support these
+        // so don't print a warning
+        case KVM_CAP_ASYNC_PF:
+        case KVM_CAP_CLOCKSOURCE:
+        case KVM_CAP_COALESCED_MMIO:
+        case KVM_CAP_DEBUGREGS:
+        case KVM_CAP_EXCEPTION_PAYLOAD:
+        case KVM_CAP_GET_MSR_FEATURES: //??
+        case KVM_CAP_HYPERV:
+        case KVM_CAP_HYPERV_VP_INDEX:
+        case KVM_CAP_IOEVENTFD:
+        case KVM_CAP_IOEVENTFD_ANY_LENGTH:
+        case KVM_CAP_IRQCHIP:
+        case KVM_CAP_IRQFD:
+        case KVM_CAP_IRQFD_RESAMPLE:
+        case KVM_CAP_IRQ_INJECT_STATUS:
+        case KVM_CAP_MANUAL_DIRTY_LOG_PROTECT2:
+        case KVM_CAP_MCE:
+        case KVM_CAP_MULTI_ADDRESS_SPACE:
+        case KVM_CAP_NESTED_STATE:
+        case KVM_CAP_NOP_IO_DELAY:
+        case KVM_CAP_PCI_2_3:
+        case KVM_CAP_PIT_STATE2:
+        case KVM_CAP_PV_MMU:
+        case KVM_CAP_READONLY_MEM:
+        case KVM_CAP_S390_IRQCHIP:
+        case KVM_CAP_SET_IDENTITY_MAP_ADDR:
+        case KVM_CAP_SIGNAL_MSI:
+        case KVM_CAP_SYNC_MMU:
+        case KVM_CAP_VCPU_EVENTS:
+        case KVM_CAP_VM_ATTRIBUTES:
+        case KVM_CAP_X86_ROBUST_SINGLESTEP:
+        case KVM_CAP_X86_SMM:
+        case KVM_CAP_XCRS:
+        case KVM_CAP_XSAVE:
+        {
+            *pmut_ret = (uint32_t)0;
+            break;
+        }
+
         default: {
             bfdebug_x64("Unsupported Extension userargs", mut_userargs);
             *pmut_ret = (uint32_t)0;

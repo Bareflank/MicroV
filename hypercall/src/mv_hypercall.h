@@ -954,13 +954,15 @@ extern "C"
     mv_vs_op_run(uint64_t const hndl, uint16_t const vsid) NOEXCEPT
     {
         enum mv_exit_reason_t mut_exit_reason;
+        mv_status_t mv_stat;
 
         platform_expects(MV_INVALID_HANDLE != hndl);
         platform_expects(hndl > ((uint64_t)0));
         platform_expects((int32_t)MV_INVALID_ID != (int32_t)vsid);
         platform_expects(((uint64_t)vsid) < HYPERVISOR_MAX_VPS);
 
-        if (mv_vs_op_run_impl(hndl, vsid, &mut_exit_reason)) {
+        if ( (mv_stat = mv_vs_op_run_impl(hndl, vsid, &mut_exit_reason)) ) {
+            bfdebug_log("[BAREFLANK ERROR] mv_vs_op_run: mut_exit_reason = 0x%x, mv_stat = 0x%llx\n", mut_exit_reason, mv_stat);
             bferror("mv_vs_op_run failed");
             return mut_exit_reason;
         }

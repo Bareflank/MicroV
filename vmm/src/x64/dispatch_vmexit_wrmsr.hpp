@@ -69,7 +69,7 @@ namespace microv
         pp_pool_t const &pp_pool,
         vm_pool_t const &vm_pool,
         vp_pool_t const &vp_pool,
-        vs_pool_t const &vs_pool,
+        vs_pool_t &vs_pool,
         bsl::safe_u16 const &vsid) noexcept -> bsl::errc_type
     {
         bsl::discard(gs);
@@ -83,8 +83,23 @@ namespace microv
         bsl::discard(vs_pool);
         bsl::discard(vsid);
 
-        bsl::error() << "dispatch_vmexit_wrmsr not implemented\n" << bsl::here();
-        return bsl::errc_failure;
+        auto const rcx{mut_sys.bf_tls_rcx()};
+        auto const rax{mut_sys.bf_tls_rax()};
+        auto const rdx{mut_sys.bf_tls_rdx()};
+
+        constexpr auto mask32{0xFFFFFFFF_u64};
+
+        // FIXME: is this the same for 64-bit?
+        auto const msr_hi{(rdx & mask32) << 32_u64};
+        auto const msr_lo{(rax & mask32)};
+        auto const msr_val{ msr_hi | msr_lo};
+
+        auto const ret_val{vs_pool.msr_set(mut_sys, rcx, msr_val, vsid)};
+        // FIXME: should look at the return value
+        bsl::discard(ret_val);
+
+        bsl::error() << "dispatch_vmexit_wrmsr msr_num=" << bsl::hex(rcx) << " value=" << bsl::hex(msr_val) << bsl::endl;
+        return vmexit_success_advance_ip_and_run;
     }
 }
 

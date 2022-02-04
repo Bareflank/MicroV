@@ -1999,7 +1999,7 @@ namespace microv
 
             bsl::safe_u64 mut_ret{};
 
-            bsl::debug() << "MSR "             // --
+            bsl::debug() << "MSR get "             // --
                          << bsl::hex(msr)      // --
                          << " is requested"    // --
                          << bsl::endl          // --
@@ -2057,7 +2057,7 @@ namespace microv
             mut_ret = m_emulated_msr.get(sys, msr);
 
             if (bsl::unlikely(!mut_ret.is_valid_and_checked())) {
-                bsl::error() << "MSR "           // --
+                bsl::error() << "MSR get "           // --
                              << bsl::hex(msr)    // --
                              << " is either unsupported/invalid or not yet implemented"
                              << bsl::endl       // --
@@ -2143,6 +2143,7 @@ namespace microv
                 }
 
                 case MSR_APIC_BASE.get(): {
+                    bsl::error() << "Setting APIC Base to " << bsl::hex(val) << bsl::endl;
                     m_emulated_lapic.set_apic_base(val);
                     return bsl::errc_success;
                 }
@@ -2155,7 +2156,7 @@ namespace microv
             mut_ret = m_emulated_msr.set(mut_sys, msr, val);
 
             if (bsl::unlikely(!mut_ret)) {
-                bsl::error() << "MSR "           // --
+                bsl::error() << "MSR set "       // --
                              << bsl::hex(msr)    // --
                              << " is either unsupported/invalid or not yet implemented"
                              << bsl::endl       // --

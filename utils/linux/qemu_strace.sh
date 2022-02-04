@@ -10,7 +10,9 @@ set -e
 # Default variables
 
 if [ -z ${QEMU_PATH+x} ]; then
-  QEMU_PATH=$(dirname $(which qemu-system-x86_64))
+  # QEMU_PATH=$(dirname $(which qemu-system-x86_64))
+  QEMU_PATH="/home/jp/qemu/x86_64-softmmu/"
+  # QEMU_PATH="/home/jp/qemu-6.2.0/build/"
 fi
 
 if [ -z ${STRACE_PATH+x} ]; then
@@ -74,14 +76,41 @@ run() {
     -machine type=q35,accel=kvm \
     -cpu host \
     -drive format=raw,file=fat:rw:$BUILD_DIR/vm_storage \
-    -bios $BUILD_DIR/OVMF_CODE.fd \
+    -bios ~/edk2/Build/OvmfIa32/DEBUG_GCC5/FV/OVMF.fd \
     -chardev stdio,id=char0,mux=on,logfile=$BUILD_DIR/qemu_efi.log,signal=off \
     -serial chardev:char0 -mon chardev=char0 \
     -m size=64M \
-    -nographic
+    -nographic \
+    -debugcon file:debugcon.log -global isa-debugcon.iobase=0x402
 
   grep KVM $BUILD_DIR/strace.log > $BUILD_DIR/strace_kvm_only.log
 }
+
+#######################################################################################
+
+best_run() {
+  echo BEST RUN
+  echo Exit console with: ctrl + a, x
+    # -drive format=raw,file=fat:rw:$BUILD_DIR/vm_storage \
+
+  $STRACE_PATH/strace -f -o $BUILD_DIR/strace.log  \
+  $TASKSET $QEMU_PATH/qemu-system-x86_64 \
+    -machine type=q35,accel=kvm \
+    -cpu host \
+    -bios ~/edk2/Build/OvmfIa32/DEBUG_GCC5/FV/OVMF.fd \
+    -m size=64M \
+    -nographic \
+    -debugcon file:best.log -global isa-debugcon.iobase=0x402 \
+    -D qemu-dbg.log
+
+# -chardev stdio,id=char0,mux=on,logfile=$BUILD_DIR/qemu_chardev.log,signal=off \
+#     -serial chardev:char0 -mon chardev=char0 \
+    # -s -S
+
+}
+
+
+#######################################################################################
 
 run_linux() {
   mkdir -p ${BUILD_DIR}
@@ -140,6 +169,11 @@ case "$1" in
 
   run_linux)
     run_linux
+    ;;
+
+
+  best_run)
+    best_run
     ;;
 
   run_raw)

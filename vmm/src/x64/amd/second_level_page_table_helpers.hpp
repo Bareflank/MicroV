@@ -37,6 +37,8 @@
 
 namespace helpers
 {
+    constexpr auto MEMORY_TYPE_WB{6_u64};
+
     /// <!-- description -->
     ///   @brief Returns basic_entry_status_t::present if the entry is valid. Returns
     ///     basic_entry_status_t::not_present if the entry is invalid. Returns
@@ -80,6 +82,12 @@ namespace helpers
     {
         bsl::expects(nullptr != pmut_entry);
         bsl::expects(page_flgs.is_valid_and_checked());
+
+        // Make sure it is set up as cacheable memory
+        // bsl::debug() << __FILE__ << " setting pcd pwt to zero" << bsl::endl;
+
+        pmut_entry->pcd = bsl::safe_u64::magic_0().get();
+        pmut_entry->pwt = bsl::safe_u64::magic_0().get();
 
         pmut_entry->p = bsl::safe_u64::magic_1().get();
         pmut_entry->rw = bsl::safe_u64::magic_1().get();

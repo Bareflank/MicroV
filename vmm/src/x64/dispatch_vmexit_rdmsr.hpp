@@ -83,8 +83,20 @@ namespace microv
         bsl::discard(vs_pool);
         bsl::discard(vsid);
 
-        bsl::error() << "dispatch_vmexit_rdmsr not implemented\n" << bsl::here();
-        return bsl::errc_failure;
+        auto const rcx{mut_sys.bf_tls_rcx()};
+
+        auto const val{vs_pool.msr_get(mut_sys, rcx, vsid)};
+        constexpr auto mask32{0xFFFFFFFF_u64};
+
+        // FIXME: is this the same for 64-bit?
+        auto const msr_hi{(val & mask32) >> 32_u64};
+        auto const msr_lo{(val & mask32)};
+
+        mut_sys.bf_tls_set_rax(msr_lo);
+        mut_sys.bf_tls_set_rdx(msr_hi);
+
+        bsl::error() << "dispatch_vmexit_rdmsr rcx=" << bsl::hex(rcx) << " value=" << bsl::hex(val) << bsl::endl;
+        return vmexit_success_advance_ip_and_run;
     }
 }
 

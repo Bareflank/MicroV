@@ -34,6 +34,7 @@
 #include <kvm_run_io.h>
 #include <mv_bit_size_t.h>
 #include <mv_exit_io_t.h>
+#include <mv_exit_mmio_t.h>
 #include <mv_exit_reason_t.h>
 #include <mv_hypercall.h>
 #include <mv_reg_t.h>
@@ -122,8 +123,43 @@ handle_vcpu_kvm_run_unknown(struct shim_vcpu_t *const pmut_vcpu) NOEXCEPT
     ///   failure, which will simplify the ABI.
     ///
 
+    bfdebug_log("KVM_EXIT_UNKNOWN\n");
     pmut_vcpu->run->exit_reason = KVM_EXIT_UNKNOWN;
     return SHIM_FAILURE;
+}
+
+
+NODISCARD static int64_t
+handle_vcpu_kvm_run_mmio(
+    struct shim_vcpu_t *const pmut_vcpu, struct mv_exit_mmio_t *const pmut_exit_mmio) NOEXCEPT
+{
+    int i = 0;
+    platform_expects(NULL != pmut_exit_mmio);
+
+    bfdebug_log("KVM_EXIT_MMIO:\n");
+    bfdebug_log("  gpa=0x%llx ", (uint64_t)pmut_exit_mmio->gpa);
+    pmut_vcpu->run->mmio.phys_addr = pmut_exit_mmio->gpa;
+
+    if(pmut_exit_mmio->flags == MV_EXIT_MMIO_READ) {
+        bfdebug_log("  READ\n");
+        pmut_vcpu->run->mmio.is_write = 0;
+    } else if(pmut_exit_mmio->flags == MV_EXIT_MMIO_READ) {
+        bfdebug_log("  WRITE\n");
+        pmut_vcpu->run->mmio.is_write = 1;
+    } else {
+        bfdebug_log("  UNKNOWN FLAGS 0x%llx\n", (uint64_t)pmut_exit_mmio->flags);
+        return SHIM_FAILURE;
+    }
+
+    //FIXME: how to get len & data?? hard code for now
+    bfdebug_log("  WARNING: hard-coding length to 4, data to 0\n");
+    pmut_vcpu->run->mmio.len = 4;
+    for(i=0; i<8; i++) {
+        pmut_vcpu->run->mmio.data[i] = 0;
+    }
+
+    pmut_vcpu->run->exit_reason = KVM_EXIT_MMIO;
+    return SHIM_SUCCESS;
 }
 
 /**
@@ -341,6 +377,7 @@ handle_vcpu_kvm_run(struct shim_vcpu_t *const pmut_vcpu) NOEXCEPT
         }
 
         mut_exit_reason = mv_vs_op_run(g_mut_hndl, pmut_vcpu->vsid);
+        // bfdebug_log("[BAREFLANK DEBUG] mv_vs_op_run returned: 0x%x\n", mut_exit_reason);
         switch ((int32_t)mut_exit_reason) {
             case mv_exit_reason_t_failure: {
                 mut_ret = handle_vcpu_kvm_run_failure(pmut_vcpu);
@@ -348,6 +385,7 @@ handle_vcpu_kvm_run(struct shim_vcpu_t *const pmut_vcpu) NOEXCEPT
             }
 
             case mv_exit_reason_t_unknown: {
+                bfdebug_log("[BAREFLANK DEBUG] mv_vs_op_run returned: mv_exit_reason_t_unknown\n");
                 mut_ret = handle_vcpu_kvm_run_unknown(pmut_vcpu);
                 goto release_shared_page;
             }
@@ -363,7 +401,7 @@ handle_vcpu_kvm_run(struct shim_vcpu_t *const pmut_vcpu) NOEXCEPT
             }
 
             case mv_exit_reason_t_mmio: {
-                mut_ret = return_failure(pmut_vcpu);
+                mut_ret = handle_vcpu_kvm_run_mmio(pmut_vcpu, pmut_mut_exit);
                 goto release_shared_page;
             }
 
