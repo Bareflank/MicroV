@@ -133,6 +133,19 @@ namespace microv
         bsl::expects(exitinfo2.is_valid());
 
         //FIXME: do we need to save any guest register values here??
+        auto const op_bytes{mut_sys.bf_vs_op_read(vsid, syscall::bf_reg_t::bf_reg_t_number_of_bytes_fetched)};
+        auto rip{mut_sys.bf_vs_op_read(vsid, syscall::bf_reg_t::bf_reg_t_rip)};
+//         auto mut_nrip{mut_sys.bf_vs_op_read(vsid, syscall::bf_reg_t::bf_reg_t_nrip)};
+// //         // auto const guest_instruction_bytes{mut_sys.bf_vs_op_read(vsid, syscall::bf_reg_t::guest_instruction_bytes)};
+// mut_nrip = rip.get() + 2U;
+
+//             auto const ret{mut_vs_pool.reg_set(mut_sys, reg, val, vsid)};
+
+
+// auto ripret{mut_sys.bf_vs_op_write(vsid, syscall::bf_reg_t::bf_reg_t_nrip, mut_nrip)};
+// auto ripret2{mut_sys.bf_vs_op_write(vsid, syscall::bf_reg_t::bf_reg_t_rip, mut_nrip)};
+// auto const opcode_size{mut_nrip.get() - rip.get()};
+        // auto const rip2{mut_sys.bf_vs_op_read(vsid, syscall::bf_reg_t::bf_reg_t_rip)};
 
         constexpr auto rw_mask{0x02_u64};
         constexpr auto rw_shift{1_u64};
@@ -155,6 +168,14 @@ namespace microv
         bsl::debug() << "          exitinfo2 = " << bsl::hex(exitinfo2) << bsl::endl;
         bsl::debug() << "          phys_addr = " << bsl::hex(phys_addr) << bsl::endl;
         bsl::debug() << "          is_write = " << bsl::hex(is_write) << bsl::endl;
+        bsl::debug() << "          op_bytes = " << bsl::hex(op_bytes) << bsl::endl;
+        bsl::debug() << "          rip = " << bsl::hex(rip) << bsl::endl;
+        // bsl::debug() << "          rip2 = " << bsl::hex(rip2) << bsl::endl;
+        // bsl::debug() << "          nrip = " << bsl::hex(mut_nrip) << bsl::endl;
+        // bsl::debug() << "          opcode_size = " << bsl::hex(opcode_size) << bsl::endl;
+        // bsl::debug() << "          opcode[0] = " << bsl::hex(guest_instruction_bytes.at_if(0U)) << bsl::endl;
+// bsl::debug() << __FUNCTION__ << "************************************************" << bsl::endl;
+// return vmexit_success_advance_ip_and_run;
 
         // ---------------------------------------------------------------------
         // Context: Change To Root VM
@@ -387,6 +408,7 @@ namespace microv
             }
 
             default: {
+                bsl::debug() << __FILE__ << " EXIT_REASON_UNKNOWN " << bsl::endl;
                 mut_ret = dispatch_vmexit_unknown(
                     gs,
                     mut_tls,

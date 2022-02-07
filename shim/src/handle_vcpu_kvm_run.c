@@ -155,7 +155,7 @@ handle_vcpu_kvm_run_mmio(
     bfdebug_log("  WARNING: hard-coding length to 4, data to 0\n");
     pmut_vcpu->run->mmio.len = 4;
     for(i=0; i<8; i++) {
-        pmut_vcpu->run->mmio.data[i] = 0;
+        pmut_vcpu->run->mmio.data[i] = 0xff;
     }
 
     pmut_vcpu->run->exit_reason = KVM_EXIT_MMIO;
@@ -334,10 +334,12 @@ pre_run_op_mmio(struct shim_vcpu_t *const pmut_vcpu, struct mv_run_t *const pmut
         return SHIM_FAILURE;
     } else {
         //FIXME assume read into eax right now...
-        pmut_mv_run->num_reg_entries = (uint64_t)1U;
+        pmut_mv_run->num_reg_entries = (uint64_t)2U;
         pmut_mv_run->reg_entries[0].reg = (uint64_t)mv_reg_t_rax;
         // Assume it is an 8-byte read??
-        pmut_mv_run->reg_entries[0].val = *((uint64_t*)pmut_vcpu->run->mmio.data);
+       pmut_mv_run->reg_entries[0].val = *((uint64_t*)pmut_vcpu->run->mmio.data);
+        pmut_mv_run->reg_entries[1].reg = (uint64_t)mv_reg_t_rip;
+        pmut_mv_run->reg_entries[1].val = 0xBEEFBEEF;
 
 
         // pmut_mv_run->reg_entries[1].reg = (uint64_t)mv_reg_t_rip;
@@ -480,11 +482,18 @@ handle_vcpu_kvm_run(struct shim_vcpu_t *const pmut_vcpu) NOEXCEPT
             }
 
             case mv_exit_reason_t_interrupt: {
+                // bferror("run: mv_exit_reason_t_interrupt");
                 release_shared_page_for_current_pp();
                 if (platform_interrupted()) {
+                    // bferror("platform_interrupted\n");
                     pmut_vcpu->run->exit_reason = KVM_EXIT_INTR;
                     mut_ret = SHIM_INTERRUPTED;
                     goto ret;
+                }
+                if((pmut_vcpu->run->exit_reason == KVM_EXIT_MMIO) ||
+                   (pmut_vcpu->run->exit_reason == KVM_EXIT_IO)) {
+                    //FIXME: Put this in so that we don't try to do the MMIO pre-run again
+                    pmut_vcpu->run->exit_reason = KVM_EXIT_INTR;
                 }
                 pmut_mut_exit = shared_page_for_current_pp();
                 continue;
