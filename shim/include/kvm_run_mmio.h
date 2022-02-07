@@ -53,6 +53,8 @@ extern "C"
         uint32_t len;
         /** @brief TODO */
         uint8_t is_write;
+        /** @brief TODO */
+        uint64_t rip;
     };
 
 #pragma pack(pop)

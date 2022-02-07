@@ -1741,17 +1741,8 @@ namespace microv
 
         for (bsl::safe_idx mut_i{}; mut_i < run.num_reg_entries; ++mut_i) {
             auto const reg{bsl::to_u64(run.reg_entries.at_if(mut_i)->reg)};
-            auto val{bsl::to_u64(run.reg_entries.at_if(mut_i)->val)};
-            if(reg.get() == 17UL) {
-                if(val.get() == 0xBEEFBEEFUL) {
-                    bsl::debug() << "Setting RIP!" << bsl::endl;
-                    // auto const cur_rip{mut_vs_pool.reg_get(mut_sys, reg, vsid)};
-                    val = bsl::to_u64(0xfffce884UL); //cur_rip + 2U;
-                    auto const ret{mut_sys.bf_vs_op_write(vsid, syscall::bf_reg_t::bf_reg_t_rip, val)};
-                    auto const ret2{mut_sys.bf_vs_op_write(vsid, syscall::bf_reg_t::bf_reg_t_nrip, val)};
-                }
-            }
-
+            auto const val{bsl::to_u64(run.reg_entries.at_if(mut_i)->val)};
+            
             auto const ret{mut_vs_pool.reg_set(mut_sys, reg, val, vsid)};
             if (bsl::unlikely(ret != bsl::errc_success)) {
                 bsl::error() << "set_guest_state failed to set register"    // --

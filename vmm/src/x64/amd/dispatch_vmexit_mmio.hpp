@@ -89,24 +89,12 @@ namespace microv
         auto const exitinfo2{mut_sys.bf_vs_op_read(vsid, syscall::bf_reg_t::bf_reg_t_exitinfo2)};
         bsl::expects(exitinfo2.is_valid());
 
-        //FIXME: do we need to save any guest register values here??
         auto const op_bytes{mut_sys.bf_vs_op_read(vsid, syscall::bf_reg_t::bf_reg_t_number_of_bytes_fetched)};
         auto rip{mut_sys.bf_vs_op_read(vsid, syscall::bf_reg_t::bf_reg_t_rip)};
-//         auto mut_nrip{mut_sys.bf_vs_op_read(vsid, syscall::bf_reg_t::bf_reg_t_nrip)};
-// //         // auto const guest_instruction_bytes{mut_sys.bf_vs_op_read(vsid, syscall::bf_reg_t::guest_instruction_bytes)};
-// mut_nrip = rip.get() + 2U;
-
-//             auto const ret{mut_vs_pool.reg_set(mut_sys, reg, val, vsid)};
-
-
-// auto ripret{mut_sys.bf_vs_op_write(vsid, syscall::bf_reg_t::bf_reg_t_nrip, mut_nrip)};
-// auto ripret2{mut_sys.bf_vs_op_write(vsid, syscall::bf_reg_t::bf_reg_t_rip, mut_nrip)};
-// auto const opcode_size{mut_nrip.get() - rip.get()};
-        // auto const rip2{mut_sys.bf_vs_op_read(vsid, syscall::bf_reg_t::bf_reg_t_rip)};
 
         constexpr auto rw_mask{0x02_u64};
         constexpr auto rw_shift{1_u64};
-//FIXME: Just for reference
+//FIXME: Just for reference kvm struct is:
 // struct {
 //             __u64 phys_addr;
 //             __u8  data[8];
@@ -116,10 +104,6 @@ namespace microv
         auto const phys_addr{(exitinfo2)};
         auto const is_write{(exitinfo1 & rw_mask) >> rw_shift};
 
-        // FIXME: how are we going to get these properly? Hard code for now
-        auto const len{4_u32};
-        auto const data{0_u64};
-
         bsl::debug() << __FUNCTION__ << bsl::endl;
         bsl::debug() << "          exitinfo1 = " << bsl::hex(exitinfo1) << bsl::endl;
         bsl::debug() << "          exitinfo2 = " << bsl::hex(exitinfo2) << bsl::endl;
@@ -127,12 +111,6 @@ namespace microv
         bsl::debug() << "          is_write = " << bsl::hex(is_write) << bsl::endl;
         bsl::debug() << "          op_bytes = " << bsl::hex(op_bytes) << bsl::endl;
         bsl::debug() << "          rip = " << bsl::hex(rip) << bsl::endl;
-        // bsl::debug() << "          rip2 = " << bsl::hex(rip2) << bsl::endl;
-        // bsl::debug() << "          nrip = " << bsl::hex(mut_nrip) << bsl::endl;
-        // bsl::debug() << "          opcode_size = " << bsl::hex(opcode_size) << bsl::endl;
-        // bsl::debug() << "          opcode[0] = " << bsl::hex(guest_instruction_bytes.at_if(0U)) << bsl::endl;
-// bsl::debug() << __FUNCTION__ << "************************************************" << bsl::endl;
-// return vmexit_success_advance_ip_and_run;
 
         // ---------------------------------------------------------------------
         // Context: Change To Root VM
@@ -154,6 +132,7 @@ namespace microv
             mut_exit_mmio->flags = hypercall::MV_EXIT_MMIO_WRITE.get();
         }
 
+        mut_exit_mmio->rip = rip.get();
         set_reg_return(mut_sys, hypercall::MV_STATUS_SUCCESS);
         set_reg0(mut_sys, bsl::to_u64(hypercall::EXIT_REASON_MMIO));
 

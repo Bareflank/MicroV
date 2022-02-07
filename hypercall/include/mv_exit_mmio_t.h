@@ -53,6 +53,8 @@ extern "C"
         uint64_t gpa;
         /** @brief stores the MV_EXIT_MMIO flags */
         uint64_t flags;
+        /** @brief stores the RIP that triggered the MMIO access */
+        uint64_t rip;
     };
 
 #pragma pack(pop)

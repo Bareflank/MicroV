@@ -48,6 +48,8 @@ namespace hypercall
         bsl::uint64 gpa;
         /// @brief stores the MV_EXIT_MMIO flags
         bsl::uint64 flags;
+        /// @brief stores the RIP that triggered the MMIO access;
+        bsl::uint64 rip;
     };
 }
 
