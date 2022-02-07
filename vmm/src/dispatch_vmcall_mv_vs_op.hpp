@@ -302,6 +302,7 @@ namespace microv
         vp_pool_t &mut_vp_pool,
         vs_pool_t &mut_vs_pool) noexcept -> bsl::errc_type
     {
+        //This func is where KVM_RUN is handeled
         auto const vsid{get_allocated_non_self_vsid(mut_sys, get_reg1(mut_sys), mut_vs_pool)};
         if (bsl::unlikely(vsid.is_invalid())) {
             bsl::print<bsl::V>() << bsl::here();
@@ -318,7 +319,6 @@ namespace microv
             }
 
             // TODO: is run safe?
-
             auto const ret{set_guest_state(
                 mut_tls,
                 mut_sys,
