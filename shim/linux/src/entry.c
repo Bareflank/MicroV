@@ -48,6 +48,7 @@
 #include <handle_vcpu_kvm_set_regs.h>
 #include <handle_vcpu_kvm_set_sregs.h>
 #include <handle_vm_kvm_check_extension.h>
+#include <handle_vm_kvm_create_irqchip.h>
 #include <handle_vm_kvm_create_vcpu.h>
 #include <handle_vm_kvm_destroy_vcpu.h>
 #include <handle_vm_kvm_set_user_memory_region.h>
@@ -506,9 +507,13 @@ dispatch_vm_kvm_create_device(struct kvm_create_device *const ioctl_args)
 }
 
 static long
-dispatch_kvm_create_irqchip(void)
+dispatch_kvm_create_irqchip(struct shim_vm_t *pmut_mut_vm)
 {
-    return -EINVAL;
+    if (handle_vm_kvm_create_irqchip(pmut_mut_vm)) {
+        bferror("handle_vm_kvm_create_irqchip failed");
+        return -EINVAL;
+    }
+    return SHIM_SUCCESS;
 }
 
 static long
@@ -786,7 +791,7 @@ dev_unlocked_ioctl_vm(
         }
 
         case KVM_CREATE_IRQCHIP: {
-            return dispatch_kvm_create_irqchip();
+            return dispatch_kvm_create_irqchip(pmut_mut_vm);
         }
 
         case KVM_CREATE_PIT2: {
