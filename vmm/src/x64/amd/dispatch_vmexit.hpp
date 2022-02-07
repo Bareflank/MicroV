@@ -35,7 +35,6 @@
 #include <dispatch_vmexit_intr.hpp>
 #include <dispatch_vmexit_intr_window.hpp>
 #include <dispatch_vmexit_io.hpp>
-#include <dispatch_vmexit_npf.hpp>
 #include <dispatch_vmexit_mmio.hpp>
 #include <dispatch_vmexit_nmi.hpp>
 #include <dispatch_vmexit_rdmsr.hpp>
