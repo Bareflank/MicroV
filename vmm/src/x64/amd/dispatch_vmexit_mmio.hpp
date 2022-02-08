@@ -34,6 +34,7 @@
 #include <vm_pool_t.hpp>
 #include <vp_pool_t.hpp>
 #include <vs_pool_t.hpp>
+#include <mv_reg_t.hpp>
 #include <mv_exit_mmio_t.hpp>
 
 #include <bsl/convert.hpp>
@@ -49,11 +50,12 @@ namespace microv
         bsl::uint64 const &opcodes1,
         bsl::uint64 const &cpu_mode,
         bsl::uint64 *mut_instr_len,
-        syscall::bf_reg_t &mut_register,
+        bsl::uint64 *mut_register,
         bsl::uint64 *memory_access_size) noexcept -> bsl::errc_type
     {
         constexpr auto mask_2bytes{0xFFFF_u64};
         constexpr auto instr__mov_eax_PTRebx{0x038b_u64};
+        constexpr auto instr__mov_PTRebx_esi{0x8933_u64};
 
         bsl::debug() << __FUNCTION__ << bsl::endl;
 
@@ -61,10 +63,19 @@ namespace microv
 
         if( (opcodes0 & mask_2bytes) == (instr__mov_eax_PTRebx) ) {
             // mov eax, [ebx]
-            bsl::debug() << " mov eax, [ebx]" << bsl::endl;
+            bsl::uint64 reg {bsl::uint64(hypercall::mv_reg_t::mv_reg_t_rax)};
+            bsl::debug() << " mov eax, dword ptr [ebx]" << bsl::endl;
             *mut_instr_len = 2;
             *memory_access_size = 4;
-            mut_register = syscall::bf_reg_t::bf_reg_t_rbx;
+            *mut_register = reg;
+            return bsl::errc_success;
+        } else if( (opcodes0 & mask_2bytes) == (instr__mov_PTRebx_esi) ) {
+            bsl::uint64 reg {bsl::uint64(hypercall::mv_reg_t::mv_reg_t_rsi)};
+            // mov dword ptr [ebx], esi
+            bsl::debug() << " mov dword ptr [ebx], esi" << bsl::endl;
+            *mut_instr_len = 2;
+            *memory_access_size = 4;
+            *mut_register = reg;
             return bsl::errc_success;
         } else {
             bsl::debug() << __FUNCTION__ << " UNSUPPORTED OPCODE" << bsl::endl;            
@@ -147,9 +158,9 @@ namespace microv
 
         // Disassemble the triggering opcode
         bsl::uint64 mut_instr_len{0};
-        bsl::uint64 memory_access_size{0};        
-        auto mut_register{syscall::bf_reg_t::bf_reg_t_rax};
-        auto decode_ret{ instruction_decode(opcodes0.get(), opcodes1.get(), 0U, &mut_instr_len, mut_register, &memory_access_size) };
+        bsl::uint64 memory_access_size{0};
+        bsl::uint64 mut_register{bsl::uint64(hypercall::mv_reg_t::mv_reg_t_rax)};
+        auto decode_ret{ instruction_decode(opcodes0.get(), opcodes1.get(), 0U, &mut_instr_len, &mut_register, &memory_access_size) };
         if (bsl::unlikely(!decode_ret)) {
             bsl::print<bsl::V>() << bsl::here();
             switch_to_root(mut_tls, mut_sys, intrinsic, mut_vm_pool, mut_vp_pool, mut_vs_pool, true);
@@ -159,7 +170,8 @@ namespace microv
         }
 
         bsl::uint64 nrip{ rip.get() + mut_instr_len };
-        bsl::uint64 data{ mut_sys.bf_vs_op_read(vsid, mut_register).get() };
+        // bsl::uint64 data{ mut_sys.bf_vs_op_read(vsid, mut_register).get() };
+        bsl::uint64 data{ mut_vs_pool.reg_get(mut_sys, bsl::make_safe(mut_register), vsid).get() };
 
         bsl::debug() << "          mut_instr_len = " << bsl::hex(mut_instr_len) << bsl::endl;
         bsl::debug() << "          mut_register = " << bsl::hex(bsl::make_safe(static_cast<bsl::uint64>(mut_register))) << bsl::endl;
