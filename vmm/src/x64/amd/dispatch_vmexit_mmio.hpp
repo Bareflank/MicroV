@@ -43,6 +43,41 @@
 
 namespace microv
 {
+    [[nodiscard]] constexpr auto
+    instruction_decode(
+        bsl::uint64 const &opcodes0,
+        bsl::uint64 const &opcodes1,
+        bsl::uint64 const &cpu_mode,
+        bsl::uint64 *mut_instr_len,
+        syscall::bf_reg_t &mut_register,
+        bsl::uint64 *memory_access_size) noexcept -> bsl::errc_type
+    {
+        constexpr auto mask_2bytes{0xFFFF_u64};
+        constexpr auto instr__mov_eax_PTRebx{0x038b_u64};
+
+        bsl::debug() << __FUNCTION__ << bsl::endl;
+
+        //FIXME: We assume 32-bit mode for now...
+
+        if( (opcodes0 & mask_2bytes) == (instr__mov_eax_PTRebx) ) {
+            // mov eax, [ebx]
+            bsl::debug() << " mov eax, [ebx]" << bsl::endl;
+            *mut_instr_len = 2;
+            *memory_access_size = 4;
+            mut_register = syscall::bf_reg_t::bf_reg_t_rbx;
+            return bsl::errc_success;
+        } else {
+            bsl::debug() << __FUNCTION__ << " UNSUPPORTED OPCODE" << bsl::endl;            
+            bsl::debug() << "    opcodes0" << bsl::hex(opcodes0) << bsl::endl;
+            bsl::debug() << "    opcodes1" << bsl::hex(opcodes1) << bsl::endl;
+            bsl::debug() << "    cpu_mode" << bsl::hex(cpu_mode) << bsl::endl;
+            return bsl::errc_unsupported;
+        }
+
+        return bsl::errc_success;
+    }
+
+
     /// <!-- description -->
     ///   @brief Dispatches MMIO VMExits.
     ///
@@ -90,17 +125,13 @@ namespace microv
         bsl::expects(exitinfo2.is_valid());
 
         auto const op_bytes{mut_sys.bf_vs_op_read(vsid, syscall::bf_reg_t::bf_reg_t_number_of_bytes_fetched)};
+        auto const opcodes0{mut_sys.bf_vs_op_read(vsid, syscall::bf_reg_t::bf_reg_t_guest_instruction_bytes0)};
+        auto const opcodes1{mut_sys.bf_vs_op_read(vsid, syscall::bf_reg_t::bf_reg_t_guest_instruction_bytes1)};
         auto rip{mut_sys.bf_vs_op_read(vsid, syscall::bf_reg_t::bf_reg_t_rip)};
 
         constexpr auto rw_mask{0x02_u64};
         constexpr auto rw_shift{1_u64};
-//FIXME: Just for reference kvm struct is:
-// struct {
-//             __u64 phys_addr;
-//             __u8  data[8];
-//             __u32 len;
-//             __u8  is_write;
-//         } mmio;
+
         auto const phys_addr{(exitinfo2)};
         auto const is_write{(exitinfo1 & rw_mask) >> rw_shift};
 
@@ -111,6 +142,30 @@ namespace microv
         bsl::debug() << "          is_write = " << bsl::hex(is_write) << bsl::endl;
         bsl::debug() << "          op_bytes = " << bsl::hex(op_bytes) << bsl::endl;
         bsl::debug() << "          rip = " << bsl::hex(rip) << bsl::endl;
+        bsl::debug() << "          opcodes0 = " << bsl::hex(opcodes0) << bsl::endl;
+        bsl::debug() << "          opcodes1 = " << bsl::hex(opcodes1) << bsl::endl;
+
+        // Disassemble the triggering opcode
+        bsl::uint64 mut_instr_len{0};
+        bsl::uint64 memory_access_size{0};        
+        auto mut_register{syscall::bf_reg_t::bf_reg_t_rax};
+        auto decode_ret{ instruction_decode(opcodes0.get(), opcodes1.get(), 0U, &mut_instr_len, mut_register, &memory_access_size) };
+        if (bsl::unlikely(!decode_ret)) {
+            bsl::print<bsl::V>() << bsl::here();
+            switch_to_root(mut_tls, mut_sys, intrinsic, mut_vm_pool, mut_vp_pool, mut_vs_pool, true);
+            set_reg0(mut_sys, bsl::to_u64(hypercall::EXIT_REASON_UNKNOWN));
+            set_reg_return(mut_sys, hypercall::MV_STATUS_FAILURE_UNKNOWN);
+            return vmexit_failure_advance_ip_and_run;
+        }
+
+        bsl::uint64 nrip{ rip.get() + mut_instr_len };
+        bsl::uint64 data{ mut_sys.bf_vs_op_read(vsid, mut_register).get() };
+
+        bsl::debug() << "          mut_instr_len = " << bsl::hex(mut_instr_len) << bsl::endl;
+        bsl::debug() << "          mut_register = " << bsl::hex(bsl::make_safe(static_cast<bsl::uint64>(mut_register))) << bsl::endl;
+        bsl::debug() << "          memory_access_size = " << bsl::hex(memory_access_size) << bsl::endl;
+        bsl::debug() << "          nrip = " << bsl::hex(nrip) << bsl::endl;
+        bsl::debug() << "          data = " << bsl::hex(data) << bsl::endl;
 
         // ---------------------------------------------------------------------
         // Context: Change To Root VM
@@ -132,7 +187,10 @@ namespace microv
             mut_exit_mmio->flags = hypercall::MV_EXIT_MMIO_WRITE.get();
         }
 
-        mut_exit_mmio->rip = rip.get();
+        mut_exit_mmio->nrip = nrip;
+        mut_exit_mmio->target_reg = static_cast<bsl::uint64>(mut_register);
+        mut_exit_mmio->memory_access_size = memory_access_size;
+
         set_reg_return(mut_sys, hypercall::MV_STATUS_SUCCESS);
         set_reg0(mut_sys, bsl::to_u64(hypercall::EXIT_REASON_MMIO));
 

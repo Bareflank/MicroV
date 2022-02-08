@@ -54,7 +54,9 @@ extern "C"
         /** @brief TODO */
         uint8_t is_write;
         /** @brief TODO */
-        uint64_t rip;
+        uint64_t nrip;
+        /** @brief TODO */
+        uint64_t target_reg;
     };
 
 #pragma pack(pop)

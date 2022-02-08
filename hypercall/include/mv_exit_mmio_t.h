@@ -53,8 +53,14 @@ extern "C"
         uint64_t gpa;
         /** @brief stores the MV_EXIT_MMIO flags */
         uint64_t flags;
-        /** @brief stores the RIP that triggered the MMIO access */
-        uint64_t rip;
+        /** @brief MMIO data */
+        uint64_t data;
+        /** @brief stores the next RIP value for continuing after the MMIO access */
+        uint64_t nrip;
+        /** @brief stores the target register for the MMIO access */
+        uint64_t target_reg;
+        //** @brief the size of memory access (1 byte, 2 bytes, 4 bytes, 8 bytes) */
+        uint64_t memory_access_size;
     };
 
 #pragma pack(pop)

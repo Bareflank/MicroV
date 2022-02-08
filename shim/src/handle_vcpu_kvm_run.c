@@ -132,14 +132,15 @@ NODISCARD static int64_t
 handle_vcpu_kvm_run_mmio(
     struct shim_vcpu_t *const pmut_vcpu, struct mv_exit_mmio_t *const pmut_exit_mmio) NOEXCEPT
 {
-    int i = 0;
     platform_expects(NULL != pmut_exit_mmio);
 
     bfdebug_log("KVM_EXIT_MMIO:\n");
-    bfdebug_log("  gpa=0x%llx", (uint64_t)pmut_exit_mmio->gpa);
-    bfdebug_log("  rip=0x%llx", (uint64_t)pmut_exit_mmio->rip);
+    bfdebug_log("  gpa=0x%llx", (unsigned long long)pmut_exit_mmio->gpa);
+    bfdebug_log("  nrip=0x%llx", (unsigned long long)pmut_exit_mmio->nrip);
+    bfdebug_log("  target_reg=0x%llx", (unsigned long long)pmut_exit_mmio->target_reg);
     pmut_vcpu->run->mmio.phys_addr = pmut_exit_mmio->gpa;
-    pmut_vcpu->run->mmio.rip = pmut_exit_mmio->rip;
+    pmut_vcpu->run->mmio.nrip = pmut_exit_mmio->nrip;
+    pmut_vcpu->run->mmio.target_reg = pmut_exit_mmio->target_reg;
 
     if(pmut_exit_mmio->flags == MV_EXIT_MMIO_READ) {
         bfdebug_log("  READ\n");
@@ -148,17 +149,14 @@ handle_vcpu_kvm_run_mmio(
         bfdebug_log("  WRITE\n");
         pmut_vcpu->run->mmio.is_write = 1;
     } else {
-        bfdebug_log("  UNKNOWN FLAGS 0x%llx\n", (uint64_t)pmut_exit_mmio->flags);
+        bfdebug_log("  UNKNOWN FLAGS 0x%llx\n", (unsigned long long)pmut_exit_mmio->flags);
         return SHIM_FAILURE;
     }
 
-    //FIXME: how to get len & data?? hard code for now
-    //should this be the current value of the target register??
-    bfdebug_log("  WARNING: hard-coding length to 4, data to 0\n");
-    pmut_vcpu->run->mmio.len = 4;
-    for(i=0; i<8; i++) {
-        pmut_vcpu->run->mmio.data[i] = 0x00;
-    }
+    bfdebug_log("  memory_access_size: 0x%llx\n", (unsigned long long)pmut_exit_mmio->memory_access_size);
+    pmut_vcpu->run->mmio.len = (int64_t)pmut_exit_mmio->memory_access_size;
+
+    *((uint64_t*)(&(pmut_vcpu->run->mmio.data))) = (int64_t)pmut_exit_mmio->data;
 
     pmut_vcpu->run->exit_reason = KVM_EXIT_MMIO;
     return SHIM_SUCCESS;
@@ -316,8 +314,6 @@ pre_run_op_io(struct shim_vcpu_t *const pmut_vcpu, struct mv_run_t *const pmut_m
 NODISCARD int64_t
 pre_run_op_mmio(struct shim_vcpu_t *const pmut_vcpu, struct mv_run_t *const pmut_mv_run) NOEXCEPT
 {
-    int opcode_size = 0;
-
     platform_expects(NULL != pmut_vcpu);
     platform_expects(NULL != pmut_vcpu->run);
     platform_expects(KVM_EXIT_MMIO == pmut_vcpu->run->exit_reason);
@@ -325,37 +321,34 @@ pre_run_op_mmio(struct shim_vcpu_t *const pmut_vcpu, struct mv_run_t *const pmut
 
     bfdebug_log("pre_run_op_mmio\n");
 
+    bfdebug_log("  nrip=0x%llx", (unsigned long long)pmut_vcpu->run->mmio.nrip);
+
+    mv_touch();
+
+    // Both reads & writes need to advance the instruction pointer
+    pmut_mv_run->num_reg_entries = (uint64_t)1U;
+    pmut_mv_run->reg_entries[0].reg = (uint64_t)mv_reg_t_rip;
+    pmut_mv_run->reg_entries[0].val = pmut_vcpu->run->mmio.nrip;
+
     if (pmut_vcpu->run->mmio.is_write) {
-        // Nothing to do here for write operations
-        // FIXME: we still need to advance the instruction pointer!!!
+        // For write operations, there is nothing else to do, just return
         return SHIM_SUCCESS;
     }
-    mv_touch();
-    bfdebug_log("pre_run_op_mmio: it was a read operation\n");
-    bfdebug_log("  rip=0x%llx", (uint64_t)pmut_vcpu->run->mmio.rip);
 
-    //FIXME: disassemble the instruction here to save off:
-    // -- target register (or memory??)
-    // -- target size??
-    // -- opcode size
-    opcode_size = 2; // FIXME: hardcoded for now
-    bfdebug_log("  opcode_size=%d", opcode_size);
-    bfdebug_log("  target_register=%d", mv_reg_t_rax);
+    bfdebug_log("  READ\n");
+    bfdebug_log("  target_reg=0x%llx", (unsigned long long)pmut_vcpu->run->mmio.target_reg);
 
     if ((uint32_t)KVM_RUN_MMIO_DATA_SIZE < pmut_vcpu->run->mmio.len) {
         bferror_d32("FIXME: MMIO size too big.", pmut_vcpu->run->mmio.len);
         // TODO: Implement run_op continuation
         return SHIM_FAILURE;
     } else {
-        //FIXME assume read into eax right now...
-        pmut_mv_run->num_reg_entries = (uint64_t)2U;
-        pmut_mv_run->reg_entries[0].reg = (uint64_t)mv_reg_t_rax;
-        // Assume it is an 8-byte read??
-        pmut_mv_run->reg_entries[0].val = *((uint64_t*)pmut_vcpu->run->mmio.data);
-        pmut_mv_run->reg_entries[1].reg = (uint64_t)mv_reg_t_rip;
-        pmut_mv_run->reg_entries[1].val = pmut_vcpu->run->mmio.rip + opcode_size;
+        // FIXME: do we need to know if it is a memory destination vs a register???
+        pmut_mv_run->reg_entries[pmut_mv_run->num_reg_entries].reg = (uint64_t)pmut_vcpu->run->mmio.target_reg;
+        pmut_mv_run->reg_entries[pmut_mv_run->num_reg_entries].val = *((uint64_t*)pmut_vcpu->run->mmio.data);
+        pmut_mv_run->num_reg_entries++;
 
-        bfdebug_log("assume it was a read into eax, val=0x%llx\n", (uint64_t)pmut_mv_run->reg_entries[0].val);
+        bfdebug_log("assume it was a read into eax, val=0x%llx\n", (unsigned long long)(pmut_mv_run->reg_entries[0].val));
     }
 
     switch ((int)pmut_vcpu->run->mmio.len) {
@@ -372,7 +365,7 @@ pre_run_op_mmio(struct shim_vcpu_t *const pmut_vcpu, struct mv_run_t *const pmut
             break;
         }
         default: {
-            bferror_x8("invalid mmio size", pmut_vcpu->run->mmio.len);
+            bfdebug_log("invalid mmio size 0x%llx\n", (unsigned long long)pmut_vcpu->run->mmio.len);
             return SHIM_FAILURE;
         }
     }
