@@ -145,7 +145,7 @@ handle_vcpu_kvm_run_mmio(
     if(pmut_exit_mmio->flags == MV_EXIT_MMIO_READ) {
         bfdebug_log("  READ\n");
         pmut_vcpu->run->mmio.is_write = 0;
-    } else if(pmut_exit_mmio->flags == MV_EXIT_MMIO_READ) {
+    } else if(pmut_exit_mmio->flags == MV_EXIT_MMIO_WRITE) {
         bfdebug_log("  WRITE\n");
         pmut_vcpu->run->mmio.is_write = 1;
     } else {

@@ -55,14 +55,14 @@ namespace microv
     {
         constexpr auto mask_2bytes{0xFFFF_u64};
         constexpr auto instr__mov_eax_PTRebx{0x038b_u64};
-        constexpr auto instr__mov_PTRebx_esi{0x8933_u64};
+        constexpr auto instr__mov_PTRebx_esi{0x3389_u64};
 
         bsl::debug() << __FUNCTION__ << bsl::endl;
 
         //FIXME: We assume 32-bit mode for now...
 
         if( (opcodes0 & mask_2bytes) == (instr__mov_eax_PTRebx) ) {
-            // mov eax, [ebx]
+            // mov eax, dword ptr [ebx]
             bsl::uint64 reg {bsl::uint64(hypercall::mv_reg_t::mv_reg_t_rax)};
             bsl::debug() << " mov eax, dword ptr [ebx]" << bsl::endl;
             *mut_instr_len = 2;
@@ -79,9 +79,9 @@ namespace microv
             return bsl::errc_success;
         } else {
             bsl::debug() << __FUNCTION__ << " UNSUPPORTED OPCODE" << bsl::endl;            
-            bsl::debug() << "    opcodes0" << bsl::hex(opcodes0) << bsl::endl;
-            bsl::debug() << "    opcodes1" << bsl::hex(opcodes1) << bsl::endl;
-            bsl::debug() << "    cpu_mode" << bsl::hex(cpu_mode) << bsl::endl;
+            bsl::debug() << "    opcodes0 " << bsl::hex(opcodes0) << bsl::endl;
+            bsl::debug() << "    opcodes1 " << bsl::hex(opcodes1) << bsl::endl;
+            bsl::debug() << "    cpu_mode " << bsl::hex(cpu_mode) << bsl::endl;
             return bsl::errc_unsupported;
         }
 
