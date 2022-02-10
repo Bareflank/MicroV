@@ -1999,12 +1999,6 @@ namespace microv
 
             bsl::safe_u64 mut_ret{};
 
-            bsl::debug() << "MSR get "             // --
-                         << bsl::hex(msr)      // --
-                         << " is requested"    // --
-                         << bsl::endl          // --
-                         << bsl::here();       // --
-
             switch (bsl::to_u32_unsafe(msr).get()) {
                 case MSR_PAT.get(): {
                     return sys.bf_vs_op_read(this->id(), mk::bf_reg_t_pat);
