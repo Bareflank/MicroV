@@ -154,7 +154,7 @@ handle_vcpu_kvm_run_mmio(
     }
 
     bfdebug_log("  memory_access_size: 0x%llx\n", (unsigned long long)pmut_exit_mmio->memory_access_size);
-    pmut_vcpu->run->mmio.len = (int64_t)pmut_exit_mmio->memory_access_size;
+    pmut_vcpu->run->mmio.len = (int32_t)pmut_exit_mmio->memory_access_size;
 
     *((uint64_t*)(&(pmut_vcpu->run->mmio.data))) = (int64_t)pmut_exit_mmio->data;
 
@@ -280,7 +280,10 @@ pre_run_op_io(struct shim_vcpu_t *const pmut_vcpu, struct mv_run_t *const pmut_m
         pmut_mv_run->mdl_entry.dst = dst;    // FIXME
 
         platform_memcpy(pmut_mv_run->mem, pmut_vcpu->run->io.data, sz);
-        bferror("FIXME: PIO address destination");
+
+        pmut_mv_run->num_reg_entries = (uint64_t)0U;
+        bferror_d32("FIXME: PIO address destination.", pmut_vcpu->run->io.count);
+        return SHIM_FAILURE;
     }
 
     switch ((int)pmut_vcpu->run->io.size) {
