@@ -441,8 +441,7 @@ namespace microv
             ///   example. The hypervisor bit should be initialized, meaning
             ///   don't calculate it like we do with the root.
             ///
-
-            bsl::error() << __FILE__ << "emulated_cpuid_t::get not implemented yet!!\n" << bsl::here();
+            bsl::expects(mut_sys.is_the_active_vm_the_root_vm());
 
             auto mut_rax{mut_sys.bf_tls_rax()};
             auto mut_rbx{mut_sys.bf_tls_rbx()};
@@ -474,6 +473,7 @@ namespace microv
             -> bsl::errc_type
         {
             bsl::discard(sys);
+            // bsl::debug() << "Getting emulated CPUID FN" << bsl::hex(mut_entry.fun) << " " << bsl::hex(mut_entry.idx) << bsl::endl;
 
             using leaves_type = decltype(m_std_leaves);
             leaves_type const *mut_leaves{};
@@ -534,57 +534,16 @@ namespace microv
                 bsl::touch();
             }
 
-            constexpr auto cpuid_index_0{0_u64};
-            constexpr auto upper32{32_u64};
-            auto const req{(bsl::to_u64(entry.fun) << upper32) | bsl::to_u64(entry.idx)};
+            bsl::debug() << "Setting CPUID FN" << bsl::hex(entry.fun) << " " << bsl::hex(entry.idx) << bsl::endl;
+            auto *const pmut_entry{
+                m_std_leaves.at_if(mut_i)->at_if(bsl::to_idx(entry.idx))};
 
-            switch (req.get()) {
+            pmut_entry->eax = entry.eax;
+            pmut_entry->ebx = entry.ebx;
+            pmut_entry->ecx = entry.ecx;
+            pmut_entry->edx = entry.edx;
 
-                case ((bsl::to_u64(CPUID_FN0000_0001) << upper32) | cpuid_index_0).get(): {
-                    auto *const pmut_entry{
-                        m_std_leaves.at_if(mut_i)->at_if(bsl::to_idx(entry.idx))};
-
-                    bsl::debug() << "Setting CPUID_FN0000_0001 = [" << bsl::endl;
-                    print_leaf(bsl::debug(), entry);
-
-
-                    pmut_entry->ecx &= entry.ecx;
-                    pmut_entry->edx &= entry.edx;
-
-                    if (entry.eax != pmut_entry->eax) {
-                        break;
-                    }
-                    if (entry.ebx != bsl::safe_u32::magic_0()) {
-                        break;
-                    }
-
-                    return bsl::errc_success;
-                }
-
-                case ((bsl::to_u64(CPUID_FN8000_0001) << upper32) | cpuid_index_0).get(): {
-                    auto *const pmut_entry{
-                        m_ext_leaves.at_if(mut_i)->at_if(bsl::to_idx(entry.idx))};
-
-                    pmut_entry->ecx &= entry.ecx;
-                    pmut_entry->edx &= entry.edx;
-
-                    if (entry.eax != bsl::safe_u32::magic_0()) {
-                        break;
-                    }
-                    if (entry.ebx != bsl::safe_u32::magic_0()) {
-                        break;
-                    }
-
-                    return bsl::errc_success;
-                }
-
-                default: {
-                    bsl::debug() << __FILE__ << " " << __FUNCTION__ << ": SET UNSUPPORTED CPUID LEAF " << bsl::endl;
-                    print_leaf(bsl::error(), entry);
-                    break;
-                }
-            }
-
+            print_leaf(bsl::debug(), entry);
 
             return bsl::errc_success;
         }

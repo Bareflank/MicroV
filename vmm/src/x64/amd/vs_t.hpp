@@ -967,7 +967,20 @@ namespace microv
                 return m_emulated_cpuid.get_root(mut_sys, intrinsic);
             }
 
-            return m_emulated_cpuid.get(mut_sys, intrinsic);
+            auto mut_rax{mut_sys.bf_tls_rax()};
+            auto mut_rcx{mut_sys.bf_tls_rcx()};
+            hypercall::mv_cdl_entry_t mut_entry{};
+            mut_entry.fun = bsl::to_u32_unsafe(mut_rax).get();
+            mut_entry.idx = bsl::to_u32_unsafe(mut_rcx).get();
+
+            auto mut_ret{ m_emulated_cpuid.get(mut_sys, mut_entry) };
+
+            syscall::bf_syscall_t::bf_tls_set_rax(bsl::to_u64_unsafe(mut_entry.eax));
+            syscall::bf_syscall_t::bf_tls_set_rbx(bsl::to_u64_unsafe(mut_entry.ebx));
+            syscall::bf_syscall_t::bf_tls_set_rcx(bsl::to_u64_unsafe(mut_entry.ecx));
+            syscall::bf_syscall_t::bf_tls_set_rdx(bsl::to_u64_unsafe(mut_entry.edx));
+
+            return bsl::errc_success;
         }
 
         /// <!-- description -->
