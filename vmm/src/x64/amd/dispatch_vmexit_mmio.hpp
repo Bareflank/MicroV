@@ -54,8 +54,17 @@ namespace microv
         bsl::uint64 *memory_access_size) noexcept -> bsl::errc_type
     {
         constexpr auto mask_2bytes{0xFFFF_u64};
+        constexpr auto mask_6bytes{0xFFFFFFFFFFFF_u64};
+        constexpr auto mask_7bytes{0xFFFFFFFFFFFFFF_u64};
         constexpr auto instr__mov_eax_PTRebx{0x038b_u64};
         constexpr auto instr__mov_PTRebx_esi{0x3389_u64};
+        constexpr auto instr__mov_PTRebx_eax{0x0389_u64};
+        constexpr auto instr__mov_eax_PTRIDXecx{0xb0000000818b_u64};
+        constexpr auto instr__mov_ecx_PTRIDXedi{0xb00000008f8b_u64};
+        constexpr auto instr__mov_ecx_PTRIDXebx{0xb00000008b8b_u64};
+        constexpr auto instr__mov_eax_PTRIDXebx{0xb0000000838b_u64};
+        constexpr auto instr__mov_ax_PTRIDXebx{0xb0000000838b66_u64};
+        constexpr auto instr__mov_PTRIDXebx_di{0xb0000000bb8966_u64};
 
         bsl::debug() << __FUNCTION__ << bsl::endl;
 
@@ -75,6 +84,62 @@ namespace microv
             bsl::debug() << " mov dword ptr [ebx], esi" << bsl::endl;
             *mut_instr_len = 2;
             *memory_access_size = 4;
+            *mut_register = reg;
+            return bsl::errc_success;
+        } else if( (opcodes0 & mask_2bytes) == (instr__mov_PTRebx_eax) ) {
+            bsl::uint64 reg {bsl::uint64(hypercall::mv_reg_t::mv_reg_t_rax)};
+            // mov dword ptr [ebx], eax
+            bsl::debug() << " mov dword ptr [ebx], eax" << bsl::endl;
+            *mut_instr_len = 2;
+            *memory_access_size = 4;
+            *mut_register = reg;
+            return bsl::errc_success;
+        } else if( (opcodes0 & mask_6bytes) == (instr__mov_eax_PTRIDXecx) ) {
+            bsl::uint64 reg {bsl::uint64(hypercall::mv_reg_t::mv_reg_t_rax)};
+            // mov eax, -0x50000000(ecx)
+            bsl::debug() << " mov eax, -0x50000000(ecx)" << bsl::endl;
+            *mut_instr_len = 6;
+            *memory_access_size = 4;
+            *mut_register = reg;
+            return bsl::errc_success;
+        } else if( (opcodes0 & mask_6bytes) == (instr__mov_ecx_PTRIDXedi) ) {
+            bsl::uint64 reg {bsl::uint64(hypercall::mv_reg_t::mv_reg_t_rcx)};
+            // mov ecx, -0x50000000(edi)
+            bsl::debug() << " mov ecx, -0x50000000(edi)" << bsl::endl;
+            *mut_instr_len = 6;
+            *memory_access_size = 4;
+            *mut_register = reg;
+            return bsl::errc_success;
+        } else if( (opcodes0 & mask_6bytes) == (instr__mov_ecx_PTRIDXebx) ) {
+            bsl::uint64 reg {bsl::uint64(hypercall::mv_reg_t::mv_reg_t_rcx)};
+            // mov ecx, -0x50000000(ebx)
+            bsl::debug() << " mov ecx, -0x50000000(ebx)" << bsl::endl;
+            *mut_instr_len = 6;
+            *memory_access_size = 4;
+            *mut_register = reg;
+            return bsl::errc_success;
+        } else if( (opcodes0 & mask_6bytes) == (instr__mov_eax_PTRIDXebx) ) {
+            bsl::uint64 reg {bsl::uint64(hypercall::mv_reg_t::mv_reg_t_rax)};
+            // mov eax, -0x50000000(ebx)
+            bsl::debug() << " mov eax, -0x50000000(ebx)" << bsl::endl;
+            *mut_instr_len = 6;
+            *memory_access_size = 4;
+            *mut_register = reg;
+            return bsl::errc_success;
+        } else if( (opcodes0 & mask_7bytes) == (instr__mov_ax_PTRIDXebx) ) {
+            bsl::uint64 reg {bsl::uint64(hypercall::mv_reg_t::mv_reg_t_rax)};
+            // mov ax, -0x50000000(ebx)
+            bsl::debug() << " mov ax, -0x50000000(ebx)" << bsl::endl;
+            *mut_instr_len = 7;
+            *memory_access_size = 2;
+            *mut_register = reg;
+            return bsl::errc_success;
+        } else if( (opcodes0 & mask_7bytes) == (instr__mov_PTRIDXebx_di) ) {
+            bsl::uint64 reg {bsl::uint64(hypercall::mv_reg_t::mv_reg_t_rdi)};
+            // mov -0x50000000(ebx), di
+            bsl::debug() << " mov -0x50000000(ebx), di" << bsl::endl;
+            *mut_instr_len = 7;
+            *memory_access_size = 2;
             *mut_register = reg;
             return bsl::errc_success;
         } else {

@@ -974,6 +974,7 @@ namespace microv
             mut_entry.idx = bsl::to_u32_unsafe(mut_rcx).get();
 
             auto mut_ret{ m_emulated_cpuid.get(mut_sys, mut_entry) };
+            bsl::discard(mut_ret);
 
             syscall::bf_syscall_t::bf_tls_set_rax(bsl::to_u64_unsafe(mut_entry.eax));
             syscall::bf_syscall_t::bf_tls_set_rbx(bsl::to_u64_unsafe(mut_entry.ebx));
