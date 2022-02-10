@@ -253,7 +253,6 @@ namespace microv
             }
 
             case EXIT_REASON_MSR.get(): {
-                bsl::debug() << __FILE__ << " EXIT_REASON_MSR " << bsl::endl;
                 auto const exitinfo1{mut_sys.bf_vs_op_read(vsid, syscall::bf_reg_t::bf_reg_t_exitinfo1)};
 
                 // exitinfo1 = 0 means read; 1 = write

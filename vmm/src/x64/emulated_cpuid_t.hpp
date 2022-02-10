@@ -579,12 +579,12 @@ namespace microv
                 }
 
                 default: {
+                    bsl::debug() << __FILE__ << " " << __FUNCTION__ << ": SET UNSUPPORTED CPUID LEAF " << bsl::endl;
+                    print_leaf(bsl::error(), entry);
                     break;
                 }
             }
 
-            bsl::debug() << __FILE__ << " " << __FUNCTION__ << " " << bsl::endl;
-            print_leaf(bsl::error(), entry);
 
             return bsl::errc_success;
         }

@@ -99,7 +99,7 @@ namespace microv
 
         mut_sys.bf_tls_set_rax(msr_lo);
         mut_sys.bf_tls_set_rdx(msr_hi);
-        bsl::debug() << "dispatch_vmexit_rdmsr rcx=" << bsl::hex(rcx) << " value=" << bsl::hex(val) << bsl::endl;
+        // bsl::debug() << "dispatch_vmexit_rdmsr rcx=" << bsl::hex(rcx) << " value=" << bsl::hex(val) << bsl::endl;
 
         return vmexit_success_advance_ip_and_run;
     }
