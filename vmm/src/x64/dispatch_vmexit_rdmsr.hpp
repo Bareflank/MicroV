@@ -87,15 +87,20 @@ namespace microv
 
         auto const val{vs_pool.msr_get(mut_sys, rcx, vsid)};
         constexpr auto mask32{0xFFFFFFFF_u64};
+        bsl::expects(val.is_valid_and_checked());
+        if(bsl::unlikely(!val.is_valid_and_checked())) {
+            bsl::debug() << "FIXME: We need to implement emulation for MSR number " << bsl::hex(rcx) << bsl::endl;
+            return vmexit_failure_advance_ip_and_run;
+        }
 
         // FIXME: is this the same for 64-bit?
-        auto const msr_hi{(val & mask32) >> 32_u64};
-        auto const msr_lo{(val & mask32)};
+        auto msr_hi{(val & mask32) >> 32_u64};
+        auto msr_lo{(val & mask32)};
 
         mut_sys.bf_tls_set_rax(msr_lo);
         mut_sys.bf_tls_set_rdx(msr_hi);
+        bsl::debug() << "dispatch_vmexit_rdmsr rcx=" << bsl::hex(rcx) << " value=" << bsl::hex(val) << bsl::endl;
 
-        bsl::error() << "dispatch_vmexit_rdmsr rcx=" << bsl::hex(rcx) << " value=" << bsl::hex(val) << bsl::endl;
         return vmexit_success_advance_ip_and_run;
     }
 }

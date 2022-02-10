@@ -29,6 +29,7 @@
 #include <gs_t.hpp>
 #include <intrinsic_t.hpp>
 #include <tls_t.hpp>
+#include <vs_t.hpp>
 
 #include <bsl/debug.hpp>
 #include <bsl/discard.hpp>
@@ -37,6 +38,20 @@
 
 namespace microv
 {
+    /// <!-- description -->
+    ///   @brief See mv_msr_entry_t for more details
+    ///
+    struct mv_msr_entry_t final
+    {
+        /// @brief stores the MSR number
+        uint64_t msr_num;
+        /// @brief stores the MSR value
+        uint64_t value;
+        /// @brief boolean to say if this value has been set yet
+        bool is_set;
+    };
+    constexpr auto MAX_EMULATED_MSRS{200_idx};
+
     /// @class microv::emulated_msr_t
     ///
     /// <!-- description -->
@@ -51,6 +66,9 @@ namespace microv
     {
         /// @brief stores the ID of the VS associated with this emulated_msr_t
         bsl::safe_u16 m_assigned_vsid{};
+
+        /// @brief stores the standard CPUID leaves
+        bsl::array<mv_msr_entry_t, MAX_EMULATED_MSRS.get()> m_msrs{};
 
     public:
         /// <!-- description -->
@@ -137,11 +155,37 @@ namespace microv
         ///   @return Returns the value of the emulated MSR. If the MSR isn't
         ///    emulated bsl::safe_u64::failure() is returned instead.
         ///
-        [[nodiscard]] static constexpr auto
-        get(syscall::bf_syscall_t const &sys, bsl::safe_u64 const &msr) noexcept -> bsl::safe_u64
+        [[nodiscard]] constexpr auto
+        get(syscall::bf_syscall_t const &sys, bsl::safe_u64 const &msr) const noexcept -> bsl::safe_u64
         {
             bsl::discard(sys);
             bsl::discard(msr);
+            constexpr auto MSR_MTRRCap{0xfe_u32};
+
+
+            switch (bsl::to_u32_unsafe(msr).get()) {
+                case MSR_MTRRCap.get(): {
+                    return sys.bf_intrinsic_op_rdmsr(bsl::to_u32(msr));
+                }
+
+                default: {
+                    break;
+                }
+            }
+
+            auto mut_i{ 0_idx };
+
+            // See if we already have an entry for this MSR to update
+            for (mut_i = 0_idx; mut_i < 200_idx; ++mut_i) {
+                auto *const pmut_entry{ m_msrs.at_if(mut_i) };
+
+                if ((pmut_entry->is_set) && (pmut_entry->msr_num == msr.get())) {
+                    // bsl::debug() << "Found existing index " << bsl::endl;
+                    return bsl::make_safe(pmut_entry->value);
+                }
+            }
+
+            bsl::debug() << __FILE__ << " " << __FUNCTION__ << " UNHANDLED" << bsl::endl;
 
             return bsl::safe_u64::failure();
         }
@@ -156,7 +200,7 @@ namespace microv
         ///   @return Returns bsl::errc_success on success, bsl::errc_failure
         ///     and friends otherwise
         ///
-        [[nodiscard]] static constexpr auto
+        [[nodiscard]] constexpr auto
         set(syscall::bf_syscall_t const &sys,
             bsl::safe_u64 const &msr,
             bsl::safe_u64 const &val) noexcept -> bsl::errc_type
@@ -165,6 +209,33 @@ namespace microv
             bsl::discard(msr);
             bsl::discard(val);
 
+            auto mut_i{ 0_idx };
+
+            // See if we already have an entry for this MSR to update
+            for (mut_i = 0_idx; mut_i < 200_idx; ++mut_i) {
+                auto *const pmut_entry{ m_msrs.at_if(mut_i) };
+
+                if ((pmut_entry->is_set) && (pmut_entry->msr_num == msr.get())) {
+                    // bsl::debug() << "Found existing index " << bsl::endl;
+                    pmut_entry->value = val.get();
+                    return bsl::errc_success;                    
+                }
+            }
+
+            // Look for a free entry to use
+            for (mut_i = 0_idx; mut_i < 200_idx; ++mut_i) {
+                auto *const pmut_entry{ m_msrs.at_if(mut_i) };
+                // If this entry is already taken, continue
+                if (!pmut_entry->is_set) {
+                    // bsl::debug() << "Found free index " << bsl::endl;
+                    pmut_entry->msr_num = msr.get();
+                    pmut_entry->value = val.get();
+                    pmut_entry->is_set = true;
+                    return bsl::errc_success;                    
+                }
+            }
+
+            bsl::debug() << __FILE__ << " " << __FUNCTION__ << " UNHANDLED" << bsl::endl;
             return bsl::errc_failure;
         }
     };
