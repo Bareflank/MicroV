@@ -134,26 +134,26 @@ handle_vcpu_kvm_run_mmio(
 {
     platform_expects(NULL != pmut_exit_mmio);
 
-    bfdebug_log("KVM_EXIT_MMIO:\n");
-    bfdebug_log("  gpa=0x%llx", (unsigned long long)pmut_exit_mmio->gpa);
-    bfdebug_log("  nrip=0x%llx", (unsigned long long)pmut_exit_mmio->nrip);
-    bfdebug_log("  target_reg=0x%llx", (unsigned long long)pmut_exit_mmio->target_reg);
+    // bfdebug_log("KVM_EXIT_MMIO:\n");
+    // bfdebug_log("  gpa=0x%llx", (unsigned long long)pmut_exit_mmio->gpa);
+    // bfdebug_log("  nrip=0x%llx", (unsigned long long)pmut_exit_mmio->nrip);
+    // bfdebug_log("  target_reg=0x%llx", (unsigned long long)pmut_exit_mmio->target_reg);
     pmut_vcpu->run->mmio.phys_addr = pmut_exit_mmio->gpa;
     pmut_vcpu->run->mmio.nrip = pmut_exit_mmio->nrip;
     pmut_vcpu->run->mmio.target_reg = pmut_exit_mmio->target_reg;
 
     if(pmut_exit_mmio->flags == MV_EXIT_MMIO_READ) {
-        bfdebug_log("  READ\n");
+        // bfdebug_log("  READ\n");
         pmut_vcpu->run->mmio.is_write = 0;
     } else if(pmut_exit_mmio->flags == MV_EXIT_MMIO_WRITE) {
-        bfdebug_log("  WRITE\n");
+        // bfdebug_log("  WRITE\n");
         pmut_vcpu->run->mmio.is_write = 1;
     } else {
         bfdebug_log("  UNKNOWN FLAGS 0x%llx\n", (unsigned long long)pmut_exit_mmio->flags);
         return SHIM_FAILURE;
     }
 
-    bfdebug_log("  memory_access_size: 0x%llx\n", (unsigned long long)pmut_exit_mmio->memory_access_size);
+    // bfdebug_log("  memory_access_size: 0x%llx\n", (unsigned long long)pmut_exit_mmio->memory_access_size);
     pmut_vcpu->run->mmio.len = (int32_t)pmut_exit_mmio->memory_access_size;
 
     *((uint64_t*)(&(pmut_vcpu->run->mmio.data))) = (int64_t)pmut_exit_mmio->data;
@@ -322,9 +322,9 @@ pre_run_op_mmio(struct shim_vcpu_t *const pmut_vcpu, struct mv_run_t *const pmut
     platform_expects(KVM_EXIT_MMIO == pmut_vcpu->run->exit_reason);
     platform_expects(NULL != pmut_mv_run);
 
-    bfdebug_log("pre_run_op_mmio\n");
+    // bfdebug_log("pre_run_op_mmio\n");
 
-    bfdebug_log("  nrip=0x%llx", (unsigned long long)pmut_vcpu->run->mmio.nrip);
+    // bfdebug_log("  nrip=0x%llx", (unsigned long long)pmut_vcpu->run->mmio.nrip);
 
     mv_touch();
 
@@ -338,8 +338,8 @@ pre_run_op_mmio(struct shim_vcpu_t *const pmut_vcpu, struct mv_run_t *const pmut
         return SHIM_SUCCESS;
     }
 
-    bfdebug_log("  READ\n");
-    bfdebug_log("  target_reg=0x%llx", (unsigned long long)pmut_vcpu->run->mmio.target_reg);
+    // bfdebug_log("  READ\n");
+    // bfdebug_log("  target_reg=0x%llx", (unsigned long long)pmut_vcpu->run->mmio.target_reg);
 
     if ((uint32_t)KVM_RUN_MMIO_DATA_SIZE < pmut_vcpu->run->mmio.len) {
         bferror_d32("FIXME: MMIO size too big.", pmut_vcpu->run->mmio.len);
@@ -351,7 +351,7 @@ pre_run_op_mmio(struct shim_vcpu_t *const pmut_vcpu, struct mv_run_t *const pmut
         pmut_mv_run->reg_entries[pmut_mv_run->num_reg_entries].val = *((uint64_t*)pmut_vcpu->run->mmio.data);
         pmut_mv_run->num_reg_entries++;
 
-        bfdebug_log("assume it was a read into eax, val=0x%llx\n", (unsigned long long)(pmut_mv_run->reg_entries[0].val));
+        // bfdebug_log("assume it was a read into eax, val=0x%llx\n", (unsigned long long)(pmut_mv_run->reg_entries[0].val));
     }
 
     switch ((int)pmut_vcpu->run->mmio.len) {

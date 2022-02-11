@@ -211,15 +211,15 @@ namespace microv
         auto const phys_addr{(exitinfo2)};
         auto const is_write{(exitinfo1 & rw_mask) >> rw_shift};
 
-        bsl::debug() << __FUNCTION__ << bsl::endl;
-        bsl::debug() << "          exitinfo1 = " << bsl::hex(exitinfo1) << bsl::endl;
-        bsl::debug() << "          exitinfo2 = " << bsl::hex(exitinfo2) << bsl::endl;
-        bsl::debug() << "          phys_addr = " << bsl::hex(phys_addr) << bsl::endl;
-        bsl::debug() << "          is_write = " << bsl::hex(is_write) << bsl::endl;
-        bsl::debug() << "          op_bytes = " << bsl::hex(op_bytes) << bsl::endl;
-        bsl::debug() << "          rip = " << bsl::hex(rip) << bsl::endl;
-        bsl::debug() << "          opcodes0 = " << bsl::hex(opcodes0) << bsl::endl;
-        bsl::debug() << "          opcodes1 = " << bsl::hex(opcodes1) << bsl::endl;
+        // bsl::debug() << __FUNCTION__ << bsl::endl;
+        // bsl::debug() << "          exitinfo1 = " << bsl::hex(exitinfo1) << bsl::endl;
+        // bsl::debug() << "          exitinfo2 = " << bsl::hex(exitinfo2) << bsl::endl;
+        // bsl::debug() << "          phys_addr = " << bsl::hex(phys_addr) << bsl::endl;
+        // bsl::debug() << "          is_write = " << bsl::hex(is_write) << bsl::endl;
+        // bsl::debug() << "          op_bytes = " << bsl::hex(op_bytes) << bsl::endl;
+        // bsl::debug() << "          rip = " << bsl::hex(rip) << bsl::endl;
+        // bsl::debug() << "          opcodes0 = " << bsl::hex(opcodes0) << bsl::endl;
+        // bsl::debug() << "          opcodes1 = " << bsl::hex(opcodes1) << bsl::endl;
 
         // Disassemble the triggering opcode
         bsl::uint64 mut_instr_len{0};
@@ -238,11 +238,11 @@ namespace microv
         // bsl::uint64 data{ mut_sys.bf_vs_op_read(vsid, mut_register).get() };
         bsl::uint64 data{ mut_vs_pool.reg_get(mut_sys, bsl::make_safe(mut_register), vsid).get() };
 
-        bsl::debug() << "          mut_instr_len = " << bsl::hex(mut_instr_len) << bsl::endl;
-        bsl::debug() << "          mut_register = " << bsl::hex(bsl::make_safe(static_cast<bsl::uint64>(mut_register))) << bsl::endl;
-        bsl::debug() << "          memory_access_size = " << bsl::hex(memory_access_size) << bsl::endl;
-        bsl::debug() << "          nrip = " << bsl::hex(nrip) << bsl::endl;
-        bsl::debug() << "          data = " << bsl::hex(data) << bsl::endl;
+        // bsl::debug() << "          mut_instr_len = " << bsl::hex(mut_instr_len) << bsl::endl;
+        // bsl::debug() << "          mut_register = " << bsl::hex(bsl::make_safe(static_cast<bsl::uint64>(mut_register))) << bsl::endl;
+        // bsl::debug() << "          memory_access_size = " << bsl::hex(memory_access_size) << bsl::endl;
+        // bsl::debug() << "          nrip = " << bsl::hex(nrip) << bsl::endl;
+        // bsl::debug() << "          data = " << bsl::hex(data) << bsl::endl;
 
         // ---------------------------------------------------------------------
         // Context: Change To Root VM
