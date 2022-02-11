@@ -973,7 +973,7 @@ namespace microv
             mut_entry.fun = bsl::to_u32_unsafe(mut_rax).get();
             mut_entry.idx = bsl::to_u32_unsafe(mut_rcx).get();
 
-            auto mut_ret{ m_emulated_cpuid.get(mut_sys, mut_entry) };
+            auto mut_ret{ m_emulated_cpuid.get(mut_sys, mut_entry, intrinsic) };
             bsl::discard(mut_ret);
 
             syscall::bf_syscall_t::bf_tls_set_rax(bsl::to_u64_unsafe(mut_entry.eax));
@@ -995,7 +995,7 @@ namespace microv
         ///     and friends otherwise
         ///
         [[nodiscard]] constexpr auto
-        cpuid_get_list(syscall::bf_syscall_t &mut_sys, hypercall::mv_cdl_t &mut_cdl) const noexcept
+        cpuid_get_list(syscall::bf_syscall_t &mut_sys, hypercall::mv_cdl_t &mut_cdl, intrinsic_t const &intrinsic) const noexcept
             -> bsl::errc_type
         {
             bsl::expects(allocated_status_t::allocated == m_allocated);
@@ -1003,7 +1003,7 @@ namespace microv
             bsl::expects(mut_sys.bf_tls_ppid() == this->assigned_pp());
             bsl::expects(!mut_sys.is_vs_a_root_vs(this->id()));
 
-            return m_emulated_cpuid.get_list(mut_sys, mut_cdl);
+            return m_emulated_cpuid.get_list(mut_sys, mut_cdl, intrinsic);
         }
 
         /// <!-- description -->

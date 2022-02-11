@@ -898,9 +898,10 @@ namespace microv
         cpuid_get_list(
             syscall::bf_syscall_t &mut_sys,
             bsl::safe_u16 const &vsid,
-            hypercall::mv_cdl_t &mut_cdl) const noexcept -> bsl::errc_type
+            hypercall::mv_cdl_t &mut_cdl,
+            intrinsic_t const &intrinsic) const noexcept -> bsl::errc_type
         {
-            return this->get_vs(vsid)->cpuid_get_list(mut_sys, mut_cdl);
+            return this->get_vs(vsid)->cpuid_get_list(mut_sys, mut_cdl, intrinsic);
         }
 
         /// <!-- description -->

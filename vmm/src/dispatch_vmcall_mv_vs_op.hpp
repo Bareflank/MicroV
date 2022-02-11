@@ -1007,7 +1007,8 @@ namespace microv
     ///
     [[nodiscard]] constexpr auto
     handle_mv_vs_op_cpuid_get_list(
-        syscall::bf_syscall_t &mut_sys, pp_pool_t &mut_pp_pool, vs_pool_t &mut_vs_pool) noexcept
+        syscall::bf_syscall_t &mut_sys, pp_pool_t &mut_pp_pool, vs_pool_t &mut_vs_pool,
+        intrinsic_t const &intrinsic) noexcept
         -> bsl::errc_type
     {
         bsl::errc_type mut_ret{};
@@ -1033,7 +1034,7 @@ namespace microv
             return vmexit_failure_advance_ip_and_run;
         }
 
-        mut_ret = mut_vs_pool.cpuid_get_list(mut_sys, vsid, *mut_cdl);
+        mut_ret = mut_vs_pool.cpuid_get_list(mut_sys, vsid, *mut_cdl, intrinsic);
         if (bsl::unlikely(!mut_ret)) {
             bsl::print<bsl::V>() << bsl::here();
             set_reg_return(mut_sys, hypercall::MV_STATUS_FAILURE_UNKNOWN);
@@ -1394,7 +1395,7 @@ namespace microv
             }
 
             case hypercall::MV_VS_OP_CPUID_GET_LIST_IDX_VAL.get(): {
-                auto const ret{handle_mv_vs_op_cpuid_get_list(mut_sys, mut_pp_pool, mut_vs_pool)};
+                auto const ret{handle_mv_vs_op_cpuid_get_list(mut_sys, mut_pp_pool, mut_vs_pool, intrinsic)};
                 if (bsl::unlikely(!ret)) {
                     bsl::print<bsl::V>() << bsl::here();
                     return ret;

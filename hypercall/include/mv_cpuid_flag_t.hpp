@@ -37,6 +37,7 @@ namespace hypercall
     {
         /// @brief reserved
         mv_cpuid_flag_t_reserved = 0,
+        mv_cpuid_set = 1,
     };
 
     /// <!-- description -->

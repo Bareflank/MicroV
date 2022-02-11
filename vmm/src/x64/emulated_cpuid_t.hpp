@@ -32,6 +32,7 @@
 #include <mv_cdl_entry_t.hpp>
 #include <page_pool_t.hpp>
 #include <tls_t.hpp>
+#include <mv_cpuid_flag_t.hpp>
 
 #include <bsl/debug.hpp>
 #include <bsl/discard.hpp>
@@ -469,39 +470,51 @@ namespace microv
         ///     and friends otherwise.
         ///
         [[nodiscard]] constexpr auto
-        get(syscall::bf_syscall_t const &sys, hypercall::mv_cdl_entry_t &mut_entry) const noexcept
+        get(syscall::bf_syscall_t const &sys, hypercall::mv_cdl_entry_t &mut_entry, intrinsic_t const &intrinsic) const noexcept
             -> bsl::errc_type
         {
             bsl::discard(sys);
-            // bsl::debug() << "Getting emulated CPUID FN" << bsl::hex(mut_entry.fun) << " " << bsl::hex(mut_entry.idx) << bsl::endl;
 
-            using leaves_type = decltype(m_std_leaves);
-            leaves_type const *mut_leaves{};
-            if (mut_entry.fun < CPUID_FN8000_0000.get()) {
-                mut_leaves = &m_std_leaves;
+            auto mut_i{bsl::to_idx(mut_entry.fun)};
+            if (mut_i >= bsl::to_idx(CPUID_FN8000_0000)) {
+                mut_i -= bsl::to_idx(CPUID_FN8000_0000);
             }
             else {
-                mut_leaves = &m_ext_leaves;
+                bsl::touch();
             }
 
-            for (auto const &leaves_idx : *mut_leaves) {
-                if (leaves_idx.at_if(bsl::safe_idx::magic_0())->fun != mut_entry.fun) {
-                    continue;
-                }
+            bsl::debug() << "Getting emulated CPUID FN" << bsl::hex(mut_entry.fun) << " " << bsl::hex(mut_entry.idx) << bsl::endl;
 
-                for (auto const &leaf : leaves_idx) {
-                    if (leaf.idx != mut_entry.idx) {
-                        continue;
-                    }
+            if( (mut_entry.fun < CPUID_NUM_STD_FUNCTIONS.get()) &&
+                (mut_entry.idx < CPUID_NUM_STD_INDEXES.get()) ) {
 
-                    mut_entry.eax = leaf.eax;
-                    mut_entry.ebx = leaf.ebx;
-                    mut_entry.ecx = leaf.ecx;
-                    mut_entry.edx = leaf.edx;
+                auto *const pmut_entry{
+                    m_std_leaves.at_if(mut_i)->at_if(bsl::to_idx(mut_entry.idx))};
 
+                // See if its one that's been set already
+                if( pmut_entry && (pmut_entry->flags == hypercall::mv_cpuid_flag_t::mv_cpuid_set)) {
+                    bsl::debug() << "Got emulated CPUID FN" << bsl::hex(mut_entry.fun) << " " << bsl::hex(mut_entry.idx) << bsl::endl;
+                    mut_entry.eax = pmut_entry->eax;
+                    mut_entry.ebx = pmut_entry->ebx;
+                    mut_entry.ecx = pmut_entry->ecx;
+                    mut_entry.edx = pmut_entry->edx;
+                    print_leaf(bsl::error(), mut_entry);
                     return bsl::errc_success;
                 }
             }
+
+            // If we get here, its not an emulated one, so run the intrinsic
+            auto mut_rax{sys.bf_tls_rax()};
+            auto mut_rbx{sys.bf_tls_rbx()};
+            auto mut_rcx{sys.bf_tls_rcx()};
+            auto mut_rdx{sys.bf_tls_rdx()};
+
+            bsl::debug() << "Calling intrinsic for emulated CPUID FN" << bsl::hex(mut_rax) << " " << bsl::hex(mut_rcx) << bsl::endl;            
+            intrinsic.cpuid(mut_rax, mut_rbx, mut_rcx, mut_rdx);
+            mut_entry.eax = bsl::to_u32_unsafe(mut_rax).get();
+            mut_entry.ebx = bsl::to_u32_unsafe(mut_rbx).get();
+            mut_entry.ecx = bsl::to_u32_unsafe(mut_rcx).get();
+            mut_entry.edx = bsl::to_u32_unsafe(mut_rdx).get();
 
             bsl::debug() << __FILE__ << " " << __FUNCTION__ << " " << bsl::endl;
             print_leaf(bsl::error(), mut_entry);
@@ -543,6 +556,8 @@ namespace microv
             pmut_entry->ecx = entry.ecx;
             pmut_entry->edx = entry.edx;
 
+            pmut_entry->flags = hypercall::mv_cpuid_flag_t::mv_cpuid_set;
+
             print_leaf(bsl::debug(), entry);
 
             return bsl::errc_success;
@@ -559,14 +574,14 @@ namespace microv
         ///     and friends otherwise.
         ///
         [[nodiscard]] constexpr auto
-        get_list(syscall::bf_syscall_t const &sys, hypercall::mv_cdl_t &mut_cdl) const noexcept
+        get_list(syscall::bf_syscall_t const &sys, hypercall::mv_cdl_t &mut_cdl, intrinsic_t const &intrinsic) const noexcept
             -> bsl::errc_type
         {
             bsl::discard(sys);
             bsl::discard(mut_cdl);
 
             for (bsl::safe_idx mut_i{}; mut_i < mut_cdl.num_entries; ++mut_i) {
-                if (bsl::unlikely(!get(sys, *mut_cdl.entries.at_if(mut_i)))) {
+                if (bsl::unlikely(!get(sys, *mut_cdl.entries.at_if(mut_i), intrinsic))) {
                     bsl::error() << "get_list failed\n" << bsl::here();
                     return bsl::errc_failure;
                 }

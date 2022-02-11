@@ -50,6 +50,7 @@ enum mv_cpuid_flag_t
     {
         /** @brief reserved */
         mv_cpuid_flag_reserved = 0,
+        mv_cpuid_set = 1,
     };
 
 /** @brief integer version of mv_bit_size_t_8 */
