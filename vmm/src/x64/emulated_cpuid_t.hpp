@@ -475,30 +475,41 @@ namespace microv
         {
             bsl::discard(sys);
 
-            auto mut_i{bsl::to_idx(mut_entry.fun)};
-            if (mut_i >= bsl::to_idx(CPUID_FN8000_0000)) {
-                mut_i -= bsl::to_idx(CPUID_FN8000_0000);
-            }
-            else {
-                bsl::touch();
+            // FIXME: not all CPUID func's have subleaves. Of the ones QEMU uses, only func=4 has subleaves
+            auto idx{0_idx};
+            if(mut_entry.fun == 4u) {
+                idx = bsl::to_idx(mut_entry.idx);
             }
 
-            bsl::debug() << "Getting emulated CPUID FN" << bsl::hex(mut_entry.fun) << " " << bsl::hex(mut_entry.idx) << bsl::endl;
+            // bsl::debug() << "Getting emulated CPUID FN" << bsl::hex(mut_entry.fun) << " " << bsl::hex(mut_entry.idx) << bsl::endl;
 
-            if( (mut_entry.fun < CPUID_NUM_STD_FUNCTIONS.get()) &&
-                (mut_entry.idx < CPUID_NUM_STD_INDEXES.get()) ) {
-
+            if( (mut_entry.fun < CPUID_NUM_STD_FUNCTIONS.get()) ) {
+                // bsl::debug() << "Trying emulated CPUID FN" << bsl::hex(mut_entry.fun) << " " << bsl::hex(mut_entry.idx) << bsl::endl;
                 auto *const pmut_entry{
-                    m_std_leaves.at_if(mut_i)->at_if(bsl::to_idx(mut_entry.idx))};
-
+                    m_std_leaves.at_if(bsl::to_idx(mut_entry.fun))->at_if(idx)};
                 // See if its one that's been set already
                 if( pmut_entry && (pmut_entry->flags == hypercall::mv_cpuid_flag_t::mv_cpuid_set)) {
-                    bsl::debug() << "Got emulated CPUID FN" << bsl::hex(mut_entry.fun) << " " << bsl::hex(mut_entry.idx) << bsl::endl;
+                    // bsl::debug() << "Got emulated CPUID FN" << bsl::hex(mut_entry.fun) << " " << bsl::hex(mut_entry.idx) << bsl::endl;
                     mut_entry.eax = pmut_entry->eax;
                     mut_entry.ebx = pmut_entry->ebx;
                     mut_entry.ecx = pmut_entry->ecx;
                     mut_entry.edx = pmut_entry->edx;
-                    print_leaf(bsl::error(), mut_entry);
+                    // print_leaf(bsl::error(), mut_entry);
+                    return bsl::errc_success;
+                }
+            } else if( ((mut_entry.fun - CPUID_FN8000_0000.get()) < CPUID_NUM_EXT_FUNCTIONS.get()) ) {
+                // bsl::debug() << "Trying emulated CPUID FN" << bsl::hex(mut_entry.fun) << " " << bsl::hex(mut_entry.idx) << bsl::endl;
+                auto *const pmut_entry{
+                    m_ext_leaves.at_if(bsl::to_idx(mut_entry.fun - CPUID_FN8000_0000.get()))->at_if(idx)};
+
+                // See if its one that's been set already
+                if( pmut_entry && (pmut_entry->flags == hypercall::mv_cpuid_flag_t::mv_cpuid_set)) {
+                    // bsl::debug() << "Got emulated CPUID FN" << bsl::hex(mut_entry.fun) << " " << bsl::hex(mut_entry.idx) << bsl::endl;
+                    mut_entry.eax = pmut_entry->eax;
+                    mut_entry.ebx = pmut_entry->ebx;
+                    mut_entry.ecx = pmut_entry->ecx;
+                    mut_entry.edx = pmut_entry->edx;
+                    // print_leaf(bsl::error(), mut_entry);
                     return bsl::errc_success;
                 }
             }
@@ -509,15 +520,16 @@ namespace microv
             auto mut_rcx{sys.bf_tls_rcx()};
             auto mut_rdx{sys.bf_tls_rdx()};
 
-            bsl::debug() << "Calling intrinsic for emulated CPUID FN" << bsl::hex(mut_rax) << " " << bsl::hex(mut_rcx) << bsl::endl;            
+            // FIXME: Not 100% sure what KVM does in this case...are we doing this properly?
+            bsl::debug() << "WARNING: Calling intrinsic for emulated CPUID FN" << bsl::hex(mut_rax) << " " << bsl::hex(mut_rcx) << bsl::endl;            
             intrinsic.cpuid(mut_rax, mut_rbx, mut_rcx, mut_rdx);
             mut_entry.eax = bsl::to_u32_unsafe(mut_rax).get();
             mut_entry.ebx = bsl::to_u32_unsafe(mut_rbx).get();
             mut_entry.ecx = bsl::to_u32_unsafe(mut_rcx).get();
             mut_entry.edx = bsl::to_u32_unsafe(mut_rdx).get();
 
-            bsl::debug() << __FILE__ << " " << __FUNCTION__ << " " << bsl::endl;
-            print_leaf(bsl::error(), mut_entry);
+            // bsl::debug() << __FILE__ << " " << __FUNCTION__ << " " << bsl::endl;
+            // print_leaf(bsl::error(), mut_entry);
 
             return bsl::errc_failure;
         }
@@ -539,24 +551,30 @@ namespace microv
         {
             bsl::discard(sys);
 
-            auto mut_i{bsl::to_idx(entry.fun)};
-            if (mut_i >= bsl::to_idx(CPUID_FN8000_0000)) {
-                mut_i -= bsl::to_idx(CPUID_FN8000_0000);
-            }
-            else {
-                bsl::touch();
-            }
-
             bsl::debug() << "Setting CPUID FN" << bsl::hex(entry.fun) << " " << bsl::hex(entry.idx) << bsl::endl;
-            auto *const pmut_entry{
-                m_std_leaves.at_if(mut_i)->at_if(bsl::to_idx(entry.idx))};
 
-            pmut_entry->eax = entry.eax;
-            pmut_entry->ebx = entry.ebx;
-            pmut_entry->ecx = entry.ecx;
-            pmut_entry->edx = entry.edx;
+            if (entry.fun < CPUID_FN8000_0000.get()) {
+                auto *const pmut_entry{
+                    m_std_leaves.at_if(bsl::to_idx(entry.fun))->at_if(bsl::to_idx(entry.idx))};
 
-            pmut_entry->flags = hypercall::mv_cpuid_flag_t::mv_cpuid_set;
+                pmut_entry->eax = entry.eax;
+                pmut_entry->ebx = entry.ebx;
+                pmut_entry->ecx = entry.ecx;
+                pmut_entry->edx = entry.edx;
+
+                pmut_entry->flags = hypercall::mv_cpuid_flag_t::mv_cpuid_set;
+            } else {
+                auto *const pmut_entry{
+                    m_ext_leaves.at_if(bsl::to_idx(entry.fun - CPUID_FN8000_0000.get()))->at_if(bsl::to_idx(entry.idx))};
+
+                pmut_entry->eax = entry.eax;
+                pmut_entry->ebx = entry.ebx;
+                pmut_entry->ecx = entry.ecx;
+                pmut_entry->edx = entry.edx;
+
+                pmut_entry->flags = hypercall::mv_cpuid_flag_t::mv_cpuid_set;
+            }
+
 
             print_leaf(bsl::debug(), entry);
 
