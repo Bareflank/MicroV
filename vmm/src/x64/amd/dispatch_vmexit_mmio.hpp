@@ -285,6 +285,7 @@ namespace microv
         mut_exit_mmio->nrip = nrip;
         mut_exit_mmio->target_reg = static_cast<bsl::uint64>(mut_register);
         mut_exit_mmio->memory_access_size = memory_access_size;
+        mut_exit_mmio->data = data;
 
         set_reg_return(mut_sys, hypercall::MV_STATUS_SUCCESS);
         set_reg0(mut_sys, bsl::to_u64(hypercall::EXIT_REASON_MMIO));
