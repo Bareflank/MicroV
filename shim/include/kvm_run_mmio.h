@@ -57,6 +57,7 @@ extern "C"
         uint64_t nrip;
         /** @brief TODO */
         uint64_t target_reg;
+        uint64_t need_pre_op_run;
     };
 
 #pragma pack(pop)

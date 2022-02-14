@@ -49,6 +49,12 @@ namespace shim
         bsl::uint32 len;
         /// @brief TODO
         bsl::uint8 is_write;
+        /// @brief TODO
+        bsl::uint32 nrip;
+        /// @brief TODO
+        bsl::uint32 target_reg;
+        bsl::uint32 need_pre_op_run;
+
     };
 }
 
