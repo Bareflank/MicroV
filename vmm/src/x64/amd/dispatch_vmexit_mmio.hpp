@@ -54,8 +54,10 @@ namespace microv
         bsl::uint64 *memory_access_size) noexcept -> bsl::errc_type
     {
         constexpr auto mask_2bytes{0xFFFF_u64};
+        constexpr auto mask_3bytes{0xFFFFFF_u64};
         constexpr auto mask_6bytes{0xFFFFFFFFFFFF_u64};
         constexpr auto mask_7bytes{0xFFFFFFFFFFFFFF_u64};
+
         constexpr auto instr__mov_eax_PTRebx{0x038b_u64};
         constexpr auto instr__mov_PTRebx_esi{0x3389_u64};
         constexpr auto instr__mov_PTRebx_eax{0x0389_u64};
@@ -63,10 +65,19 @@ namespace microv
         constexpr auto instr__mov_ecx_PTRIDXedi{0xb00000008f8b_u64};
         constexpr auto instr__mov_ecx_PTRIDXebx{0xb00000008b8b_u64};
         constexpr auto instr__mov_bl_PTRIDXebx{0xb00000009b8a_u64};
+        constexpr auto instr__mov_bl_PTRIDXedi{0xb00000009f8a_u64};
         constexpr auto instr__mov_eax_PTRIDXebx{0xb0000000838b_u64};
         constexpr auto instr__mov_PTRIDXebx_eax{0xb00000008389_u64};
+        constexpr auto instr__mov_PTRIDXebx_al{0xb00000008388_u64};
         constexpr auto instr__mov_ax_PTRIDXebx{0xb0000000838b66_u64};
         constexpr auto instr__mov_PTRIDXebx_di{0xb0000000bb8966_u64};
+        constexpr auto instr__mov_dx_PTResi{0x168b66_u64};
+        constexpr auto instr__mov_edx_PTResi{0x168b_u64};
+        constexpr auto instr__mov_PTResi_edx{0x1689_u64};
+        constexpr auto instr__mov_dl_PTResi{0x168a_u64};
+        constexpr auto instr__mov_PTResi_cl{0x0e88_u64};
+        constexpr auto instr__mov_PTResi_dx{0x168966_u64};
+        constexpr auto instr__mov_PTRIDXecx_bl{0xb00000009988_u64};
 
         // bsl::debug() << __FUNCTION__ << bsl::endl;
 
@@ -75,7 +86,7 @@ namespace microv
         if( (opcodes0 & mask_2bytes) == (instr__mov_eax_PTRebx) ) {
             // mov eax, dword ptr [ebx]
             bsl::uint64 reg {bsl::uint64(hypercall::mv_reg_t::mv_reg_t_rax)};
-            // bsl::debug() << " mov eax, dword ptr [ebx]" << bsl::endl;
+            bsl::debug() << " mov eax, dword ptr [ebx]" << bsl::endl;
             *mut_instr_len = 2;
             *memory_access_size = 4;
             *mut_register = reg;
@@ -83,7 +94,7 @@ namespace microv
         } else if( (opcodes0 & mask_2bytes) == (instr__mov_PTRebx_esi) ) {
             bsl::uint64 reg {bsl::uint64(hypercall::mv_reg_t::mv_reg_t_rsi)};
             // mov dword ptr [ebx], esi
-            // bsl::debug() << " mov dword ptr [ebx], esi" << bsl::endl;
+            bsl::debug() << " mov dword ptr [ebx], esi" << bsl::endl;
             *mut_instr_len = 2;
             *memory_access_size = 4;
             *mut_register = reg;
@@ -91,7 +102,7 @@ namespace microv
         } else if( (opcodes0 & mask_2bytes) == (instr__mov_PTRebx_eax) ) {
             bsl::uint64 reg {bsl::uint64(hypercall::mv_reg_t::mv_reg_t_rax)};
             // mov dword ptr [ebx], eax
-            // bsl::debug() << " mov dword ptr [ebx], eax" << bsl::endl;
+            bsl::debug() << " mov dword ptr [ebx], eax" << bsl::endl;
             *mut_instr_len = 2;
             *memory_access_size = 4;
             *mut_register = reg;
@@ -99,7 +110,7 @@ namespace microv
         } else if( (opcodes0 & mask_6bytes) == (instr__mov_eax_PTRIDXecx) ) {
             bsl::uint64 reg {bsl::uint64(hypercall::mv_reg_t::mv_reg_t_rax)};
             // mov eax, -0x50000000(ecx)
-            // bsl::debug() << " mov eax, -0x50000000(ecx)" << bsl::endl;
+            bsl::debug() << " mov eax, -0x50000000(ecx)" << bsl::endl;
             *mut_instr_len = 6;
             *memory_access_size = 4;
             *mut_register = reg;
@@ -107,7 +118,7 @@ namespace microv
         } else if( (opcodes0 & mask_6bytes) == (instr__mov_ecx_PTRIDXedi) ) {
             bsl::uint64 reg {bsl::uint64(hypercall::mv_reg_t::mv_reg_t_rcx)};
             // mov ecx, -0x50000000(edi)
-            // bsl::debug() << " mov ecx, -0x50000000(edi)" << bsl::endl;
+            bsl::debug() << " mov ecx, -0x50000000(edi)" << bsl::endl;
             *mut_instr_len = 6;
             *memory_access_size = 4;
             *mut_register = reg;
@@ -115,15 +126,23 @@ namespace microv
         } else if( (opcodes0 & mask_6bytes) == (instr__mov_ecx_PTRIDXebx) ) {
             bsl::uint64 reg {bsl::uint64(hypercall::mv_reg_t::mv_reg_t_rcx)};
             // mov ecx, -0x50000000(ebx)
-            // bsl::debug() << " mov ecx, -0x50000000(ebx)" << bsl::endl;
+            bsl::debug() << " mov ecx, -0x50000000(ebx)" << bsl::endl;
             *mut_instr_len = 6;
             *memory_access_size = 4;
             *mut_register = reg;
             return bsl::errc_success;
         } else if( (opcodes0 & mask_6bytes) == (instr__mov_bl_PTRIDXebx) ) {
             bsl::uint64 reg {bsl::uint64(hypercall::mv_reg_t::mv_reg_t_rbx)};
-            // mov ecx, -0x50000000(ebx)
-            // bsl::debug() << " mov bl, -0x50000000(ebx)" << bsl::endl;
+            // mov bl, -0x50000000(ebx)
+            bsl::debug() << " mov bl, -0x50000000(ebx)" << bsl::endl;
+            *mut_instr_len = 6;
+            *memory_access_size = 1;
+            *mut_register = reg;
+            return bsl::errc_success;
+        } else if( (opcodes0 & mask_6bytes) == (instr__mov_bl_PTRIDXedi) ) {
+            bsl::uint64 reg {bsl::uint64(hypercall::mv_reg_t::mv_reg_t_rbx)};
+            // mov bl, -0x50000000(edi)
+            bsl::debug() << " mov bl, -0x50000000(edi)" << bsl::endl;
             *mut_instr_len = 6;
             *memory_access_size = 1;
             *mut_register = reg;
@@ -131,7 +150,7 @@ namespace microv
         } else if( (opcodes0 & mask_6bytes) == (instr__mov_eax_PTRIDXebx) ) {
             bsl::uint64 reg {bsl::uint64(hypercall::mv_reg_t::mv_reg_t_rax)};
             // mov eax, -0x50000000(ebx)
-            // bsl::debug() << " mov eax, -0x50000000(ebx)" << bsl::endl;
+            bsl::debug() << " mov eax, -0x50000000(ebx)" << bsl::endl;
             *mut_instr_len = 6;
             *memory_access_size = 4;
             *mut_register = reg;
@@ -139,15 +158,23 @@ namespace microv
         } else if( (opcodes0 & mask_6bytes) == (instr__mov_PTRIDXebx_eax) ) {
             bsl::uint64 reg {bsl::uint64(hypercall::mv_reg_t::mv_reg_t_rax)};
             // mov -0x50000000(ebx), eax
-            // bsl::debug() << " mov -0x50000000(ebx), eax" << bsl::endl;
+            bsl::debug() << " mov -0x50000000(ebx), eax" << bsl::endl;
             *mut_instr_len = 6;
             *memory_access_size = 4;
+            *mut_register = reg;
+            return bsl::errc_success;
+        } else if( (opcodes0 & mask_6bytes) == (instr__mov_PTRIDXebx_al) ) {
+            bsl::uint64 reg {bsl::uint64(hypercall::mv_reg_t::mv_reg_t_rax)};
+            // mov -0x50000000(ebx), eax
+            bsl::debug() << " mov byte ptr[ebx-0x50000000], al" << bsl::endl;
+            *mut_instr_len = 6;
+            *memory_access_size = 1;
             *mut_register = reg;
             return bsl::errc_success;
         } else if( (opcodes0 & mask_7bytes) == (instr__mov_ax_PTRIDXebx) ) {
             bsl::uint64 reg {bsl::uint64(hypercall::mv_reg_t::mv_reg_t_rax)};
             // mov ax, -0x50000000(ebx)
-            // bsl::debug() << " mov ax, -0x50000000(ebx)" << bsl::endl;
+            bsl::debug() << " mov ax, -0x50000000(ebx)" << bsl::endl;
             *mut_instr_len = 7;
             *memory_access_size = 2;
             *mut_register = reg;
@@ -155,9 +182,62 @@ namespace microv
         } else if( (opcodes0 & mask_7bytes) == (instr__mov_PTRIDXebx_di) ) {
             bsl::uint64 reg {bsl::uint64(hypercall::mv_reg_t::mv_reg_t_rdi)};
             // mov -0x50000000(ebx), di
-            // bsl::debug() << " mov -0x50000000(ebx), di" << bsl::endl;
+            bsl::debug() << " mov -0x50000000(ebx), di" << bsl::endl;
             *mut_instr_len = 7;
             *memory_access_size = 2;
+            *mut_register = reg;
+            return bsl::errc_success;
+        } else if( (opcodes0 & mask_3bytes) == (instr__mov_dx_PTResi) ) {
+            bsl::uint64 reg {bsl::uint64(hypercall::mv_reg_t::mv_reg_t_rdx)};
+            // mov dx, word ptr[esi]
+            bsl::debug() << " mov dx, word ptr[esi]" << bsl::endl;
+            *mut_instr_len = 3;
+            *memory_access_size = 2;
+            *mut_register = reg;
+            return bsl::errc_success;
+        } else if( (opcodes0 & mask_2bytes) == (instr__mov_edx_PTResi) ) {
+            bsl::uint64 reg {bsl::uint64(hypercall::mv_reg_t::mv_reg_t_rdx)};
+            bsl::debug() << " mov edx, dword ptr[esi]" << bsl::endl;
+            *mut_instr_len = 2;
+            *memory_access_size = 4;
+            *mut_register = reg;
+            return bsl::errc_success;
+        } else if( (opcodes0 & mask_2bytes) == (instr__mov_PTResi_edx) ) {
+            bsl::uint64 reg {bsl::uint64(hypercall::mv_reg_t::mv_reg_t_rdx)};
+            bsl::debug() << " mov dword ptr[esi], edx" << bsl::endl;
+            *mut_instr_len = 2;
+            *memory_access_size = 4;
+            *mut_register = reg;
+            return bsl::errc_success;
+        } else if( (opcodes0 & mask_2bytes) == (instr__mov_dl_PTResi) ) {
+            bsl::uint64 reg {bsl::uint64(hypercall::mv_reg_t::mv_reg_t_rdx)};
+            // mov dl, byte ptr[esi]
+            bsl::debug() << " mov dl, byte ptr[esi]" << bsl::endl;
+            *mut_instr_len = 2;
+            *memory_access_size = 1;
+            *mut_register = reg;
+            return bsl::errc_success;
+        } else if( (opcodes0 & mask_2bytes) == (instr__mov_PTResi_cl) ) {
+            bsl::uint64 reg {bsl::uint64(hypercall::mv_reg_t::mv_reg_t_rcx)};
+            // mov byte ptr[esi], cl
+            bsl::debug() << " mov byte ptr[esi], cl" << bsl::endl;
+            *mut_instr_len = 2;
+            *memory_access_size = 1;
+            *mut_register = reg;
+            return bsl::errc_success;
+        } else if( (opcodes0 & mask_3bytes) == (instr__mov_PTResi_dx) ) {
+            bsl::uint64 reg {bsl::uint64(hypercall::mv_reg_t::mv_reg_t_rdx)};
+            // mov byte ptr[esi], cl
+            bsl::debug() << " mov byte ptr[esi], dx" << bsl::endl;
+            *mut_instr_len = 3;
+            *memory_access_size = 2;
+            *mut_register = reg;
+            return bsl::errc_success;
+        } else if( (opcodes0 & mask_6bytes) == (instr__mov_PTRIDXecx_bl) ) {
+            bsl::uint64 reg {bsl::uint64(hypercall::mv_reg_t::mv_reg_t_rbx)};
+            bsl::debug() << " mov byte ptr[ebx-0x50000000], bl" << bsl::endl;
+            *mut_instr_len = 6;
+            *memory_access_size = 1;
             *mut_register = reg;
             return bsl::errc_success;
         } else {
