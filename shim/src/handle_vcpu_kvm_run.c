@@ -153,9 +153,9 @@ handle_vcpu_kvm_run_mmio(
         return SHIM_FAILURE;
     }
 
-    bfdebug_log("  memory_access_size: 0x%llx\n", (unsigned long long)pmut_exit_mmio->memory_access_size);
+    // bfdebug_log("  memory_access_size: 0x%llx\n", (unsigned long long)pmut_exit_mmio->memory_access_size);
     pmut_vcpu->run->mmio.len = (int32_t)pmut_exit_mmio->memory_access_size;
-    bfdebug_log("  data: 0x%llx\n", (unsigned long long)pmut_exit_mmio->data);
+    // bfdebug_log("  data: 0x%llx\n", (unsigned long long)pmut_exit_mmio->data);
     *((uint64_t*)(&(pmut_vcpu->run->mmio.data))) = (int64_t)pmut_exit_mmio->data;
 
     // Indicate that we need to do a pre-run op
@@ -329,7 +329,7 @@ pre_run_op_mmio(struct shim_vcpu_t *const pmut_vcpu, struct mv_run_t *const pmut
     platform_expects(NULL != pmut_mv_run);
 
     if(!pmut_vcpu->run->mmio.need_pre_op_run) {
-        bfdebug_log("pre_run_op_mmio: nothing to do!\n");
+        // bfmmiodebug_log("pre_run_op_mmio: nothing to do!\n");
         // Nothing to do, we already did it
         return SHIM_SUCCESS;
     }
@@ -344,19 +344,19 @@ pre_run_op_mmio(struct shim_vcpu_t *const pmut_vcpu, struct mv_run_t *const pmut
     pmut_mv_run->num_reg_entries = (uint64_t)1U;
     pmut_mv_run->reg_entries[0].reg = (uint64_t)mv_reg_t_rip;
     pmut_mv_run->reg_entries[0].val = pmut_vcpu->run->mmio.nrip;
-    bfdebug_log("  AFTER setting RIP = 0x%llx\n", (unsigned long long)pmut_vcpu->run->mmio.nrip);
+    // bfdebug_log("  AFTER setting RIP = 0x%llx\n", (unsigned long long)pmut_vcpu->run->mmio.nrip);
 
     if (pmut_vcpu->run->mmio.is_write) {
         // For write operations, there is nothing else to do, just return
         pmut_vcpu->run->mmio.need_pre_op_run = 0;
-        bfdebug_log("  AFTER data: 0x%llx\n", *((unsigned long long *)pmut_vcpu->run->mmio.data));
+        // bfdebug_log("  AFTER data: 0x%llx\n", *((unsigned long long *)pmut_vcpu->run->mmio.data));
         return SHIM_SUCCESS;
     }
 
     // bfdebug_log("  READ\n");
     // bfdebug_log("  target_reg=0x%llx", (unsigned long long)pmut_vcpu->run->mmio.target_reg);
-    bfdebug_log("  AFTER memory_access_size: 0x%llx\n", (unsigned long long)pmut_vcpu->run->mmio.len);
-    bfdebug_log("  AFTER data: 0x%llx\n", *((unsigned long long *)pmut_vcpu->run->mmio.data));
+    // bfdebug_log("  AFTER memory_access_size: 0x%llx\n", (unsigned long long)pmut_vcpu->run->mmio.len);
+    // bfdebug_log("  AFTER data: 0x%llx\n", *((unsigned long long *)pmut_vcpu->run->mmio.data));
 
     if ((uint32_t)KVM_RUN_MMIO_DATA_SIZE < pmut_vcpu->run->mmio.len) {
         bferror_d32("FIXME: MMIO size too big.", pmut_vcpu->run->mmio.len);
@@ -436,11 +436,12 @@ pre_run_op(struct shim_vcpu_t *const pmut_vcpu, struct mv_run_t *const pmut_mv_r
         }
 
         default: {
+            // Nothing to do for this case
             break;
         }
     }
 
-    bferror_x64("pre_run_op: unhandled exit reason", (uint64_t)pmut_vcpu->run->exit_reason);
+    // bferror_x64("pre_run_op: unhandled exit reason", (uint64_t)pmut_vcpu->run->exit_reason);
 
     return SHIM_SUCCESS;
 }
@@ -472,7 +473,7 @@ handle_vcpu_kvm_run(struct shim_vcpu_t *const pmut_vcpu) NOEXCEPT
 
     do {
         if (platform_interrupted()) {
-            bferror("platform_interrupted - top while\n");
+            // bferror("platform_interrupted - top while\n");
             break;
         }
 
@@ -522,7 +523,7 @@ handle_vcpu_kvm_run(struct shim_vcpu_t *const pmut_vcpu) NOEXCEPT
                 // bferror("run: mv_exit_reason_t_interrupt");
                 release_shared_page_for_current_pp();
                 if (platform_interrupted()) {
-                    bferror("platform_interrupted\n");
+                    // bferror("platform_interrupted\n");
                     // pmut_vcpu->run->exit_reason = KVM_EXIT_INTR;
                     mut_ret = SHIM_INTERRUPTED;
                     goto ret;
@@ -566,14 +567,6 @@ handle_vcpu_kvm_run(struct shim_vcpu_t *const pmut_vcpu) NOEXCEPT
         goto release_shared_page;
     } while (0 == (int32_t)pmut_vcpu->run->immediate_exit);
 
-    bfdebug_log("not sure why we're interrupted here\n");
-    // if(pmut_vcpu->run->exit_reason == KVM_EXIT_MMIO) {
-    //     mut_ret = pre_run_op(pmut_vcpu, (struct mv_run_t *)pmut_mut_exit);
-    //     if (SHIM_FAILURE == mut_ret) {
-    //         bferror("pre_run_op failed");
-    //         goto release_shared_page;
-    //     }
-    // }
     pmut_vcpu->run->exit_reason = KVM_EXIT_INTR;
     mut_ret = SHIM_INTERRUPTED;
 
@@ -581,8 +574,6 @@ release_shared_page:
     release_shared_page_for_current_pp();
 
 ret:
-if(pmut_vcpu->run->exit_reason == KVM_EXIT_MMIO)
-    bfdebug_log("returning mmio \n");
 
     return mut_ret;
 }
