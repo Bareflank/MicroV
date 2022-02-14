@@ -61,9 +61,11 @@ namespace microv
         constexpr auto instr__mov_eax_PTRebx{0x038b_u64};
         constexpr auto instr__mov_PTRebx_esi{0x3389_u64};
         constexpr auto instr__mov_PTRebx_eax{0x0389_u64};
+        constexpr auto instr__mov_esi_PTReax{0x308b_u64};
         constexpr auto instr__mov_eax_PTRIDXecx{0xb0000000818b_u64};
         constexpr auto instr__mov_ecx_PTRIDXedi{0xb00000008f8b_u64};
         constexpr auto instr__mov_ecx_PTRIDXebx{0xb00000008b8b_u64};
+        constexpr auto instr__mov_ebx_PTRIDXebx{0xb00000009b8b_u64};
         constexpr auto instr__mov_bl_PTRIDXebx{0xb00000009b8a_u64};
         constexpr auto instr__mov_bl_PTRIDXedi{0xb00000009f8a_u64};
         constexpr auto instr__mov_eax_PTRIDXebx{0xb0000000838b_u64};
@@ -107,6 +109,13 @@ namespace microv
             *memory_access_size = 4;
             *mut_register = reg;
             return bsl::errc_success;
+        } else if( (opcodes0 & mask_2bytes) == (instr__mov_esi_PTReax) ) {
+            bsl::uint64 reg {bsl::uint64(hypercall::mv_reg_t::mv_reg_t_rsi)};
+            bsl::debug() << " mov esi, dword ptr [eax]" << bsl::endl;
+            *mut_instr_len = 2;
+            *memory_access_size = 4;
+            *mut_register = reg;
+            return bsl::errc_success;
         } else if( (opcodes0 & mask_6bytes) == (instr__mov_eax_PTRIDXecx) ) {
             bsl::uint64 reg {bsl::uint64(hypercall::mv_reg_t::mv_reg_t_rax)};
             // mov eax, -0x50000000(ecx)
@@ -127,6 +136,13 @@ namespace microv
             bsl::uint64 reg {bsl::uint64(hypercall::mv_reg_t::mv_reg_t_rcx)};
             // mov ecx, -0x50000000(ebx)
             bsl::debug() << " mov ecx, -0x50000000(ebx)" << bsl::endl;
+            *mut_instr_len = 6;
+            *memory_access_size = 4;
+            *mut_register = reg;
+            return bsl::errc_success;
+        } else if( (opcodes0 & mask_6bytes) == (instr__mov_ebx_PTRIDXebx) ) {
+            bsl::uint64 reg {bsl::uint64(hypercall::mv_reg_t::mv_reg_t_rbx)};
+            bsl::debug() << " mov ebx, -0x50000000(ebx)" << bsl::endl;
             *mut_instr_len = 6;
             *memory_access_size = 4;
             *mut_register = reg;
