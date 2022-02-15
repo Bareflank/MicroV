@@ -61,14 +61,60 @@ namespace microv
         bsl::debug() << __FUNCTION__ << bsl::endl;
 
         //FIXME: We assume 32-bit mode for now...
-bsl::uint64 myopcodes = opcodes0;
-FdInstr instr;
-// Decode from buffer into instr in 64-bit mode.
-bsl::debug() << " About to decode.." << bsl::endl;
-int ret = fd_decode(reinterpret_cast<uint8_t*>(&myopcodes), sizeof(myopcodes), 32, 0, &instr);
-bsl::debug() << " Done with decode.." << bsl::endl;
-        bsl::debug() << " FD_SIZE(instr) = " << FD_SIZE(&instr) << bsl::endl;
-return bsl::errc_failure;
+
+        bsl::uint64 myopcodes = opcodes0;
+        FdInstr instr;
+
+        int ret = fd_decode(reinterpret_cast<uint8_t*>(&myopcodes), sizeof(myopcodes), 32, 0, &instr);
+        uint64_t reg_num = 0;
+
+        // Assume its a move instruction, and the register is either first or second operand
+        if(instr.operands[0].type == FD_OT_REG) {
+            reg_num = instr.operands[0].reg;
+            *memory_access_size = instr.operands[0].size;
+        } else if(instr.operands[1].type == FD_OT_REG) {
+            reg_num = instr.operands[1].reg;
+            *memory_access_size = instr.operands[1].size;
+        } else {
+            bsl::error() << "Failed to find register operand!" << bsl::endl;
+            return bsl::errc_failure;
+        }
+
+        // Convernt reg_num to hypercall::mv_reg_t
+        switch(reg_num) {
+        case FD_REG_AX:
+            *mut_register = bsl::uint64(hypercall::mv_reg_t::mv_reg_t_rax);
+            break;
+        case FD_REG_BX:
+            *mut_register = bsl::uint64(hypercall::mv_reg_t::mv_reg_t_rbx);
+            break;
+        case FD_REG_CX:
+            *mut_register = bsl::uint64(hypercall::mv_reg_t::mv_reg_t_rcx);
+            break;
+        case FD_REG_DX:
+            *mut_register = bsl::uint64(hypercall::mv_reg_t::mv_reg_t_rdx);
+            break;
+        case FD_REG_SI:
+            *mut_register = bsl::uint64(hypercall::mv_reg_t::mv_reg_t_rsi);
+            break;
+        case FD_REG_DI:
+            *mut_register = bsl::uint64(hypercall::mv_reg_t::mv_reg_t_rdi);
+            break;
+
+        default:
+            bsl::error() << "Unsupported register operand! " << bsl::hex(reg_num) << bsl::endl;
+            return bsl::errc_failure;
+        }
+
+
+        // Set return values
+        *mut_instr_len = FD_SIZE(&instr);
+        *immediate_value = instr.imm;
+        
+        bsl::debug() << "*mut_instr_len = " << bsl::hex(*mut_instr_len) << bsl::endl;
+        bsl::debug() << "*mut_register = " << bsl::hex(*mut_register) << bsl::endl;
+        bsl::debug() << "*memory_access_size = " << bsl::hex(*memory_access_size) << bsl::endl;
+        bsl::debug() << "*immediate_value = " << bsl::hex(*immediate_value) << bsl::endl;
 
         return bsl::errc_success;
     }
@@ -131,15 +177,15 @@ return bsl::errc_failure;
         auto const phys_addr{(exitinfo2)};
         auto const is_write{(exitinfo1 & rw_mask) >> rw_shift};
 
-        // bsl::debug() << __FUNCTION__ << bsl::endl;
-        // bsl::debug() << "          exitinfo1 = " << bsl::hex(exitinfo1) << bsl::endl;
-        // bsl::debug() << "          exitinfo2 = " << bsl::hex(exitinfo2) << bsl::endl;
-        // bsl::debug() << "          phys_addr = " << bsl::hex(phys_addr) << bsl::endl;
-        // bsl::debug() << "          is_write = " << bsl::hex(is_write) << bsl::endl;
-        // bsl::debug() << "          op_bytes = " << bsl::hex(op_bytes) << bsl::endl;
-        // bsl::debug() << "          rip = " << bsl::hex(rip) << bsl::endl;
-        // bsl::debug() << "          opcodes0 = " << bsl::hex(opcodes0) << bsl::endl;
-        // bsl::debug() << "          opcodes1 = " << bsl::hex(opcodes1) << bsl::endl;
+        bsl::debug() << __FUNCTION__ << bsl::endl;
+        bsl::debug() << "          exitinfo1 = " << bsl::hex(exitinfo1) << bsl::endl;
+        bsl::debug() << "          exitinfo2 = " << bsl::hex(exitinfo2) << bsl::endl;
+        bsl::debug() << "          phys_addr = " << bsl::hex(phys_addr) << bsl::endl;
+        bsl::debug() << "          is_write = " << bsl::hex(is_write) << bsl::endl;
+        bsl::debug() << "          op_bytes = " << bsl::hex(op_bytes) << bsl::endl;
+        bsl::debug() << "          rip = " << bsl::hex(rip) << bsl::endl;
+        bsl::debug() << "          opcodes0 = " << bsl::hex(opcodes0) << bsl::endl;
+        bsl::debug() << "          opcodes1 = " << bsl::hex(opcodes1) << bsl::endl;
 
         // Disassemble the triggering opcode
         bsl::uint64 mut_instr_len{0};
@@ -164,11 +210,11 @@ return bsl::errc_failure;
             data = mut_vs_pool.reg_get(mut_sys, bsl::make_safe(mut_register), vsid).get();
         }
 
-        // bsl::debug() << "          mut_instr_len = " << bsl::hex(mut_instr_len) << bsl::endl;
-        // bsl::debug() << "          mut_register = " << bsl::hex(bsl::make_safe(static_cast<bsl::uint64>(mut_register))) << bsl::endl;
-        // bsl::debug() << "          memory_access_size = " << bsl::hex(memory_access_size) << bsl::endl;
-        // bsl::debug() << "          nrip = " << bsl::hex(nrip) << bsl::endl;
-        // bsl::debug() << "          data = " << bsl::hex(data) << bsl::endl;
+        bsl::debug() << "          mut_instr_len = " << bsl::hex(mut_instr_len) << bsl::endl;
+        bsl::debug() << "          mut_register = " << bsl::hex(bsl::make_safe(static_cast<bsl::uint64>(mut_register))) << bsl::endl;
+        bsl::debug() << "          memory_access_size = " << bsl::hex(memory_access_size) << bsl::endl;
+        bsl::debug() << "          nrip = " << bsl::hex(nrip) << bsl::endl;
+        bsl::debug() << "          data = " << bsl::hex(data) << bsl::endl;
 
         // ---------------------------------------------------------------------
         // Context: Change To Root VM
