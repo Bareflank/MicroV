@@ -27,6 +27,7 @@
 #include <mv_exit_io_t.hpp>
 #include <mv_exit_reason_t.hpp>
 #include <mv_hypercall_t.hpp>
+#include <mv_run_t.hpp>
 
 #include <bsl/array.hpp>
 #include <bsl/convert.hpp>
@@ -36,6 +37,17 @@
 
 namespace hypercall
 {
+
+    /// <!-- description -->
+    ///   @brief Prepares mv_run_t for a run operation.
+    ///
+    constexpr void
+    pre_run()
+    {
+        auto mut_run = to_0<mv_run_t>();
+        mut_run->num_reg_entries = 0;
+        mut_run->num_msr_entries = 0;
+    }
 
     /// <!-- description -->
     ///   @brief Always returns bsl::exit_success. If a failure occurs,
@@ -68,10 +80,13 @@ namespace hypercall
             integration::map_vm(vm_image, {}, vmid);
             integration::initialize_register_state_for_16bit_vm(vsid);
 
+            pre_run();
             mut_exit_reason = integration::run_until_non_interrupt_exit(vsid);
             integration::verify(mut_exit_reason == mv_exit_reason_t::mv_exit_reason_t_io);
+            pre_run();
             mut_exit_reason = integration::run_until_non_interrupt_exit(vsid);
             integration::verify(mut_exit_reason == mv_exit_reason_t::mv_exit_reason_t_io);
+            pre_run();
             mut_exit_reason = integration::run_until_non_interrupt_exit(vsid);
             integration::verify(mut_exit_reason == mv_exit_reason_t::mv_exit_reason_t_io);
 
