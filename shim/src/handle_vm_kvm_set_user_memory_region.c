@@ -159,9 +159,9 @@ set_user_memory_region_is_valid(
     }
 
     // Don't support KVM_MEM_LOG_DIRTY_PAGES right now
-    if (args->flags & ~((uint32_t)KVM_MEM_READONLY)) {
-        bferror("WARNING: args->flags & ~((uint32_t)KVM_MEM_READONLY) check failed, but we're ignoring it");
-        // return SHIM_FAILURE;
+    if (args->flags & ~((uint32_t)KVM_MEM_LOG_DIRTY_PAGES)) {
+        bferror("WARNING: args->flags & ~((uint32_t)KVM_MEM_LOG_DIRTY_PAGES) check failed");
+        return SHIM_FAILURE;
     }
 
     /// TODO:
