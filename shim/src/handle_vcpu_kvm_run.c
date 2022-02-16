@@ -471,11 +471,6 @@ handle_vcpu_kvm_run(struct shim_vcpu_t *const pmut_vcpu) NOEXCEPT
 
     pmut_mut_exit = shared_page_for_current_pp();
 
-    do {
-        if (platform_interrupted()) {
-            // bferror("platform_interrupted - top while\n");
-            break;
-        }
 
         mut_ret = pre_run_op(pmut_vcpu, (struct mv_run_t *)pmut_mut_exit);
         if (SHIM_FAILURE == mut_ret) {
@@ -498,8 +493,9 @@ handle_vcpu_kvm_run(struct shim_vcpu_t *const pmut_vcpu) NOEXCEPT
             }
 
             case mv_exit_reason_t_hlt: {
-                bferror("run: mv_exit_reason_t_hlt exit");
-                mut_ret = return_failure(pmut_vcpu);
+                bfdebug("run: mv_exit_reason_t_hlt exit");
+                pmut_vcpu->run->exit_reason = KVM_EXIT_HLT;
+                mut_ret = SHIM_SUCCESS;
                 goto release_shared_page;
             }
 
@@ -534,7 +530,9 @@ handle_vcpu_kvm_run(struct shim_vcpu_t *const pmut_vcpu) NOEXCEPT
                     pmut_vcpu->run->exit_reason = KVM_EXIT_INTR;
                 }
                 pmut_mut_exit = shared_page_for_current_pp();
-                continue;
+                pmut_vcpu->run->exit_reason = KVM_EXIT_INTR;
+                mut_ret = SHIM_INTERRUPTED;
+                break;
             }
 
             case mv_exit_reason_t_interrupt_window: {
@@ -546,9 +544,9 @@ handle_vcpu_kvm_run(struct shim_vcpu_t *const pmut_vcpu) NOEXCEPT
                 return SHIM_SUCCESS;
             }
 
-            case mv_exit_reason_t_nmi: {
-                continue;
-            }
+            // case mv_exit_reason_t_nmi: {
+            //     continue;
+            // }
 
             case mv_exit_reason_t_shutdown: {
                 pmut_vcpu->run->exit_reason = KVM_EXIT_SHUTDOWN;
@@ -558,22 +556,16 @@ handle_vcpu_kvm_run(struct shim_vcpu_t *const pmut_vcpu) NOEXCEPT
 
             default: {
                 bferror_x64("unhandled exit reason: ", mut_exit_reason);
-                break;
+                bferror("mv_vs_op_run returned with an unsupported exit reason\n");
+                mut_ret = return_failure(pmut_vcpu);
+                goto release_shared_page;
             }
         }
 
-        bferror("mv_vs_op_run returned with an unsupported exit reason\n");
-        mut_ret = return_failure(pmut_vcpu);
-        goto release_shared_page;
-    } while (0 == (int32_t)pmut_vcpu->run->immediate_exit);
-
-    pmut_vcpu->run->exit_reason = KVM_EXIT_INTR;
-    mut_ret = SHIM_INTERRUPTED;
 
 release_shared_page:
     release_shared_page_for_current_pp();
 
 ret:
-
     return mut_ret;
 }

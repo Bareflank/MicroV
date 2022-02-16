@@ -58,7 +58,7 @@ namespace microv
     {
 
 
-        bsl::debug() << __FUNCTION__ << bsl::endl;
+        // bsl::debug() << __FUNCTION__ << bsl::endl;
 
         //FIXME: We assume 32-bit mode for now...
 
