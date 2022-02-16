@@ -471,94 +471,93 @@ handle_vcpu_kvm_run(struct shim_vcpu_t *const pmut_vcpu) NOEXCEPT
 
     pmut_mut_exit = shared_page_for_current_pp();
 
+    mut_ret = pre_run_op(pmut_vcpu, (struct mv_run_t *)pmut_mut_exit);
+    if (SHIM_FAILURE == mut_ret) {
+        bferror("pre_run_op failed");
+        return return_failure(pmut_vcpu);
+    }
 
-        mut_ret = pre_run_op(pmut_vcpu, (struct mv_run_t *)pmut_mut_exit);
-        if (SHIM_FAILURE == mut_ret) {
-            bferror("pre_run_op failed");
+    mut_exit_reason = mv_vs_op_run(g_mut_hndl, pmut_vcpu->vsid);
+    // bfdebug_log("[BAREFLANK DEBUG] mv_vs_op_run returned: 0x%x\n", mut_exit_reason);
+    switch ((int32_t)mut_exit_reason) {
+        case mv_exit_reason_t_failure: {
+            mut_ret = handle_vcpu_kvm_run_failure(pmut_vcpu);
             break;
         }
 
-        mut_exit_reason = mv_vs_op_run(g_mut_hndl, pmut_vcpu->vsid);
-        // bfdebug_log("[BAREFLANK DEBUG] mv_vs_op_run returned: 0x%x\n", mut_exit_reason);
-        switch ((int32_t)mut_exit_reason) {
-            case mv_exit_reason_t_failure: {
-                mut_ret = handle_vcpu_kvm_run_failure(pmut_vcpu);
-                break;
-            }
+        case mv_exit_reason_t_unknown: {
+            bfdebug_log("[BAREFLANK DEBUG] mv_vs_op_run returned: mv_exit_reason_t_unknown\n");
+            mut_ret = handle_vcpu_kvm_run_unknown(pmut_vcpu);
+            break;
+        }
 
-            case mv_exit_reason_t_unknown: {
-                bfdebug_log("[BAREFLANK DEBUG] mv_vs_op_run returned: mv_exit_reason_t_unknown\n");
-                mut_ret = handle_vcpu_kvm_run_unknown(pmut_vcpu);
-                break;
-            }
+        case mv_exit_reason_t_hlt: {
+            bfdebug("run: mv_exit_reason_t_hlt exit");
+            pmut_vcpu->run->exit_reason = KVM_EXIT_HLT;
+            mut_ret = SHIM_SUCCESS;
+            break;
+        }
 
-            case mv_exit_reason_t_hlt: {
-                bfdebug("run: mv_exit_reason_t_hlt exit");
-                pmut_vcpu->run->exit_reason = KVM_EXIT_HLT;
-                mut_ret = SHIM_SUCCESS;
-                break;
-            }
+        case mv_exit_reason_t_io: {
+            mut_ret = handle_vcpu_kvm_run_io(pmut_vcpu, pmut_mut_exit);
+            break;
+        }
 
-            case mv_exit_reason_t_io: {
-                mut_ret = handle_vcpu_kvm_run_io(pmut_vcpu, pmut_mut_exit);
-                break;
-            }
+        case mv_exit_reason_t_mmio: {
+            mut_ret = handle_vcpu_kvm_run_mmio(pmut_vcpu, pmut_mut_exit);
+            break;
+        }
 
-            case mv_exit_reason_t_mmio: {
-                mut_ret = handle_vcpu_kvm_run_mmio(pmut_vcpu, pmut_mut_exit);
-                break;
-            }
+        case mv_exit_reason_t_msr: {
+            bferror("run: mv_exit_reason_t_msr exit");
+            mut_ret = return_failure(pmut_vcpu);
+            break;
+        }
 
-            case mv_exit_reason_t_msr: {
-                bferror("run: mv_exit_reason_t_msr exit");
-                mut_ret = return_failure(pmut_vcpu);
-                break;
-            }
-
-            case mv_exit_reason_t_interrupt: {
-                // bferror("run: mv_exit_reason_t_interrupt");
-                release_shared_page_for_current_pp();
-                if (platform_interrupted()) {
-                    // bferror("platform_interrupted\n");
-                    // pmut_vcpu->run->exit_reason = KVM_EXIT_INTR;
-                    mut_ret = SHIM_INTERRUPTED;
-                    break;
-                }
-
-                if((pmut_vcpu->run->exit_reason == KVM_EXIT_MMIO) ||
-                   (pmut_vcpu->run->exit_reason == KVM_EXIT_IO)) {
-                    //FIXME: Put this in so that we don't try to do the MMIO pre-run again
-                    pmut_vcpu->run->exit_reason = KVM_EXIT_INTR;
-                }
-                pmut_mut_exit = shared_page_for_current_pp();
-                pmut_vcpu->run->exit_reason = KVM_EXIT_INTR;
+        case mv_exit_reason_t_interrupt: {
+            // bferror("run: mv_exit_reason_t_interrupt");
+            release_shared_page_for_current_pp();
+            if (platform_interrupted()) {
+                // bferror("platform_interrupted\n");
+                // pmut_vcpu->run->exit_reason = KVM_EXIT_INTR;
                 mut_ret = SHIM_INTERRUPTED;
                 break;
             }
 
-            case mv_exit_reason_t_interrupt_window: {
-                bferror("run: interrupt window exit");
-                platform_expects(!!pmut_vcpu->run->request_interrupt_window);
-                // pmut_vcpu->run->if_flag = (uint8_t)1;
-                pmut_vcpu->run->ready_for_interrupt_injection = (uint8_t)1;
-                pmut_vcpu->run->exit_reason = KVM_EXIT_IRQ_WINDOW_OPEN;
-                mut_ret = SHIM_SUCCESS;
-                break;
+            if((pmut_vcpu->run->exit_reason == KVM_EXIT_MMIO) ||
+               (pmut_vcpu->run->exit_reason == KVM_EXIT_IO)) {
+                //FIXME: Put this in so that we don't try to do the MMIO pre-run again
+                pmut_vcpu->run->exit_reason = KVM_EXIT_INTR;
             }
-
-            case mv_exit_reason_t_shutdown: {
-                pmut_vcpu->run->exit_reason = KVM_EXIT_SHUTDOWN;
-                mut_ret = SHIM_SUCCESS;
-                break;
-            }
-
-            default: {
-                bferror_x64("unhandled exit reason: ", mut_exit_reason);
-                bferror("mv_vs_op_run returned with an unsupported exit reason\n");
-                mut_ret = return_failure(pmut_vcpu);
-                break;
-            }
+            pmut_mut_exit = shared_page_for_current_pp();
+            pmut_vcpu->run->exit_reason = KVM_EXIT_INTR;
+            mut_ret = SHIM_INTERRUPTED;
+            break;
         }
+
+        case mv_exit_reason_t_interrupt_window: {
+            bferror("run: interrupt window exit");
+            platform_expects(!!pmut_vcpu->run->request_interrupt_window);
+            // pmut_vcpu->run->if_flag = (uint8_t)1;
+            pmut_vcpu->run->ready_for_interrupt_injection = (uint8_t)1;
+            pmut_vcpu->run->exit_reason = KVM_EXIT_IRQ_WINDOW_OPEN;
+            mut_ret = SHIM_SUCCESS;
+            break;
+        }
+
+        case mv_exit_reason_t_shutdown: {
+            pmut_vcpu->run->exit_reason = KVM_EXIT_SHUTDOWN;
+            mut_ret = SHIM_SUCCESS;
+            break;
+        }
+
+        default: {
+            bferror_x64("unhandled exit reason: ", mut_exit_reason);
+            bferror("mv_vs_op_run returned with an unsupported exit reason\n");
+            mut_ret = return_failure(pmut_vcpu);
+            break;
+        }
+    }
 
     release_shared_page_for_current_pp();
 
