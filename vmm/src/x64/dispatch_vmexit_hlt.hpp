@@ -62,29 +62,38 @@ namespace microv
     [[nodiscard]] constexpr auto
     dispatch_vmexit_hlt(
         gs_t const &gs,
-        tls_t const &tls,
+        tls_t &mut_tls,
         syscall::bf_syscall_t &mut_sys,
         page_pool_t const &page_pool,
         intrinsic_t const &intrinsic,
-        pp_pool_t const &pp_pool,
-        vm_pool_t const &vm_pool,
-        vp_pool_t const &vp_pool,
-        vs_pool_t const &vs_pool,
+        pp_pool_t &mut_pp_pool,
+        vm_pool_t &mut_vm_pool,
+        vp_pool_t &mut_vp_pool,
+        vs_pool_t &mut_vs_pool,
         bsl::safe_u16 const &vsid) noexcept -> bsl::errc_type
     {
         bsl::discard(gs);
-        bsl::discard(tls);
-        bsl::discard(mut_sys);
         bsl::discard(page_pool);
-        bsl::discard(intrinsic);
-        bsl::discard(pp_pool);
-        bsl::discard(vm_pool);
-        bsl::discard(vp_pool);
-        bsl::discard(vs_pool);
+        bsl::discard(mut_pp_pool);
         bsl::discard(vsid);
 
-        bsl::error() << "dispatch_vmexit_hlt not implemented\n" << bsl::here();
-        return bsl::errc_failure;
+        bsl::expects(!mut_sys.is_the_active_vm_the_root_vm());
+
+        // ---------------------------------------------------------------------
+        // Context: Change To Root VM
+        // ---------------------------------------------------------------------
+
+        switch_to_root(mut_tls, mut_sys, intrinsic, mut_vm_pool, mut_vp_pool, mut_vs_pool, true);
+
+        // ---------------------------------------------------------------------
+        // Context: Root VM
+        // ---------------------------------------------------------------------
+
+        bsl::error() << "dispatch_vmexit_hlt\n" << bsl::here();
+        set_reg_return(mut_sys, hypercall::MV_STATUS_SUCCESS);
+        set_reg0(mut_sys, bsl::to_u64(hypercall::EXIT_REASON_HLT));
+
+        return vmexit_success_advance_ip_and_run;
     }
 }
 

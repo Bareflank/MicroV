@@ -69,6 +69,8 @@ namespace microv
     constexpr auto EXIT_REASON_CR0_SPECIAL{0x65_u64};
     /// @brief defines the CPUID exit reason code
     constexpr auto EXIT_REASON_CPUID{0x72_u64};
+    /// @brief defines the HLT exit reason code
+    constexpr auto EXIT_REASON_HLT{0x78_u64};
     /// @brief defines the IO exit reason code
     constexpr auto EXIT_REASON_IO{0x7B_u64};
     /// @brief defines the RDMSR/WRMSR access exit reason code
@@ -281,6 +283,20 @@ namespace microv
                             mut_vs_pool,
                             vsid);                
                 }
+                break;
+            }
+            case EXIT_REASON_HLT.get(): {
+                mut_ret = dispatch_vmexit_hlt(
+                    gs,
+                    mut_tls,
+                    mut_sys,
+                    mut_page_pool,
+                    intrinsic,
+                    mut_pp_pool,
+                    mut_vm_pool,
+                    mut_vp_pool,
+                    mut_vs_pool,
+                    vsid);
                 break;
             }
 
