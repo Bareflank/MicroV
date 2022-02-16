@@ -36,7 +36,7 @@ if [ -z ${VM_NAME+x} ]; then
 fi
 
 if [ -z ${BIOS_PATH+x} ]; then
-  BIOS_PATH="${BUILD_DIR}/../../seabios/out/bios.bin"
+  BIOS_PATH="~/edk2/Build/OvmfIa32/DEBUG_GCC5/FV/OVMF.fd"
 fi
 
 if [ -f ${BIOS_PATH} ]; then
@@ -76,7 +76,7 @@ run() {
     -machine type=q35,accel=kvm \
     -cpu host \
     -drive format=raw,file=fat:rw:$BUILD_DIR/vm_storage \
-    -bios ~/edk2/Build/OvmfIa32/DEBUG_GCC5/FV/OVMF.fd \
+    -bios ${BIOS_PATH} \
     -chardev stdio,id=char0,mux=on,logfile=$BUILD_DIR/qemu_efi.log,signal=off \
     -serial chardev:char0 -mon chardev=char0 \
     -m size=64M \
@@ -97,7 +97,7 @@ best_run() {
   $TASKSET $QEMU_PATH/qemu-system-x86_64 \
     -machine type=q35,accel=kvm \
     -cpu host \
-    -bios ~/edk2/Build/OvmfIa32/DEBUG_GCC5/FV/OVMF.fd \
+    -bios ${BIOS_PATH} \
     -m size=64M \
     -nographic \
     -debugcon file:best.log -global isa-debugcon.iobase=0x402 \
