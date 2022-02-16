@@ -58,6 +58,7 @@
 #include <mv_mdl_t.hpp>
 #include <mv_rdl_t.hpp>
 #include <mv_reg_t.hpp>
+#include <mv_run_t.hpp>
 #include <mv_translation_t.hpp>
 
 #include <bsl/array.hpp>
@@ -386,6 +387,10 @@ namespace integration
     run_until_non_interrupt_exit(bsl::safe_u16 const &vsid) noexcept -> hypercall::mv_exit_reason_t
     {
         while (true) {
+            auto mut_run = hypercall::to_0<hypercall::mv_run_t>();
+            mut_run->num_reg_entries = 0;
+            mut_run->num_msr_entries = 0;
+
             auto const exit_reason{mut_hvc.mv_vs_op_run(vsid)};
             switch (exit_reason) {
                 case hypercall::mv_exit_reason_t::mv_exit_reason_t_interrupt: {

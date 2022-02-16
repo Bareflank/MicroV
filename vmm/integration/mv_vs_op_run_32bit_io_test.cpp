@@ -39,17 +39,6 @@ namespace hypercall
 {
 
     /// <!-- description -->
-    ///   @brief Prepares mv_run_t for a run operation.
-    ///
-    constexpr void
-    pre_run()
-    {
-        auto mut_run = to_0<mv_run_t>();
-        mut_run->num_reg_entries = 0;
-        mut_run->num_msr_entries = 0;
-    }
-
-    /// <!-- description -->
     ///   @brief Always returns bsl::exit_success. If a failure occurs,
     ///     this function will exit early.
     ///
@@ -80,25 +69,22 @@ namespace hypercall
             integration::map_vm(vm_image, {}, vmid);
             integration::initialize_register_state_for_16bit_vm(vsid);
 
-            pre_run();
             mut_exit_reason = integration::run_until_non_interrupt_exit(vsid);
             integration::verify(mut_exit_reason == mv_exit_reason_t::mv_exit_reason_t_io);
-            pre_run();
             mut_exit_reason = integration::run_until_non_interrupt_exit(vsid);
             integration::verify(mut_exit_reason == mv_exit_reason_t::mv_exit_reason_t_io);
-            pre_run();
             mut_exit_reason = integration::run_until_non_interrupt_exit(vsid);
             integration::verify(mut_exit_reason == mv_exit_reason_t::mv_exit_reason_t_io);
 
             constexpr auto expected_addr{0x10_u64};
-            constexpr auto expected_data{0x02_u64};
+            constexpr auto expected_data{0x02_u8};
             constexpr auto expected_reps{0x01_u64};
             constexpr auto expected_type{0x01_u64};
             constexpr auto expected_size{mv_bit_size_t::mv_bit_size_t_16};
 
             auto *const pmut_exit_io{to_0<mv_exit_io_t>()};
             integration::verify(pmut_exit_io->addr == expected_addr);
-            integration::verify(to_u64(pmut_exit_io->data.data()) == expected_data);
+            integration::verify(io_to<bsl::uint8>(pmut_exit_io->data) == expected_data);
             integration::verify(pmut_exit_io->reps == expected_reps);
             integration::verify(pmut_exit_io->type == expected_type);
             integration::verify(pmut_exit_io->size == expected_size);

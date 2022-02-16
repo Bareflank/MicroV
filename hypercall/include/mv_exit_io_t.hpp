@@ -60,7 +60,7 @@ namespace hypercall
     };
 
     /// <!-- description -->
-    ///   @brief Returns bsl::to_u64(reinterpret_cast<bsl::uintmx>(ptr))
+    ///   @brief Returns reinterpret_cast<bsl::uint64 &>(*mut_buf.data());
     ///
     /// <!-- inputs/outputs -->
     ///   @tparam T the type of element being encapsulated.
@@ -74,6 +74,24 @@ namespace hypercall
     {
         // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
         return reinterpret_cast<bsl::uint64 &>(*mut_buf.data());
+    }
+
+    /// <!-- description -->
+    ///   @brief Returns reinterpret_cast<U &>(*mut_buf.data());
+    ///
+    /// <!-- inputs/outputs -->
+    ///   @tparam T the type of element being encapsulated.
+    ///   @tparam N the total number of elements in the array. Cannot be 0
+    ///   @tparam U the type of the integral to cast into.
+    ///   @param mut_buf the pointer to convert to a bsl::safe_u64
+    ///   @return Returns bsl::to_u64(reinterpret_cast<bsl::uintmx>(ptr))
+    ///
+    template<typename U, bsl::enable_if_t<bsl::is_integral<U>::value, bool> = true, typename T, bsl::uintmx N>
+    [[nodiscard]] constexpr auto
+    io_to(bsl::array<T, N> &mut_buf) noexcept -> U &
+    {
+        // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
+        return reinterpret_cast<U &>(*mut_buf.data());
     }
 
 }
