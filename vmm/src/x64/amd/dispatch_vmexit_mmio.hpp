@@ -62,21 +62,27 @@ namespace microv
 
         //FIXME: We assume 32-bit mode for now...
 
-        bsl::uint64 myopcodes = opcodes0;
+        bsl::uint64 myopcodes[2] = { opcodes0, opcodes1};
         FdInstr instr;
 
         int ret = fd_decode(reinterpret_cast<uint8_t*>(&myopcodes), sizeof(myopcodes), 32, 0, &instr);
-        uint64_t reg_num = 0;
+        uint64_t reg_num = -1;
 
-        // Assume its a move instruction, and the register is either first or second operand
-        if(instr.operands[0].type == FD_OT_REG) {
-            reg_num = instr.operands[0].reg;
-            *memory_access_size = instr.operands[0].size;
-        } else if(instr.operands[1].type == FD_OT_REG) {
-            reg_num = instr.operands[1].reg;
-            *memory_access_size = instr.operands[1].size;
-        } else {
-            bsl::error() << "Failed to find register operand!" << bsl::endl;
+        // Assume its a move instruction, and the register/immediate is either first or second operand
+        for(int i=0; i<2; i++) {
+            if(instr.operands[i].type == FD_OT_REG) {
+                reg_num = instr.operands[i].reg;
+                *memory_access_size = instr.operands[i].size;
+            } else if(instr.operands[i].type == FD_OT_IMM) {
+                reg_num = OPCODE_REG_USE_IMMEDIATE.get();
+                *immediate_value = instr.imm;
+                *memory_access_size = instr.operands[i].size;
+            }
+        }
+
+        if(reg_num == -1) {
+            bsl::error() << "Failed to find register or immediate operand!" << bsl::endl;
+            bsl::debug() << "  opcodes0 = " << bsl::hex(opcodes0) << bsl::endl;
             return bsl::errc_failure;
         }
 
@@ -100,6 +106,9 @@ namespace microv
         case FD_REG_DI:
             *mut_register = bsl::uint64(hypercall::mv_reg_t::mv_reg_t_rdi);
             break;
+        case OPCODE_REG_USE_IMMEDIATE.get():
+            *mut_register = OPCODE_REG_USE_IMMEDIATE.get();
+            break;
 
         default:
             bsl::error() << "Unsupported register operand! " << bsl::hex(reg_num) << bsl::endl;
@@ -111,10 +120,10 @@ namespace microv
         *mut_instr_len = FD_SIZE(&instr);
         *immediate_value = instr.imm;
         
-        bsl::debug() << "*mut_instr_len = " << bsl::hex(*mut_instr_len) << bsl::endl;
-        bsl::debug() << "*mut_register = " << bsl::hex(*mut_register) << bsl::endl;
-        bsl::debug() << "*memory_access_size = " << bsl::hex(*memory_access_size) << bsl::endl;
-        bsl::debug() << "*immediate_value = " << bsl::hex(*immediate_value) << bsl::endl;
+        // bsl::debug() << "*mut_instr_len = " << bsl::hex(*mut_instr_len) << bsl::endl;
+        // bsl::debug() << "*mut_register = " << bsl::hex(*mut_register) << bsl::endl;
+        // bsl::debug() << "*memory_access_size = " << bsl::hex(*memory_access_size) << bsl::endl;
+        // bsl::debug() << "*immediate_value = " << bsl::hex(*immediate_value) << bsl::endl;
 
         return bsl::errc_success;
     }
@@ -177,15 +186,15 @@ namespace microv
         auto const phys_addr{(exitinfo2)};
         auto const is_write{(exitinfo1 & rw_mask) >> rw_shift};
 
-        bsl::debug() << __FUNCTION__ << bsl::endl;
-        bsl::debug() << "          exitinfo1 = " << bsl::hex(exitinfo1) << bsl::endl;
-        bsl::debug() << "          exitinfo2 = " << bsl::hex(exitinfo2) << bsl::endl;
-        bsl::debug() << "          phys_addr = " << bsl::hex(phys_addr) << bsl::endl;
-        bsl::debug() << "          is_write = " << bsl::hex(is_write) << bsl::endl;
-        bsl::debug() << "          op_bytes = " << bsl::hex(op_bytes) << bsl::endl;
-        bsl::debug() << "          rip = " << bsl::hex(rip) << bsl::endl;
-        bsl::debug() << "          opcodes0 = " << bsl::hex(opcodes0) << bsl::endl;
-        bsl::debug() << "          opcodes1 = " << bsl::hex(opcodes1) << bsl::endl;
+        // bsl::debug() << __FUNCTION__ << bsl::endl;
+        // bsl::debug() << "          exitinfo1 = " << bsl::hex(exitinfo1) << bsl::endl;
+        // bsl::debug() << "          exitinfo2 = " << bsl::hex(exitinfo2) << bsl::endl;
+        // bsl::debug() << "          phys_addr = " << bsl::hex(phys_addr) << bsl::endl;
+        // bsl::debug() << "          is_write = " << bsl::hex(is_write) << bsl::endl;
+        // bsl::debug() << "          op_bytes = " << bsl::hex(op_bytes) << bsl::endl;
+        // bsl::debug() << "          rip = " << bsl::hex(rip) << bsl::endl;
+        // bsl::debug() << "          opcodes0 = " << bsl::hex(opcodes0) << bsl::endl;
+        // bsl::debug() << "          opcodes1 = " << bsl::hex(opcodes1) << bsl::endl;
 
         // Disassemble the triggering opcode
         bsl::uint64 mut_instr_len{0};
@@ -210,11 +219,11 @@ namespace microv
             data = mut_vs_pool.reg_get(mut_sys, bsl::make_safe(mut_register), vsid).get();
         }
 
-        bsl::debug() << "          mut_instr_len = " << bsl::hex(mut_instr_len) << bsl::endl;
-        bsl::debug() << "          mut_register = " << bsl::hex(bsl::make_safe(static_cast<bsl::uint64>(mut_register))) << bsl::endl;
-        bsl::debug() << "          memory_access_size = " << bsl::hex(memory_access_size) << bsl::endl;
-        bsl::debug() << "          nrip = " << bsl::hex(nrip) << bsl::endl;
-        bsl::debug() << "          data = " << bsl::hex(data) << bsl::endl;
+        // bsl::debug() << "          mut_instr_len = " << bsl::hex(mut_instr_len) << bsl::endl;
+        // bsl::debug() << "          mut_register = " << bsl::hex(bsl::make_safe(static_cast<bsl::uint64>(mut_register))) << bsl::endl;
+        // bsl::debug() << "          memory_access_size = " << bsl::hex(memory_access_size) << bsl::endl;
+        // bsl::debug() << "          nrip = " << bsl::hex(nrip) << bsl::endl;
+        // bsl::debug() << "          data = " << bsl::hex(data) << bsl::endl;
 
         // ---------------------------------------------------------------------
         // Context: Change To Root VM
