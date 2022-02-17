@@ -81,8 +81,8 @@ namespace microv
         bsl::discard(pp_pool);
         bsl::discard(vsid);
 
-        // bsl::expects(mut_vs_pool.inject_next_interrupt(mut_sys, vsid));
-        bsl::error() << "dispatch_vmexit_intr_window called! TODO: irq injection";
+        bsl::expects(mut_vs_pool.inject_next_interrupt(mut_sys, vsid));
+        // bsl::error() << "dispatch_vmexit_intr_window called!" << bsl::endl;
 
         // ---------------------------------------------------------------------
         // Context: Change To Root VM

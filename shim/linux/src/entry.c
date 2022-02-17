@@ -1193,7 +1193,7 @@ dispatch_vcpu_kvm_interrupt(
 {
     struct kvm_interrupt mut_args;
 
-    bferror("KVM_INTERRUPT is called");
+    // bferror("KVM_INTERRUPT is called");
 
     if (platform_copy_from_user(&mut_args, pmut_user_args, sizeof(mut_args))) {
         bferror("kvm_interrupt failed to copy from user");
@@ -1242,6 +1242,19 @@ dispatch_vcpu_kvm_run(struct shim_vcpu_t *const vcpu)
             break;
         }
     }
+    
+
+    // Set kvm_run bits related to the guest interrupt flag state
+    struct kvm_regs tmp_regs;
+    handle_vcpu_kvm_get_regs(vcpu, &tmp_regs);
+
+    // Interrupt flag is bit 9
+    uint8_t eflags_if = ((tmp_regs.rflags & 0x200) == 0x200);
+    vcpu->run->if_flag = eflags_if;
+    vcpu->run->ready_for_interrupt_injection = (uint8_t)eflags_if;
+    // apic_base?
+    // cr8?
+
 
     return mut_ret;
 }

@@ -2483,7 +2483,7 @@ namespace microv
             bsl::expects(mut_sys.bf_tls_ppid() == this->assigned_pp());
             bsl::expects(vector.is_valid_and_checked());
 
-            bsl::debug() << "queue interrupt called (enabling interrupt window exits)" << bsl::endl;
+            // bsl::debug() << "queue interrupt called (enabling interrupt window exits)" << bsl::endl;
 
             constexpr auto vint_a_val{0x000000FF010F0100_u64};
             constexpr auto vint_a_idx{syscall::bf_reg_t::bf_reg_t_virtual_interrupt_a};
@@ -2521,6 +2521,7 @@ namespace microv
             bsl::expects(mut_vector.is_valid_and_checked());
 
             if (m_interrupt_queue.empty()) {
+                // bsl::debug()<< "No more interrupts in queue, writing 0 to virtual_interrupt_a" << bsl::endl;
                 constexpr auto vint_a_idx{syscall::bf_reg_t::bf_reg_t_virtual_interrupt_a};
                 bsl::expects(mut_sys.bf_vs_op_write(this->id(), vint_a_idx, {}));
             }
@@ -2528,6 +2529,7 @@ namespace microv
                 bsl::touch();
             }
 
+            // bsl::debug()<< "Injecting virtual interrupt, vector:" << bsl::hex(mut_vector) << bsl::endl;
             constexpr auto valid{0x80000000_u64};
             return mut_sys.bf_vs_op_write(this->id(), idx, mut_vector | valid);
         }

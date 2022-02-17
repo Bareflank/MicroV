@@ -42,6 +42,7 @@
 #include <platform.h>
 #include <shared_page_for_current_pp.h>
 #include <shim_vcpu_t.h>
+#include <kvm_regs.h>
 
 /**
  * <!-- description -->
@@ -476,7 +477,7 @@ handle_vcpu_kvm_run(struct shim_vcpu_t *const pmut_vcpu) NOEXCEPT
         bferror("pre_run_op failed");
         return return_failure(pmut_vcpu);
     }
-
+runagain:
     mut_exit_reason = mv_vs_op_run(g_mut_hndl, pmut_vcpu->vsid);
     // bfdebug_log("[BAREFLANK DEBUG] mv_vs_op_run returned: 0x%x\n", mut_exit_reason);
     switch ((int32_t)mut_exit_reason) {
@@ -492,7 +493,7 @@ handle_vcpu_kvm_run(struct shim_vcpu_t *const pmut_vcpu) NOEXCEPT
         }
 
         case mv_exit_reason_t_hlt: {
-            bfdebug("run: mv_exit_reason_t_hlt exit");
+            bfdebug_log("run: mv_exit_reason_t_hlt exit\n");
             pmut_vcpu->run->exit_reason = KVM_EXIT_HLT;
             mut_ret = SHIM_SUCCESS;
             break;
@@ -536,12 +537,13 @@ handle_vcpu_kvm_run(struct shim_vcpu_t *const pmut_vcpu) NOEXCEPT
         }
 
         case mv_exit_reason_t_interrupt_window: {
-            bferror("run: interrupt window exit");
-            platform_expects(!!pmut_vcpu->run->request_interrupt_window);
+            // bferror("run: interrupt window exit");
+            // platform_expects(!!pmut_vcpu->run->request_interrupt_window);
             // pmut_vcpu->run->if_flag = (uint8_t)1;
             pmut_vcpu->run->ready_for_interrupt_injection = (uint8_t)1;
-            pmut_vcpu->run->exit_reason = KVM_EXIT_IRQ_WINDOW_OPEN;
-            mut_ret = SHIM_SUCCESS;
+            // pmut_vcpu->run->exit_reason = KVM_EXIT_IRQ_WINDOW_OPEN;
+            // mut_ret = SHIM_SUCCESS;
+            goto runagain;
             break;
         }
 
