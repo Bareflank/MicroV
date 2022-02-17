@@ -97,6 +97,7 @@ best_run() {
   $TASKSET $QEMU_PATH/qemu-system-x86_64 \
     -machine type=q35,accel=kvm \
     -cpu host \
+    -drive format=raw,file=fat:rw:$BUILD_DIR/vm_storage \
     -bios ${BIOS_PATH} \
     -m size=64M \
     -nographic \
