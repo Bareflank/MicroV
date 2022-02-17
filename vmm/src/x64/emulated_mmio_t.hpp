@@ -246,7 +246,7 @@ namespace microv
                 auto const *const entry{mdl.entries.at_if(mut_i)};
 
                 auto const gpa{bsl::to_u64(entry->dst)};
-                auto const spa{this->gpa_to_spa(mut_sys, bsl::to_u64(entry->src))};
+                auto const spa{this->gpa_to_spa(tls, mut_sys, mut_page_pool, bsl::to_u64(entry->src))};
                 auto const flags{bsl::to_u64(entry->flags)};
                 /// TODO:
                 /// - Add support for entries that have a size greater than
@@ -402,36 +402,50 @@ namespace microv
         ///     perform the translation.
         ///
         /// <!-- inputs/outputs -->
+        ///   @param tls the tls_t to use
         ///   @param sys the bf_syscall_t to use
+        ///   @param mut_page_pool the page_pool_t to use
         ///   @param gpa the GPA to translate to a SPA
         ///   @return Returns a system physical address given a guest physical
         ///     address using MMIO second level paging from this VM to
         ///     perform the translation.
         ///
         [[nodiscard]] constexpr auto
-        gpa_to_spa(syscall::bf_syscall_t const &sys, bsl::safe_u64 const &gpa) const noexcept
-            -> bsl::safe_u64
+        gpa_to_spa(
+            tls_t const &tls,
+            syscall::bf_syscall_t const &sys,
+            page_pool_t &mut_page_pool,
+            bsl::safe_u64 const &gpa) const noexcept -> bsl::safe_u64
         {
             bsl::expects(this->assigned_vmid() != syscall::BF_INVALID_ID);
-            bsl::expects(sys.is_the_active_vm_the_root_vm());
 
             /// TODO:
-            /// - Right now we assume that the only VM that can run this is
-            ///   the root VM. We will have to drop the above check, and
-            ///   actually perform a second-level paging translation. If
-            ///   the root VM remains such that, maps cannot occur, for the
+            /// - If the root VM remains such that, maps cannot occur, for the
             ///   root VM, we can continue to return the GPA as an SPA.
-            ///
-            /// - For guest VMs, we will definitely need to perform a
-            ///   translation, which is just running the "entries" function
-            ///   while will do the translation.
             ///
             /// - If the root VM eventually supports mapping memory that is
             ///   not 1:1, we will also need to perform this translation
             ///   on the root VM as well.
             ///
 
-            return gpa;
+            if (sys.is_the_active_vm_the_root_vm()) {
+                return gpa;
+            }
+            else {
+                constexpr auto gpa_mask{0xFFFFFFFFFFFFF000_u64};
+
+                bsl::debug() << "gpa_to_spa, gpa " << bsl::hex(gpa) << bsl::endl;
+                auto const ents{m_slpt.entries(tls, mut_page_pool, gpa & gpa_mask)};
+                bsl::debug() << "ents.l3e.phys " << bsl::hex(ents.l3e->phys) << bsl::endl;
+                bsl::debug() << "ents.l2e.phys " << bsl::hex(ents.l2e->phys) << bsl::endl;
+                bsl::debug() << "ents.l1e.phys " << bsl::hex(ents.l1e->phys) << bsl::endl;
+                bsl::debug() << "ents.l0e.phys " << bsl::hex(ents.l0e->phys) << bsl::endl;
+                auto const spa{(ents.l0e->phys << HYPERVISOR_PAGE_SHIFT) | (gpa & ~gpa_mask)};
+
+                bsl::error() << "gpa_to_spa " << bsl::hex(gpa) << " -> spa " << bsl::hex(spa) << bsl::endl;
+                return spa;
+            }
+
         }
     };
 }

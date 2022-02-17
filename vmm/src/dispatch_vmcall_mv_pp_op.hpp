@@ -82,7 +82,9 @@ namespace microv
     ///   @brief Implements the mv_pp_op_set_shared_page_gpa hypercall
     ///
     /// <!-- inputs/outputs -->
+    ///   @param tls the tls_t to use
     ///   @param mut_sys the bf_syscall_t to use
+    ///   @param mut_page_pool the page_pool_t to use
     ///   @param mut_pp_pool the pp_pool_t to use
     ///   @param vm_pool the vm_pool_t to use
     ///   @return Returns bsl::errc_success on success, bsl::errc_failure
@@ -90,8 +92,11 @@ namespace microv
     ///
     [[nodiscard]] constexpr auto
     handle_mv_pp_op_set_shared_page_gpa(
-        syscall::bf_syscall_t &mut_sys, pp_pool_t &mut_pp_pool, vm_pool_t const &vm_pool) noexcept
-        -> bsl::errc_type
+        tls_t const &tls,
+        syscall::bf_syscall_t &mut_sys,
+        page_pool_t &mut_page_pool,
+        pp_pool_t &mut_pp_pool,
+        vm_pool_t const &vm_pool) noexcept -> bsl::errc_type
     {
         auto const gpa{get_pos_gpa(get_reg1(mut_sys))};
         if (bsl::unlikely(gpa.is_invalid())) {
@@ -100,7 +105,7 @@ namespace microv
             return vmexit_failure_advance_ip_and_run;
         }
 
-        auto const spa{vm_pool.gpa_to_spa(mut_sys, gpa, mut_sys.bf_tls_vmid())};
+        auto const spa{vm_pool.gpa_to_spa(tls, mut_sys, mut_page_pool, gpa, mut_sys.bf_tls_vmid())};
         if (bsl::unlikely(spa.is_invalid())) {
             bsl::print<bsl::V>() << bsl::here();
             set_reg_return(mut_sys, hypercall::MV_STATUS_FAILURE_UNKNOWN);
@@ -254,7 +259,7 @@ namespace microv
     ///   @param gs the gs_t to use
     ///   @param tls the tls_t to use
     ///   @param mut_sys the bf_syscall_t to use
-    ///   @param page_pool the page_pool_t to use
+    ///   @param mut_page_pool the page_pool_t to use
     ///   @param intrinsic the intrinsic_t to use
     ///   @param mut_pp_pool the pp_pool_t to use
     ///   @param vm_pool the vm_pool_t to use
@@ -269,7 +274,7 @@ namespace microv
         gs_t const &gs,
         tls_t const &tls,
         syscall::bf_syscall_t &mut_sys,
-        page_pool_t const &page_pool,
+        page_pool_t &mut_page_pool,
         intrinsic_t const &intrinsic,
         pp_pool_t &mut_pp_pool,
         vm_pool_t const &vm_pool,
@@ -278,8 +283,6 @@ namespace microv
         bsl::safe_u16 const &vsid) noexcept -> bsl::errc_type
     {
         bsl::discard(gs);
-        bsl::discard(tls);
-        bsl::discard(page_pool);
         bsl::discard(intrinsic);
         bsl::discard(vp_pool);
         bsl::discard(vs_pool);
@@ -320,7 +323,7 @@ namespace microv
             }
 
             case hypercall::MV_PP_OP_SET_SHARED_PAGE_GPA_IDX_VAL.get(): {
-                auto const ret{handle_mv_pp_op_set_shared_page_gpa(mut_sys, mut_pp_pool, vm_pool)};
+                auto const ret{handle_mv_pp_op_set_shared_page_gpa(tls, mut_sys, mut_page_pool, mut_pp_pool, vm_pool)};
                 if (bsl::unlikely(!ret)) {
                     bsl::print<bsl::V>() << bsl::here();
                     return ret;

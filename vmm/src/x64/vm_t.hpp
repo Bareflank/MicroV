@@ -389,18 +389,23 @@ namespace microv
         ///     perform the translation.
         ///
         /// <!-- inputs/outputs -->
+        ///   @param tls the current TLS block
         ///   @param sys the bf_syscall_t to use
+        ///   @param mut_page_pool the page_pool_t to use
         ///   @param gpa the GPA to translate to a SPA
         ///   @return Returns a system physical address given a guest physical
         ///     address using MMIO second level paging from this vm_t to
         ///     perform the translation.
         ///
         [[nodiscard]] constexpr auto
-        gpa_to_spa(syscall::bf_syscall_t const &sys, bsl::safe_u64 const &gpa) const noexcept
-            -> bsl::safe_u64
+        gpa_to_spa(
+            tls_t const &tls,
+            syscall::bf_syscall_t const &sys,
+            page_pool_t &mut_page_pool,
+            bsl::safe_u64 const &gpa) const noexcept -> bsl::safe_u64
         {
             bsl::expects(allocated_status_t::allocated == m_allocated);
-            return m_emulated_mmio.gpa_to_spa(sys, gpa);
+            return m_emulated_mmio.gpa_to_spa(tls, sys, mut_page_pool, gpa);
         }
     };
 }

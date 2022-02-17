@@ -367,7 +367,9 @@ namespace microv
         ///     to perform the translation.
         ///
         /// <!-- inputs/outputs -->
+        ///   @param tls the current TLS block
         ///   @param sys the bf_syscall_t to use
+        ///   @param mut_page_pool the page_pool_t to use
         ///   @param gpa the GPA to translate to a SPA
         ///   @param vmid the ID of the vm_t to use to translate the GLA
         ///   @return Returns a system physical address given a guest physical
@@ -376,11 +378,13 @@ namespace microv
         ///
         [[nodiscard]] constexpr auto
         gpa_to_spa(
+            tls_t const &tls,
             syscall::bf_syscall_t const &sys,
+            page_pool_t &mut_page_pool,
             bsl::safe_u64 const &gpa,
             bsl::safe_u16 const &vmid) const noexcept -> bsl::safe_u64
         {
-            return this->get_vm(vmid)->gpa_to_spa(sys, gpa);
+            return this->get_vm(vmid)->gpa_to_spa(tls, sys, mut_page_pool, gpa);
         }
     };
 }
