@@ -203,6 +203,28 @@ namespace microv
 
         /// <!-- description -->
         ///   @brief Returns a reference to the data being mapped by the
+        ///     pp_unique_map_t at the offset specified and casted into the
+        ///     requested type.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @tparam U the type to cast into
+        ///   @param offset the offset to cast from
+        ///   @return Returns a reference to the data being mapped by the
+        ///     pp_unique_map_t at the offset specified and casted into the
+        ///     requested type.
+        ///
+        template<typename U>
+        [[nodiscard]] constexpr auto
+        offset_as(bsl::safe_u64 const &offset) const noexcept -> U &
+        {
+            bsl::expects(this->assigned_ppid() == m_sys->bf_tls_ppid());
+            bsl::expects(this->assigned_vmid() == m_sys->bf_tls_vmid());
+            bsl::expects((offset + sizeof(U)).checked() <= sizeof(T));
+            return *reinterpret_cast<U *>(&reinterpret_cast<bsl::uint8 *>(m_ptr)[offset.get()]);
+        }
+
+        /// <!-- description -->
+        ///   @brief Returns a reference to the data being mapped by the
         ///     pp_unique_map_t.
         ///
         /// <!-- inputs/outputs -->
