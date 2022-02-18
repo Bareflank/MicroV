@@ -44,8 +44,6 @@ extern "C"
      *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
      */
     NODISCARD int64_t handle_vm_kvm_create_irqchip(struct shim_vm_t *const pmut_vm) NOEXCEPT;
-    // NODISCARD int64_t handle_vm_kvm_create_irqchip(
-    //     struct shim_vm_t *const pmut_vm, struct shim_virqchip_t **const pmut_virqchip) NOEXCEPT;
 
 #ifdef __cplusplus
 }

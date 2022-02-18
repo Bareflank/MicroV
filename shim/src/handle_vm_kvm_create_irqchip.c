@@ -29,6 +29,7 @@
 #include <mv_types.h>
 #include <platform.h>
 #include <shim_vm_t.h>
+#include <stdbool.h>
 
 /**
  * <!-- description -->
@@ -48,6 +49,13 @@ handle_vm_kvm_create_irqchip(struct shim_vm_t *const pmut_vm) NOEXCEPT
         bferror("The shim is not running in a VM. Did you forget to start MicroV?");
         return SHIM_FAILURE;
     }
+
+    platform_mutex_lock(&pmut_vm->mutex);
+    if (pmut_vm->is_irqchip_created) {
+        bferror("The IRQCHIP is not created, Did you forget to create it?");
+        return SHIM_FAILURE;
+    }
+
     //NOTE: Below hypercalls to uncomment when they are implemented
 
     //platform_mutex_lock(&pmut_vm->mutex);
@@ -69,6 +77,7 @@ handle_vm_kvm_create_irqchip(struct shim_vm_t *const pmut_vm) NOEXCEPT
 
     // create_irqchip_unlock:
     //         platform_mutex_unlock(&pmut_vm->mutex);
-
+    pmut_vm->is_irqchip_created = true;
+    platform_mutex_unlock(&pmut_vm->mutex);
     return SHIM_SUCCESS;
 }
