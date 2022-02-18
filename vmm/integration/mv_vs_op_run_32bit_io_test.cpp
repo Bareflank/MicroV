@@ -31,6 +31,7 @@
 
 #include <bsl/array.hpp>
 #include <bsl/convert.hpp>
+#include <bsl/debug.hpp>
 #include <bsl/enable_color.hpp>
 #include <bsl/exit_code.hpp>
 #include <bsl/safe_integral.hpp>
@@ -56,7 +57,7 @@ namespace hypercall
 
         auto const vm_image{integration::load_vm("vm_cross_compile/bin/32bit_io_test")};
 
-        // Verify run works
+        // Verify run works with port IO
         {
             auto const vmid{mut_hvc.mv_vm_op_create_vm()};
             auto const vpid{mut_hvc.mv_vp_op_create_vp(vmid)};
@@ -85,6 +86,47 @@ namespace hypercall
             auto *const pmut_exit_io{to_0<mv_exit_io_t>()};
             integration::verify(pmut_exit_io->addr == expected_addr);
             integration::verify(io_to<bsl::uint8>(pmut_exit_io->data) == expected_data);
+            integration::verify(pmut_exit_io->reps == expected_reps);
+            integration::verify(pmut_exit_io->type == expected_type);
+            integration::verify(pmut_exit_io->size == expected_size);
+
+            integration::verify(mut_hvc.mv_vs_op_destroy_vs(vsid));
+            integration::verify(mut_hvc.mv_vp_op_destroy_vp(vpid));
+            integration::verify(mut_hvc.mv_vm_op_destroy_vm(vmid));
+        }
+
+        // Verify run works with port IO strings
+        {
+            auto const vmid{mut_hvc.mv_vm_op_create_vm()};
+            auto const vpid{mut_hvc.mv_vp_op_create_vp(vmid)};
+            auto const vsid{mut_hvc.mv_vs_op_create_vs(vpid)};
+
+            integration::verify(vmid.is_valid_and_checked());
+            integration::verify(vpid.is_valid_and_checked());
+            integration::verify(vsid.is_valid_and_checked());
+
+            integration::map_vm(vm_image, {}, vmid);
+            integration::initialize_register_state_for_16bit_vm(vsid);
+
+            mut_exit_reason = integration::run_until_non_interrupt_exit(vsid);
+            integration::verify(mut_exit_reason == mv_exit_reason_t::mv_exit_reason_t_io);
+            mut_exit_reason = integration::run_until_non_interrupt_exit(vsid);
+            integration::verify(mut_exit_reason == mv_exit_reason_t::mv_exit_reason_t_io);
+            mut_exit_reason = integration::run_until_non_interrupt_exit(vsid);
+            integration::verify(mut_exit_reason == mv_exit_reason_t::mv_exit_reason_t_io);
+
+            constexpr auto expected_addr{0x10_u64};
+            constexpr auto expected_data{0x0102030405060708_u64};
+            constexpr auto expected_reps{0x01_u64};
+            constexpr auto expected_type{0x01_u64};
+            constexpr auto expected_size{mv_bit_size_t::mv_bit_size_t_16};
+
+            mut_exit_reason = integration::run_until_non_interrupt_exit(vsid);
+            integration::verify(mut_exit_reason == mv_exit_reason_t::mv_exit_reason_t_io);
+
+            auto *const pmut_exit_io{to_0<mv_exit_io_t>()};
+            integration::verify(pmut_exit_io->addr == expected_addr);
+            integration::verify(io_to<bsl::uint64>(pmut_exit_io->data) == expected_data);
             integration::verify(pmut_exit_io->reps == expected_reps);
             integration::verify(pmut_exit_io->type == expected_type);
             integration::verify(pmut_exit_io->size == expected_size);

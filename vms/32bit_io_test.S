@@ -118,6 +118,11 @@ stack_begin:
     .zero 0x1000
 stack_end:
 
+data:
+    .quad 0x0102030405060708
+    .quad 0x090A0B0C0D0E0F10
+    .quad 0x1112131415161718
+
 /** ======================================================================== **/
 /** Main 32bit Entry Point                                                   **/
 /** ======================================================================== **/
@@ -130,9 +135,18 @@ main:
     push eax
     pop eax
 
-loop:
-	out 0x10, ax
-	inc ax
-	jmp loop
+loop_io:
+    out 0x10, ax
+    inc ax
+    cmp ax, 3
+    jne loop_io
+
+loop_string_io:
+    mov dx, 0x10
+    lea edi, data
+    outsw
+    jne loop_string_io
+
+    // rep insb es:edi dx // count is ecx
 
     .size main, .-main

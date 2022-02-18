@@ -51,7 +51,7 @@ namespace microv
     ///   @param gs the gs_t to use
     ///   @param mut_tls the tls_t to use
     ///   @param mut_sys the bf_syscall_t to use
-    ///   @param page_pool the page_pool_t to use
+    ///   @param mut_page_pool the page_pool_t to use
     ///   @param intrinsic the intrinsic_t to use
     ///   @param mut_pp_pool the pp_pool_t to use
     ///   @param mut_vm_pool the vm_pool_t to use
@@ -66,7 +66,7 @@ namespace microv
         gs_t const &gs,
         tls_t &mut_tls,
         syscall::bf_syscall_t &mut_sys,
-        page_pool_t const &page_pool,
+        page_pool_t &mut_page_pool,
         intrinsic_t const &intrinsic,
         pp_pool_t &mut_pp_pool,
         vm_pool_t &mut_vm_pool,
@@ -77,8 +77,6 @@ namespace microv
         bsl::expects(!mut_sys.is_the_active_vm_the_root_vm());
 
         bsl::discard(gs);
-        bsl::discard(page_pool);
-        bsl::discard(vsid);
 
         // ---------------------------------------------------------------------
         // Context: Guest VM
@@ -108,6 +106,43 @@ namespace microv
 
         auto const addr{(exitinfo1 & port_mask) >> port_shft};
 
+        bsl::safe_u64 mut_spa{};
+        bsl::safe_u64 mut_bytes{};
+        enum hypercall::mv_bit_size_t mut_size{};
+        auto mut_reps{bsl::safe_u64::magic_1()};
+
+        auto const rdi{mut_sys.bf_tls_rdi()};
+        auto const vmid{mut_sys.bf_tls_vmid()};
+
+        if (((exitinfo1 & strn_mask) >> strn_shft).is_pos()) {
+            mut_spa = mut_vm_pool.gpa_to_spa(mut_tls, mut_sys, mut_page_pool, rdi, vmid);
+        }
+
+        if (((exitinfo1 & reps_mask) >> reps_shft).is_pos()) {
+            mut_reps = rcx.get();
+            bsl::debug() << "IO string reps " << bsl::hex(rcx) << bsl::endl;
+        }
+        else {
+            mut_reps = bsl::safe_u64::magic_1().get();
+        }
+
+        if (((exitinfo1 & sz32_mask) >> sz32_shft).is_pos()) {
+            mut_size = hypercall::mv_bit_size_t::mv_bit_size_t_32;
+            constexpr auto four{4_u64};
+            mut_bytes = (four * mut_reps).checked();
+        }
+        else if (((exitinfo1 & sz16_mask) >> sz16_shft).is_pos()) {
+            mut_size = hypercall::mv_bit_size_t::mv_bit_size_t_16;
+            mut_bytes = (bsl::safe_u64::magic_2() * mut_reps).checked();
+        }
+        else if (((exitinfo1 & sz08_mask) >> sz08_shft).is_pos()) {
+            mut_size = hypercall::mv_bit_size_t::mv_bit_size_t_8;
+            mut_bytes = mut_reps;
+        }
+        else {
+            bsl::touch();
+        }
+
         // ---------------------------------------------------------------------
         // Context: Change To Root VM
         // ---------------------------------------------------------------------
@@ -122,6 +157,18 @@ namespace microv
         bsl::expects(mut_exit_io.is_valid());
 
         mut_exit_io->addr = addr.get();
+        mut_exit_io->size = mut_size;
+        mut_exit_io->reps = mut_reps.get();
+
+        // TODO handle hypercall continuation
+        if (bsl::unlikely(mut_bytes > hypercall::MV_EXIT_IO_MAX_DATA)) {
+            bsl::error()
+                << "FIXME: The requested size of "    // --
+                << bsl::hex(mut_bytes)    // --
+                << " is too large."    // --
+                << bsl::endl    // --
+                << bsl::here();    // --
+        }
 
         if (((exitinfo1 & type_mask) >> type_shft).is_zero()) {
             mut_exit_io->type = hypercall::MV_EXIT_IO_OUT.get();
@@ -130,34 +177,29 @@ namespace microv
             mut_exit_io->type = hypercall::MV_EXIT_IO_IN.get();
         }
 
-        if (!((exitinfo1 & strn_mask) >> strn_shft).is_zero()) {
-            bsl::error() << "FIXME: add missing string implementation"    // --
-                         << bsl::endl                                     // --
-                         << bsl::here();                                  // --
+        if (((exitinfo1 & strn_mask) >> strn_shft).is_pos()) {
+            using page_t = bsl::array<uint8_t, HYPERVISOR_PAGE_SIZE.get()>;
+
+            constexpr auto gpa_mask{0xFFFFFFFFFFFFF000_u64};
+            auto const page{mut_pp_pool.map<page_t>(mut_sys, mut_spa & gpa_mask)};
+
+            auto const idx{mut_spa & ~gpa_mask};
+            auto const data{bsl::to_u64(page.offset_as<bsl::uint64>(idx))};
+
+            // TODO handle page boundary
+            auto const bytes_left{HYPERVISOR_PAGE_SIZE - idx};
+            if (bsl::unlikely(bytes_left < mut_bytes)) {
+                bsl::error()
+                    << "FIXME: page boundary overflow"    // --
+                    << bsl::endl    // --
+                    << bsl::here();    // --
+            }
+
+            hypercall::io_to_u64(mut_exit_io->data) = data.get();
+            bsl::debug() << "data " << bsl::hex(data) << bsl::endl;
         }
         else {
             hypercall::io_to_u64(mut_exit_io->data) = rax.get();
-        }
-
-        if (((exitinfo1 & sz32_mask) >> sz32_shft).is_pos()) {
-            mut_exit_io->size = hypercall::mv_bit_size_t::mv_bit_size_t_32;
-        }
-        else if (((exitinfo1 & sz16_mask) >> sz16_shft).is_pos()) {
-            mut_exit_io->size = hypercall::mv_bit_size_t::mv_bit_size_t_16;
-        }
-        else if (((exitinfo1 & sz08_mask) >> sz08_shft).is_pos()) {
-            mut_exit_io->size = hypercall::mv_bit_size_t::mv_bit_size_t_8;
-        }
-        else {
-            bsl::touch();
-        }
-
-        if (((exitinfo1 & reps_mask) >> reps_shft).is_pos()) {
-            mut_exit_io->reps = rcx.get();
-            bsl::debug() << "IO string reps " << bsl::hex(rcx) << bsl::endl;
-        }
-        else {
-            mut_exit_io->reps = bsl::safe_u64::magic_1().get();
         }
 
         // if (((exitinfo1 & type_mask) >> type_shft).is_zero()) {
