@@ -1224,6 +1224,8 @@ static long
 dispatch_vcpu_kvm_run(struct shim_vcpu_t *const vcpu)
 {
     long mut_ret;
+    struct kvm_regs tmp_regs;
+    uint8_t eflags_if;
 
     switch (handle_vcpu_kvm_run(vcpu)) {
         case SHIM_SUCCESS: {
@@ -1245,11 +1247,10 @@ dispatch_vcpu_kvm_run(struct shim_vcpu_t *const vcpu)
     
 
     // Set kvm_run bits related to the guest interrupt flag state
-    struct kvm_regs tmp_regs;
     handle_vcpu_kvm_get_regs(vcpu, &tmp_regs);
 
     // Interrupt flag is bit 9
-    uint8_t eflags_if = ((tmp_regs.rflags & 0x200) == 0x200);
+    eflags_if = ((tmp_regs.rflags & 0x200) == 0x200);
     vcpu->run->if_flag = eflags_if;
     vcpu->run->ready_for_interrupt_injection = (uint8_t)eflags_if;
     // apic_base?
