@@ -119,9 +119,9 @@ stack_begin:
 stack_end:
 
 data:
-    .quad 0x0102030405060708
-    .quad 0x090A0B0C0D0E0F10
-    .quad 0x1112131415161718
+    .byte 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08
+    .byte 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x10
+    .byte 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18
 
 /** ======================================================================== **/
 /** Main 32bit Entry Point                                                   **/
@@ -141,12 +141,15 @@ loop_io:
     cmp ax, 3
     jne loop_io
 
-loop_string_io:
+string_io:
     mov dx, 0x10
     lea edi, data
+    outsb
     outsw
-    jne loop_string_io
+    outsd
 
-    // rep insb es:edi dx // count is ecx
+string_io_reps:
+    mov ecx, 24
+    rep outsb
 
     .size main, .-main

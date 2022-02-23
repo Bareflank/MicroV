@@ -41,6 +41,7 @@
 #include <bsl/debug.hpp>
 #include <bsl/discard.hpp>
 #include <bsl/errc_type.hpp>
+#include <bsl/span.hpp>
 
 namespace microv
 {
@@ -117,10 +118,12 @@ namespace microv
         if (((exitinfo1 & strn_mask) >> strn_shft).is_pos()) {
             mut_spa = mut_vm_pool.gpa_to_spa(mut_tls, mut_sys, mut_page_pool, rdi, vmid);
         }
+        else {
+            bsl::touch();
+        }
 
         if (((exitinfo1 & reps_mask) >> reps_shft).is_pos()) {
             mut_reps = rcx.get();
-            bsl::debug() << "IO string reps " << bsl::hex(rcx) << bsl::endl;
         }
         else {
             mut_reps = bsl::safe_u64::magic_1().get();
@@ -168,6 +171,11 @@ namespace microv
                 << " is too large."    // --
                 << bsl::endl    // --
                 << bsl::here();    // --
+
+            return vmexit_failure_advance_ip_and_run;
+        }
+        else {
+            bsl::touch();
         }
 
         if (((exitinfo1 & type_mask) >> type_shft).is_zero()) {
@@ -184,19 +192,35 @@ namespace microv
             auto const page{mut_pp_pool.map<page_t>(mut_sys, mut_spa & gpa_mask)};
 
             auto const idx{mut_spa & ~gpa_mask};
-            auto const data{bsl::to_u64(page.offset_as<bsl::uint64>(idx))};
 
             // TODO handle page boundary
             auto const bytes_left{(HYPERVISOR_PAGE_SIZE - idx).checked()};
             if (bsl::unlikely(bytes_left < mut_bytes)) {
                 bsl::error()
                     << "FIXME: page boundary overflow"    // --
-                    << bsl::endl    // --
-                    << bsl::here();    // --
+                    << bsl::endl                          // --
+                    << bsl::here();                       // --
+
+                return vmexit_failure_advance_ip_and_run;
+            }
+            else {
+                bsl::touch();
             }
 
-            hypercall::io_to_u64(mut_exit_io->data) = data.get();
-            bsl::debug() << "data " << bsl::hex(data) << bsl::endl;
+            auto const data{page.span(idx, mut_bytes)};
+            if (bsl::unlikely(data.is_invalid())) {
+                bsl::error()
+                    << "data is invalid"    // --
+                    << bsl::endl            // --
+                    << bsl::here();         // --
+
+                return vmexit_failure_advance_ip_and_run;
+            }
+            else {
+                bsl::touch();
+            }
+
+            bsl::builtin_memcpy(mut_exit_io->data.data(), data.data(), data.size_bytes());
         }
         else {
             hypercall::io_to_u64(mut_exit_io->data) = rax.get();

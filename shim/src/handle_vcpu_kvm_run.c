@@ -179,6 +179,9 @@ NODISCARD static int64_t
 handle_vcpu_kvm_run_io(
     struct shim_vcpu_t *const pmut_vcpu, struct mv_exit_io_t *const pmut_exit_io) NOEXCEPT
 {
+    uint8_t mut_size;
+    uint32_t mut_count;
+
     platform_expects(NULL != pmut_exit_io);
 
     switch (pmut_exit_io->type) {
@@ -198,22 +201,19 @@ handle_vcpu_kvm_run_io(
         }
     }
 
-    pmut_vcpu->run->io.reg0 = *io_to_u64(pmut_exit_io->data);
-    pmut_vcpu->run->io.data_offset = get_offset(pmut_vcpu, &pmut_vcpu->run->io.reg0);
-
     switch ((int32_t)pmut_exit_io->size) {
         case mv_bit_size_t_8: {
-            pmut_vcpu->run->io.size = ((uint8_t)1);
+            mut_size = ((uint8_t)1);
             break;
         }
 
         case mv_bit_size_t_16: {
-            pmut_vcpu->run->io.size = ((uint8_t)2);
+            mut_size = ((uint8_t)2);
             break;
         }
 
         case mv_bit_size_t_32: {
-            pmut_vcpu->run->io.size = ((uint8_t)4);
+            mut_size = ((uint8_t)4);
             break;
         }
 
@@ -233,13 +233,17 @@ handle_vcpu_kvm_run_io(
     }
 
     if (pmut_exit_io->reps < INT32_MAX) {
-        pmut_vcpu->run->io.count = (uint32_t)pmut_exit_io->reps;
+        mut_count = (uint32_t)pmut_exit_io->reps;
     }
     else {
         bferror_x64("reps is invalid", pmut_exit_io->reps);
         return return_failure(pmut_vcpu);
     }
 
+    platform_memcpy(pmut_vcpu->run->io.data, pmut_exit_io->data, mut_size * mut_count);
+    pmut_vcpu->run->io.data_offset = get_offset(pmut_vcpu, &pmut_vcpu->run->io.reg0);
+    pmut_vcpu->run->io.size = mut_size;
+    pmut_vcpu->run->io.count = mut_count;
     pmut_vcpu->run->exit_reason = KVM_EXIT_IO;
     return SHIM_SUCCESS;
 }
@@ -277,13 +281,13 @@ pre_run_op_io(struct shim_vcpu_t *const pmut_vcpu, struct mv_run_t *const pmut_m
         return SHIM_FAILURE;
     }
     else {
-        uint64_t const sz = (uint64_t)pmut_vcpu->run->io.count * (uint64_t)pmut_vcpu->run->io.size;
+        uint64_t const bytes = (uint64_t)pmut_vcpu->run->io.count * (uint64_t)pmut_vcpu->run->io.size;
         uint64_t const dst = (uint64_t)0x42U;
 
-        pmut_mv_run->mdl_entry.bytes = sz;
+        pmut_mv_run->mdl_entry.bytes = bytes;
         pmut_mv_run->mdl_entry.dst = dst;    // FIXME
 
-        platform_memcpy(pmut_mv_run->mem, pmut_vcpu->run->io.data, sz);
+        platform_memcpy(pmut_mv_run->mem, pmut_vcpu->run->io.data, bytes);
 
         pmut_mv_run->num_reg_entries = (uint64_t)0U;
         bferror_d32("FIXME: PIO address destination.", pmut_vcpu->run->io.count);
@@ -413,26 +417,25 @@ pre_run_op(struct shim_vcpu_t *const pmut_vcpu, struct mv_run_t *const pmut_mv_r
     platform_expects(NULL != pmut_vcpu->run);
     platform_expects(NULL != pmut_mv_run);
 
+    /// NOTE:
+    ///
+    /// We don't need to memset to 0 over the entire shared page. Instead we can
+    /// just set a few key fields to 0.
+    ///
+    pmut_mv_run->num_reg_entries = (uint64_t)0U;
+    pmut_mv_run->num_msr_entries = (uint64_t)0U;
+    pmut_mv_run->mdl_entry.bytes = (uint64_t)0U;
+
     switch (pmut_vcpu->run->exit_reason) {
         case KVM_EXIT_IO: {
-            pmut_mv_run->num_reg_entries = (uint64_t)0U;
-            pmut_mv_run->num_msr_entries = (uint64_t)0U;
-
             return pre_run_op_io(pmut_vcpu, pmut_mv_run);
         }
 
         case KVM_EXIT_MMIO: {
-            pmut_mv_run->num_reg_entries = (uint64_t)0U;
-            pmut_mv_run->num_msr_entries = (uint64_t)0U;
-
             return pre_run_op_mmio(pmut_vcpu, pmut_mv_run);
         }
 
         case KVM_EXIT_INTR: {
-            // FIXME: do we need this here???
-            pmut_mv_run->num_reg_entries = (uint64_t)0U;
-            pmut_mv_run->num_msr_entries = (uint64_t)0U;
-
             return SHIM_SUCCESS;
         }
 
@@ -471,10 +474,6 @@ handle_vcpu_kvm_run(struct shim_vcpu_t *const pmut_vcpu) NOEXCEPT
     }
 
     pmut_mut_exit = shared_page_for_current_pp();
-
-    // there is fo sho crud here from the last run that needs to be cleared
-    memset(pmut_mut_exit, 0, HYPERVISOR_PAGE_SIZE);
-
 
     mut_ret = pre_run_op(pmut_vcpu, (struct mv_run_t *)pmut_mut_exit);
     if (SHIM_FAILURE == mut_ret) {

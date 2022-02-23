@@ -64,8 +64,8 @@ namespace microv
         /// @brief stores the vmid associated with this map.
         bsl::safe_u16 m_assigned_vmid;
 
-        /// @brief alias for: safe_idx
-        using index_type = bsl::safe_idx;
+        /// @brief alias for: safe_u64
+        using index_type = bsl::safe_u64;
         /// @brief alias for: safe_umx
         using size_type = bsl::safe_umx;
 
@@ -246,7 +246,20 @@ namespace microv
             bsl::expects(pos.is_valid());
             bsl::expects(count.is_valid_and_checked());
 
-            if (bsl::unlikely(bsl::to_u64(pos) + count >= sizeof(T))) {
+            if (bsl::unlikely(pos >= sizeof(T))) {
+                bsl::error()
+                    << "pos overflows"    // --
+                    << bsl::endl          // --
+                    << bsl::here();       // --
+                return {};
+            }
+
+            auto const end{(pos + count).checked()};
+            if (bsl::unlikely(end >= sizeof(T))) {
+                bsl::error()
+                    << "end position overflows"
+                    << bsl::endl
+                    << bsl::here();
                 return {};
             }
 

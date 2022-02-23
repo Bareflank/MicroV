@@ -115,21 +115,59 @@ namespace hypercall
             mut_exit_reason = integration::run_until_non_interrupt_exit(vsid);
             integration::verify(mut_exit_reason == mv_exit_reason_t::mv_exit_reason_t_io);
 
+            constexpr auto expected_data_size{24_u64};
+            constexpr bsl::array<bsl::uint8, expected_data_size.get()> expected_data{
+                0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,    // --
+                0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x10,    // --
+                0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18,    // --
+            };
             constexpr auto expected_addr{0x10_u64};
-            constexpr auto expected_data{0x0102030405060708_u64};
+            auto const expected_data_8{*reinterpret_cast<bsl::uint8 const*>(expected_data.at_if({}))};
+            auto const expected_data_16{*reinterpret_cast<bsl::uint16 const*>(expected_data.at_if({}))};
+            auto const expected_data_32{*reinterpret_cast<bsl::uint32 const*>(expected_data.at_if({}))};
             constexpr auto expected_reps{0x01_u64};
             constexpr auto expected_type{0x01_u64};
-            constexpr auto expected_size{mv_bit_size_t::mv_bit_size_t_16};
+            constexpr auto expected_size_8{mv_bit_size_t::mv_bit_size_t_8};
+            constexpr auto expected_size_16{mv_bit_size_t::mv_bit_size_t_16};
+            constexpr auto expected_size_32{mv_bit_size_t::mv_bit_size_t_32};
 
             mut_exit_reason = integration::run_until_non_interrupt_exit(vsid);
             integration::verify(mut_exit_reason == mv_exit_reason_t::mv_exit_reason_t_io);
 
             auto *const pmut_exit_io{to_0<mv_exit_io_t>()};
+            integration::verify(mut_exit_reason == mv_exit_reason_t::mv_exit_reason_t_io);
             integration::verify(pmut_exit_io->addr == expected_addr);
-            integration::verify(io_to<bsl::uint64>(pmut_exit_io->data) == expected_data);
+            integration::verify(io_to<bsl::uint8>(pmut_exit_io->data) == expected_data_8);
             integration::verify(pmut_exit_io->reps == expected_reps);
             integration::verify(pmut_exit_io->type == expected_type);
-            integration::verify(pmut_exit_io->size == expected_size);
+            integration::verify(pmut_exit_io->size == expected_size_8);
+
+            mut_exit_reason = integration::run_until_non_interrupt_exit(vsid);
+            integration::verify(mut_exit_reason == mv_exit_reason_t::mv_exit_reason_t_io);
+            integration::verify(pmut_exit_io->addr == expected_addr);
+            integration::verify(io_to<bsl::uint16>(pmut_exit_io->data) == expected_data_16);
+            integration::verify(pmut_exit_io->reps == expected_reps);
+            integration::verify(pmut_exit_io->type == expected_type);
+            integration::verify(pmut_exit_io->size == expected_size_16);
+
+            mut_exit_reason = integration::run_until_non_interrupt_exit(vsid);
+            integration::verify(mut_exit_reason == mv_exit_reason_t::mv_exit_reason_t_io);
+            integration::verify(pmut_exit_io->addr == expected_addr);
+            integration::verify(io_to<bsl::uint32>(pmut_exit_io->data) == expected_data_32);
+            integration::verify(pmut_exit_io->reps == expected_reps);
+            integration::verify(pmut_exit_io->type == expected_type);
+            integration::verify(pmut_exit_io->size == expected_size_32);
+
+            // REP prefix
+            mut_exit_reason = integration::run_until_non_interrupt_exit(vsid);
+            integration::verify(mut_exit_reason == mv_exit_reason_t::mv_exit_reason_t_io);
+            integration::verify(pmut_exit_io->addr == expected_addr);
+            integration::verify(pmut_exit_io->reps == expected_data_size);
+            integration::verify(pmut_exit_io->type == expected_type);
+            integration::verify(pmut_exit_io->size == expected_size_8);
+            for (auto mut_i{0_idx}; mut_i < expected_data.size(); ++mut_i) {
+                integration::verify(*pmut_exit_io->data.at_if(mut_i) == *expected_data.at_if(mut_i));
+            }
 
             integration::verify(mut_hvc.mv_vs_op_destroy_vs(vsid));
             integration::verify(mut_hvc.mv_vp_op_destroy_vp(vpid));
