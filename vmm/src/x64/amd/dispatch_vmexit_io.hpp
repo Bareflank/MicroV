@@ -187,7 +187,7 @@ namespace microv
             auto const data{bsl::to_u64(page.offset_as<bsl::uint64>(idx))};
 
             // TODO handle page boundary
-            auto const bytes_left{HYPERVISOR_PAGE_SIZE - idx};
+            auto const bytes_left{(HYPERVISOR_PAGE_SIZE - idx).checked()};
             if (bsl::unlikely(bytes_left < mut_bytes)) {
                 bsl::error()
                     << "FIXME: page boundary overflow"    // --
