@@ -46,6 +46,8 @@
 namespace microv
 {
     constexpr auto OPCODE_REG_USE_IMMEDIATE{0xBEEFBEEF_u64};
+    constexpr auto DECODE_MODE__32{0x1_u64};
+    constexpr auto DECODE_MODE__64{0x10_u64};
     [[nodiscard]] constexpr auto
     instruction_decode(
         bsl::uint64 const &opcodes0,
@@ -60,12 +62,18 @@ namespace microv
 
         // bsl::debug() << __FUNCTION__ << bsl::endl;
 
-        //FIXME: We assume 32-bit mode for now...
-
         bsl::uint64 myopcodes[2] = { opcodes0, opcodes1};
         FdInstr instr;
 
-        int ret = fd_decode(reinterpret_cast<uint8_t*>(&myopcodes), sizeof(myopcodes), 32, 0, &instr);
+        int fadec_mode = 0;
+        if(cpu_mode == DECODE_MODE__32.get()) {
+            fadec_mode = 32;
+        } else if(cpu_mode == DECODE_MODE__64.get()) {
+            fadec_mode = 64;
+        } else {
+            bsl::debug() << "Unsupported decode mode!" << bsl::hex(cpu_mode) << bsl::endl;
+        }
+        int ret = fd_decode(reinterpret_cast<uint8_t*>(&myopcodes), sizeof(myopcodes), fadec_mode, 0, &instr);
         uint64_t reg_num = -1;
 
         // Assume its a move instruction, and the register/immediate is either first or second operand
@@ -106,6 +114,37 @@ namespace microv
         case FD_REG_DI:
             *mut_register = bsl::uint64(hypercall::mv_reg_t::mv_reg_t_rdi);
             break;
+        case FD_REG_SP:
+            *mut_register = bsl::uint64(hypercall::mv_reg_t::mv_reg_t_rsp);
+            break;
+        case FD_REG_BP:
+            *mut_register = bsl::uint64(hypercall::mv_reg_t::mv_reg_t_rbp);
+            break;
+        case FD_REG_R8:
+            *mut_register = bsl::uint64(hypercall::mv_reg_t::mv_reg_t_r8);
+            break;
+        case FD_REG_R9:
+            *mut_register = bsl::uint64(hypercall::mv_reg_t::mv_reg_t_r9);
+            break;
+        case FD_REG_R10:
+            *mut_register = bsl::uint64(hypercall::mv_reg_t::mv_reg_t_r10);
+            break;
+        case FD_REG_R11:
+            *mut_register = bsl::uint64(hypercall::mv_reg_t::mv_reg_t_r11);
+            break;
+        case FD_REG_R12:
+            *mut_register = bsl::uint64(hypercall::mv_reg_t::mv_reg_t_r12);
+            break;
+        case FD_REG_R13:
+            *mut_register = bsl::uint64(hypercall::mv_reg_t::mv_reg_t_r13);
+            break;
+        case FD_REG_R14:
+            *mut_register = bsl::uint64(hypercall::mv_reg_t::mv_reg_t_r14);
+            break;
+        case FD_REG_R15:
+            *mut_register = bsl::uint64(hypercall::mv_reg_t::mv_reg_t_r15);
+            break;
+
         case OPCODE_REG_USE_IMMEDIATE.get():
             *mut_register = OPCODE_REG_USE_IMMEDIATE.get();
             break;
@@ -201,7 +240,18 @@ namespace microv
         bsl::uint64 memory_access_size{0};
         bsl::uint64 mut_register{bsl::uint64(hypercall::mv_reg_t::mv_reg_t_rax)};
         bsl::uint64 immediate_value{0};
-        auto decode_ret{ instruction_decode(opcodes0.get(), opcodes1.get(), 0U, &mut_instr_len, &mut_register, &memory_access_size, &immediate_value) };
+        bsl::uint64 cpu_mode{0};
+        auto const efer_val{mut_vs_pool.msr_get(mut_sys, bsl::to_u64(MSR_EFER.get()), vsid)};
+        
+        // Check LMA bit 10 to see if we're in 64 bit mode
+        if(efer_val.get() & 0x400) {
+            cpu_mode = DECODE_MODE__64.get();
+        } else {
+            cpu_mode = DECODE_MODE__32.get();
+        }
+        //FIXME: We don't handle 16 bit mode here
+
+        auto decode_ret{ instruction_decode(opcodes0.get(), opcodes1.get(), cpu_mode, &mut_instr_len, &mut_register, &memory_access_size, &immediate_value) };
         if (bsl::unlikely(!decode_ret)) {
             bsl::print<bsl::V>() << bsl::here();
             switch_to_root(mut_tls, mut_sys, intrinsic, mut_vm_pool, mut_vp_pool, mut_vs_pool, true);
