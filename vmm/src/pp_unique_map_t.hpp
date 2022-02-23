@@ -64,6 +64,11 @@ namespace microv
         /// @brief stores the vmid associated with this map.
         bsl::safe_u16 m_assigned_vmid;
 
+        /// @brief alias for: safe_idx
+        using index_type = bsl::safe_idx;
+        /// @brief alias for: safe_umx
+        using size_type = bsl::safe_umx;
+
     public:
         /// <!-- description -->
         ///   @brief Creates a default constructed invalid pp_unique_map_t
@@ -215,12 +220,38 @@ namespace microv
         ///
         template<typename U>
         [[nodiscard]] constexpr auto
-        offset_as(bsl::safe_u64 const &offset) const noexcept -> U &
+        offset_as(index_type const &offset) const noexcept -> U &
         {
             bsl::expects(this->assigned_ppid() == m_sys->bf_tls_ppid());
             bsl::expects(this->assigned_vmid() == m_sys->bf_tls_vmid());
-            bsl::expects((offset + sizeof(U)).checked() <= sizeof(T));
+            bsl::expects(offset.is_valid());
+            bsl::expects(offset + sizeof(U) <= sizeof(T));
             return *reinterpret_cast<U *>(&reinterpret_cast<bsl::uint8 *>(m_ptr)[offset.get()]);
+        }
+
+        /// <!-- description -->
+        ///   @brief Returns a bsl::span<bsl::uint8> of the memory region
+        ///     starting at pos and of a length of count.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param pos the starting position of the new span
+        ///   @param count the number of elements of the new subspan
+        ///   @return Returns span<uint8>{&reinterpret_cast<uint8 *>(T *)[pos], count}. If pos or
+        ///     count overflows, an invalid span is returned.
+        ///
+        [[nodiscard]] constexpr auto
+        span(index_type const &pos, size_type const &count = size_type::max_value())
+            const noexcept -> bsl::span<bsl::uint8>
+        {
+            bsl::expects(pos.is_valid());
+            bsl::expects(count.is_valid_and_checked());
+
+            if (bsl::unlikely(bsl::to_u64(pos) + count >= sizeof(T))) {
+                return {};
+            }
+
+            auto *const pmut_buf{&reinterpret_cast<bsl::uint8 *>(m_ptr)[pos.get()]};
+            return bsl::span<bsl::uint8>{pmut_buf, count};
         }
 
         /// <!-- description -->
