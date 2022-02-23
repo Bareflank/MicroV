@@ -84,7 +84,7 @@ handle_system_kvm_get_supported_cpuid(struct kvm_cpuid2 *const pmut_ioctl_args) 
 
     if (pmut_mut_cdl->num_entries >= MV_CDL_MAX_ENTRIES) {
         bferror("num_entries exceeds MV_CDL_MAX_ENTRIES");
-        return SHIM_FAILURE;
+        goto release_shared_page;
     }
 
     // /* Calculate the new num_entries */
