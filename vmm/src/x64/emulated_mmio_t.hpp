@@ -433,19 +433,20 @@ namespace microv
             }
             else {
                 constexpr auto gpa_mask{0xFFFFFFFFFFFFF000_u64};
-
-                bsl::debug() << "gpa_to_spa, gpa " << bsl::hex(gpa) << bsl::endl;
                 auto const ents{m_slpt.entries(tls, mut_page_pool, gpa & gpa_mask)};
-                bsl::debug() << "ents.l3e.phys " << bsl::hex(ents.l3e->phys) << bsl::endl;
-                bsl::debug() << "ents.l2e.phys " << bsl::hex(ents.l2e->phys) << bsl::endl;
-                bsl::debug() << "ents.l1e.phys " << bsl::hex(ents.l1e->phys) << bsl::endl;
-                bsl::debug() << "ents.l0e.phys " << bsl::hex(ents.l0e->phys) << bsl::endl;
-                auto const spa{(ents.l0e->phys << HYPERVISOR_PAGE_SHIFT) | (gpa & ~gpa_mask)};
 
-                bsl::error() << "gpa_to_spa " << bsl::hex(gpa) << " -> spa " << bsl::hex(spa) << bsl::endl;
-                return spa;
+                if (bsl::unlikely(nullptr == ents.l0e)) {
+                    bsl::error()
+                        << "Unable to get the SPA from GPA "    // --
+                        << bsl::hex(gpa)                        // --
+                        << bsl::endl                            // --
+                        << bsl::here();                         // --
+
+                    return bsl::safe_u64::failure();
+                }
+
+                return {(ents.l0e->phys << HYPERVISOR_PAGE_SHIFT) | (gpa & ~gpa_mask)};
             }
-
         }
     };
 }

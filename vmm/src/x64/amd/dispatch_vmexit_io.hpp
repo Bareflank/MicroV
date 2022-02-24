@@ -189,6 +189,11 @@ namespace microv
         if (((exitinfo1 & strn_mask) >> strn_shft).is_pos()) {
             using page_t = bsl::array<uint8_t, HYPERVISOR_PAGE_SIZE.get()>;
 
+            if (bsl::unlikely(mut_spa.is_invalid())) {
+                bsl::error() << bsl::here();
+                return vmexit_failure_advance_ip_and_run;
+            }
+
             constexpr auto gpa_mask{0xFFFFFFFFFFFFF000_u64};
             auto const page{mut_pp_pool.map<page_t>(mut_sys, mut_spa & gpa_mask)};
 
