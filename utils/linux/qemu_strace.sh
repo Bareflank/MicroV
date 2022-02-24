@@ -11,7 +11,7 @@ set -e
 
 if [ -z ${QEMU_PATH+x} ]; then
   # QEMU_PATH=$(dirname $(which qemu-system-x86_64))
-  QEMU_PATH="/home/jp/qemu/x86_64-softmmu/"
+  QEMU_PATH="${HOME}/qemu/x86_64-softmmu/"
   # QEMU_PATH="/home/jp/qemu-6.2.0/build/"
 fi
 
@@ -24,7 +24,7 @@ if [ -z ${BUILD_DIR+x} ]; then
 fi
 
 if [ -z ${KERNEL_PATH+x} ]; then
-  KERNEL_PATH="$(pwd)/vm_cross_compile/bin/bzImage-debug"
+  KERNEL_PATH="${HOME}/microv/build/qemu/vm_storage/EFI/bzImage.efi"
 fi
 
 if [ -z ${INITRD_PATH+x} ]; then
@@ -35,11 +35,11 @@ if [ -z ${VM_NAME+x} ]; then
   VM_NAME=32bit_endless_loop_test
 fi
 
-if [ -z ${BIOS_PATH+x} ]; then
-  BIOS_PATH="~/edk2/Build/OvmfIa32/DEBUG_GCC5/FV/OVMF.fd"
+if [[ -z ${BIOS_PATH+x} ]]; then
+  BIOS_PATH="${HOME}/edk2/Build/OvmfX64/DEBUG_GCC5/FV/OVMF.fd"
 fi
 
-if [ -f ${BIOS_PATH} ]; then
+if [[ -f $BIOS_PATH ]]; then
   BIOS_ARG="-bios ${BIOS_PATH}"
 else
   echo ${BIOS_PATH} does not exist. Using default bios instead.
@@ -122,14 +122,16 @@ run_linux() {
   $QEMU_PATH/qemu-system-x86_64 \
     -machine type=q35,accel=kvm \
     -cpu host \
-    ${BIOS_ARG} \
+    -bios ${BIOS_PATH} \
     -kernel ${KERNEL_PATH} \
     -initrd ${INITRD_PATH} \
-    -append "console=uart,io,0x3F8,115200n8,keep" \
+    -append "console=uart,io,0x3F8,115200n8,keep noapic" \
     -chardev stdio,id=char0,mux=on,logfile=$BUILD_DIR/qemu_linux.log,signal=off \
     -serial chardev:char0 -mon chardev=char0 \
-    -m size=64M \
+    -m size=296M \
     -nographic \
+    -debugcon file:best.log -global isa-debugcon.iobase=0x402 \
+    -D qemu-dbg.log
     # --trace 'kvm_*' \
     # -s -S \
 
