@@ -50,6 +50,8 @@ namespace microv
     {
         /// @brief stores the ID of the VS associated with this emulated_io_t
         bsl::safe_u16 m_assigned_vsid{};
+        /// @brief stores the SPA destination of a string IO read intercept
+        bsl::safe_u64 m_spa{};
 
     public:
         /// <!-- description -->
@@ -125,6 +127,33 @@ namespace microv
         {
             bsl::ensures(m_assigned_vsid.is_valid_and_checked());
             return ~m_assigned_vsid;
+        }
+
+        /// <!-- description -->
+        ///   @brief Returns the SPA that was cached during the last string IO
+        ///     intercepts. This is to prevent having to walk the page table a
+        ///     second time prior to resuming a guest.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @return Returns the cached SPA of the last string IO intercepts.
+        ///
+        [[nodiscard]] constexpr auto
+        spa() const noexcept -> bsl::safe_u64
+        {
+            bsl::expects(m_assigned_vsid.is_valid_and_checked());
+            return m_spa;
+        }
+
+        /// <!-- description -->
+        ///   @brief Set and cache an SPA during a string IO intercepts. This is
+        ///     to prevent having to walk the page table a second time prior to
+        ///     resuming a guest.
+        ///
+        constexpr void
+        set_spa(bsl::safe_u64 const &spa) noexcept
+        {
+            bsl::expects(m_assigned_vsid.is_valid_and_checked());
+            m_spa = spa;
         }
     };
 }

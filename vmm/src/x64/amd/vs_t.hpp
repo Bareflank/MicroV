@@ -2587,6 +2587,42 @@ namespace microv
             m_clock = clock;
             return mut_ret;
         }
+
+        /// <!-- description -->
+        ///   @brief Returns the SPA that was cached during the last string IO
+        ///     intercepts. This is to prevent having to walk the page table a
+        ///     second time prior to resuming a guest.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param sys the bf_syscall_t to use
+        ///   @return Returns the cached SPA of the last string IO intercepts.
+        ///
+        [[nodiscard]] constexpr auto
+        io_spa(syscall::bf_syscall_t const &sys) const noexcept -> bsl::safe_u64
+        {
+            bsl::expects(allocated_status_t::allocated == m_allocated);
+            bsl::expects(running_status_t::running != m_status);
+            bsl::expects(sys.bf_tls_ppid() == this->assigned_pp());
+
+            return m_emulated_io.spa();
+        }
+
+        /// <!-- description -->
+        ///   @brief Set and cache an SPA during a string IO intercepts. This is
+        ///     to prevent having to walk the page table a second time prior to
+        ///     resuming a guest.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param sys the bf_syscall_t to use
+        ///
+        constexpr void
+        io_set_spa(syscall::bf_syscall_t const &sys, bsl::safe_u64 const &spa) noexcept
+        {
+            bsl::expects(allocated_status_t::allocated == m_allocated);
+            bsl::expects(sys.bf_tls_ppid() == this->assigned_pp());
+
+            m_emulated_io.set_spa(spa);
+        }
     };
 }
 

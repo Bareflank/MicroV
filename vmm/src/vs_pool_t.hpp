@@ -923,6 +923,41 @@ namespace microv
         {
             return this->get_vs(vsid)->cpuid_set_list(sys, cdl);
         }
+
+        /// <!-- description -->
+        ///   @brief Returns the SPA that was cached during the last string IO
+        ///     intercepts. This is to prevent having to walk the page table a
+        ///     second time prior to resuming a guest.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param sys the bf_syscall_t to use
+        ///   @param vsid the ID of the vs_t to set
+        ///   @return Returns the cached SPA of the last string IO intercepts.
+        ///
+        [[nodiscard]] constexpr auto
+        io_spa(
+            syscall::bf_syscall_t const &sys,
+            bsl::safe_u16 const &vsid) const noexcept -> bsl::safe_u64
+        {
+            return this->get_vs(vsid)->io_spa(sys);
+        }
+
+        /// <!-- description -->
+        ///   @brief Set and cache an SPA during a string IO intercepts. This is
+        ///     to prevent having to walk the page table a second time prior to
+        ///     resuming a guest.
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param sys the bf_syscall_t to use
+        ///   @param vsid the ID of the vs_t to set
+        ///
+        constexpr void
+        io_set_spa(
+            syscall::bf_syscall_t const &sys,
+            bsl::safe_u16 const &vsid, bsl::safe_u64 const &spa) noexcept
+        {
+            this->get_vs(vsid)->io_set_spa(sys, spa);
+        }
     };
 }
 

@@ -117,6 +117,7 @@ namespace microv
 
         if (((exitinfo1 & strn_mask) >> strn_shft).is_pos()) {
             mut_spa = mut_vm_pool.gpa_to_spa(mut_tls, mut_sys, mut_page_pool, rdi, vmid);
+            // mut_vs_pool.io_set_spa(mut_sys, vmid, mut_spa);
         }
         else {
             bsl::touch();
