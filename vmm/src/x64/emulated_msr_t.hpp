@@ -161,11 +161,39 @@ namespace microv
             bsl::discard(sys);
             bsl::discard(msr);
             constexpr auto MSR_MTRRCap{0xfe_u32};
+            constexpr auto MSR_PatchLevel{0x8b_u32};
+            constexpr auto MSR_SMMTseg{0xC0010112_u32};
+            constexpr auto MSR_SYSCFG{0xC0010010_u32};
+            constexpr auto MSR_IDFK{0xC0011029_u32};
+            constexpr auto MSR_PERF_CTL0{0xC0010000_u32};
+            constexpr auto MSR_PERF_CTL1{0xC0010001_u32};
+            constexpr auto MSR_PERF_CTL2{0xC0010002_u32};
+            constexpr auto MSR_PERF_CTL3{0xC0010003_u32};
+            constexpr auto MSR_PERF_CTR0{0xC0010004_u32};
+            constexpr auto MSR_PERF_CTR1{0xC0010005_u32};
+            constexpr auto MSR_PERF_CTR2{0xC0010006_u32};
+            constexpr auto MSR_PERF_CTR3{0xC0010007_u32};
 
 
             switch (bsl::to_u32_unsafe(msr).get()) {
                 case MSR_MTRRCap.get(): {
                     return sys.bf_intrinsic_op_rdmsr(bsl::to_u32(msr));
+                }
+                case MSR_PatchLevel.get(): 
+                case MSR_SMMTseg.get():
+                case MSR_SYSCFG.get(): 
+                case MSR_IDFK.get(): 
+                case MSR_PERF_CTL0.get():
+                case MSR_PERF_CTL1.get():
+                case MSR_PERF_CTL2.get():
+                case MSR_PERF_CTL3.get():
+                case MSR_PERF_CTR0.get():
+                case MSR_PERF_CTR1.get():
+                case MSR_PERF_CTR2.get():
+                case MSR_PERF_CTR3.get():
+                {
+                    constexpr auto zero_val{0x0_u64};
+                    return zero_val;
                 }
 
                 default: {
