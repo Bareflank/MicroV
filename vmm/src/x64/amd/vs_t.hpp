@@ -581,11 +581,11 @@ namespace microv
                 constexpr auto intercept_drr_idx{syscall::bf_reg_t::bf_reg_t_intercept_dr_read};
                 bsl::expects(mut_sys.bf_vs_op_write(vsid, intercept_drr_idx, intercept_drr_val));
 
-                constexpr auto intercept_drw_val{0xFFFF_u64};
+                constexpr auto intercept_drw_val{0x0000_u64};
                 constexpr auto intercept_drw_idx{syscall::bf_reg_t::bf_reg_t_intercept_dr_write};
                 bsl::expects(mut_sys.bf_vs_op_write(vsid, intercept_drw_idx, intercept_drw_val));
 
-                constexpr auto intercept1_val{0x9F24003B_u64};
+                constexpr auto intercept1_val{0x9D24003B_u64};
                 constexpr auto intercept1_idx{syscall::bf_reg_t::bf_reg_t_intercept_instruction1};
                 bsl::expects(mut_sys.bf_vs_op_write(vsid, intercept1_idx, intercept1_val));
 
