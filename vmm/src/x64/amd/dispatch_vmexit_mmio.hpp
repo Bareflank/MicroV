@@ -214,40 +214,40 @@ namespace microv
         bsl::expects(exitinfo2.is_valid());
 
         auto const op_bytes{mut_sys.bf_vs_op_read(vsid, syscall::bf_reg_t::bf_reg_t_number_of_bytes_fetched)};
-        // auto const opcodes0{mut_sys.bf_vs_op_read(vsid, syscall::bf_reg_t::bf_reg_t_guest_instruction_bytes0)};
-        // auto const opcodes1{mut_sys.bf_vs_op_read(vsid, syscall::bf_reg_t::bf_reg_t_guest_instruction_bytes1)};
-        bsl::uint64 opcodes0{};
-        bsl::uint64 opcodes1{};
+        bsl::uint64 opcodes0{mut_sys.bf_vs_op_read(vsid, syscall::bf_reg_t::bf_reg_t_guest_instruction_bytes0).get()};
+        bsl::uint64 opcodes1{mut_sys.bf_vs_op_read(vsid, syscall::bf_reg_t::bf_reg_t_guest_instruction_bytes1).get()};
+        // bsl::uint64 opcodes0{};
+        // bsl::uint64 opcodes1{};
         auto rip{mut_sys.bf_vs_op_read(vsid, syscall::bf_reg_t::bf_reg_t_rip)};
 
 
 /**************************/
 {
-        // Read the opcodes from guest memory ourselves
-        using page_t = bsl::array<uint8_t, HYPERVISOR_PAGE_SIZE.get()>;
-        auto const vmid{mut_sys.bf_tls_vmid()};
-        bsl::safe_u64 mut_rip_spa{};
+        // // Read the opcodes from guest memory ourselves
+        // using page_t = bsl::array<uint8_t, HYPERVISOR_PAGE_SIZE.get()>;
+        // auto const vmid{mut_sys.bf_tls_vmid()};
+        // bsl::safe_u64 mut_rip_spa{};
 
-        mut_rip_spa = mut_vm_pool.gpa_to_spa(mut_tls, mut_sys, mut_page_pool, rip, vmid);
-        bsl::debug() << "mut_rip_spa = " << bsl::hex(mut_rip_spa) << bsl::endl;
+        // mut_rip_spa = mut_vm_pool.gpa_to_spa(mut_tls, mut_sys, mut_page_pool, rip, vmid);
+        // bsl::debug() << "mut_rip_spa = " << bsl::hex(mut_rip_spa) << bsl::endl;
 
-        constexpr auto gpa_mask{0xFFFFFFFFFFFFF000_u64};
-        constexpr auto eight{8_u64};
-        auto const page{mut_pp_pool.map<page_t>(mut_sys, mut_rip_spa & gpa_mask)};
+        // constexpr auto gpa_mask{0xFFFFFFFFFFFFF000_u64};
+        // constexpr auto eight{8_u64};
+        // auto const page{mut_pp_pool.map<page_t>(mut_sys, mut_rip_spa & gpa_mask)};
 
-        auto const mut_rip_page_idx0{mut_rip_spa & ~gpa_mask};
-        auto const mut_rip_page_idx1{mut_rip_spa & ~gpa_mask + eight};
-        opcodes0 = bsl::to_u64(page.offset_as<bsl::uint64>(mut_rip_page_idx0)).get();
-        // opcodes1 = bsl::to_u64(page.offset_as<bsl::uint64>(mut_rip_page_idx1)).get();
+        // auto const mut_rip_page_idx0{mut_rip_spa & ~gpa_mask};
+        // auto const mut_rip_page_idx1{mut_rip_spa & ~gpa_mask + eight};
+        // opcodes0 = bsl::to_u64(page.offset_as<bsl::uint64>(mut_rip_page_idx0)).get();
+        // // opcodes1 = bsl::to_u64(page.offset_as<bsl::uint64>(mut_rip_page_idx1)).get();
 
-        // TODO handle page boundary
-        // auto const bytes_left{HYPERVISOR_PAGE_SIZE - mut_rip_page_idx};
-        // if (bsl::unlikely(bytes_left.get() < 15U)) {
-        //     bsl::error()
-        //         << "FIXME: page boundary overflow"    // --
-        //         << bsl::endl    // --
-        //         << bsl::here();    // --
-        // }
+        // // TODO handle page boundary
+        // // auto const bytes_left{HYPERVISOR_PAGE_SIZE - mut_rip_page_idx};
+        // // if (bsl::unlikely(bytes_left.get() < 15U)) {
+        // //     bsl::error()
+        // //         << "FIXME: page boundary overflow"    // --
+        // //         << bsl::endl    // --
+        // //         << bsl::here();    // --
+        // // }
 
 }
         // Compare them to opcodes0 and opcodes1
@@ -267,8 +267,8 @@ namespace microv
         // bsl::debug() << "          is_write = " << bsl::hex(is_write) << bsl::endl;
         // bsl::debug() << "          op_bytes = " << bsl::hex(op_bytes) << bsl::endl;
         // bsl::debug() << "          rip = " << bsl::hex(rip) << bsl::endl;
-        bsl::debug() << "          opcodes0 = " << bsl::hex(opcodes0) << bsl::endl;
-        bsl::debug() << "          opcodes1 = " << bsl::hex(opcodes1) << bsl::endl;
+        // bsl::debug() << "          opcodes0 = " << bsl::hex(opcodes0) << bsl::endl;
+        // bsl::debug() << "          opcodes1 = " << bsl::hex(opcodes1) << bsl::endl;
 
         // Disassemble the triggering opcode
         bsl::uint64 mut_instr_len{0};
