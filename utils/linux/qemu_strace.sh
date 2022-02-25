@@ -112,6 +112,9 @@ best_run() {
 run_linux_best() {
   mkdir -p ${BUILD_DIR}
 
+  #may get trashed so copy each time
+  cp -f $HOME/2004_serial.img $BUILD_DIR/
+
   echo Exit console with: ctrl + a, x
 
   $TASKSET $STRACE_PATH/strace -f -o $BUILD_DIR/strace.log  \
@@ -119,11 +122,12 @@ run_linux_best() {
     -machine type=q35,accel=kvm \
     -cpu host \
     -bios ${BIOS_PATH} \
-    -m size=2G \
-    -hda /home/sharkeyj/2004_serial.img \
+    -m size=512M \
+    -hda $BUILD_DIR/2004_serial.img \
     -chardev stdio,id=char0,mux=on,logfile=$BUILD_DIR/qemu_linux.log,signal=off \
     -serial chardev:char0 -mon chardev=char0 \
     -nographic \
+    -debugcon file:best.log -global isa-debugcon.iobase=0x402 \
     -D qemu-dbg.log
     # --trace 'kvm_*' \
     # -s -S \
