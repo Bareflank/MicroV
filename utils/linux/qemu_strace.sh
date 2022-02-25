@@ -12,7 +12,6 @@ set -e
 if [ -z ${QEMU_PATH+x} ]; then
   # QEMU_PATH=$(dirname $(which qemu-system-x86_64))
   QEMU_PATH="${HOME}/qemu/x86_64-softmmu/"
-  # QEMU_PATH="/home/jp/qemu-6.2.0/build/"
 fi
 
 if [ -z ${STRACE_PATH+x} ]; then
@@ -110,6 +109,33 @@ best_run() {
 
 }
 
+run_linux_best() {
+  mkdir -p ${BUILD_DIR}
+
+  echo Exit console with: ctrl + a, x
+
+  $TASKSET $STRACE_PATH/strace -f -o $BUILD_DIR/strace.log  \
+  $QEMU_PATH/qemu-system-x86_64 \
+    -machine type=q35,accel=kvm \
+    -cpu host \
+    -bios ${BIOS_PATH} \
+    -m size=2G \
+    -hda /home/sharkeyj/2004_serial.img \
+    -chardev stdio,id=char0,mux=on,logfile=$BUILD_DIR/qemu_linux.log,signal=off \
+    -serial chardev:char0 -mon chardev=char0 \
+    -nographic \
+    -D qemu-dbg.log
+    # --trace 'kvm_*' \
+    # -s -S \
+
+    # -chardev stdio,id=char0,mux=on,logfile=$BUILD_DIR/qemu_linux.log,signal=off \
+    # -serial chardev:char0 -mon chardev=char0 \
+    # -nographic \
+    # -boot d\
+    # -cdrom /home/sharkeyj/Downloads/ubuntu-20.04.4-live-server-amd64.iso \
+
+  grep KVM $BUILD_DIR/strace.log > $BUILD_DIR/strace_kvm_only.log
+}
 
 #######################################################################################
 
@@ -134,6 +160,7 @@ run_linux() {
     -D qemu-dbg.log
     # --trace 'kvm_*' \
     # -s -S \
+
 
   grep KVM $BUILD_DIR/strace.log > $BUILD_DIR/strace_kvm_only.log
 }
@@ -174,6 +201,9 @@ case "$1" in
     run_linux
     ;;
 
+  run_linux_best)
+    run_linux_best
+    ;;
 
   best_run)
     best_run
