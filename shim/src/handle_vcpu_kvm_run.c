@@ -260,10 +260,14 @@ handle_vcpu_kvm_run_io(
 NODISCARD int64_t
 pre_run_op_io(struct shim_vcpu_t *const pmut_vcpu, struct mv_run_t *const pmut_mv_run) NOEXCEPT
 {
+    uint64_t mut_bytes;
+
     platform_expects(NULL != pmut_vcpu);
     platform_expects(NULL != pmut_vcpu->run);
     platform_expects(KVM_EXIT_IO == pmut_vcpu->run->exit_reason);
     platform_expects(NULL != pmut_mv_run);
+
+    mut_bytes = (uint64_t)pmut_vcpu->run->io.count * (uint64_t)pmut_vcpu->run->io.size;
 
     if (KVM_EXIT_IO_IN != (int)pmut_vcpu->run->io.direction) {
         return SHIM_SUCCESS;
@@ -275,23 +279,14 @@ pre_run_op_io(struct shim_vcpu_t *const pmut_vcpu, struct mv_run_t *const pmut_m
         pmut_mv_run->reg_entries[0].reg = (uint64_t)mv_reg_t_rax;
         pmut_mv_run->reg_entries[0].val = pmut_vcpu->run->io.reg0;
     }
-    else if ((uint32_t)MV_RUN_MAX_MEM_REGION_SIZE < pmut_vcpu->run->io.count) {
+    else if ((uint32_t)MV_RUN_MAX_IOMEM_SIZE < mut_bytes) {
         bferror_d32("FIXME: PIO size too big.", pmut_vcpu->run->io.count);
         // TODO: Implement run_op continuation
         return SHIM_FAILURE;
     }
     else {
-        uint64_t const bytes = (uint64_t)pmut_vcpu->run->io.count * (uint64_t)pmut_vcpu->run->io.size;
-        uint64_t const dst = (uint64_t)0x42U;
-
-        pmut_mv_run->mdl_entry.bytes = bytes;
-        pmut_mv_run->mdl_entry.dst = dst;    // FIXME
-
-        platform_memcpy(pmut_mv_run->mem, pmut_vcpu->run->io.data, bytes);
-
-        pmut_mv_run->num_reg_entries = (uint64_t)0U;
-        bferror_d32("FIXME: PIO address destination.", pmut_vcpu->run->io.count);
-        return SHIM_FAILURE;
+        pmut_mv_run->num_iomem = mut_bytes;
+        platform_memcpy(pmut_mv_run->iomem, pmut_vcpu->run->io.data, mut_bytes);
     }
 
     switch ((int)pmut_vcpu->run->io.size) {
@@ -424,7 +419,7 @@ pre_run_op(struct shim_vcpu_t *const pmut_vcpu, struct mv_run_t *const pmut_mv_r
     ///
     pmut_mv_run->num_reg_entries = (uint64_t)0U;
     pmut_mv_run->num_msr_entries = (uint64_t)0U;
-    pmut_mv_run->mdl_entry.bytes = (uint64_t)0U;
+    pmut_mv_run->num_iomem = (uint64_t)0U;
 
     switch (pmut_vcpu->run->exit_reason) {
         case KVM_EXIT_IO: {

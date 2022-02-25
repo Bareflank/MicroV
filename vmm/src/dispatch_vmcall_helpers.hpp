@@ -32,6 +32,7 @@
 #include <mv_reg_t.hpp>
 
 #include <bsl/convert.hpp>
+#include <bsl/cstring.hpp>
 #include <bsl/debug.hpp>
 #include <bsl/errc_type.hpp>
 #include <bsl/safe_integral.hpp>
@@ -1679,7 +1680,7 @@ namespace microv
     ///   @param mut_tls the tls_t to use
     ///   @param mut_sys the bf_syscall_t to use
     ///   @param intrinsic the intrinsic_t to use
-    ///   @param pp_pool the pp_pool_t to use
+    ///   @param mut_pp_pool the pp_pool_t to use
     ///   @param vm_pool the vm_pool_t to use
     ///   @param vp_pool the vp_pool_t to use
     ///   @param mut_vs_pool the vs_pool_t to use
@@ -1693,7 +1694,7 @@ namespace microv
         tls_t &mut_tls,
         syscall::bf_syscall_t &mut_sys,
         intrinsic_t const &intrinsic,
-        pp_pool_t const &pp_pool,
+        pp_pool_t &mut_pp_pool,
         vm_pool_t const &vm_pool,
         vp_pool_t const &vp_pool,
         vs_pool_t &mut_vs_pool,
@@ -1706,7 +1707,6 @@ namespace microv
         bsl::expects(mut_tls.parent_vsid == hypercall::MV_INVALID_ID);
 
         bsl::discard(intrinsic);
-        bsl::discard(pp_pool);
         bsl::discard(vm_pool);
 
         auto const vpid{mut_vs_pool.assigned_vp(vsid)};
@@ -1742,6 +1742,9 @@ namespace microv
         else if (run.num_msr_entries > hypercall::MV_RUN_MAX_MSR_ENTRIES.get()) {
             return bsl::errc_failure;
         }
+        else if (run.num_iomem > hypercall::MV_RUN_MAX_IOMEM_SIZE.get()) {
+            return bsl::errc_failure;
+        }
         else {
             bsl::touch();
         }
@@ -1773,6 +1776,45 @@ namespace microv
                 return ret;
             }
 
+            bsl::touch();
+        }
+
+        auto const bytes{bsl::to_u64(run.num_iomem)};
+        if (bytes > bsl::safe_u64::magic_0()) {
+            using page_t = bsl::array<uint8_t, HYPERVISOR_PAGE_SIZE.get()>;
+
+            auto const spa{mut_vs_pool.io_spa(mut_sys, vsid)};
+            if (bsl::unlikely(spa.is_invalid())) {
+                bsl::error() << bsl::here();
+                return bsl::errc_failure;
+            }
+
+            constexpr auto gpa_mask{0xFFFFFFFFFFFFF000_u64};
+            auto const page{mut_pp_pool.map<page_t>(mut_sys, spa & gpa_mask)};
+
+            // TODO handle page boundary
+            auto const idx{spa & ~gpa_mask};
+            auto const bytes_left{(HYPERVISOR_PAGE_SIZE - idx).checked()};
+            if (bsl::unlikely(bytes_left < bytes)) {
+                bsl::error()
+                    << "FIXME: page boundary overflow"    // --
+                    << bsl::endl                          // --
+                    << bsl::here();                       // --
+                return bsl::errc_failure;
+            }
+
+            auto mut_data{page.span(idx, bytes)};
+            if (bsl::unlikely(mut_data.is_invalid())) {
+                bsl::error()
+                    << "data is invalid"    // --
+                    << bsl::endl            // --
+                    << bsl::here();         // --
+                return bsl::errc_failure;
+            }
+
+            bsl::builtin_memcpy(mut_data.data(), run.iomem.data(), mut_data.size_bytes());
+        }
+        else {
             bsl::touch();
         }
 

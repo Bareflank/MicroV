@@ -43,7 +43,7 @@ extern "C"
 /** @brief defines the max number of MSR entries */
 #define MV_RUN_MAX_MSR_ENTRIES ((uint64_t)0xA)
 /** @brief defines the largest possible size for the memory region */
-#define MV_RUN_MAX_MEM_REGION_SIZE ((uint64_t)0xE90)
+#define MV_RUN_MAX_IOMEM_SIZE ((uint64_t)0xEA8)
 
     /**
      * <!-- description -->
@@ -61,10 +61,10 @@ extern "C"
         /** @brief stores the MSR entries */
         struct mv_rdl_entry_t msr_entries[MV_RUN_MAX_MSR_ENTRIES];
 
-        /** @brief stores the MDL entry */
-        struct mv_mdl_entry_t mdl_entry;
+        /** @brief stores the number of iomem */
+        uint64_t num_iomem;
         /** @brief stores the memory region buffer */
-        uint8_t mem[MV_RUN_MAX_MEM_REGION_SIZE];
+        uint8_t iomem[MV_RUN_MAX_IOMEM_SIZE];
     };
 
 #pragma pack(pop)
