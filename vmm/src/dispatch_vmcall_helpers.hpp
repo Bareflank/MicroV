@@ -1736,8 +1736,15 @@ namespace microv
             return bsl::errc_failure;
         }
 
-        bsl::expects(run.num_reg_entries <= hypercall::MV_RUN_MAX_REG_ENTRIES.get());
-        bsl::expects(run.num_msr_entries <= hypercall::MV_RUN_MAX_MSR_ENTRIES.get());
+        if (bsl::unlikely(run.num_reg_entries > hypercall::MV_RUN_MAX_REG_ENTRIES.get())) {
+            return bsl::errc_failure;
+        }
+        else if (run.num_msr_entries > hypercall::MV_RUN_MAX_MSR_ENTRIES.get()) {
+            return bsl::errc_failure;
+        }
+        else {
+            bsl::touch();
+        }
 
         for (bsl::safe_idx mut_i{}; mut_i < run.num_reg_entries; ++mut_i) {
             auto const reg{bsl::to_u64(run.reg_entries.at_if(mut_i)->reg)};
