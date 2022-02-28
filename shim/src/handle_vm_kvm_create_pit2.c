@@ -23,21 +23,44 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-
+#include <debug.h>
+#include <detect_hypervisor.h>
+#include <g_mut_hndl.h>
 #include <kvm_pit_config.h>
+#include <mv_constants.h>
 #include <mv_types.h>
+#include <platform.h>
+#include <shim_vm_t.h>
 
 /**
  * <!-- description -->
  *   @brief Handles the execution of kvm_create_pit2.
  *
  * <!-- inputs/outputs -->
+ *   @param pmut_vm the VM to add the VCPU to
  *   @param pmut_ioctl_args the arguments provided by userspace
  *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
  */
 NODISCARD int64_t
-handle_vm_kvm_create_pit2(struct kvm_pit_config *const pmut_ioctl_args) NOEXCEPT
+handle_vm_kvm_create_pit2(
+    struct shim_vm_t *const pmut_vm, struct kvm_pit_config *const pmut_ioctl_args) NOEXCEPT
 {
-    (void)pmut_ioctl_args;
+    platform_expects(MV_INVALID_HANDLE != g_mut_hndl);
+    platform_expects(NULL != pmut_vm);
+
+    if (detect_hypervisor()) {
+        bferror("The shim is not running in a VM. Did you forget to start MicroV?");
+        return SHIM_FAILURE;
+    }
+    if ((uint32_t)1 != pmut_ioctl_args->flag) {
+        bferror("The pit_config flag must be 1 (KVM_PIT_SPEAKER_DUMMY)");
+        return SHIM_FAILURE;
+    }
+
+    //NOTE: Below hypercall to be uncommented when it is fully implemented.
+    // if (mv_vp_op_create_pit2(g_mut_hndl, pmut_vm->vmid, pmut_ioctl_args->flag)) {
+    //     bferror("mv_vp_op_create_pit2 failed");
+    //     return SHIM_FAILURE;
+    // }
     return SHIM_SUCCESS;
 }

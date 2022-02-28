@@ -23,21 +23,53 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+#include "kvm_irqchip.h"
+#include "mv_types.h"
+#include "platform.h"
+#include "shim_vm_t.h"
 
-#include <kvm_irqchip.h>
-#include <mv_types.h>
+#include <debug.h>
+#include <detect_hypervisor.h>
 
 /**
  * <!-- description -->
  *   @brief Handles the execution of kvm_get_irqchip.
  *
  * <!-- inputs/outputs -->
- *   @param pmut_ioctl_args the arguments provided by userspace
+ *   @param pmut_vm the argument for vm handle
+ *   @param pmut_userargs the arguments provided by userspace
  *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
  */
 NODISCARD int64_t
-handle_vm_kvm_get_irqchip(struct kvm_irqchip *const pmut_ioctl_args) NOEXCEPT
+handle_vm_kvm_get_irqchip(
+    struct shim_vm_t *const pmut_vm, struct kvm_irqchip *const pmut_userargs) NOEXCEPT
 {
-    (void)pmut_ioctl_args;
+    platform_expects(NULL != pmut_vm);
+    platform_expects(NULL != pmut_userargs);
+
+    if (detect_hypervisor()) {
+        bferror("The shim is not running in a VM. Did you forget to start MicroV?");
+        return SHIM_FAILURE;
+    }
+
+    platform_mutex_lock(&pmut_vm->mutex);
+    if (!pmut_vm->is_irqchip_created) {
+        bferror("The IRQCHIP is not created, Did you forget to create it?");
+        return SHIM_FAILURE;
+    }
+    platform_mutex_unlock(&pmut_vm->mutex);
+    /*  
+    //Get PIC status in hypercall "mv_vm_op_get_pic" 
+    if (mv_vm_op_get_pic(pmut_vm, pmut_userargs)) {
+        bferror("mv_vm_op_get_pic failed");
+        return SHIM_FAILURE;
+    }
+
+    // Get PIC status in hypercall "mv_vm_op_get_iopic" 
+    if (mv_vm_op_get_iopic(pmut_vm, pmut_userargs)) {
+        bferror("mv_vm_op_get_iopic failed");
+        return SHIM_FAILURE;
+    }
+    */
     return SHIM_SUCCESS;
 }

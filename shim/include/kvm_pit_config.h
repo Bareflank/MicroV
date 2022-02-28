@@ -29,6 +29,10 @@
 
 #include <stdint.h>
 
+#ifdef __clang__
+#pragma clang diagnostic ignored "-Wold-style-cast"
+#endif
+
 #ifdef __cplusplus
 extern "C"
 {
@@ -36,16 +40,22 @@ extern "C"
 
 #pragma pack(push, 1)
 
+/** @brief defines the pad_size */
+#define PAD_SIZE_PIT2 ((uint64_t)15)
+
     /**
      * @struct kvm_pit_config
      *
      * <!-- description -->
      *   @brief see /include/uapi/linux/kvm.h in Linux for more details.
      */
+
     struct kvm_pit_config
     {
-        /** @brief replace me with contents from KVM API */
-        int32_t dummy;
+        /** @brief stores the flag value */
+        uint32_t flag;
+        /** @brief stores the pad value */
+        uint32_t pad[PAD_SIZE_PIT2];
     };
 
 #pragma pack(pop)

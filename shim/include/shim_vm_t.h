@@ -32,6 +32,7 @@
 #include <mv_types.h>
 #include <platform.h>
 #include <shim_vcpu_t.h>
+#include <stdbool.h>
 #include <stdint.h>
 
 #ifdef __cplusplus
@@ -60,6 +61,9 @@ extern "C"
 
         /** @brief stores the ID of the MicroV VM associated with this VCPU */
         uint16_t vmid;
+
+        /** @brief stores whether or not irqchip is created */
+        bool is_irqchip_created;
 
         /** @brief stores the VCPUs associated with this VM */
         struct shim_vcpu_t vcpus[MICROV_MAX_VCPUS];

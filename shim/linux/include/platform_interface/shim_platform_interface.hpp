@@ -31,10 +31,12 @@
 #include <kvm_cpuid2.hpp>
 #include <kvm_cpuid_entry2.hpp>
 #include <kvm_fpu.hpp>
+#include <kvm_irqchip.hpp>
 #include <kvm_mp_state.hpp>
 #include <kvm_msr_entry.hpp>
 #include <kvm_msr_list.hpp>
 #include <kvm_msrs.hpp>
+#include <kvm_pit_config.hpp>
 #include <kvm_regs.hpp>
 #include <kvm_sregs.hpp>
 #include <kvm_userspace_memory_region.hpp>
@@ -60,7 +62,6 @@
 // #include <kvm_ioeventfd.hpp>
 // #include <kvm_irq_level.hpp>
 // #include <kvm_irq_routing.hpp>
-// #include <kvm_irqchip.hpp>
 // #include <kvm_irqfd.hpp>
 #include <kvm_lapic_state.hpp>
 // #include <kvm_mp_state.hpp>
@@ -165,10 +166,12 @@ namespace shim
     constexpr bsl::safe_umx KVM_CREATE_IRQCHIP{static_cast<bsl::uintmx>(_IO(SHIMIO.get(), 0x60))};
     // /// @brief defines KVM's KVM_IRQ_LINE IOCTL
     // constexpr bsl::safe_umx KVM_IRQ_LINE{static_cast<bsl::uintmx>(_IOW(SHIMIO.get(), 0x61, struct kvm_irq_level))};
-    // /// @brief defines KVM's KVM_GET_IRQCHIP IOCTL
-    // constexpr bsl::safe_umx KVM_GET_IRQCHIP{static_cast<bsl::uintmx>(_IOWR(SHIMIO.get(), 0x62, struct kvm_irqchip))};
-    // /// @brief defines KVM's KVM_SET_IRQCHIP IOCTL
-    // constexpr bsl::safe_umx KVM_SET_IRQCHIP{static_cast<bsl::uintmx>(_IOR(SHIMIO.get(), 0x63, struct kvm_irqchip))};
+    /// @brief defines KVM's KVM_GET_IRQCHIP IOCTL
+    constexpr bsl::safe_umx KVM_GET_IRQCHIP{
+        static_cast<bsl::uintmx>(_IOWR(SHIMIO.get(), 0x62, struct kvm_irqchip))};
+    /// @brief defines KVM's KVM_SET_IRQCHIP IOCTL
+    constexpr bsl::safe_umx KVM_SET_IRQCHIP{
+        static_cast<bsl::uintmx>(_IOR(SHIMIO.get(), 0x63, struct kvm_irqchip))};
     // /// @brief defines KVM's KVM_XEN_HVM_CONFIG IOCTL
     // constexpr bsl::safe_umx KVM_XEN_HVM_CONFIG{static_cast<bsl::uintmx>(_IOW(SHIMIO.get(), 0x7a, struct kvm_xen_hvm_config))};
     // /// @brief defines KVM's KVM_GET_CLOCK IOCTL
@@ -236,8 +239,9 @@ namespace shim
     constexpr bsl::safe_umx KVM_KVMCLOCK_CTRL{static_cast<bsl::uintmx>(_IO(SHIMIO.get(), 0xad))};
     // /// @brief defines KVM's KVM_SIGNAL_MSI IOCTL
     // constexpr bsl::safe_umx KVM_SIGNAL_MSI{static_cast<bsl::uintmx>(_IOW(SHIMIO.get(), 0xa5, struct kvm_msi))};
-    // /// @brief defines KVM's KVM_CREATE_PIT2 IOCTL
-    // constexpr bsl::safe_umx KVM_CREATE_PIT2{static_cast<bsl::uintmx>(_IOW(SHIMIO.get(), 0x77, struct kvm_pit_config))};
+    /// @brief defines KVM's KVM_CREATE_PIT2 IOCTL
+    constexpr bsl::safe_umx KVM_CREATE_PIT2{
+        static_cast<bsl::uintmx>(_IOW(SHIMIO.get(), 0x77, struct kvm_pit_config))};
     // /// @brief defines KVM's KVM_GET_PIT2 IOCTL
     // constexpr bsl::safe_umx KVM_GET_PIT2{static_cast<bsl::uintmx>(_IOR(SHIMIO.get(), 0x9f, struct kvm_pit_state2))};
     // /// @brief defines KVM's KVM_SET_PIT2 IOCTL

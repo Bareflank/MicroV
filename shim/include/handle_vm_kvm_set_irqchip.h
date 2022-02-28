@@ -29,7 +29,7 @@
 
 #include <kvm_irqchip.h>
 #include <mv_types.h>
-
+#include <shim_vm_t.h>
 #ifdef __cplusplus
 extern "C"
 {
@@ -40,10 +40,12 @@ extern "C"
      *   @brief Handles the execution of kvm_set_irqchip.
      *
      * <!-- inputs/outputs -->
-     *   @param pmut_ioctl_args the arguments provided by userspace
+     *   @param pmut_vm the arguments to holf VM handle
+     *   @param pmut_userargs the arguments provided by userspace.
      *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
      */
-    NODISCARD int64_t handle_vm_kvm_set_irqchip(struct kvm_irqchip *const pmut_ioctl_args) NOEXCEPT;
+    NODISCARD int64_t handle_vm_kvm_set_irqchip(
+        struct shim_vm_t *const pmut_vm, struct kvm_irqchip *const pmut_userargs) NOEXCEPT;
 
 #ifdef __cplusplus
 }

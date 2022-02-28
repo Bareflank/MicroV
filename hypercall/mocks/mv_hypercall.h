@@ -1170,6 +1170,27 @@ extern "C"
 
     /**
      * <!-- description -->
+     *   @brief Handles the execution of mv_vp_op_create_pit2.
+     *
+     * <!-- inputs/outputs -->
+     *   @param hndl the global handle
+     *   @param vmid pointer of vm
+     *   @param user_args the arguments provided by userspace
+     *   @return Returns MV_STATUS_SUCCESS on success, MV_STATUS_FAILURE_UNKNOWN
+     *     and friends on failure.
+     */
+    NODISCARD static inline mv_status_t
+    mv_vp_op_create_pit2(
+        uint64_t const hndl, uint16_t const vmid, uint32_t const user_args) NOEXCEPT
+    {
+        (void)hndl;
+        (void)vmid;
+        (void)user_args;
+        return (uint64_t)MV_STATUS_SUCCESS;
+    }
+
+    /**
+     * <!-- description -->
      *   @brief This hypercall tells MicroV to set the values of multiple
      *     requested registers using a Register Descriptor List (RDL) in the
      *     shared page. For this ABI, the reg field of each mv_rdl_entry_t
