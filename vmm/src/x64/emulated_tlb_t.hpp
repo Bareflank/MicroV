@@ -144,26 +144,31 @@ namespace microv
         ///
         /// <!-- inputs/outputs -->
         ///   @param mut_sys the bf_syscall_t to use
+        ///   @param mut_tls the tls_t to use
+        ///   @param mut_page_pool the page_pool_t to use
         ///   @param mut_pp_pool the pp_pool_t to use
+        ///   @param mut_vm_pool the vm_pool_t to use
         ///   @param gla the GLA to translate to a GPA
-        ///   @param gla_pml4t the GLA of the pml4t_t to get the entry from
+        ///   @param gpa_pml4t the GLA of the pml4t_t to get the entry from
         ///   @return Returns a copy of the requested pml4t_t entry
         ///
         [[nodiscard]] static constexpr auto
         get_pml4te(
             syscall::bf_syscall_t &mut_sys,
+            tls_t &mut_tls,
+            page_pool_t &mut_page_pool,
             pp_pool_t &mut_pp_pool,
+            vm_pool_t &mut_vm_pool,
             bsl::safe_u64 const &gla,
-            bsl::safe_u64 const &gla_pml4t) noexcept -> pml4te_t
+            bsl::safe_u64 const &gpa_pml4t) noexcept -> pml4te_t
         {
             using table_t = lib::basic_page_table_t<pml4te_t const>;
 
             bsl::expects(gla.is_valid_and_checked());
-            bsl::expects(hypercall::mv_is_page_aligned(gla));
-            bsl::expects(gla_pml4t.is_valid_and_checked());
-            bsl::expects(hypercall::mv_is_page_aligned(gla_pml4t));
+            bsl::expects(gpa_pml4t.is_valid_and_checked());
+            bsl::expects(hypercall::mv_is_page_aligned(gpa_pml4t));
 
-            if (bsl::unlikely(gla_pml4t.is_zero())) {
+            if (bsl::unlikely(gpa_pml4t.is_zero())) {
                 bsl::error() << "get_pml4te for gla "                               // --
                              << bsl::hex(gla)                                       // --
                              << " failed because the gpa of the pml4t_t is NULL"    // --
@@ -173,7 +178,11 @@ namespace microv
                 return {};
             }
 
-            auto const pml4t{mut_pp_pool.map<table_t const>(mut_sys, gla_pml4t)};
+            // Translate the gpa to an spa
+            auto const vmid{mut_sys.bf_tls_vmid()};
+            bsl::safe_u64 const spa_pml4t{mut_vm_pool.gpa_to_spa(mut_tls, mut_sys, mut_page_pool, gpa_pml4t, vmid)};
+
+            auto const pml4t{mut_pp_pool.map<table_t const>(mut_sys, spa_pml4t)};
             if (bsl::unlikely(pml4t.is_invalid())) {
                 bsl::error() << "get_pml4te for gla "                    // --
                              << bsl::hex(gla)                            // --
@@ -189,6 +198,7 @@ namespace microv
                 bsl::error() << "get_pml4te for gla "                                      // --
                              << bsl::hex(gla)                                              // --
                              << " failed because the pml4t entry is not marked present"    // --
+                             << " gla_to_pml4to(gla)"    // --
                              << bsl::endl                                                  // --
                              << bsl::here();                                               // --
 
@@ -208,26 +218,31 @@ namespace microv
         ///
         /// <!-- inputs/outputs -->
         ///   @param mut_sys the bf_syscall_t to use
+        ///   @param mut_tls the tls_t to use
+        ///   @param mut_page_pool the page_pool_t to use
         ///   @param mut_pp_pool the pp_pool_t to use
+        ///   @param mut_vm_pool the vm_pool_t to use
         ///   @param gla the GLA to translate to a GPA
-        ///   @param gla_pdpt the GLA of the pdpt_t to get the entry from
-        ///   @return Returns a copy of the requested pdpt_t entry
+        ///   @param gpa_pdpt the GLA of the pdpte_t to get the entry from
+        ///   @return Returns a copy of the requested pdpte_t entry
         ///
         [[nodiscard]] static constexpr auto
         get_pdpte(
             syscall::bf_syscall_t &mut_sys,
+            tls_t &mut_tls,
+            page_pool_t &mut_page_pool,
             pp_pool_t &mut_pp_pool,
+            vm_pool_t &mut_vm_pool,
             bsl::safe_u64 const &gla,
-            bsl::safe_u64 const &gla_pdpt) noexcept -> pdpte_t
+            bsl::safe_u64 const &gpa_pdpt) noexcept -> pdpte_t
         {
             using table_t = lib::basic_page_table_t<pdpte_t const>;
 
             bsl::expects(gla.is_valid_and_checked());
-            bsl::expects(hypercall::mv_is_page_aligned(gla));
-            bsl::expects(gla_pdpt.is_valid_and_checked());
-            bsl::expects(hypercall::mv_is_page_aligned(gla_pdpt));
+            bsl::expects(gpa_pdpt.is_valid_and_checked());
+            bsl::expects(hypercall::mv_is_page_aligned(gpa_pdpt));
 
-            if (bsl::unlikely(gla_pdpt.is_zero())) {
+            if (bsl::unlikely(gpa_pdpt.is_zero())) {
                 bsl::error() << "get_pdpte for gla "                               // --
                              << bsl::hex(gla)                                      // --
                              << " failed because the gpa of the pdpt_t is NULL"    // --
@@ -237,7 +252,11 @@ namespace microv
                 return {};
             }
 
-            auto const pdpt{mut_pp_pool.map<table_t const>(mut_sys, gla_pdpt)};
+            // Translate the gpa to an spa
+            auto const vmid{mut_sys.bf_tls_vmid()};
+            bsl::safe_u64 const spa_pdpt{mut_vm_pool.gpa_to_spa(mut_tls, mut_sys, mut_page_pool, gpa_pdpt, vmid)};
+
+            auto const pdpt{mut_pp_pool.map<table_t const>(mut_sys, spa_pdpt)};
             if (bsl::unlikely(pdpt.is_invalid())) {
                 bsl::error() << "get_pdpte for gla "                    // --
                              << bsl::hex(gla)                           // --
@@ -272,26 +291,31 @@ namespace microv
         ///
         /// <!-- inputs/outputs -->
         ///   @param mut_sys the bf_syscall_t to use
+        ///   @param mut_tls the tls_t to use
+        ///   @param mut_page_pool the page_pool_t to use
         ///   @param mut_pp_pool the pp_pool_t to use
+        ///   @param mut_vm_pool the vm_pool_t to use
         ///   @param gla the GLA to translate to a GPA
-        ///   @param gla_pdt the GLA of the pdt_t to get the entry from
-        ///   @return Returns a copy of the requested pdt_t entry
+        ///   @param gpa_pdt the GLA of the pdt_t to get the entry from
+        ///   @return Returns a copy of the requested pdte_t entry
         ///
         [[nodiscard]] static constexpr auto
         get_pdte(
             syscall::bf_syscall_t &mut_sys,
+            tls_t &mut_tls,
+            page_pool_t &mut_page_pool,
             pp_pool_t &mut_pp_pool,
+            vm_pool_t &mut_vm_pool,
             bsl::safe_u64 const &gla,
-            bsl::safe_u64 const &gla_pdt) noexcept -> pdte_t
+            bsl::safe_u64 const &gpa_pdt) noexcept -> pdte_t
         {
             using table_t = lib::basic_page_table_t<pdte_t const>;
 
             bsl::expects(gla.is_valid_and_checked());
-            bsl::expects(hypercall::mv_is_page_aligned(gla));
-            bsl::expects(gla_pdt.is_valid_and_checked());
-            bsl::expects(hypercall::mv_is_page_aligned(gla_pdt));
+            bsl::expects(gpa_pdt.is_valid_and_checked());
+            bsl::expects(hypercall::mv_is_page_aligned(gpa_pdt));
 
-            if (bsl::unlikely(gla_pdt.is_zero())) {
+            if (bsl::unlikely(gpa_pdt.is_zero())) {
                 bsl::error() << "get_pdte for gla "                               // --
                              << bsl::hex(gla)                                     // --
                              << " failed because the gpa of the pdt_t is NULL"    // --
@@ -301,7 +325,11 @@ namespace microv
                 return {};
             }
 
-            auto const pdt{mut_pp_pool.map<table_t const>(mut_sys, gla_pdt)};
+            // Translate the gpa to an spa
+            auto const vmid{mut_sys.bf_tls_vmid()};
+            bsl::safe_u64 const spa_pdt{mut_vm_pool.gpa_to_spa(mut_tls, mut_sys, mut_page_pool, gpa_pdt, vmid)};
+
+            auto const pdt{mut_pp_pool.map<table_t const>(mut_sys, spa_pdt)};
             if (bsl::unlikely(pdt.is_invalid())) {
                 bsl::error() << "get_pdte for gla "                    // --
                              << bsl::hex(gla)                          // --
@@ -336,26 +364,31 @@ namespace microv
         ///
         /// <!-- inputs/outputs -->
         ///   @param mut_sys the bf_syscall_t to use
+        ///   @param mut_tls the tls_t to use
+        ///   @param mut_page_pool the page_pool_t to use
         ///   @param mut_pp_pool the pp_pool_t to use
+        ///   @param mut_vm_pool the vm_pool_t to use
         ///   @param gla the GLA to translate to a GPA
-        ///   @param gla_pt the GLA of the pt_t to get the entry from
+        ///   @param gpa_pt the GLA of the pt_t to get the entry from
         ///   @return Returns a copy of the requested pt_t entry
         ///
         [[nodiscard]] static constexpr auto
         get_pte(
             syscall::bf_syscall_t &mut_sys,
+            tls_t &mut_tls,
+            page_pool_t &mut_page_pool,
             pp_pool_t &mut_pp_pool,
+            vm_pool_t &mut_vm_pool,
             bsl::safe_u64 const &gla,
-            bsl::safe_u64 const &gla_pt) noexcept -> pte_t
+            bsl::safe_u64 const &gpa_pt) noexcept -> pte_t
         {
             using table_t = lib::basic_page_table_t<pte_t const>;
 
             bsl::expects(gla.is_valid_and_checked());
-            bsl::expects(hypercall::mv_is_page_aligned(gla));
-            bsl::expects(gla_pt.is_valid_and_checked());
-            bsl::expects(hypercall::mv_is_page_aligned(gla_pt));
+            bsl::expects(gpa_pt.is_valid_and_checked());
+            bsl::expects(hypercall::mv_is_page_aligned(gpa_pt));
 
-            if (bsl::unlikely(gla_pt.is_zero())) {
+            if (bsl::unlikely(gpa_pt.is_zero())) {
                 bsl::error() << "get_pte for gla "                               // --
                              << bsl::hex(gla)                                    // --
                              << " failed because the gpa of the pt_t is NULL"    // --
@@ -365,7 +398,11 @@ namespace microv
                 return {};
             }
 
-            auto const pt{mut_pp_pool.map<table_t const>(mut_sys, gla_pt)};
+            // Translate the gpa to an spa
+            auto const vmid{mut_sys.bf_tls_vmid()};
+            bsl::safe_u64 const spa_pt{mut_vm_pool.gpa_to_spa(mut_tls, mut_sys, mut_page_pool, gpa_pt, vmid)};
+
+            auto const pt{mut_pp_pool.map<table_t const>(mut_sys, spa_pt)};
             if (bsl::unlikely(pt.is_invalid())) {
                 bsl::error() << "get_pte for gla "                    // --
                              << bsl::hex(gla)                         // --
@@ -579,7 +616,10 @@ namespace microv
         [[nodiscard]] constexpr auto
         gla_to_gpa(
             syscall::bf_syscall_t &mut_sys,
+            tls_t &mut_tls,
+            page_pool_t &mut_page_pool,
             pp_pool_t &mut_pp_pool,
+            vm_pool_t &mut_vm_pool,
             bsl::safe_u64 const &gla,
             bsl::safe_u64 const &cr0,
             bsl::safe_u64 const &cr3,
@@ -611,42 +651,42 @@ namespace microv
             ///
 
             auto const pml4t_gpa{hypercall::mv_page_aligned(cr3)};
-            auto const pml4te{get_pml4te(mut_sys, mut_pp_pool, gla, pml4t_gpa)};
+            auto const pml4te{get_pml4te(mut_sys, mut_tls, mut_page_pool, mut_pp_pool, mut_vm_pool, gla, pml4t_gpa)};
             if (bsl::unlikely(bsl::safe_u64::magic_0() == pml4te.p)) {
                 bsl::print<bsl::V>() << bsl::here();
                 return {};
             }
 
             auto const pdpt_gpa{pml4te.phys << HYPERVISOR_PAGE_SHIFT};
-            auto const pdpte{get_pdpte(mut_sys, mut_pp_pool, gla, pdpt_gpa)};
+            auto const pdpte{get_pdpte(mut_sys, mut_tls, mut_page_pool, mut_pp_pool, mut_vm_pool, gla, pdpt_gpa)};
             if (bsl::unlikely(bsl::safe_u64::magic_0() == pdpte.p)) {
                 bsl::print<bsl::V>() << bsl::here();
                 return {};
             }
 
             if (bsl::safe_u64::magic_1() == pdpte.ps) {
-                return {{}, gla, get_paddr(pdpte), get_flags(pdpte), true};
+                return {{}, gla, get_paddr(pdpte) + (gla & 0x3fffffffUL), get_flags(pdpte), true};
             }
 
             auto const pdt_gpa{pdpte.phys << HYPERVISOR_PAGE_SHIFT};
-            auto const pdte{get_pdte(mut_sys, mut_pp_pool, gla, pdt_gpa)};
+            auto const pdte{get_pdte(mut_sys, mut_tls, mut_page_pool, mut_pp_pool, mut_vm_pool, gla, pdt_gpa)};
             if (bsl::unlikely(bsl::safe_u64::magic_0() == pdte.p)) {
                 bsl::print<bsl::V>() << bsl::here();
                 return {};
             }
 
             if (bsl::safe_u64::magic_1() == pdte.ps) {
-                return {{}, gla, get_paddr(pdte), get_flags(pdte), true};
+                return {{}, gla, get_paddr(pdte) + (gla & 0x1fffffUL), get_flags(pdte), true};
             }
 
             auto const pt_gpa{pdte.phys << HYPERVISOR_PAGE_SHIFT};
-            auto const pte{get_pte(mut_sys, mut_pp_pool, gla, pt_gpa)};
+            auto const pte{get_pte(mut_sys, mut_tls, mut_page_pool, mut_pp_pool, mut_vm_pool, gla, pt_gpa)};
             if (bsl::unlikely(bsl::safe_u64::magic_0() == pte.p)) {
                 bsl::print<bsl::V>() << bsl::here();
                 return {};
             }
 
-            return {{}, gla, get_paddr(pte), get_flags(pte), true};
+            return {{}, gla, get_paddr(pte) + (gla & 0xfffUL), get_flags(pte), true};
         }
     };
 }

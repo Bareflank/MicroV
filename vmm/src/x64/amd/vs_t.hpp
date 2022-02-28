@@ -891,7 +891,13 @@ namespace microv
         ///     translation.
         ///
         [[nodiscard]] constexpr auto
-        gla_to_gpa(syscall::bf_syscall_t &mut_sys, pp_pool_t &mut_pp_pool, bsl::safe_u64 const &gla)
+        gla_to_gpa(
+            syscall::bf_syscall_t &mut_sys,
+            tls_t &mut_tls,
+            page_pool_t &mut_page_pool,
+            pp_pool_t &mut_pp_pool,
+            vm_pool_t &mut_vm_pool,
+            bsl::safe_u64 const &gla)
             const noexcept -> hypercall::mv_translation_t
         {
             auto const vsid{this->id()};
@@ -911,7 +917,7 @@ namespace microv
                              << bsl::endl                                   // --
                              << bsl::here();                                // --
 
-                return {};
+                return {{}, gla, gla, {}, true};
             }
 
             auto const cr3{mut_sys.bf_vs_op_read(vsid, syscall::bf_reg_t::bf_reg_t_cr3)};
@@ -925,7 +931,7 @@ namespace microv
                              << bsl::endl                                   // --
                              << bsl::here();                                // --
 
-                return {};
+                return {{}, gla, gla, {}, true};
             }
 
             auto const cr4{mut_sys.bf_vs_op_read(vsid, syscall::bf_reg_t::bf_reg_t_cr4)};
@@ -942,7 +948,7 @@ namespace microv
                 return {};
             }
 
-            return m_emulated_tlb.gla_to_gpa(mut_sys, mut_pp_pool, gla, cr0, cr3, cr4);
+            return m_emulated_tlb.gla_to_gpa(mut_sys, mut_tls, mut_page_pool, mut_pp_pool, mut_vm_pool, gla, cr0, cr3, cr4);
         }
 
         /// <!-- description -->

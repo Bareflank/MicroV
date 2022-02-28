@@ -236,6 +236,8 @@ namespace microv
     ///
     /// <!-- inputs/outputs -->
     ///   @param mut_sys the bf_syscall_t to use
+    ///   @param mut_tls the tls_t to use
+    ///   @param mut_page_pool the page_pool_t to use
     ///   @param mut_pp_pool the pp_pool_t to use
     ///   @param mut_vs_pool the vs_pool_t to use
     ///   @return Returns bsl::errc_success on success, bsl::errc_failure
@@ -243,7 +245,12 @@ namespace microv
     ///
     [[nodiscard]] constexpr auto
     handle_mv_vs_op_gla_to_gpa(
-        syscall::bf_syscall_t &mut_sys, pp_pool_t &mut_pp_pool, vs_pool_t &mut_vs_pool) noexcept
+        syscall::bf_syscall_t &mut_sys,
+        tls_t &mut_tls,
+        page_pool_t &mut_page_pool,
+        pp_pool_t &mut_pp_pool,
+        vm_pool_t &mut_vm_pool,
+        vs_pool_t &mut_vs_pool) noexcept
         -> bsl::errc_type
     {
         bsl::safe_u16 mut_vsid{};
@@ -267,7 +274,7 @@ namespace microv
             return vmexit_failure_advance_ip_and_run;
         }
 
-        auto const translation{mut_vs_pool.gla_to_gpa(mut_sys, mut_pp_pool, gla, mut_vsid)};
+        auto const translation{mut_vs_pool.gla_to_gpa(mut_sys, mut_tls, mut_page_pool, mut_pp_pool, mut_vm_pool, gla, mut_vsid)};
         if (bsl::unlikely(!translation.is_valid)) {
             bsl::print<bsl::V>() << bsl::here();
             set_reg_return(mut_sys, hypercall::MV_STATUS_FAILURE_UNKNOWN);
@@ -1198,7 +1205,7 @@ namespace microv
             }
 
             case hypercall::MV_VS_OP_GLA_TO_GPA_IDX_VAL.get(): {
-                auto const ret{handle_mv_vs_op_gla_to_gpa(mut_sys, mut_pp_pool, mut_vs_pool)};
+                auto const ret{handle_mv_vs_op_gla_to_gpa(mut_sys, mut_tls, mut_page_pool, mut_pp_pool, mut_vm_pool, mut_vs_pool)};
                 if (bsl::unlikely(!ret)) {
                     bsl::print<bsl::V>() << bsl::here();
                     return ret;
