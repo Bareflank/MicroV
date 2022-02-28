@@ -27,6 +27,7 @@ list(APPEND HEADERS
 )
 
 microv_add_shim_integration(kvm_create_vcpu HEADERS)
+microv_add_shim_integration(kvm_create_pit2 HEADERS)
 microv_add_shim_integration(kvm_create_vm HEADERS)
 microv_add_shim_integration(kvm_emulate_interrupts HEADERS)
 microv_add_shim_integration(kvm_get_regs HEADERS)

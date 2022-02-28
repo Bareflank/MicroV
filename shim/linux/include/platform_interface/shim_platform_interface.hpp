@@ -36,6 +36,7 @@
 #include <kvm_msr_entry.hpp>
 #include <kvm_msr_list.hpp>
 #include <kvm_msrs.hpp>
+#include <kvm_pit_config.hpp>
 #include <kvm_regs.hpp>
 #include <kvm_sregs.hpp>
 #include <kvm_userspace_memory_region.hpp>
@@ -236,8 +237,9 @@ namespace shim
     constexpr bsl::safe_umx KVM_KVMCLOCK_CTRL{static_cast<bsl::uintmx>(_IO(SHIMIO.get(), 0xad))};
     // /// @brief defines KVM's KVM_SIGNAL_MSI IOCTL
     // constexpr bsl::safe_umx KVM_SIGNAL_MSI{static_cast<bsl::uintmx>(_IOW(SHIMIO.get(), 0xa5, struct kvm_msi))};
-    // /// @brief defines KVM's KVM_CREATE_PIT2 IOCTL
-    // constexpr bsl::safe_umx KVM_CREATE_PIT2{static_cast<bsl::uintmx>(_IOW(SHIMIO.get(), 0x77, struct kvm_pit_config))};
+    /// @brief defines KVM's KVM_CREATE_PIT2 IOCTL
+    constexpr bsl::safe_umx KVM_CREATE_PIT2{
+        static_cast<bsl::uintmx>(_IOW(SHIMIO.get(), 0x77, struct kvm_pit_config))};
     // /// @brief defines KVM's KVM_GET_PIT2 IOCTL
     // constexpr bsl::safe_umx KVM_GET_PIT2{static_cast<bsl::uintmx>(_IOR(SHIMIO.get(), 0x9f, struct kvm_pit_state2))};
     // /// @brief defines KVM's KVM_SET_PIT2 IOCTL
