@@ -63,7 +63,7 @@
 // #include <kvm_irq_level.hpp>
 // #include <kvm_irq_routing.hpp>
 // #include <kvm_irqfd.hpp>
-// #include <kvm_lapic_state.hpp>
+#include <kvm_lapic_state.hpp>
 // #include <kvm_mp_state.hpp>
 // #include <kvm_msi.hpp>
 // #include <kvm_msrs.hpp>
@@ -221,10 +221,12 @@ namespace shim
     constexpr bsl::safe_umx KVM_GET_TSC_KHZ{static_cast<bsl::uintmx>(_IO(SHIMIO.get(), 0xa3))};
     /// @brief defines KVM's KVM_SET_TSC_KHZ IOCTL
     constexpr bsl::safe_umx KVM_SET_TSC_KHZ{static_cast<bsl::uintmx>(_IO(SHIMIO.get(), 0xa2))};
-    // /// @brief defines KVM's KVM_GET_LAPIC IOCTL
-    // constexpr bsl::safe_umx KVM_GET_LAPIC{static_cast<bsl::uintmx>(_IOR(SHIMIO.get(), 0x8e, struct kvm_lapic_state))};
-    // /// @brief defines KVM's KVM_SET_LAPIC IOCTL
-    // constexpr bsl::safe_umx KVM_SET_LAPIC{static_cast<bsl::uintmx>(_IOW(SHIMIO.get(), 0x8f, struct kvm_lapic_state))};
+    /// @brief defines KVM's KVM_GET_LAPIC IOCTL
+    constexpr bsl::safe_umx KVM_GET_LAPIC{
+        static_cast<bsl::uintmx>(_IOR(SHIMIO.get(), 0x8e, struct kvm_lapic_state))};
+    /// @brief defines KVM's KVM_SET_LAPIC IOCTL
+    constexpr bsl::safe_umx KVM_SET_LAPIC{
+        static_cast<bsl::uintmx>(_IOW(SHIMIO.get(), 0x8f, struct kvm_lapic_state))};
     // /// @brief defines KVM's KVM_IOEVENTFD IOCTL
     // constexpr bsl::safe_umx KVM_IOEVENTFD{static_cast<bsl::uintmx>(_IOW(SHIMIO.get(), 0x79, struct kvm_ioeventfd))};
     /// @brief defines KVM's KVM_NMI IOCTL

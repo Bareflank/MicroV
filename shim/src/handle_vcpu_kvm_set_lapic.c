@@ -24,20 +24,33 @@
  * SOFTWARE.
  */
 
+#include <debug.h>
+#include <detect_hypervisor.h>
 #include <kvm_lapic_state.h>
 #include <mv_types.h>
+#include <platform.h>
+#include <shim_vcpu_t.h>
 
 /**
  * <!-- description -->
  *   @brief Handles the execution of kvm_set_lapic.
  *
  * <!-- inputs/outputs -->
+ *   @param vcpu arguments received from private data
  *   @param pmut_ioctl_args the arguments provided by userspace
  *   @return SHIM_SUCCESS on success, SHIM_FAILURE on failure.
  */
 NODISCARD int64_t
-handle_vcpu_kvm_set_lapic(struct kvm_lapic_state *const pmut_ioctl_args) NOEXCEPT
+handle_vcpu_kvm_set_lapic(
+    struct shim_vcpu_t const *const vcpu, struct kvm_lapic_state *const pmut_ioctl_args) NOEXCEPT
 {
-    (void)pmut_ioctl_args;
+    platform_expects(NULL != vcpu);
+    platform_expects(NULL != pmut_ioctl_args);
+
+    if (detect_hypervisor()) {
+        bferror("The shim is not running in a VM. Did you forget to start MicroV?");
+        return SHIM_FAILURE;
+    }
+    //TODO: Cally the hypercall here after its implementation
     return SHIM_SUCCESS;
 }

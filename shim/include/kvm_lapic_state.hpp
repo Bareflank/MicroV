@@ -24,36 +24,32 @@
  * SOFTWARE.
  */
 
-#ifndef KVM_LAPIC_STATE_H
-#define KVM_LAPIC_STATE_H
+#ifndef KVM_LAPIC_STATE_HPP
+#define KVM_LAPIC_STATE_HPP
 
-#define KVM_APIC_REG_SIZE 1024
-#include <stdint.h>
-
-#ifdef __cplusplus
-extern "C"
-{
-#endif
+#include <bsl/array.hpp>
+#include <bsl/convert.hpp>
+#include <bsl/safe_integral.hpp>
 
 #pragma pack(push, 1)
 
-    /**
-     * @struct kvm_lapic_state
-     *
-     * <!-- description -->
-     *   @brief see /include/uapi/linux/kvm.h in Linux for more details.
-     */
-    struct kvm_lapic_state
+namespace shim
+{
+    /// @brief defines the size of the padding3 field
+    constexpr auto KVM_APIC_REG_SIZE{1024_umx};
+    /// @struct kvm_lapic_state
+    ///
+    /// <!-- description -->
+    ///   @brief see /include/uapi/linux/kvm.h in Linux for more details.
+    ///
+    struct kvm_lapic_state final
     {
-
-        /** @brief the registers of lapic to set or get */
-        char regs[KVM_APIC_REG_SIZE];
+        /// @brief TODO
+        bsl::array<bsl::uint8, KVM_APIC_REG_SIZE.get()> regs;
     };
 
-#pragma pack(pop)
-
-#ifdef __cplusplus
 }
-#endif
+
+#pragma pack(pop)
 
 #endif
