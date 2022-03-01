@@ -214,6 +214,48 @@ namespace shim
                 };
             };
         };
+        bsl::ut_scenario{"capirqchip success"} = []() noexcept {
+            bsl::ut_given{} = [&]() noexcept {
+                bsl::safe_u32 mut_checkext{};
+                constexpr auto ret_capmaxirqchip{1_u16};
+                constexpr auto capmaxirqchip{0_u64};
+                bsl::ut_when{} = [&]() noexcept {
+                    bsl::ut_then{} = [&]() noexcept {
+                        bsl::ut_check(
+                            SHIM_SUCCESS == handle(capmaxirqchip.get(), mut_checkext.data()));
+                        bsl::ut_check(ret_capmaxirqchip == bsl::to_u16(mut_checkext));
+                    };
+                };
+            };
+        };
+        bsl::ut_scenario{"capioeventfd success"} = []() noexcept {
+            bsl::ut_given{} = [&]() noexcept {
+                bsl::safe_u32 mut_checkext{};
+                constexpr auto ret_capioeventfd{1_u16};
+                constexpr auto capioeventfd{36_u64};
+                bsl::ut_when{} = [&]() noexcept {
+                    bsl::ut_then{} = [&]() noexcept {
+                        bsl::ut_check(
+                            SHIM_SUCCESS == handle(capioeventfd.get(), mut_checkext.data()));
+                        bsl::ut_check(ret_capioeventfd == bsl::to_u16(mut_checkext));
+                    };
+                };
+            };
+        };
+        bsl::ut_scenario{"capirqfd success"} = []() noexcept {
+            bsl::ut_given{} = [&]() noexcept {
+                bsl::safe_u32 mut_checkext{};
+                constexpr auto ret_capirqfd{1_u16};
+                constexpr auto capirqfd{32_u64};
+                bsl::ut_when{} = [&]() noexcept {
+                    bsl::ut_then{} = [&]() noexcept {
+                        bsl::ut_check(SHIM_SUCCESS == handle(capirqfd.get(), mut_checkext.data()));
+                        bsl::ut_check(ret_capirqfd == bsl::to_u16(mut_checkext));
+                    };
+                };
+            };
+        };
+
         bsl::ut_scenario{"tscdeadlinetimer success"} = []() noexcept {
             bsl::ut_given{} = [&]() noexcept {
                 bsl::safe_u32 mut_checkext{};

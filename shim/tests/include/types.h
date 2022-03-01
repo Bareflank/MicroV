@@ -55,4 +55,9 @@
  */
 #define SHIM_2BIG ((int64_t)-3)
 
+/**
+ * @brief Returned by a shim function when VCPU already exist.
+ */
+#define SHIM_EXIST ((int64_t)-4)
+
 #endif

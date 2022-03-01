@@ -28,6 +28,7 @@
 #include <detect_hypervisor.h>
 #include <mv_types.h>
 #include <platform.h>
+#include <shim_vcpu_t.h>
 #include <shim_vm_t.h>
 #include <stdbool.h>
 
@@ -42,6 +43,12 @@
 NODISCARD int64_t
 handle_vm_kvm_create_irqchip(struct shim_vm_t *const pmut_vm) NOEXCEPT
 {
+    //struct shim_vcpu_t mut_temp1={(uint16_t)0};
+    struct shim_vcpu_t mut_temp1;
+    struct shim_vcpu_t *pmut_mut_temp2 = &mut_temp1;
+    struct shim_vcpu_t **pmut_mut_vcpu = &pmut_mut_temp2;
+    uint64_t mut_i;
+    int64_t mut_ret = SHIM_SUCCESS;
 
     platform_expects(NULL != pmut_vm);
 
@@ -51,9 +58,21 @@ handle_vm_kvm_create_irqchip(struct shim_vm_t *const pmut_vm) NOEXCEPT
     }
 
     platform_mutex_lock(&pmut_vm->mutex);
+    for (mut_i = ((uint64_t)0); mut_i < MICROV_MAX_VCPUS; ++mut_i) {
+        *pmut_mut_vcpu = &pmut_vm->vcpus[mut_i];
+        if (((uint64_t)0) != (*pmut_mut_vcpu)->fd) {
+            bferror("VCPUs are already created. So IRQCHIP cannot be created!");
+            mut_ret = SHIM_EXIST;
+            goto unlock_irqchip_mutex;
+        }
+
+        mv_touch();
+    }
+
     if (pmut_vm->is_irqchip_created) {
         bferror("The IRQCHIP is not created, Did you forget to create it?");
-        return SHIM_FAILURE;
+        mut_ret = SHIM_FAILURE;
+        goto unlock_irqchip_mutex;
     }
 
     //NOTE: Below hypercalls to uncomment when they are implemented
@@ -78,6 +97,7 @@ handle_vm_kvm_create_irqchip(struct shim_vm_t *const pmut_vm) NOEXCEPT
     // create_irqchip_unlock:
     //         platform_mutex_unlock(&pmut_vm->mutex);
     pmut_vm->is_irqchip_created = true;
+unlock_irqchip_mutex:
     platform_mutex_unlock(&pmut_vm->mutex);
-    return SHIM_SUCCESS;
+    return mut_ret;
 }

@@ -76,6 +76,12 @@ extern "C"
 #define KVM_MP_STATE_HALTED 3
 /** @brief defines KVM_MP_STATE_SIPI_RECEIVED for mp state */
 #define KVM_MP_STATE_SIPI_RECEIVED 4
+/** @brief defines KVM_CAP_IRQCHIP for mp state */
+#define KVM_CAP_IRQCHIP 0
+/** @brief defines KVM_CAP_IOEVENTFD for mp state */
+#define KVM_CAP_IOEVENTFD 36
+/** @brief defines KVM_CAP_IRQFD for mp state */
+#define KVM_CAP_IRQFD 32
 
 #pragma pack(pop)
 

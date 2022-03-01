@@ -55,4 +55,9 @@
  *   is not large enough to hold the return data.
  */
 #define SHIM_2BIG ((int64_t)-E2BIG)
+
+/**
+ * @brief Returned by a shim function when VCPU already exist.
+ */
+#define SHIM_EXIST ((int64_t)-EEXIST)
 #endif

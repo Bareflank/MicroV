@@ -94,6 +94,18 @@ handle_vm_kvm_check_extension(unsigned long mut_userargs, uint32_t *const pmut_r
             *pmut_ret = (uint32_t)MICROV_MAX_MCE_BANKS;
             break;
         }
+        case KVM_CAP_IRQCHIP: {
+            *pmut_ret = (uint32_t)1;
+            break;
+        }
+        case KVM_CAP_IOEVENTFD: {
+            *pmut_ret = (uint32_t)1;
+            break;
+        }
+        case KVM_CAP_IRQFD: {
+            *pmut_ret = (uint32_t)1;
+            break;
+        }
         default: {
             bfdebug_x64("Unsupported Extension userargs", mut_userargs);
             *pmut_ret = (uint32_t)0;

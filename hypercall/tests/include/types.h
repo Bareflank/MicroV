@@ -43,4 +43,8 @@
  */
 #define SHIM_FAILURE ((int64_t)-1)
 
+/**
+ * @brief Returned by a shim function when VCPU already exist.
+ */
+#define SHIM_EXIST ((int64_t)-4)
 #endif
