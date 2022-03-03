@@ -614,6 +614,7 @@ namespace microv
             }
 
             this->m_emulated_cpuid.allocate(gs, tls, mut_sys, intrinsic, vsid);
+            this->m_emulated_io.allocate(gs, tls, mut_sys, intrinsic, vsid);
 
             m_assigned_vmid = ~vmid;
             m_assigned_vpid = ~vpid;
@@ -2623,16 +2624,19 @@ namespace microv
         ///
         /// <!-- inputs/outputs -->
         ///   @param sys the bf_syscall_t to use
+        ///   @param idx the idx to set the spa into
         ///   @return Returns the cached SPA of the last string IO intercepts.
         ///
         [[nodiscard]] constexpr auto
-        io_spa(syscall::bf_syscall_t const &sys) const noexcept -> bsl::safe_u64
+        io_spa(
+            syscall::bf_syscall_t const &sys,
+            bsl::safe_idx const &idx) const noexcept -> bsl::safe_u64
         {
             bsl::expects(allocated_status_t::allocated == m_allocated);
             bsl::expects(running_status_t::running != m_status);
             bsl::expects(sys.bf_tls_ppid() == this->assigned_pp());
 
-            return m_emulated_io.spa();
+            return m_emulated_io.spa(idx);
         }
 
         /// <!-- description -->
@@ -2642,14 +2646,21 @@ namespace microv
         ///
         /// <!-- inputs/outputs -->
         ///   @param sys the bf_syscall_t to use
+        ///   @param vsid the ID of the vs_t to set
+        ///   @param spa the spa to set
+        ///   @param idx the idx to set the spa into
         ///
         constexpr void
-        io_set_spa(syscall::bf_syscall_t const &sys, bsl::safe_u64 const &spa) noexcept
+        io_set_spa(
+            syscall::bf_syscall_t const &sys,
+            bsl::safe_u64 const &spa,
+            bsl::safe_idx const &idx
+            ) noexcept
         {
             bsl::expects(allocated_status_t::allocated == m_allocated);
             bsl::expects(sys.bf_tls_ppid() == this->assigned_pp());
 
-            m_emulated_io.set_spa(spa);
+            m_emulated_io.set_spa(spa, idx);
         }
     };
 }

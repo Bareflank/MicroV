@@ -1779,44 +1779,119 @@ namespace microv
             bsl::touch();
         }
 
-        auto const bytes{bsl::to_u64(run.num_iomem)};
-        if (bytes > bsl::safe_u64::magic_0()) {
-            using page_t = bsl::array<uint8_t, HYPERVISOR_PAGE_SIZE.get()>;
+        auto const num_iomem{bsl::to_u64(run.num_iomem)};
+        if (bsl::unlikely(num_iomem > hypercall::MV_RUN_MAX_IOMEM_SIZE.get())) {
+                bsl::error()
+                    << "num_iomem is too large "     // --
+                    << num_iomem                     // --
+                    << " > MV_RUN_MAX_IOMEM_SIZE"    // --
+                    << bsl::endl                     // --
+                    << bsl::here();                  // --
+            return bsl::errc_failure;
+        }
 
-            auto const spa{mut_vs_pool.io_spa(mut_sys, vsid)};
-            if (bsl::unlikely(spa.is_invalid())) {
+        if (num_iomem > bsl::safe_u64::magic_0()) {
+            using page_t = bsl::array<uint8_t, HYPERVISOR_PAGE_SIZE.get()>;
+            constexpr auto page_mask{0xFFFFFFFFFFFFF000_u64};
+
+            constexpr auto exit_reason_io{0x7B_u64};
+            auto const exitcode{mut_sys.bf_vs_op_read(vsid, syscall::bf_reg_t::bf_reg_t_exitcode)};
+            if (bsl::unlikely(exitcode != exit_reason_io)) {
+                bsl::error()
+                    << "num_iomem was set but exit reason is not an IO"    // --
+                    << bsl::here();                                        // --
+                return bsl::errc_failure;
+            }
+
+            auto const exitinfo1{mut_sys.bf_vs_op_read(vsid, syscall::bf_reg_t::bf_reg_t_exitinfo1)};
+            constexpr auto strn_mask{0x00000004_u64};
+            constexpr auto strn_shft{2_u64};
+            if (bsl::unlikely(((exitinfo1 & strn_mask) >> strn_shft).is_zero())) {
+                bsl::error()
+                    << "num_iomem was set but exit reason is not a string IO"    // --
+                    << bsl::here();                                              // --
+                return bsl::errc_failure;
+            }
+
+            constexpr auto type_mask{0x00000001_u64};
+            constexpr auto type_shft{0_u64};
+            if (bsl::unlikely(((exitinfo1 & type_mask) >> type_shft).is_zero())) {
+                bsl::error()
+                    << "num_iomem was set but exit reason is not a string IO IN"    // --
+                    << bsl::here();                                                 // --
+                return bsl::errc_failure;
+            }
+
+            bsl::safe_idx mut_i{};
+            auto const spa0{mut_vs_pool.io_spa(mut_sys, vsid, mut_i)};
+            auto const spa1{mut_vs_pool.io_spa(mut_sys, vsid, ++mut_i)};
+
+            if (bsl::unlikely(spa0.is_invalid())) {
                 bsl::error() << bsl::here();
                 return bsl::errc_failure;
             }
-
-            constexpr auto gpa_mask{0xFFFFFFFFFFFFF000_u64};
-            auto const page{mut_pp_pool.map<page_t>(mut_sys, spa & gpa_mask)};
-
-            // TODO handle page boundary
-            auto const idx{spa & ~gpa_mask};
-            auto const bytes_left{(HYPERVISOR_PAGE_SIZE - idx).checked()};
-            if (bsl::unlikely(bytes_left < bytes)) {
-                bsl::error()
-                    << "FIXME: page boundary overflow"    // --
-                    << bsl::endl                          // --
-                    << bsl::here();                       // --
-                return bsl::errc_failure;
+            else {
+                bsl::touch();
             }
 
-            auto mut_data{page.span(idx, bytes)};
-            if (bsl::unlikely(mut_data.is_invalid())) {
-                bsl::error()
-                    << "data is invalid"    // --
-                    << bsl::endl            // --
-                    << bsl::here();         // --
-                return bsl::errc_failure;
+            auto mut_consumed_bytes{0_u64};
+            {
+                auto const page{mut_pp_pool.map<page_t>(mut_sys, spa0 & page_mask)};
+
+                auto const idx{spa0 & ~page_mask};
+                auto const size{num_iomem.min((HYPERVISOR_PAGE_SIZE - idx).checked())};
+                auto mut_data{page.span(idx, size)};
+                if (bsl::unlikely(mut_data.is_invalid())) {
+                    bsl::error()
+                        << "data is invalid"    // --
+                        << bsl::endl            // --
+                        << bsl::here();         // --
+                    return bsl::errc_failure;
+                }
+
+                bsl::builtin_memcpy(mut_data.data(), run.iomem.data(), mut_data.size_bytes());
+                mut_consumed_bytes = size;
             }
 
-            bsl::builtin_memcpy(mut_data.data(), run.iomem.data(), mut_data.size_bytes());
+            if (bsl::unlikely(spa1.is_valid())) {
+                if (bsl::unlikely(spa1.is_zero())) {
+                    bsl::error()
+                        << "spa1 is 0"    // --
+                        << bsl::endl      // --
+                        << bsl::here();   // --
+                    return bsl::errc_failure;
+                }
+                else {
+                    bsl::touch();
+                }
+
+                bsl::expects(hypercall::mv_is_page_aligned(spa1));
+                auto const page{mut_pp_pool.map<page_t>(mut_sys, spa1)};
+
+                auto const idx{0_u64};
+                auto const size{(num_iomem - mut_consumed_bytes).checked()};
+                auto mut_data{page.span(idx, size)};
+                if (bsl::unlikely(mut_data.is_invalid())) {
+                    bsl::error()
+                        << "data is invalid"    // --
+                        << bsl::endl            // --
+                        << bsl::here();         // --
+                    return bsl::errc_failure;
+                }
+
+                bsl::builtin_memcpy(mut_data.data(),
+                    run.iomem.at_if(bsl::to_idx(mut_consumed_bytes)), mut_data.size_bytes());
+            }
+            else {
+                bsl::touch();
+            }
         }
         else {
             bsl::touch();
         }
+        bsl::safe_idx mut_i{};
+        mut_vs_pool.io_set_spa(mut_sys, vsid, bsl::safe_u64::failure(), mut_i);
+        mut_vs_pool.io_set_spa(mut_sys, vsid, bsl::safe_u64::failure(), ++mut_i);
 
         return bsl::errc_success;
     }

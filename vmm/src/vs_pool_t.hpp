@@ -935,14 +935,16 @@ namespace microv
         /// <!-- inputs/outputs -->
         ///   @param sys the bf_syscall_t to use
         ///   @param vsid the ID of the vs_t to set
+        ///   @param idx the idx to set the spa into
         ///   @return Returns the cached SPA of the last string IO intercepts.
         ///
         [[nodiscard]] constexpr auto
         io_spa(
             syscall::bf_syscall_t const &sys,
-            bsl::safe_u16 const &vsid) const noexcept -> bsl::safe_u64
+            bsl::safe_u16 const &vsid,
+            bsl::safe_idx const &idx) const noexcept -> bsl::safe_u64
         {
-            return this->get_vs(vsid)->io_spa(sys);
+            return this->get_vs(vsid)->io_spa(sys, idx);
         }
 
         /// <!-- description -->
@@ -953,13 +955,17 @@ namespace microv
         /// <!-- inputs/outputs -->
         ///   @param sys the bf_syscall_t to use
         ///   @param vsid the ID of the vs_t to set
+        ///   @param spa the spa to set
+        ///   @param idx the idx to set the spa into
         ///
         constexpr void
         io_set_spa(
             syscall::bf_syscall_t const &sys,
-            bsl::safe_u16 const &vsid, bsl::safe_u64 const &spa) noexcept
+            bsl::safe_u16 const &vsid,
+            bsl::safe_u64 const &spa,
+            bsl::safe_idx const &idx) noexcept
         {
-            this->get_vs(vsid)->io_set_spa(sys, spa);
+            this->get_vs(vsid)->io_set_spa(sys, spa, idx);
         }
     };
 }

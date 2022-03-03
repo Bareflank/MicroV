@@ -50,8 +50,10 @@ namespace microv
     {
         /// @brief stores the ID of the VS associated with this emulated_io_t
         bsl::safe_u16 m_assigned_vsid{};
-        /// @brief stores the SPA destination of a string IO read intercept
-        bsl::safe_u64 m_spa{};
+        /// @brief stores the maximum number of storable SPAs
+        static constexpr auto max_spa{2_u64};
+        /// @brief stores the SPAs of a string IO read intercept
+        bsl::array<bsl::safe_u64, max_spa.get()> m_mut_spas{};
 
     public:
         /// <!-- description -->
@@ -115,6 +117,66 @@ namespace microv
         }
 
         /// <!-- description -->
+        ///   @brief Allocates the emulated_cpuid_t
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param gs the gs_t to use
+        ///   @param tls the tls_t to use
+        ///   @param sys the bf_syscall_t to use
+        ///   @param intrinsic the intrinsic_t to use
+        ///   @param vsid the ID of the VS associated with this emulated_cpuid_t
+        ///
+        ///
+        constexpr void
+        allocate(
+            gs_t const &gs,
+            tls_t const &tls,
+            syscall::bf_syscall_t const &sys,
+            intrinsic_t const &intrinsic,
+            bsl::safe_u16 const &vsid) noexcept
+        {
+            bsl::discard(gs);
+            bsl::discard(tls);
+            bsl::discard(sys);
+            bsl::discard(intrinsic);
+
+            bsl::expects(vsid != syscall::BF_INVALID_ID);
+            bsl::expects(vsid == this->assigned_vsid());
+
+            for (auto &mut_spa: this->m_mut_spas) {
+                mut_spa = bsl::safe_u64::failure();
+            }
+        }
+
+        /// <!-- description -->
+        ///   @brief Deallocates the emulated_cpuid_t
+        ///
+        /// <!-- inputs/outputs -->
+        ///   @param gs the gs_t to use
+        ///   @param tls the tls_t to use
+        ///   @param sys the bf_syscall_t to use
+        ///   @param intrinsic the intrinsic_t to use
+        ///   @param vsid the ID of the VS associated with this emulated_cpuid_t
+        ///
+        ///
+        constexpr void
+        deallocate(
+            gs_t const &gs,
+            tls_t const &tls,
+            syscall::bf_syscall_t const &sys,
+            intrinsic_t const &intrinsic,
+            bsl::safe_u16 const &vsid) const noexcept
+        {
+            bsl::discard(gs);
+            bsl::discard(tls);
+            bsl::discard(sys);
+            bsl::discard(intrinsic);
+
+            bsl::expects(vsid != syscall::BF_INVALID_ID);
+            bsl::expects(vsid == this->assigned_vsid());
+        }
+
+        /// <!-- description -->
         ///   @brief Returns the ID of the PP associated with this
         ///     emulated_io_t
         ///
@@ -135,13 +197,15 @@ namespace microv
         ///     second time prior to resuming a guest.
         ///
         /// <!-- inputs/outputs -->
+        ///   @param idx the idx to set the spa into
         ///   @return Returns the cached SPA of the last string IO intercepts.
         ///
         [[nodiscard]] constexpr auto
-        spa() const noexcept -> bsl::safe_u64
+        spa(bsl::safe_idx const &idx) const noexcept -> bsl::safe_u64
         {
             bsl::expects(m_assigned_vsid.is_valid_and_checked());
-            return m_spa;
+            bsl::expects(idx < max_spa);
+            return *m_mut_spas.at_if(idx);
         }
 
         /// <!-- description -->
@@ -149,11 +213,16 @@ namespace microv
         ///     to prevent having to walk the page table a second time prior to
         ///     resuming a guest.
         ///
+        /// <!-- inputs/outputs -->
+        ///   @param spa the spa to set
+        ///   @param idx the idx to set the spa into
+        ///
         constexpr void
-        set_spa(bsl::safe_u64 const &spa) noexcept
+        set_spa(bsl::safe_u64 const &spa, bsl::safe_idx const &idx) noexcept
         {
             bsl::expects(m_assigned_vsid.is_valid_and_checked());
-            m_spa = spa;
+            bsl::expects(idx < max_spa);
+            *m_mut_spas.at_if(idx) = spa;
         }
     };
 }

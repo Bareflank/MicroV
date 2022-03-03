@@ -406,6 +406,7 @@ namespace integration
                 }
             }
 
+            bsl::debug() << "exit_reason " << to_i32(exit_reason) << bsl::endl;
             return exit_reason;
         }
     }

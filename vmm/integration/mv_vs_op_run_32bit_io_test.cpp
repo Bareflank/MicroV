@@ -83,7 +83,9 @@ namespace hypercall
             constexpr auto expected_type{0x01_u64};
             constexpr auto expected_size{mv_bit_size_t::mv_bit_size_t_16};
 
-            auto *const pmut_exit_io{to_0<mv_exit_io_t>()};
+            auto *const pmut_run_return{to_0<mv_run_return_t>()};
+            auto *const pmut_exit_io{&pmut_run_return->mv_exit_io};
+
             integration::verify(pmut_exit_io->addr == expected_addr);
             integration::verify(io_to<bsl::uint8>(pmut_exit_io->data) == expected_data);
             integration::verify(pmut_exit_io->reps == expected_reps);
@@ -134,7 +136,9 @@ namespace hypercall
             mut_exit_reason = integration::run_until_non_interrupt_exit(vsid);
             integration::verify(mut_exit_reason == mv_exit_reason_t::mv_exit_reason_t_io);
 
-            auto *const pmut_exit_io{to_0<mv_exit_io_t>()};
+            auto *const pmut_run_return{to_0<mv_run_return_t>()};
+            auto *const pmut_exit_io{&pmut_run_return->mv_exit_io};
+
             integration::verify(mut_exit_reason == mv_exit_reason_t::mv_exit_reason_t_io);
             integration::verify(pmut_exit_io->addr == expected_addr);
             integration::verify(io_to<bsl::uint8>(pmut_exit_io->data) == expected_data_8);
@@ -158,7 +162,7 @@ namespace hypercall
             integration::verify(pmut_exit_io->type == expected_type);
             integration::verify(pmut_exit_io->size == expected_size_32);
 
-            // REP prefix
+            // Verify REP prefix works
             mut_exit_reason = integration::run_until_non_interrupt_exit(vsid);
             integration::verify(mut_exit_reason == mv_exit_reason_t::mv_exit_reason_t_io);
             integration::verify(pmut_exit_io->addr == expected_addr);
@@ -167,6 +171,36 @@ namespace hypercall
             integration::verify(pmut_exit_io->size == expected_size_8);
             for (auto mut_i{0_idx}; mut_i < expected_data.size(); ++mut_i) {
                 integration::verify(*pmut_exit_io->data.at_if(mut_i) == *expected_data.at_if(mut_i));
+            }
+
+            // Prepare data for page boudary verification
+            constexpr auto expected_string_data_size{MV_RUN_MAX_IOMEM_SIZE};
+            bsl::array<bsl::uint8, expected_string_data_size.get()> expected_string_data{};
+            bsl::builtin_memcpy(expected_string_data.data(), expected_data.data(), expected_data.size_bytes());
+            auto mut_i{bsl::to_idx(expected_data.size_bytes())};
+            for (auto mut_j{0_idx}; mut_i < expected_string_data_size; ++mut_i, ++mut_j) {
+                *expected_string_data.at_if(mut_i) = bsl::to_u8_unsafe(mut_j.get()).get();
+            }
+
+            // Verify handling page boudary works
+            mut_exit_reason = integration::run_until_non_interrupt_exit(vsid);
+            integration::verify(mut_exit_reason == mv_exit_reason_t::mv_exit_reason_t_io);
+            integration::verify(pmut_exit_io->addr == expected_addr);
+            integration::verify(pmut_exit_io->reps == expected_string_data_size);
+            integration::verify(pmut_exit_io->type == expected_type);
+            integration::verify(pmut_exit_io->size == expected_size_8);
+
+            for (mut_i = {} ; mut_i < expected_string_data_size; ++mut_i) {
+                bsl::print() << " " << bsl::hex(*pmut_exit_io->data.at_if(mut_i));
+            }
+            bsl::print() << bsl::endl;
+
+            for (mut_i = {}; mut_i < expected_data_size; ++mut_i) {
+                integration::verify(*pmut_exit_io->data.at_if(mut_i) == *expected_data.at_if(mut_i));
+            }
+            for (; mut_i < expected_string_data_size; ++mut_i) {
+                bsl::debug() << " mut_i " << bsl::hex(mut_i) << " " << bsl::hex(*pmut_exit_io->data.at_if(mut_i)) << " == " << bsl::hex(*expected_string_data.at_if(mut_i)) << bsl::endl;
+                integration::verify(*pmut_exit_io->data.at_if(mut_i) == *expected_string_data.at_if(mut_i));
             }
 
             integration::verify(mut_hvc.mv_vs_op_destroy_vs(vsid));
