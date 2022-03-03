@@ -32,6 +32,7 @@
 #include <kvm_cpuid_entry2.hpp>
 #include <kvm_fpu.hpp>
 #include <kvm_irqchip.hpp>
+#include <kvm_irqfd.hpp>
 #include <kvm_mp_state.hpp>
 #include <kvm_msr_entry.hpp>
 #include <kvm_msr_list.hpp>
@@ -246,8 +247,9 @@ namespace shim
     // constexpr bsl::safe_umx KVM_GET_PIT2{static_cast<bsl::uintmx>(_IOR(SHIMIO.get(), 0x9f, struct kvm_pit_state2))};
     // /// @brief defines KVM's KVM_SET_PIT2 IOCTL
     // constexpr bsl::safe_umx KVM_SET_PIT2{static_cast<bsl::uintmx>(_IOW(SHIMIO.get(), 0xa0, struct kvm_pit_state2))};
-    // /// @brief defines KVM's KVM_IRQFD IOCTL
-    // constexpr bsl::safe_umx KVM_IRQFD{static_cast<bsl::uintmx>(_IOW(SHIMIO.get(), 0x76, struct kvm_irqfd))};
+    /// @brief defines KVM's KVM_IRQFD IOCTL
+    constexpr bsl::safe_umx KVM_IRQFD{
+        static_cast<bsl::uintmx>(_IOW(SHIMIO.get(), 0x76, struct kvm_irqfd))};
     // /// @brief defines KVM's KVM_CREATE_DEVICE IOCTL
     // constexpr bsl::safe_umx KVM_CREATE_DEVICE{static_cast<bsl::uintmx>(_IOWR(SHIMIO.get(), 0xe0, struct kvm_create_device))};
     // /// @brief defines KVM's KVM_GET_DEVICE_ATTR IOCTL

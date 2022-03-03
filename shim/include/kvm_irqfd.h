@@ -29,6 +29,10 @@
 
 #include <stdint.h>
 
+#ifdef __clang__
+#pragma clang diagnostic ignored "-Wold-style-cast"
+#endif
+
 #ifdef __cplusplus
 extern "C"
 {
@@ -36,16 +40,27 @@ extern "C"
 
 #pragma pack(push, 1)
 
+/** @brief defines the padding size */
+#define PAD_SIZE_IRQFD ((uint32_t)16)
+
     /**
      * @struct kvm_irqfd
      *
      * <!-- description -->
-     *   @brief see /include/uapi/linux/kvm.h in Linux for more details.
+     *   @brief Allows setting an eventfd to directly trigger a guest interrupt..
      */
     struct kvm_irqfd
     {
-        /** @brief replace me with contents from KVM API */
-        int32_t dummy;
+        /** @brief specifies the file descriptor to use as the eventfd */
+        uint32_t fd;
+        /** @brief specifies the irqchip pin toggled by this event*/
+        uint32_t gsi;
+        /** @brief The flag is used to remove irqfd */
+        uint32_t flags;
+        /** @brief Additional eventfd the user must pass when KVM_IRQFD_FLAG_RESAMPLE is set */
+        uint32_t resamplefd;
+        /** @brief TODO*/
+        uint8_t pad[PAD_SIZE_IRQFD];
     };
 
 #pragma pack(pop)

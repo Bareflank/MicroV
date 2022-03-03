@@ -55,6 +55,7 @@
 #include <handle_vm_kvm_create_vcpu.h>
 #include <handle_vm_kvm_destroy_vcpu.h>
 #include <handle_vm_kvm_get_irqchip.h>
+#include <handle_vm_kvm_irqfd.h>
 #include <handle_vm_kvm_set_irqchip.h>
 #include <handle_vm_kvm_set_user_memory_region.h>
 #include <linux/anon_inodes.h>
@@ -661,10 +662,23 @@ dispatch_vm_kvm_irq_line(struct kvm_irq_level *const ioctl_args)
 }
 
 static long
-dispatch_vm_kvm_irqfd(struct kvm_irqfd *const ioctl_args)
+dispatch_vm_kvm_irqfd(
+    struct shim_vm_t *const pmut_vm, struct kvm_irqfd *const pmut_ioctl_args)
 {
-    (void)ioctl_args;
-    return -EINVAL;
+    struct kvm_irqfd mut_args;
+    uint64_t const size = sizeof(mut_args);
+
+    if (platform_copy_from_user(&mut_args, pmut_ioctl_args, size)) {
+        bferror("platform_copy_from_user failed");
+        return -EINVAL;
+    }
+
+    if (handle_vm_kvm_irqfd(pmut_vm, &mut_args)) {
+        bferror("handle_vm_kvm_irqfd failed");
+        return -EINVAL;
+    }
+
+    return 0;
 }
 
 static long
@@ -903,7 +917,9 @@ dev_unlocked_ioctl_vm(
         }
 
         case KVM_IRQFD: {
-            return dispatch_vm_kvm_irqfd((struct kvm_irqfd *)ioctl_args);
+            return dispatch_vm_kvm_irqfd(
+                (struct shim_vm_t *)pmut_mut_vm,
+                (struct kvm_irqfd *)ioctl_args);
         }
 
         case KVM_REGISTER_COALESCED_MMIO: {
