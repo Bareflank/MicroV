@@ -173,12 +173,16 @@ namespace microv
             constexpr auto MSR_PERF_CTR1{0xC0010005_u32};
             constexpr auto MSR_PERF_CTR2{0xC0010006_u32};
             constexpr auto MSR_PERF_CTR3{0xC0010007_u32};
+            constexpr auto MSR_TSC{0x10_u32};
+
 
 
             switch (bsl::to_u32_unsafe(msr).get()) {
                 case MSR_MTRRCap.get(): {
                     return sys.bf_intrinsic_op_rdmsr(bsl::to_u32(msr));
                 }
+                case MSR_TSC.get():
+                    bsl::debug() << "MSR_TSC READ" << bsl::endl;
                 case MSR_PatchLevel.get(): 
                 case MSR_SMMTseg.get():
                 case MSR_SYSCFG.get(): 
@@ -213,9 +217,11 @@ namespace microv
                 }
             }
 
-            bsl::debug() << __FILE__ << " " << __FUNCTION__ << " UNHANDLED" << bsl::endl;
+            bsl::debug() << "WARNING: UNHANDLED READ, RETURNING 0: MSR " << bsl::hex(msr) << bsl::endl;
+            constexpr auto zero_val{0x0_u64};
+            return zero_val;
 
-            return bsl::safe_u64::failure();
+            // return bsl::safe_u64::failure();
         }
 
         /// <!-- description -->
