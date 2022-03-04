@@ -25,8 +25,10 @@
 #include "../../include/handle_vm_kvm_create_irqchip.h"
 #include "shim_vcpu_t.h"
 #include "shim_vm_t.h"
-#include <bsl/ut.hpp>
+
 #include <helpers.hpp>
+
+#include <bsl/ut.hpp>
 
 namespace shim
 {
