@@ -34,6 +34,10 @@ if [ -z ${VM_NAME+x} ]; then
   VM_NAME=32bit_endless_loop_test
 fi
 
+if [ -z ${VM_MEMORY+x} ]; then
+  VM_MEMORY=512M
+fi
+
 if [[ -z ${BIOS_PATH+x} ]]; then
   BIOS_PATH="${HOME}/edk2/Build/OvmfX64/DEBUG_GCC5/FV/OVMF.fd"
 fi
@@ -78,7 +82,7 @@ run() {
     -bios ${BIOS_PATH} \
     -chardev stdio,id=char0,mux=on,logfile=$BUILD_DIR/qemu_efi.log,signal=off \
     -serial chardev:char0 -mon chardev=char0 \
-    -m size=64M \
+    -m size=${VM_MEMORY} \
     -nographic \
     -debugcon file:debugcon.log -global isa-debugcon.iobase=0x402
 
@@ -98,7 +102,7 @@ best_run() {
     -cpu host \
     -drive format=raw,file=fat:rw:$BUILD_DIR/vm_storage \
     -bios ${BIOS_PATH} \
-    -m size=64M \
+    -m size=${VM_MEMORY} \
     -nographic \
     -debugcon file:best.log -global isa-debugcon.iobase=0x402 \
     -D qemu-dbg.log
@@ -122,7 +126,7 @@ run_linux_best() {
     -machine type=q35,accel=kvm \
     -cpu host \
     -bios ${BIOS_PATH} \
-    -m size=512M \
+    -m size=${VM_MEMORY} \
     -hda $BUILD_DIR/2004_serial.img \
     -chardev stdio,id=char0,mux=on,logfile=$BUILD_DIR/qemu_linux.log,signal=off \
     -serial chardev:char0 -mon chardev=char0 \
@@ -158,7 +162,7 @@ run_linux() {
     -append "console=uart,io,0x3F8,115200n8,keep" \
     -chardev stdio,id=char0,mux=on,logfile=$BUILD_DIR/qemu_linux.log,signal=off \
     -serial chardev:char0 -mon chardev=char0 \
-    -m size=296M \
+    -m size=${VM_MEMORY} \
     -nographic \
     -debugcon file:best.log -global isa-debugcon.iobase=0x402 \
     -D qemu-dbg.log
