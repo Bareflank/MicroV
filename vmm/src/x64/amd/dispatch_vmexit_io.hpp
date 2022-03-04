@@ -116,7 +116,7 @@ namespace microv
         auto const vmid{mut_sys.bf_tls_vmid()};
 
 
-        bsl::debug() << "exitinfo1 = " << bsl::hex(exitinfo1) << bsl::endl;
+        // bsl::debug() << "exitinfo1 = " << bsl::hex(exitinfo1) << bsl::endl;
 
 
         if (((exitinfo1 & strn_mask) >> strn_shft).is_pos()) {
@@ -131,7 +131,7 @@ namespace microv
                 string_addr = mut_sys.bf_tls_rdi();
             }
 
-            bsl::debug() << "Got string operation, string_addr = " << bsl::hex(string_addr) << bsl::endl;
+            // bsl::debug() << "Got string operation, string_addr = " << bsl::hex(string_addr) << bsl::endl;
 
             //
             //FIXME: This doesn't consider 16-bit segment base values!!
@@ -228,7 +228,9 @@ namespace microv
             auto const bytes_left{(HYPERVISOR_PAGE_SIZE - idx).checked()};
             if (bsl::unlikely(bytes_left < mut_bytes)) {
                 bsl::error()
-                    << "FIXME: page boundary overflow"    // --
+                    << "WARNING: page boundary overflow: "    // --
+                    << " bytes_left = " << bsl::hex(bytes_left)
+                    << " mut_bytes = " << bsl::hex(mut_bytes)
                     << bsl::endl                          // --
                     << bsl::here();                       // --
 
