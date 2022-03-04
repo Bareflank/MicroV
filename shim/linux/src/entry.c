@@ -56,6 +56,7 @@
 #include <handle_vm_kvm_destroy_vcpu.h>
 #include <handle_vm_kvm_get_irqchip.h>
 #include <handle_vm_kvm_irqfd.h>
+#include <handle_vm_kvm_set_gsi_routing.h>
 #include <handle_vm_kvm_set_irqchip.h>
 #include <handle_vm_kvm_set_user_memory_region.h>
 #include <linux/anon_inodes.h>
@@ -723,10 +724,24 @@ dispatch_vm_kvm_set_device_attr(struct kvm_device_attr *const ioctl_args)
 }
 
 static long
-dispatch_vm_kvm_set_gsi_routing(struct kvm_irq_routing *const ioctl_args)
+dispatch_vm_kvm_set_gsi_routing(
+    struct shim_vm_t *const pmut_vm,
+    struct kvm_irq_routing *const pmut_ioctl_args)
 {
-    (void)ioctl_args;
-    return -EINVAL;
+    struct kvm_irq_routing mut_args;
+    uint64_t const size = sizeof(mut_args);
+
+    if (platform_copy_from_user(&mut_args, pmut_ioctl_args, size)) {
+        bferror("platform_copy_from_user failed");
+        return -EINVAL;
+    }
+
+    if (handle_vm_kvm_set_gsi_routing(pmut_vm, &mut_args)) {
+        bferror("handle_vm_kvm_set_gsi_routing failed");
+        return -EINVAL;
+    }
+
+    return 0;
 }
 
 static long
@@ -952,7 +967,9 @@ dev_unlocked_ioctl_vm(
 
         case KVM_SET_GSI_ROUTING: {
             return dispatch_vm_kvm_set_gsi_routing(
+                (struct shim_vm_t *)pmut_mut_vm,
                 (struct kvm_irq_routing *)ioctl_args);
+            ;
         }
 
         case KVM_SET_IDENTITY_MAP_ADDR: {

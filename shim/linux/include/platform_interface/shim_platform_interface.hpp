@@ -31,6 +31,7 @@
 #include <kvm_cpuid2.hpp>
 #include <kvm_cpuid_entry2.hpp>
 #include <kvm_fpu.hpp>
+#include <kvm_irq_routing.hpp>
 #include <kvm_irqchip.hpp>
 #include <kvm_irqfd.hpp>
 #include <kvm_mp_state.hpp>
@@ -216,8 +217,9 @@ namespace shim
     /// @brief defines KVM's KVM_GET_SUPPORTED_CPUID IOCTL
     constexpr bsl::safe_umx KVM_GET_SUPPORTED_CPUID{static_cast<bsl::uintmx>(_IOWR_LIST(
         SHIMIO.get(), 0x05, struct kvm_cpuid2, struct kvm_cpuid_entry2[CPUID2_MAX_ENTRIES.get()]))};
-    // /// @brief defines KVM's KVM_SET_GSI_ROUTING IOCTL
-    // constexpr bsl::safe_umx KVM_SET_GSI_ROUTING{static_cast<bsl::uintmx>(_IOW(SHIMIO.get(), 0x6a, struct kvm_irq_routing))};
+    /// @brief defines KVM's KVM_SET_GSI_ROUTING IOCTL
+    constexpr bsl::safe_umx KVM_SET_GSI_ROUTING{
+        static_cast<bsl::uintmx>(_IOW(SHIMIO.get(), 0x6a, struct kvm_irq_routing))};
     /// @brief defines KVM's KVM_GET_TSC_KHZ IOCTL
     constexpr bsl::safe_umx KVM_GET_TSC_KHZ{static_cast<bsl::uintmx>(_IO(SHIMIO.get(), 0xa3))};
     /// @brief defines KVM's KVM_SET_TSC_KHZ IOCTL
