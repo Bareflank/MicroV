@@ -29,6 +29,10 @@
 
 #include <stdint.h>
 
+#ifdef __clang__
+#pragma clang diagnostic ignored "-Wold-style-cast"
+#endif
+
 #ifdef __cplusplus
 extern "C"
 {
@@ -44,8 +48,22 @@ extern "C"
      */
     struct kvm_irq_level
     {
-        /** @brief replace me with contents from KVM API */
-        int32_t dummy;
+        /**
+         * <!-- description -->
+         *   @brief TODO
+         */
+        // NOLINTNEXTLINE(bsl-decl-forbidden)
+        union
+        {
+            /** @brief GSI*/
+            // NOLINTNEXTLINE(bsl-non-safe-integral-types-are-forbidden)
+            uint32_t irq;
+            /** @brief not used for KVM_IRQ_LEVEL*/
+            // NOLINTNEXTLINE(bsl-non-safe-integral-types-are-forbidden)
+            uint32_t status;
+        };
+        /** @brief 0 or 1*/
+        uint32_t level;
     };
 
 #pragma pack(pop)
