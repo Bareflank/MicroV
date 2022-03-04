@@ -89,7 +89,6 @@ namespace microv
 
         constexpr auto mask32{0xFFFFFFFF_u64};
 
-        // FIXME: is this the same for 64-bit?
         auto const msr_hi{(rdx & mask32) << 32_u64};
         auto const msr_lo{(rax & mask32)};
         auto const msr_val{ msr_hi | msr_lo};
