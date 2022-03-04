@@ -155,7 +155,7 @@ run_linux() {
     -bios ${BIOS_PATH} \
     -kernel ${KERNEL_PATH} \
     -initrd ${INITRD_PATH} \
-    -append "console=uart,io,0x3F8,115200n8,keep noapic" \
+    -append "console=uart,io,0x3F8,115200n8,keep" \
     -chardev stdio,id=char0,mux=on,logfile=$BUILD_DIR/qemu_linux.log,signal=off \
     -serial chardev:char0 -mon chardev=char0 \
     -m size=296M \
