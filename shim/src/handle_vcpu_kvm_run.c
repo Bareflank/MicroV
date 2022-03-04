@@ -491,7 +491,7 @@ runagain:
         }
 
         case mv_exit_reason_t_hlt: {
-            bfdebug_log("run: mv_exit_reason_t_hlt exit\n");
+            // bfdebug_log("run: mv_exit_reason_t_hlt exit\n");
             pmut_vcpu->run->exit_reason = KVM_EXIT_HLT;
             mut_ret = SHIM_SUCCESS;
             break;

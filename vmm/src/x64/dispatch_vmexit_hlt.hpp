@@ -89,7 +89,7 @@ namespace microv
         // Context: Root VM
         // ---------------------------------------------------------------------
 
-        bsl::error() << "dispatch_vmexit_hlt\n" << bsl::here();
+        // bsl::error() << "dispatch_vmexit_hlt\n" << bsl::here();
         set_reg_return(mut_sys, hypercall::MV_STATUS_SUCCESS);
         set_reg0(mut_sys, bsl::to_u64(hypercall::EXIT_REASON_HLT));
 

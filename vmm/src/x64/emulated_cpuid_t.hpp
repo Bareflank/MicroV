@@ -521,7 +521,7 @@ namespace microv
             auto mut_rdx{sys.bf_tls_rdx()};
 
             // FIXME: Not 100% sure what KVM does in this case...are we doing this properly?
-            bsl::debug() << "WARNING: Calling intrinsic for emulated CPUID FN" << bsl::hex(mut_rax) << " " << bsl::hex(mut_rcx) << bsl::endl;            
+            // bsl::debug() << "WARNING: Calling intrinsic for emulated CPUID FN" << bsl::hex(mut_rax) << " " << bsl::hex(mut_rcx) << bsl::endl;
             intrinsic.cpuid(mut_rax, mut_rbx, mut_rcx, mut_rdx);
             mut_entry.eax = bsl::to_u32_unsafe(mut_rax).get();
             mut_entry.ebx = bsl::to_u32_unsafe(mut_rbx).get();

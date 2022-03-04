@@ -98,7 +98,7 @@ namespace microv
         // FIXME: should look at the return value
         bsl::discard(ret_val);
 
-        bsl::error() << "dispatch_vmexit_wrmsr msr_num=" << bsl::hex(rcx) << " value=" << bsl::hex(msr_val) << bsl::endl;
+        // bsl::error() << "dispatch_vmexit_wrmsr msr_num=" << bsl::hex(rcx) << " value=" << bsl::hex(msr_val) << bsl::endl;
         return vmexit_success_advance_ip_and_run;
     }
 }
