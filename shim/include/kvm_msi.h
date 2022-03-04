@@ -29,12 +29,18 @@
 
 #include <stdint.h>
 
+#ifdef __clang__
+#pragma clang diagnostic ignored "-Wold-style-cast"
+#endif
+
 #ifdef __cplusplus
 extern "C"
 {
 #endif
 
 #pragma pack(push, 1)
+/** @brief defines the padding size */
+#define PAD_SIZE_MSI ((uint32_t)16)
 
     /**
      * @struct kvm_msi
@@ -44,8 +50,17 @@ extern "C"
      */
     struct kvm_msi
     {
-        /** @brief replace me with contents from KVM API */
-        int32_t dummy;
+        /** @brief  For PCI, this is a BFD identifier in the lower 16 bits. */
+        uint32_t address_lo;
+        /** @brief address_hi bits 31-8 provide bits 31-8 of the destination id.  Bits 7-0 of
+                   address_hi must be zero. */
+        uint32_t address_hi;
+        /** @brief  a MSI message*/
+        uint32_t data;
+        /** @brief A Flag to indicate valid or invalid data */
+        uint32_t flags;
+        /** @brief TODO */
+        uint8_t pad[PAD_SIZE_MSI];
     };
 
 #pragma pack(pop)
