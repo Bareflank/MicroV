@@ -27,7 +27,7 @@
 #include <kvm_cpuid2.h>
 #include <mv_types.h>
 #include <shim_vcpu_t.h>
-
+#include <helpers.hpp>
 #include <bsl/ut.hpp>
 
 namespace shim
@@ -44,6 +44,7 @@ namespace shim
     [[nodiscard]] constexpr auto
     tests() noexcept -> bsl::exit_code
     {
+        init_tests();
         bsl::ut_scenario{"description"} = []() noexcept {
             bsl::ut_given{} = [&]() noexcept {
                 kvm_cpuid2 mut_args{};

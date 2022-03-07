@@ -44,6 +44,7 @@ namespace shim
     [[nodiscard]] constexpr auto
     tests() noexcept -> bsl::exit_code
     {
+	init_tests();
         bsl::ut_scenario{"description"} = []() noexcept {
             bsl::ut_given{} = [&]() noexcept {
                 kvm_interrupt mut_args{};
