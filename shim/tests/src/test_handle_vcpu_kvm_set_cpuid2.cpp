@@ -26,7 +26,6 @@
 
 #include <helpers.hpp>
 #include <kvm_cpuid2.h>
-#include <mv_types.h>
 #include <shim_vcpu_t.h>
 
 #include <bsl/ut.hpp>
