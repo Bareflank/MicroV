@@ -186,11 +186,13 @@ handle_vcpu_kvm_run_io(
 
     switch (pmut_exit_io->type) {
         case MV_EXIT_IO_IN: {
+            // bfdebug_log("PIO IN 0x%llx \n", pmut_exit_io->addr);
             pmut_vcpu->run->io.direction = KVM_EXIT_IO_IN;
             break;
         }
 
         case MV_EXIT_IO_OUT: {
+            // bfdebug_log("PIO OUT 0x%llx \n", pmut_exit_io->addr);
             pmut_vcpu->run->io.direction = KVM_EXIT_IO_OUT;
             break;
         }
@@ -459,7 +461,7 @@ handle_vcpu_kvm_run(struct shim_vcpu_t *const pmut_vcpu) NOEXCEPT
     int64_t mut_ret;
     enum mv_exit_reason_t mut_exit_reason;
     void *pmut_mut_exit;
-
+    
     platform_expects(NULL != pmut_vcpu);
     platform_expects(NULL != pmut_vcpu->run);
 
@@ -477,6 +479,25 @@ handle_vcpu_kvm_run(struct shim_vcpu_t *const pmut_vcpu) NOEXCEPT
     }
 runagain:
     mut_exit_reason = mv_vs_op_run(g_mut_hndl, pmut_vcpu->vsid);
+
+    //
+    //  caputre MV Post Run state
+    // 
+    {
+        uint8_t eflags_if;
+        struct mv_run_return_t *mv_run_return = shared_page_for_current_pp();
+        // Interrupt flag is bit 9
+        eflags_if = ((mv_run_return->rflags & 0x200) == 0x200);
+        pmut_vcpu->run->if_flag = eflags_if;
+        pmut_vcpu->run->ready_for_interrupt_injection = (uint8_t)eflags_if;
+        pmut_vcpu->run->cr8 = mv_run_return->cr8;
+        pmut_vcpu->run->apic_base = mv_run_return->apic_base;
+        // bfdebug_log("vcpu->run->eflags_if = 0x%llx\n", eflags_if);
+        // bfdebug_log("vcpu->run->cr8 = 0x%llx\n", pmut_vcpu->run->cr8);
+        // bfdebug_log("vcpu->run->apic_base = 0x%llx\n", pmut_vcpu->run->apic_base);
+        release_shared_page_for_current_pp();
+    }
+
     // bfdebug_log("[BAREFLANK DEBUG] mv_vs_op_run returned: 0x%x\n", mut_exit_reason);
     switch ((int32_t)mut_exit_reason) {
         case mv_exit_reason_t_failure: {
@@ -498,12 +519,14 @@ runagain:
         }
 
         case mv_exit_reason_t_io: {
-            mut_ret = handle_vcpu_kvm_run_io(pmut_vcpu, pmut_mut_exit);
+            struct mv_run_return_t *mv_run_return = pmut_mut_exit;
+            mut_ret = handle_vcpu_kvm_run_io(pmut_vcpu, &mv_run_return->mv_exit_io);
             break;
         }
 
         case mv_exit_reason_t_mmio: {
-            mut_ret = handle_vcpu_kvm_run_mmio(pmut_vcpu, pmut_mut_exit);
+            struct mv_run_return_t *mv_run_return = pmut_mut_exit;
+            mut_ret = handle_vcpu_kvm_run_mmio(pmut_vcpu, &mv_run_return->mv_exit_mmio);
             break;
         }
 

@@ -30,6 +30,7 @@
 #include <dispatch_vmcall_helpers.hpp>
 #include <gs_t.hpp>
 #include <intrinsic_t.hpp>
+#include <mv_run_t.hpp>
 #include <mv_exit_io_t.hpp>
 #include <pp_pool_t.hpp>
 #include <tls_t.hpp>
@@ -182,8 +183,8 @@ namespace microv
         // Context: Root VM
         // ---------------------------------------------------------------------
 
-        auto mut_exit_io{mut_pp_pool.shared_page<hypercall::mv_exit_io_t>(mut_sys)};
-        bsl::expects(mut_exit_io.is_valid());
+        auto mut_run_return{mut_pp_pool.shared_page<hypercall::mv_run_return_t>(mut_sys)};
+        auto mut_exit_io{&mut_run_return->mv_exit_io};
 
         mut_exit_io->addr = addr.get();
         mut_exit_io->size = mut_size;

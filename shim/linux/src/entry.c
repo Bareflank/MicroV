@@ -1246,22 +1246,6 @@ dispatch_vcpu_kvm_run(struct shim_vcpu_t *const vcpu)
         }
     }
     
-
-    // Set kvm_run bits related to the guest interrupt flag state
-    handle_vcpu_kvm_get_regs(vcpu, &tmp_regs);
-
-    handle_vcpu_kvm_get_sregs(vcpu, &tmp_sregs);
-
-    // Interrupt flag is bit 9
-    eflags_if = ((tmp_regs.rflags & 0x200) == 0x200);
-    vcpu->run->if_flag = eflags_if;
-    vcpu->run->ready_for_interrupt_injection = (uint8_t)eflags_if;
-    // apic_base?
-    // cr8?
-    vcpu->run->cr8 = tmp_sregs.cr8;
-    vcpu->run->apic_base = tmp_sregs.apic_base;
-
-
     return mut_ret;
 }
 

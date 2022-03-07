@@ -2073,10 +2073,10 @@ namespace microv
         vs_pool_t &mut_vs_pool) noexcept -> bsl::errc_type
     {
         if (mut_sys.is_the_active_vm_the_root_vm()) {
-            if (!mut_tls.handling_vmcall) {
-                bsl::error() << "unrecoverable error from the root VM\n" << bsl::here();
-                return bsl::errc_failure;
-            }
+            // if (!mut_tls.handling_vmcall) {
+            //     bsl::error() << "unrecoverable error from the root VM\n" << bsl::here();
+            //     return bsl::errc_failure;
+            // }
 
             set_reg_return(mut_sys, hypercall::MV_STATUS_EXIT_UNKNOWN);
             set_reg0(mut_sys, bsl::to_u64(hypercall::EXIT_REASON_UNKNOWN));

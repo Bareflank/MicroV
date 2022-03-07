@@ -35,6 +35,7 @@
 #include <vp_pool_t.hpp>
 #include <vs_pool_t.hpp>
 #include <mv_reg_t.hpp>
+#include <mv_run_t.hpp>
 #include <mv_exit_mmio_t.hpp>
 #include <fadec/decode.hpp>
 
@@ -320,8 +321,8 @@ namespace microv
         // Context: Root VM
         // ---------------------------------------------------------------------
 
-        auto mut_exit_mmio{mut_pp_pool.shared_page<hypercall::mv_exit_mmio_t>(mut_sys)};
-        bsl::expects(mut_exit_mmio.is_valid());
+        auto mut_run_return{mut_pp_pool.shared_page<hypercall::mv_run_return_t>(mut_sys)};
+        auto mut_exit_mmio{&mut_run_return->mv_exit_mmio};
 
         mut_exit_mmio->gpa = phys_addr.get();
         if(is_write.is_zero()) {

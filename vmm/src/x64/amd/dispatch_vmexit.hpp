@@ -116,6 +116,18 @@ namespace microv
     {
         bsl::errc_type mut_ret{};
 
+        bsl::uint64 came_in_on_root{mut_sys.is_the_active_vm_the_root_vm()};
+
+        bsl::safe_u64 rflags{};
+        bsl::safe_u64 cr8{};
+        bsl::safe_u64 apic_base{};
+
+        if(!mut_sys.is_the_active_vm_the_root_vm()) {
+            rflags = mut_sys.bf_vs_op_read(vsid, syscall::bf_reg_t::bf_reg_t_rflags);
+            cr8 = mut_sys.bf_vs_op_read(vsid, syscall::bf_reg_t::bf_reg_t_cr8);
+            apic_base = mut_vs_pool.msr_get(mut_sys, bsl::to_u64(MSR_APIC_BASE.get()), vsid);
+        }
+
         switch (exit_reason.get()) {
             case EXIT_REASON_INTR.get(): {
                 mut_ret = dispatch_vmexit_intr(
@@ -316,6 +328,15 @@ namespace microv
                     exit_reason);
                 break;
             }
+        }
+
+        // If we came in on the guest, and are leaving on the root, then update the KVM_RUN struct w/ fields we need
+        if(!came_in_on_root && mut_sys.is_the_active_vm_the_root_vm() && exit_reason.get() != EXIT_REASON_INTR_WINDOW.get()) {
+            auto mut_run_return{mut_pp_pool.shared_page<hypercall::mv_run_return_t>(mut_sys)};
+
+            mut_run_return->rflags = rflags.get();
+            mut_run_return->cr8 = cr8.get();
+            mut_run_return->apic_base = apic_base.get();
         }
 
         return return_from_vmexit(

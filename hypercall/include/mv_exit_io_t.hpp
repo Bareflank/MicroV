@@ -40,7 +40,7 @@ namespace hypercall
     /// @brief The mv_exit_io_t defines an output access
     constexpr auto MV_EXIT_IO_OUT{0x0000000000000001_u64};
     /// @brief The mv_exit_io_t defines the max data capacity
-    constexpr auto MV_EXIT_IO_MAX_DATA{0x0000000000000FE4_u64};
+    constexpr auto MV_EXIT_IO_MAX_DATA{0x0000000000000F00_u64};
 
     /// <!-- description -->
     ///   @brief See mv_vs_op_run for more details
