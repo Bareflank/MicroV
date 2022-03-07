@@ -24,10 +24,11 @@
 
 #include "../../include/handle_vcpu_kvm_set_cpuid2.h"
 
+#include <helpers.hpp>
 #include <kvm_cpuid2.h>
 #include <mv_types.h>
 #include <shim_vcpu_t.h>
-#include <helpers.hpp>
+
 #include <bsl/ut.hpp>
 
 namespace shim

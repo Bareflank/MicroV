@@ -24,9 +24,10 @@
 
 #include "../../include/handle_vm_kvm_get_clock.h"
 
+#include <helpers.hpp>
 #include <kvm_clock_data.h>
 #include <mv_types.h>
-#include <helpers.hpp>
+
 #include <bsl/ut.hpp>
 
 namespace shim
@@ -43,7 +44,7 @@ namespace shim
     [[nodiscard]] constexpr auto
     tests() noexcept -> bsl::exit_code
     {
-	init_tests();
+        init_tests();
         bsl::ut_scenario{"description"} = []() noexcept {
             bsl::ut_given{} = [&]() noexcept {
                 kvm_clock_data mut_args{};
