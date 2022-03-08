@@ -318,7 +318,7 @@ namespace microv
         }
 
         {
-            auto const run{mut_pp_pool.shared_page<hypercall::mv_run_t>(mut_sys)};
+            auto run{mut_pp_pool.shared_page<hypercall::mv_run_t>(mut_sys)};
             if (bsl::unlikely(run.is_invalid())) {
                 bsl::print<bsl::V>() << bsl::here();
                 set_reg_return(mut_sys, hypercall::MV_STATUS_FAILURE_UNKNOWN);
@@ -342,6 +342,15 @@ namespace microv
                 set_reg_return(mut_sys, hypercall::MV_STATUS_FAILURE_UNKNOWN);
                 return vmexit_failure_advance_ip_and_run;
             }
+
+            // Init post run state
+            // FIXME: Compiler doesn't like the reinterpret cast call, so we just
+            // set the first field of the shared page to beef (which cooresponds to rflags)
+            // This is just for a sanitfy check that we're not using stale data & can be dropped later on
+            bsl::safe_u64 beef{0xbeefbeef_u64};
+            // auto mut_run_return{reinterpret_cast<hypercall::mv_run_return_t>(run)};
+            // mut_run_return->rflags = beef.get();
+            run->num_reg_entries = beef.get();
 
             bsl::touch();
         }

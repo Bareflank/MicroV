@@ -126,7 +126,7 @@ run_linux_best() {
     -hda $BUILD_DIR/2004_serial.img \
     -chardev stdio,id=char0,mux=on,logfile=$BUILD_DIR/qemu_linux.log,signal=off \
     -serial chardev:char0 -mon chardev=char0 \
-    -nographic \
+    -nographic -display none\
     -debugcon file:best.log -global isa-debugcon.iobase=0x402 \
     -D qemu-dbg.log
     # --trace 'kvm_*' \

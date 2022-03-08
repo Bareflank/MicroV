@@ -44,6 +44,7 @@
 #include <shim_vcpu_t.h>
 #include <kvm_regs.h>
 
+
 /**
  * <!-- description -->
  *   @brief Sets the exit reason to failure, and returns failure, telling
@@ -277,9 +278,9 @@ pre_run_op_io(struct shim_vcpu_t *const pmut_vcpu, struct mv_run_t *const pmut_m
     mv_touch();
 
     if (1U == pmut_vcpu->run->io.count) {
-        pmut_mv_run->num_reg_entries = (uint64_t)1U;
-        pmut_mv_run->reg_entries[0].reg = (uint64_t)mv_reg_t_rax;
-        pmut_mv_run->reg_entries[0].val = pmut_vcpu->run->io.reg0;
+        pmut_mv_run->reg_entries[pmut_mv_run->num_reg_entries].reg = (uint64_t)mv_reg_t_rax;
+        pmut_mv_run->reg_entries[pmut_mv_run->num_reg_entries].val = pmut_vcpu->run->io.reg0;
+        pmut_mv_run->num_reg_entries++;
     }
     else if ((uint32_t)MV_RUN_MAX_IOMEM_SIZE < mut_bytes) {
         bferror_d32("FIXME: PIO size too big.", pmut_vcpu->run->io.count);
@@ -343,9 +344,9 @@ pre_run_op_mmio(struct shim_vcpu_t *const pmut_vcpu, struct mv_run_t *const pmut
     mv_touch();
 
     // Both reads & writes need to advance the instruction pointer
-    pmut_mv_run->num_reg_entries = (uint64_t)1U;
-    pmut_mv_run->reg_entries[0].reg = (uint64_t)mv_reg_t_rip;
-    pmut_mv_run->reg_entries[0].val = pmut_vcpu->run->mmio.nrip;
+    pmut_mv_run->reg_entries[pmut_mv_run->num_reg_entries].reg = (uint64_t)mv_reg_t_rip;
+    pmut_mv_run->reg_entries[pmut_mv_run->num_reg_entries].val = pmut_vcpu->run->mmio.nrip;
+    pmut_mv_run->num_reg_entries++;
     // bfdebug_log("  AFTER setting RIP = 0x%llx\n", (unsigned long long)pmut_vcpu->run->mmio.nrip);
 
     if (pmut_vcpu->run->mmio.is_write) {
@@ -423,6 +424,25 @@ pre_run_op(struct shim_vcpu_t *const pmut_vcpu, struct mv_run_t *const pmut_mv_r
     pmut_mv_run->num_msr_entries = (uint64_t)0U;
     pmut_mv_run->num_iomem = (uint64_t)0U;
 
+    if(pmut_vcpu->run->request_interrupt_window) {
+        // bfdebug_log("pre_run_op: run->request_interrupt_window=1\n");
+        pmut_mv_run->reg_entries[pmut_mv_run->num_reg_entries].reg = (uint64_t)mv_reg_t_virtual_interrupt_a;
+        pmut_mv_run->reg_entries[pmut_mv_run->num_reg_entries].val = 0x000000FF010F0100;
+        pmut_mv_run->num_reg_entries++;
+    }
+
+
+    pmut_mv_run->reg_entries[pmut_mv_run->num_reg_entries].reg = (uint64_t)mv_reg_t_cr8;
+    pmut_mv_run->reg_entries[pmut_mv_run->num_reg_entries].val = pmut_vcpu->run->cr8;
+    pmut_mv_run->num_reg_entries++;
+
+
+    if(pmut_vcpu->run->apic_base) {
+        pmut_mv_run->msr_entries[pmut_mv_run->num_msr_entries].reg = (uint64_t)0x1b;//msr_apic_base;
+        pmut_mv_run->msr_entries[pmut_mv_run->num_msr_entries].val = pmut_vcpu->run->apic_base;
+        pmut_mv_run->num_msr_entries++;
+    }
+
     switch (pmut_vcpu->run->exit_reason) {
         case KVM_EXIT_IO: {
             return pre_run_op_io(pmut_vcpu, pmut_mv_run);
@@ -442,10 +462,13 @@ pre_run_op(struct shim_vcpu_t *const pmut_vcpu, struct mv_run_t *const pmut_mv_r
         }
     }
 
+
+
     // bferror_x64("pre_run_op: unhandled exit reason", (uint64_t)pmut_vcpu->run->exit_reason);
 
     return SHIM_SUCCESS;
 }
+
 
 /**
  * <!-- description -->
@@ -470,14 +493,13 @@ handle_vcpu_kvm_run(struct shim_vcpu_t *const pmut_vcpu) NOEXCEPT
         return return_failure(pmut_vcpu);
     }
 
+runagain:
     pmut_mut_exit = shared_page_for_current_pp();
-
     mut_ret = pre_run_op(pmut_vcpu, (struct mv_run_t *)pmut_mut_exit);
     if (SHIM_FAILURE == mut_ret) {
         bferror("pre_run_op failed");
         return return_failure(pmut_vcpu);
     }
-runagain:
     mut_exit_reason = mv_vs_op_run(g_mut_hndl, pmut_vcpu->vsid);
 
     //
@@ -486,6 +508,16 @@ runagain:
     {
         uint8_t eflags_if;
         struct mv_run_return_t *mv_run_return = shared_page_for_current_pp();
+
+        // Assert no 0xbeefbeef!
+        // This is a sanity check, cooresponding to initialization in dispatch_vmcall_mv_vs_op.hpp
+        // to make sure microv always updates these values after a run & we don't end up with stale data
+        if( (mv_run_return->rflags == 0xbeefbeef) ||
+            (mv_run_return->cr8 == 0xbeefbeef) ||
+            (mv_run_return->apic_base == 0xbeefbeef) ) {
+            bfdebug_log("[BEEF] mv_run_return has stale data!!! exit reason: %llx\n", mut_exit_reason);
+        }
+
         // Interrupt flag is bit 9
         eflags_if = ((mv_run_return->rflags & 0x200) == 0x200);
         pmut_vcpu->run->if_flag = eflags_if;
@@ -559,12 +591,18 @@ runagain:
 
         case mv_exit_reason_t_interrupt_window: {
             // bferror("run: interrupt window exit");
-            // platform_expects(!!pmut_vcpu->run->request_interrupt_window);
-            // pmut_vcpu->run->if_flag = (uint8_t)1;
-            pmut_vcpu->run->ready_for_interrupt_injection = (uint8_t)1;
-            // pmut_vcpu->run->exit_reason = KVM_EXIT_IRQ_WINDOW_OPEN;
-            // mut_ret = SHIM_SUCCESS;
-            goto runagain;
+
+            pmut_vcpu->run->exit_reason = KVM_EXIT_IRQ_WINDOW_OPEN;
+                
+            // request_interrupt_window is set/cleared by qemu, we dont need to touch it
+            if(pmut_vcpu->run->request_interrupt_window) {
+                // bferror("run: interrupt window exit");
+                mut_ret = SHIM_SUCCESS;
+                break;
+            }
+            else {
+                goto runagain;
+            }
             break;
         }
 

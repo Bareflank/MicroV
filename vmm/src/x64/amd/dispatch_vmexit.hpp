@@ -388,6 +388,7 @@ namespace microv
                 case EXIT_REASON_IO.get():
                 case EXIT_REASON_HLT.get():
                 // case EXIT_REASON_MSR.get():
+                case EXIT_REASON_INTR_WINDOW.get():
                 case EXIT_REASON_INTR.get():
                 case EXIT_REASON_NMI.get():
                 case EXIT_REASON_SHUTDOWN.get():

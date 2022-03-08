@@ -982,6 +982,13 @@ namespace microv
             auto mut_ret{ m_emulated_cpuid.get(mut_sys, mut_entry, intrinsic) };
             bsl::discard(mut_ret);
 
+            // constexpr auto fn0000_00001{0x00000001_u64};
+            // if(mut_rax.get() == fn0000_00001.get()) {
+            //     // FIXME: Don't tell the guest he's in a vm; we don't really provide pv support for now
+            //     constexpr auto hypervisor_bit{0x0000000080000000_u64};
+            //     mut_entry.ecx &= ~hypervisor_bit.get();
+            // }
+
             syscall::bf_syscall_t::bf_tls_set_rax(bsl::to_u64_unsafe(mut_entry.eax));
             syscall::bf_syscall_t::bf_tls_set_rbx(bsl::to_u64_unsafe(mut_entry.ebx));
             syscall::bf_syscall_t::bf_tls_set_rcx(bsl::to_u64_unsafe(mut_entry.ecx));
@@ -1340,6 +1347,11 @@ namespace microv
                     break;
                 }
 
+                case mv::mv_reg_t_virtual_interrupt_a: {
+                    return sys.bf_vs_op_read(this->id(), mk::bf_reg_t_virtual_interrupt_a);
+                    break;
+                }
+
                 case mv::mv_reg_t_invalid:
                     [[fallthrough]];
                 default: {
@@ -1665,6 +1677,11 @@ namespace microv
 
                 case mv::mv_reg_t_xcr0: {
                     return mut_sys.bf_vs_op_write(this->id(), mk::bf_reg_t_xcr0, val);
+                    break;
+                }
+
+                case mv::mv_reg_t_virtual_interrupt_a: {
+                    return mut_sys.bf_vs_op_write(this->id(), mk::bf_reg_t_virtual_interrupt_a, val);
                     break;
                 }
 
@@ -2157,7 +2174,7 @@ namespace microv
                 }
 
                 case MSR_APIC_BASE.get(): {
-                    bsl::error() << "Setting APIC Base to " << bsl::hex(val) << bsl::endl;
+                    // bsl::error() << "Setting APIC Base to " << bsl::hex(val) << bsl::endl;
                     m_emulated_lapic.set_apic_base(val);
                     return bsl::errc_success;
                 }
@@ -2521,7 +2538,12 @@ namespace microv
             bsl::expects(allocated_status_t::allocated == m_allocated);
             bsl::expects(running_status_t::running != m_status);
             bsl::expects(mut_sys.bf_tls_ppid() == this->assigned_pp());
-            bsl::expects(!m_interrupt_queue.empty());
+            
+            if (m_interrupt_queue.empty()) {
+                constexpr auto vint_a_idx{syscall::bf_reg_t::bf_reg_t_virtual_interrupt_a};
+                bsl::expects(mut_sys.bf_vs_op_write(this->id(), vint_a_idx, {}));
+                return bsl::errc_success;
+            }
 
             bsl::expects(m_interrupt_queue.pop(mut_vector));
             bsl::expects(mut_vector.is_valid_and_checked());

@@ -31,7 +31,7 @@
 namespace hypercall
 {
     /// @brief stores the max value for a mv_reg_t
-    constexpr auto MV_MAX_REG_T{71_i32};
+    constexpr auto MV_MAX_REG_T{72_i32};
 
     /// <!-- description -->
     ///   @brief Defines which register to use for certain hypercalls
@@ -184,6 +184,8 @@ namespace hypercall
         mv_reg_t_cr8 = 69,
         /// @brief defines the xcr0 register
         mv_reg_t_xcr0 = 70,
+        /** @brief defines the virtual interrupt a register */
+        mv_reg_t_virtual_interrupt_a = 71,
         /// @brief defines and invalid mv_reg_t
         mv_reg_t_invalid = MV_MAX_REG_T.get(),
     };
