@@ -116,17 +116,82 @@ namespace microv
     {
         bsl::errc_type mut_ret{};
 
-        bsl::uint64 came_in_on_root{mut_sys.is_the_active_vm_the_root_vm()};
+        // See if we came in from the root vm
+        if(mut_sys.is_the_active_vm_the_root_vm()) {
+            switch (exit_reason.get()) {
+                case EXIT_REASON_VMCALL.get(): {
+                    mut_ret = dispatch_vmexit_vmcall(
+                        gs,
+                        mut_tls,
+                        mut_sys,
+                        mut_page_pool,
+                        intrinsic,
+                        mut_pp_pool,
+                        mut_vm_pool,
+                        mut_vp_pool,
+                        mut_vs_pool,
+                        vsid);
+                    break;
+                }
 
-        bsl::safe_u64 rflags{};
-        bsl::safe_u64 cr8{};
-        bsl::safe_u64 apic_base{};
+                case EXIT_REASON_NMI.get(): {
+                    mut_ret = dispatch_vmexit_nmi(
+                        gs,
+                        mut_tls,
+                        mut_sys,
+                        mut_page_pool,
+                        intrinsic,
+                        mut_pp_pool,
+                        mut_vm_pool,
+                        mut_vp_pool,
+                        mut_vs_pool,
+                        vsid);
+                    break;
+                }
 
-        if(!mut_sys.is_the_active_vm_the_root_vm()) {
-            rflags = mut_sys.bf_vs_op_read(vsid, syscall::bf_reg_t::bf_reg_t_rflags);
-            cr8 = mut_sys.bf_vs_op_read(vsid, syscall::bf_reg_t::bf_reg_t_cr8);
-            apic_base = mut_vs_pool.msr_get(mut_sys, bsl::to_u64(MSR_APIC_BASE.get()), vsid);
+                case EXIT_REASON_CPUID.get(): {
+                    mut_ret = dispatch_vmexit_cpuid(
+                        gs,
+                        mut_tls,
+                        mut_sys,
+                        mut_page_pool,
+                        intrinsic,
+                        mut_pp_pool,
+                        mut_vm_pool,
+                        mut_vp_pool,
+                        mut_vs_pool,
+                        vsid);
+                    break;
+                }
+
+                default: {
+                    bsl::debug() << __FILE__ << "[SHIIM] EXIT_REASON_UNKNOWN " << bsl::endl;
+                    mut_ret = dispatch_vmexit_unknown(
+                        gs,
+                        mut_tls,
+                        mut_sys,
+                        mut_page_pool,
+                        intrinsic,
+                        mut_pp_pool,
+                        mut_vm_pool,
+                        mut_vp_pool,
+                        mut_vs_pool,
+                        vsid,
+                        exit_reason);
+                    break;
+                }
+            }
+
+            return return_from_vmexit(mut_tls, mut_sys, intrinsic, mut_vm_pool, mut_vp_pool, mut_vs_pool, vsid, mut_ret);
         }
+
+        //
+        //  Only get here if the exit came  from a guest VM, not the root
+        //
+
+        bsl::safe_u64 rflags{mut_sys.bf_vs_op_read(vsid, syscall::bf_reg_t::bf_reg_t_rflags)};
+        bsl::safe_u64 cr8{mut_sys.bf_vs_op_read(vsid, syscall::bf_reg_t::bf_reg_t_cr8)};
+        bsl::safe_u64 apic_base{mut_vs_pool.msr_get(mut_sys, bsl::to_u64(MSR_APIC_BASE.get()), vsid)};
 
         switch (exit_reason.get()) {
             case EXIT_REASON_INTR.get(): {
@@ -251,21 +316,6 @@ namespace microv
                 break;
             }
 
-            case EXIT_REASON_VMCALL.get(): {
-                mut_ret = dispatch_vmexit_vmcall(
-                    gs,
-                    mut_tls,
-                    mut_sys,
-                    mut_page_pool,
-                    intrinsic,
-                    mut_pp_pool,
-                    mut_vm_pool,
-                    mut_vp_pool,
-                    mut_vs_pool,
-                    vsid);
-                break;
-            }
-
             case EXIT_REASON_MSR.get(): {
                 auto const exitinfo1{mut_sys.bf_vs_op_read(vsid, syscall::bf_reg_t::bf_reg_t_exitinfo1)};
 
@@ -331,12 +381,28 @@ namespace microv
         }
 
         // If we came in on the guest, and are leaving on the root, then update the KVM_RUN struct w/ fields we need
-        if(!came_in_on_root && mut_sys.is_the_active_vm_the_root_vm() && exit_reason.get() != EXIT_REASON_INTR_WINDOW.get()) {
-            auto mut_run_return{mut_pp_pool.shared_page<hypercall::mv_run_return_t>(mut_sys)};
+        if( mut_sys.is_the_active_vm_the_root_vm() ) {
+            // We only need to populate the mv_run_return_t struct for certain cases
+            switch (exit_reason.get()) {
+                case EXIT_REASON_NPF.get(): 
+                case EXIT_REASON_IO.get():
+                case EXIT_REASON_HLT.get():
+                // case EXIT_REASON_MSR.get():
+                case EXIT_REASON_INTR.get():
+                case EXIT_REASON_NMI.get():
+                case EXIT_REASON_SHUTDOWN.get():
+                {
+                    auto mut_run_return{mut_pp_pool.shared_page<hypercall::mv_run_return_t>(mut_sys)};
 
-            mut_run_return->rflags = rflags.get();
-            mut_run_return->cr8 = cr8.get();
-            mut_run_return->apic_base = apic_base.get();
+                    mut_run_return->rflags = rflags.get();
+                    mut_run_return->cr8 = cr8.get();
+                    mut_run_return->apic_base = apic_base.get();
+                    break;
+                }
+                default: {
+                    break;
+                }
+            }
         }
 
         return return_from_vmexit(

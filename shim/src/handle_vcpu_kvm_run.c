@@ -537,21 +537,21 @@ runagain:
         }
 
         case mv_exit_reason_t_interrupt: {
-            // bferror("run: mv_exit_reason_t_interrupt");
-            release_shared_page_for_current_pp();
-            if (platform_interrupted()) {
-                // bferror("platform_interrupted\n");
-                // pmut_vcpu->run->exit_reason = KVM_EXIT_INTR;
-                mut_ret = SHIM_INTERRUPTED;
-                break;
-            }
+            // // bferror("run: mv_exit_reason_t_interrupt");
+            // release_shared_page_for_current_pp();
+            // if (platform_interrupted()) {
+            //     // bferror("platform_interrupted\n");
+            //     // pmut_vcpu->run->exit_reason = KVM_EXIT_INTR;
+            //     mut_ret = SHIM_INTERRUPTED;
+            //     break;
+            // }
 
-            if((pmut_vcpu->run->exit_reason == KVM_EXIT_MMIO) ||
-               (pmut_vcpu->run->exit_reason == KVM_EXIT_IO)) {
-                //FIXME: Put this in so that we don't try to do the MMIO pre-run again
-                pmut_vcpu->run->exit_reason = KVM_EXIT_INTR;
-            }
-            pmut_mut_exit = shared_page_for_current_pp();
+            // if((pmut_vcpu->run->exit_reason == KVM_EXIT_MMIO) ||
+            //    (pmut_vcpu->run->exit_reason == KVM_EXIT_IO)) {
+            //     //FIXME: Put this in so that we don't try to do the MMIO pre-run again
+            //     pmut_vcpu->run->exit_reason = KVM_EXIT_INTR;
+            // }
+            // pmut_mut_exit = shared_page_for_current_pp();
             pmut_vcpu->run->exit_reason = KVM_EXIT_INTR;
             mut_ret = SHIM_INTERRUPTED;
             break;
