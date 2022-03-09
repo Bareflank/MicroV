@@ -270,10 +270,6 @@ pre_run_op_io(struct shim_vcpu_t *const pmut_vcpu, struct mv_run_t *const pmut_m
     platform_expects(KVM_EXIT_IO == pmut_vcpu->run->exit_reason);
     platform_expects(NULL != pmut_mv_run);
 
-    platform_expects((uint64_t)0U == pmut_mv_run->num_reg_entries);
-    platform_expects((uint64_t)0U == pmut_mv_run->num_msr_entries);
-    platform_expects((uint64_t)0U == pmut_mv_run->num_iomem);
-
     mut_bytes = (uint64_t)pmut_vcpu->run->io.count * (uint64_t)pmut_vcpu->run->io.size;
 
     if (KVM_EXIT_IO_IN != (int)pmut_vcpu->run->io.direction) {
@@ -334,10 +330,6 @@ pre_run_op_mmio(struct shim_vcpu_t *const pmut_vcpu, struct mv_run_t *const pmut
     platform_expects(NULL != pmut_vcpu->run);
     platform_expects(KVM_EXIT_MMIO == pmut_vcpu->run->exit_reason);
     platform_expects(NULL != pmut_mv_run);
-
-    platform_expects((uint64_t)0U == pmut_mv_run->num_reg_entries);
-    platform_expects((uint64_t)0U == pmut_mv_run->num_msr_entries);
-    platform_expects((uint64_t)0U == pmut_mv_run->num_iomem);
 
     if(!pmut_vcpu->run->mmio.need_pre_op_run) {
         // bfmmiodebug_log("pre_run_op_mmio: nothing to do!\n");
