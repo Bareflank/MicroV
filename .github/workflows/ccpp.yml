@@ -37,7 +37,7 @@ jobs:
         sudo tar -xzvf llvm-bareflank.tar.gz -C /usr/lib/
         export PATH="/usr/lib/llvm-bareflank/bin:$PATH"
         mkdir build && cd build
-        cmake -GNinja -DCMAKE_CXX_COMPILER="clang++" -DCMAKE_BUILD_TYPE=DEBUG -DENABLE_CLANG_FORMAT=ON ../microv
+        cmake -GNinja -DCMAKE_CXX_COMPILER="clang++" -DCMAKE_BUILD_TYPE=DEBUG -DENABLE_CLANG_FORMAT=ON -DHYPERVISOR_TARGET_ARCH=AuthenticAMD ../microv
         ninja format
         cd ../microv
         if [[ -n $(git diff) ]]; then
@@ -65,7 +65,7 @@ jobs:
         sudo tar -xzvf llvm-bareflank.tar.gz -C /usr/lib/
         export PATH="/usr/lib/llvm-bareflank/bin:$PATH"
         mkdir build && cd build
-        cmake -GNinja -DCMAKE_CXX_COMPILER="clang++" -DCMAKE_BUILD_TYPE=CLANG_TIDY -DBUILD_EXAMPLES=ON -DBUILD_TESTS=ON -DBSL_DEBUG_LEVEL=bsl::VVV ../microv
+        cmake -GNinja -DCMAKE_CXX_COMPILER="clang++" -DCMAKE_BUILD_TYPE=CLANG_TIDY -DBUILD_EXAMPLES=ON -DBUILD_TESTS=ON -DBSL_DEBUG_LEVEL=bsl::VVV -DHYPERVISOR_TARGET_ARCH=AuthenticAMD ../microv
         ninja
       shell: bash
 
@@ -88,7 +88,7 @@ jobs:
         sudo cp microv/utils/linux/include-what-you-use /usr/lib/llvm-bareflank/bin/
         export PATH="/usr/lib/llvm-bareflank/bin:$PATH"
         mkdir build && cd build
-        cmake -GNinja -DCMAKE_CXX_COMPILER="clang++" -DCMAKE_BUILD_TYPE=DEBUG -DBUILD_EXAMPLES=ON -DBUILD_TESTS=ON -DMICROV_BUILD_HYPERCALL=OFF -DBSL_DEBUG_LEVEL=bsl::VVV ../microv
+        cmake -GNinja -DCMAKE_CXX_COMPILER="clang++" -DCMAKE_BUILD_TYPE=DEBUG -DBUILD_EXAMPLES=ON -DBUILD_TESTS=ON -DMICROV_BUILD_HYPERCALL=OFF -DBSL_DEBUG_LEVEL=bsl::VVV -DHYPERVISOR_TARGET_ARCH=AuthenticAMD ../microv
         ninja iwyu
       shell: bash
 
@@ -106,7 +106,7 @@ jobs:
     - name: Validate ASAN
       run: |
         mkdir build && cd build
-        cmake -GNinja -DCMAKE_CXX_COMPILER="clang++" -DCMAKE_BUILD_TYPE=ASAN -DBUILD_EXAMPLES=ON -DBUILD_TESTS=ON -DBSL_DEBUG_LEVEL=bsl::VVV ../microv
+        cmake -GNinja -DCMAKE_CXX_COMPILER="clang++" -DCMAKE_BUILD_TYPE=ASAN -DBUILD_EXAMPLES=ON -DBUILD_TESTS=ON -DBSL_DEBUG_LEVEL=bsl::VVV -DHYPERVISOR_TARGET_ARCH=AuthenticAMD ../microv
         ninja
         ninja unittest
       shell: bash
@@ -125,7 +125,7 @@ jobs:
     - name: Validate UBSAN
       run: |
         mkdir build && cd build
-        cmake -GNinja -DCMAKE_CXX_COMPILER="clang++" -DCMAKE_BUILD_TYPE=UBSAN -DBUILD_EXAMPLES=ON -DBUILD_TESTS=ON -DBSL_DEBUG_LEVEL=bsl::VVV ../microv
+        cmake -GNinja -DCMAKE_CXX_COMPILER="clang++" -DCMAKE_BUILD_TYPE=UBSAN -DBUILD_EXAMPLES=ON -DBUILD_TESTS=ON -DBSL_DEBUG_LEVEL=bsl::VVV -DHYPERVISOR_TARGET_ARCH=AuthenticAMD ../microv
         ninja
         ninja unittest
       shell: bash
@@ -144,7 +144,7 @@ jobs:
     - name: Validate Release Build
       run: |
         mkdir build && cd build
-        cmake -GNinja -DCMAKE_CXX_COMPILER="clang++" -DCMAKE_BUILD_TYPE=RELEASE -DBUILD_EXAMPLES=ON ../microv
+        cmake -GNinja -DCMAKE_CXX_COMPILER="clang++" -DCMAKE_BUILD_TYPE=RELEASE -DBUILD_EXAMPLES=ON -DHYPERVISOR_TARGET_ARCH=AuthenticAMD ../microv
         ninja
       shell: bash
 
@@ -162,7 +162,7 @@ jobs:
     - name: Validate Debug Build
       run: |
         mkdir build && cd build
-        cmake -GNinja -DCMAKE_CXX_COMPILER="clang++" -DCMAKE_BUILD_TYPE=DEBUG -DBUILD_EXAMPLES=ON -DBUILD_TESTS=ON -DBSL_DEBUG_LEVEL=bsl::VVV ../microv
+        cmake -GNinja -DCMAKE_CXX_COMPILER="clang++" -DCMAKE_BUILD_TYPE=DEBUG -DBUILD_EXAMPLES=ON -DBUILD_TESTS=ON -DBSL_DEBUG_LEVEL=bsl::VVV -DHYPERVISOR_TARGET_ARCH=AuthenticAMD ../microv
         ninja
         ninja unittest
       shell: bash
