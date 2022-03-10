@@ -33,7 +33,7 @@ jobs:
       shell: bash
     - name: Validate Source Formatting
       run: |
-        wget https://github.com/Bareflank/llvm-project/releases/download/v11.0.0-bsl/llvm-bareflank.tar.gz
+        wget https://github.com/Bareflank/llvm-project/releases/download/v11.0.0-bsl_1/llvm-bareflank.tar.gz
         sudo tar -xzvf llvm-bareflank.tar.gz -C /usr/lib/
         export PATH="/usr/lib/llvm-bareflank/bin:$PATH"
         mkdir build && cd build
@@ -61,7 +61,7 @@ jobs:
       shell: bash
     - name: Validate Compliance
       run: |
-        wget https://github.com/Bareflank/llvm-project/releases/download/v11.0.0-bsl/llvm-bareflank.tar.gz
+        wget https://github.com/Bareflank/llvm-project/releases/download/v11.0.0-bsl_1/llvm-bareflank.tar.gz
         sudo tar -xzvf llvm-bareflank.tar.gz -C /usr/lib/
         export PATH="/usr/lib/llvm-bareflank/bin:$PATH"
         mkdir build && cd build
@@ -82,7 +82,7 @@ jobs:
       shell: bash
     - name: Validate Compliance
       run: |
-        wget https://github.com/Bareflank/llvm-project/releases/download/v11.0.0-bsl/llvm-bareflank.tar.gz
+        wget https://github.com/Bareflank/llvm-project/releases/download/v11.0.0-bsl_1/llvm-bareflank.tar.gz
         sudo tar -xzvf llvm-bareflank.tar.gz -C /usr/lib/
         chmod +x microv/utils/linux/include-what-you-use
         sudo cp microv/utils/linux/include-what-you-use /usr/lib/llvm-bareflank/bin/
