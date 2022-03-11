@@ -190,16 +190,10 @@ namespace hypercall
             integration::verify(pmut_exit_io->type == expected_type);
             integration::verify(pmut_exit_io->size == expected_size_8);
 
-            for (mut_i = {} ; mut_i < expected_string_data_size; ++mut_i) {
-                bsl::print() << " " << bsl::hex(*pmut_exit_io->data.at_if(mut_i));
-            }
-            bsl::print() << bsl::endl;
-
             for (mut_i = {}; mut_i < expected_data_size; ++mut_i) {
                 integration::verify(*pmut_exit_io->data.at_if(mut_i) == *expected_data.at_if(mut_i));
             }
             for (; mut_i < expected_string_data_size; ++mut_i) {
-                bsl::debug() << " mut_i " << bsl::hex(mut_i) << " " << bsl::hex(*pmut_exit_io->data.at_if(mut_i)) << " == " << bsl::hex(*expected_string_data.at_if(mut_i)) << bsl::endl;
                 integration::verify(*pmut_exit_io->data.at_if(mut_i) == *expected_string_data.at_if(mut_i));
             }
 

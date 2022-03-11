@@ -257,10 +257,10 @@ namespace microv
             auto const end{(pos + count).checked()};
             if (bsl::unlikely(end > sizeof(T))) {
                 bsl::error()
-                    << "end position overflows"
-                    << " end " << bsl::hex(end)
-                    << " size " << bsl::hex(sizeof(T))
-                    << bsl::endl
+                    << "end position overflows"           // --
+                    << " end " << bsl::hex(end)           // --
+                    << " size " << bsl::hex(sizeof(T))    // --
+                    << bsl::endl                          // --
                     << bsl::here();
                 return {};
             }
