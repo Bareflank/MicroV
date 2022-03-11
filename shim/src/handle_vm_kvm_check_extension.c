@@ -99,7 +99,7 @@ handle_vm_kvm_check_extension(unsigned long mut_userargs, uint32_t *const pmut_r
         case KVM_CAP_COALESCED_MMIO:
         case KVM_CAP_DEBUGREGS:
         case KVM_CAP_EXCEPTION_PAYLOAD:
-        case KVM_CAP_GET_MSR_FEATURES: //??
+        case KVM_CAP_GET_MSR_FEATURES:    //??
         case KVM_CAP_HYPERV:
         case KVM_CAP_HYPERV_VP_INDEX:
         case KVM_CAP_IOEVENTFD:
@@ -126,8 +126,7 @@ handle_vm_kvm_check_extension(unsigned long mut_userargs, uint32_t *const pmut_r
         case KVM_CAP_X86_ROBUST_SINGLESTEP:
         case KVM_CAP_X86_SMM:
         case KVM_CAP_XCRS:
-        case KVM_CAP_XSAVE:
-        {
+        case KVM_CAP_XSAVE: {
             *pmut_ret = (uint32_t)0;
             break;
         }

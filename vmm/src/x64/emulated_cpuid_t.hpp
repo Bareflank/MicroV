@@ -30,9 +30,9 @@
 #include <errc_types.hpp>
 #include <gs_t.hpp>
 #include <mv_cdl_entry_t.hpp>
+#include <mv_cpuid_flag_t.hpp>
 #include <page_pool_t.hpp>
 #include <tls_t.hpp>
-#include <mv_cpuid_flag_t.hpp>
 
 #include <bsl/debug.hpp>
 #include <bsl/discard.hpp>
@@ -404,8 +404,7 @@ namespace microv
         ///     vmexit_success_promote is returned.
         ///
         [[nodiscard]] static constexpr auto
-        get(syscall::bf_syscall_t &mut_sys, intrinsic_t const &intrinsic) noexcept
-            -> bsl::errc_type
+        get(syscall::bf_syscall_t &mut_sys, intrinsic_t const &intrinsic) noexcept -> bsl::errc_type
         {
             bsl::discard(mut_sys);
             bsl::discard(intrinsic);
@@ -470,25 +469,25 @@ namespace microv
         ///     and friends otherwise.
         ///
         [[nodiscard]] constexpr auto
-        get(syscall::bf_syscall_t const &sys, hypercall::mv_cdl_entry_t &mut_entry, intrinsic_t const &intrinsic) const noexcept
-            -> bsl::errc_type
+        get(syscall::bf_syscall_t const &sys,
+            hypercall::mv_cdl_entry_t &mut_entry,
+            intrinsic_t const &intrinsic) const noexcept -> bsl::errc_type
         {
             bsl::discard(sys);
 
             // FIXME: not all CPUID func's have subleaves. Of the ones QEMU uses, only func=4 has subleaves
             auto idx{0_idx};
-            if(mut_entry.fun == 4u) {
+            if (mut_entry.fun == 4u) {
                 idx = bsl::to_idx(mut_entry.idx);
             }
 
             // bsl::debug() << "Getting emulated CPUID FN" << bsl::hex(mut_entry.fun) << " " << bsl::hex(mut_entry.idx) << bsl::endl;
 
-            if( (mut_entry.fun < CPUID_NUM_STD_FUNCTIONS.get()) ) {
+            if ((mut_entry.fun < CPUID_NUM_STD_FUNCTIONS.get())) {
                 // bsl::debug() << "Trying emulated CPUID FN" << bsl::hex(mut_entry.fun) << " " << bsl::hex(mut_entry.idx) << bsl::endl;
-                auto *const pmut_entry{
-                    m_std_leaves.at_if(bsl::to_idx(mut_entry.fun))->at_if(idx)};
+                auto *const pmut_entry{m_std_leaves.at_if(bsl::to_idx(mut_entry.fun))->at_if(idx)};
                 // See if its one that's been set already
-                if( pmut_entry && (pmut_entry->flags == hypercall::mv_cpuid_flag_t::mv_cpuid_set)) {
+                if (pmut_entry && (pmut_entry->flags == hypercall::mv_cpuid_flag_t::mv_cpuid_set)) {
                     // bsl::debug() << "Got emulated CPUID FN" << bsl::hex(mut_entry.fun) << " " << bsl::hex(mut_entry.idx) << bsl::endl;
                     mut_entry.eax = pmut_entry->eax;
                     mut_entry.ebx = pmut_entry->ebx;
@@ -497,13 +496,15 @@ namespace microv
                     // print_leaf(bsl::error(), mut_entry);
                     return bsl::errc_success;
                 }
-            } else if( ((mut_entry.fun - CPUID_FN8000_0000.get()) < CPUID_NUM_EXT_FUNCTIONS.get()) ) {
+            }
+            else if (((mut_entry.fun - CPUID_FN8000_0000.get()) < CPUID_NUM_EXT_FUNCTIONS.get())) {
                 // bsl::debug() << "Trying emulated CPUID FN" << bsl::hex(mut_entry.fun) << " " << bsl::hex(mut_entry.idx) << bsl::endl;
                 auto *const pmut_entry{
-                    m_ext_leaves.at_if(bsl::to_idx(mut_entry.fun - CPUID_FN8000_0000.get()))->at_if(idx)};
+                    m_ext_leaves.at_if(bsl::to_idx(mut_entry.fun - CPUID_FN8000_0000.get()))
+                        ->at_if(idx)};
 
                 // See if its one that's been set already
-                if( pmut_entry && (pmut_entry->flags == hypercall::mv_cpuid_flag_t::mv_cpuid_set)) {
+                if (pmut_entry && (pmut_entry->flags == hypercall::mv_cpuid_flag_t::mv_cpuid_set)) {
                     // bsl::debug() << "Got emulated CPUID FN" << bsl::hex(mut_entry.fun) << " " << bsl::hex(mut_entry.idx) << bsl::endl;
                     mut_entry.eax = pmut_entry->eax;
                     mut_entry.ebx = pmut_entry->ebx;
@@ -551,7 +552,8 @@ namespace microv
         {
             bsl::discard(sys);
 
-            bsl::debug() << "Setting CPUID FN" << bsl::hex(entry.fun) << " " << bsl::hex(entry.idx) << bsl::endl;
+            bsl::debug() << "Setting CPUID FN" << bsl::hex(entry.fun) << " " << bsl::hex(entry.idx)
+                         << bsl::endl;
 
             if (entry.fun < CPUID_FN8000_0000.get()) {
                 auto *const pmut_entry{
@@ -563,9 +565,11 @@ namespace microv
                 pmut_entry->edx = entry.edx;
 
                 pmut_entry->flags = hypercall::mv_cpuid_flag_t::mv_cpuid_set;
-            } else {
+            }
+            else {
                 auto *const pmut_entry{
-                    m_ext_leaves.at_if(bsl::to_idx(entry.fun - CPUID_FN8000_0000.get()))->at_if(bsl::to_idx(entry.idx))};
+                    m_ext_leaves.at_if(bsl::to_idx(entry.fun - CPUID_FN8000_0000.get()))
+                        ->at_if(bsl::to_idx(entry.idx))};
 
                 pmut_entry->eax = entry.eax;
                 pmut_entry->ebx = entry.ebx;
@@ -574,7 +578,6 @@ namespace microv
 
                 pmut_entry->flags = hypercall::mv_cpuid_flag_t::mv_cpuid_set;
             }
-
 
             print_leaf(bsl::debug(), entry);
 
@@ -592,8 +595,10 @@ namespace microv
         ///     and friends otherwise.
         ///
         [[nodiscard]] constexpr auto
-        get_list(syscall::bf_syscall_t const &sys, hypercall::mv_cdl_t &mut_cdl, intrinsic_t const &intrinsic) const noexcept
-            -> bsl::errc_type
+        get_list(
+            syscall::bf_syscall_t const &sys,
+            hypercall::mv_cdl_t &mut_cdl,
+            intrinsic_t const &intrinsic) const noexcept -> bsl::errc_type
         {
             bsl::discard(sys);
             bsl::discard(mut_cdl);

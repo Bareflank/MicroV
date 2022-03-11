@@ -143,7 +143,7 @@ namespace microv
             bsl::expects(vsid != syscall::BF_INVALID_ID);
             bsl::expects(vsid == this->assigned_vsid());
 
-            for (auto &mut_spa: this->m_mut_spas) {
+            for (auto &mut_spa : this->m_mut_spas) {
                 mut_spa = bsl::safe_u64::failure();
             }
         }

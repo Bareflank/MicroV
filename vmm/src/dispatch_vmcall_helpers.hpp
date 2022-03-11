@@ -1752,7 +1752,7 @@ namespace microv
         for (bsl::safe_idx mut_i{}; mut_i < run.num_reg_entries; ++mut_i) {
             auto const reg{bsl::to_u64(run.reg_entries.at_if(mut_i)->reg)};
             auto const val{bsl::to_u64(run.reg_entries.at_if(mut_i)->val)};
-            
+
             auto const ret{mut_vs_pool.reg_set(mut_sys, reg, val, vsid)};
             if (bsl::unlikely(ret != bsl::errc_success)) {
                 bsl::error() << "set_guest_state failed to set register"    // --
@@ -1781,12 +1781,11 @@ namespace microv
 
         auto const num_iomem{bsl::to_u64(run.num_iomem)};
         if (bsl::unlikely(num_iomem > hypercall::MV_RUN_MAX_IOMEM_SIZE.get())) {
-                bsl::error()
-                    << "num_iomem is too large "     // --
-                    << num_iomem                     // --
-                    << " > MV_RUN_MAX_IOMEM_SIZE"    // --
-                    << bsl::endl                     // --
-                    << bsl::here();                  // --
+            bsl::error() << "num_iomem is too large "     // --
+                         << num_iomem                     // --
+                         << " > MV_RUN_MAX_IOMEM_SIZE"    // --
+                         << bsl::endl                     // --
+                         << bsl::here();                  // --
             return bsl::errc_failure;
         }
 
@@ -1797,28 +1796,26 @@ namespace microv
             constexpr auto exit_reason_io{0x7B_u64};
             auto const exitcode{mut_sys.bf_vs_op_read(vsid, syscall::bf_reg_t::bf_reg_t_exitcode)};
             if (bsl::unlikely(exitcode != exit_reason_io)) {
-                bsl::error()
-                    << "num_iomem was set but exit reason is not an IO"    // --
-                    << bsl::here();                                        // --
+                bsl::error() << "num_iomem was set but exit reason is not an IO"    // --
+                             << bsl::here();                                        // --
                 return bsl::errc_failure;
             }
 
-            auto const exitinfo1{mut_sys.bf_vs_op_read(vsid, syscall::bf_reg_t::bf_reg_t_exitinfo1)};
+            auto const exitinfo1{
+                mut_sys.bf_vs_op_read(vsid, syscall::bf_reg_t::bf_reg_t_exitinfo1)};
             constexpr auto strn_mask{0x00000004_u64};
             constexpr auto strn_shft{2_u64};
             if (bsl::unlikely(((exitinfo1 & strn_mask) >> strn_shft).is_zero())) {
-                bsl::error()
-                    << "num_iomem was set but exit reason is not a string IO"    // --
-                    << bsl::here();                                              // --
+                bsl::error() << "num_iomem was set but exit reason is not a string IO"    // --
+                             << bsl::here();                                              // --
                 return bsl::errc_failure;
             }
 
             constexpr auto type_mask{0x00000001_u64};
             constexpr auto type_shft{0_u64};
             if (bsl::unlikely(((exitinfo1 & type_mask) >> type_shft).is_zero())) {
-                bsl::error()
-                    << "num_iomem was set but exit reason is not a string IO IN"    // --
-                    << bsl::here();                                                 // --
+                bsl::error() << "num_iomem was set but exit reason is not a string IO IN"    // --
+                             << bsl::here();                                                 // --
                 return bsl::errc_failure;
             }
 
@@ -1842,10 +1839,9 @@ namespace microv
                 auto const size{num_iomem.min((HYPERVISOR_PAGE_SIZE - idx).checked())};
                 auto mut_data{page.span(idx, size)};
                 if (bsl::unlikely(mut_data.is_invalid())) {
-                    bsl::error()
-                        << "data is invalid"    // --
-                        << bsl::endl            // --
-                        << bsl::here();         // --
+                    bsl::error() << "data is invalid"    // --
+                                 << bsl::endl            // --
+                                 << bsl::here();         // --
                     return bsl::errc_failure;
                 }
 
@@ -1855,10 +1851,9 @@ namespace microv
 
             if (bsl::unlikely(spa1.is_valid())) {
                 if (bsl::unlikely(spa1.is_zero())) {
-                    bsl::error()
-                        << "spa1 is 0"    // --
-                        << bsl::endl      // --
-                        << bsl::here();   // --
+                    bsl::error() << "spa1 is 0"     // --
+                                 << bsl::endl       // --
+                                 << bsl::here();    // --
                     return bsl::errc_failure;
                 }
                 else {
@@ -1872,15 +1867,16 @@ namespace microv
                 auto const size{(num_iomem - mut_consumed_bytes).checked()};
                 auto mut_data{page.span(idx, size)};
                 if (bsl::unlikely(mut_data.is_invalid())) {
-                    bsl::error()
-                        << "data is invalid"    // --
-                        << bsl::endl            // --
-                        << bsl::here();         // --
+                    bsl::error() << "data is invalid"    // --
+                                 << bsl::endl            // --
+                                 << bsl::here();         // --
                     return bsl::errc_failure;
                 }
 
-                bsl::builtin_memcpy(mut_data.data(),
-                    run.iomem.at_if(bsl::to_idx(mut_consumed_bytes)), mut_data.size_bytes());
+                bsl::builtin_memcpy(
+                    mut_data.data(),
+                    run.iomem.at_if(bsl::to_idx(mut_consumed_bytes)),
+                    mut_data.size_bytes());
             }
             else {
                 bsl::touch();

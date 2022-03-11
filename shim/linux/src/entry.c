@@ -1245,7 +1245,7 @@ dispatch_vcpu_kvm_run(struct shim_vcpu_t *const vcpu)
             break;
         }
     }
-    
+
     return mut_ret;
 }
 

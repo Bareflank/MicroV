@@ -180,7 +180,8 @@ namespace microv
 
             // Translate the gpa to an spa
             auto const vmid{mut_sys.bf_tls_vmid()};
-            bsl::safe_u64 const spa_pml4t{mut_vm_pool.gpa_to_spa(mut_tls, mut_sys, mut_page_pool, gpa_pml4t, vmid)};
+            bsl::safe_u64 const spa_pml4t{
+                mut_vm_pool.gpa_to_spa(mut_tls, mut_sys, mut_page_pool, gpa_pml4t, vmid)};
 
             auto const pml4t{mut_pp_pool.map<table_t const>(mut_sys, spa_pml4t)};
             if (bsl::unlikely(pml4t.is_invalid())) {
@@ -198,7 +199,7 @@ namespace microv
                 bsl::error() << "get_pml4te for gla "                                      // --
                              << bsl::hex(gla)                                              // --
                              << " failed because the pml4t entry is not marked present"    // --
-                             << " gla_to_pml4to(gla)"    // --
+                             << " gla_to_pml4to(gla)"                                      // --
                              << bsl::endl                                                  // --
                              << bsl::here();                                               // --
 
@@ -254,7 +255,8 @@ namespace microv
 
             // Translate the gpa to an spa
             auto const vmid{mut_sys.bf_tls_vmid()};
-            bsl::safe_u64 const spa_pdpt{mut_vm_pool.gpa_to_spa(mut_tls, mut_sys, mut_page_pool, gpa_pdpt, vmid)};
+            bsl::safe_u64 const spa_pdpt{
+                mut_vm_pool.gpa_to_spa(mut_tls, mut_sys, mut_page_pool, gpa_pdpt, vmid)};
 
             auto const pdpt{mut_pp_pool.map<table_t const>(mut_sys, spa_pdpt)};
             if (bsl::unlikely(pdpt.is_invalid())) {
@@ -327,7 +329,8 @@ namespace microv
 
             // Translate the gpa to an spa
             auto const vmid{mut_sys.bf_tls_vmid()};
-            bsl::safe_u64 const spa_pdt{mut_vm_pool.gpa_to_spa(mut_tls, mut_sys, mut_page_pool, gpa_pdt, vmid)};
+            bsl::safe_u64 const spa_pdt{
+                mut_vm_pool.gpa_to_spa(mut_tls, mut_sys, mut_page_pool, gpa_pdt, vmid)};
 
             auto const pdt{mut_pp_pool.map<table_t const>(mut_sys, spa_pdt)};
             if (bsl::unlikely(pdt.is_invalid())) {
@@ -400,7 +403,8 @@ namespace microv
 
             // Translate the gpa to an spa
             auto const vmid{mut_sys.bf_tls_vmid()};
-            bsl::safe_u64 const spa_pt{mut_vm_pool.gpa_to_spa(mut_tls, mut_sys, mut_page_pool, gpa_pt, vmid)};
+            bsl::safe_u64 const spa_pt{
+                mut_vm_pool.gpa_to_spa(mut_tls, mut_sys, mut_page_pool, gpa_pt, vmid)};
 
             auto const pt{mut_pp_pool.map<table_t const>(mut_sys, spa_pt)};
             if (bsl::unlikely(pt.is_invalid())) {
@@ -651,14 +655,16 @@ namespace microv
             ///
 
             auto const pml4t_gpa{hypercall::mv_page_aligned(cr3)};
-            auto const pml4te{get_pml4te(mut_sys, mut_tls, mut_page_pool, mut_pp_pool, mut_vm_pool, gla, pml4t_gpa)};
+            auto const pml4te{get_pml4te(
+                mut_sys, mut_tls, mut_page_pool, mut_pp_pool, mut_vm_pool, gla, pml4t_gpa)};
             if (bsl::unlikely(bsl::safe_u64::magic_0() == pml4te.p)) {
                 bsl::print<bsl::V>() << bsl::here();
                 return {};
             }
 
             auto const pdpt_gpa{pml4te.phys << HYPERVISOR_PAGE_SHIFT};
-            auto const pdpte{get_pdpte(mut_sys, mut_tls, mut_page_pool, mut_pp_pool, mut_vm_pool, gla, pdpt_gpa)};
+            auto const pdpte{get_pdpte(
+                mut_sys, mut_tls, mut_page_pool, mut_pp_pool, mut_vm_pool, gla, pdpt_gpa)};
             if (bsl::unlikely(bsl::safe_u64::magic_0() == pdpte.p)) {
                 bsl::print<bsl::V>() << bsl::here();
                 return {};
@@ -669,7 +675,8 @@ namespace microv
             }
 
             auto const pdt_gpa{pdpte.phys << HYPERVISOR_PAGE_SHIFT};
-            auto const pdte{get_pdte(mut_sys, mut_tls, mut_page_pool, mut_pp_pool, mut_vm_pool, gla, pdt_gpa)};
+            auto const pdte{
+                get_pdte(mut_sys, mut_tls, mut_page_pool, mut_pp_pool, mut_vm_pool, gla, pdt_gpa)};
             if (bsl::unlikely(bsl::safe_u64::magic_0() == pdte.p)) {
                 bsl::print<bsl::V>() << bsl::here();
                 return {};
@@ -680,7 +687,8 @@ namespace microv
             }
 
             auto const pt_gpa{pdte.phys << HYPERVISOR_PAGE_SHIFT};
-            auto const pte{get_pte(mut_sys, mut_tls, mut_page_pool, mut_pp_pool, mut_vm_pool, gla, pt_gpa)};
+            auto const pte{
+                get_pte(mut_sys, mut_tls, mut_page_pool, mut_pp_pool, mut_vm_pool, gla, pt_gpa)};
             if (bsl::unlikely(bsl::safe_u64::magic_0() == pte.p)) {
                 bsl::print<bsl::V>() << bsl::here();
                 return {};

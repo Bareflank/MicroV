@@ -898,8 +898,7 @@ namespace microv
             page_pool_t &mut_page_pool,
             pp_pool_t &mut_pp_pool,
             vm_pool_t &mut_vm_pool,
-            bsl::safe_u64 const &gla)
-            const noexcept -> hypercall::mv_translation_t
+            bsl::safe_u64 const &gla) const noexcept -> hypercall::mv_translation_t
         {
             auto const vsid{this->id()};
 
@@ -949,7 +948,8 @@ namespace microv
                 return {};
             }
 
-            return m_emulated_tlb.gla_to_gpa(mut_sys, mut_tls, mut_page_pool, mut_pp_pool, mut_vm_pool, gla, cr0, cr3, cr4);
+            return m_emulated_tlb.gla_to_gpa(
+                mut_sys, mut_tls, mut_page_pool, mut_pp_pool, mut_vm_pool, gla, cr0, cr3, cr4);
         }
 
         /// <!-- description -->
@@ -980,7 +980,7 @@ namespace microv
             mut_entry.fun = bsl::to_u32_unsafe(mut_rax).get();
             mut_entry.idx = bsl::to_u32_unsafe(mut_rcx).get();
 
-            auto mut_ret{ m_emulated_cpuid.get(mut_sys, mut_entry, intrinsic) };
+            auto mut_ret{m_emulated_cpuid.get(mut_sys, mut_entry, intrinsic)};
             bsl::discard(mut_ret);
 
             // constexpr auto fn0000_00001{0x00000001_u64};
@@ -1009,8 +1009,10 @@ namespace microv
         ///     and friends otherwise
         ///
         [[nodiscard]] constexpr auto
-        cpuid_get_list(syscall::bf_syscall_t &mut_sys, hypercall::mv_cdl_t &mut_cdl, intrinsic_t const &intrinsic) const noexcept
-            -> bsl::errc_type
+        cpuid_get_list(
+            syscall::bf_syscall_t &mut_sys,
+            hypercall::mv_cdl_t &mut_cdl,
+            intrinsic_t const &intrinsic) const noexcept -> bsl::errc_type
         {
             bsl::expects(allocated_status_t::allocated == m_allocated);
             bsl::expects(running_status_t::running != m_status);
@@ -1682,7 +1684,8 @@ namespace microv
                 }
 
                 case mv::mv_reg_t_virtual_interrupt_a: {
-                    return mut_sys.bf_vs_op_write(this->id(), mk::bf_reg_t_virtual_interrupt_a, val);
+                    return mut_sys.bf_vs_op_write(
+                        this->id(), mk::bf_reg_t_virtual_interrupt_a, val);
                     break;
                 }
 
@@ -2089,7 +2092,7 @@ namespace microv
             mut_ret = m_emulated_msr.get(sys, msr);
 
             if (bsl::unlikely(!mut_ret.is_valid_and_checked())) {
-                bsl::error() << "MSR get "           // --
+                bsl::error() << "MSR get "       // --
                              << bsl::hex(msr)    // --
                              << " is either unsupported/invalid or not yet implemented"
                              << bsl::endl       // --
@@ -2539,7 +2542,7 @@ namespace microv
             bsl::expects(allocated_status_t::allocated == m_allocated);
             bsl::expects(running_status_t::running != m_status);
             bsl::expects(mut_sys.bf_tls_ppid() == this->assigned_pp());
-            
+
             if (m_interrupt_queue.empty()) {
                 constexpr auto vint_a_idx{syscall::bf_reg_t::bf_reg_t_virtual_interrupt_a};
                 bsl::expects(mut_sys.bf_vs_op_write(this->id(), vint_a_idx, {}));
@@ -2628,9 +2631,8 @@ namespace microv
         ///   @return Returns the cached SPA of the last string IO intercepts.
         ///
         [[nodiscard]] constexpr auto
-        io_spa(
-            syscall::bf_syscall_t const &sys,
-            bsl::safe_idx const &idx) const noexcept -> bsl::safe_u64
+        io_spa(syscall::bf_syscall_t const &sys, bsl::safe_idx const &idx) const noexcept
+            -> bsl::safe_u64
         {
             bsl::expects(allocated_status_t::allocated == m_allocated);
             bsl::expects(running_status_t::running != m_status);
@@ -2654,8 +2656,7 @@ namespace microv
         io_set_spa(
             syscall::bf_syscall_t const &sys,
             bsl::safe_u64 const &spa,
-            bsl::safe_idx const &idx
-            ) noexcept
+            bsl::safe_idx const &idx) noexcept
         {
             bsl::expects(allocated_status_t::allocated == m_allocated);
             bsl::expects(sys.bf_tls_ppid() == this->assigned_pp());

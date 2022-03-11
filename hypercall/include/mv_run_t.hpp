@@ -25,10 +25,10 @@
 #ifndef MV_RUN_T_HPP
 #define MV_RUN_T_HPP
 
-#include "mv_mdl_entry_t.hpp"
-#include "mv_rdl_entry_t.hpp"    // IWYU pragma: export
 #include "mv_exit_io_t.hpp"
 #include "mv_exit_mmio_t.hpp"
+#include "mv_mdl_entry_t.hpp"
+#include "mv_rdl_entry_t.hpp"    // IWYU pragma: export
 
 #include <bsl/array.hpp>
 #include <bsl/convert.hpp>
@@ -71,7 +71,8 @@ namespace hypercall
         uint64_t rflags;
         uint64_t cr8;
         uint64_t apic_base;
-        union {
+        union
+        {
             struct mv_exit_io_t mv_exit_io;
             struct mv_exit_mmio_t mv_exit_mmio;
         };

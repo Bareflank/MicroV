@@ -246,7 +246,8 @@ namespace microv
                 auto const *const entry{mdl.entries.at_if(mut_i)};
 
                 auto const gpa{bsl::to_u64(entry->dst)};
-                auto const spa{this->gpa_to_spa(tls, mut_sys, mut_page_pool, bsl::to_u64(entry->src))};
+                auto const spa{
+                    this->gpa_to_spa(tls, mut_sys, mut_page_pool, bsl::to_u64(entry->src))};
                 auto const flags{bsl::to_u64(entry->flags)};
                 /// TODO:
                 /// - Add support for entries that have a size greater than
@@ -436,11 +437,10 @@ namespace microv
                 auto const ents{m_slpt.entries(tls, mut_page_pool, gpa & gpa_mask)};
 
                 if (bsl::unlikely(nullptr == ents.l0e)) {
-                    bsl::error()
-                        << "Unable to get the SPA from GPA "    // --
-                        << bsl::hex(gpa)                        // --
-                        << bsl::endl                            // --
-                        << bsl::here();                         // --
+                    bsl::error() << "Unable to get the SPA from GPA "    // --
+                                 << bsl::hex(gpa)                        // --
+                                 << bsl::endl                            // --
+                                 << bsl::here();                         // --
 
                     return bsl::safe_u64::failure();
                 }

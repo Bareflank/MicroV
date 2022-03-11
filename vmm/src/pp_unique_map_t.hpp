@@ -240,28 +240,25 @@ namespace microv
         ///     count overflows, an invalid span is returned.
         ///
         [[nodiscard]] constexpr auto
-        span(index_type const &pos, size_type const &count)
-            const noexcept -> bsl::span<bsl::uint8>
+        span(index_type const &pos, size_type const &count) const noexcept -> bsl::span<bsl::uint8>
         {
             bsl::expects(pos.is_valid());
             bsl::expects(count.is_valid_and_checked());
 
             if (bsl::unlikely(pos >= sizeof(T))) {
-                bsl::error()
-                    << "pos overflows"    // --
-                    << bsl::endl          // --
-                    << bsl::here();       // --
+                bsl::error() << "pos overflows"    // --
+                             << bsl::endl          // --
+                             << bsl::here();       // --
                 return {};
             }
 
             auto const end{(pos + count).checked()};
             if (bsl::unlikely(end > sizeof(T))) {
-                bsl::error()
-                    << "end position overflows"           // --
-                    << " end " << bsl::hex(end)           // --
-                    << " size " << bsl::hex(sizeof(T))    // --
-                    << bsl::endl                          // --
-                    << bsl::here();
+                bsl::error() << "end position overflows"           // --
+                             << " end " << bsl::hex(end)           // --
+                             << " size " << bsl::hex(sizeof(T))    // --
+                             << bsl::endl                          // --
+                             << bsl::here();
                 return {};
             }
 

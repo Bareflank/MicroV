@@ -32,8 +32,7 @@
 #include <mv_types.h>
 #include <stdio.h>    // IWYU pragma: export
 
-#define bfdebug_log(fmt, ...)                                                        \
-    printf((fmt), ##__VA_ARGS__)                                          \
+#define bfdebug_log(fmt, ...) printf((fmt), ##__VA_ARGS__)
 
 /**
  * <!-- description -->

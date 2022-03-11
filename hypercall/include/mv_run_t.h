@@ -27,11 +27,11 @@
 #ifndef MV_RUN_T
 #define MV_RUN_T
 
+#include <mv_exit_io_t.h>
+#include <mv_exit_mmio_t.h>
 #include <mv_mdl_entry_t.h>
 #include <mv_rdl_entry_t.h>
 #include <stdint.h>
-#include <mv_exit_io_t.h>
-#include <mv_exit_mmio_t.h>
 
 #ifdef __cplusplus
 extern "C"
@@ -74,7 +74,8 @@ extern "C"
         uint64_t rflags;
         uint64_t cr8;
         uint64_t apic_base;
-        union {
+        union
+        {
             struct mv_exit_io_t mv_exit_io;
             struct mv_exit_mmio_t mv_exit_mmio;
         };

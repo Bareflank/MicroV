@@ -50,7 +50,7 @@ extern "C"
 // #define KVM_CAP_MP_STATE 14
 // /** @brief defines KVM_CAP_DESTROY_MEMORY_REGION_WORKS for check extension */
 // #define KVM_CAP_DESTROY_MEMORY_REGION_WORKS 21
-// * @brief defines KVM_CAP_JOIN_MEMORY_REGIONS_WORKS for check extension 
+// * @brief defines KVM_CAP_JOIN_MEMORY_REGIONS_WORKS for check extension
 // #define KVM_CAP_JOIN_MEMORY_REGIONS_WORKS 30
 // /** @brief defines KVM_CAP_MCE for check extension */
 // #define KVM_CAP_MCE 31
@@ -75,26 +75,25 @@ extern "C"
 /** @brief defines KVM_MP_STATE_SIPI_RECEIVED for mp state */
 #define KVM_MP_STATE_SIPI_RECEIVED 4
 
-
 /*
  * Extension capability list.
  */
-#define KVM_CAP_IRQCHIP   0
-#define KVM_CAP_HLT   1
+#define KVM_CAP_IRQCHIP 0
+#define KVM_CAP_HLT 1
 #define KVM_CAP_MMU_SHADOW_CACHE_CONTROL 2
 #define KVM_CAP_USER_MEMORY 3
 #define KVM_CAP_SET_TSS_ADDR 4
 #define KVM_CAP_VAPIC 6
 #define KVM_CAP_EXT_CPUID 7
 #define KVM_CAP_CLOCKSOURCE 8
-#define KVM_CAP_NR_VCPUS 9       /* returns recommended max vcpus per vm */
-#define KVM_CAP_NR_MEMSLOTS 10   /* returns max memory slots per vm */
+#define KVM_CAP_NR_VCPUS 9     /* returns recommended max vcpus per vm */
+#define KVM_CAP_NR_MEMSLOTS 10 /* returns max memory slots per vm */
 #define KVM_CAP_PIT 11
 #define KVM_CAP_NOP_IO_DELAY 12
 #define KVM_CAP_PV_MMU 13
 #define KVM_CAP_MP_STATE 14
 #define KVM_CAP_COALESCED_MMIO 15
-#define KVM_CAP_SYNC_MMU 16  /* Changes to host mmap are reflected in guest */
+#define KVM_CAP_SYNC_MMU 16 /* Changes to host mmap are reflected in guest */
 #define KVM_CAP_IOMMU 18
 /* Bug in KVM_SET_USER_MEMORY_REGION fixed: */
 #define KVM_CAP_DESTROY_MEMORY_REGION_WORKS 21
@@ -141,7 +140,7 @@ extern "C"
 #define KVM_CAP_SPAPR_TCE 63
 #define KVM_CAP_PPC_SMT 64
 #define KVM_CAP_PPC_RMA 65
-#define KVM_CAP_MAX_VCPUS 66       /* returns max vcpus per vm */
+#define KVM_CAP_MAX_VCPUS 66 /* returns max vcpus per vm */
 #define KVM_CAP_PPC_HIOR 67
 #define KVM_CAP_PPC_PAPR 68
 #define KVM_CAP_SW_TLB 69
@@ -251,7 +250,6 @@ extern "C"
 #define KVM_CAP_PMU_EVENT_FILTER 173
 #define KVM_CAP_ARM_IRQ_LINE_LAYOUT_2 174
 #define KVM_CAP_HYPERV_DIRECT_TLBFLUSH 175
-
 
 #pragma pack(pop)
 

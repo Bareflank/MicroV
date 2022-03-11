@@ -40,9 +40,7 @@
 /** @brief defines a constant for base 16 */
 #define BASE16 ((uint64_t)16)
 
-#define bfdebug_log(fmt, ...)                                                        \
-    printk((KERN_INFO fmt), ##__VA_ARGS__);                                          \
-
+#define bfdebug_log(fmt, ...) printk((KERN_INFO fmt), ##__VA_ARGS__);
 
 /**
  * <!-- description -->

@@ -424,7 +424,8 @@ namespace microv
             bsl::safe_u64 const &gla,
             bsl::safe_u16 const &vsid) const noexcept -> hypercall::mv_translation_t
         {
-            return this->get_vs(vsid)->gla_to_gpa(mut_sys, mut_tls, mut_page_pool, mut_pp_pool, mut_vm_pool, gla);
+            return this->get_vs(vsid)->gla_to_gpa(
+                mut_sys, mut_tls, mut_page_pool, mut_pp_pool, mut_vm_pool, gla);
         }
 
         /// <!-- description -->

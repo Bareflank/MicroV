@@ -86,7 +86,11 @@ namespace hypercall
     ///   @param mut_buf the pointer to convert to a bsl::safe_u64
     ///   @return Returns bsl::to_u64(reinterpret_cast<bsl::uintmx>(ptr))
     ///
-    template<typename U, bsl::enable_if_t<bsl::is_integral<U>::value, bool> = true, typename T, bsl::uintmx N>
+    template<
+        typename U,
+        bsl::enable_if_t<bsl::is_integral<U>::value, bool> = true,
+        typename T,
+        bsl::uintmx N>
     [[nodiscard]] constexpr auto
     io_to(bsl::array<T, N> &mut_buf) noexcept -> U &
     {

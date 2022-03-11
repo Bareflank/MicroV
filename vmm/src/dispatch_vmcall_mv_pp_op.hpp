@@ -323,7 +323,8 @@ namespace microv
             }
 
             case hypercall::MV_PP_OP_SET_SHARED_PAGE_GPA_IDX_VAL.get(): {
-                auto const ret{handle_mv_pp_op_set_shared_page_gpa(tls, mut_sys, mut_page_pool, mut_pp_pool, vm_pool)};
+                auto const ret{handle_mv_pp_op_set_shared_page_gpa(
+                    tls, mut_sys, mut_page_pool, mut_pp_pool, vm_pool)};
                 if (bsl::unlikely(!ret)) {
                     bsl::print<bsl::V>() << bsl::here();
                     return ret;

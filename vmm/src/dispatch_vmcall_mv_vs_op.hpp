@@ -250,8 +250,7 @@ namespace microv
         page_pool_t &mut_page_pool,
         pp_pool_t &mut_pp_pool,
         vm_pool_t &mut_vm_pool,
-        vs_pool_t &mut_vs_pool) noexcept
-        -> bsl::errc_type
+        vs_pool_t &mut_vs_pool) noexcept -> bsl::errc_type
     {
         bsl::safe_u16 mut_vsid{};
         if constexpr (BSL_RELEASE_MODE) {
@@ -274,7 +273,8 @@ namespace microv
             return vmexit_failure_advance_ip_and_run;
         }
 
-        auto const translation{mut_vs_pool.gla_to_gpa(mut_sys, mut_tls, mut_page_pool, mut_pp_pool, mut_vm_pool, gla, mut_vsid)};
+        auto const translation{mut_vs_pool.gla_to_gpa(
+            mut_sys, mut_tls, mut_page_pool, mut_pp_pool, mut_vm_pool, gla, mut_vsid)};
         if (bsl::unlikely(!translation.is_valid)) {
             bsl::print<bsl::V>() << bsl::here();
             set_reg_return(mut_sys, hypercall::MV_STATUS_FAILURE_UNKNOWN);
@@ -1023,9 +1023,10 @@ namespace microv
     ///
     [[nodiscard]] constexpr auto
     handle_mv_vs_op_cpuid_get_list(
-        syscall::bf_syscall_t &mut_sys, pp_pool_t &mut_pp_pool, vs_pool_t &mut_vs_pool,
-        intrinsic_t const &intrinsic) noexcept
-        -> bsl::errc_type
+        syscall::bf_syscall_t &mut_sys,
+        pp_pool_t &mut_pp_pool,
+        vs_pool_t &mut_vs_pool,
+        intrinsic_t const &intrinsic) noexcept -> bsl::errc_type
     {
         bsl::errc_type mut_ret{};
 
@@ -1214,7 +1215,8 @@ namespace microv
             }
 
             case hypercall::MV_VS_OP_GLA_TO_GPA_IDX_VAL.get(): {
-                auto const ret{handle_mv_vs_op_gla_to_gpa(mut_sys, mut_tls, mut_page_pool, mut_pp_pool, mut_vm_pool, mut_vs_pool)};
+                auto const ret{handle_mv_vs_op_gla_to_gpa(
+                    mut_sys, mut_tls, mut_page_pool, mut_pp_pool, mut_vm_pool, mut_vs_pool)};
                 if (bsl::unlikely(!ret)) {
                     bsl::print<bsl::V>() << bsl::here();
                     return ret;
@@ -1411,7 +1413,8 @@ namespace microv
             }
 
             case hypercall::MV_VS_OP_CPUID_GET_LIST_IDX_VAL.get(): {
-                auto const ret{handle_mv_vs_op_cpuid_get_list(mut_sys, mut_pp_pool, mut_vs_pool, intrinsic)};
+                auto const ret{
+                    handle_mv_vs_op_cpuid_get_list(mut_sys, mut_pp_pool, mut_vs_pool, intrinsic)};
                 if (bsl::unlikely(!ret)) {
                     bsl::print<bsl::V>() << bsl::here();
                     return ret;

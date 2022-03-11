@@ -75,8 +75,8 @@ handle_vcpu_kvm_set_msrs(
 
         // Ensure that MCA MSRs act as spec says -- RAZ/WRIG ("read as zero, write ignore")
         // The legacy MCA MSRs are MSR0000_04[7F:00]
-        if(pmut_mut_rdl->entries[mut_i].reg >= 0x0400 &&
-            pmut_mut_rdl->entries[mut_i].reg <= 0x047F ) {
+        if (pmut_mut_rdl->entries[mut_i].reg >= 0x0400 &&
+            pmut_mut_rdl->entries[mut_i].reg <= 0x047F) {
             pmut_mut_rdl->entries[mut_i].val = 0;
         }
     }

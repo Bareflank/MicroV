@@ -88,8 +88,9 @@ namespace microv
         auto const val{vs_pool.msr_get(mut_sys, rcx, vsid)};
         constexpr auto mask32{0xFFFFFFFF_u64};
         bsl::expects(val.is_valid_and_checked());
-        if(bsl::unlikely(!val.is_valid_and_checked())) {
-            bsl::debug() << "FIXME: We need to implement emulation for MSR number " << bsl::hex(rcx) << bsl::endl;
+        if (bsl::unlikely(!val.is_valid_and_checked())) {
+            bsl::debug() << "FIXME: We need to implement emulation for MSR number " << bsl::hex(rcx)
+                         << bsl::endl;
             return vmexit_failure_advance_ip_and_run;
         }
 

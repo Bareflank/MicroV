@@ -26,18 +26,18 @@
 #define DISPATCH_VMEXIT_MMIO_HPP
 
 #include <bf_syscall_t.hpp>
+#include <fadec/decode.hpp>
 #include <gs_t.hpp>
 #include <intrinsic_t.hpp>
+#include <mv_exit_mmio_t.hpp>
+#include <mv_reg_t.hpp>
+#include <mv_run_t.hpp>
 #include <page_pool_t.hpp>
 #include <pp_pool_t.hpp>
 #include <tls_t.hpp>
 #include <vm_pool_t.hpp>
 #include <vp_pool_t.hpp>
 #include <vs_pool_t.hpp>
-#include <mv_reg_t.hpp>
-#include <mv_run_t.hpp>
-#include <mv_exit_mmio_t.hpp>
-#include <fadec/decode.hpp>
 
 #include <bsl/convert.hpp>
 #include <bsl/debug.hpp>
@@ -60,106 +60,108 @@ namespace microv
         bsl::uint64 *immediate_value) noexcept -> bsl::errc_type
     {
 
-
         // bsl::debug() << __FUNCTION__ << bsl::endl;
 
-        bsl::uint64 myopcodes[2] = { opcodes0, opcodes1};
+        bsl::uint64 myopcodes[2] = {opcodes0, opcodes1};
         FdInstr instr;
 
         int fadec_mode = 0;
-        if(cpu_mode == DECODE_MODE__32.get()) {
+        if (cpu_mode == DECODE_MODE__32.get()) {
             fadec_mode = 32;
-        } else if(cpu_mode == DECODE_MODE__64.get()) {
+        }
+        else if (cpu_mode == DECODE_MODE__64.get()) {
             fadec_mode = 64;
-        } else {
+        }
+        else {
             bsl::debug() << "Unsupported decode mode!" << bsl::hex(cpu_mode) << bsl::endl;
         }
-        int ret = fd_decode(reinterpret_cast<uint8_t*>(&myopcodes), sizeof(myopcodes), fadec_mode, 0, &instr);
+        int ret = fd_decode(
+            reinterpret_cast<uint8_t *>(&myopcodes), sizeof(myopcodes), fadec_mode, 0, &instr);
         uint64_t reg_num = -1;
 
         // Assume its a move instruction, and the register/immediate is either first or second operand
-        for(int i=0; i<2; i++) {
-            if(instr.operands[i].type == FD_OT_REG) {
+        for (int i = 0; i < 2; i++) {
+            if (instr.operands[i].type == FD_OT_REG) {
                 reg_num = instr.operands[i].reg;
                 *memory_access_size = instr.operands[i].size;
-            } else if(instr.operands[i].type == FD_OT_IMM) {
+            }
+            else if (instr.operands[i].type == FD_OT_IMM) {
                 reg_num = OPCODE_REG_USE_IMMEDIATE.get();
                 *immediate_value = instr.imm;
                 *memory_access_size = instr.operands[i].size;
             }
         }
 
-        if(reg_num == -1) {
+        if (reg_num == -1) {
             bsl::error() << "Failed to find register or immediate operand!" << bsl::endl;
             bsl::debug() << "  opcodes0 = " << bsl::hex(opcodes0) << bsl::endl;
             return bsl::errc_failure;
         }
 
         // Convernt reg_num to hypercall::mv_reg_t
-        switch(reg_num) {
-        case FD_REG_AX:
-            *mut_register = bsl::uint64(hypercall::mv_reg_t::mv_reg_t_rax);
-            break;
-        case FD_REG_BX:
-            *mut_register = bsl::uint64(hypercall::mv_reg_t::mv_reg_t_rbx);
-            break;
-        case FD_REG_CX:
-            *mut_register = bsl::uint64(hypercall::mv_reg_t::mv_reg_t_rcx);
-            break;
-        case FD_REG_DX:
-            *mut_register = bsl::uint64(hypercall::mv_reg_t::mv_reg_t_rdx);
-            break;
-        case FD_REG_SI:
-            *mut_register = bsl::uint64(hypercall::mv_reg_t::mv_reg_t_rsi);
-            break;
-        case FD_REG_DI:
-            *mut_register = bsl::uint64(hypercall::mv_reg_t::mv_reg_t_rdi);
-            break;
-        case FD_REG_SP:
-            *mut_register = bsl::uint64(hypercall::mv_reg_t::mv_reg_t_rsp);
-            break;
-        case FD_REG_BP:
-            *mut_register = bsl::uint64(hypercall::mv_reg_t::mv_reg_t_rbp);
-            break;
-        case FD_REG_R8:
-            *mut_register = bsl::uint64(hypercall::mv_reg_t::mv_reg_t_r8);
-            break;
-        case FD_REG_R9:
-            *mut_register = bsl::uint64(hypercall::mv_reg_t::mv_reg_t_r9);
-            break;
-        case FD_REG_R10:
-            *mut_register = bsl::uint64(hypercall::mv_reg_t::mv_reg_t_r10);
-            break;
-        case FD_REG_R11:
-            *mut_register = bsl::uint64(hypercall::mv_reg_t::mv_reg_t_r11);
-            break;
-        case FD_REG_R12:
-            *mut_register = bsl::uint64(hypercall::mv_reg_t::mv_reg_t_r12);
-            break;
-        case FD_REG_R13:
-            *mut_register = bsl::uint64(hypercall::mv_reg_t::mv_reg_t_r13);
-            break;
-        case FD_REG_R14:
-            *mut_register = bsl::uint64(hypercall::mv_reg_t::mv_reg_t_r14);
-            break;
-        case FD_REG_R15:
-            *mut_register = bsl::uint64(hypercall::mv_reg_t::mv_reg_t_r15);
-            break;
+        switch (reg_num) {
+            case FD_REG_AX:
+                *mut_register = bsl::uint64(hypercall::mv_reg_t::mv_reg_t_rax);
+                break;
+            case FD_REG_BX:
+                *mut_register = bsl::uint64(hypercall::mv_reg_t::mv_reg_t_rbx);
+                break;
+            case FD_REG_CX:
+                *mut_register = bsl::uint64(hypercall::mv_reg_t::mv_reg_t_rcx);
+                break;
+            case FD_REG_DX:
+                *mut_register = bsl::uint64(hypercall::mv_reg_t::mv_reg_t_rdx);
+                break;
+            case FD_REG_SI:
+                *mut_register = bsl::uint64(hypercall::mv_reg_t::mv_reg_t_rsi);
+                break;
+            case FD_REG_DI:
+                *mut_register = bsl::uint64(hypercall::mv_reg_t::mv_reg_t_rdi);
+                break;
+            case FD_REG_SP:
+                *mut_register = bsl::uint64(hypercall::mv_reg_t::mv_reg_t_rsp);
+                break;
+            case FD_REG_BP:
+                *mut_register = bsl::uint64(hypercall::mv_reg_t::mv_reg_t_rbp);
+                break;
+            case FD_REG_R8:
+                *mut_register = bsl::uint64(hypercall::mv_reg_t::mv_reg_t_r8);
+                break;
+            case FD_REG_R9:
+                *mut_register = bsl::uint64(hypercall::mv_reg_t::mv_reg_t_r9);
+                break;
+            case FD_REG_R10:
+                *mut_register = bsl::uint64(hypercall::mv_reg_t::mv_reg_t_r10);
+                break;
+            case FD_REG_R11:
+                *mut_register = bsl::uint64(hypercall::mv_reg_t::mv_reg_t_r11);
+                break;
+            case FD_REG_R12:
+                *mut_register = bsl::uint64(hypercall::mv_reg_t::mv_reg_t_r12);
+                break;
+            case FD_REG_R13:
+                *mut_register = bsl::uint64(hypercall::mv_reg_t::mv_reg_t_r13);
+                break;
+            case FD_REG_R14:
+                *mut_register = bsl::uint64(hypercall::mv_reg_t::mv_reg_t_r14);
+                break;
+            case FD_REG_R15:
+                *mut_register = bsl::uint64(hypercall::mv_reg_t::mv_reg_t_r15);
+                break;
 
-        case OPCODE_REG_USE_IMMEDIATE.get():
-            *mut_register = OPCODE_REG_USE_IMMEDIATE.get();
-            break;
+            case OPCODE_REG_USE_IMMEDIATE.get():
+                *mut_register = OPCODE_REG_USE_IMMEDIATE.get();
+                break;
 
-        default:
-            bsl::error() << "Unsupported register operand! " << bsl::hex(reg_num) << bsl::endl;
-            return bsl::errc_failure;
+            default:
+                bsl::error() << "Unsupported register operand! " << bsl::hex(reg_num) << bsl::endl;
+                return bsl::errc_failure;
         }
-
 
         // Set return values
         *mut_instr_len = FD_SIZE(&instr);
         *immediate_value = instr.imm;
-        
+
         // bsl::debug() << "*mut_instr_len = " << bsl::hex(*mut_instr_len) << bsl::endl;
         // bsl::debug() << "*mut_register = " << bsl::hex(*mut_register) << bsl::endl;
         // bsl::debug() << "*memory_access_size = " << bsl::hex(*memory_access_size) << bsl::endl;
@@ -167,7 +169,6 @@ namespace microv
 
         return bsl::errc_success;
     }
-
 
     /// <!-- description -->
     ///   @brief Dispatches MMIO VMExits.
@@ -214,46 +215,48 @@ namespace microv
         auto const exitinfo2{mut_sys.bf_vs_op_read(vsid, syscall::bf_reg_t::bf_reg_t_exitinfo2)};
         bsl::expects(exitinfo2.is_valid());
 
-        auto const op_bytes{mut_sys.bf_vs_op_read(vsid, syscall::bf_reg_t::bf_reg_t_number_of_bytes_fetched)};
-        bsl::uint64 opcodes0{mut_sys.bf_vs_op_read(vsid, syscall::bf_reg_t::bf_reg_t_guest_instruction_bytes0).get()};
-        bsl::uint64 opcodes1{mut_sys.bf_vs_op_read(vsid, syscall::bf_reg_t::bf_reg_t_guest_instruction_bytes1).get()};
+        auto const op_bytes{
+            mut_sys.bf_vs_op_read(vsid, syscall::bf_reg_t::bf_reg_t_number_of_bytes_fetched)};
+        bsl::uint64 opcodes0{
+            mut_sys.bf_vs_op_read(vsid, syscall::bf_reg_t::bf_reg_t_guest_instruction_bytes0)
+                .get()};
+        bsl::uint64 opcodes1{
+            mut_sys.bf_vs_op_read(vsid, syscall::bf_reg_t::bf_reg_t_guest_instruction_bytes1)
+                .get()};
         // bsl::uint64 opcodes0{};
         // bsl::uint64 opcodes1{};
         auto rip{mut_sys.bf_vs_op_read(vsid, syscall::bf_reg_t::bf_reg_t_rip)};
 
+        /**************************/
+        {
+            // // Read the opcodes from guest memory ourselves
+            // using page_t = bsl::array<uint8_t, HYPERVISOR_PAGE_SIZE.get()>;
+            // auto const vmid{mut_sys.bf_tls_vmid()};
+            // bsl::safe_u64 mut_rip_spa{};
 
-/**************************/
-{
-        // // Read the opcodes from guest memory ourselves
-        // using page_t = bsl::array<uint8_t, HYPERVISOR_PAGE_SIZE.get()>;
-        // auto const vmid{mut_sys.bf_tls_vmid()};
-        // bsl::safe_u64 mut_rip_spa{};
+            // mut_rip_spa = mut_vm_pool.gpa_to_spa(mut_tls, mut_sys, mut_page_pool, rip, vmid);
+            // bsl::debug() << "mut_rip_spa = " << bsl::hex(mut_rip_spa) << bsl::endl;
 
-        // mut_rip_spa = mut_vm_pool.gpa_to_spa(mut_tls, mut_sys, mut_page_pool, rip, vmid);
-        // bsl::debug() << "mut_rip_spa = " << bsl::hex(mut_rip_spa) << bsl::endl;
+            // constexpr auto gpa_mask{0xFFFFFFFFFFFFF000_u64};
+            // constexpr auto eight{8_u64};
+            // auto const page{mut_pp_pool.map<page_t>(mut_sys, mut_rip_spa & gpa_mask)};
 
-        // constexpr auto gpa_mask{0xFFFFFFFFFFFFF000_u64};
-        // constexpr auto eight{8_u64};
-        // auto const page{mut_pp_pool.map<page_t>(mut_sys, mut_rip_spa & gpa_mask)};
+            // auto const mut_rip_page_idx0{mut_rip_spa & ~gpa_mask};
+            // auto const mut_rip_page_idx1{mut_rip_spa & ~gpa_mask + eight};
+            // opcodes0 = bsl::to_u64(page.offset_as<bsl::uint64>(mut_rip_page_idx0)).get();
+            // // opcodes1 = bsl::to_u64(page.offset_as<bsl::uint64>(mut_rip_page_idx1)).get();
 
-        // auto const mut_rip_page_idx0{mut_rip_spa & ~gpa_mask};
-        // auto const mut_rip_page_idx1{mut_rip_spa & ~gpa_mask + eight};
-        // opcodes0 = bsl::to_u64(page.offset_as<bsl::uint64>(mut_rip_page_idx0)).get();
-        // // opcodes1 = bsl::to_u64(page.offset_as<bsl::uint64>(mut_rip_page_idx1)).get();
-
-        // // TODO handle page boundary
-        // // auto const bytes_left{HYPERVISOR_PAGE_SIZE - mut_rip_page_idx};
-        // // if (bsl::unlikely(bytes_left.get() < 15U)) {
-        // //     bsl::error()
-        // //         << "FIXME: page boundary overflow"    // --
-        // //         << bsl::endl    // --
-        // //         << bsl::here();    // --
-        // // }
-
-}
+            // // TODO handle page boundary
+            // // auto const bytes_left{HYPERVISOR_PAGE_SIZE - mut_rip_page_idx};
+            // // if (bsl::unlikely(bytes_left.get() < 15U)) {
+            // //     bsl::error()
+            // //         << "FIXME: page boundary overflow"    // --
+            // //         << bsl::endl    // --
+            // //         << bsl::here();    // --
+            // // }
+        }
         // Compare them to opcodes0 and opcodes1
-/**************************/
-
+        /**************************/
 
         constexpr auto rw_mask{0x02_u64};
         constexpr auto rw_shift{1_u64};
@@ -278,30 +281,40 @@ namespace microv
         bsl::uint64 immediate_value{0};
         bsl::uint64 cpu_mode{0};
         auto const efer_val{mut_vs_pool.msr_get(mut_sys, bsl::to_u64(MSR_EFER.get()), vsid)};
-        
+
         // Check LMA bit 10 to see if we're in 64 bit mode
-        if(efer_val.get() & 0x400) {
+        if (efer_val.get() & 0x400) {
             cpu_mode = DECODE_MODE__64.get();
-        } else {
+        }
+        else {
             cpu_mode = DECODE_MODE__32.get();
         }
         //FIXME: We don't handle 16 bit mode here
 
-        auto decode_ret{ instruction_decode(opcodes0, opcodes1, cpu_mode, &mut_instr_len, &mut_register, &memory_access_size, &immediate_value) };
+        auto decode_ret{instruction_decode(
+            opcodes0,
+            opcodes1,
+            cpu_mode,
+            &mut_instr_len,
+            &mut_register,
+            &memory_access_size,
+            &immediate_value)};
         if (bsl::unlikely(!decode_ret)) {
             bsl::print<bsl::V>() << bsl::here();
-            switch_to_root(mut_tls, mut_sys, intrinsic, mut_vm_pool, mut_vp_pool, mut_vs_pool, true);
+            switch_to_root(
+                mut_tls, mut_sys, intrinsic, mut_vm_pool, mut_vp_pool, mut_vs_pool, true);
             set_reg0(mut_sys, bsl::to_u64(hypercall::EXIT_REASON_UNKNOWN));
             set_reg_return(mut_sys, hypercall::MV_STATUS_FAILURE_UNKNOWN);
             return vmexit_failure_advance_ip_and_run;
         }
 
-        bsl::uint64 nrip{ rip.get() + mut_instr_len };
-        bsl::uint64 data{ 0 };
+        bsl::uint64 nrip{rip.get() + mut_instr_len};
+        bsl::uint64 data{0};
 
-        if(mut_register == OPCODE_REG_USE_IMMEDIATE.get()) {
+        if (mut_register == OPCODE_REG_USE_IMMEDIATE.get()) {
             data = immediate_value;
-        } else {
+        }
+        else {
             data = mut_vs_pool.reg_get(mut_sys, bsl::make_safe(mut_register), vsid).get();
         }
 
@@ -325,9 +338,10 @@ namespace microv
         auto mut_exit_mmio{&mut_run_return->mv_exit_mmio};
 
         mut_exit_mmio->gpa = phys_addr.get();
-        if(is_write.is_zero()) {
+        if (is_write.is_zero()) {
             mut_exit_mmio->flags = hypercall::MV_EXIT_MMIO_READ.get();
-        } else {
+        }
+        else {
             mut_exit_mmio->flags = hypercall::MV_EXIT_MMIO_WRITE.get();
         }
 

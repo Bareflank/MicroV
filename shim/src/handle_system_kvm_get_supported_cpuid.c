@@ -89,7 +89,7 @@ handle_system_kvm_get_supported_cpuid(struct kvm_cpuid2 *const pmut_ioctl_args) 
 
     // /* Calculate the new num_entries */
     mut_fun_max = pmut_mut_cdl->entries[0].eax + 1U;
-    mut_xfun_max = pmut_mut_cdl->entries[1].eax +1U;
+    mut_xfun_max = pmut_mut_cdl->entries[1].eax + 1U;
     pmut_mut_cdl->num_entries = ((uint64_t)(mut_fun_max + mut_xfun_max - init_xfun));
 
     if (pmut_mut_cdl->num_entries >= MV_CDL_MAX_ENTRIES) {
@@ -98,7 +98,11 @@ handle_system_kvm_get_supported_cpuid(struct kvm_cpuid2 *const pmut_ioctl_args) 
     }
 
     if (pmut_mut_cdl->num_entries > ((uint64_t)pmut_ioctl_args->nent)) {
-        bfdebug_log("CDL entries is larger than kvm_cpuid2 entries: pmut_mut_cdl->num_entries=0x%llx pmut_ioctl_args->nent=0x%llx\n", pmut_mut_cdl->num_entries, (uint64_t)pmut_ioctl_args->nent);
+        bfdebug_log(
+            "CDL entries is larger than kvm_cpuid2 entries: pmut_mut_cdl->num_entries=0x%llx "
+            "pmut_ioctl_args->nent=0x%llx\n",
+            pmut_mut_cdl->num_entries,
+            (uint64_t)pmut_ioctl_args->nent);
         pmut_ioctl_args->nent = ((uint32_t)pmut_mut_cdl->num_entries);
         mut_ret = SHIM_2BIG;
         goto release_shared_page;

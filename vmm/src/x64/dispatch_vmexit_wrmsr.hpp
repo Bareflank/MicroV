@@ -91,7 +91,7 @@ namespace microv
 
         auto const msr_hi{(rdx & mask32) << 32_u64};
         auto const msr_lo{(rax & mask32)};
-        auto const msr_val{ msr_hi | msr_lo};
+        auto const msr_val{msr_hi | msr_lo};
 
         auto const ret_val{vs_pool.msr_set(mut_sys, rcx, msr_val, vsid)};
         // FIXME: should look at the return value
