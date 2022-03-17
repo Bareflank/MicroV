@@ -312,7 +312,10 @@ undo_mv_vm_op_mmio_map:
         ++pmut_mut_mdl->num_entries;
 
         if (pmut_mut_mdl->num_entries >= MV_MDL_MAX_ENTRIES) {
-            (void)mv_vm_op_mmio_unmap(g_mut_hndl, pmut_vm->id);
+            if (mv_vm_op_mmio_unmap(g_mut_hndl, pmut_vm->id)) {
+                bferror("mv_vm_op_mmio_unmap failed. Host machine may be in an undefined state.");
+                goto release_shared_page;
+            }
 
             pmut_mut_mdl->num_entries = ((uint64_t)0);
         }
