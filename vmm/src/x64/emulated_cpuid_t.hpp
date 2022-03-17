@@ -559,6 +559,17 @@ namespace microv
                 auto *const pmut_entry{
                     m_std_leaves.at_if(bsl::to_idx(entry.fun))->at_if(bsl::to_idx(entry.idx))};
 
+                if (bsl::unlikely(nullptr == pmut_entry)) {
+                    bsl::error()
+                        << "Failed to set CPUID Fn"    // --
+                        << bsl::hex(entry.fun)         // --
+                        << " "                         // --
+                        << bsl::hex(entry.idx)         // --
+                        << bsl::endl                   // --
+                        << bsl::here();
+                    return bsl::errc_failure;
+                }
+
                 pmut_entry->eax = entry.eax;
                 pmut_entry->ebx = entry.ebx;
                 pmut_entry->ecx = entry.ecx;
@@ -570,6 +581,18 @@ namespace microv
                 auto *const pmut_entry{
                     m_ext_leaves.at_if(bsl::to_idx(entry.fun - CPUID_FN8000_0000.get()))
                         ->at_if(bsl::to_idx(entry.idx))};
+
+                if (bsl::unlikely(nullptr == pmut_entry)) {
+                    bsl::error()
+                        << "Failed to set ext CPUID Fn"    // --
+                        << bsl::hex(entry.fun)             // --
+                        << " "                             // --
+                        << bsl::hex(entry.idx)             // --
+                        << " requested"                    // --
+                        << bsl::endl                       // --
+                        << bsl::here();
+                    return bsl::errc_failure;
+                }
 
                 pmut_entry->eax = entry.eax;
                 pmut_entry->ebx = entry.ebx;
