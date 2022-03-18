@@ -1,0 +1,41 @@
+#create starting point xml  (update your disk path accordingly)
+virt-install --name focal --ram=512 --vcpus=1 --cpu host-passthrough --virt-type kvm --disk path=/var/lib/libvirt/images/cloud.img --import --boot uefi --graphics none --machine q35 --os-type linux
+
+
+#get XML file
+virsh dumpxml focal > focal.xml
+
+
+#fixup xml #1 - uefi
+drop pflash, set readonly=no
+change
+	<loader readonly='yes' type='pflash'>/usr/share/OVMF/OVMF_CODE.fd</loader>
+to
+	<loader readonly='no'>/usr/share/OVMF/OVMF_CODE.fd</loader>
+
+
+#fixup xml #2 - usb
+remove
+ 	<controller type='usb' index='0' model='ich9-ehci1'>
+      <address type='pci' domain='0x0000' bus='0x00' slot='0x1d' function='0x7'/>
+    </controller>
+    <controller type='usb' index='0' model='ich9-uhci1'>
+      <master startport='0'/>
+      <address type='pci' domain='0x0000' bus='0x00' slot='0x1d' function='0x0' multifunction='on'/>
+    </controller>
+    <controller type='usb' index='0' model='ich9-uhci2'>
+      <master startport='2'/>
+      <address type='pci' domain='0x0000' bus='0x00' slot='0x1d' function='0x1'/>
+    </controller>
+    <controller type='usb' index='0' model='ich9-uhci3'>
+      <master startport='4'/>
+      <address type='pci' domain='0x0000' bus='0x00' slot='0x1d' function='0x2'/>
+    </controller>
+
+
+#set root password in ubuntu cloud image
+virt-customize -a cloud.img --root-password password:coolpass
+
+
+#start VM
+virsh create focal.xml 
