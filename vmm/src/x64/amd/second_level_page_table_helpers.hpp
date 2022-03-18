@@ -86,8 +86,13 @@ namespace helpers
         // Make sure it is set up as cacheable memory
         // bsl::debug() << __FILE__ << " setting pcd pwt to zero" << bsl::endl;
 
+        //FIXME: These bits (PCD, PWT, PAT[which is labeled PS in this struct]) are really a PAT index
+        //       We set them all to zero to select PAT[0], which linux sets up as WB cacheable. But
+        //       that may not be true on a Windows root VM. We really need to be more diligent here about
+        //       selecting a proper host PAT index to ensure we get WB cachable memory type.
         pmut_entry->pcd = bsl::safe_u64::magic_0().get();
         pmut_entry->pwt = bsl::safe_u64::magic_0().get();
+        pmut_entry->ps = bsl::safe_u64::magic_0().get();
 
         pmut_entry->p = bsl::safe_u64::magic_1().get();
         pmut_entry->rw = bsl::safe_u64::magic_1().get();

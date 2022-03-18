@@ -10,8 +10,8 @@ set -e
 # Default variables
 
 if [ -z ${QEMU_PATH+x} ]; then
-  # QEMU_PATH=$(dirname $(which qemu-system-x86_64))
-  QEMU_PATH="${HOME}/qemu/x86_64-softmmu/"
+  QEMU_PATH=$(dirname $(which qemu-system-x86_64))
+  # QEMU_PATH="${HOME}/qemu/x86_64-softmmu/"
 fi
 
 if [ -z ${STRACE_PATH+x} ]; then
@@ -39,7 +39,8 @@ if [ -z ${VM_MEMORY+x} ]; then
 fi
 
 if [[ -z ${BIOS_PATH+x} ]]; then
-  BIOS_PATH="${HOME}/edk2/Build/OvmfX64/DEBUG_GCC5/FV/OVMF.fd"
+  BIOS_PATH="/usr/share/qemu/OVMF.fd"
+  # BIOS_PATH="${HOME}/edk2/Build/OvmfX64/DEBUG_GCC5/FV/OVMF.fd"
 fi
 
 if [[ -f $BIOS_PATH ]]; then
@@ -117,7 +118,7 @@ run_linux_best() {
   mkdir -p ${BUILD_DIR}
 
   #may get trashed so copy each time
-  cp -f $HOME/2004_serial.img $BUILD_DIR/
+  # cp -f $HOME/2004_serial.img $BUILD_DIR/
 
   echo Exit console with: ctrl + a, x
 

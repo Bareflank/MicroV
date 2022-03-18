@@ -386,28 +386,11 @@ namespace microv
 
         // If we came in on the guest, and are leaving on the root, then update the KVM_RUN struct w/ fields we need
         if (mut_sys.is_the_active_vm_the_root_vm()) {
-            // We only need to populate the mv_run_return_t struct for certain cases
-            switch (exit_reason.get()) {
-                case EXIT_REASON_NPF.get():
-                case EXIT_REASON_IO.get():
-                case EXIT_REASON_HLT.get():
-                // case EXIT_REASON_MSR.get():
-                case EXIT_REASON_INTR_WINDOW.get():
-                case EXIT_REASON_INTR.get():
-                case EXIT_REASON_NMI.get():
-                case EXIT_REASON_SHUTDOWN.get(): {
-                    auto mut_run_return{
-                        mut_pp_pool.shared_page<hypercall::mv_run_return_t>(mut_sys)};
+            auto mut_run_return{mut_pp_pool.shared_page<hypercall::mv_run_return_t>(mut_sys)};
 
-                    mut_run_return->rflags = rflags.get();
-                    mut_run_return->cr8 = cr8.get();
-                    mut_run_return->apic_base = apic_base.get();
-                    break;
-                }
-                default: {
-                    break;
-                }
-            }
+            mut_run_return->rflags = rflags.get();
+            mut_run_return->cr8 = cr8.get();
+            mut_run_return->apic_base = apic_base.get();
         }
 
         return return_from_vmexit(

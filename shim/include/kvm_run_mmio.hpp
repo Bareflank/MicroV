@@ -53,7 +53,6 @@ namespace shim
         bsl::uint32 nrip;
         /// @brief TODO
         bsl::uint32 target_reg;
-        bsl::uint32 need_pre_op_run;
     };
 }
 

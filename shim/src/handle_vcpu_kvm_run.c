@@ -160,9 +160,6 @@ handle_vcpu_kvm_run_mmio(
     // bfdebug_log("  data: 0x%llx\n", (unsigned long long)pmut_exit_mmio->data);
     *((uint64_t *)(&(pmut_vcpu->run->mmio.data))) = (int64_t)pmut_exit_mmio->data;
 
-    // Indicate that we need to do a pre-run op
-    pmut_vcpu->run->mmio.need_pre_op_run = 1;
-
     pmut_vcpu->run->exit_reason = KVM_EXIT_MMIO;
     return SHIM_SUCCESS;
 }
@@ -331,12 +328,6 @@ pre_run_op_mmio(struct shim_vcpu_t *const pmut_vcpu, struct mv_run_t *const pmut
     platform_expects(KVM_EXIT_MMIO == pmut_vcpu->run->exit_reason);
     platform_expects(NULL != pmut_mv_run);
 
-    if (!pmut_vcpu->run->mmio.need_pre_op_run) {
-        // bfmmiodebug_log("pre_run_op_mmio: nothing to do!\n");
-        // Nothing to do, we already did it
-        return SHIM_SUCCESS;
-    }
-
     // bfdebug_log("pre_run_op_mmio\n");
 
     // bfdebug_log("  nrip=0x%llx", (unsigned long long)pmut_vcpu->run->mmio.nrip);
@@ -351,7 +342,6 @@ pre_run_op_mmio(struct shim_vcpu_t *const pmut_vcpu, struct mv_run_t *const pmut
 
     if (pmut_vcpu->run->mmio.is_write) {
         // For write operations, there is nothing else to do, just return
-        pmut_vcpu->run->mmio.need_pre_op_run = 0;
         // bfdebug_log("  AFTER data: 0x%llx\n", *((unsigned long long *)pmut_vcpu->run->mmio.data));
         return SHIM_SUCCESS;
     }
@@ -395,9 +385,6 @@ pre_run_op_mmio(struct shim_vcpu_t *const pmut_vcpu, struct mv_run_t *const pmut
             return SHIM_FAILURE;
         }
     }
-
-    //FIXME: Put this in so that we don't try to do the MMIO pre-run again
-    pmut_vcpu->run->mmio.need_pre_op_run = 0;
 
     return SHIM_SUCCESS;
 }
@@ -453,10 +440,6 @@ pre_run_op(struct shim_vcpu_t *const pmut_vcpu, struct mv_run_t *const pmut_mv_r
 
         case KVM_EXIT_MMIO: {
             return pre_run_op_mmio(pmut_vcpu, pmut_mv_run);
-        }
-
-        case KVM_EXIT_INTR: {
-            return SHIM_SUCCESS;
         }
 
         default: {
@@ -569,21 +552,6 @@ runagain:
         }
 
         case mv_exit_reason_t_interrupt: {
-            // // bferror("run: mv_exit_reason_t_interrupt");
-            // release_shared_page_for_current_pp();
-            // if (platform_interrupted()) {
-            //     // bferror("platform_interrupted\n");
-            //     // pmut_vcpu->run->exit_reason = KVM_EXIT_INTR;
-            //     mut_ret = SHIM_INTERRUPTED;
-            //     break;
-            // }
-
-            // if((pmut_vcpu->run->exit_reason == KVM_EXIT_MMIO) ||
-            //    (pmut_vcpu->run->exit_reason == KVM_EXIT_IO)) {
-            //     //FIXME: Put this in so that we don't try to do the MMIO pre-run again
-            //     pmut_vcpu->run->exit_reason = KVM_EXIT_INTR;
-            // }
-            // pmut_mut_exit = shared_page_for_current_pp();
             pmut_vcpu->run->exit_reason = KVM_EXIT_INTR;
             mut_ret = SHIM_INTERRUPTED;
             break;

@@ -97,8 +97,8 @@ namespace microv
                    << bsl::hex(entry.ecx)                                                // --
                    << ":"                                                                // --
                    << bsl::hex(entry.edx)                                                // --
-                   << "] was requested\n"                                                // --
-                   << loc;                                                               // --
+                   << "] was requested"                                                  // --
+                   << bsl::endl;                                                         // --
         }
 
     public:
@@ -552,8 +552,7 @@ namespace microv
         {
             bsl::discard(sys);
 
-            bsl::debug() << "Setting CPUID FN" << bsl::hex(entry.fun) << " " << bsl::hex(entry.idx)
-                         << bsl::endl;
+            // bsl::debug() << "Setting CPUID FN" << bsl::hex(entry.fun) << " " << bsl::hex(entry.idx) << bsl::endl;
 
             if (entry.fun < CPUID_FN8000_0000.get()) {
                 auto *const pmut_entry{

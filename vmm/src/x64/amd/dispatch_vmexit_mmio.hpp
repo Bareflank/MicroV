@@ -84,6 +84,12 @@ namespace microv
             if (instr.operands[i].type == FD_OT_REG) {
                 reg_num = instr.operands[i].reg;
                 *memory_access_size = instr.operands[i].size;
+                if ((instr.operands[i].misc != FD_RT_IMP) &&
+                    (instr.operands[i].misc != FD_RT_GPL) &&
+                    (instr.operands[i].misc != FD_RT_GPL)) {
+                    bsl::debug() << "UNHANDLED: RT_VEC register type not supported!!! "
+                                 << bsl::hex(instr.operands[i].misc) << bsl::endl;
+                }
             }
             else if (instr.operands[i].type == FD_OT_IMM) {
                 reg_num = OPCODE_REG_USE_IMMEDIATE.get();
