@@ -226,6 +226,13 @@ add_memory_region(
 
     pmut_mut_mdl->num_entries = ((uint64_t)0);
 
+    bfdebug_log(
+        "[starting] kvm_userspace_memory_region loop: user_addr=0x%llx, guest_paddr=0x%llx, "
+        "size=0x%llx\n",
+        mut_src,
+        mut_dst,
+        mut_size);
+
     for (mut_i = ((int64_t)0); mut_i < mut_size; mut_i += (int64_t)HYPERVISOR_PAGE_SIZE) {
         uint64_t const dst = mut_dst + (uint64_t)mut_i;
         uint64_t const src = platform_virt_to_phys_user(mut_src + (uint64_t)mut_i);
@@ -261,7 +268,14 @@ add_memory_region(
         else {
             mv_touch();
         }
+
+        if (!(mut_i % 0x100000)) {
+            release_shared_page_for_current_pp();
+            platform_interrupted();
+            pmut_mut_mdl = (struct mv_mdl_t *)shared_page_for_current_pp();
+        }
     }
+    bfdebug_log("[done] kvm_userspace_memory_region loop\n");
 
     if (((uint64_t)0) != pmut_mut_mdl->num_entries) {
         if (mv_vm_op_mmio_map(g_mut_hndl, pmut_vm->id, MV_SELF_ID)) {
