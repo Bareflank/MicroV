@@ -30,8 +30,15 @@
     .globl  intrinsic_xrstr_impl
     .type   intrinsic_xrstr_impl, @function
 intrinsic_xrstr_impl:
+    push rax
+    push rdx
 
+    mov eax, 0xffffffff
+    mov edx, 0xffffffff
     xrstor64 [rdi]
+
+    pop rdx
+    pop rax
 
     ret
     int 3

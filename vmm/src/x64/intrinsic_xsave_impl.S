@@ -30,8 +30,15 @@
     .globl  intrinsic_xsave_impl
     .type   intrinsic_xsave_impl, @function
 intrinsic_xsave_impl:
+    push rax
+    push rdx
 
+    mov eax, 0xffffffff
+    mov edx, 0xffffffff
     xsave64 [rdi]
+
+    pop rdx
+    pop rax
 
     ret
     int 3
