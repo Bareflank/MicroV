@@ -1,0 +1,77 @@
+#!/usr/bin/expect -f
+
+set timeout -1
+
+proc missing_arg {} {
+    puts "ERROR: missing argument."
+    puts "./alpine_iso_k3s.exp <mac> <tap> <iso_path> <user_password> <script_path>"
+    exit 1
+}
+
+set macaddress     [lindex $argv 0]
+set tap            [lindex $argv 1]
+set iso            [lindex $argv 2]
+set password       [lindex $argv 3]
+set script_path    [lindex $argv 4]
+if {$macaddress eq ""}  {missing_arg}
+if {$tap eq ""}         {missing_arg}
+if {$iso eq ""}         {missing_arg}
+if {$password eq ""}    {missing_arg}
+if {$script_path eq ""} {missing_arg}
+
+set script [exec basename $script_path]
+
+proc slurp {file} {
+    set fh [open $file r]
+    set ret [read $fh]
+    close $fh
+    return $ret
+}
+
+# Start the VM
+set cpu_num [string index $tap end]
+incr cpu_num 1
+spawn taskset -c $cpu_num qemu-system-x86_64 \
+    -cpu host \
+    -m 2048 \
+    -machine type=q35,accel=kvm\
+    -bios /usr/share/ovmf/OVMF.fd \
+    -serial mon:stdio \
+    -nographic \
+    -device virtio-net-pci,netdev=network0,mac=$macaddress \
+    -netdev tap,id=network0,ifname=$tap,script=no,downscript=no \
+    -cdrom $iso
+
+# Boot faster
+expect "*Linux virt"
+send "\r"
+
+# Login
+expect "localhost login: "
+send "root\r"
+
+# Create answerfile.txt
+expect "localhost:~# "
+send "cat <<_EOF > $script\r"
+send [slurp $script_path]
+# send [exec cat $script_path]
+send "_EOF\r"
+
+# Install Alpine
+send "sh $script\r"
+
+expect -re "k3s-.*:~# "
+send "passwd\r"
+expect "New password: "
+send "$password\r"
+expect "Retype password: "
+send "$password\r"
+
+# Kill VM:
+#send "\x01"
+#send "x"
+
+# All done!
+#expect "k3s-controller:~# "
+#send "poweroff\r"
+interact return
