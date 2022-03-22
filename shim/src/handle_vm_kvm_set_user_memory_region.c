@@ -416,6 +416,12 @@ remove_memory_region(
         else {
             mv_touch();
         }
+
+        if (!(mut_i % 0x100000)) {
+            release_shared_page_for_current_pp();
+            platform_interrupted();
+            pmut_mut_mdl = (struct mv_mdl_t *)shared_page_for_current_pp();
+        }
     }
 
     if (((uint64_t)0) != pmut_mut_mdl->num_entries) {
