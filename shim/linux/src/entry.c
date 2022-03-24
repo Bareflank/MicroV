@@ -93,13 +93,34 @@ static int
 vm_release_impl(struct shim_vm_t *const pmut_vm)
 {
     uint64_t mut_i;
+    uint32_t i = 0;
+    int64_t mut_size;
+    uint64_t mut_src;
 
+    uint32_t mut_slot_id;
     platform_expects(NULL != pmut_vm);
     pmut_vm->fd = 0;
 
+    bfdebug_log("destroying vm...\n");
     for (mut_i = ((uint64_t)0); mut_i < MICROV_MAX_VCPUS; ++mut_i) {
         if (0 != (int32_t)pmut_vm->vcpus[mut_i].fd) {
             return 0;
+        }
+    }
+
+    // Unpin memory for this vcpu
+    for (i = 0; i < MICROV_MAX_SLOTS; i++) {
+        struct kvm_userspace_memory_region args = {0};
+        args.slot = i;
+
+        mut_slot_id = args.slot & 0x0000FFFFU;
+
+        mut_src = pmut_vm->slots[mut_slot_id].userspace_addr;
+        mut_size = (int64_t)pmut_vm->slots[mut_slot_id].memory_size;
+
+        if (mut_size) {
+            platform_munlock(
+                (void *)mut_src, mut_size, pmut_vm->os_info[mut_slot_id]);
         }
     }
 
