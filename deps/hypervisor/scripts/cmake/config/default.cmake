@@ -775,7 +775,7 @@ add_config(
 # Links
 # ------------------------------------------------------------------------------
 
-set(GSL_URL "https://github.com/Bareflank/gsl/archive/v2.0.zip"
+set(GSL_URL "https://github.com/Bareflank/GSL/archive/refs/tags/v2.0.zip"
     CACHE INTERNAL FORCE
     "GSL URL"
 )
@@ -825,7 +825,7 @@ set(BINUTILS_URL_MD5 "a332503c7f72ad02f4ef624fac34c4af"
     "Binutils URL MD5 hash"
 )
 
-set(NEWLIB_URL "https://github.com/Bareflank/newlib/archive/v2.0.zip"
+set(NEWLIB_URL "https://github.com/Bareflank/newlib/archive/refs/tags/v2.0.zip"
     CACHE INTERNAL FORCE
     "Newlib URL"
 )
@@ -835,7 +835,7 @@ set(NEWLIB_URL_MD5 "91588a1a925c953453b2f04acecbcb88"
     "Newlib URL MD5 hash"
 )
 
-set(LLVM_URL "https://github.com/Bareflank/llvm/archive/v2.0.zip"
+set(LLVM_URL "https://github.com/Bareflank/llvm/archive/refs/tags/v2.0.zip"
     CACHE INTERNAL FORCE
     "LLVM URL"
 )
@@ -845,7 +845,7 @@ set(LLVM_URL_MD5 "7a088762b40665815e47e49dc97ac59f"
     "LLVM URL MD5 hash"
 )
 
-set(LIBCXX_URL "https://github.com/Bareflank/libcxx/archive/v2.0.zip"
+set(LIBCXX_URL "https://github.com/Bareflank/libcxx/archive/refs/tags/v2.0.zip"
     CACHE INTERNAL FORCE
     "Libc++ URL"
 )
@@ -855,7 +855,7 @@ set(LIBCXX_URL_MD5 "564e6377485bf8527cab085075a626e1"
     "Libc++ URL MD5 hash"
 )
 
-set(LIBCXXABI_URL "https://github.com/Bareflank/libcxxabi/archive/v2.0.zip"
+set(LIBCXXABI_URL "https://github.com/Bareflank/libcxxabi/archive/refs/tags/v2.0.zip"
     CACHE INTERNAL FORCE
     "Libc++abi URL"
 )
@@ -885,7 +885,7 @@ set(HIPPOMOCKS_URL_MD5 "6a0928dfee03fbf4c12c36219c696bae"
     "Hippomocks URL MD5 hash"
 )
 
-set(GNUEFI_URL "https://github.com/Bareflank/gnu-efi/archive/v2.0.zip"
+set(GNUEFI_URL "https://github.com/Bareflank/gnu-efi/archive/refs/tags/v2.0.zip"
     CACHE INTERNAL FORCE
     "gnu-efi URL")
 
