@@ -115,14 +115,17 @@ setup_tap tap1
 
 master_script=$(build_guest_script $MASTER_HOSTNAME $MASTER_IP)
 node0_script=$(build_guest_script $NODE0_HOSTNAME $NODE0_IP)
+node1_script=$(build_guest_script $NODE1_HOSTNAME $NODE1_IP)
 
 # Start
 MASTER_CMD="$SCRIPT_DIR/alpine_iso_k3s.exp $MASTER_MAC $MASTER_TAP $ISO_PATH $USER_PASSWORD $master_script"
 NODE0_CMD="$SCRIPT_DIR/alpine_iso_k3s.exp $NODE0_MAC $NODE0_TAP $ISO_PATH $USER_PASSWORD $node0_script"
+NODE1_CMD="$SCRIPT_DIR/alpine_iso_k3s.exp $NODE1_MAC $NODE1_TAP $ISO_PATH $USER_PASSWORD $node1_script"
 
 tmux new-session -d 'k3s-demo' \; \
   split-window -c $PWD -h -d $NODE0_CMD \; \
-  split-window -c $PWD -v -d "sleep $BOOT_SLEEP; $MASTER_CMD" \; \
+  split-window -c $PWD -v -d $NODE1_CMD \; \
+  split-window -c $PWD -h -d "sleep $BOOT_SLEEP; $MASTER_CMD" \; \
   attach
 
 # time $MASTER_CMD
