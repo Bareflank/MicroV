@@ -130,9 +130,23 @@ private_winpv(bool enable_winpv, bool disable_xen_pfd) noexcept
 }
 
 extern "C" int64_t
+private_pci_pt_class(uint8_t pci_class) noexcept
+{
+    g_pci_pt_class.emplace((uint32_t)pci_class);
+    return ENTRY_SUCCESS;
+}
+
+extern "C" int64_t
 private_no_pci_pt(uint64_t bdf) noexcept
 {
     g_no_pci_pt.emplace((1UL << 31) | (uint32_t)bdf);
+    return ENTRY_SUCCESS;
+}
+
+extern "C" int64_t
+private_pci_pt(uint64_t bdf) noexcept
+{
+    g_pci_pt.emplace((1UL << 31) | (uint32_t)bdf);
     return ENTRY_SUCCESS;
 }
 
@@ -217,6 +231,12 @@ bfmain(uintptr_t request, uintptr_t arg1, uintptr_t arg2, uintptr_t arg3)
 
         case BF_REQUEST_NO_PCI_PT:
             return private_no_pci_pt(arg1);
+
+        case BF_REQUEST_PCI_PT_CLASS:
+            return private_pci_pt_class(arg1);
+
+        case BF_REQUEST_PCI_PT:
+            return private_pci_pt(arg1);
 
         default:
             break;
