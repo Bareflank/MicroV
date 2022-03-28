@@ -82,6 +82,8 @@ namespace microv
             bsl::source_location const &loc = bsl::here()) noexcept
         {
             constexpr auto upper16{16_u32};
+            bsl::discard(loc);
+            
             output << "CPUID leaf Fn"                                                    // --
                    << bsl::fmt("04x", bsl::to_u16_unsafe(entry.fun >> upper16.get()))    // --
                    << "_"                                                                // --

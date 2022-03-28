@@ -101,6 +101,7 @@ namespace microv
         bsl::safe_u64 const &mut_type) noexcept -> bsl::errc_type
     {
         using page_t = bsl::array<uint8_t, HYPERVISOR_PAGE_SIZE.get()>;
+        bsl::discard(gs);
 
         bsl::expects(!mut_sys.is_the_active_vm_the_root_vm());
 

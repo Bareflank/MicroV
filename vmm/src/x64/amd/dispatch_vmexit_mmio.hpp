@@ -77,7 +77,8 @@ namespace microv
         }
         int ret = fd_decode(
             reinterpret_cast<uint8_t *>(&myopcodes), sizeof(myopcodes), fadec_mode, 0, &instr);
-        uint64_t reg_num = -1;
+        uint64_t reg_num = 0xbeefbeef;
+        bsl::discard(ret);
 
         // Assume its a move instruction, and the register/immediate is either first or second operand
         for (int i = 0; i < 2; i++) {
@@ -93,12 +94,12 @@ namespace microv
             }
             else if (instr.operands[i].type == FD_OT_IMM) {
                 reg_num = OPCODE_REG_USE_IMMEDIATE.get();
-                *immediate_value = instr.imm;
+                *immediate_value = static_cast<uint64_t>(instr.imm);
                 *memory_access_size = instr.operands[i].size;
             }
         }
 
-        if (reg_num == -1) {
+        if (reg_num == 0xbeefbeef) {
             bsl::error() << "Failed to find register or immediate operand!" << bsl::endl;
             bsl::debug() << "  opcodes0 = " << bsl::hex(opcodes0) << bsl::endl;
             return bsl::errc_failure;
@@ -166,7 +167,7 @@ namespace microv
 
         // Set return values
         *mut_instr_len = FD_SIZE(&instr);
-        *immediate_value = instr.imm;
+        *immediate_value = static_cast<uint64_t>(instr.imm);
 
         // bsl::debug() << "*mut_instr_len = " << bsl::hex(*mut_instr_len) << bsl::endl;
         // bsl::debug() << "*mut_register = " << bsl::hex(*mut_register) << bsl::endl;
@@ -183,7 +184,7 @@ namespace microv
     ///   @param gs the gs_t to use
     ///   @param mut_tls the tls_t to use
     ///   @param mut_sys the bf_syscall_t to use
-    ///   @param page_pool the page_pool_t to use
+    ///   @param mut_page_pool the page_pool_t to use
     ///   @param intrinsic the intrinsic_t to use
     ///   @param mut_pp_pool the pp_pool_t to use
     ///   @param mut_vm_pool the vm_pool_t to use
@@ -210,6 +211,7 @@ namespace microv
 
         bsl::discard(gs);
         bsl::discard(vsid);
+        bsl::discard(mut_page_pool);
 
         // ---------------------------------------------------------------------
         // Context: Guest VM
@@ -232,6 +234,8 @@ namespace microv
         // bsl::uint64 opcodes0{};
         // bsl::uint64 opcodes1{};
         auto rip{mut_sys.bf_vs_op_read(vsid, syscall::bf_reg_t::bf_reg_t_rip)};
+
+        bsl::discard(op_bytes);
 
         /**************************/
         {

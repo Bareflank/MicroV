@@ -2648,7 +2648,6 @@ namespace microv
         ///
         /// <!-- inputs/outputs -->
         ///   @param sys the bf_syscall_t to use
-        ///   @param vsid the ID of the vs_t to set
         ///   @param spa the spa to set
         ///   @param idx the idx to set the spa into
         ///
