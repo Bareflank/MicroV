@@ -32,21 +32,9 @@ SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 TMP_DIR=/tmp/alpine_demo
 ISO_PATH=$TMP_DIR/$(basename $ISO_URL)
 
-mkdir -p $TMP_DIR
+BOOT_SLEEP=120
 
-if [ ! -f $ISO_PATH ]; then
-  wget $ISO_URL -P $TMP_DIR
-fi
-
-if ! ip addr show $BRIDGE; then
-    echo "Please setup a bridge $BRIDGE with inet 192.168.122.1/24"
-fi
-
-if ! command -v expect &> /dev/null
-then
-    echo "Please install 'expect'"
-    exit
-fi
+# ------------------------------------------------------------------------------
 
 setup_tap() {
   local tap_interface=$1
@@ -57,10 +45,6 @@ setup_tap() {
     sudo ip link set $tap_interface master $BRIDGE
   fi
 }
-
-echo Setting up network...
-setup_tap tap0
-setup_tap tap1
 
 build_guest_script() {
   local hostname=$1
@@ -107,6 +91,28 @@ _EOF
   echo $guest_script
 }
 
+# ------------------------------------------------------------------------------
+
+mkdir -p $TMP_DIR
+
+if [ ! -f $ISO_PATH ]; then
+  wget $ISO_URL -P $TMP_DIR
+fi
+
+if ! ip addr show $BRIDGE; then
+    echo "Please setup a bridge $BRIDGE with inet 192.168.122.1/24"
+fi
+
+if ! command -v expect &> /dev/null
+then
+    echo "Please install 'expect'"
+    exit
+fi
+
+echo Setting up network...
+setup_tap tap0
+setup_tap tap1
+
 master_script=$(build_guest_script $MASTER_HOSTNAME $MASTER_IP)
 node0_script=$(build_guest_script $NODE0_HOSTNAME $NODE0_IP)
 
@@ -116,7 +122,7 @@ NODE0_CMD="$SCRIPT_DIR/alpine_iso_k3s.exp $NODE0_MAC $NODE0_TAP $ISO_PATH $USER_
 
 tmux new-session -d 'k3s-demo' \; \
   split-window -c $PWD -h -d $NODE0_CMD \; \
-  split-window -c $PWD -v -d "sleep 120; $MASTER_CMD" \; \
+  split-window -c $PWD -v -d "sleep $BOOT_SLEEP; $MASTER_CMD" \; \
   attach
 
 # time $MASTER_CMD
