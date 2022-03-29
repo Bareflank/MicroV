@@ -77,7 +77,7 @@ namespace microv
         }
         int ret = fd_decode(
             reinterpret_cast<uint8_t *>(&myopcodes), sizeof(myopcodes), fadec_mode, 0, &instr);
-        uint64_t reg_num = 0xbeefbeef;
+        uint64_t reg_num = 0xabcdef0;
         bsl::discard(ret);
 
         // Assume its a move instruction, and the register/immediate is either first or second operand
@@ -99,7 +99,7 @@ namespace microv
             }
         }
 
-        if (reg_num == 0xbeefbeef) {
+        if (reg_num == 0xabcdef0) {
             bsl::error() << "Failed to find register or immediate operand!" << bsl::endl;
             bsl::debug() << "  opcodes0 = " << bsl::hex(opcodes0) << bsl::endl;
             return bsl::errc_failure;
