@@ -34,7 +34,7 @@ incr cpu_num 1
 spawn taskset -c $cpu_num qemu-system-x86_64 \
     -cpu host \
     -m 2048 \
-    -machine type=q35,accel=kvm\
+    -machine type=q35,accel=kvm \
     -bios /usr/share/ovmf/OVMF.fd \
     -serial mon:stdio \
     -nographic \
@@ -66,6 +66,9 @@ expect "New password: "
 send "$password\r"
 expect "Retype password: "
 send "$password\r"
+
+# Send ctrl-l to clear the screen
+send "\x0C"
 
 # Kill VM:
 #send "\x01"

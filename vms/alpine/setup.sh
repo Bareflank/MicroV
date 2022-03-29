@@ -4,35 +4,35 @@ set -e
 # Assumes an existing virbr0 with inet 192.168.122.1/24
 BRIDGE=virbr0
 
-MASTER_HOSTNAME="k3s-controller"
-MASTER_IP="192.168.122.250"
-MASTER_MAC="DE:AD:BE:EF:27:B0"
-MASTER_TAP=tap0
+SERVER_HOSTNAME="k3s-server"
+SERVER_IP="192.168.122.250"
+SERVER_MAC="DE:AD:BE:EF:27:B0"
+SERVER_TAP=tap0
 
-NODE0_HOSTNAME="k3s-node0"
-NODE0_IP="192.168.122.251"
-NODE0_MAC="DE:AD:BE:EF:27:B1"
-NODE0_TAP=tap1
+AGENT0_HOSTNAME="k3s-agent0"
+AGENT0_IP="192.168.122.251"
+AGENT0_MAC="DE:AD:BE:EF:27:B1"
+AGENT0_TAP=tap1
 
-NODE1_HOSTNAME="k3s-node1"
-NODE1_IP="192.168.122.252"
-NODE1_MAC="DE:AD:BE:EF:27:B2"
-NODE1_TAP=tap2
+AGENT1_HOSTNAME="k3s-agent1"
+AGENT1_IP="192.168.122.252"
+AGENT1_MAC="DE:AD:BE:EF:27:B2"
+AGENT1_TAP=tap2
 
-NODE2_HOSTNAME="k3s-node2"
+NODE2_HOSTNAME="k3s-agent2"
 NODE2_IP="192.168.122.253"
 NODE2_MAC="DE:AD:BE:EF:27:B3"
 NODE2_TAP=tap3
 
 USER_PASSWORD=kryptonite
 
-ISO_URL="https://dl-cdn.alpinelinux.org/alpine/v3.15/releases/x86_64/alpine-virt-3.15.1-x86_64.iso"
+ISO_URL="https://dl-cdn.alpinelinux.org/alpine/v3.15/releases/x86_64/alpine-virt-3.15.2-x86_64.iso"
 
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 TMP_DIR=/tmp/alpine_demo
 ISO_PATH=$TMP_DIR/$(basename $ISO_URL)
 
-BOOT_SLEEP=120
+BOOT_SLEEP=5
 
 # ------------------------------------------------------------------------------
 
@@ -82,10 +82,10 @@ setup-ntp -c busybox
 
 _EOF
 
-  if [ $hostname = k3s-controller ]; then
-    echo -ne "wget -O - -o /dev/null https://get.k3s.io | K3S_TOKEN=kryptonite sh -\n\n" >> $guest_script
+  if [ $hostname = k3s-server ]; then
+    echo -ne "wget -O - -o /dev/null https://get.k3s.io | K3S_TOKEN=kryptonite sh -s - --node-taint CriticalAddonsOnly=true:NoExecute\n\n" >> $guest_script
   else
-    echo -ne "wget -O - -o /dev/null https://get.k3s.io | K3S_URL=https://${MASTER_IP}:6443 K3S_TOKEN=kryptonite sh -\n\n" >> $guest_script
+    echo -ne "wget -O - -o /dev/null https://get.k3s.io | K3S_URL=https://${SERVER_IP}:6443 K3S_TOKEN=kryptonite sh -\n\n" >> $guest_script
   fi
 
   echo $guest_script
@@ -109,23 +109,26 @@ then
     exit
 fi
 
-echo Setting up network...
+# Setup taps
 setup_tap tap0
 setup_tap tap1
+setup_tap tap2
 
-master_script=$(build_guest_script $MASTER_HOSTNAME $MASTER_IP)
-node0_script=$(build_guest_script $NODE0_HOSTNAME $NODE0_IP)
-node1_script=$(build_guest_script $NODE1_HOSTNAME $NODE1_IP)
+# Setup scripts
+server_script=$(build_guest_script $SERVER_HOSTNAME $SERVER_IP)
+agent0_script=$(build_guest_script $AGENT0_HOSTNAME $AGENT0_IP)
+agent1_script=$(build_guest_script $AGENT1_HOSTNAME $AGENT1_IP)
 
-# Start
-MASTER_CMD="$SCRIPT_DIR/alpine_iso_k3s.exp $MASTER_MAC $MASTER_TAP $ISO_PATH $USER_PASSWORD $master_script"
-NODE0_CMD="$SCRIPT_DIR/alpine_iso_k3s.exp $NODE0_MAC $NODE0_TAP $ISO_PATH $USER_PASSWORD $node0_script"
-NODE1_CMD="$SCRIPT_DIR/alpine_iso_k3s.exp $NODE1_MAC $NODE1_TAP $ISO_PATH $USER_PASSWORD $node1_script"
+# Commands to run
+SERVER_CMD="$SCRIPT_DIR/alpine_iso_k3s.exp $SERVER_MAC $SERVER_TAP $ISO_PATH $USER_PASSWORD $server_script"
+AGENT0_CMD="$SCRIPT_DIR/alpine_iso_k3s.exp $AGENT0_MAC $AGENT0_TAP $ISO_PATH $USER_PASSWORD $agent0_script"
+AGENT1_CMD="$SCRIPT_DIR/alpine_iso_k3s.exp $AGENT1_MAC $AGENT1_TAP $ISO_PATH $USER_PASSWORD $agent1_script"
 
+# Demo with tmux
 tmux new-session -d 'k3s-demo' \; \
-  split-window -c $PWD -h -d $NODE0_CMD \; \
-  split-window -c $PWD -v -d $NODE1_CMD \; \
-  split-window -c $PWD -h -d "sleep $BOOT_SLEEP; $MASTER_CMD" \; \
+  split-window -c $PWD -h -d "echo server; sleep $(( 2*$BOOT_SLEEP )); $SERVER_CMD; bash" \; \
+  split-window -c $PWD -v -d "echo agent1; sleep $(( 1*$BOOT_SLEEP )); $AGENT1_CMD; bash" \; \
+  split-window -c $PWD -h -d "echo agent0; sleep $(( 0*$BOOT_SLEEP )); $AGENT0_CMD; bash" \; \
   attach
 
-# time $MASTER_CMD
+# time $SERVER_CMD
