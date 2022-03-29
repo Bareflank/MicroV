@@ -498,7 +498,7 @@ runagain:
         if ((mv_run_return->rflags == 0xbeefbeef) || (mv_run_return->cr8 == 0xbeefbeef) ||
             (mv_run_return->apic_base == 0xbeefbeef)) {
             bfdebug_log(
-                "[BEEF] mv_run_return has stale data!!! exit reason: %llx\n", mut_exit_reason);
+                "[BEEF] mv_run_return has stale data!!! exit reason: %llx\n", (unsigned long long)mut_exit_reason);
         }
 
         // Interrupt flag is bit 9

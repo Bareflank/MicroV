@@ -1245,9 +1245,6 @@ static long
 dispatch_vcpu_kvm_run(struct shim_vcpu_t *const vcpu)
 {
     long mut_ret;
-    struct kvm_regs tmp_regs;
-    struct kvm_sregs tmp_sregs;
-    uint8_t eflags_if;
 
     switch (handle_vcpu_kvm_run(vcpu)) {
         case SHIM_SUCCESS: {
