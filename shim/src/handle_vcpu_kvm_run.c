@@ -483,14 +483,16 @@ runagain:
         bferror("pre_run_op failed");
         return return_failure(pmut_vcpu);
     }
+    shared_page_for_curent_pp__before_mv_op(pmut_mut_exit);
     mut_exit_reason = mv_vs_op_run(g_mut_hndl, pmut_vcpu->vsid);
+    shared_page_for_curent_pp__after_mv_op(pmut_mut_exit);
 
     //
     //  caputre MV Post Run state
     //
     {
         uint8_t eflags_if;
-        struct mv_run_return_t *mv_run_return = shared_page_for_current_pp();
+        struct mv_run_return_t *mv_run_return = pmut_mut_exit;
 
         // Assert no 0xbeefbeef!
         // This is a sanity check, cooresponding to initialization in dispatch_vmcall_mv_vs_op.hpp
@@ -510,7 +512,6 @@ runagain:
         // bfdebug_log("vcpu->run->eflags_if = 0x%llx\n", eflags_if);
         // bfdebug_log("vcpu->run->cr8 = 0x%llx\n", pmut_vcpu->run->cr8);
         // bfdebug_log("vcpu->run->apic_base = 0x%llx\n", pmut_vcpu->run->apic_base);
-        release_shared_page_for_current_pp();
     }
 
     // bfdebug_log("[BAREFLANK DEBUG] mv_vs_op_run returned: 0x%x\n", mut_exit_reason);
@@ -588,7 +589,7 @@ runagain:
         }
     }
 
-    release_shared_page_for_current_pp();
+    release_shared_page_for_current_pp(pmut_mut_exit);
 
     return mut_ret;
 }

@@ -70,10 +70,14 @@ handle_system_kvm_get_msr_index_list(struct kvm_msr_list *const pmut_ioctl_args)
         pmut_mut_rdl->num_entries = ((uint64_t)0);
         pmut_mut_rdl->reg1 = (uint64_t)mut_nmsrs;
 
+
+        shared_page_for_curent_pp__before_mv_op(pmut_mut_rdl);
         if (mv_pp_op_msr_get_supported_list(g_mut_hndl)) {
             bferror("mv_pp_op_msr_get_supported_list failed");
+            shared_page_for_curent_pp__after_mv_op(pmut_mut_rdl);
             goto release_shared_page;
         }
+        shared_page_for_curent_pp__after_mv_op(pmut_mut_rdl);
 
         if (pmut_mut_rdl->num_entries >= MV_RDL_MAX_ENTRIES) {
             bferror("the RDL's num_entries is no longer valid");
@@ -103,7 +107,7 @@ handle_system_kvm_get_msr_index_list(struct kvm_msr_list *const pmut_ioctl_args)
     mut_ret = SHIM_SUCCESS;
 
 release_shared_page:
-    release_shared_page_for_current_pp();
+    release_shared_page_for_current_pp(pmut_mut_rdl);
     pmut_ioctl_args->nmsrs = mut_nmsrs;
 
 ret:

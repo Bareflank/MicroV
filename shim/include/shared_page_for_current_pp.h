@@ -51,7 +51,11 @@ extern "C"
      *   @brief Releases the shared page. Note that this
      *     cannot be called until shim_init has completed.
      */
-    void release_shared_page_for_current_pp(void) NOEXCEPT;
+    void release_shared_page_for_current_pp(void * user_data) NOEXCEPT;
+
+    void shared_page_for_curent_pp__before_mv_op(void *user_data) NOEXCEPT;
+    void shared_page_for_curent_pp__after_mv_op(void *user_data) NOEXCEPT;
+
 
 #ifdef __cplusplus
 }

@@ -28,27 +28,17 @@
 #include <mv_types.h>
 #include <platform.h>
 
-/**
- * <!-- description -->
- *   @brief Returns the shared page for the current PP. Note that this
- *     cannot be called until shim_init has completed.
- *     When done using the shared page, the caller must call
- *     release_shared_page_for_current_pp().
- *
- * <!-- inputs/outputs -->
- *   @return  Returns the shared page for the current PP
- */
+
+
+
 NODISCARD void *
 shared_page_for_current_pp(void) NOEXCEPT
 {
-    void *pmut_mut_ptr;
-
-    platform_irq_disable();
-
-    pmut_mut_ptr = g_mut_shared_pages[platform_current_cpu()];
-    platform_ensures(((void *)0) != pmut_mut_ptr);
-
-    return pmut_mut_ptr;
+    void *user_data = platform_alloc(HYPERVISOR_PAGE_SIZE);
+    if(!user_data){
+        //BAD THINGS!!
+    }
+    return user_data;
 }
 
 /**
@@ -57,7 +47,34 @@ shared_page_for_current_pp(void) NOEXCEPT
  *     cannot be called until shim_init has completed.
  */
 void
-release_shared_page_for_current_pp(void) NOEXCEPT
+release_shared_page_for_current_pp(void * user_data) NOEXCEPT
 {
+    platform_free(user_data, HYPERVISOR_PAGE_SIZE);
+}
+
+
+void
+shared_page_for_curent_pp__before_mv_op(void *user_data) NOEXCEPT
+{
+
+    void *pmut_mut_ptr;
+    platform_irq_disable();
+
+    pmut_mut_ptr = g_mut_shared_pages[platform_current_cpu()];
+    platform_ensures(((void *)0) != pmut_mut_ptr);
+
+    platform_memcpy(pmut_mut_ptr, user_data, HYPERVISOR_PAGE_SIZE);
+
+}
+
+void
+shared_page_for_curent_pp__after_mv_op(void *user_data) NOEXCEPT
+{
+    void *pmut_mut_ptr;
+
+    pmut_mut_ptr = g_mut_shared_pages[platform_current_cpu()];
+    platform_ensures(((void *)0) != pmut_mut_ptr);
+
+    platform_memcpy(user_data, pmut_mut_ptr, HYPERVISOR_PAGE_SIZE);
     platform_irq_enable();
 }

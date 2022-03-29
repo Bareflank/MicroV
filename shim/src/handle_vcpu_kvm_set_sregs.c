@@ -443,15 +443,18 @@ handle_reg_list(struct shim_vcpu_t const *const vcpu, struct kvm_sregs const *co
         break;
     }
 
+    shared_page_for_curent_pp__before_mv_op(pmut_rdl);
     if (mv_vs_op_reg_set_list(g_mut_hndl, vcpu->vsid)) {
         bferror("mv_vs_op_reg_set_list failed");
+        shared_page_for_curent_pp__after_mv_op(pmut_rdl);
         goto release_shared_page;
     }
+    shared_page_for_curent_pp__after_mv_op(pmut_rdl);
 
     mut_ret = SHIM_SUCCESS;
 
 release_shared_page:
-    release_shared_page_for_current_pp();
+    release_shared_page_for_current_pp(pmut_rdl);
 
     return mut_ret;
 }
@@ -504,15 +507,18 @@ handle_msr_list(struct shim_vcpu_t const *const vcpu, struct kvm_sregs const *co
         break;
     }
 
+    shared_page_for_curent_pp__before_mv_op(pmut_rdl);
     if (mv_vs_op_msr_set_list(g_mut_hndl, vcpu->vsid)) {
         bferror("mv_vs_op_msr_set_list failed");
+        shared_page_for_curent_pp__after_mv_op(pmut_rdl);
         goto release_shared_page;
     }
+    shared_page_for_curent_pp__after_mv_op(pmut_rdl);
 
     mut_ret = SHIM_SUCCESS;
 
 release_shared_page:
-    release_shared_page_for_current_pp();
+    release_shared_page_for_current_pp(pmut_rdl);
 
     return mut_ret;
 }

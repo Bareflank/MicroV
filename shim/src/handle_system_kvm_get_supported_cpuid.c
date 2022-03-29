@@ -77,10 +77,13 @@ handle_system_kvm_get_supported_cpuid(struct kvm_cpuid2 *const pmut_ioctl_args) 
     // pmut_mut_cdl->entries[2].fun = ((uint32_t)0x00000001);
 
     platform_expects(MV_INVALID_HANDLE != g_mut_hndl);
+    shared_page_for_curent_pp__before_mv_op(pmut_mut_cdl);
     if (mv_pp_op_cpuid_get_supported_list(g_mut_hndl)) {
         bferror("mv_pp_op_cpuid_get_supported_list failed");
+        shared_page_for_curent_pp__after_mv_op(pmut_mut_cdl);
         goto release_shared_page;
     }
+    shared_page_for_curent_pp__after_mv_op(pmut_mut_cdl);
 
     if (pmut_mut_cdl->num_entries >= MV_CDL_MAX_ENTRIES) {
         bferror("num_entries exceeds MV_CDL_MAX_ENTRIES");
@@ -120,11 +123,14 @@ handle_system_kvm_get_supported_cpuid(struct kvm_cpuid2 *const pmut_ioctl_args) 
     }
 
     platform_expects(MV_INVALID_HANDLE != g_mut_hndl);
+    shared_page_for_curent_pp__before_mv_op(pmut_mut_cdl);
     if (mv_pp_op_cpuid_get_supported_list(g_mut_hndl)) {
         bferror("mv_pp_op_cpuid_get_supported_list failed");
+        shared_page_for_curent_pp__after_mv_op(pmut_mut_cdl);
         mut_ret = SHIM_FAILURE;
         goto release_shared_page;
     }
+    shared_page_for_curent_pp__after_mv_op(pmut_mut_cdl);
 
     for (mut_i = ((uint64_t)0); mut_i < ((uint64_t)pmut_mut_cdl->num_entries); ++mut_i) {
         mut_cdl_entry = pmut_mut_cdl->entries[mut_i];
@@ -141,7 +147,7 @@ handle_system_kvm_get_supported_cpuid(struct kvm_cpuid2 *const pmut_ioctl_args) 
     mut_ret = SHIM_SUCCESS;
 
 release_shared_page:
-    release_shared_page_for_current_pp();
+    release_shared_page_for_current_pp(pmut_mut_cdl);
 
 ret:
     return mut_ret;

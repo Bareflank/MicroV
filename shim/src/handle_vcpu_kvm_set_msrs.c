@@ -81,15 +81,18 @@ handle_vcpu_kvm_set_msrs(
         }
     }
 
+    shared_page_for_curent_pp__before_mv_op(pmut_mut_rdl);
     if (mv_vs_op_msr_set_list(g_mut_hndl, vcpu->vsid)) {
         bferror("mv_vs_op_msr_set_list failed");
+        shared_page_for_curent_pp__after_mv_op(pmut_mut_rdl);
         goto release_shared_page;
     }
+    shared_page_for_curent_pp__after_mv_op(pmut_mut_rdl);
 
     mut_ret = SHIM_SUCCESS;
 
 release_shared_page:
-    release_shared_page_for_current_pp();
+    release_shared_page_for_current_pp(pmut_mut_rdl);
 
 ret:
     return mut_ret;

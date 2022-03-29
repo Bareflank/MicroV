@@ -66,10 +66,13 @@ handle_vcpu_kvm_get_fpu(
     pmut_mut_fpu = (struct mv_fpu_state_t *)shared_page_for_current_pp();
     platform_expects(NULL != pmut_mut_fpu);
 
+    shared_page_for_curent_pp__before_mv_op(pmut_mut_fpu);
     if (mv_vs_op_fpu_get_all(g_mut_hndl, vcpu->vsid)) {
         bferror("mv_vs_op_reg_get_all failed");
+        shared_page_for_curent_pp__after_mv_op(pmut_mut_fpu);
         goto release_shared_page;
     }
+    shared_page_for_curent_pp__after_mv_op(pmut_mut_fpu);
 
     platform_memcpy(pmut_ioctl_args->registers, pmut_mut_fpu->registers, NO_OF_REGISTERS_BYTES);
     pmut_ioctl_args->mxcsr = pmut_mut_fpu->mxcsr;
@@ -79,7 +82,7 @@ handle_vcpu_kvm_get_fpu(
     mut_ret = SHIM_SUCCESS;
 
 release_shared_page:
-    release_shared_page_for_current_pp();
+    release_shared_page_for_current_pp(pmut_mut_fpu);
 
 ret:
     return mut_ret;

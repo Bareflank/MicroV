@@ -68,15 +68,18 @@ handle_vcpu_kvm_set_fpu(
     platform_memcpy(pmut_mut_fpu->fpr, args->fpr, TOTAL_NO_OF_FPR_BYTES);
     platform_memcpy(pmut_mut_fpu->xmm, args->xmm, TOTAL_NO_OF_XMM_BYTES);
 
+    shared_page_for_curent_pp__before_mv_op(pmut_mut_fpu);
     if (mv_vs_op_fpu_set_all(g_mut_hndl, vcpu->vsid)) {
         bferror("mv_vs_op_reg_set_all failed");
+        shared_page_for_curent_pp__after_mv_op(pmut_mut_fpu);
         goto release_shared_page;
     }
+    shared_page_for_curent_pp__after_mv_op(pmut_mut_fpu);
 
     mut_ret = SHIM_SUCCESS;
 
 release_shared_page:
-    release_shared_page_for_current_pp();
+    release_shared_page_for_current_pp(pmut_mut_fpu);
 
     return mut_ret;
 }

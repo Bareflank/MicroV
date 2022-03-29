@@ -259,28 +259,29 @@ add_memory_region(
         ///   up to MicroV by "compressing" the entires.
         ///
         if (pmut_mut_mdl->num_entries >= MV_MDL_MAX_ENTRIES) {
+            shared_page_for_curent_pp__before_mv_op(pmut_mut_mdl);
             if (mv_vm_op_mmio_map(g_mut_hndl, pmut_vm->id, MV_SELF_ID)) {
+                shared_page_for_curent_pp__after_mv_op(pmut_mut_mdl);
                 bferror_d64("mv_vm_op_mmio_map failed", pmut_mut_mdl->num_entries);
                 goto undo_mv_vm_op_mmio_map;
             }
+            shared_page_for_curent_pp__after_mv_op(pmut_mut_mdl);
             pmut_mut_mdl->num_entries = ((uint64_t)0);
         }
         else {
             mv_touch();
         }
 
-        if (!(mut_i % 0x100000)) {
-            release_shared_page_for_current_pp();
-            platform_interrupted();
-            pmut_mut_mdl = (struct mv_mdl_t *)shared_page_for_current_pp();
-        }
     }
 
     if (((uint64_t)0) != pmut_mut_mdl->num_entries) {
+        shared_page_for_curent_pp__before_mv_op(pmut_mut_mdl);
         if (mv_vm_op_mmio_map(g_mut_hndl, pmut_vm->id, MV_SELF_ID)) {
+            shared_page_for_curent_pp__after_mv_op(pmut_mut_mdl);
             bferror_d64("mv_vm_op_mmio_map failed 2", pmut_mut_mdl->num_entries);
             goto undo_mv_vm_op_mmio_map;
         }
+        shared_page_for_curent_pp__after_mv_op(pmut_mut_mdl);
 
         mv_touch();
     }
@@ -325,10 +326,13 @@ undo_mv_vm_op_mmio_map:
         ++pmut_mut_mdl->num_entries;
 
         if (pmut_mut_mdl->num_entries >= MV_MDL_MAX_ENTRIES) {
+            shared_page_for_curent_pp__before_mv_op(pmut_mut_mdl);
             if (mv_vm_op_mmio_unmap(g_mut_hndl, pmut_vm->id)) {
+                shared_page_for_curent_pp__after_mv_op(pmut_mut_mdl);
                 bferror("mv_vm_op_mmio_unmap failed. Host machine may be in an undefined state.");
                 goto release_shared_page;
             }
+            shared_page_for_curent_pp__after_mv_op(pmut_mut_mdl);
 
             pmut_mut_mdl->num_entries = ((uint64_t)0);
         }
@@ -338,7 +342,9 @@ undo_mv_vm_op_mmio_map:
     }
 
     if (((uint64_t)0) != pmut_mut_mdl->num_entries) {
+        shared_page_for_curent_pp__before_mv_op(pmut_mut_mdl);
         (void)mv_vm_op_mmio_unmap(g_mut_hndl, pmut_vm->id);
+        shared_page_for_curent_pp__after_mv_op(pmut_mut_mdl);
 
         mv_touch();
     }
@@ -347,7 +353,7 @@ undo_mv_vm_op_mmio_map:
     }
 
 release_shared_page:
-    release_shared_page_for_current_pp();
+    release_shared_page_for_current_pp(pmut_mut_mdl);
 
 ret:
     return mut_ret;
@@ -406,23 +412,21 @@ remove_memory_region(
         ++pmut_mut_mdl->num_entries;
 
         if (pmut_mut_mdl->num_entries >= MV_MDL_MAX_ENTRIES) {
+            shared_page_for_curent_pp__before_mv_op(pmut_mut_mdl);
             (void)mv_vm_op_mmio_unmap(g_mut_hndl, pmut_vm->id);
+            shared_page_for_curent_pp__after_mv_op(pmut_mut_mdl);
 
             pmut_mut_mdl->num_entries = ((uint64_t)0);
         }
         else {
             mv_touch();
         }
-
-        if (!(mut_i % 0x100000)) {
-            release_shared_page_for_current_pp();
-            platform_interrupted();
-            pmut_mut_mdl = (struct mv_mdl_t *)shared_page_for_current_pp();
-        }
     }
 
     if (((uint64_t)0) != pmut_mut_mdl->num_entries) {
+        shared_page_for_curent_pp__before_mv_op(pmut_mut_mdl);
         (void)mv_vm_op_mmio_unmap(g_mut_hndl, pmut_vm->id);
+        shared_page_for_curent_pp__after_mv_op(pmut_mut_mdl);
 
         mv_touch();
     }
@@ -432,7 +436,7 @@ remove_memory_region(
 
     mut_ret = (int64_t)SHIM_SUCCESS;
 
-    release_shared_page_for_current_pp();
+    release_shared_page_for_current_pp(pmut_mut_mdl);
 
     platform_expects(
         SHIM_SUCCESS ==
