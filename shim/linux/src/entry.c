@@ -1246,6 +1246,10 @@ dispatch_vcpu_kvm_run(struct shim_vcpu_t *const vcpu)
 {
     long mut_ret;
 
+    if(vcpu->run->immediate_exit) {
+        return -EINTR;
+    }
+
     switch (handle_vcpu_kvm_run(vcpu)) {
         case SHIM_SUCCESS: {
             mut_ret = 0;
