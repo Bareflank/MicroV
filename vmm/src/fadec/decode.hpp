@@ -43,11 +43,11 @@ table_walk(unsigned cur_idx, unsigned entry_idx, unsigned *out_kind)
     return (entry & ~ENTRY_MASK) >> 1;
 }
 
-#define LOAD_LE_1(buf) ((uint64_t) * (uint8_t *)(buf))
-#define LOAD_LE_2(buf) (LOAD_LE_1(buf) | LOAD_LE_1((uint8_t *)(buf) + 1) << 8)
-#define LOAD_LE_3(buf) (LOAD_LE_2(buf) | LOAD_LE_1((uint8_t *)(buf) + 2) << 16)
-#define LOAD_LE_4(buf) (LOAD_LE_2(buf) | LOAD_LE_2((uint8_t *)(buf) + 2) << 16)
-#define LOAD_LE_8(buf) (LOAD_LE_4(buf) | LOAD_LE_4((uint8_t *)(buf) + 4) << 32)
+#define LOAD_LE_1(buf) (static_cast<uint64_t>(*(reinterpret_cast<const uint8_t*>(buf))))
+#define LOAD_LE_2(buf) (LOAD_LE_1(buf) | LOAD_LE_1(reinterpret_cast<const uint8_t*>(buf) + 1) << 8)
+#define LOAD_LE_3(buf) (LOAD_LE_2(buf) | LOAD_LE_1(reinterpret_cast<const uint8_t*>(buf) + 2) << 16)
+#define LOAD_LE_4(buf) (LOAD_LE_2(buf) | LOAD_LE_2(reinterpret_cast<const uint8_t*>(buf) + 2) << 16)
+#define LOAD_LE_8(buf) (LOAD_LE_4(buf) | LOAD_LE_4(reinterpret_cast<const uint8_t*>(buf) + 4) << 32)
 
 enum
 {
@@ -94,7 +94,7 @@ struct InstrDesc
 int
 fd_decode(const uint8_t *buffer, size_t len_sz, int mode_int, uintptr_t address, FdInstr *instr)
 {
-    int len = len_sz > 15 ? 15 : len_sz;
+    int len = len_sz > 15 ? 15 : static_cast<int>(len_sz);
 
     // Ensure that we can actually handle the decode request
     DecodeMode mode;
@@ -299,7 +299,7 @@ prefix_end:
     if (kind == ENTRY_TABLE_PREFIX) {
         // If there is no REP/REPNZ prefix offer 66h as mandatory prefix. If
         // there is a REP prefix, then the 66h prefix is ignored here.
-        uint8_t mandatory_prefix = prefix_rep ? prefix_rep : !!prefix_66;
+        uint8_t mandatory_prefix = static_cast<uint8_t>(prefix_rep ? prefix_rep : !!prefix_66);
         table_idx = table_walk(table_idx, mandatory_prefix, &kind);
     }
 
@@ -364,7 +364,7 @@ prefix_end:
 
         FdOp *op_modreg = &instr->operands[DESC_MODREG_IDX(desc)];
         op_modreg->type = FD_OT_REG;
-        op_modreg->reg = modreg | (prefix_rex & PREFIX_REXR ? 8 : 0);
+        op_modreg->reg = static_cast<uint8_t>(modreg | (prefix_rex & PREFIX_REXR ? 8 : 0));
         op_modreg->misc = instr->type == FDI_MOV_CR ? FD_RT_CR : FD_RT_DR;
         if (instr->type == FDI_MOV_CR && (~0x011d >> op_modreg->reg) & 1)
             return FD_ERR_UD;
@@ -373,7 +373,7 @@ prefix_end:
 
         FdOp *op_modrm = &instr->operands[DESC_MODRM_IDX(desc)];
         op_modrm->type = FD_OT_REG;
-        op_modrm->reg = modrm | (prefix_rex & PREFIX_REXB ? 8 : 0);
+        op_modrm->reg = static_cast<uint8_t>(modrm | (prefix_rex & PREFIX_REXB ? 8 : 0));
         op_modrm->misc = FD_RT_GPL;
         goto skip_modrm;
     }
@@ -394,7 +394,7 @@ prefix_end:
         if (LIKELY(!(reg_ty & 4)))
             reg_idx += prefix_rex & PREFIX_REXR ? 8 : 0;
         op_modreg->type = FD_OT_REG;
-        op_modreg->reg = reg_idx;
+        op_modreg->reg = static_cast<uint8_t>(reg_idx);
     }
 
     if (DESC_HAS_MODRM(desc)) {
@@ -403,7 +403,7 @@ prefix_end:
         unsigned mod = (op_byte & 0xc0) >> 6;
         unsigned rm = op_byte & 0x07;
         if (mod == 3) {
-            uint8_t reg_idx = rm;
+            uint8_t reg_idx = static_cast<uint8_t>(rm);
             unsigned reg_ty = DESC_REGTY_MODRM(desc);    // GPL VEC - - MMX FPU MSK
             op_modrm->misc = (07450061 >> (3 * reg_ty)) & 0x7;
             if (LIKELY(!(reg_ty & 4)))
@@ -415,7 +415,7 @@ prefix_end:
             bool vsib = UNLIKELY(DESC_VSIB(desc));
 
             // SIB byte
-            uint8_t base = rm;
+            uint8_t base = static_cast<uint8_t>(rm);
             if (rm == 4) {
                 if (UNLIKELY(off >= len))
                     return FD_ERR_PARTIAL;
@@ -426,7 +426,7 @@ prefix_end:
                 base = sib & 0x07;
                 if (!vsib && idx == 4)
                     idx = FD_REG_NONE;
-                op_modrm->misc = (scale << 6) | idx;
+                op_modrm->misc = static_cast<uint8_t>((scale << 6) | idx);
             }
             else {
                 // VSIB must have a memory operand with SIB byte.
@@ -495,11 +495,11 @@ skip_modrm:
         if (UNLIKELY(off + addr_size > len))
             return FD_ERR_PARTIAL;
         if (addr_size == 2)
-            instr->disp = LOAD_LE_2(&buffer[off]);
+            instr->disp = static_cast<int64_t>(LOAD_LE_2(&buffer[off]));
         if (addr_size == 4)
-            instr->disp = LOAD_LE_4(&buffer[off]);
+            instr->disp = static_cast<int64_t>(LOAD_LE_4(&buffer[off]));
         if (LIKELY(addr_size == 8))
-            instr->disp = LOAD_LE_8(&buffer[off]);
+            instr->disp = static_cast<int64_t>(LOAD_LE_8(&buffer[off]));
         off += addr_size;
     }
     else if (UNLIKELY(imm_control == 3)) {
@@ -510,7 +510,7 @@ skip_modrm:
 
         if (UNLIKELY(off + 1 > len))
             return FD_ERR_PARTIAL;
-        uint8_t reg = (uint8_t)LOAD_LE_1(&buffer[off]);
+        uint8_t reg = static_cast<uint8_t>(LOAD_LE_1(&buffer[off]));
         off += 1;
 
         if (mode == DECODE_32)
@@ -535,11 +535,11 @@ skip_modrm:
                      instr->type == FDI_SSE_EXTRQ || instr->type == FDI_SSE_INSERTQ))
             imm_size = 2;
         else if (UNLIKELY(instr->type == FDI_JMPF || instr->type == FDI_CALLF))
-            imm_size = op_size + 2;
+            imm_size = static_cast<uint8_t>(op_size) + 2;
         else if (UNLIKELY(instr->type == FDI_ENTER))
             imm_size = 3;
         else if (instr->type == FDI_MOVABS)
-            imm_size = op_size;
+            imm_size = static_cast<uint8_t>(op_size);
         else
             imm_size = op_size == 2 ? 2 : 4;
 
@@ -551,18 +551,18 @@ skip_modrm:
         else if (imm_size == 2)
             instr->imm = static_cast<int16_t>(LOAD_LE_2(&buffer[off]));
         else if (imm_size == 3)
-            instr->imm = LOAD_LE_3(&buffer[off]);
+            instr->imm = static_cast<int64_t>(LOAD_LE_3(&buffer[off]));
         else if (imm_size == 4)
             instr->imm = static_cast<int32_t>(LOAD_LE_4(&buffer[off]));
         else if (imm_size == 6)
-            instr->imm = LOAD_LE_4(&buffer[off]) | LOAD_LE_2(&buffer[off + 4]) << 32;
+            instr->imm = static_cast<int64_t>(LOAD_LE_4(&buffer[off]) | LOAD_LE_2(&buffer[off + 4]) << 32);
         else if (imm_size == 8)
             instr->imm = static_cast<int64_t>(LOAD_LE_8(&buffer[off]));
         off += imm_size;
 
         if (imm_offset) {
             if (instr->address != 0)
-                instr->imm += instr->address + off;
+                instr->imm += instr->address + static_cast<unsigned long>(off);
             else
                 operand->type = FD_OT_OFF;
         }
@@ -581,7 +581,7 @@ skip_modrm:
     }
 
     if (UNLIKELY(instr->type == FDI_3DNOW)) {
-        unsigned opc3dn = instr->imm;
+        unsigned opc3dn = static_cast<unsigned>(instr->imm);
         if (opc3dn & 0x40)
             return FD_ERR_UD;
         uint64_t msk = opc3dn & 0x80 ? 0x88d144d144d14400 : 0x30003000;
@@ -622,8 +622,8 @@ skip_modrm:
         }
     }
 
-    instr->size = off;
-    instr->operandsz = DESC_INSTR_WIDTH(desc) ? op_size : 0;
+    instr->size = static_cast<uint8_t>(off);
+    instr->operandsz = DESC_INSTR_WIDTH(desc) ? static_cast<uint8_t>(op_size) : 0;
 
     return off;
 }
