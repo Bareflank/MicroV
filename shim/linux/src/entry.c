@@ -147,6 +147,7 @@ vcpu_release_impl(struct shim_vcpu_t *const pmut_vcpu)
     platform_expects(NULL != pmut_vcpu);
     pmut_vcpu->fd = 0;
 
+    put_page(vmalloc_to_page(pmut_vcpu->run));
     handle_vm_kvm_destroy_vcpu(pmut_vcpu);
 
     platform_expects(NULL != pmut_vcpu->vm);

@@ -476,8 +476,9 @@ handle_vcpu_kvm_run(struct shim_vcpu_t *const pmut_vcpu) NOEXCEPT
         return return_failure(pmut_vcpu);
     }
 
-runagain:
     pmut_mut_exit = shared_page_for_current_pp();
+
+runagain:
     mut_ret = pre_run_op(pmut_vcpu, (struct mv_run_t *)pmut_mut_exit);
     if (SHIM_FAILURE == mut_ret) {
         bferror("pre_run_op failed");
