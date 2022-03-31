@@ -34,6 +34,10 @@ ISO_PATH=$TMP_DIR/$(basename $ISO_URL)
 
 BOOT_SLEEP=5
 
+BLU='\033[0;95m'
+MAG='\033[0;94m'
+RST='\033[0m'
+
 # ------------------------------------------------------------------------------
 
 setup_tap() {
@@ -49,7 +53,10 @@ setup_tap() {
 build_guest_script() {
   local hostname=$1
   local ip_address=$2
-  local guest_script=$TMP_DIR/setup_guest_${hostname}.sh
+  local color=$3
+
+  local guest_script=${TMP_DIR}/setup_guest_${hostname}.sh
+  local ps1="${color}\h${RST}:\w\# "
 
   cat > $guest_script <<_EOF
 #!/bin/bash
@@ -79,6 +86,10 @@ EOF
 /etc/init.d/networking restart
 
 setup-ntp -c busybox
+
+cat <<'EOF' > /root/.profile
+export PS1="${ps1}"
+EOF
 
 _EOF
 
@@ -115,9 +126,9 @@ setup_tap tap1
 setup_tap tap2
 
 # Setup scripts
-server_script=$(build_guest_script $SERVER_HOSTNAME $SERVER_IP)
-agent0_script=$(build_guest_script $AGENT0_HOSTNAME $AGENT0_IP)
-agent1_script=$(build_guest_script $AGENT1_HOSTNAME $AGENT1_IP)
+server_script=$(build_guest_script $SERVER_HOSTNAME $SERVER_IP $RST)
+agent0_script=$(build_guest_script $AGENT0_HOSTNAME $AGENT0_IP $BLU)
+agent1_script=$(build_guest_script $AGENT1_HOSTNAME $AGENT1_IP $MAG)
 
 # Commands to run
 SERVER_CMD="$SCRIPT_DIR/alpine_iso_k3s.exp $SERVER_MAC $SERVER_TAP $ISO_PATH $USER_PASSWORD $server_script"
@@ -128,6 +139,7 @@ AGENT1_CMD="$SCRIPT_DIR/alpine_iso_k3s.exp $AGENT1_MAC $AGENT1_TAP $ISO_PATH $US
 tmux new-session -d 'k3s-demo' \; \
   split-window -c $PWD -h -d "echo server; sleep $(( 2*$BOOT_SLEEP )); $SERVER_CMD; bash" \; \
   split-window -c $PWD -v -d "echo agent1; sleep $(( 1*$BOOT_SLEEP )); $AGENT1_CMD; bash" \; \
+  resize-pane -L 35 \; \
   split-window -c $PWD -h -d "echo agent0; sleep $(( 0*$BOOT_SLEEP )); $AGENT0_CMD; bash" \; \
   attach
 

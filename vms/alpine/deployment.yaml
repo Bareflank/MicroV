@@ -22,14 +22,14 @@ spec:
           mountPath: /usr/share/nginx/html
       initContainers:
       - name: nginx-setup
-        image: nginx:1.14.2
+        image: busybox:1.35.0
         env:
         - name: BF_NODE_NAME
           valueFrom:
             fieldRef:
               fieldPath: spec.nodeName
         command: [ "/bin/sh" ]
-        args: [ "-c", 'cp /usr/share/nginx/html/index.html /work-dir; sed -i "s/Welcome to nginx/Welcome to nginx on ${BF_NODE_NAME}/g" /work-dir/index.html' ]
+        args: [ "-c", 'wget https://raw.githubusercontent.com/chp-io/MicroV/demo/vms/alpine/index.html -P /work-dir; sed -i "s/@NODE_NAME@/${BF_NODE_NAME}/g" /work-dir/index.html' ]
         volumeMounts:
         - name: workdir
           mountPath: "/work-dir"

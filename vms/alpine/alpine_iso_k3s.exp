@@ -67,6 +67,8 @@ send "$password\r"
 expect "Retype password: "
 send "$password\r"
 
+send "source /root/.profile\r"
+
 # Send ctrl-l to clear the screen
 send "\x0C"
 
