@@ -95,6 +95,7 @@ _EOF
 
   if [ $hostname = k3s-server ]; then
     echo -ne "wget -O - -o /dev/null https://get.k3s.io | K3S_TOKEN=kryptonite sh -s - --node-taint CriticalAddonsOnly=true:NoExecute\n\n" >> $guest_script
+    echo -ne "wget https://raw.githubusercontent.com/chp-io/MicroV/demo/vms/alpine/demo.sh\n\n" >> $guest_script
   else
     echo -ne "wget -O - -o /dev/null https://get.k3s.io | K3S_URL=https://${SERVER_IP}:6443 K3S_TOKEN=kryptonite sh -\n\n" >> $guest_script
   fi
@@ -135,11 +136,15 @@ SERVER_CMD="$SCRIPT_DIR/alpine_iso_k3s.exp $SERVER_MAC $SERVER_TAP $ISO_PATH $US
 AGENT0_CMD="$SCRIPT_DIR/alpine_iso_k3s.exp $AGENT0_MAC $AGENT0_TAP $ISO_PATH $USER_PASSWORD $agent0_script"
 AGENT1_CMD="$SCRIPT_DIR/alpine_iso_k3s.exp $AGENT1_MAC $AGENT1_TAP $ISO_PATH $USER_PASSWORD $agent1_script"
 
+echo $SERVER_CMD >  $TMP_DIR/qemu.txt
+echo $AGENT0_CMD >> $TMP_DIR/qemu.txt
+echo $AGENT1_CMD >> $TMP_DIR/qemu.txt
+
 # Demo with tmux
 tmux new-session -d 'k3s-demo' \; \
   split-window -c $PWD -h -d "echo server; sleep $(( 2*$BOOT_SLEEP )); $SERVER_CMD; bash" \; \
   split-window -c $PWD -v -d "echo agent1; sleep $(( 1*$BOOT_SLEEP )); $AGENT1_CMD; bash" \; \
-  resize-pane -L 35 \; \
+  resize-pane -L 37 \; \
   split-window -c $PWD -h -d "echo agent0; sleep $(( 0*$BOOT_SLEEP )); $AGENT0_CMD; bash" \; \
   attach
 
