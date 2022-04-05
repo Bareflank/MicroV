@@ -62,10 +62,15 @@ cmd="kubectl get pods -o wide"
 echo "k3s-server:~# $cmd"
 cat $OUT_FILE
 
-# Start load balancer
+# Wait for load balancer to start
+while kubectl expose deploy nginx-deployment --type=LoadBalancer --port=8080 --target-port=80 > $OUT_FILE; [ $? -ne 0 ]; do
+    sleep 1
+done
+
+# Show load balancer
 cmd="kubectl expose deploy nginx-deployment --type=LoadBalancer --port=8080 --target-port=80"
 echo "k3s-server:~# $cmd"
-$cmd
+cat $OUT_FILE
 
 # Wait services to be ready
 echo "Waiting for services to be ready..."
@@ -77,3 +82,5 @@ done
 cmd="kubectl get svc -o wide"
 echo "k3s-server:~# $cmd"
 cat $OUT_FILE
+
+echo "All done!"
