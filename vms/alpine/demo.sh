@@ -18,7 +18,7 @@ do_cmd() {
     local cmd=$1
     local print_output_file=$2
 
-    echo "k3s-server:~# $cmd"
+    echo -e "\nk3s-server:~# $cmd"
     if $print_output_file; then
         cat $OUT_FILE
     else
@@ -36,14 +36,14 @@ done
 
 # Show nodes
 cmd="kubectl get nodes"
-echo "k3s-server:~# $cmd"
+echo -e "\nk3s-server:~# $cmd"
 cat $OUT_FILE
 
 #do_cmd "kubectl get pods -o wide" false
 
 # Apply configuration
 cmd="kubectl apply -f https://raw.githubusercontent.com/chp-io/MicroV/demo/vms/alpine/deployment.yaml"
-echo "k3s-server:~# $cmd"
+echo -e "\nk3s-server:~# $cmd"
 $cmd
 
 # Wait for pods to be ready
@@ -59,7 +59,7 @@ done
 
 # Show pods
 cmd="kubectl get pods -o wide"
-echo "k3s-server:~# $cmd"
+echo -e "\nk3s-server:~# $cmd"
 cat $OUT_FILE
 
 # Wait for load balancer to start
@@ -69,7 +69,7 @@ done
 
 # Show load balancer
 cmd="kubectl expose deploy nginx-deployment --type=LoadBalancer --port=8080 --target-port=80"
-echo "k3s-server:~# $cmd"
+echo -e "\nk3s-server:~# $cmd"
 cat $OUT_FILE
 
 # Wait services to be ready
@@ -80,7 +80,7 @@ done
 
 # Show services
 cmd="kubectl get svc -o wide"
-echo "k3s-server:~# $cmd"
+echo -e "\nk3s-server:~# $cmd"
 cat $OUT_FILE
 
 echo "All done!"
