@@ -30,7 +30,7 @@ sleep $SLEEP
 
 # Wait for nodes to be ready
 echo "Waiting for nodes to be ready..."
-while kubectl get nodes>$OUT_FILE; [ $(cat $OUT_FILE | grep ' Ready' | wc -l) -ne 3 ]; do
+while kubectl get nodes 2>/dev/null >$OUT_FILE; [ $(cat $OUT_FILE | grep ' Ready' | wc -l) -ne 3 ]; do
     sleep $SLEEP
 done
 
@@ -74,7 +74,7 @@ cat $OUT_FILE
 
 # Wait services to be ready
 echo "Waiting for services to be ready..."
-while kubectl get svc -o wide > $OUT_FILE; cat $OUT_FILE | grep 192.168.122.250; [ $? -ne 0 ]; do
+while kubectl get svc -o wide > $OUT_FILE; cat $OUT_FILE | grep -q 192.168.122.250; [ $? -ne 0 ]; do
     sleep $SLEEP
 done
 
