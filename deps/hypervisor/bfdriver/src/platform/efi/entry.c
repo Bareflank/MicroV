@@ -260,7 +260,11 @@ void parse_cmdline(EFI_HANDLE image)
 
     for (i = 0; i < argc; i++) {
         if (!StrnCmp(opt_enable_xue, argv[i], StrLen(opt_enable_xue))) {
+#if(USE_XUE)
             Print(L"Enabling Xue USB Debugger\n");
+#else
+            Print(L"Error: Xue USB Debugger was disabled at compile time\n");
+#endif
             g_enable_xue = 1;
         }
 
