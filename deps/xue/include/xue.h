@@ -35,6 +35,7 @@
 #define XUE_XHC_DEV_WILDCAT_POINT 0x9CB1ULL
 #define XUE_XHC_DEV_SUNRISE_POINT 0x9D2FULL
 #define XUE_XHC_DEV_CANNON_POINT 0x9DEDULL
+#define XUE_XHC_DEV_COMET_LAKE 0x02EDULL
 
 /* DbC idVendor and idProduct */
 #define XUE_DBC_VENDOR 0x1D6B
@@ -67,6 +68,7 @@ static inline int known_xhc(uint32_t dev_ven)
     case (XUE_XHC_DEV_WILDCAT_POINT << 16) | XUE_XHC_VEN_INTEL:
     case (XUE_XHC_DEV_SUNRISE_POINT << 16) | XUE_XHC_VEN_INTEL:
     case (XUE_XHC_DEV_CANNON_POINT << 16) | XUE_XHC_VEN_INTEL:
+    case (XUE_XHC_DEV_COMET_LAKE << 16) | XUE_XHC_VEN_INTEL:
         return 1;
     default:
         return 0;
