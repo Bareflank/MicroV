@@ -33,6 +33,8 @@
 namespace microv::intel_x64 {
 
 //
+// 18.18 COUNTING CLOCKS
+//
 // The following formula for the TSC frequency (in MHz) is derived from the
 // description of the Max Non-Turbo Ratio field of the MSR_PLATFORM_INFO msr:
 //
@@ -114,6 +116,7 @@ static uint64_t bus_freq_khz()
     case 0x56:
     case 0x57:    // table 2-43
     case 0x85:
+    case 0x8C:
         return 100000;
 
     case 0x1A:    // table 2-14
