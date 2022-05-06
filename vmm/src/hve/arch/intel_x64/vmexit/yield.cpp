@@ -32,54 +32,30 @@
 
 namespace microv::intel_x64 {
 
-//
-// 18.18 COUNTING CLOCKS
-//
-// The following formula for the TSC frequency (in MHz) is derived from the
-// description of the Max Non-Turbo Ratio field of the MSR_PLATFORM_INFO msr:
-//
-//      tsc_freq_MHz = bus_freq_MHz * MSR_PLATFORM_INFO[15:8]
-//      tsc_freq_MHz = bus_freq_MHz * platform_info::max_nonturbo_ratio::get()
-//
-// Note that, most, if not all, systems that (1) aren't Nehalem
-// and (2) support invariant TSC (i.e. cpuid.80000007:EDX[8] == 1)
-// have a bus_freq_MHz == 100 MHz.
-//
-// There is an alternative method for deriving TSC frequency based strictly
-// on cpuid. If invariant TSC is supported and cpuid.15H:EBX[31:0] != 0, then
-// the following equation holds (note the Hz rather than MHz):
-//
-//      tsc_freq_Hz = (ART frequency) * (TSC / ART ratio)
-//      tsc_freq_Hz = (cpuid.15H:ECX) * (cpuid.15H:EBX / cpuid.15H:EAX)
-//
-// where the ART a.k.a "Always Running Timer" runs at the core crystal clock
-// frequency. But ECX may (and in practice does) return 0, in which case the
-// formula is nonsense. Clearly we have to get the ART frequency somewhere
-// else, but I haven't been able to find it. Section 18.7.3 presents the
-// same formula above and mentions using cpuid.15H with the max turbo ratio,
-// but that doesn't make sense either.
-//
-// For now we just use the MSR_PLATFORM_INFO formula
-//
-
-static uint64_t bus_freq_khz()
+static inline void display_family_model(uint32_t &family, uint32_t &model)
 {
     namespace version = ::intel_x64::cpuid::feature_information::eax;
 
-    uint32_t display_family = 0;
-    uint32_t display_model = 0;
+    uint32_t display_family{};
+    uint32_t display_model{};
 
     const auto eax = version::get();
     const auto fam_id = version::family_id::get(eax);
 
-    /* Set display_family */
+    /// NOTES:
+    ///
+    /// The algorithm showing how to retrieve the DisplayFamily and DisplayModel
+    /// is described in Vol.2A below "Figure 3-6. Version Information Returned
+    /// by CPUID in EAX"
+
+    // Set display_family
     if (fam_id != 0xF) {
         display_family = fam_id;
     } else {
         display_family = version::extended_family_id::get(eax) + fam_id;
     }
 
-    /* Set display_model */
+    // Set display_model
     if (fam_id == 0x6 || fam_id == 0xF) {
         const auto model = version::model::get(eax);
         const auto ext_model = version::extended_model_id::get(eax);
@@ -87,6 +63,17 @@ static uint64_t bus_freq_khz()
     } else {
         display_model = version::model::get(eax);
     }
+
+    family = display_family;
+    model = display_model;
+}
+
+static inline uint64_t bus_freq_khz()
+{
+    uint32_t display_family{};
+    uint32_t display_model{};
+
+    display_family_model(display_family, display_model);
 
     if (display_family != 0x06) {
         bfalert_info(0, "bus_freq_MHz: unsupported display_family");
@@ -116,7 +103,6 @@ static uint64_t bus_freq_khz()
     case 0x56:
     case 0x57:    // table 2-43
     case 0x85:
-    case 0x8C:
         return 100000;
 
     case 0x1A:    // table 2-14
@@ -126,19 +112,124 @@ static uint64_t bus_freq_khz()
         return 133330;
 
     default:
-        bfalert_nhex(0, "Unknown cpuid display_model", display_model);
+        bfalert_nhex(
+            0, "bus_freq_khz: Unknown cpuid display_model", display_model);
         return 0;
     }
 }
 
-static inline uint64_t tsc_freq_khz(uint64_t bus_freq_khz)
+static inline uint32_t crystal_clock_khz()
 {
-    using namespace ::intel_x64::msrs;
+    uint32_t display_model;
+    uint32_t ignored;
 
-    const auto platform_info = 0xCE;
-    const auto ratio = (get(platform_info) & 0xFF00) >> 8;
+    display_family_model(ignored, display_model);
 
-    return bus_freq_khz * ratio;
+    switch (display_model) {
+    case 0x4E:
+    case 0x5E:
+    case 0x8E:
+    case 0x9E:
+        return 24000;
+
+    case 0x5F:
+        return 25000;
+
+    case 0x5C:
+        return 19200;
+
+    default:
+        bfalert_nhex(
+            0, "crystal_clock_khz: Unknown cpuid display_model", display_model);
+        return 0;
+    };
+}
+
+/// NOTES:
+///
+/// As per "Vol3. 18.18.3 Determining the Processor Base Frequency",
+/// for Intel processors in which the nominal core crystal clock frequency is
+/// enumerated in CPUID.15H.ECX and the core crystal clock ratio is encoded in
+/// CPUID.15H (see Table 3-8 "Information Returned by CPUID Instruction"), the
+/// nominal TSC frequency can be determined by using the following formula:
+///
+///     TSC_freq_Hz = ( CPUID.15H.ECX * CPUID.15H.EBX ) ÷ CPUID.15H.EAX
+///     TSC_freq_Hz = ( crystal_Hz * tsc_crystal_ratio_numerator ) ÷ tsc_crystal_ratio_denominator
+///
+/// For Intel processors in which CPUID.15H.EBX ÷ CPUID.0x15.EAX is enumerated
+/// but CPUID.15H.ECX is not enumerated, Table 18-68 can be used to look up the
+/// nominal core crystal clock frequency.
+///
+/// If the crystal clock frequency is not enumerated in CPUID.15H.ECX, we can
+/// closely aproximate its value by using the processor base frequency (Mhz)
+/// in CPUID.16H.EAX and the following formula:
+///
+///     Crystal_freq_Khz = (CPUID.16H.EAX * 1000) * CPUID.15H.EAX ÷ CPUID.15H.EBX
+///     Crystal_freq_Khz = (proc_Khz) * tsc_crystal_ratio_denominator ÷ tsc_crystal_ratio_numerator
+///
+/// If we are unable to use the CPUID.15H method to calculate the TSC frequency,
+/// i.e. (1) if CPUID.15H.EBX or CPUID.15H.EAX is not enumerated, or (2) if
+/// CPUID.15H.ECX is not enumerated and we don't have a known value for the
+/// crystal clock frequency or (3) CPUID.15H.ECX is not enumerated and CPUID.16H
+/// is not available to aproximate the crystal frequency, we have to revert back
+/// to using the MSR_PLATFORM_INFO formula which is less accurate on some
+/// platforms.
+///
+/// The following equation for the TSC frequency (in MHz) is derived from the
+/// description of the Max Non-Turbo Ratio field of the MSR_PLATFORM_INFO msr:
+///
+///     TSC_freq_MHz = bus_freq_MHz * MSR_PLATFORM_INFO[15:8]
+///     TSC_freq_MHz = bus_freq_MHz * platform_info::max_nonturbo_ratio::get()
+///
+/// Note that, most, if not all, systems that (1) aren't Nehalem
+/// and (2) support invariant TSC (i.e. cpuid.80000007:EDX[8] == 1)
+/// have a bus_freq_MHz == 100 MHz.
+///
+static uint64_t tsc_freq_khz()
+{
+    using namespace ::intel_x64;
+
+    const auto regs{::x64::cpuid::get(0, 0, 0, 0)};
+    const auto max_cpuid{regs.rax};
+
+    if (max_cpuid < 0x15) {
+        bferror_info(
+            0, "tsc_freq_khz: Time Stamp Count CPUID leaf is not supported");
+        return 0;
+    }
+
+    // eax = tsc/crystal ratio denominator
+    // ebx = tsc/crystal ratio numerator
+    // ecx = crystal in Hz
+    const auto [eax, ebx, ecx, edx] =
+        ::x64::cpuid::get(cpuid::time_stamp_count::addr, 0, 0, 0);
+    uint32_t crystal_khz = 0;
+
+    if (ecx != 0 && eax != 0 && ebx != 0) {
+        crystal_khz = ecx / 1000;
+    } else if (ecx == 0 && eax != 0 && ebx != 0) {
+        // The nominal frequency of the core crystal clock is not enumerated, so
+        // use kown values
+        crystal_khz = crystal_clock_khz();
+
+        if (crystal_khz == 0 && max_cpuid >= cpuid::processor_freq::addr) {
+            // Last resort to get the crystal clock frequency
+            const auto proc_mhz = cpuid::processor_freq::eax::get();
+            crystal_khz = proc_mhz * 1000 * eax / ebx;
+        }
+    }
+
+    if (eax == 0 || ebx == 0 || crystal_khz == 0) {
+        // revert back to using the MSR_PLATFORM_INFO method to calibrate TSC
+
+        const uint64_t bus_freq = bus_freq_khz();
+        const auto nonturbo_ratio =
+            msrs::ia32_platform_info::max_nonturbo_ratio::get();
+
+        return bus_freq * nonturbo_ratio;
+    }
+
+    return crystal_khz * ebx / eax;
 }
 
 //
@@ -174,7 +265,7 @@ yield_handler::yield_handler(gsl::not_null<vcpu *> vcpu) : m_vcpu{vcpu}
     expects(tsc_supported());
     expects(invariant_tsc_supported());
 
-    m_tsc_freq = tsc_freq_khz(bus_freq_khz());
+    m_tsc_freq = tsc_freq_khz();
     m_pet_shift = ia32_vmx_misc::preemption_timer_decrement::get();
 
     if (vcpu->is_dom0()) {
