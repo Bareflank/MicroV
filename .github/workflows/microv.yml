@@ -98,6 +98,7 @@ jobs:
         echo 'set(ENABLE_BUILD_EFI ON)' >> ../config.cmake
         echo 'set(XEN_REGISTER_BASED_ABI ON)' >> ../config.cmake
         echo 'set(XEN_READCONSOLE_ROOTVM ON)' >> ../config.cmake
+        echo 'set(USE_XUE ON)' >> ../config.cmake
         cmake ../microv/deps/hypervisor -DCONFIG=../config.cmake -DCMAKE_CXX_FLAGS="--verbose "
         make
       shell: bash
