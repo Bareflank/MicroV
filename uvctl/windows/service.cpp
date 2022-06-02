@@ -27,6 +27,7 @@
 #include <atomic>
 #include <memory>
 #include <mutex>
+#include <stdlib.h>
 #include <windows.h>
 #include <microv/xenbusinterface.h>
 
@@ -210,10 +211,24 @@ DWORD WINAPI vm_worker(LPVOID param)
     return EXIT_FAILURE;
 }
 
+/*
+ * Ensure boot entry is set/refreshed on exit to prevent Windows
+ * from overriding it
+ */
+static void set_boot_entry() noexcept
+{
+    int res = system(
+        "C:\\windows\\system32\\bcdedit.exe /set {bootmgr} path \\EFI\\Boot\\PreLoader.efi");
+    if (res != 0) {
+        log_msg("bcdedit: failed to set microv boot manager entry: %d", res);
+    }
+}
+
 void WINAPI service_main(DWORD argc, LPTSTR *argv)
 {
     if (!init()) {
         log_msg("%s: init failed\n", __func__);
+        set_boot_entry();
         return;
     }
 
@@ -237,6 +252,7 @@ void WINAPI service_main(DWORD argc, LPTSTR *argv)
                 exit_code);
 
         stop_with_error(exit_code);
+        set_boot_entry();
         return;
     }
 
@@ -257,6 +273,7 @@ void WINAPI service_main(DWORD argc, LPTSTR *argv)
 
         CloseHandle(service_stop_event);
         stop_with_error(exit_code);
+        set_boot_entry();
         return;
     }
 
@@ -286,6 +303,8 @@ void WINAPI service_main(DWORD argc, LPTSTR *argv)
             log_msg("%s: wait on vm_thread failed (err=0x%x)\n", __func__, ret);
         }
     }
+
+    set_boot_entry();
 
     set_status(SERVICE_ACCEPT_NONE, SERVICE_STOPPED, NO_ERROR);
 
