@@ -24,6 +24,7 @@
 
 #include <bftypes.h>
 #include <arch/x64/portio.h>
+#include <printv.h>
 
 namespace microv {
 
@@ -173,6 +174,18 @@ inline bool pci_cfg_is_netdev(uint32_t reg2)
 {
     const auto cc = (reg2 & 0xFF00'0000) >> 24;
     return cc == pci_cc_network;
+}
+
+inline bool pci_cfg_is_netdev_eth(uint32_t reg2)
+{
+    const auto cc = (reg2 & 0xFF00'0000) >> 24;
+    const auto sc = (reg2 & 0x00FF'0000) >> 16;
+    const auto ret = cc == pci_cc_network && sc == 00;
+    printv("pci_cfg_is_netdev_eth: [class:subclass] [%02x:%02x] %s\n",
+           cc,
+           sc,
+           ret ? "eth" : "wireless");
+    return ret;
 }
 
 inline bool pci_cfg_is_host_bridge(uint32_t reg2)

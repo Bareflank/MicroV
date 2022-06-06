@@ -181,6 +181,13 @@ static void probe_bus(uint32_t b, struct pci_dev *bridge)
                     continue;
                 }
 
+                if (pdev->is_netdev_eth()) {
+                    printv(
+                        "pci: %s: passthrough disabled for ethernet device\n",
+                        pdev->bdf_str());
+                    continue;
+                }
+
                 bool misaligned_bar = false;
                 pdev->parse_bars();
 

@@ -77,6 +77,11 @@ struct pci_dev {
         return pci_cfg_is_netdev(m_cfg_reg[2]);
     }
 
+    bool is_netdev_eth() const
+    {
+        return pci_cfg_is_netdev_eth(m_cfg_reg[2]);
+    }
+
     bool is_host_bridge() const
     {
         return pci_cfg_is_host_bridge(m_cfg_reg[2]);
