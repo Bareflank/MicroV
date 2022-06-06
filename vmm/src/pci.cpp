@@ -222,6 +222,9 @@ static void probe_bus(uint32_t b, struct pci_dev *bridge)
 
                 pci_passthru_list.push_back(pdev);
                 pci_passthru_busses.emplace(b);
+
+                printv("pci: %s: passthrough enabled for device\n",
+                       pdev->bdf_str());
             }
         }
     }
