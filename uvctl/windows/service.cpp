@@ -220,7 +220,21 @@ static void set_boot_entry() noexcept
     int res = system(
         "C:\\windows\\system32\\bcdedit.exe /set {bootmgr} path \\EFI\\Boot\\PreLoader.efi");
     if (res != 0) {
-        log_msg("bcdedit: failed to set microv boot manager entry: %d", res);
+        log_msg(
+            "bcdedit: failed to set MicroV boot manager entry: exit code %d",
+            res);
+    }
+    res = system(
+        "C:\\windows\\system32\\bcdedit.exe /set {fwbootmgr} displayorder {bootmgr}");
+    if (res != 0) {
+        log_msg("bcdedit: failed to set fwbootmgr displayorder: exit code %d",
+                res);
+    }
+    res = system(
+        "C:\\windows\\system32\\bcdedit.exe /set {fwbootmgr} bootsequence {bootmgr}");
+    if (res != 0) {
+        log_msg("bcdedit: failed to set fwbootmgr bootsequence: exit code %d",
+                res);
     }
 }
 
