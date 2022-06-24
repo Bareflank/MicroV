@@ -181,6 +181,15 @@ static void probe_bus(uint32_t b, struct pci_dev *bridge)
                     continue;
                 }
 
+#ifdef ENABLE_NOETH_PT
+                if (pdev->is_netdev_eth()) {
+                    printv(
+                        "pci: %s: passthrough disabled for ethernet device\n",
+                        pdev->bdf_str());
+                    continue;
+                }
+#endif
+
                 bool misaligned_bar = false;
                 pdev->parse_bars();
 
@@ -215,6 +224,9 @@ static void probe_bus(uint32_t b, struct pci_dev *bridge)
 
                 pci_passthru_list.push_back(pdev);
                 pci_passthru_busses.emplace(b);
+
+                printv("pci: %s: passthrough enabled for device\n",
+                       pdev->bdf_str());
             }
         }
     }
