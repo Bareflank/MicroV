@@ -131,6 +131,7 @@ target_compile_definitions(bfroot INTERFACE
     $<${VMM_C_CXX}:__ELF__>
     $<$<BOOL:${USE_XUE}>:USE_XUE>
     $<$<BOOL:${XEN_REGISTER_BASED_ABI}>:XEN_REGISTER_BASED_ABI>
+    $<$<BOOL:${ENABLE_NOETH_PT}>:ENABLE_NOETH_PT>
 )
 target_include_directories(bfroot SYSTEM INTERFACE
     $<INSTALL_INTERFACE:$<${VMM_C_CXX}:${VMM_PREFIX_PATH}/include/c++/v1>>

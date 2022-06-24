@@ -109,6 +109,38 @@ jobs:
         path: |
           build/prefixes/x86_64-efi-pe/bin/bareflank.efi
 
+  build-efi-noeth:
+    runs-on: ubuntu-20.04
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        path: microv
+
+    - name: Setup
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y python build-essential linux-headers-$(uname -r) nasm clang cmake libelf-dev
+      shell: bash
+
+    - name: Build EFI
+      run: |
+        mkdir build && cd build
+        cp ../microv/scripts/cmake/config/config.cmake ..
+        echo 'set(ENABLE_BUILD_USERSPACE OFF)' >> ../config.cmake
+        echo 'set(ENABLE_BUILD_VMM ON)' >> ../config.cmake
+        echo 'set(ENABLE_BUILD_EFI ON)' >> ../config.cmake
+        echo 'set(XEN_REGISTER_BASED_ABI ON)' >> ../config.cmake
+        echo 'set(ENABLE_NOETH_PT ON)' >> ../config.cmake
+        cmake ../microv/deps/hypervisor -DCONFIG=../config.cmake -DCMAKE_CXX_FLAGS="--verbose "
+        make
+      shell: bash
+
+    - uses: actions/upload-artifact@v2
+      with:
+        name: microv_efi_noeth
+        path: |
+          build/prefixes/x86_64-efi-pe/bin/bareflank.efi
+
   build-userpace:
     runs-on: windows-2019
     steps:

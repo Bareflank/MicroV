@@ -79,3 +79,10 @@ add_config(
     DEFAULT_VAL OFF
     DESCRIPTION "Allow to read the hypervisor debug output from the root vm"
 )
+
+add_config(
+    CONFIG_NAME ENABLE_NOETH_PT
+    CONFIG_TYPE BOOL
+    DEFAULT_VAL OFF
+    DESCRIPTION "Don't passthru ethernet devices, when passthru for network devices is enabled"
+)
