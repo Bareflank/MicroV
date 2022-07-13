@@ -130,6 +130,7 @@ target_compile_definitions(bfroot INTERFACE
     $<${VMM_C_CXX}:__SINGLE_THREAD__>
     $<${VMM_C_CXX}:__ELF__>
     $<$<BOOL:${USE_XUE}>:USE_XUE>
+    $<$<BOOL:${ENABLE_SERIAL}>:ENABLE_SERIAL>
     $<$<BOOL:${XEN_REGISTER_BASED_ABI}>:XEN_REGISTER_BASED_ABI>
     $<$<BOOL:${ENABLE_NOETH_PT}>:ENABLE_NOETH_PT>
 )

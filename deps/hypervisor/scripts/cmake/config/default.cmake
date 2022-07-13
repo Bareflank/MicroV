@@ -411,6 +411,14 @@ add_config(
     SKIP_VALIDATION
 )
 
+add_config(
+    CONFIG_NAME ENABLE_SERIAL
+    CONFIG_TYPE BOOL
+    DEFAULT_VAL ON
+    DESCRIPTION "Enable debugging over serial"
+    SKIP_VALIDATION
+)
+
 # ------------------------------------------------------------------------------
 # Non-configurable directories
 # ------------------------------------------------------------------------------
