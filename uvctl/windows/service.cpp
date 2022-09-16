@@ -217,6 +217,7 @@ DWORD WINAPI vm_worker(LPVOID param)
  */
 static void set_boot_entry() noexcept
 {
+#ifdef UVCTL_WINDOWS_SERVICE_FORCE_BOOTENTRY
     int res = system(
         "C:\\windows\\system32\\bcdedit.exe /set {bootmgr} path \\EFI\\Boot\\PreLoader.efi");
     if (res != 0) {
@@ -236,13 +237,19 @@ static void set_boot_entry() noexcept
         log_msg("bcdedit: failed to set fwbootmgr bootsequence: exit code %d",
                 res);
     }
+#endif
+}
+
+void service_post_tasks() noexcept
+{
+    set_boot_entry();
 }
 
 void WINAPI service_main(DWORD argc, LPTSTR *argv)
 {
+    set_boot_entry();
     if (!init()) {
         log_msg("%s: init failed\n", __func__);
-        set_boot_entry();
         return;
     }
 
@@ -266,7 +273,6 @@ void WINAPI service_main(DWORD argc, LPTSTR *argv)
                 exit_code);
 
         stop_with_error(exit_code);
-        set_boot_entry();
         return;
     }
 
@@ -287,7 +293,6 @@ void WINAPI service_main(DWORD argc, LPTSTR *argv)
 
         CloseHandle(service_stop_event);
         stop_with_error(exit_code);
-        set_boot_entry();
         return;
     }
 
@@ -317,8 +322,6 @@ void WINAPI service_main(DWORD argc, LPTSTR *argv)
             log_msg("%s: wait on vm_thread failed (err=0x%x)\n", __func__, ret);
         }
     }
-
-    set_boot_entry();
 
     set_status(SERVICE_ACCEPT_NONE, SERVICE_STOPPED, NO_ERROR);
 

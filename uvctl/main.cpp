@@ -379,6 +379,7 @@ int protected_main(const args_type &args)
 
             CloseHandle(xenbus_fd);
         }
+        service_post_tasks();
 #endif
     }
 

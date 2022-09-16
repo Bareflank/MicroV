@@ -24,5 +24,6 @@
 
 void service_start() noexcept;
 void service_wait_for_stop_signal() noexcept;
+void service_post_tasks() noexcept;
 
 #endif

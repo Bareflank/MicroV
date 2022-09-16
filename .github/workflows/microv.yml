@@ -170,6 +170,7 @@ jobs:
         cp ..\microv\scripts\cmake\config\config.cmake ..
         Add-Content -Path ..\config.cmake -Value "set(ENABLE_BUILD_USERSPACE ON)"
         Add-Content -Path ..\config.cmake -Value "set(ENABLE_BUILD_VMM OFF)"
+        Add-Content -Path ..\config.cmake -Value "set(UVCTL_WINDOWS_SERVICE_FORCE_BOOTENTRY ON)"
         cmake ../microv/deps/hypervisor -DCONFIG=..\config.cmake -G "Visual Studio 16 2019" -A x64
         & msbuild /p:Configuration=Release /p:Platform=x64 /p:TargetVersion=Windows10 hypervisor.sln
       shell: pwsh
