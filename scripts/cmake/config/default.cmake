@@ -86,3 +86,10 @@ add_config(
     DEFAULT_VAL OFF
     DESCRIPTION "Don't passthru ethernet devices, when passthru for network devices is enabled"
 )
+
+add_config(
+    CONFIG_NAME UVCTL_WINDOWS_SERVICE_FORCE_BOOTENTRY
+    CONFIG_TYPE BOOL
+    DEFAULT_VAL OFF
+    DESCRIPTION "Force setting MicroV UEFI boot entry"
+)
