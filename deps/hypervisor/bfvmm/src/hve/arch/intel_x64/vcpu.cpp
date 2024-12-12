@@ -162,6 +162,7 @@ vcpu::vcpu(
     m_microcode_handler{this},
     m_vpid_handler{this}
 {
+    using namespace ::intel_x64::cr4::osxsave;
     using namespace vmcs_n;
     bfn::call_once(g_once_flag, setup);
 
@@ -197,7 +198,7 @@ vcpu::vcpu(
     m_vpid_handler.enable();
     m_nmi_handler.enable_exiting();
     m_control_register_handler.enable_wrcr0_exiting(0);
-    m_control_register_handler.enable_wrcr4_exiting(0);
+    m_control_register_handler.enable_wrcr4_exiting(::intel_x64::cr4::osxsave::mask);
 }
 
 //==============================================================================
